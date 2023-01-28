@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -34,9 +34,9 @@ import {
 	userOperations,
 } from './descriptions';
 
-import { SplunkCredentials, SplunkFeedResponse } from './types';
+import type { SplunkCredentials, SplunkFeedResponse } from './types';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {

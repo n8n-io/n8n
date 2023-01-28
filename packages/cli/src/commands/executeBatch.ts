@@ -11,7 +11,8 @@ import { Command, flags } from '@oclif/command';
 
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 
-import { ITaskData, LoggerProxy, sleep } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow';
+import { LoggerProxy, sleep } from 'n8n-workflow';
 
 import { sep } from 'path';
 
@@ -29,9 +30,9 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import config from '@/config';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { initEvents } from '@/events';

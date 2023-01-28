@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="node-credentials-config-container">
 		<banner
 			v-show="showValidationWarning"
 			theme="danger"
@@ -70,6 +70,12 @@
 				</span>
 			</n8n-notice>
 
+			<AuthTypeSelector
+				v-if="showAuthTypeSelector && isNewCredential"
+				:credentialType="credentialType"
+				@authTypeChanged="onAuthTypeChange"
+			/>
+
 			<CopyInput
 				v-if="isOAuthType && credentialProperties.length"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
@@ -115,14 +121,14 @@
 			@click="$emit('oauth')"
 		/>
 
-		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
 			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 		</n8n-text>
 	</div>
 </template>
 
 <script lang="ts">
-import { ICredentialType } from 'n8n-workflow';
+import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
 
 import Banner from '../Banner.vue';
@@ -140,15 +146,21 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { ICredentialsResponse, IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
 	components: {
+		AuthTypeSelector,
 		Banner,
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
+		ParameterInputFull,
 		GoogleAuthButton,
 	},
 	props: {
@@ -192,6 +204,13 @@ export default mixins(restApi).extend({
 		requiredPropertiesFilled: {
 			type: Boolean,
 		},
+		mode: {
+			type: String,
+			required: true,
+		},
+		showAuthTypeSelector: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
@@ -215,7 +234,22 @@ export default mixins(restApi).extend({
 		);
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNDVStore,
+			useNodeTypesStore,
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		activeNodeType(): INodeTypeDescription | null {
+			const activeNode = this.ndvStore.activeNode;
+
+			if (activeNode) {
+				return this.nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
+			}
+			return null;
+		},
 		appName(): string {
 			if (!this.credentialType) {
 				return '';
@@ -284,8 +318,17 @@ export default mixins(restApi).extend({
 				!this.authError
 			);
 		},
+		isMissingCredentials(): boolean {
+			return this.credentialType === null;
+		},
+		isNewCredential(): boolean {
+			return this.mode === 'new' && !this.credentialId;
+		},
 	},
 	methods: {
+		getCredentialOptions(type: string): ICredentialsResponse[] {
+			return this.credentialsStore.allUsableCredentialsByType[type];
+		},
 		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},
@@ -296,6 +339,9 @@ export default mixins(restApi).extend({
 				source: 'modal',
 				workflow_id: this.workflowsStore.workflowId,
 			});
+		},
+		onAuthTypeChange(newType: string): void {
+			this.$emit('authTypeChanged', newType);
 		},
 	},
 	watch: {

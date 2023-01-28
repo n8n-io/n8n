@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 import config from '@/config';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 
 export class RemoveWorkflowDataLoadedFlag1671726148420 implements MigrationInterface {
 	name = 'RemoveWorkflowDataLoadedFlag1671726148420';
@@ -32,9 +32,7 @@ export class RemoveWorkflowDataLoadedFlag1671726148420 implements MigrationInter
 			return undefined;
 		});
 
-		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`,
-		);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`);
 
 		logMigrationEnd(this.name);
 	}

@@ -35,9 +35,12 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { FindManyOptions, In } from 'typeorm';
-import axios, { AxiosRequestConfig } from 'axios';
-import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
+import type { FindManyOptions } from 'typeorm';
+import { In } from 'typeorm';
+import type { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -50,7 +53,7 @@ import {
 	UserSettings,
 } from 'n8n-core';
 
-import {
+import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
@@ -58,15 +61,11 @@ import {
 	INodePropertyOptions,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	LoggerProxy,
-	jsonParse,
 	WorkflowExecuteMode,
 	INodeTypes,
 	ICredentialTypes,
-	INode,
-	IWorkflowBase,
-	IRun,
 } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
@@ -103,8 +102,15 @@ import type {
 	OAuthRequest,
 	WorkflowRequest,
 } from '@/requests';
-import { userManagementRouter } from '@/UserManagement';
-import { resolveJwt } from '@/UserManagement/auth/jwt';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
+import { resolveJwt } from '@/auth/jwt';
 
 import { executionsController } from '@/executions/executions.controller';
 import { nodeTypesController } from '@/api/nodeTypes.api';
@@ -118,8 +124,9 @@ import {
 	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
+import { getInstance as getMailerInstance } from '@/UserManagement/email';
 import * as Db from '@/Db';
-import {
+import type {
 	DatabaseType,
 	ICredentialsDb,
 	ICredentialsOverwrite,
@@ -142,7 +149,8 @@ import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
+import type { WaitTrackerClass } from '@/WaitTracker';
+import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
@@ -151,7 +159,7 @@ import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
-import { corsMiddleware } from './middlewares/cors';
+import { corsMiddleware, setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
 import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
@@ -336,6 +344,33 @@ class Server extends AbstractServer {
 		}
 	}
 
+	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+		const { app, externalHooks, activeWorkflowRunner } = this;
+		const repositories = Db.collections;
+		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
+
+		const logger = LoggerProxy;
+		const internalHooks = InternalHooksManager.getInstance();
+		const mailer = getMailerInstance();
+
+		const controllers = [
+			new AuthController({ config, internalHooks, repositories, logger }),
+			new OwnerController({ config, internalHooks, repositories, logger }),
+			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new UsersController({
+				config,
+				mailer,
+				externalHooks,
+				internalHooks,
+				repositories,
+				activeWorkflowRunner,
+				logger,
+			}),
+		];
+		controllers.forEach((controller) => registerController(app, config, controller));
+	}
+
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
 
@@ -354,7 +389,7 @@ class Server extends AbstractServer {
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
-		const ignoredEndpoints = [
+		const ignoredEndpoints: Readonly<string[]> = [
 			'assets',
 			'healthz',
 			'metrics',
@@ -587,7 +622,7 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
-		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 

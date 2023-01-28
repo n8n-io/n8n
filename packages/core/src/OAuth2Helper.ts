@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import clientOAuth2 from 'client-oauth2';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type clientOAuth2 from 'client-oauth2';
 
 export const getClientCredentialsToken = async (
 	oAuth2Client: clientOAuth2,

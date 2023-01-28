@@ -28,7 +28,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as Server from '@/Server';
-import { DatabaseType } from '@/Interfaces';
+import type { DatabaseType } from '@/Interfaces';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker } from '@/WaitTracker';
 
@@ -204,6 +204,7 @@ export class Start extends Command {
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
+					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {

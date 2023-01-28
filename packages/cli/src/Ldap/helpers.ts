@@ -8,7 +8,7 @@ import * as Db from '@/Db';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';

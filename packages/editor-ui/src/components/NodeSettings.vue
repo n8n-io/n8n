@@ -103,7 +103,9 @@
 					<node-credentials
 						:node="node"
 						:readonly="isReadOnly"
+						:showAll="true"
 						@credentialSelected="credentialSelected"
+						@valueChanged="valueChanged"
 						@blur="onParameterBlur"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 					/>

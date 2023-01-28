@@ -10,6 +10,12 @@ export async function getNewWorkflow(context: IRestApiContext, name?: string) {
 	};
 }
 
+export async function getWorkflow(context: IRestApiContext, id: string, filter?: object) {
+	const sendData = filter ? { filter } : undefined;
+
+	return await makeRestApiRequest(context, 'GET', `/workflows/${id}`, sendData);
+}
+
 export async function getWorkflows(context: IRestApiContext, filter?: object) {
 	const sendData = filter ? { filter } : undefined;
 

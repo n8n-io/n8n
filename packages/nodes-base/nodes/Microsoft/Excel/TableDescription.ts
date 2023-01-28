@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { tableRLC, workbookRLC, worksheetRLC } from './CommonDescription';
 
 export const tableOperations: INodeProperties[] = [
