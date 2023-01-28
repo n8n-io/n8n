@@ -1,3 +1,36 @@
+# [0.213.0](https://github.com/n8n-io/n8n/compare/n8n@0.212.1...n8n@0.213.0) (2023-01-27)
+
+
+### Bug Fixes
+
+* **core:** Do not crash express app on unhandled rejected promises ([#5252](https://github.com/n8n-io/n8n/issues/5252)) ([7e229a3](https://github.com/n8n-io/n8n/commit/7e229a3d38990022172d4df98afd3dc31dca6e63))
+* **core:** Handle missing binary metadata in download urls ([#5242](https://github.com/n8n-io/n8n/issues/5242)) ([21579a8](https://github.com/n8n-io/n8n/commit/21579a8a2af53f3fb4174afc2013cfad43511a31))
+* **core:** Upsert credentials and workflows in the import: commands ([#5231](https://github.com/n8n-io/n8n/issues/5231)) ([259296c](https://github.com/n8n-io/n8n/commit/259296c5c940bd5dcebec5ad3c9acc99a7923b8f))
+* **core:** Validate numeric IDs in the public API ([#5251](https://github.com/n8n-io/n8n/issues/5251)) ([68e4083](https://github.com/n8n-io/n8n/commit/68e4083bbdb8200966dc9e702bed9ca5cbc1cdf4))
+* **editor:** Do not request workflow data twice when opening a workflow ([#5246](https://github.com/n8n-io/n8n/issues/5246)) ([901e94d](https://github.com/n8n-io/n8n/commit/901e94dc01c4b352301053990f197eda48c30b41))
+* **editor:** Execution list micro optimization ([#5244](https://github.com/n8n-io/n8n/issues/5244)) ([a1710fb](https://github.com/n8n-io/n8n/commit/a1710fbd272a0f3980a8f323bbccf58806e9b900))
+* **editor:** Fix node authentication options ordering and hiding options based on node version ([#5268](https://github.com/n8n-io/n8n/issues/5268)) ([7d74181](https://github.com/n8n-io/n8n/commit/7d7418140eb03da6014ff8ac51668fc427d10c33))
+* **editor:** Fix save modal appearing after duplicating a workflow ([#5247](https://github.com/n8n-io/n8n/issues/5247)) ([c711c53](https://github.com/n8n-io/n8n/commit/c711c53ad6b044b8f90a237d6d8d1ce631359dc3))
+* **editor:** Prevent workflow execution list infinite no network error ([#5230](https://github.com/n8n-io/n8n/issues/5230)) ([0d33329](https://github.com/n8n-io/n8n/commit/0d33329bc87b705760fdc70ccb39374cbd71f6f6))
+* Extension being too eager and making calls when it shouldn't ([#5232](https://github.com/n8n-io/n8n/issues/5232)) ([09bdd96](https://github.com/n8n-io/n8n/commit/09bdd96d290166cced6faf5da4dda83d6d270aa3))
+* **Google Drive Node:** Use the correct mimetype on converted downloads ([#5240](https://github.com/n8n-io/n8n/issues/5240)) ([58d0890](https://github.com/n8n-io/n8n/commit/58d0890dc319c918183fd81999dc87ea9c4732fd))
+* **HelpScout Node:** Fix tag search not working when getting all conversations ([#5239](https://github.com/n8n-io/n8n/issues/5239)) ([6d36782](https://github.com/n8n-io/n8n/commit/6d36782463cda1d211270ecf9bd1a8cccca22cdc))
+* **Notion (Beta) Node:** Fix create database page with multiple relation IDs not working ([#5260](https://github.com/n8n-io/n8n/issues/5260)) ([8ce85e3](https://github.com/n8n-io/n8n/commit/8ce85e37592da061164db18af52852e8ed1d2046))
+
+
+### Features
+
+* **core:** Add LDAP support ([#3835](https://github.com/n8n-io/n8n/issues/3835)) ([0c70a40](https://github.com/n8n-io/n8n/commit/0c70a4031702d3c770968d5679d2900def7225a8))
+* **editor:** Adjust Google sign-in button to adhere to the guidelines ([#5248](https://github.com/n8n-io/n8n/issues/5248)) ([73cbddc](https://github.com/n8n-io/n8n/commit/73cbddcb2dc046f1795740a5dd2258577df4d049))
+* **editor:** Simplify NDV by moving authentication details to credentials modal ([#5067](https://github.com/n8n-io/n8n/issues/5067)) ([b321c5e](https://github.com/n8n-io/n8n/commit/b321c5e4ec5aefa605991861db68efc860e0f122))
+* **GitLab Node:** Add file operations (create, delete, edit, get, list) ([#5167](https://github.com/n8n-io/n8n/issues/5167)) ([cedf2e0](https://github.com/n8n-io/n8n/commit/cedf2e012c7309cd225f9810d30315c851bcab3a))
+* HTML node ([#5107](https://github.com/n8n-io/n8n/issues/5107)) ([74e6f5d](https://github.com/n8n-io/n8n/commit/74e6f5d190d010831fc2ef98afdd9dff3dc93b3c))
+* Improve workflow list performance using RecycleScroller and on-demand sharing data loading ([#5181](https://github.com/n8n-io/n8n/issues/5181)) ([874c735](https://github.com/n8n-io/n8n/commit/874c735d0af81c3c81cf82fb9bdf1232608d6400)), closes [#5125](https://github.com/n8n-io/n8n/issues/5125)
+* **Jira Software Node:** Use resource locator component ([#5090](https://github.com/n8n-io/n8n/issues/5090)) ([237b1d8](https://github.com/n8n-io/n8n/commit/237b1d8614ffd19215eaee6a0cb9422a16cf0a5c))
+* **Send Email Node:** Overhaul ([832fb87](https://github.com/n8n-io/n8n/commit/832fb87954d480ed46913c8b0f8067c96db28aab))
+
+
+
 ## [0.212.1](https://github.com/n8n-io/n8n/compare/n8n@0.212.0...n8n@0.212.1) (2023-01-23)
 
 ### Bug Fixes

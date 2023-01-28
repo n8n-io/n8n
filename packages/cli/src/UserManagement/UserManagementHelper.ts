@@ -1,15 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
-import express from 'express';
+import type express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { PublicUser, WhereClause } from '@/Interfaces';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
-import { Role } from '@db/entities/Role';
-import { AuthenticatedRequest } from '@/requests';
+import type { User } from '@db/entities/User';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
+import type { Role } from '@db/entities/Role';
+import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';

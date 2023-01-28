@@ -4,7 +4,8 @@
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
-import { LoggerProxy, IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -16,7 +17,7 @@ import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';

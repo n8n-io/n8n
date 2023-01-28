@@ -7,10 +7,10 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
-import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import type { IProcessMessage } from 'n8n-core';
+import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	ErrorReporterProxy as ErrorReporter,
+import type {
 	ExecutionError,
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -23,10 +23,13 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowSettings,
-	LoggerProxy,
 	NodeOperationError,
-	Workflow,
 	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy,
+	Workflow,
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -34,7 +37,10 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import { IWorkflowExecuteProcess, IWorkflowExecutionDataProcessWithExecution } from '@/Interfaces';
+import type {
+	IWorkflowExecuteProcess,
+	IWorkflowExecutionDataProcessWithExecution,
+} from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';

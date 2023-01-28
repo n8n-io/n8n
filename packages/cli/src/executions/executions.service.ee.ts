@@ -1,4 +1,4 @@
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { ExecutionsService } from './executions.service';
 

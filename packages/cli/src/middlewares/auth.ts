@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { LoggerProxy as Logger } from 'n8n-workflow';
-import { JwtPayload } from '@/Interfaces';
+import type { JwtPayload } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
