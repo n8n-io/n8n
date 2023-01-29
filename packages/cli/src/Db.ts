@@ -14,7 +14,6 @@ import type {
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
 import type { DatabaseType, IDatabaseCollections } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
 
 import config from '@/config';
 
@@ -44,17 +43,13 @@ export function linkRepository<Entity extends ObjectLiteral>(
 	return connection.getRepository(entityClass);
 }
 
-export async function getConnectionOptions(dbType: DatabaseType): Promise<ConnectionOptions> {
+export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	switch (dbType) {
 		case 'postgresdb':
-			const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
-			const sslCert = (await GenericHelpers.getConfigValue(
-				'database.postgresdb.ssl.cert',
-			)) as string;
-			const sslKey = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.key')) as string;
-			const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
-				'database.postgresdb.ssl.rejectUnauthorized',
-			)) as boolean;
+			const sslCa = config.getEnv('database.postgresdb.ssl.ca');
+			const sslCert = config.getEnv('database.postgresdb.ssl.cert');
+			const sslKey = config.getEnv('database.postgresdb.ssl.key');
+			const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
 
 			let ssl: TlsOptions | undefined;
 			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
@@ -68,7 +63,7 @@ export async function getConnectionOptions(dbType: DatabaseType): Promise<Connec
 
 			return {
 				...getPostgresConnectionOptions(),
-				...(await getOptionOverrides('postgresdb')),
+				...getOptionOverrides('postgresdb'),
 				ssl,
 			};
 
@@ -76,7 +71,7 @@ export async function getConnectionOptions(dbType: DatabaseType): Promise<Connec
 		case 'mysqldb':
 			return {
 				...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
-				...(await getOptionOverrides('mysqldb')),
+				...getOptionOverrides('mysqldb'),
 				timezone: 'Z', // set UTC as default
 			};
 
@@ -93,17 +88,13 @@ export async function init(
 ): Promise<IDatabaseCollections> {
 	if (isInitialized) return collections;
 
-	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-	const connectionOptions = testConnectionOptions ?? (await getConnectionOptions(dbType));
+	const dbType = config.getEnv('database.type');
+	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
 
-	let loggingOption: LoggerOptions = (await GenericHelpers.getConfigValue(
-		'database.logging.enabled',
-	)) as boolean;
+	let loggingOption: LoggerOptions = config.getEnv('database.logging.enabled');
 
 	if (loggingOption) {
-		const optionsString = (
-			(await GenericHelpers.getConfigValue('database.logging.options')) as string
-		).replace(/\s+/g, '');
+		const optionsString = config.getEnv('database.logging.options').replace(/\s+/g, '');
 
 		if (optionsString === 'all') {
 			loggingOption = optionsString;
@@ -112,9 +103,7 @@ export async function init(
 		}
 	}
 
-	const maxQueryExecutionTime = (await GenericHelpers.getConfigValue(
-		'database.logging.maxQueryExecutionTime',
-	)) as string;
+	const maxQueryExecutionTime = config.getEnv('database.logging.maxQueryExecutionTime');
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
