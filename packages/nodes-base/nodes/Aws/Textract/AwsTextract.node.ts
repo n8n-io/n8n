@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -10,15 +10,11 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	awsApiRequestREST,
-	IExpenseDocument,
-	simplify,
-	validateCredentials,
-} from './GenericFunctions';
+import type { IExpenseDocument } from './GenericFunctions';
+import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {

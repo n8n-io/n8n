@@ -1,4 +1,4 @@
-import { INode } from './Interfaces';
+import type { INode } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 
 interface WorkflowActivationErrorOptions {

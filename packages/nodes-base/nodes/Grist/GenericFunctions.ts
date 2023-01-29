@@ -1,10 +1,11 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
+import type {
 	GristCredentials,
 	GristDefinedFields,
 	GristFilterProperties,

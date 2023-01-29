@@ -1,6 +1,6 @@
 import { getNodeTypes } from '@/audit/utils';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
 export function reportFilesystemRisk(workflows: WorkflowEntity[]) {

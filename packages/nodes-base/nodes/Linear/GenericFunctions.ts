@@ -1,16 +1,16 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import get from 'lodash.get';
 

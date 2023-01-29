@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,7 +10,7 @@ import {
 
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
 
@@ -35,7 +35,7 @@ import { containerFields, containerOperations } from './descriptions/ContainerDe
 
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {

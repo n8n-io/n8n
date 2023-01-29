@@ -1,6 +1,7 @@
 import { Command } from '@oclif/core';
 import { LoggerProxy } from 'n8n-workflow';
-import { getLogger, Logger } from '@/Logger';
+import type { Logger } from '@/Logger';
+import { getLogger } from '@/Logger';
 import { User } from '@db/entities/User';
 import * as Db from '@/Db';
 import { inTest } from '@/constants';

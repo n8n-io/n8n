@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.212.1",
+  "version": "0.213.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -68,8 +68,12 @@
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
       "jsonwebtoken": "9.0.0",
+      "prettier": "^2.8.3",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
+    },
+    "patchedDependencies": {
+      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
     }
   }
 }

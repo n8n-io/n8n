@@ -23,7 +23,6 @@ beforeAll(async () => {
 		applyAuth: false,
 		enablePublicAPI: true,
 	});
-	await testDb.init();
 
 	utils.initConfigFile();
 
@@ -36,8 +35,6 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 	utils.initCredentialsTypes();
 });
 
