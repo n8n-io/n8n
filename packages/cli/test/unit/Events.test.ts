@@ -1,7 +1,6 @@
 import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
 import { QueryFailedError } from 'typeorm';
 import config from '@/config';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 import { Db } from '@/index';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -12,8 +11,6 @@ const FAKE_USER_ID = 'abcde-fghij';
 
 const mockedFirstProductionWorkflowSuccess = jest.fn((...args) => {});
 const mockedFirstWorkflowDataLoad = jest.fn((...args) => {});
-const mockWorkflowUpdate = jest.fn((...args) => {});
-const mockWorkflowStatsInsert = jest.fn((...args) => {});
 
 jest.spyOn(InternalHooksManager, 'getInstance').mockImplementation((...args) => {
 	const actual = jest.requireActual('@/InternalHooks');
@@ -28,12 +25,6 @@ jest.mock('@/Db', () => {
 		collections: {
 			WorkflowStatistics: {
 				insert: jest.fn((...args) => {}),
-				// insert: jest.fn(({ count, name, workflowId }) => {
-				// 	if (workflowId === '-1') throw new QueryFailedError('test error', [], '');
-				// 	else if (name === StatisticsNames.dataLoaded && workflowId === '2')
-				// 		throw new QueryFailedError('test error 2', [], '');
-				// 	return null;
-				// }),
 				update: jest.fn((...args) => {}),
 			},
 		},
