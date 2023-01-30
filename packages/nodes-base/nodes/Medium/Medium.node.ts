@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { mediumApiRequest } from './GenericFunctions';
 
@@ -182,9 +182,6 @@ export class Medium implements INodeType {
 				default: '',
 				placeholder: 'My open source contribution',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['create'],
@@ -354,6 +351,7 @@ export class Medium implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the available publications to display them to user so that he can
@@ -361,7 +359,7 @@ export class Medium implements INodeType {
 			async getPublications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				//Get the User Id
-				const user = await mediumApiRequest.call(this, 'GET', `/me`);
+				const user = await mediumApiRequest.call(this, 'GET', '/me');
 
 				const userId = user.data.id;
 				//Get all publications of that user
@@ -400,8 +398,8 @@ export class Medium implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'post') {
 					//https://github.com/Medium/medium-api-docs
@@ -495,7 +493,7 @@ export class Medium implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const user = await mediumApiRequest.call(this, 'GET', `/me`);
+						const user = await mediumApiRequest.call(this, 'GET', '/me');
 
 						const userId = user.data.id;
 						//Get all publications of that user

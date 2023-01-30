@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
 
@@ -16,9 +16,9 @@ import { orderFields, orderOperations } from './OrderDescription';
 
 import { productFields, productOperations } from './ProductDescription';
 
-import { IAddress, IDiscountCode, ILineItem, IOrder } from './OrderInterface';
+import type { IAddress, IDiscountCode, ILineItem, IOrder } from './OrderInterface';
 
-import { IProduct } from './ProductInterface';
+import type { IProduct } from './ProductInterface';
 
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
@@ -165,8 +165,8 @@ export class Shopify implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'order') {
@@ -306,7 +306,7 @@ export class Shopify implements INodeType {
 							qs.fulfillment_status = options.fulfillmentStatus as string;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await shopifyApiRequestAllItems.call(
 								this,
 								'orders',
@@ -359,11 +359,7 @@ export class Shopify implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						if (additionalFields.productOptions) {
 							const metadata = (additionalFields.productOptions as IDataObject)
@@ -396,11 +392,7 @@ export class Shopify implements INodeType {
 					}
 					if (operation === 'get') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 						Object.assign(qs, additionalFields);
 						responseData = await shopifyApiRequest.call(
 							this,
@@ -413,17 +405,13 @@ export class Shopify implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, additionalFields);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await shopifyApiRequestAllItems.call(
 								this,
 								'products',
@@ -440,7 +428,7 @@ export class Shopify implements INodeType {
 					}
 					if (operation === 'update') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product?api[version]=2020-07#update-2020-07
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						if (updateFields.productOptions) {
 							const metadata = (updateFields.productOptions as IDataObject).option as IDataObject[];

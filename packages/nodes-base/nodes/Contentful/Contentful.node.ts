@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { contenfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
 
@@ -82,8 +87,8 @@ export class Contentful implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		const items = this.getInputData();
@@ -194,7 +199,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
@@ -214,7 +219,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
@@ -293,7 +298,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
@@ -313,7 +318,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});

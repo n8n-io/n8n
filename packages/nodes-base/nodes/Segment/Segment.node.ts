@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { segmentApiRequest } from './GenericFunctions';
 
@@ -8,11 +13,11 @@ import { groupFields, groupOperations } from './GroupDescription';
 
 import { identifyFields, identifyOperations } from './IdentifyDescription';
 
-import { IIdentify } from './IdentifyInterface';
+import type { IIdentify } from './IdentifyInterface';
 
 import { trackFields, trackOperations } from './TrackDescription';
 
-import { IGroup, ITrack } from './TrackInterface';
+import type { IGroup, ITrack } from './TrackInterface';
 
 import { v4 as uuid } from 'uuid';
 
@@ -75,8 +80,8 @@ export class Segment implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -105,7 +110,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -235,7 +240,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -370,7 +375,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -502,7 +507,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}

@@ -1,42 +1,30 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { FindOneOptions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { User } from '@db/entities/User';
-import { externalHooks } from '@/Server';
-import { IDependency, IJsonSchema } from '../../../types';
-import { CredentialRequest } from '@/requests';
+import type { User } from '@db/entities/User';
+import { ExternalHooks } from '@/ExternalHooks';
+import type { IDependency, IJsonSchema } from '../../../types';
+import type { CredentialRequest } from '@/requests';
 
-export async function getCredentials(
-	credentialId: number | string,
-): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialId);
+export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
+	return Db.collections.Credentials.findOneBy({ id: credentialId });
 }
 
 export async function getSharedCredentials(
 	userId: string,
-	credentialId: number | string,
+	credentialId: string,
 	relations?: string[],
-): Promise<SharedCredentials | undefined> {
-	const options: FindOneOptions = {
+): Promise<SharedCredentials | null> {
+	return Db.collections.SharedCredentials.findOne({
 		where: {
-			user: { id: userId },
-			credentials: { id: credentialId },
+			userId,
+			credentialsId: credentialId,
 		},
-	};
-
-	if (relations) {
-		options.relations = relations;
-	}
-
-	return Db.collections.SharedCredentials.findOne(options);
+		relations,
+	});
 }
 
 export async function createCredential(
@@ -69,12 +57,12 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Db.collections.Role.findOneOrFail({
+	const role = await Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
 
-	await externalHooks.run('credentials.create', [encryptedData]);
+	await ExternalHooks().run('credentials.create', [encryptedData]);
 
 	return Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -96,7 +84,7 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
-	await externalHooks.run('credentials.delete', [credentials.id]);
+	await ExternalHooks().run('credentials.delete', [credentials.id]);
 	return Db.collections.Credentials.remove(credentials);
 }
 
@@ -174,7 +162,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	// to later validate that only this properties are set in
 	// the credentials sent in the API call.
 	properties.forEach((property) => {
-		requiredFields.push(property.name);
+		if (property.required) {
+			requiredFields.push(property.name);
+		}
 		if (property.type === 'options') {
 			// if the property is type options,
 			// include all possible values in the enum property.

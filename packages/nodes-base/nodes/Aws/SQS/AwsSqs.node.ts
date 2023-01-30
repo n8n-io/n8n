@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,9 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
@@ -25,7 +24,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: `={{$parameter["operation"]}}`,
+		subtitle: '={{$parameter["operation"]}}',
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
@@ -108,9 +107,6 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Message to send to the queue',
 			},
@@ -252,7 +248,7 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const params = ['Version=2012-11-05', `Action=ListQueues`];
+				const params = ['Version=2012-11-05', 'Action=ListQueues'];
 
 				let data;
 				try {
@@ -290,7 +286,7 @@ export class AwsSqs implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -299,7 +295,7 @@ export class AwsSqs implements INodeType {
 
 				const params = ['Version=2012-11-05', `Action=${pascalCase(operation)}`];
 
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
 				const message = sendInputData

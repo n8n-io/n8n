@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Twilio
@@ -14,7 +14,6 @@ export async function twilioApiRequest(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('twilioApi')) as {
 		accountSid: string;

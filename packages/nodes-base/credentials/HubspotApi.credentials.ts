@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class HubspotApi implements ICredentialType {
 	name = 'hubspotApi';
+
 	displayName = 'HubSpot API';
+
 	documentationUrl = 'hubspot';
+
 	properties: INodeProperties[] = [
 		{
 			displayName:

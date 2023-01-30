@@ -1,24 +1,31 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+
+function getUri(resource: string, subdomain: string) {
+	if (resource.includes('webhooks')) {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+	} else {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+	}
+}
 
 export async function zendeskApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -60,10 +67,9 @@ export async function zendeskApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -83,7 +89,6 @@ export async function zendeskApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -92,12 +97,4 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
-}
-
-function getUri(resource: string, subdomain: string) {
-	if (resource.includes('webhooks')) {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
-	} else {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
-	}
 }

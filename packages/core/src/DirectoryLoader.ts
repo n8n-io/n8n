@@ -1,7 +1,7 @@
-import * as path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import * as path from 'path';
+import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -13,6 +13,7 @@ import type {
 	INodeTypeData,
 	INodeTypeNameVersion,
 	IVersionedNodeType,
+	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
@@ -43,8 +44,8 @@ export abstract class DirectoryLoader {
 
 	constructor(
 		protected readonly directory: string,
-		private readonly excludeNodes?: string,
-		private readonly includeNodes?: string,
+		protected readonly excludeNodes: string[] = [],
+		protected readonly includeNodes: string[] = [],
 	) {}
 
 	abstract loadAll(): Promise<void>;
@@ -69,11 +70,11 @@ export abstract class DirectoryLoader {
 
 		const fullNodeName = `${packageName}.${tempNode.description.name}`;
 
-		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
 
-		if (this.excludeNodes?.includes(fullNodeName)) {
+		if (this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
 
@@ -337,6 +338,28 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 
 			this.types.nodes = await this.readJSON('dist/types/nodes.json');
 			this.types.credentials = await this.readJSON('dist/types/credentials.json');
+
+			if (this.includeNodes.length) {
+				const allowedNodes: typeof this.known.nodes = {};
+				for (const nodeName of this.includeNodes) {
+					allowedNodes[nodeName] = this.known.nodes[nodeName];
+				}
+				this.known.nodes = allowedNodes;
+
+				this.types.nodes = this.types.nodes.filter((nodeType) =>
+					this.includeNodes.includes(nodeType.name),
+				);
+			}
+
+			if (this.excludeNodes.length) {
+				for (const nodeName of this.excludeNodes) {
+					delete this.known.nodes[nodeName];
+				}
+
+				this.types.nodes = this.types.nodes.filter(
+					(nodeType) => !this.excludeNodes.includes(nodeType.name),
+				);
+			}
 
 			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
 				credentials: this.types.credentials?.length ?? 0,

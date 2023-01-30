@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -184,9 +184,6 @@ export class AwsSns implements INodeType {
 					},
 				},
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The message you want to send',
 			},
@@ -229,7 +226,7 @@ export class AwsSns implements INodeType {
 					const topicName = arnParsed[5];
 					const awsRegion = arnParsed[3];
 
-					if (filter && topicName.includes(filter) === false) {
+					if (filter && !topicName.includes(filter)) {
 						continue;
 					}
 
@@ -247,7 +244,7 @@ export class AwsSns implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -287,7 +284,7 @@ export class AwsSns implements INodeType {
 					const topic = this.getNodeParameter('topic', i, undefined, {
 						extractValue: true,
 					}) as string;
-					const params = [('TopicArn=' + topic) as string];
+					const params = ['TopicArn=' + topic];
 
 					await awsApiRequestSOAP.call(
 						this,
@@ -304,9 +301,9 @@ export class AwsSns implements INodeType {
 					}) as string;
 
 					const params = [
-						('TopicArn=' + topic) as string,
-						('Subject=' + this.getNodeParameter('subject', i)) as string,
-						('Message=' + this.getNodeParameter('message', i)) as string,
+						'TopicArn=' + topic,
+						'Subject=' + (this.getNodeParameter('subject', i) as string),
+						'Message=' + (this.getNodeParameter('message', i) as string),
 					];
 
 					const responseData = await awsApiRequestSOAP.call(

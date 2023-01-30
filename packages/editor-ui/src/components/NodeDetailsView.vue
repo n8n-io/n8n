@@ -77,7 +77,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
-						:blockUI="blockUi && isTriggerNode"
+						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
@@ -93,9 +93,10 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
-						:isReadOnly="readOnly || hasForeignCredential"
+						:hasForeignCredential="hasForeignCredential"
+						:readOnly="readOnly"
 						:blockUI="blockUi && showTriggerPanel"
-						:executable="!readOnly || hasForeignCredential"
+						:executable="!readOnly"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"
@@ -142,18 +143,19 @@ import TriggerPanel from './TriggerPanel.vue';
 import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
-import { pinData } from "@/mixins/pinData";
+import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
-import {useSettingsStore} from "@/stores/settings";
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(
 	externalHooks,
@@ -198,22 +200,18 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.ndvStore.setNDVSessionId;
-		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
-			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
-		});
+		dataPinningEventBus.$on(
+			'data-pinning-discovery',
+			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+			},
+		);
 	},
-	destroyed () {
+	destroyed() {
 		dataPinningEventBus.$off('data-pinning-discovery');
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-			useSettingsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
 		sessionId(): string {
 			return this.ndvStore.sessionId;
 		},
@@ -252,7 +250,9 @@ export default mixins(
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
 			const override = !!this.activeNodeType?.triggerPanel;
-			return !this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override);
+			return (
+				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
+			);
 		},
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
@@ -269,6 +269,11 @@ export default mixins(
 		parentNode(): string | undefined {
 			return this.parentNodes[0];
 		},
+		isExecutableTriggerNode(): boolean {
+			if (!this.activeNodeType) return false;
+
+			return EXECUTABLE_TRIGGER_NODE_TYPES.includes(this.activeNodeType.name);
+		},
 		isTriggerNode(): boolean {
 			return (
 				!!this.activeNodeType &&
@@ -277,9 +282,7 @@ export default mixins(
 			);
 		},
 		isActiveStickyNode(): boolean {
-			return (
-				!!this.ndvStore.activeNode && this.ndvStore.activeNode .type === STICKY_NODE_TYPE
-			);
+			return !!this.ndvStore.activeNode && this.ndvStore.activeNode.type === STICKY_NODE_TYPE;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -360,7 +363,7 @@ export default mixins(
 			}
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
-		outputPanelEditMode(): { enabled: boolean; value: string; } {
+		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isWorkflowRunning(): boolean {
@@ -377,9 +380,16 @@ export default mixins(
 			const usedCredentials = this.workflowsStore.usedCredentials;
 
 			let hasForeignCredential = false;
-			if (credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (
+				credentials &&
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+			) {
 				Object.values(credentials).forEach((credential) => {
-					if (credential.id && usedCredentials[credential.id] && !usedCredentials[credential.id].currentUserHasAccess) {
+					if (
+						credential.id &&
+						usedCredentials[credential.id] &&
+						!usedCredentials[credential.id].currentUserHasAccess
+					) {
 						hasForeignCredential = true;
 					}
 				});
@@ -399,9 +409,7 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => {
-					this.ndvStore.setNDVSessionId;
-				}, 0);
+				setTimeout(this.ndvStore.setNDVSessionId, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
@@ -416,6 +424,7 @@ export default mixins(
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
 							workflow_id: this.workflowsStore.workflowId,
 							session_id: this.sessionId,
+							is_editable: !this.hasForeignCredential,
 							parameters_pane_position: this.mainPanelPosition,
 							input_first_connector_runs: this.maxInputRun,
 							output_first_connector_runs: this.maxOutputRun,
@@ -457,7 +466,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		onInputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (!this.inputNodeName) {
 				return;
 			}
@@ -474,7 +483,7 @@ export default mixins(
 			};
 			this.ndvStore.setHoveringItem(item);
 		},
-		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+		onOutputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (e === null || !this.activeNode) {
 				this.ndvStore.setHoveringItem(null);
 				return;
@@ -588,16 +597,18 @@ export default mixins(
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.$emit(
-							'data-pinning-error', { errorType: 'data-too-large', source: 'on-ndv-close-modal' },
-						);
+						dataPinningEventBus.$emit('data-pinning-error', {
+							errorType: 'data-too-large',
+							source: 'on-ndv-close-modal',
+						});
 						return;
 					}
 
 					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.$emit(
-							'data-pinning-error', { errorType: 'invalid-json', source: 'on-ndv-close-modal' },
-						);
+						dataPinningEventBus.$emit('data-pinning-error', {
+							errorType: 'invalid-json',
+							source: 'on-ndv-close-modal',
+						});
 						return;
 					}
 
@@ -651,7 +662,7 @@ export default mixins(
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
 		},
-		onStopExecution(){
+		onStopExecution() {
 			this.$emit('stopExecution');
 		},
 	},

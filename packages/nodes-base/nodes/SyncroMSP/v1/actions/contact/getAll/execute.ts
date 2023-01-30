@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
 
@@ -8,7 +8,7 @@ export async function getAll(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';

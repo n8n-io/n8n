@@ -2,14 +2,14 @@ import { get } from 'lodash';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -21,7 +21,6 @@ export async function awsApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const requestOptions = {
 		qs: {
@@ -53,7 +52,6 @@ export async function awsApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -83,7 +81,6 @@ export async function awsApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -121,7 +118,6 @@ export async function awsApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

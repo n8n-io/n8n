@@ -1,29 +1,28 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function dhlApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('dhlApi')) as { apiKey: string };
 
@@ -43,7 +42,7 @@ export async function dhlApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -52,7 +51,6 @@ export async function dhlApiRequest(
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -68,9 +66,9 @@ export async function validateCredentials(
 			trackingNumber: 123,
 		},
 		method: 'GET',
-		uri: `https://api-eu.dhl.com/track/shipments`,
+		uri: 'https://api-eu.dhl.com/track/shipments',
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

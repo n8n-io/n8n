@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -9,8 +9,11 @@ import {
 import jwt from 'jsonwebtoken';
 export class GhostAdminApi implements ICredentialType {
 	name = 'ghostAdminApi';
+
 	displayName = 'Ghost Admin API';
+
 	documentationUrl = 'ghost';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -37,7 +40,7 @@ export class GhostAdminApi implements ICredentialType {
 			keyid: id,
 			algorithm: 'HS256',
 			expiresIn: '5m',
-			audience: `/v2/admin/`,
+			audience: '/v2/admin/',
 		});
 
 		requestOptions.headers = {

@@ -1,6 +1,7 @@
-import { BINARY_ENCODING, IExecuteFunctions, WAIT_TIME_UNLIMITED } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
@@ -8,8 +9,8 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
@@ -642,8 +643,8 @@ export class Wait implements INodeType {
 			}
 
 			if (
-				basicAuthData.name !== httpBasicAuth!.user ||
-				basicAuthData.pass !== httpBasicAuth!.password
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
 			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
@@ -707,7 +708,7 @@ export class Wait implements INodeType {
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
 							}
-							if (multiFile === true) {
+							if (multiFile) {
 								binaryPropertyName += fileCount++;
 							}
 							if (options.binaryPropertyName) {

@@ -1,7 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
 
@@ -161,11 +161,11 @@ export async function execute(
 
 	if (!items.length || dataMode === 'nothing') return [];
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
+	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let headerRow = 1;
-	if (locationDefine && locationDefine.headerRow) {
+	if (locationDefine?.headerRow) {
 		headerRow = locationDefine.headerRow as number;
 	}
 

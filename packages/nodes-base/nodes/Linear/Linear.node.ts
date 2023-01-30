@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -159,8 +159,8 @@ export class Linear implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'issue') {
@@ -202,7 +202,7 @@ export class Linear implements INodeType {
 						};
 
 						responseData = await linearApiRequest.call(this, body);
-						responseData = responseData.data?.issues?.nodes[0];
+						responseData = responseData.data.issue;
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);

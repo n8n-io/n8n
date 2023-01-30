@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class PushoverApi implements ICredentialType {
 	name = 'pushoverApi';
+
 	displayName = 'Pushover API';
+
 	documentationUrl = 'pushover';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -19,6 +22,7 @@ export class PushoverApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -30,6 +34,7 @@ export class PushoverApi implements ICredentialType {
 		}
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.pushover.net/1',

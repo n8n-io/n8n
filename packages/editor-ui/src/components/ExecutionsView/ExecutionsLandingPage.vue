@@ -16,9 +16,6 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<n8n-text size="medium">
-					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
-				</n8n-text>
 				<executions-info-accordion />
 			</div>
 		</div>
@@ -39,10 +36,7 @@ export default Vue.extend({
 		ExecutionsInfoAccordion,
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useUIStore, useWorkflowsStore),
 		executionCount(): number {
 			return this.workflowsStore.currentWorkflowExecutions.length;
 		},
@@ -56,7 +50,7 @@ export default Vue.extend({
 			const workflowRoute = this.getWorkflowRoute();
 			this.$router.push(workflowRoute);
 		},
-		getWorkflowRoute(): { name: string, params: {}} {
+		getWorkflowRoute(): { name: string; params: {} } {
 			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;
 			if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				return { name: VIEWS.NEW_WORKFLOW, params: {} };
@@ -69,7 +63,6 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-
 .container {
 	width: 100%;
 	height: 100%;

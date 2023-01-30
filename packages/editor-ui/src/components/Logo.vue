@@ -1,9 +1,5 @@
 <template>
-	<img
-		:src="basePath + 'n8n-logo-expanded.svg'"
-		:class="$style.img"
-		alt="n8n.io"
-	/>
+	<img :src="basePath + 'n8n-logo-expanded.svg'" :class="$style.img" alt="n8n.io" />
 </template>
 
 <script lang="ts">
@@ -13,9 +9,7 @@ import Vue from 'vue';
 
 export default Vue.extend({
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		basePath(): string {
 			return this.rootStore.baseUrl;
 		},

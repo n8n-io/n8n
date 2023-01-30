@@ -1,21 +1,22 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
 
 import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
 
-import { DocumentProperties, processNames, toSQL } from './utils';
+import type { DocumentProperties } from './utils';
+import { processNames, toSQL } from './utils';
 
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,8 +121,8 @@ export class ERPNext implements INodeType {
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook

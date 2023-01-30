@@ -8,6 +8,7 @@ import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
+	ICredentialTypes,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -21,12 +22,9 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import { v4 as uuid } from 'uuid';
-
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -35,11 +33,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { NodeTypes } from '@/NodeTypes';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
-import { meNamespace as meEndpoints } from '@/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '@/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '@/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '@/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '@/UserManagement/routes/passwordReset';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
@@ -48,8 +41,8 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
-import { issueJWT } from '@/UserManagement/auth/jwt';
-import { addRoutes as authMiddleware } from '@/UserManagement/routes';
+import { issueJWT } from '@/auth/jwt';
+import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -65,10 +58,27 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { licenseController } from '@/license/license.controller';
+import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
+import { setupAuthMiddlewares } from '@/middlewares';
+import * as testDb from '../shared/testDb';
+
+import { v4 as uuid } from 'uuid';
+import { handleLdapInit } from '@/Ldap/helpers';
+import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
 };
 
 const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
@@ -76,23 +86,29 @@ CredentialTypes(loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
- *
- * @param applyAuth Whether to apply auth middleware to test server.
- * @param endpointGroups Groups of endpoints to apply to test server.
  */
 export async function initTestServer({
-	applyAuth,
+	applyAuth = true,
 	endpointGroups,
+	enablePublicAPI = false,
 }: {
-	applyAuth: boolean;
+	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
+	enablePublicAPI?: boolean;
 }) {
+	await testDb.init();
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
 		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
 		externalHooks: {},
 	};
+
+	const logger = getLogger();
+	LoggerProxy.init(logger);
+
+	// Pre-requisite: Mock the telemetry module before calling.
+	await InternalHooksManager.init('test-instance-id', mockNodeTypes);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -101,7 +117,12 @@ export async function initTestServer({
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	if (applyAuth) {
-		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
+		setupAuthMiddlewares(
+			testServer.app,
+			AUTHLESS_ENDPOINTS,
+			REST_PATH_SEGMENT,
+			Db.collections.User,
+		);
 	}
 
 	if (!endpointGroups) return testServer.app;
@@ -118,13 +139,19 @@ export async function initTestServer({
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
-		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
 		const map: Record<string, express.Router | express.Router[] | any> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
-			publicApi: apiRouters,
+			license: { controller: licenseController, path: 'license' },
+			eventBus: { controller: eventBusRouter, path: 'eventbus' },
+			ldap: { controller: ldapController, path: 'ldap' },
 		};
+
+		if (enablePublicAPI) {
+			const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
+			map.publicApi = apiRouters;
+		}
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {
@@ -136,16 +163,62 @@ export async function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const map: Record<string, (this: N8nApp) => void> = {
-			me: meEndpoints,
-			users: usersEndpoints,
-			auth: authEndpoints,
-			owner: ownerEndpoints,
-			passwordReset: passwordResetEndpoints,
-		};
+		const externalHooks = ExternalHooks();
+		const internalHooks = InternalHooksManager.getInstance();
+		const mailer = UserManagementMailer.getInstance();
+		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
-			map[group].apply(testServer);
+			switch (group) {
+				case 'auth':
+					registerController(
+						testServer.app,
+						config,
+						new AuthController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'me':
+					registerController(
+						testServer.app,
+						config,
+						new MeController({ logger, externalHooks, internalHooks, repositories }),
+					);
+					break;
+				case 'passwordReset':
+					registerController(
+						testServer.app,
+						config,
+						new PasswordResetController({
+							config,
+							logger,
+							externalHooks,
+							internalHooks,
+							repositories,
+						}),
+					);
+					break;
+				case 'owner':
+					registerController(
+						testServer.app,
+						config,
+						new OwnerController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'users':
+					registerController(
+						testServer.app,
+						config,
+						new UsersController({
+							config,
+							mailer,
+							externalHooks,
+							internalHooks,
+							repositories,
+							activeWorkflowRunner: ActiveWorkflowRunner.getInstance(),
+							logger,
+						}),
+					);
+			}
 		}
 	}
 
@@ -153,21 +226,22 @@ export async function initTestServer({
 }
 
 /**
- * Pre-requisite: Mock the telemetry module before calling.
- */
-export function initTestTelemetry() {
-	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
-}
-
-/**
  * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
  * and `functionEndpoints` (legacy, namespaced inside a function).
  */
-const classifyEndpointGroups = (endpointGroups: string[]) => {
-	const routerEndpoints: string[] = [];
-	const functionEndpoints: string[] = [];
+const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
+	const routerEndpoints: EndpointGroup[] = [];
+	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+	const ROUTER_GROUP = [
+		'credentials',
+		'nodes',
+		'workflows',
+		'publicApi',
+		'ldap',
+		'eventBus',
+		'license',
+	];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -200,18 +274,21 @@ export function gitHubCredentialType(): ICredentialType {
 				name: 'server',
 				type: 'string',
 				default: 'https://api.github.com',
+				required: true,
 				description: 'The server to connect to. Only has to be set if Github Enterprise is used.',
 			},
 			{
 				displayName: 'User',
 				name: 'user',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 			{
 				displayName: 'Access Token',
 				name: 'accessToken',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 		],
@@ -228,6 +305,13 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	};
+}
+
+/**
+ * Initialize LDAP manager.
+ */
+export async function initLdapManager(): Promise<void> {
+	await handleLdapInit();
 }
 
 /**
@@ -531,13 +615,6 @@ export async function initNodeTypes() {
 }
 
 /**
- * Initialize a logger for test runs.
- */
-export function initTestLogger() {
-	LoggerProxy.init(getLogger());
-}
-
-/**
  * Initialize a BinaryManager for test runs.
  */
 export async function initBinaryManager() {
@@ -637,7 +714,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneOrFail({
+	const { value } = await Db.collections.Settings.findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
@@ -647,20 +724,6 @@ export async function isInstanceOwnerSetUp() {
 // ----------------------------------
 //              misc
 // ----------------------------------
-
-/**
- * Categorize array items into two groups based on whether they pass a test.
- */
-export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
-	return arr.reduce<{ pass: T[]; fail: T[] }>(
-		(acc, cur) => {
-			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
-
-			return acc;
-		},
-		{ pass: [], fail: [] },
-	);
-};
 
 export function getPostgresSchemaSection(
 	schema = config.getSchema(),

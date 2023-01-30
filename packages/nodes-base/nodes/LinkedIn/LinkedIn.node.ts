@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
@@ -72,10 +72,10 @@ export class LinkedIn implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
-		let body: any = {}; // tslint:disable-line:no-any
+		let body: any = {};
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -146,7 +146,7 @@ export class LinkedIn implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -189,8 +189,6 @@ export class LinkedIn implements INodeType {
 								},
 							};
 						} else if (shareMediaCategory === 'ARTICLE') {
-							const additionalFields = this.getNodeParameter('additionalFields', i);
-
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
 							}

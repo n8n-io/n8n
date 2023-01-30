@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
 
@@ -557,7 +557,7 @@ export class Disqus implements INodeType {
 					},
 					{
 						displayName: 'Thread',
-						name: 'threadId',
+						name: 'thread',
 						type: 'string',
 						default: '',
 						description:
@@ -572,8 +572,8 @@ export class Disqus implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';

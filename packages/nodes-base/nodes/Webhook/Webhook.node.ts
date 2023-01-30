@@ -1,14 +1,15 @@
-import { BINARY_ENCODING, IWebhookFunctions } from 'n8n-core';
+import type { IWebhookFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
@@ -455,8 +456,8 @@ export class Webhook implements INodeType {
 			}
 
 			if (
-				basicAuthData.name !== httpBasicAuth!.user ||
-				basicAuthData.pass !== httpBasicAuth!.password
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
 			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
@@ -519,7 +520,7 @@ export class Webhook implements INodeType {
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
 							}
-							if (multiFile === true) {
+							if (multiFile) {
 								binaryPropertyName += fileCount++;
 							}
 							if (options.binaryPropertyName) {

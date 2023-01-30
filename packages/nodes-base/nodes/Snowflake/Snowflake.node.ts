@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { connect, copyInputItems, destroy, execute } from './GenericFunctions';
 
@@ -61,9 +66,6 @@ export class Snowflake implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -166,7 +168,7 @@ export class Snowflake implements INodeType {
 		await connect(connection);
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------

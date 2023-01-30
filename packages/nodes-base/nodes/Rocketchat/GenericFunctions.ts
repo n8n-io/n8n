@@ -1,16 +1,15 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 export async function rocketchatApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resource: string,
 	method: string,
 	operation: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('rocketchatApi');
 
@@ -27,7 +26,6 @@ export async function rocketchatApiRequest(
 	return this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

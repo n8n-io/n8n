@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment';
 
@@ -21,11 +21,10 @@ export async function hubspotApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -46,20 +45,20 @@ export async function hubspotApiRequest(
 	try {
 		if (authenticationMethod === 'apiKey' || authenticationMethod === 'appToken') {
 			const credentialType = authenticationMethod === 'apiKey' ? 'hubspotApi' : 'hubspotAppToken';
-			return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
 				options.qs.hapikey = credentials.apiKey as string;
-				return await this.helpers.request!(options);
+				return await this.helpers.request(options);
 			} else {
-				return await this.helpers.requestOAuth2!.call(this, 'hubspotDeveloperApi', options, {
+				return await this.helpers.requestOAuth2.call(this, 'hubspotDeveloperApi', options, {
 					tokenType: 'Bearer',
 					includeCredentialsOnRefreshOnBody: true,
 				});
 			}
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'hubspotOAuth2Api', options, {
 				tokenType: 'Bearer',
 				includeCredentialsOnRefreshOnBody: true,
 			});
@@ -78,10 +77,9 @@ export async function hubspotApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -96,19 +94,18 @@ export async function hubspotApiRequestAllItems(
 		query.offset = responseData.offset;
 		query.vidOffset = responseData['vid-offset'];
 		//Used by Search endpoints
-		if (responseData['paging']) {
-			body.after = responseData['paging']['next']['after'];
+		if (responseData.paging) {
+			body.after = responseData.paging.next.after;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
 		if (query.limit && query.limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;
 		}
-	} while (responseData['hasMore'] || responseData['has-more'] || responseData['paging']);
+	} while (responseData.hasMore || responseData['has-more'] || responseData.paging);
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -119,7 +116,6 @@ export function validateJSON(json: string | undefined): any {
 	return result;
 }
 
-// tslint:disable-next-line: no-any
 export function clean(obj: any) {
 	for (const propName in obj) {
 		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {
@@ -1990,7 +1986,6 @@ export const getAssociations = (associations: {
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -2002,7 +1997,7 @@ export async function validateCredentials(
 	const options: OptionsWithUri = {
 		method: 'GET',
 		headers: {},
-		uri: `https://api.hubapi.com/deals/v1/deal/paged`,
+		uri: 'https://api.hubapi.com/deals/v1/deal/paged',
 		json: true,
 	};
 
@@ -2012,5 +2007,5 @@ export async function validateCredentials(
 		options.headers = { Authorization: `Bearer ${appToken}` };
 	}
 
-	return await this.helpers.request(options);
+	return this.helpers.request(options);
 }

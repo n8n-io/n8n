@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 
 export const description: SpreadSheetProperties = [
@@ -131,7 +131,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			sheets: [] as IDataObject[],
 		};
 
-		const options = this.getNodeParameter('options', i, {}) as IDataObject;
+		const options = this.getNodeParameter('options', i, {});
 
 		if (Object.keys(sheetsUi).length) {
 			const data = [];
@@ -142,10 +142,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			body.sheets = data;
 		}
 
-		body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
-		body.properties!.locale = options.locale ? (options.locale as string) : undefined;
+		body.properties.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
+		body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
-		const response = await apiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+		const response = await apiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 		returnData.push(response);
 	}
 

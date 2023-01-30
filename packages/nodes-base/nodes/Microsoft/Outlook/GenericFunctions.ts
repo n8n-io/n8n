@@ -1,31 +1,21 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
@@ -67,17 +57,16 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
-	query['$top'] = 100;
+	query.$top = 100;
 
 	do {
 		responseData = await microsoftApiRequest.call(
@@ -101,17 +90,16 @@ export async function microsoftApiRequestAllItemsSkip(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query['$top'] = 100;
-	query['$skip'] = 0;
+	query.$top = 100;
+	query.$skip = 0;
 
 	do {
 		responseData = await microsoftApiRequest.call(
@@ -123,9 +111,9 @@ export async function microsoftApiRequestAllItemsSkip(
 			undefined,
 			headers,
 		);
-		query['$skip'] += query['$top'];
+		query.$skip += query.$top;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['value'].length !== 0);
+	} while (responseData.value.length !== 0);
 
 	return returnData;
 }
@@ -148,9 +136,9 @@ export function createMessage(fields: IDataObject) {
 			contentType: fields.bodyContentType,
 		};
 
-		message['body'] = bodyObject;
-		delete fields['bodyContent'];
-		delete fields['bodyContentType'];
+		message.body = bodyObject;
+		delete fields.bodyContent;
+		delete fields.bodyContentType;
 	}
 
 	// Handle custom headers
@@ -258,7 +246,7 @@ export async function binaryToAttachments(
 				);
 			}
 
-			const binaryData = (binary as IBinaryKeyData)[binaryPropertyName];
+			const binaryData = binary[binaryPropertyName];
 			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',

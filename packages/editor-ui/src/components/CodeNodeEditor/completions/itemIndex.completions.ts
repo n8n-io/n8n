@@ -65,7 +65,7 @@ export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 		selectorCompletions(context: CompletionContext, matcher: string | null = null) {
 			const pattern =
 				matcher === null
-					? /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\..*/ // $('nodeName').
+					? /\$\((?<quotedNodeName>['"][\S\s]+['"])\)\..*/ // $('nodeName').
 					: new RegExp(`${matcher}\..*`);
 
 			const preCursor = context.matchBefore(pattern);

@@ -8,7 +8,7 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { jsonParse } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
-import { IBuildOptions } from '.';
+import type { IBuildOptions } from './Interfaces';
 
 /**
  * Create a custom tsconfig file as tsc currently has no way to define a base

@@ -2,7 +2,7 @@
 	<el-dialog
 		:visible="uiStore.isModalOpen(this.$props.name)"
 		:before-close="closeDialog"
-		:class="{'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable}"
+		:class="{ 'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable }"
 		:width="width"
 		:show-close="showClose"
 		:custom-class="getCustomClass()"
@@ -18,15 +18,20 @@
 		<template #title v-else-if="title">
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{title}}</n8n-heading>
+					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{subtitle}}</n8n-heading>
+					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
 				</div>
 			</div>
 		</template>
-		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
-			<slot v-if="!loading"  name="content"/>
+		<div
+			class="modal-content"
+			@keydown.stop
+			@keydown.enter="handleEnter"
+			@keydown.esc="closeDialog"
+		>
+			<slot v-if="!loading" name="content" />
 			<div :class="$style.loader" v-else>
 				<n8n-spinner />
 			</div>
@@ -38,12 +43,12 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 import { useUIStore } from '@/stores/ui';
-import { mapStores } from "pinia";
+import { mapStores } from 'pinia';
 
 export default Vue.extend({
-	name: "Modal",
+	name: 'Modal',
 	props: {
 		name: {
 			type: String,
@@ -136,7 +141,7 @@ export default Vue.extend({
 	computed: {
 		...mapStores(useUIStore),
 		styles() {
-			const styles: {[prop: string]: string} = {};
+			const styles: { [prop: string]: string } = {};
 			if (this.height) {
 				styles['--dialog-height'] = this.height;
 			}
@@ -173,7 +178,8 @@ export default Vue.extend({
 		async closeDialog() {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to stop modal from closing
+				if (shouldClose === false) {
+					// must be strictly false to stop modal from closing
 					return;
 				}
 			}
@@ -224,9 +230,9 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .center {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .loader {

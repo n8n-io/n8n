@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	convertNETDates,
@@ -69,8 +74,8 @@ export class UnleashedSoftware implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource', 0);
+			const operation = this.getNodeParameter('operation', 0);
 
 			//https://apidocs.unleashedsoftware.com/SalesOrders
 			if (resource === 'salesOrder') {
@@ -108,7 +113,7 @@ export class UnleashedSoftware implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs, 1);
+						responseData = await unleashedApiRequest.call(this, 'GET', '/SalesOrders', {}, qs, 1);
 						responseData = responseData.Items;
 					}
 					convertNETDates(responseData);
@@ -152,7 +157,7 @@ export class UnleashedSoftware implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand`, {}, qs, 1);
+						responseData = await unleashedApiRequest.call(this, 'GET', '/StockOnHand', {}, qs, 1);
 						responseData = responseData.Items;
 					}
 

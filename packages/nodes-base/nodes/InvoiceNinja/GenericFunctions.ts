@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -36,7 +37,7 @@ export async function invoiceNinjaApiRequest(
 	const version = this.getNodeParameter('apiVersion', 0) as string;
 
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
-	const baseUrl = credentials!.url || defaultUrl;
+	const baseUrl = credentials.url || defaultUrl;
 
 	const options: OptionsWithUri = {
 		method,
@@ -74,12 +75,7 @@ export async function invoiceNinjaApiRequestAllItems(
 			uri = next;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.pagination &&
-		responseData.meta.pagination.links &&
-		responseData.meta.pagination.links.next
-	);
+	} while (responseData.meta?.pagination?.links?.next);
 
 	return returnData;
 }

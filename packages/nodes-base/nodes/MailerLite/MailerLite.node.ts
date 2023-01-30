@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -77,8 +77,8 @@ export class MailerLite implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'subscriber') {
@@ -136,14 +136,14 @@ export class MailerLite implements INodeType {
 							responseData = await mailerliteApiRequestAllItems.call(
 								this,
 								'GET',
-								`/subscribers`,
+								'/subscribers',
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
+							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
 						}
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber

@@ -1,22 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { zulipApiRequest } from './GenericFunctions';
+import { NodeOperationError } from 'n8n-workflow';
+import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
-import { IMessage } from './MessageInterface';
+import type { IMessage } from './MessageInterface';
 import { snakeCase } from 'change-case';
 import { streamFields, streamOperations } from './StreamDescription';
 import { userFields, userOperations } from './UserDescription';
-import { IPrincipal, IStream } from './StreamInterface';
-import { validateJSON } from './GenericFunctions';
-import { IUser } from './UserInterface';
+import type { IPrincipal, IStream } from './StreamInterface';
+import type { IUser } from './UserInterface';
 
 export class Zulip implements INodeType {
 	description: INodeTypeDescription = {
@@ -130,8 +129,8 @@ export class Zulip implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
@@ -193,7 +192,7 @@ export class Zulip implements INodeType {
 					//https://zulipchat.com/api/upload-file
 					if (operation === 'updateFile') {
 						const credentials = await this.getCredentials('zulipApi');
-						const binaryProperty = this.getNodeParameter('dataBinaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('dataBinaryProperty', i);
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
@@ -254,7 +253,7 @@ export class Zulip implements INodeType {
 							body.include_owner_subscribed = additionalFields.includeOwnersubscribed as boolean;
 						}
 
-						responseData = await zulipApiRequest.call(this, 'GET', `/streams`, body);
+						responseData = await zulipApiRequest.call(this, 'GET', '/streams', body);
 						responseData = responseData.streams;
 					}
 
@@ -265,7 +264,7 @@ export class Zulip implements INodeType {
 							body.include_subscribers = additionalFields.includeSubscribers as boolean;
 						}
 
-						responseData = await zulipApiRequest.call(this, 'GET', `/users/me/subscriptions`, body);
+						responseData = await zulipApiRequest.call(this, 'GET', '/users/me/subscriptions', body);
 						responseData = responseData.subscriptions;
 					}
 
@@ -295,7 +294,6 @@ export class Zulip implements INodeType {
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
-							const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
 							body.subscriptions = JSON.stringify(subscriptions.properties);
 
 							if (additionalFields.inviteOnly) {
@@ -328,7 +326,7 @@ export class Zulip implements INodeType {
 						responseData = await zulipApiRequest.call(
 							this,
 							'POST',
-							`/users/me/subscriptions`,
+							'/users/me/subscriptions',
 							body,
 						);
 					}
@@ -423,7 +421,7 @@ export class Zulip implements INodeType {
 								additionalFields.includeCustomProfileFields as boolean;
 						}
 
-						responseData = await zulipApiRequest.call(this, 'GET', `/users`, body);
+						responseData = await zulipApiRequest.call(this, 'GET', '/users', body);
 						responseData = responseData.members;
 					}
 
@@ -433,7 +431,7 @@ export class Zulip implements INodeType {
 						body.full_name = this.getNodeParameter('fullName', i) as string;
 						body.short_name = this.getNodeParameter('shortName', i) as string;
 
-						responseData = await zulipApiRequest.call(this, 'POST', `/users`, body);
+						responseData = await zulipApiRequest.call(this, 'POST', '/users', body);
 					}
 
 					if (operation === 'update') {
@@ -454,7 +452,7 @@ export class Zulip implements INodeType {
 						}
 						if (additionalFields.profileData) {
 							//@ts-ignore
-							body.profile_data = additionalFields.profileData.properties as [{}];
+							body.profile_data = additionalFields.profileData.properties as [IDataObject];
 						}
 
 						responseData = await zulipApiRequest.call(this, 'PATCH', `/users/${userId}`, body);

@@ -1,7 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
-import pg from 'pg-promise/typescript/pg-subset';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import type pgPromise from 'pg-promise';
+import type pg from 'pg-promise/typescript/pg-subset';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -80,6 +80,7 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
  * @param {input[]} input The Node's input data
  */
 export async function pgQuery(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -118,7 +119,7 @@ export async function pgQuery(
 						await t.any(allQueries[i].query, allQueries[i].values),
 					);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						...items[i].json,
 						code: (err as JsonObject).code,
@@ -139,7 +140,7 @@ export async function pgQuery(
 						await t.any(allQueries[i].query, allQueries[i].values),
 					);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						...items[i].json,
 						code: (err as JsonObject).code,
@@ -201,7 +202,7 @@ export async function pgQueryV2(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						json: { ...items[i].json },
 						code: (err as JsonObject).code,
@@ -225,7 +226,7 @@ export async function pgQueryV2(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						json: { ...items[i].json },
 						code: (err as JsonObject).code,
@@ -249,6 +250,7 @@ export async function pgQueryV2(
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsert(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -289,7 +291,7 @@ export async function pgInsert(
 				try {
 					result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						...itemCopy,
 						code: (err as JsonObject).code,
@@ -311,7 +313,7 @@ export async function pgInsert(
 						result.push(insertResult);
 					}
 				} catch (err) {
-					if (continueOnFail === false) {
+					if (!continueOnFail) {
 						throw err;
 					}
 					result.push({
@@ -389,7 +391,7 @@ export async function pgInsertV2(
 						}),
 					);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						json: { ...itemCopy },
 						code: (err as JsonObject).code,
@@ -416,7 +418,7 @@ export async function pgInsertV2(
 						result.push(...executionData);
 					}
 				} catch (err) {
-					if (continueOnFail === false) {
+					if (!continueOnFail) {
 						throw err;
 					}
 					result.push({
@@ -443,6 +445,7 @@ export async function pgInsertV2(
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdate(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -488,22 +491,21 @@ export async function pgUpdate(
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if (mode === 'multiple') {
 		const query =
-			pgp.helpers.update(updateItems, cs) +
+			(pgp.helpers.update(updateItems, cs) as string) +
 			' WHERE ' +
 			updateKeys
-				.map((updateKey) => {
-					const key = pgp.as.name(updateKey.name);
+				.map((entry) => {
+					const key = pgp.as.name(entry.name);
 					return 'v.' + key + ' = t.' + key;
 				})
 				.join(' AND ') +
 			returning;
-		return await db.any(query);
+		return db.any(query);
 	} else {
 		const where =
 			' WHERE ' +
-			updateKeys
-				.map((updateKey) => pgp.as.name(updateKey.name) + ' = ${' + updateKey.prop + '}')
-				.join(' AND ');
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 		if (mode === 'transaction') {
 			return db.tx(async (t) => {
 				const result: IDataObject[] = [];
@@ -513,11 +515,13 @@ export async function pgUpdate(
 						Array.prototype.push.apply(
 							result,
 							await t.any(
-								pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+								(pgp.helpers.update(itemCopy, cs) as string) +
+									pgp.as.format(where, itemCopy) +
+									returning,
 							),
 						);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							...itemCopy,
 							code: (err as JsonObject).code,
@@ -537,11 +541,13 @@ export async function pgUpdate(
 						Array.prototype.push.apply(
 							result,
 							await t.any(
-								pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+								(pgp.helpers.update(itemCopy, cs) as string) +
+									pgp.as.format(where, itemCopy) +
+									returning,
 							),
 						);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							...itemCopy,
 							code: (err as JsonObject).code,
@@ -610,11 +616,11 @@ export async function pgUpdateV2(
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 	if (mode === 'multiple') {
 		const query =
-			pgp.helpers.update(updateItems, cs) +
+			(pgp.helpers.update(updateItems, cs) as string) +
 			' WHERE ' +
 			updateKeys
-				.map((updateKey) => {
-					const key = pgp.as.name(updateKey.name);
+				.map((entry) => {
+					const key = pgp.as.name(entry.name);
 					return 'v.' + key + ' = t.' + key;
 				})
 				.join(' AND ') +
@@ -624,9 +630,8 @@ export async function pgUpdateV2(
 	} else {
 		const where =
 			' WHERE ' +
-			updateKeys
-				.map((updateKey) => pgp.as.name(updateKey.name) + ' = ${' + updateKey.prop + '}')
-				.join(' AND ');
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 		if (mode === 'transaction') {
 			return db.tx(async (t) => {
 				const result: IDataObject[] = [];
@@ -634,7 +639,9 @@ export async function pgUpdateV2(
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
 						const transactionResult = await t.any(
-							pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+							(pgp.helpers.update(itemCopy, cs) as string) +
+								pgp.as.format(where, itemCopy) +
+								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(transactionResult),
@@ -642,7 +649,7 @@ export async function pgUpdateV2(
 						);
 						result.push(...executionData);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							...itemCopy,
 							code: (err as JsonObject).code,
@@ -660,7 +667,9 @@ export async function pgUpdateV2(
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
 						const independentResult = await t.any(
-							pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+							(pgp.helpers.update(itemCopy, cs) as string) +
+								pgp.as.format(where, itemCopy) +
+								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(independentResult),
@@ -668,7 +677,7 @@ export async function pgUpdateV2(
 						);
 						result.push(...executionData);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							json: { ...items[i].json },
 							code: (err as JsonObject).code,

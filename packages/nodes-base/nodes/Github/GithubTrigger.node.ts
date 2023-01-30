@@ -1,13 +1,12 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 
@@ -419,7 +418,7 @@ export class GithubTrigger implements INodeType {
 						responseData = await githubApiRequest.call(this, 'GET', endpoint, body);
 
 						for (const webhook of responseData as IDataObject[]) {
-							if ((webhook!.config! as IDataObject).url! === webhookUrl) {
+							if ((webhook.config! as IDataObject).url! === webhookUrl) {
 								// Webhook got found
 								if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
 									// Webhook with same events exists already so no need to

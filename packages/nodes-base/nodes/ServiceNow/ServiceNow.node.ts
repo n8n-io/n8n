@@ -1,14 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	mapEndpoint,
@@ -182,7 +182,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/doc/table/schema`,
+					'/now/doc/table/schema',
 					{},
 					{},
 				);
@@ -214,7 +214,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/table/sys_dictionary`,
+					'/now/table/sys_dictionary',
 					{},
 					qs,
 				);
@@ -236,7 +236,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/table/cmdb_ci_service`,
+					'/now/table/cmdb_ci_service',
 					{},
 					qs,
 				);
@@ -251,8 +251,8 @@ export class ServiceNow implements INodeType {
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				const qs = {
 					sysparm_fields: 'sys_id,user_name',
@@ -509,8 +509,8 @@ export class ServiceNow implements INodeType {
 		const length = items.length;
 		let responseData = {};
 		let qs: IDataObject;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -621,7 +621,7 @@ export class ServiceNow implements INodeType {
 							'Content-Type': binaryData.mimeType,
 						};
 
-						const qs: IDataObject = {
+						const query: IDataObject = {
 							table_name: tableName,
 							table_sys_id: recordId,
 							file_name: binaryData.fileName
@@ -630,14 +630,14 @@ export class ServiceNow implements INodeType {
 							...options,
 						};
 
-						const body = (await this.helpers.getBinaryDataBuffer(i, inputDataFieldName)) as Buffer;
+						const body = await this.helpers.getBinaryDataBuffer(i, inputDataFieldName);
 
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
 							'/now/attachment/file',
 							body,
-							qs,
+							query,
 							'',
 							{ headers },
 						);
@@ -779,7 +779,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							`/now/table/incident`,
+							'/now/table/incident',
 							body,
 						);
 						responseData = response.result;
@@ -821,7 +821,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/incident`,
+								'/now/table/incident',
 								{},
 								qs,
 							);
@@ -830,7 +830,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								`/now/table/incident`,
+								'/now/table/incident',
 								{},
 								qs,
 							);
@@ -1171,7 +1171,7 @@ export class ServiceNow implements INodeType {
 
 		if (resource === 'attachment') {
 			if (operation === 'get' || operation === 'getAll') {
-				return this.prepareOutputData(returnData as INodeExecutionData[]);
+				return this.prepareOutputData(returnData);
 			}
 		}
 		return this.prepareOutputData(returnData);

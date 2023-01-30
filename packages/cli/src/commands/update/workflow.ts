@@ -3,7 +3,8 @@
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 
@@ -13,8 +14,8 @@ export class UpdateWorkflowCommand extends Command {
 	static description = 'Update workflows';
 
 	static examples = [
-		`$ n8n update:workflow --all --active=false`,
-		`$ n8n update:workflow --id=5 --active=true`,
+		'$ n8n update:workflow --all --active=false',
+		'$ n8n update:workflow --id=5 --active=true',
 	];
 
 	static flags = {
@@ -39,24 +40,24 @@ export class UpdateWorkflowCommand extends Command {
 		const { flags } = this.parse(UpdateWorkflowCommand);
 
 		if (!flags.all && !flags.id) {
-			console.info(`Either option "--all" or "--id" have to be set!`);
+			console.info('Either option "--all" or "--id" have to be set!');
 			return;
 		}
 
 		if (flags.all && flags.id) {
 			console.info(
-				`Either something else on top should be "--all" or "--id" can be set never both!`,
+				'Either something else on top should be "--all" or "--id" can be set never both!',
 			);
 			return;
 		}
 
 		const updateQuery: IDataObject = {};
 		if (flags.active === undefined) {
-			console.info(`No update flag like "--active=true" has been set!`);
+			console.info('No update flag like "--active=true" has been set!');
 			return;
 		}
 		if (!['false', 'true'].includes(flags.active)) {
-			console.info(`Valid values for flag "--active" are only "false" or "true"!`);
+			console.info('Valid values for flag "--active" are only "false" or "true"!');
 			return;
 		}
 		updateQuery.active = flags.active === 'true';

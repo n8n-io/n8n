@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
 
@@ -224,6 +224,7 @@ export class EventbriteTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -303,7 +304,7 @@ export class EventbriteTrigger implements INodeType {
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 
-		if (resolveData === false) {
+		if (!resolveData) {
 			// Return the data as it got received
 			return {
 				workflowData: [this.helpers.returnJsonArray(req.body)],

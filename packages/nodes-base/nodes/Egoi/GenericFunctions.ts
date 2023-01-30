@@ -1,13 +1,14 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -19,23 +20,14 @@ const fieldCache: {
 	[key: string]: IDataObject[];
 } = {};
 
-export async function getFields(this: IExecuteFunctions, listId: string) {
-	if (fieldCache[listId]) {
-		return fieldCache[listId];
-	}
-	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
-	return fieldCache[listId];
-}
-
 export async function egoiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	_headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('egoiApi');
 
@@ -56,10 +48,18 @@ export async function egoiApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function getFields(this: IExecuteFunctions, listId: string) {
+	if (fieldCache[listId]) {
+		return fieldCache[listId];
+	}
+	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+	return fieldCache[listId];
 }
 
 export async function egoiApiRequestAllItems(
@@ -67,10 +67,9 @@ export async function egoiApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -101,7 +100,6 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 
 	for (const contact of contacts) {
 		const extras = contact.extra.reduce(
-			// tslint:disable-next-line:no-any
 			(acumulator: IDataObject, currentValue: IDataObject): any => {
 				const key = fieldsKeyValue[currentValue.field_id as string] as string;
 				return { [key]: currentValue.value, ...acumulator };

@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	actionNetworkApiRequest,
@@ -36,7 +36,7 @@ import {
 	tagOperations,
 } from './descriptions';
 
-import {
+import type {
 	AllFieldsUi,
 	EmailAddressUi,
 	Operation,
@@ -480,7 +480,7 @@ export class ActionNetwork implements INodeType {
 				if (simplify) {
 					response =
 						operation === 'getAll'
-							? response.map((i: Response) => simplifyResponse(i, resource))
+							? response.map((entry: Response) => simplifyResponse(entry, resource))
 							: simplifyResponse(response, resource);
 				}
 

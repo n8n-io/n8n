@@ -1,10 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
 	SalesAccounts,
@@ -49,7 +50,7 @@ export async function getAllItemsViewId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ fromLoadOptions } = { fromLoadOptions: false },
 ) {
-	let resource = this.getNodeParameter('resource', 0) as string;
+	let resource = this.getNodeParameter('resource', 0);
 	let keyword = 'All';
 
 	if (resource === 'account' || fromLoadOptions) {
@@ -83,7 +84,7 @@ export async function freshworksCrmApiRequestAllItems(
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	let response: any; // tslint:disable-line: no-any
+	let response: any;
 
 	qs.page = 1;
 
@@ -107,7 +108,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
@@ -190,5 +191,5 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 }
 
 export function throwOnEmptyFilter(this: IExecuteFunctions) {
-	throw new NodeOperationError(this.getNode(), `Please select at least one filter.`);
+	throw new NodeOperationError(this.getNode(), 'Please select at least one filter.');
 }

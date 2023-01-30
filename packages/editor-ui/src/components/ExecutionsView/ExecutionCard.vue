@@ -10,23 +10,48 @@
 	>
 		<router-link
 			:class="$style.executionLink"
-			:to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: currentWorkflow, executionId: execution.id }}"
+			:to="{
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { workflowId: currentWorkflow, executionId: execution.id },
+			}"
 		>
 			<div :class="$style.description">
-				<n8n-text color="text-dark" :bold="true" size="medium">{{ executionUIDetails.startTime }}</n8n-text>
+				<n8n-text color="text-dark" :bold="true" size="medium">{{
+					executionUIDetails.startTime
+				}}</n8n-text>
 				<div :class="$style.executionStatus">
-					<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
-					<n8n-text :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</n8n-text>
-					<n8n-text v-if="executionUIDetails.name === 'running'" :color="isActive? 'text-dark' : 'text-base'" size="small">
+					<n8n-spinner
+						v-if="executionUIDetails.name === 'running'"
+						size="small"
+						:class="[$style.spinner, 'mr-4xs']"
+					/>
+					<n8n-text :class="$style.statusLabel" size="small">{{
+						executionUIDetails.label
+					}}</n8n-text>
+					<n8n-text
+						v-if="executionUIDetails.name === 'running'"
+						:color="isActive ? 'text-dark' : 'text-base'"
+						size="small"
+					>
 						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
-						<execution-time :start-time="execution.startedAt"/>
+						<execution-time :start-time="execution.startedAt" />
 					</n8n-text>
-					<n8n-text v-else-if="executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'" :color="isActive? 'text-dark' : 'text-base'" size="small">
-						{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }}
+					<n8n-text
+						v-else-if="
+							executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'
+						"
+						:color="isActive ? 'text-dark' : 'text-base'"
+						size="small"
+					>
+						{{
+							$locale.baseText('executionDetails.runningTimeFinished', {
+								interpolate: { time: executionUIDetails.runningTime },
+							})
+						}}
 					</n8n-text>
 				</div>
 				<div v-if="execution.mode === 'retry'">
-					<n8n-text :color="isActive? 'text-dark' : 'text-base'" size="small">
+					<n8n-text :color="isActive ? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</n8n-text>
 				</div>
@@ -39,12 +64,16 @@
 					activatorIcon="redo"
 					@select="onRetryMenuItemSelect"
 				/>
-				<font-awesome-icon
-					v-if="execution.mode === 'manual'"
-					:class="[$style.icon, $style.manual]"
-					:title="$locale.baseText('executionsList.manual')"
-					icon="flask"
+				<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+					<template #content>
+						<span>{{ $locale.baseText('executionsList.test') }}</span>
+					</template>
+					<font-awesome-icon
+						v-if="execution.mode === 'manual'"
+						:class="[$style.icon, $style.manual]"
+						icon="flask"
 					/>
+				</n8n-tooltip>
 			</div>
 		</router-link>
 	</div>
@@ -59,11 +88,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { restApi } from '@/mixins/restApi';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
-export default mixins(
-	executionHelpers,
-	showMessage,
-	restApi,
-).extend({
+export default mixins(executionHelpers, showMessage, restApi).extend({
 	name: 'execution-card',
 	components: {
 		ExecutionTime,
@@ -86,8 +111,14 @@ export default mixins(
 	computed: {
 		retryExecutionActions(): object[] {
 			return [
-				{ id: 'current-workflow', label: this.$locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') },
-				{ id: 'original-workflow', label: this.$locale.baseText('executionsList.retryWithOriginalWorkflow') },
+				{
+					id: 'current-workflow',
+					label: this.$locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+				},
+				{
+					id: 'original-workflow',
+					label: this.$locale.baseText('executionsList.retryWithOriginalWorkflow'),
+				},
 			];
 		},
 		executionUIDetails(): IExecutionUIData {
@@ -108,10 +139,9 @@ export default mixins(
 <style module lang="scss">
 .executionCard {
 	display: flex;
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing-m);
 
 	&.active {
-		padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 
 		.executionStatus {
@@ -119,11 +149,10 @@ export default mixins(
 		}
 	}
 
-	& + &.active { padding-top: var(--spacing-2xs); }
-
-	&:hover, &.active {
+	&:hover,
+	&.active {
 		.executionLink {
-			background-color: var(--color-foreground-base);
+			background-color: var(--color-foreground-light);
 		}
 	}
 
@@ -132,34 +161,47 @@ export default mixins(
 			position: relative;
 			top: 1px;
 		}
-		&, & .executionLink {
+		&,
+		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-warning-h), 94%, 80%);
 		}
-		.statusLabel, .spinner { color: var(--color-warning); }
+		.statusLabel,
+		.spinner {
+			color: var(--color-warning);
+		}
 	}
 
 	&.success {
-		&, & .executionLink {
+		&,
+		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-success-h), 60%, 70%);
 		}
 	}
 
 	&.waiting {
-		&, & .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-secondary-h), 94%, 80%);
+		&,
+		& .executionLink {
+			border-left: var(--spacing-4xs) var(--border-style-base)
+				hsl(var(--color-secondary-h), 94%, 80%);
 		}
-		.statusLabel { color: var(--color-secondary); }
+		.statusLabel {
+			color: var(--color-secondary);
+		}
 	}
 
 	&.error {
-		&, & .executionLink {
+		&,
+		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);
 		}
-		.statusLabel { color: var(--color-danger ); }
+		.statusLabel {
+			color: var(--color-danger);
+		}
 	}
 
 	&.unknown {
-		&, & .executionLink {
+		&,
+		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-text-light);
 		}
 	}
@@ -174,13 +216,15 @@ export default mixins(
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-xs);
 	padding-right: var(--spacing-s);
-	border-radius: var(--border-radius-base);
 	position: relative;
-	left: calc(-1 * var(--spacing-4xs)); // Hide link border under card border so it's not visible when not hovered
+	left: calc(
+		-1 * var(--spacing-4xs)
+	); // Hide link border under card border so it's not visible when not hovered
 
 	&:active {
-		.icon, .statusLabel {
-			color: var(--color-text-base);;
+		.icon,
+		.statusLabel {
+			color: var(--color-text-base);
 		}
 	}
 }

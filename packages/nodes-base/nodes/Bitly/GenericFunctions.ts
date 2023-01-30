@@ -1,24 +1,24 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function bitlyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	let options: OptionsWithUri = {
@@ -39,9 +39,9 @@ export async function bitlyApiRequest(
 			const credentials = await this.getCredentials('bitlyApi');
 			options.headers = { Authorization: `Bearer ${credentials.accessToken}` };
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'bitlyOAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		}
@@ -59,10 +59,9 @@ export async function bitlyApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,9 +72,9 @@ export async function bitlyApiRequestAllItems(
 	do {
 		responseData = await bitlyApiRequest.call(this, method, resource, body, query, uri);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		if (responseData.pagination && responseData.pagination.next) {
+		if (responseData.pagination?.next) {
 			uri = responseData.pagination.next;
 		}
-	} while (responseData.pagination !== undefined && responseData.pagination.next !== undefined);
+	} while (responseData.pagination?.next !== undefined);
 	return returnData;
 }

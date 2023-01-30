@@ -1,12 +1,12 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
@@ -240,7 +240,7 @@ export class AirtableTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
 			}
 
-			if (downloadAttachments === true) {
+			if (downloadAttachments) {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
 					',',
 				);

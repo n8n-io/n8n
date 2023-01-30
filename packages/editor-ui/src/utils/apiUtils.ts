@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import { IDataObject } from 'n8n-workflow';
-import type { IRestApiContext } from '../Interface';
+import type { IRestApiContext } from '@/Interface';
+
+export const NO_NETWORK_ERROR_CODE = 999;
 
 class ResponseError extends Error {
 	// The HTTP status code of response
@@ -19,7 +21,10 @@ class ResponseError extends Error {
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [stack] The stack trace
 	 */
-	constructor (message: string, options: {errorCode?: number, httpStatusCode?: number, stack?: string} = {}) {
+	constructor(
+		message: string,
+		options: { errorCode?: number; httpStatusCode?: number; stack?: string } = {},
+	) {
 		super(message);
 		this.name = 'ResponseError';
 
@@ -36,7 +41,13 @@ class ResponseError extends Error {
 	}
 }
 
-async function request(config: {method: Method, baseURL: string, endpoint: string, headers?: IDataObject, data?: IDataObject}) {
+async function request(config: {
+	method: Method;
+	baseURL: string;
+	endpoint: string;
+	headers?: IDataObject;
+	data?: IDataObject;
+}) {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
 		method,
@@ -44,7 +55,7 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		baseURL,
 		headers,
 	};
-	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io') ) {
+	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io')) {
 		options.withCredentials = true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
@@ -58,7 +69,9 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		return response.data;
 	} catch (error) {
 		if (error.message === 'Network Error') {
-			throw new ResponseError('API-Server can not be reached. It is probably down.');
+			throw new ResponseError('API-Server can not be reached. It is probably down.', {
+				errorCode: NO_NETWORK_ERROR_CODE,
+			});
 		}
 
 		const errorResponseData = error.response.data;
@@ -68,14 +81,23 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 				throw errorResponseData;
 			}
 
-			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
+			throw new ResponseError(errorResponseData.message, {
+				errorCode: errorResponseData.code,
+				httpStatusCode: error.response.status,
+				stack: errorResponseData.stack,
+			});
 		}
 
 		throw error;
 	}
 }
 
-export async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject) {
+export async function makeRestApiRequest(
+	context: IRestApiContext,
+	method: Method,
+	endpoint: string,
+	data?: IDataObject,
+) {
 	const response = await request({
 		method,
 		baseURL: context.baseUrl,
@@ -88,10 +110,20 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 	return response.data;
 }
 
-export async function get(baseURL: string, endpoint: string, params?: IDataObject, headers?: IDataObject) {
-	return await request({method: 'GET', baseURL, endpoint, headers, data: params});
+export async function get(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: IDataObject,
+) {
+	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
-export async function post(baseURL: string, endpoint: string, params?: IDataObject, headers?: IDataObject) {
-	return await request({method: 'POST', baseURL, endpoint, headers, data: params});
+export async function post(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: IDataObject,
+) {
+	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }

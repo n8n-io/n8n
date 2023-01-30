@@ -1,10 +1,11 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn, Unique } from 'typeorm';
 import { IsString, Length } from 'class-validator';
 
-import { User } from './User';
-import { SharedWorkflow } from './SharedWorkflow';
-import { SharedCredentials } from './SharedCredentials';
+import type { User } from './User';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity } from './AbstractEntity';
+import { idStringifier } from '../utils/transformers';
 
 export type RoleNames = 'owner' | 'member' | 'user' | 'editor';
 export type RoleScopes = 'global' | 'workflow' | 'credential';
@@ -12,8 +13,8 @@ export type RoleScopes = 'global' | 'workflow' | 'credential';
 @Entity()
 @Unique(['scope', 'name'])
 export class Role extends AbstractEntity {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	@Column({ length: 32 })
 	@IsString({ message: 'Role name must be of type string.' })
@@ -23,12 +24,12 @@ export class Role extends AbstractEntity {
 	@Column()
 	scope: RoleScopes;
 
-	@OneToMany(() => User, (user) => user.globalRole)
+	@OneToMany('User', 'globalRole')
 	globalForUsers: User[];
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.role)
+	@OneToMany('SharedWorkflow', 'role')
 	sharedWorkflows: SharedWorkflow[];
 
-	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.role)
+	@OneToMany('SharedCredentials', 'role')
 	sharedCredentials: SharedCredentials[];
 }

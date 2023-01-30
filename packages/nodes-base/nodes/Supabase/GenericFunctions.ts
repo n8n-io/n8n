@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,13 +8,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function supabaseApiRequest(
 	this:
@@ -25,12 +25,11 @@ export async function supabaseApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('supabaseApi')) as {
 		host: string;
@@ -248,7 +247,7 @@ export function getFilters(
 					],
 				},
 			],
-			description: `Filter to decide which rows get ${mapOperations[operations[0] as string]}`,
+			description: `Filter to decide which rows get ${mapOperations[operations[0]]}`,
 		},
 		{
 			displayName:
@@ -268,9 +267,6 @@ export function getFilters(
 			displayName: 'Filters (String)',
 			name: 'filterString',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: resources,
@@ -307,7 +303,6 @@ export const buildGetQuery = (obj: IDataObject, value: IDataObject) => {
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -325,5 +320,5 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

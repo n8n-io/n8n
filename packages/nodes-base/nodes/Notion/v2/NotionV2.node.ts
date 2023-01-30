@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,10 +8,10 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import type { SortData } from '../GenericFunctions';
 import {
 	downloadFiles,
 	extractDatabaseId,
@@ -238,8 +238,8 @@ export class NotionV2 implements INodeType {
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let download = false;
 
 		if (resource === 'block') {
@@ -318,7 +318,7 @@ export class NotionV2 implements INodeType {
 						this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string,
 					);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download)[0];
 					}
 
@@ -342,15 +342,15 @@ export class NotionV2 implements INodeType {
 							this,
 							'results',
 							'POST',
-							`/search`,
+							'/search',
 							body,
 						);
 					} else {
-						body['page_size'] = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
+						body.page_size = this.getNodeParameter('limit', i);
+						responseData = await notionApiRequest.call(this, 'POST', '/search', body);
 						responseData = responseData.results;
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -376,11 +376,11 @@ export class NotionV2 implements INodeType {
 					};
 
 					if (text) {
-						body['query'] = text;
+						body.query = text;
 					}
 					if (options.sort) {
-						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
-						body['sort'] = sort;
+						const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
+						body.sort = sort;
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -402,7 +402,7 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -430,7 +430,7 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const title = this.getNodeParameter('title', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
@@ -446,25 +446,25 @@ export class NotionV2 implements INodeType {
 							],
 						};
 					}
-					body.parent['database_id'] = this.getNodeParameter('databaseId', i, '', {
+					body.parent.database_id = this.getNodeParameter('databaseId', i, '', {
 						extractValue: true,
 					}) as string;
-					const properties = this.getNodeParameter(
+					const propertiesValues = this.getNodeParameter(
 						'propertiesUi.propertyValues',
 						i,
 						[],
 					) as IDataObject[];
-					if (properties.length !== 0) {
+					if (propertiesValues.length !== 0) {
 						body.properties = Object.assign(
 							body.properties,
-							mapProperties(properties, timezone, 2) as IDataObject,
+							mapProperties.call(this, propertiesValues, timezone, 2) as IDataObject,
 						);
 					}
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData);
 					}
 
@@ -483,7 +483,7 @@ export class NotionV2 implements INodeType {
 					);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -536,8 +536,7 @@ export class NotionV2 implements INodeType {
 						delete body.filter;
 					}
 					if (sort) {
-						//@ts-expect-error
-						body['sorts'] = mapSorting(sort);
+						body.sorts = mapSorting(sort as SortData[]);
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -559,10 +558,10 @@ export class NotionV2 implements INodeType {
 						);
 						responseData = responseData.results;
 					}
-					if (download === true) {
+					if (download) {
 						responseData = await downloadFiles.call(this, responseData);
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -585,15 +584,15 @@ export class NotionV2 implements INodeType {
 						i,
 						[],
 					) as IDataObject[];
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						properties: {},
 					};
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone, 2) as IDataObject;
+						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false);
 					}
 
@@ -649,7 +648,7 @@ export class NotionV2 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, {
 						archived: true,
 					});
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -664,12 +663,12 @@ export class NotionV2 implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
 					};
-					body.parent['page_id'] = extractPageId(
+					body.parent.page_id = extractPageId(
 						this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
 					);
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
@@ -677,7 +676,7 @@ export class NotionV2 implements INodeType {
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -698,15 +697,15 @@ export class NotionV2 implements INodeType {
 					const body: IDataObject = {};
 
 					if (text) {
-						body['query'] = text;
+						body.query = text;
 					}
 					if (options.filter) {
-						const filter = (((options.filter as IDataObject) || {}).filters as IDataObject[]) || [];
-						body['filter'] = filter;
+						const filter = ((options.filter as IDataObject)?.filters as IDataObject[]) || [];
+						body.filter = filter;
 					}
 					if (options.sort) {
-						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
-						body['sort'] = sort;
+						const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
+						body.sort = sort;
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -728,7 +727,7 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -741,7 +740,7 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		if (download === true) {
+		if (download) {
 			const rawData = returnData.map((data) => data.json);
 			return this.prepareOutputData(rawData as INodeExecutionData[]);
 		}

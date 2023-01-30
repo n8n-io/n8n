@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -188,7 +188,8 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]`,
+				placeholder:
+					'[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]',
 			},
 			{
 				displayName: 'Properties (JSON)',
@@ -202,7 +203,7 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `{ "name": "text_1" }`,
+				placeholder: '{ "name": "text_1" }',
 			},
 			{
 				displayName: 'Overrides',
@@ -330,11 +331,11 @@ export class ApiTemplateIo implements INodeType {
 	methods = {
 		loadOptions: {
 			async getImageTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await loadResource.call(this, 'image');
+				return loadResource.call(this, 'image');
 			},
 
 			async getPdfTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await loadResource.call(this, 'pdf');
+				return loadResource.call(this, 'pdf');
 			},
 		},
 	};
@@ -346,8 +347,8 @@ export class ApiTemplateIo implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'account') {
 			// *********************************************************************
@@ -401,16 +402,15 @@ export class ApiTemplateIo implements INodeType {
 
 						const body = { overrides: [] } as IDataObject;
 
-						if (jsonParameters === false) {
+						if (!jsonParameters) {
 							const overrides =
-								(((this.getNodeParameter('overridesUi', i) as IDataObject) || {})
-									.overrideValues as IDataObject[]) || [];
+								((this.getNodeParameter('overridesUi', i) as IDataObject)
+									?.overrideValues as IDataObject[]) || [];
 							if (overrides.length !== 0) {
 								const data: IDataObject[] = [];
 								for (const override of overrides) {
 									const properties =
-										(((override.propertiesUi as IDataObject) || {})
-											.propertyValues as IDataObject[]) || [];
+										((override.propertiesUi as IDataObject)?.propertyValues as IDataObject[]) || [];
 									data.push(
 										properties.reduce(
 											(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
@@ -435,8 +435,8 @@ export class ApiTemplateIo implements INodeType {
 
 						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, body);
 
-						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						if (download) {
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
@@ -460,7 +460,7 @@ export class ApiTemplateIo implements INodeType {
 					}
 				}
 
-				if (download === true) {
+				if (download) {
 					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
 				}
 			}
@@ -492,10 +492,10 @@ export class ApiTemplateIo implements INodeType {
 
 						let data;
 
-						if (jsonParameters === false) {
+						if (!jsonParameters) {
 							const properties =
-								(((this.getNodeParameter('propertiesUi', i) as IDataObject) || {})
-									.propertyValues as IDataObject[]) || [];
+								((this.getNodeParameter('propertiesUi', i) as IDataObject)
+									?.propertyValues as IDataObject[]) || [];
 							if (properties.length === 0) {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -519,12 +519,12 @@ export class ApiTemplateIo implements INodeType {
 
 						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, data);
 
-						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-							const data = await downloadImage.call(this, responseData.download_url);
+						if (download) {
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
+							const imageData = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
-								data,
+								imageData,
 								options.fileName || fileName,
 							);
 							responseData = {
@@ -543,7 +543,7 @@ export class ApiTemplateIo implements INodeType {
 						throw error;
 					}
 				}
-				if (download === true) {
+				if (download) {
 					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
 				}
 			}

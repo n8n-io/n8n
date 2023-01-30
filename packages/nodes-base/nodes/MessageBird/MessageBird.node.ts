@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { messageBirdApiRequest } from './GenericFunctions';
 
@@ -297,8 +297,8 @@ export class MessageBird implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'sms') {
 					//https://developers.messagebird.com/api/sms-messaging/#sms-api

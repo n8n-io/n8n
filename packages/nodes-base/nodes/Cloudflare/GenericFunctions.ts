@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function cloudflareApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -17,7 +18,6 @@ export async function cloudflareApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -47,7 +47,6 @@ export async function cloudflareApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

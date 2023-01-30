@@ -23,10 +23,11 @@
 			</div>
 		</template>
 
-
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :value="checked" @change="handleCheckboxChange">{{ $locale.baseText('activationModal.dontShowAgain') }}</el-checkbox>
+				<el-checkbox :value="checked" @change="handleCheckboxChange">{{
+					$locale.baseText('activationModal.dontShowAgain')
+				}}</el-checkbox>
 				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
 			</div>
 		</template>
@@ -37,7 +38,12 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, VIEWS } from '../constants';
+import {
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	LOCAL_STORAGE_ACTIVATION_FLAG,
+	VIEWS,
+} from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -49,10 +55,8 @@ export default Vue.extend({
 	components: {
 		Modal,
 	},
-	props: [
-		'modalName',
-	],
-	data () {
+	props: ['modalName'],
+	data() {
 		return {
 			WORKFLOW_ACTIVE_MODAL_KEY,
 			checked: false,
@@ -60,35 +64,35 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		async showExecutionsList () {
+		async showExecutionsList() {
 			const activeExecution = this.workflowsStore.activeWorkflowExecution;
 			const currentWorkflow = this.workflowsStore.workflowId;
 
 			if (activeExecution) {
-				this.$router.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: currentWorkflow, executionId: activeExecution.id },
-				}).catch(()=>{});;
+				this.$router
+					.push({
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: currentWorkflow, executionId: activeExecution.id },
+					})
+					.catch(() => {});
 			} else {
-				this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
+				this.$router
+					.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } })
+					.catch(() => {});
 			}
 			this.uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 		},
 		async showSettings() {
 			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 		},
-		handleCheckboxChange (checkboxValue: boolean) {
+		handleCheckboxChange(checkboxValue: boolean) {
 			this.checked = checkboxValue;
 			window.localStorage.setItem(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
-		triggerContent (): string {
+		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore),
+		triggerContent(): string {
 			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 			if (!foundTriggers.length) {
 				return '';
@@ -101,10 +105,10 @@ export default Vue.extend({
 			const trigger = foundTriggers[0];
 
 			const triggerNodeType = this.nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion);
-				if (triggerNodeType) {
-					if (triggerNodeType.activationMessage) {
-						return triggerNodeType.activationMessage;
-					}
+			if (triggerNodeType) {
+				if (triggerNodeType.activationMessage) {
+					return triggerNodeType.activationMessage;
+				}
 
 				const serviceName = getTriggerNodeServiceName(triggerNodeType);
 				if (trigger.webhookId) {
@@ -139,5 +143,4 @@ export default Vue.extend({
 		margin-left: var(--spacing-s);
 	}
 }
-
 </style>

@@ -1,10 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { Connector, ElasticSecurityApiCredentials } from './types';
+import type { Connector, ElasticSecurityApiCredentials } from './types';
+
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -44,7 +49,7 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
@@ -63,7 +68,7 @@ export async function elasticSecurityApiRequestAllItems(
 ) {
 	let _page = 1;
 	const returnData: IDataObject[] = [];
-	let responseData: any; // tslint:disable-line
+	let responseData: any;
 
 	const resource = this.getNodeParameter('resource', 0) as 'case' | 'caseComment';
 
@@ -89,7 +94,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await elasticSecurityApiRequestAllItems.call(
@@ -137,8 +142,4 @@ export async function getVersion(this: IExecuteFunctions, endpoint: string) {
 	}
 
 	return version;
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }

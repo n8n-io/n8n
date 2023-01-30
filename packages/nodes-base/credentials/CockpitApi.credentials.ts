@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class CockpitApi implements ICredentialType {
 	name = 'cockpitApi';
+
 	displayName = 'Cockpit API';
+
 	documentationUrl = 'cockpit';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Cockpit URL',

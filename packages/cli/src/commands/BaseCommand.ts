@@ -1,8 +1,10 @@
 import { Command } from '@oclif/core';
 import { LoggerProxy } from 'n8n-workflow';
-import { getLogger, Logger } from '@/Logger';
+import type { Logger } from '@/Logger';
+import { getLogger } from '@/Logger';
 import { User } from '@db/entities/User';
 import * as Db from '@/Db';
+import { inTest } from '@/constants';
 
 export abstract class BaseCommand extends Command {
 	logger: Logger;
@@ -19,7 +21,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async finally(): Promise<void> {
-		if (process.env.NODE_ENV === 'test') return;
+		if (inTest) return;
 
 		this.exit();
 	}
@@ -37,12 +39,12 @@ export abstract class BaseCommand extends Command {
 	};
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role.findOneOrFail({
+		const globalRole = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
 			scope: 'global',
 		});
 
-		const owner = await Db.collections.User.findOne({ globalRole });
+		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
 
 		if (owner) return owner;
 
@@ -52,6 +54,6 @@ export abstract class BaseCommand extends Command {
 
 		await Db.collections.User.save(user);
 
-		return Db.collections.User.findOneOrFail({ globalRole });
+		return Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 	}
 }

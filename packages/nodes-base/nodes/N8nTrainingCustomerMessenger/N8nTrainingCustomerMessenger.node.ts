@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class N8nTrainingCustomerMessenger implements INodeType {
 	description: INodeTypeDescription = {
@@ -11,7 +16,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 		version: 1,
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Messenger',
+			name: 'Customer Messenger (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

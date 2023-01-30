@@ -1,33 +1,32 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { accountFields, accountOperations } from './AccountDescription';
 
-import { IAccount } from './AccountInterface';
+import type { IAccount } from './AccountInterface';
 
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
 
-import { IAttachment } from './AttachmentInterface';
+import type { IAttachment } from './AttachmentInterface';
 
-import { ICampaignMember } from './CampaignMemberInterface';
+import type { ICampaignMember } from './CampaignMemberInterface';
 
 import { caseFields, caseOperations } from './CaseDescription';
 
-import { ICase, ICaseComment } from './CaseInterface';
+import type { ICase, ICaseComment } from './CaseInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IContact } from './ContactInterface';
+import type { IContact } from './ContactInterface';
 
 import { customObjectFields, customObjectOperations } from './CustomObjectDescription';
 
@@ -42,25 +41,23 @@ import {
 
 import { leadFields, leadOperations } from './LeadDescription';
 
-import { ILead } from './LeadInterface';
+import type { ILead } from './LeadInterface';
 
-import { INote } from './NoteInterface';
+import type { INote } from './NoteInterface';
 
 import { opportunityFields, opportunityOperations } from './OpportunityDescription';
 
-import { IOpportunity } from './OpportunityInterface';
+import type { IOpportunity } from './OpportunityInterface';
 
 import { searchFields, searchOperations } from './SearchDescription';
 
 import { taskFields, taskOperations } from './TaskDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
 import { userFields, userOperations } from './UserDescription';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -304,7 +301,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -350,7 +347,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -383,7 +380,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(
 					this,
@@ -407,7 +404,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getRecordTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let resource = this.getNodeParameter('resource', 0) as string;
+				let resource = this.getNodeParameter('resource', 0);
 				if (resource === 'customObject') {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
@@ -892,7 +889,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/account/describe`,
+					'/sobjects/account/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -913,7 +910,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/attachment/describe`,
+					'/sobjects/attachment/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -931,7 +928,7 @@ export class Salesforce implements INodeType {
 			async getCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/case/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -948,7 +945,7 @@ export class Salesforce implements INodeType {
 			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/lead/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -968,7 +965,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/opportunity/describe`,
+					'/sobjects/opportunity/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -986,7 +983,7 @@ export class Salesforce implements INodeType {
 			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/task/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -1003,7 +1000,7 @@ export class Salesforce implements INodeType {
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/user/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/user/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -1023,7 +1020,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/contact/describe`,
+					'/sobjects/contact/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -1065,8 +1062,8 @@ export class Salesforce implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		Logger.debug(
 			`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`,
@@ -1291,7 +1288,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Lead', returnAll) as string;
+								qs.q = getQuery(options, 'Lead', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1302,7 +1299,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Lead', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1637,7 +1634,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Contact', returnAll) as string;
+								qs.q = getQuery(options, 'Contact', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1648,7 +1645,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Contact', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1727,8 +1724,7 @@ export class Salesforce implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (customFieldsUi) {
-							const customFields = (customFieldsUi as IDataObject)
-								.customFieldsValues as IDataObject[];
+							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
 									//@ts-ignore
@@ -1762,8 +1758,7 @@ export class Salesforce implements INodeType {
 							body.RecordTypeId = updateFields.recordTypeId as string;
 						}
 						if (customFieldsUi) {
-							const customFields = (customFieldsUi as IDataObject)
-								.customFieldsValues as IDataObject[];
+							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
 									//@ts-ignore
@@ -1793,7 +1788,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, customObject, returnAll) as string;
+								qs.q = getQuery(options, customObject, returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1804,7 +1799,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, customObject, returnAll, limit) as string;
+								qs.q = getQuery(options, customObject, returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1837,7 +1832,7 @@ export class Salesforce implements INodeType {
 					if (operation === 'upload') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						let data;
 						const body: { entity_content: { [key: string]: string } } = {
 							entity_content: {
@@ -1846,17 +1841,17 @@ export class Salesforce implements INodeType {
 							},
 						};
 						if (additionalFields.ownerId) {
-							body.entity_content['ownerId'] = additionalFields.ownerId as string;
+							body.entity_content.ownerId = additionalFields.ownerId as string;
 						}
 						if (additionalFields.linkToObjectId) {
-							body.entity_content['FirstPublishLocationId'] =
+							body.entity_content.FirstPublishLocationId =
 								additionalFields.linkToObjectId as string;
 						}
 						if (items[i].binary && items[i].binary![binaryPropertyName]) {
 							const binaryData = items[i].binary![binaryPropertyName];
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body.entity_content['PathOnClient'] = `${title}.${
+							body.entity_content.PathOnClient = `${title}.${
 								additionalFields.fileExtension || binaryData.fileExtension
 							}`;
 							data = {
@@ -1869,7 +1864,7 @@ export class Salesforce implements INodeType {
 								VersionData: {
 									value: dataBuffer,
 									options: {
-										filename: body.entity_content['PathOnClient'],
+										filename: body.entity_content.PathOnClient,
 									},
 								},
 							};
@@ -2038,7 +2033,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Opportunity', returnAll) as string;
+								qs.q = getQuery(options, 'Opportunity', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2049,7 +2044,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Opportunity', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2328,7 +2323,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Account', returnAll) as string;
+								qs.q = getQuery(options, 'Account', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2339,7 +2334,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Account', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Account', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2543,7 +2538,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Case', returnAll) as string;
+								qs.q = getQuery(options, 'Case', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2554,7 +2549,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Case', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Case', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2806,7 +2801,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Task', returnAll) as string;
+								qs.q = getQuery(options, 'Task', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2817,7 +2812,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Task', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Task', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2855,7 +2850,7 @@ export class Salesforce implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const body: IAttachment = {
 							Name: name,
 							ParentId: parentId,
@@ -2938,7 +2933,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Attachment', returnAll) as string;
+								qs.q = getQuery(options, 'Attachment', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2949,7 +2944,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Attachment', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2993,7 +2988,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'User', returnAll) as string;
+								qs.q = getQuery(options, 'User', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -3004,7 +2999,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'User', returnAll, limit) as string;
+								qs.q = getQuery(options, 'User', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -3030,11 +3025,10 @@ export class Salesforce implements INodeType {
 						} else {
 							// Input variables are defined in UI
 							const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;
-							if (setInputVariable!.variablesValues !== undefined) {
-								for (const inputVariableData of setInputVariable!
-									.variablesValues as IDataObject[]) {
+							if (setInputVariable.variablesValues !== undefined) {
+								for (const inputVariableData of setInputVariable.variablesValues as IDataObject[]) {
 									// @ts-ignore
-									variables[inputVariableData!.name as string] = inputVariableData!.value;
+									variables[inputVariableData.name as string] = inputVariableData.value;
 								}
 							}
 						}
@@ -3053,7 +3047,7 @@ export class Salesforce implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
 						responseData = responseData.actions;
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

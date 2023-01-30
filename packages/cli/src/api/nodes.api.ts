@@ -1,5 +1,5 @@
 import express from 'express';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import config from '@/config';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -31,7 +31,7 @@ import {
 } from '@/constants';
 import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 
-import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
 
@@ -124,7 +124,7 @@ nodesController.post(
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
 			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
-				user_id: req.user.id,
+				user: req.user,
 				input_string: name,
 				package_name: parsed.packageName,
 				success: false,
@@ -152,7 +152,7 @@ nodesController.post(
 		});
 
 		void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
-			user_id: req.user.id,
+			user: req.user,
 			input_string: name,
 			package_name: parsed.packageName,
 			success: true,
@@ -259,7 +259,7 @@ nodesController.delete(
 		});
 
 		void InternalHooksManager.getInstance().onCommunityPackageDeleteFinished({
-			user_id: req.user.id,
+			user: req.user,
 			package_name: name,
 			package_version: installedPackage.installedVersion,
 			package_node_names: installedPackage.installedNodes.map((node) => node.name),
@@ -313,7 +313,7 @@ nodesController.patch(
 			});
 
 			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
-				user_id: req.user.id,
+				user: req.user,
 				package_name: name,
 				package_version_current: previouslyInstalledPackage.installedVersion,
 				package_version_new: newInstalledPackage.installedVersion,

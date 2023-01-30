@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -11,7 +11,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import {
 	gristApiRequest,
@@ -24,7 +24,7 @@ import {
 
 import { operationFields } from './OperationDescription';
 
-import {
+import type {
 	FieldsToSend,
 	GristColumns,
 	GristCreateRowPayload,
@@ -119,7 +119,7 @@ export class Grist implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,11 +11,11 @@ import {
 
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 
-import { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
+import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
 
-import { IUserDto } from './UserDtos';
+import type { IUserDto } from './UserDtos';
 
-import { IProjectDto } from './ProjectInterfaces';
+import type { IProjectDto } from './ProjectInterfaces';
 
 import { clientFields, clientOperations } from './ClientDescription';
 
@@ -243,9 +243,9 @@ export class Clockify implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {

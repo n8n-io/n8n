@@ -1,13 +1,13 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { clientFields, clientOperations } from './ClientDescription';
 
@@ -204,8 +204,8 @@ export class Harvest implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -665,7 +665,7 @@ export class Harvest implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `users/me`;
+						endpoint = 'users/me';
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 
@@ -871,7 +871,7 @@ export class Harvest implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = `company`;
+						endpoint = 'company';
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 

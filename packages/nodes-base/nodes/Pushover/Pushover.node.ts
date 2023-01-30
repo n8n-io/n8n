@@ -1,7 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IBinaryData,
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -9,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { pushoverApiRequest } from './GenericFunctions';
 
@@ -302,8 +301,8 @@ export class Pushover implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
@@ -349,7 +348,7 @@ export class Pushover implements INodeType {
 
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryPropertyName] as IBinaryData;
+								const binaryData = item[binaryPropertyName];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
@@ -372,7 +371,7 @@ export class Pushover implements INodeType {
 							}
 						}
 
-						responseData = await pushoverApiRequest.call(this, 'POST', `/messages.json`, body);
+						responseData = await pushoverApiRequest.call(this, 'POST', '/messages.json', body);
 					}
 				}
 			} catch (error) {

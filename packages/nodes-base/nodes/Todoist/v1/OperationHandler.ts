@@ -1,15 +1,63 @@
-import { IDataObject, jsonParse } from 'n8n-workflow';
-import {
-	Context,
-	FormatDueDatetime,
-	todoistApiRequest,
-	todoistSyncRequest,
-} from '../GenericFunctions';
-import { Section, TodoistResponse } from './Service';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { Context } from '../GenericFunctions';
+import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
+import type { Section, TodoistResponse } from './Service';
 import { v4 as uuid } from 'uuid';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
+}
+
+export interface CreateTaskRequest {
+	content?: string;
+	description?: string;
+	project_id?: number;
+	section_id?: number;
+	parent_id?: string;
+	order?: number;
+	labels?: string[];
+	priority?: number;
+	due_string?: string;
+	due_datetime?: string;
+	due_date?: string;
+	due_lang?: string;
+}
+
+export interface SyncRequest {
+	commands: Command[];
+	temp_id_mapping?: IDataObject;
+}
+
+export interface Command {
+	type: CommandType;
+	uuid: string;
+	temp_id?: string;
+	args: {
+		id?: number;
+		section_id?: number;
+		project_id?: number | string;
+		section?: string;
+		content?: string;
+	};
+}
+
+export enum CommandType {
+	ITEM_MOVE = 'item_move',
+	ITEM_ADD = 'item_add',
+	ITEM_UPDATE = 'item_update',
+	ITEM_REORDER = 'item_reorder',
+	ITEM_DELETE = 'item_delete',
+	ITEM_COMPLETE = 'item_complete',
+}
+
+async function getLabelNameFromId(ctx: Context, labelIds: number[]): Promise<string[]> {
+	const labelList = [];
+	for (const label of labelIds) {
+		const thisLabel = await todoistApiRequest.call(ctx, 'GET', `/labels/${label}`);
+		labelList.push(thisLabel.name);
+	}
+	return labelList;
 }
 
 export class CreateHandler implements OperationHandler {
@@ -260,7 +308,7 @@ export class SyncHandler implements OperationHandler {
 
 	private convertToObject(map: Map<string, string>) {
 		return Array.from(map.entries()).reduce((o, [key, value]) => {
-			o[key as string] = value;
+			o[key] = value;
 			return o;
 		}, {} as IDataObject);
 	}
@@ -270,7 +318,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private enrichSection(command: Command, sections: Map<string, number>) {
-		if (command.args !== undefined && command.args.section !== undefined) {
+		if (command.args?.section !== undefined) {
 			const sectionId = sections.get(command.args.section);
 			if (sectionId) {
 				command.args.section_id = sectionId;
@@ -292,7 +340,7 @@ export class SyncHandler implements OperationHandler {
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
 		if (this.requiresTempId(command)) {
-			command.temp_id = uuid() as string;
+			command.temp_id = uuid();
 			tempIdMapping.set(command.temp_id, projectId as unknown as string);
 		}
 	}
@@ -300,55 +348,4 @@ export class SyncHandler implements OperationHandler {
 	private requiresTempId(command: Command) {
 		return command.type === CommandType.ITEM_ADD;
 	}
-}
-
-async function getLabelNameFromId(ctx: Context, labelIds: number[]): Promise<string[]> {
-	const labelList = [];
-	for (const label of labelIds) {
-		const thisLabel = await todoistApiRequest.call(ctx, 'GET', `/labels/${label}`);
-		labelList.push(thisLabel.name);
-	}
-	return labelList;
-}
-
-export interface CreateTaskRequest {
-	content?: string;
-	description?: string;
-	project_id?: number;
-	section_id?: number;
-	parent_id?: string;
-	order?: number;
-	labels?: string[];
-	priority?: number;
-	due_string?: string;
-	due_datetime?: string;
-	due_date?: string;
-	due_lang?: string;
-}
-
-export interface SyncRequest {
-	commands: Command[];
-	temp_id_mapping?: {};
-}
-
-export interface Command {
-	type: CommandType;
-	uuid: string;
-	temp_id?: string;
-	args: {
-		id?: number;
-		section_id?: number;
-		project_id?: number | string;
-		section?: string;
-		content?: string;
-	};
-}
-
-export enum CommandType {
-	ITEM_MOVE = 'item_move',
-	ITEM_ADD = 'item_add',
-	ITEM_UPDATE = 'item_update',
-	ITEM_REORDER = 'item_reorder',
-	ITEM_DELETE = 'item_delete',
-	ITEM_COMPLETE = 'item_complete',
 }

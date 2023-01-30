@@ -6,7 +6,8 @@ import { Command, flags } from '@oclif/command';
 
 import { Credentials, UserSettings } from 'n8n-core';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import path from 'path';
@@ -18,11 +19,11 @@ export class ExportCredentialsCommand extends Command {
 	static description = 'Export credentials';
 
 	static examples = [
-		`$ n8n export:credentials --all`,
-		`$ n8n export:credentials --id=5 --output=file.json`,
-		`$ n8n export:credentials --all --output=backups/latest.json`,
-		`$ n8n export:credentials --backup --output=backups/latest/`,
-		`$ n8n export:credentials --all --decrypted --output=backups/decrypted.json`,
+		'$ n8n export:credentials --all',
+		'$ n8n export:credentials --id=5 --output=file.json',
+		'$ n8n export:credentials --all --output=backups/latest.json',
+		'$ n8n export:credentials --backup --output=backups/latest/',
+		'$ n8n export:credentials --all --decrypted --output=backups/decrypted.json',
 	];
 
 	static flags = {
@@ -69,25 +70,25 @@ export class ExportCredentialsCommand extends Command {
 		}
 
 		if (!flags.all && !flags.id) {
-			console.info(`Either option "--all" or "--id" have to be set!`);
+			console.info('Either option "--all" or "--id" have to be set!');
 			return;
 		}
 
 		if (flags.all && flags.id) {
-			console.info(`You should either use "--all" or "--id" but never both!`);
+			console.info('You should either use "--all" or "--id" but never both!');
 			return;
 		}
 
 		if (flags.separate) {
 			try {
 				if (!flags.output) {
-					console.info(`You must inform an output directory via --output when using --separate`);
+					console.info('You must inform an output directory via --output when using --separate');
 					return;
 				}
 
 				if (fs.existsSync(flags.output)) {
 					if (!fs.lstatSync(flags.output).isDirectory()) {
-						console.info(`The parameter --output must be a directory`);
+						console.info('The parameter --output must be a directory');
 						return;
 					}
 				} else {
@@ -106,7 +107,7 @@ export class ExportCredentialsCommand extends Command {
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.info(`The parameter --output must be a writeable file`);
+					console.info('The parameter --output must be a writeable file');
 					return;
 				}
 			}
@@ -128,7 +129,7 @@ export class ExportCredentialsCommand extends Command {
 
 				for (let i = 0; i < credentials.length; i++) {
 					const { name, type, nodesAccess, data } = credentials[i];
-					const id = credentials[i].id as string;
+					const id = credentials[i].id;
 					const credential = new Credentials({ id, name }, type, nodesAccess, data);
 					const plainData = credential.getData(encryptionKey);
 					(credentials[i] as ICredentialsDecryptedDb).data = plainData;

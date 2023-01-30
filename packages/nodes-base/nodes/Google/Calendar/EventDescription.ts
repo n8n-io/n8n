@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { TIMEZONE_VALIDATION_REGEX } from './GenericFunctions';
 
@@ -230,9 +230,6 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -859,9 +856,6 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

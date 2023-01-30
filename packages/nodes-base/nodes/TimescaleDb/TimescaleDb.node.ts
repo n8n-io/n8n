@@ -1,11 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { pgInsert, pgQuery, pgUpdate } from '../Postgres/Postgres.node.functions';
 
@@ -66,9 +62,6 @@ export class TimescaleDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -272,7 +265,7 @@ export class TimescaleDb implements INodeType {
 		let returnItems = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -322,7 +315,7 @@ export class TimescaleDb implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
-			await pgp.end();
+			pgp.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
@@ -330,7 +323,7 @@ export class TimescaleDb implements INodeType {
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

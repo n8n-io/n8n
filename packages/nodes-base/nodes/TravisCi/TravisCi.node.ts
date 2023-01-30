@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { buildFields, buildOperations } from './BuildDescription';
 
@@ -52,8 +57,8 @@ export class TravisCi implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -86,7 +91,7 @@ export class TravisCi implements INodeType {
 							qs.include = additionalFields.include;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await travisciApiRequestAllItems.call(
 								this,
 								'builds',

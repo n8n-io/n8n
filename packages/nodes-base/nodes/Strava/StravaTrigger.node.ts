@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { stravaApiRequest } from './GenericFunctions';
 
@@ -143,7 +148,7 @@ export class StravaTrigger implements INodeType {
 
 				const body = {
 					callback_url: webhookUrl,
-					verify_token: randomBytes(20).toString('hex') as string,
+					verify_token: randomBytes(20).toString('hex'),
 				};
 
 				let responseData;
@@ -162,7 +167,7 @@ export class StravaTrigger implements INodeType {
 								const webhooks = await stravaApiRequest.call(
 									this,
 									'GET',
-									`/push_subscriptions`,
+									'/push_subscriptions',
 									{},
 								);
 
@@ -174,16 +179,16 @@ export class StravaTrigger implements INodeType {
 										`/push_subscriptions/${webhooks[0].id}`,
 									);
 									// now there is room create a subscription with the n8n data
-									const body = {
+									const requestBody = {
 										callback_url: webhookUrl,
-										verify_token: randomBytes(20).toString('hex') as string,
+										verify_token: randomBytes(20).toString('hex'),
 									};
 
 									responseData = await stravaApiRequest.call(
 										this,
 										'POST',
-										`/push_subscriptions`,
-										body,
+										'/push_subscriptions',
+										requestBody,
 									);
 								} else {
 									error.message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`;
@@ -227,7 +232,7 @@ export class StravaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData() as IDataObject;
+		const body = this.getBodyData();
 		const query = this.getQueryData() as IDataObject;
 		const object = this.getNodeParameter('object');
 		const event = this.getNodeParameter('event');

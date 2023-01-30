@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -153,8 +153,8 @@ export class Storyblok implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const source = this.getNodeParameter('source', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -189,7 +189,7 @@ export class Storyblok implements INodeType {
 								responseData = await storyblokApiRequest.call(
 									this,
 									'GET',
-									`/v1/cdn/stories`,
+									'/v1/cdn/stories',
 									{},
 									qs,
 								);

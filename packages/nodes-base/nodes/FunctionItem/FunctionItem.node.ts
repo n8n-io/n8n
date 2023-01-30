@@ -1,15 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+/* eslint-disable @typescript-eslint/no-loop-func */
+import type { NodeVMOptions, VMRequire } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +21,7 @@ export class FunctionItem implements INodeType {
 		version: 1,
 		description: 'Run custom function code which gets executed once per item',
 		defaults: {
-			name: 'FunctionItem',
+			name: 'Function Item',
 			color: '#ddbb33',
 		},
 		inputs: ['main'],
@@ -121,7 +121,7 @@ return item;`,
 						if (item?.binary && item?.index !== undefined && item?.index !== null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
 								item.binary[binaryPropertyName].data = (
-									await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
 								)?.toString('base64');
 							}
 						}
@@ -155,26 +155,28 @@ return item;`,
 				const dataProxy = this.getWorkflowDataProxy(itemIndex);
 				Object.assign(sandbox, dataProxy);
 
-				const options = {
+				const options: NodeVMOptions = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
 					sandbox,
 					require: {
-						external: false as boolean | { modules: string[] },
-						builtin: [] as string[],
+						external: false,
+						builtin: [],
 					},
 				};
 
+				const vmRequire = options.require as VMRequire;
 				if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-					options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+					vmRequire.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
 				}
 
 				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					options.require.external = {
+					vmRequire.external = {
 						modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+						transitive: false,
 					};
 				}
 
-				const vm = new NodeVM(options);
+				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 				if (mode === 'manual') {
 					vm.on('console.log', this.sendMessageToUI);

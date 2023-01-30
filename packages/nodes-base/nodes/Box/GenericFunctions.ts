@@ -1,24 +1,24 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IOAuth2Options } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function boxApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -53,10 +53,9 @@ export async function boxApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -65,7 +64,7 @@ export async function boxApiRequestAllItems(
 	query.offset = 0;
 	do {
 		responseData = await boxApiRequest.call(this, method, endpoint, body, query);
-		query.offset = responseData['offset'] + query.limit;
+		query.offset = (responseData.offset as number) + query.limit;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData[propertyName].length !== 0);
 

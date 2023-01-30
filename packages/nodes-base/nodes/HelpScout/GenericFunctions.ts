@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -15,12 +16,11 @@ export async function helpscoutApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -51,10 +51,9 @@ export async function helpscoutApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -68,11 +67,7 @@ export async function helpscoutApiRequestAllItems(
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}
-	} while (
-		responseData['_links'] !== undefined &&
-		responseData['_links'].next !== undefined &&
-		responseData['_links'].next.href !== undefined
-	);
+	} while (responseData._links?.next?.href !== undefined);
 
 	return returnData;
 }

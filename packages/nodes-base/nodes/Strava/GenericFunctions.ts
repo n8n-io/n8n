@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,7 +8,8 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function stravaApiRequest(
 	this:
@@ -19,12 +20,11 @@ export async function stravaApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -51,7 +51,7 @@ export async function stravaApiRequest(
 				body.client_secret = credentials.clientSecret;
 			}
 			//@ts-ignore
-			return this.helpers?.request(options);
+			return await this.helpers?.request(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, {
@@ -67,10 +67,9 @@ export async function stravaApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

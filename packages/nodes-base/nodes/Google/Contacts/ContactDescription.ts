@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -364,9 +364,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'biographies',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -1377,9 +1374,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'biographies',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

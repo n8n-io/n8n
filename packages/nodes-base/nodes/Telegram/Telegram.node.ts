@@ -1,13 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { Readable } from 'stream';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
-	IBinaryData,
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
 
@@ -504,9 +505,6 @@ export class Telegram implements INodeType {
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
@@ -588,9 +586,6 @@ export class Telegram implements INodeType {
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
@@ -1019,9 +1014,6 @@ export class Telegram implements INodeType {
 										displayName: 'Caption',
 										name: 'caption',
 										type: 'string',
-										typeOptions: {
-											alwaysOpenEditWindow: true,
-										},
 										default: '',
 										description: 'Caption text to set, 0-1024 characters',
 									},
@@ -1057,9 +1049,6 @@ export class Telegram implements INodeType {
 				name: 'text',
 				type: 'string',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
@@ -1477,9 +1466,6 @@ export class Telegram implements INodeType {
 						displayName: 'Caption',
 						name: 'caption',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -1627,9 +1613,6 @@ export class Telegram implements INodeType {
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						displayOptions: {
 							show: {
 								'/operation': ['sendAudio'],
@@ -1683,8 +1666,8 @@ export class Telegram implements INodeType {
 		let requestMethod: string;
 		let endpoint: string;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const binaryData = this.getNodeParameter('binaryData', 0, false);
 
 		for (let i = 0; i < items.length; i++) {
@@ -1829,10 +1812,7 @@ export class Telegram implements INodeType {
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
 
-						const { disable_notification } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { disable_notification } = this.getNodeParameter('additionalFields', i);
 						if (disable_notification) {
 							body.disable_notification = true;
 						}
@@ -1981,16 +1961,15 @@ export class Telegram implements INodeType {
 
 				let responseData;
 
-				if (binaryData === true) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
-					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+				if (binaryData) {
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+					const itemBinaryData = items[i].binary![binaryPropertyName];
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
 
-					const filename = fileName || binaryData.fileName?.toString();
+					const filename = fileName || itemBinaryData.fileName?.toString();
 
-					if (!fileName && !binaryData.fileName) {
+					if (!fileName && !itemBinaryData.fileName) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`File name is needed to ${operation}. Make sure the property that holds the binary data
@@ -2001,13 +1980,20 @@ export class Telegram implements INodeType {
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
+					let uploadData: Buffer | Readable;
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+					}
+
 					const formData = {
 						...body,
 						[propertyName]: {
-							value: dataBuffer,
+							value: uploadData,
 							options: {
 								filename,
-								contentType: binaryData.mimeType,
+								contentType: itemBinaryData.mimeType,
 							},
 						},
 					};
@@ -2018,7 +2004,7 @@ export class Telegram implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'get') {
-					if (this.getNodeParameter('download', i, false) === true) {
+					if (this.getNodeParameter('download', i, false)) {
 						const filePath = responseData.result.file_path;
 
 						const credentials = await this.getCredentials('telegramApi');
@@ -2033,20 +2019,16 @@ export class Telegram implements INodeType {
 								encoding: null,
 								uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
+								useStream: true,
 							},
 						);
 
 						const fileName = filePath.split('/').pop();
-						const binaryData = await this.helpers.prepareBinaryData(
-							Buffer.from(file.body as string),
-							fileName,
-						);
+						const data = await this.helpers.prepareBinaryData(file.body, fileName);
 
 						returnData.push({
 							json: responseData,
-							binary: {
-								data: binaryData,
-							},
+							binary: { data },
 							pairedItem: { item: i },
 						});
 						continue;

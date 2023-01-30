@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MarketstackApi implements ICredentialType {
 	name = 'marketstackApi';
+
 	displayName = 'Marketstack API';
+
 	documentationUrl = 'marketstack';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

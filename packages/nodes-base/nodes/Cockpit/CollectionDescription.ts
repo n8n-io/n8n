@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const collectionOperations: INodeProperties[] = [
 	{
@@ -105,9 +105,6 @@ export const collectionFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				placeholder: '_id,name',
 				description: 'Comma-separated list of fields to get',
 			},

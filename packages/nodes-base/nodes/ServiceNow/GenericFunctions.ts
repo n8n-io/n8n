@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function serviceNowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const headers = {} as IDataObject;
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
@@ -59,10 +59,9 @@ export async function serviceNowRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;

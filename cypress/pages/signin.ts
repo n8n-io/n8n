@@ -1,4 +1,4 @@
-import { BasePage } from "./base";
+import { BasePage } from './base';
 
 export class SigninPage extends BasePage {
 	url = '/signin';
@@ -7,5 +7,5 @@ export class SigninPage extends BasePage {
 		email: () => cy.getByTestId('email'),
 		password: () => cy.getByTestId('password'),
 		submit: () => cy.get('button'),
-	}
+	};
 }

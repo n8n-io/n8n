@@ -5,7 +5,6 @@
 </template>
 
 <script lang="ts">
-
 import mixins from 'vue-typed-mixins';
 import emitter from '@/mixins/emitter';
 

@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
@@ -122,7 +123,7 @@ export async function odooJSONRPCRequest(
 			json: true,
 		};
 
-		const responce = await this.helpers.request!(options);
+		const responce = await this.helpers.request(options);
 		if (responce.error) {
 			throw new NodeApiError(this.getNode(), responce.error.data, {
 				message: responce.error.data.message,
@@ -305,7 +306,7 @@ export async function odooUpdate(
 		if (!Object.keys(fieldsToUpdate).length) {
 			throw new NodeApiError(this.getNode(), {
 				status: 'Error',
-				message: `Please specify at least one field to update`,
+				message: 'Please specify at least one field to update',
 			});
 		}
 		if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {

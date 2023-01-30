@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const noteOperations: INodeProperties[] = [
 	{
@@ -70,9 +70,6 @@ export const noteFields: INodeProperties[] = [
 		name: 'body',
 		description: 'Body of the note - max 100,000 characters',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -210,9 +207,6 @@ export const noteFields: INodeProperties[] = [
 				name: 'body',
 				description: 'Body of the note - max 100,000 characters',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

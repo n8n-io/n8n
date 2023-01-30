@@ -3,14 +3,19 @@
 import type * as express from 'express';
 import type * as FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
+import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
+import type { OptionsWithUri, OptionsWithUrl } from 'request';
+import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
+
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import { ExpressionError } from './ExpressionError';
+import type { ExpressionError } from './ExpressionError';
+import type { PathLike } from 'fs';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -27,7 +32,7 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
-export type BinaryFileType = 'text' | 'image' | 'video';
+export type BinaryFileType = 'text' | 'json' | 'image' | 'video';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
@@ -36,8 +41,14 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
-	fileSize?: string;
+	fileSize?: string; // TODO: change this to number and store the actual value
 	id?: string;
+}
+
+export interface BinaryMetadata {
+	fileName?: string;
+	mimeType?: string;
+	fileSize: number;
 }
 
 // All properties in this interface except for
@@ -129,7 +140,7 @@ export interface ICredentialNodeAccess {
 }
 
 export interface ICredentialsDecrypted {
-	id: string | number;
+	id: string;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -139,7 +150,7 @@ export interface ICredentialsDecrypted {
 }
 
 export interface ICredentialsEncrypted {
-	id?: string | number;
+	id?: string;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -326,6 +337,7 @@ export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
 	getNodeTypesToTestWith(type: string): string[];
+	getParentTypes(typeName: string): string[];
 }
 
 // The way the credentials get saved in the database (data encrypted)
@@ -547,6 +559,19 @@ export interface IGetNodeParameterOptions {
 }
 
 namespace ExecuteFunctions {
+	namespace StringReturning {
+		export type NodeParameter =
+			| 'binaryProperty'
+			| 'binaryPropertyName'
+			| 'binaryPropertyOutput'
+			| 'dataPropertyName'
+			| 'dataBinaryProperty'
+			| 'resource'
+			| 'operation'
+			| 'filePath'
+			| 'encodingType';
+	}
+
 	namespace NumberReturning {
 		export type NodeParameter = 'limit';
 	}
@@ -572,6 +597,12 @@ namespace ExecuteFunctions {
 			itemIndex?: number,
 		): T['resource'];
 
+		getNodeParameter(
+			parameterName: StringReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: string,
+			options?: IGetNodeParameterOptions,
+		): string;
 		getNodeParameter(
 			parameterName: RecordReturning.NodeParameter,
 			itemIndex: number,
@@ -599,85 +630,6 @@ namespace ExecuteFunctions {
 	};
 }
 
-export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn & {
-	continueOnFail(): boolean;
-	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
-	executeWorkflow(
-		workflowInfo: IExecuteWorkflowInfo,
-		inputData?: INodeExecutionData[],
-	): Promise<any>;
-	getContext(type: string): IContextObject;
-	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
-	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
-	getMode(): WorkflowExecuteMode;
-	getNode(): INode;
-	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
-	getWorkflowStaticData(type: string): IDataObject;
-	getRestApiUrl(): string;
-	getTimezone(): string;
-	getExecuteData(): IExecuteData;
-	getWorkflow(): IWorkflowMetadata;
-	prepareOutputData(
-		outputData: INodeExecutionData[],
-		outputIndex?: number,
-	): Promise<INodeExecutionData[][]>;
-	putExecutionToWait(waitTill: Date): Promise<void>;
-	sendMessageToUI(message: any): void;
-	sendResponse(response: IExecuteResponsePromiseData): void;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any;
-	};
-};
-
-export interface IExecuteSingleFunctions {
-	continueOnFail(): boolean;
-	evaluateExpression(expression: string, itemIndex: number | undefined): NodeParameterValueType;
-	getContext(type: string): IContextObject;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
-	getItemIndex(): number;
-	getMode(): WorkflowExecuteMode;
-	getNode(): INode;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
-	getRestApiUrl(): string;
-	getTimezone(): string;
-	getExecuteData(): IExecuteData;
-	getWorkflow(): IWorkflowMetadata;
-	getWorkflowDataProxy(): IWorkflowDataProxyData;
-	getWorkflowStaticData(type: string): IDataObject;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any;
-	};
-}
-
-export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
-	makeRoutingRequest(
-		this: IAllExecuteFunctions,
-		requestOptions: DeclarativeRestApiSettings.ResultOptions,
-	): Promise<INodeExecutionData[]>;
-}
 export interface IExecuteWorkflowInfo {
 	code?: IWorkflowBase;
 	id?: string;
@@ -690,13 +642,137 @@ export type ICredentialTestFunction = (
 
 export interface ICredentialTestFunctions {
 	helpers: {
-		[key: string]: (...args: any[]) => any;
+		request: RequestPromiseAPI;
 	};
 }
 
-export interface ILoadOptionsFunctions {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
+export interface JsonHelperFunctions {
+	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+}
+
+export interface FileSystemHelperFunctions {
+	createReadStream(path: PathLike): Promise<Readable>;
+}
+
+export interface BinaryHelperFunctions {
+	prepareBinaryData(
+		binaryData: Buffer | Readable,
+		filePath?: string,
+		mimeType?: string,
+	): Promise<IBinaryData>;
+	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
+	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+
+	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
+	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+}
+
+export interface RequestHelperFunctions {
+	request(uriOrObject: string | IDataObject | any, options?: IDataObject): Promise<any>;
+	requestWithAuthentication(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: OptionsWithUri | RequestPromiseOptions,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any>;
+
+	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+	httpRequestWithAuthentication(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: IHttpRequestOptions,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any>;
+
+	requestOAuth1(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: OptionsWithUrl | RequestPromiseOptions,
+	): Promise<any>;
+	requestOAuth2(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: OptionsWithUri | RequestPromiseOptions,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
+}
+
+export interface FunctionsBase {
+	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
+	getWorkflow(): IWorkflowMetadata;
+	getWorkflowStaticData(type: string): IDataObject;
+	getTimezone(): string;
+	getRestApiUrl(): string;
+
+	getMode?: () => WorkflowExecuteMode;
+	getActivationMode?: () => WorkflowActivateMode;
+}
+
+type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
+	[K in Keys]: NonNullable<FunctionsBase[K]>;
+};
+
+type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
+	continueOnFail(): boolean;
+	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
+	getContext(type: string): IContextObject;
+	getExecuteData(): IExecuteData;
+	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
+	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+};
+
+export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
+	BaseExecutionFunctions & {
+		executeWorkflow(
+			workflowInfo: IExecuteWorkflowInfo,
+			inputData?: INodeExecutionData[],
+		): Promise<any>;
+		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		prepareOutputData(
+			outputData: INodeExecutionData[],
+			outputIndex?: number,
+		): Promise<INodeExecutionData[][]>;
+		putExecutionToWait(waitTill: Date): Promise<void>;
+		sendMessageToUI(message: any): void;
+		sendResponse(response: IExecuteResponsePromiseData): void;
+
+		helpers: RequestHelperFunctions &
+			BinaryHelperFunctions &
+			FileSystemHelperFunctions &
+			JsonHelperFunctions & {
+				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
+				constructExecutionMetaData(
+					inputData: INodeExecutionData[],
+					options: { itemData: IPairedItemData | IPairedItemData[] },
+				): NodeExecutionWithMetadata[];
+				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+			};
+	};
+
+export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
+	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getItemIndex(): number;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
+
+	helpers: RequestHelperFunctions &
+		BinaryHelperFunctions & {
+			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
+		};
+}
+
+export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
+	makeRoutingRequest(
+		this: IAllExecuteFunctions,
+		requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	): Promise<INodeExecutionData[]>;
+}
+
+export interface ILoadOptionsFunctions extends FunctionsBase {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -707,134 +783,57 @@ export interface ILoadOptionsFunctions {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
-	getTimezone(): string;
-	getRestApiUrl(): string;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		// TODO: Remove from here. Add it only now to LoadOptions as many nodes do import
-		//       from n8n-workflow instead of n8n-core
-		requestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: any,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<any>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: ((...args: any[]) => any) | undefined;
-	};
+	helpers: RequestHelperFunctions;
 }
 
-export interface IHookFunctions {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getMode(): WorkflowExecuteMode;
-	getActivationMode(): WorkflowActivateMode;
-	getNode(): INode;
-	getNodeWebhookUrl: (name: string) => string | undefined;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
-	getTimezone(): string;
-	getWebhookDescription(name: string): IWebhookDescription | undefined;
-	getWebhookName(): string;
-	getWorkflow(): IWorkflowMetadata;
-	getWorkflowStaticData(type: string): IDataObject;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any;
-	};
-}
-
-export interface IPollFunctions {
+export interface IPollFunctions
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getMode(): WorkflowExecuteMode;
-	getActivationMode(): WorkflowActivateMode;
-	getNode(): INode;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	getRestApiUrl(): string;
-	getTimezone(): string;
-	getWorkflow(): IWorkflowMetadata;
-	getWorkflowStaticData(type: string): IDataObject;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any;
-	};
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
 }
 
-export interface ITriggerFunctions {
+export interface ITriggerFunctions
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getMode(): WorkflowExecuteMode;
-	getActivationMode(): WorkflowActivateMode;
-	getNode(): INode;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	getRestApiUrl(): string;
-	getTimezone(): string;
-	getWorkflow(): IWorkflowMetadata;
-	getWorkflowStaticData(type: string): IDataObject;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any;
-	};
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
 }
 
-export interface IWebhookFunctions {
+export interface IHookFunctions
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	getWebhookName(): string;
+	getWebhookDescription(name: string): IWebhookDescription | undefined;
+	getNodeWebhookUrl: (name: string) => string | undefined;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
+	helpers: RequestHelperFunctions;
+}
+
+export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getHeaderData(): IncomingHttpHeaders;
-	getMode(): WorkflowExecuteMode;
-	getNode(): INode;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -845,26 +844,12 @@ export interface IWebhookFunctions {
 	getQueryData(): object;
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
-	getTimezone(): string;
 	getWebhookName(): string;
-	getWorkflowStaticData(type: string): IDataObject;
-	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any;
-	};
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -916,6 +901,7 @@ export interface IBinaryKeyData {
 export interface IPairedItemData {
 	item: number;
 	input?: number; // If undefined "0" gets used
+	sourceOverwrite?: ISourceData;
 }
 
 export interface INodeExecutionData {
@@ -994,7 +980,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1005,7 +991,7 @@ export interface ILoadOptions {
 }
 
 export interface INodePropertyTypeOptions {
-	alwaysOpenEditWindow?: boolean; // Supported by: string
+	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorTypes; // Supported by: string
 	loadOptionsDependsOn?: string[]; // Supported by: options
@@ -1053,6 +1039,7 @@ export interface INodeProperties {
 	>;
 	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
+	requiresDataPath?: 'single' | 'multiple';
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -1145,6 +1132,10 @@ export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 export interface IParameterDependencies {
 	[key: string]: string[];
 }
+
+export type IParameterLabel = {
+	size?: 'small' | 'medium';
+};
 
 export interface IPollResponse {
 	closeFunction?: () => Promise<void>;
@@ -1283,6 +1274,7 @@ export type PostReceiveAction =
 			response: IN8nHttpFullResponse,
 	  ) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
+	| IPostReceiveFilter
 	| IPostReceiveLimit
 	| IPostReceiveRootProperty
 	| IPostReceiveSet
@@ -1312,7 +1304,7 @@ export interface IPostReceiveBase {
 	type: string;
 	enabled?: boolean | string;
 	properties: {
-		[key: string]: string | number | IDataObject;
+		[key: string]: string | number | boolean | IDataObject;
 	};
 	errorMessage?: string;
 }
@@ -1321,6 +1313,13 @@ export interface IPostReceiveBinaryData extends IPostReceiveBase {
 	type: 'binaryData';
 	properties: {
 		destinationProperty: string;
+	};
+}
+
+export interface IPostReceiveFilter extends IPostReceiveBase {
+	type: 'filter';
+	properties: {
+		pass: boolean | string;
 	};
 }
 
@@ -1357,6 +1356,12 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	properties: {
 		key: string;
 	};
+}
+
+export interface INodeActionTypeDescription extends INodeTypeDescription {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
@@ -1397,6 +1402,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	actions?: INodeActionTypeDescription[];
 }
 
 export interface INodeHookDescription {
@@ -1453,7 +1459,7 @@ export interface IWorkflowDataProxyData {
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
 
 export interface IWorkflowMetadata {
-	id?: number | string;
+	id?: string;
 	name?: string;
 	active: boolean;
 }
@@ -1507,6 +1513,7 @@ export type LoadedNodesAndCredentials = {
 export interface INodesAndCredentials {
 	known: KnownNodesAndCredentials;
 	loaded: LoadedNodesAndCredentials;
+	credentialTypes: ICredentialTypes;
 }
 
 export interface IRun {
@@ -1594,7 +1601,7 @@ export interface IWaitingForExecutionSource {
 }
 
 export interface IWorkflowBase {
-	id?: number | string | any;
+	id?: string;
 	name: string;
 	active: boolean;
 	createdAt: Date;
@@ -1629,7 +1636,7 @@ export interface IWorkflowExecuteAdditionalData {
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		options?: {
+		options: {
 			parentWorkflowId?: string;
 			inputData?: INodeExecutionData[];
 			parentExecutionId?: string;

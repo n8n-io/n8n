@@ -1,8 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { OptionsWithUri } from 'request';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import {
-	deepCopy,
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -14,6 +13,7 @@ import {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import {
 	contactDescription,
@@ -26,8 +26,8 @@ import {
 	opportunityOperations,
 } from './descriptions';
 
+import type { IOdooFilterOperations } from './GenericFunctions';
 import {
-	IOdooFilterOperations,
 	odooCreate,
 	odooDelete,
 	odooGet,
@@ -269,11 +269,11 @@ export class Odoo implements INodeType {
 						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
 					};
-					const result = await this.helpers.request!(options);
+					const result = await this.helpers.request(options);
 					if (result.error || !result.result) {
 						return {
 							status: 'Error',
-							message: `Credentials are not valid`,
+							message: 'Credentials are not valid',
 						};
 					} else if (result.error) {
 						return {
@@ -301,8 +301,8 @@ export class Odoo implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const credentials = await this.getCredentials('odooApi');
 		const url = (credentials.url as string).replace(/\/$/, '');

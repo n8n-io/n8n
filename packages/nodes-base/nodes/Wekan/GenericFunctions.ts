@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -10,7 +10,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('wekanApi');
 

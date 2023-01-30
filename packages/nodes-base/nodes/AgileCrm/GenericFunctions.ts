@@ -1,28 +1,27 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IContactUpdate } from './ContactInterface';
+import type { IContactUpdate } from './ContactInterface';
 
-import { IFilterRules, ISearchConditions } from './FilterInterface';
+import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	sendAsForm?: boolean,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
@@ -50,7 +49,7 @@ export async function agileCrmApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -60,12 +59,10 @@ export async function agileCrmApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	sendAsForm?: boolean,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	// https://github.com/agilecrm/rest-api#11-listing-contacts-
 
@@ -101,11 +98,9 @@ export async function agileCrmApiRequestUpdate(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method = 'PUT',
 	endpoint?: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	_query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const baseUri = `https://${credentials.subdomain}.agilecrm.com/dev/`;
@@ -124,7 +119,7 @@ export async function agileCrmApiRequestUpdate(
 	};
 
 	const successfulUpdates = [];
-	let lastSuccesfulUpdateReturn: any; // tslint:disable-line:no-any
+	let lastSuccesfulUpdateReturn: any;
 	const payload: IContactUpdate = body;
 
 	try {
@@ -132,10 +127,9 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.properties) {
 			options.body.properties = payload.properties;
 			options.uri = baseUri + 'api/contacts/edit-properties';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
-			// tslint:disable-next-line:no-any
 			payload.properties?.map((property: any) => {
 				successfulUpdates.push(`${property.name}`);
 			});
@@ -145,7 +139,7 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.lead_score) {
 			options.body.lead_score = payload.lead_score;
 			options.uri = baseUri + 'api/contacts/edit/lead-score';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('lead_score');
 
@@ -154,7 +148,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.tags) {
 			options.body.tags = payload.tags;
 			options.uri = baseUri + 'api/contacts/edit/tags';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			payload.tags?.map((tag: string) => {
 				successfulUpdates.push(`(Tag) ${tag}`);
@@ -165,7 +159,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.star_value) {
 			options.body.star_value = payload.star_value;
 			options.uri = baseUri + 'api/contacts/edit/add-star';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('star_value');
 
@@ -186,7 +180,6 @@ export async function agileCrmApiRequestUpdate(
 	}
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -200,9 +193,10 @@ export function validateJSON(json: string | undefined): any {
 export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject {
 	const rules = [];
 
+	// eslint-disable-next-line @typescript-eslint/no-for-in-array
 	for (const key in conditions) {
 		if (conditions.hasOwnProperty(key)) {
-			const searchConditions: ISearchConditions = conditions[key] as ISearchConditions;
+			const searchConditions: ISearchConditions = conditions[key];
 			const rule: IFilterRules = {
 				LHS: searchConditions.field,
 				CONDITION: searchConditions.condition_type,

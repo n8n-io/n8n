@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import { flow, isEmpty, omit } from 'lodash';
 
-import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 /**
  * Make an API request to Stripe
@@ -29,16 +29,6 @@ export async function stripeApiRequest(
 
 	return this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
 }
-
-/**
- * Make n8n's charge fields compliant with the Stripe API request object.
- */
-export const adjustChargeFields = flow([adjustShipping, adjustMetadata]);
-
-/**
- * Make n8n's customer fields compliant with the Stripe API request object.
- */
-export const adjustCustomerFields = flow([adjustShipping, adjustAddress, adjustMetadata]);
 
 /**
  * Convert n8n's address object into a Stripe API request shipping object.
@@ -92,6 +82,16 @@ function adjustShipping(shippingFields: {
 }
 
 /**
+ * Make n8n's charge fields compliant with the Stripe API request object.
+ */
+export const adjustChargeFields = flow([adjustShipping, adjustMetadata]);
+
+/**
+ * Make n8n's customer fields compliant with the Stripe API request object.
+ */
+export const adjustCustomerFields = flow([adjustShipping, adjustAddress, adjustMetadata]);
+
+/**
  * Load a resource so it can be selected by name from a dropdown.
  */
 export async function loadResource(
@@ -119,7 +119,7 @@ export async function handleListing(
 	let responseData;
 
 	const returnAll = this.getNodeParameter('returnAll', i);
-	const limit = this.getNodeParameter('limit', i, 0) as number;
+	const limit = this.getNodeParameter('limit', i, 0);
 
 	do {
 		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);

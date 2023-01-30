@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IPollFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IPollFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -33,7 +33,6 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query = query || {};
 
@@ -75,7 +74,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};

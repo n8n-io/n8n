@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
 
@@ -142,8 +142,8 @@ export class GoogleBigQuery implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'record') {
 			// *********************************************************************
@@ -220,7 +220,7 @@ export class GoogleBigQuery implements INodeType {
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				let fields;
 
-				if (simple === true) {
+				if (simple) {
 					const { schema } = await googleApiRequest.call(
 						this,
 						'GET',

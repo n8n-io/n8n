@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -133,6 +133,7 @@ export class Zoom implements INodeType {
 			// 	...webinarFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the timezones to display them to user so that he can select them easily
@@ -156,8 +157,8 @@ export class Zoom implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -320,7 +321,7 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'POST', `/users/me/meetings`, body, qs);
+						responseData = await zoomApiRequest.call(this, 'POST', '/users/me/meetings', body, qs);
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate

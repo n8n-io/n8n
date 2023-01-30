@@ -1,13 +1,12 @@
 <template>
 	<div :class="$style.list">
 		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
-			<NodeIcon
-				:nodeType="node"
-				:size="size === 'md'? 24: 18"
-				:showTooltip="true"
-			/>
+			<NodeIcon :nodeType="node" :size="size === 'md' ? 24 : 18" :showTooltip="true" />
 		</div>
-		<div :class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]" v-if="filteredCoreNodes.length > limit + 1">
+		<div
+			:class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]"
+			v-if="filteredCoreNodes.length > limit + 1"
+		>
 			+{{ hiddenNodes }}
 		</div>
 	</div>

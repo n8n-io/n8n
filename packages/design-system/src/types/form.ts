@@ -1,8 +1,8 @@
-export type Rule = { name: string; config?: any };
+export type Rule = { name: string; config?: unknown };
 
 export type RuleGroup = {
 	rules: Array<Rule | RuleGroup>;
-	defaultError?: { messageKey: string; options?: any };
+	defaultError?: { messageKey: string; options?: unknown };
 };
 
 export type Validatable = string | number | boolean | null | undefined;
@@ -10,8 +10,13 @@ export type Validatable = string | number | boolean | null | undefined;
 export type IValidator = {
 	validate: (
 		value: Validatable,
-		config: any,
-	) => false | { messageKey: string; options?: any } | null;
+		config: unknown,
+	) => false | { messageKey: string; options?: unknown } | null;
+};
+
+export type FormState = {
+	isTyping: boolean;
+	hasBlutted: boolean;
 };
 
 export type IFormInput = {
@@ -19,7 +24,16 @@ export type IFormInput = {
 	initialValue?: string | number | boolean | null;
 	properties: {
 		label?: string;
-		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info' | 'checkbox';
+		type?:
+			| 'text'
+			| 'email'
+			| 'password'
+			| 'select'
+			| 'multi-select'
+			| 'number'
+			| 'info'
+			| 'checkbox'
+			| 'toggle';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;
@@ -40,6 +54,9 @@ export type IFormInput = {
 			| 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
 		capitalize?: boolean;
 		focusInitially?: boolean;
+		disabled?: boolean;
+		labelSize?: 'small' | 'medium' | 'large';
+		labelAlignment?: 'left' | 'right' | 'center';
 	};
 	shouldDisplay?: (values: { [key: string]: unknown }) => boolean;
 };

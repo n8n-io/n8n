@@ -1,18 +1,18 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
 
-import { IField, IWebhook } from './Interface';
+import type { IField, IWebhook } from './Interface';
 
 import { randomBytes } from 'crypto';
 
@@ -114,10 +114,10 @@ export class WufooTrigger implements INodeType {
 				const endpoint = `forms/${formHash}/webhooks.json`;
 
 				// Handshake key for webhook endpoint protection
-				webhookData.handshakeKey = randomBytes(20).toString('hex') as string;
+				webhookData.handshakeKey = randomBytes(20).toString('hex');
 				const body: IWebhook = {
 					url: webhookUrl as string,
-					handshakeKey: webhookData.handshakeKey as string,
+					handshakeKey: webhookData.handshakeKey,
 					metadata: true,
 				};
 
@@ -154,7 +154,6 @@ export class WufooTrigger implements INodeType {
 			return {};
 		}
 
-		// tslint:disable-next-line:no-any
 		const fieldsObject = jsonParse<any>(req.body.FieldStructure, {
 			errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 		});
@@ -204,7 +203,7 @@ export class WufooTrigger implements INodeType {
 			}
 		});
 
-		if (onlyAnswers === false) {
+		if (!onlyAnswers) {
 			returnObject = {
 				createdBy: req.body.CreatedBy as string,
 				entryId: req.body.EntryId as number,

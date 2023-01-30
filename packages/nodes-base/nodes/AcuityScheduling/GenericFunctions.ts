@@ -1,12 +1,13 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function acuitySchedulingApiRequest(
 	this:
@@ -17,12 +18,10 @@ export async function acuitySchedulingApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -47,10 +46,10 @@ export async function acuitySchedulingApiRequest(
 				password: credentials.apiKey as string,
 			};
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			delete options.auth;
-			return await this.helpers.requestOAuth2!.call(
+			return await this.helpers.requestOAuth2.call(
 				this,
 				'acuitySchedulingOAuth2Api',
 				options,

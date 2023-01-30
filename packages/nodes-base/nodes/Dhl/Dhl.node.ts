@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -82,7 +82,7 @@ export class Dhl implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: `Recipient's Postal Code`,
+						displayName: "Recipient's Postal Code",
 						name: 'recipientPostalCode',
 						type: 'string',
 						default: '',
@@ -124,8 +124,8 @@ export class Dhl implements INodeType {
 		const returnData: IDataObject[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -140,7 +140,7 @@ export class Dhl implements INodeType {
 
 						Object.assign(qs, options);
 
-						responseData = await dhlApiRequest.call(this, 'GET', `/track/shipments`, {}, qs);
+						responseData = await dhlApiRequest.call(this, 'GET', '/track/shipments', {}, qs);
 
 						returnData.push(...responseData.shipments);
 					}

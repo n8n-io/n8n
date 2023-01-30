@@ -1,7 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { promisify } from 'util';
 
@@ -300,15 +305,15 @@ export class ICalendar implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		if (operation === 'createEventFile') {
 			for (let i = 0; i < length; i++) {
 				const title = this.getNodeParameter('title', i) as string;
 				const allDay = this.getNodeParameter('allDay', i) as boolean;
 				const start = this.getNodeParameter('start', i) as string;
 				let end = this.getNodeParameter('end', i) as string;
-				end = allDay ? (moment(end).utc().add(1, 'day').format() as string) : end;
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				end = allDay ? moment(end).utc().add(1, 'day').format() : end;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				let fileName = 'event.ics';
 

@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -95,7 +95,6 @@ export class CalTrigger implements INodeType {
 						description: 'Template to customize the webhook payload',
 						default: '',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 4,
 						},
 					},

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -16,7 +16,7 @@ export async function getAll(
 
 	//limit parameters
 	const simplifyOutput: boolean = this.getNodeParameter('simplifyOutput', index) as boolean;
-	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false);
 	const limit: number = this.getNodeParameter('limit', 0, 0);
 
 	//endpoint

@@ -1,4 +1,5 @@
 name: Docker Nightly Image CI
+run-name: Build ${{ inputs.branch }} - ${{ inputs.user }}
 
 on:
   schedule:
@@ -22,6 +23,14 @@ on:
         type: boolean
         required: true
         default: false
+      user:
+        description: ''
+        required: false
+        default: 'schedule'
+      start-url:
+        description: 'URL to call after workflow is kicked off.'
+        required: false
+        default: ''
       success-url:
         description: 'URL to call after Docker Image got built successfully.'
         required: false
@@ -32,6 +41,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Call Start URL - optionally
+        run: |
+          [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
+        shell: bash
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
