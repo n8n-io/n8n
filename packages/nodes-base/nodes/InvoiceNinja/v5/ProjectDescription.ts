@@ -102,6 +102,34 @@ export const projectFields: INodeProperties[] = [
 	/*                                  project:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['project'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Search',
+				name: 'filter',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Project Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -130,6 +158,34 @@ export const projectFields: INodeProperties[] = [
 					},
 				],
 				default: 'invoices',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						perPage: [false],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given perPage',
+			},
+			{
+				displayName: 'Limit',
+				name: 'perPage',
+				type: 'number',
+				displayOptions: {
+					show: {
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
 			},
 		],
 	},

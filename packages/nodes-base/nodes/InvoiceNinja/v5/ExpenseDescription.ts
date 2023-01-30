@@ -69,6 +69,96 @@ export const expenseFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  expense:getAll                             */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['expense'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Search',
+				name: 'filter',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Expense Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Client ID',
+				name: 'clientId',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['getAll'],
+				resource: ['expense'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Invoices',
+						value: 'invoices',
+					},
+				],
+				default: 'invoices',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						perPage: [false],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given perPage',
+			},
+			{
+				displayName: 'Limit',
+				name: 'perPage',
+				type: 'number',
+				displayOptions: {
+					show: {
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 expense:create                             */
 	/* -------------------------------------------------------------------------- */

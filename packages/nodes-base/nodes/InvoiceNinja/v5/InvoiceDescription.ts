@@ -110,6 +110,52 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                  invoice:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Search',
+				name: 'filter',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Invoice Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Without Deleted Clients',
+				name: ' withoutDeletedClients',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Upcomming',
+				name: ' upcomming',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Overdue',
+				name: ' overdue',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -118,21 +164,15 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['getAll'],
 				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Invoice Number',
-				name: 'number',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Include',
 				name: 'include',
-				type: 'options',
+				type: 'multiOptions',
 				options: [
 					{
 						name: 'Client',
@@ -140,6 +180,34 @@ export const invoiceFields: INodeProperties[] = [
 					},
 				],
 				default: 'client',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						perPage: [false],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given perPage',
+			},
+			{
+				displayName: 'Limit',
+				name: 'perPage',
+				type: 'number',
+				displayOptions: {
+					show: {
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
 			},
 		],
 	},

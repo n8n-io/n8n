@@ -104,6 +104,34 @@ export const quoteFields: INodeProperties[] = [
 	/*                                  quote:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['getAll'],
+				resource: ['quote'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Search',
+				name: 'filter',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Quote Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -118,15 +146,9 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Quote Number',
-				name: 'quoteNumber',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Include',
 				name: 'include',
-				type: 'options',
+				type: 'multiOptions',
 				options: [
 					{
 						name: 'Client',
@@ -134,6 +156,34 @@ export const quoteFields: INodeProperties[] = [
 					},
 				],
 				default: 'client',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						perPage: [false],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given perPage',
+			},
+			{
+				displayName: 'Limit',
+				name: 'perPage',
+				type: 'number',
+				displayOptions: {
+					show: {
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
 			},
 		],
 	},

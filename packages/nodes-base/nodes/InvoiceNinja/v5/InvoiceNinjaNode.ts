@@ -176,7 +176,7 @@ export const InvoiceNinjaV5 = {
 					'/invoices',
 				);
 				for (const invoice of invoices) {
-					const invoiceName = (invoice.invoice_number || invoice.number) as string;
+					const invoiceName = invoice.number as string;
 					const invoiceId = invoice.id as string;
 					returnData.push({
 						name: invoiceName,
@@ -496,18 +496,40 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.clientId) {
+							qs.client_id = filters.clientId as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
+						if (filters.name) {
+							qs.name = filters.name as string;
+						}
+						if (filters.email) {
+							qs.email = filters.email as string;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/clients',
-							{},
-							qs,
-						);
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/clients',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/clients', {}, qs);
+							responseData = responseData.data;
+						}
 					}
 					if (operation === 'delete') {
 						const clientId = that.getNodeParameter('clientId', i) as string;
@@ -778,14 +800,34 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/expenses',
-							{},
-							qs,
-						);
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
+						if (filters.clientId) {
+							qs.client_id = filters.clientId as string;
+						}
+						const options = that.getNodeParameter('options', i);
+						if (options.include) {
+							qs.include = options.include as string;
+						}
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/expenses',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/expenses', {}, qs);
+							responseData = responseData.data;
+						}
 					}
 					if (operation === 'delete') {
 						const expenseId = that.getNodeParameter('expenseId', i) as string;
@@ -1021,21 +1063,40 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
+						if (filters.withoutDeletedClients) {
+							qs.without_deleted_clients = filters.withoutDeletedClients as boolean;
+						}
+						if (filters.upcomming) {
+							qs.upcomming = filters.upcomming as boolean;
+						}
+						if (filters.overdue) {
+							qs.overdue = filters.overdue as boolean;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						if (options.number) {
-							qs.invoice_number = options.number as string;
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/invoices',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/invoices', {}, qs);
+							responseData = responseData.data;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/invoices',
-							{},
-							qs,
-						);
 					}
 					if (operation === 'delete') {
 						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
@@ -1158,18 +1219,31 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/payments',
-							{},
-							qs,
-						);
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/payments',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/payments', {}, qs);
+							responseData = responseData.data;
+						}
 					}
 					if (operation === 'delete') {
 						const paymentId = that.getNodeParameter('paymentId', i) as string;
@@ -1305,18 +1379,31 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/projects',
-							{},
-							qs,
-						);
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/projects',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/projects', {}, qs);
+							responseData = responseData.data;
+						}
 					}
 					if (operation === 'delete') {
 						const projectId = that.getNodeParameter('projectId', i) as string;
@@ -1512,21 +1599,31 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						if (options.number) {
-							qs.invoice_number = options.number as string;
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/invoices',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/invoices', {}, qs);
+							responseData = responseData.data;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/quotes',
-							{},
-							qs,
-						);
 					}
 					if (operation === 'delete') {
 						const quoteId = that.getNodeParameter('quoteId', i) as string;
@@ -1660,18 +1757,31 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/tasks',
-							{},
-							qs,
-						);
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/tasks',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/tasks', {}, qs);
+							responseData = responseData.data;
+						}
 					}
 					if (operation === 'delete') {
 						const taskId = that.getNodeParameter('taskId', i) as string;
@@ -1859,18 +1969,31 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
 						const options = that.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						responseData = await invoiceNinjaApiRequestAllItems.call(
-							that,
-							'data',
-							'GET',
-							'/vendors',
-							{},
-							qs,
-						);
+						if (options.returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/vendors',
+								{},
+								qs,
+							);
+						} else {
+							if(options.perPage) qs.per_page = options.perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/vendors', {}, qs);
+							responseData = responseData.data;
+						}
 					}
 					if (operation === 'delete') {
 						const vendorId = that.getNodeParameter('vendorId', i) as string;
