@@ -96,7 +96,9 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Plaintext') {
-					return acc.push({ kind: 'plaintext', from, to, plaintext: text }), acc;
+					acc.push({ kind: 'plaintext', from, to, plaintext: text });
+
+					return acc;
 				}
 
 				const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
