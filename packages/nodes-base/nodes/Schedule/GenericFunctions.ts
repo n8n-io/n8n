@@ -20,7 +20,7 @@ export function recurencyCheck(
 	) {
 		if (
 			lastExecution === undefined || // First time executing this rule
-			moment.tz(timezone).week() >= (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
+			moment.tz(timezone).week() === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
 			moment.tz(timezone).week() === lastExecution // Trigger on multiple days in the same week
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).week();
@@ -29,7 +29,7 @@ export function recurencyCheck(
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'days') {
 		if (
 			lastExecution === undefined ||
-			moment.tz(timezone).dayOfYear() >= (intervalSize + lastExecution) % 365
+			moment.tz(timezone).dayOfYear() === (intervalSize + lastExecution) % 365
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).dayOfYear();
 			return true;
@@ -37,7 +37,7 @@ export function recurencyCheck(
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'hours') {
 		if (
 			lastExecution === undefined ||
-			moment.tz(timezone).hour() >= (intervalSize + lastExecution) % 24
+			moment.tz(timezone).hour() === (intervalSize + lastExecution) % 24
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).hour();
 			return true;
@@ -45,7 +45,7 @@ export function recurencyCheck(
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'months') {
 		if (
 			lastExecution === undefined ||
-			moment.tz(timezone).month() >= (intervalSize + lastExecution) % 12
+			moment.tz(timezone).month() === (intervalSize + lastExecution) % 12
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).month();
 			return true;
