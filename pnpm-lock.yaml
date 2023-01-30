@@ -15,7 +15,7 @@ overrides:
 
 patchedDependencies:
   element-ui@2.15.12:
-    hash: chf3rdrkdm2au7cxasektiaxfy
+    hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
 
 importers:
