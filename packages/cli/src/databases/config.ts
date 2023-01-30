@@ -10,7 +10,6 @@ import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
 import type { DatabaseType } from '@/Interfaces';
 import config from '@/config';
-import { getConfigValue } from '@/GenericHelpers';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
 
@@ -43,12 +42,12 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	};
 };
 
-export const getOptionOverrides = async (dbType: 'postgresdb' | 'mysqldb') => ({
-	database: (await getConfigValue(`database.${dbType}.database`)) as string,
-	host: (await getConfigValue(`database.${dbType}.host`)) as string,
-	port: (await getConfigValue(`database.${dbType}.port`)) as number,
-	username: (await getConfigValue(`database.${dbType}.user`)) as string,
-	password: (await getConfigValue(`database.${dbType}.password`)) as string,
+export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
+	database: config.getEnv(`database.${dbType}.database`),
+	host: config.getEnv(`database.${dbType}.host`),
+	port: config.getEnv(`database.${dbType}.port`),
+	username: config.getEnv(`database.${dbType}.user`),
+	password: config.getEnv(`database.${dbType}.password`),
 });
 
 export const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
