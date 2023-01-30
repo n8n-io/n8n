@@ -101,6 +101,7 @@ export async function invoiceNinjaApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
+	max: number = 0
 ) {
 	const returnData: IDataObject[] = [];
 

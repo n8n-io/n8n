@@ -125,7 +125,7 @@ export const InvoiceNinjaV5 = {
 
 	methods: {
 		loadOptions: {
-			// Get all the available clients to display them to user so that he can
+			// Get all the available users to display them to user so that he can
 			// select them easily
 			async getUsersV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -171,6 +171,27 @@ export const InvoiceNinjaV5 = {
 					returnData.push({
 						name: projectName,
 						value: projectId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available designs to display them to user so that he can
+			// select them easily
+			async getDesignsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let designs = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					'/designs',
+				);
+				designs = designs.filter(e => !e.is_deleted);
+				for (const design of designs) {
+					const designName = design.name as string;
+					const designId = design.id as string;
+					returnData.push({
+						name: designName,
+						value: designId,
 					});
 				}
 				return returnData;
@@ -228,12 +249,13 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getExpenseCategoriesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const categories = await invoiceNinjaApiRequestAllItems.call(
+				let categories = await invoiceNinjaApiRequestAllItems.call(
 					this,
 					'data',
 					'GET',
 					'/expense_categories',
 				);
+				categories = categories.filter(e => !e.is_deleted);
 				for (const category of categories) {
 					const categoryName = category.name as string;
 					const categoryId = category.id as string;
@@ -244,16 +266,17 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available expense categories to display them to user so that he can
+			// Get all the available bank integrations to display them to user so that he can
 			// select them easily
 			async getBanksV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const banks = await invoiceNinjaApiRequestAllItems.call(
+				let banks = await invoiceNinjaApiRequestAllItems.call(
 					this,
 					'data',
 					'GET',
 					'/bank_integrations',
 				);
+				banks = banks.filter(e => !e.is_deleted);
 				for (const bank of banks) {
 					const providerName = bank.provider_name as string;
 					const accountName = bank.bank_account_name as string;
@@ -265,7 +288,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available expense categories to display them to user so that he can
+			// Get all the available recuring expenses to display them to user so that he can
 			// select them easily
 			async getRecuringExpensesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -857,23 +880,50 @@ export const InvoiceNinjaV5 = {
 					if (operation === 'create') {
 						const additionalFields = that.getNodeParameter('additionalFields', i);
 						const body: IInvoice = {};
-						if (additionalFields.client) {
-							body.client_id = additionalFields.client as string;
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
 						}
-						if (additionalFields.auto_bill_enabledEnabled) {
-							body.auto_bill_enabled = additionalFields.auto_bill_enabledEnabled as boolean;
+						if (additionalFields.projectId) {
+							body.project_id = additionalFields.projectId as string;
 						}
-						if (additionalFields.dueDate) {
-							body.due_date = additionalFields.dueDate as string;
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
 						}
-						if (additionalFields.date) {
-							body.date = additionalFields.date as string;
+						if (additionalFields.clientId) {
+							body.client_id = additionalFields.clientId as string;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.designId) {
+							body.design_id = additionalFields.designId as string;
+						}
+						if (additionalFields.recurringId) {
+							body.recurring_id = additionalFields.recurringId as string;
 						}
 						if (additionalFields.number) {
 							body.number = additionalFields.number as string;
 						}
-						if (additionalFields.status_id) {
-							body.status_id = additionalFields.status_id as string;
+						if (additionalFields.discount) {
+							body.discount = additionalFields.discount as number;
+						}
+						if (additionalFields.poNumber) {
+							body.po_number = additionalFields.poNumber as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.dueDate) {
+							body.due_date = additionalFields.dueDate as string;
+						}
+						if (additionalFields.terms) {
+							body.terms = additionalFields.terms as string;
+						}
+						if (additionalFields.usesInclusiveTaxes) {
+							body.uses_inclusive_taxes = additionalFields.usesInclusiveTaxes as boolean;
 						}
 						if (additionalFields.isAmountDiscount) {
 							body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
@@ -905,13 +955,13 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.taxName3) {
 							body.tax_name3 = additionalFields.taxName3 as string;
 						}
-						if (additionalFields.taxtRate1) {
+						if (additionalFields.taxRate1) {
 							body.tax_rate1 = additionalFields.taxtRate1 as number;
 						}
-						if (additionalFields.taxtRate2) {
+						if (additionalFields.taxRate2) {
 							body.tax_rate2 = additionalFields.taxtRate2 as number;
 						}
-						if (additionalFields.taxtRate3) {
+						if (additionalFields.taxRate3) {
 							body.tax_rate3 = additionalFields.taxtRate3 as number;
 						}
 						if (additionalFields.customValue1) {
@@ -926,20 +976,30 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.customValue4) {
 							body.custom_value4 = additionalFields.customValue4 as string;
 						}
+						if (additionalFields.autoBillEnabled) {
+							body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
+						}
 						const invoceItemsValues = (that.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
 						if (invoceItemsValues) {
 							const invoiceItems: IItem[] = [];
 							for (const itemValue of invoceItemsValues) {
 								const item: IItem = {
-									cost: itemValue.cost as number,
-									notes: itemValue.description as string,
-									product_key: itemValue.service as string,
 									quantity: itemValue.quantity as number,
+									cost: itemValue.cost as number,
+									product_key: itemValue.service as string,
+									notes: itemValue.description as string,
+									discount: itemValue.discount as number,
 									tax_rate1: itemValue.taxRate1 as number,
 									tax_rate2: itemValue.taxRate2 as number,
+									tax_rate3: itemValue.taxRate3 as number,
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
+									tax_name3: itemValue.taxName3 as string,
+									custom_value1: itemValue.customValue1 as string,
+									custom_value2: itemValue.customValue2 as string,
+									custom_value3: itemValue.customValue3 as string,
+									custom_value4: itemValue.customValue4 as string,
 								};
 								invoiceItems.push(item);
 							}
@@ -957,35 +1017,50 @@ export const InvoiceNinjaV5 = {
 						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
 						const additionalFields = that.getNodeParameter('additionalFields', i);
 						const body: IInvoice = {};
-						if (additionalFields.client) {
-							body.client_id = additionalFields.client as string;
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
 						}
-						if (additionalFields.auto_bill_enabledEnabled) {
-							body.auto_bill_enabled = additionalFields.auto_bill_enabledEnabled as boolean;
+						if (additionalFields.projectId) {
+							body.project_id = additionalFields.projectId as string;
 						}
-						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as string;
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
 						}
-						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as string;
+						if (additionalFields.clientId) {
+							body.client_id = additionalFields.clientId as string;
 						}
-						if (additionalFields.customValue3) {
-							body.custom_value3 = additionalFields.customValue3 as string;
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
 						}
-						if (additionalFields.customValue4) {
-							body.custom_value4 = additionalFields.customValue4 as string;
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
 						}
-						if (additionalFields.dueDate) {
-							body.due_date = additionalFields.dueDate as string;
+						if (additionalFields.designId) {
+							body.design_id = additionalFields.designId as string;
 						}
-						if (additionalFields.invoiceDate) {
-							body.date = additionalFields.invoiceDate as string;
+						if (additionalFields.recurringId) {
+							body.recurring_id = additionalFields.recurringId as string;
 						}
 						if (additionalFields.number) {
 							body.number = additionalFields.number as string;
 						}
-						if (additionalFields.status_id) {
-							body.status_id = additionalFields.status_id as string;
+						if (additionalFields.discount) {
+							body.discount = additionalFields.discount as number;
+						}
+						if (additionalFields.poNumber) {
+							body.po_number = additionalFields.poNumber as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.dueDate) {
+							body.due_date = additionalFields.dueDate as string;
+						}
+						if (additionalFields.terms) {
+							body.terms = additionalFields.terms as string;
+						}
+						if (additionalFields.usesInclusiveTaxes) {
+							body.uses_inclusive_taxes = additionalFields.usesInclusiveTaxes as boolean;
 						}
 						if (additionalFields.isAmountDiscount) {
 							body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
@@ -998,6 +1073,9 @@ export const InvoiceNinjaV5 = {
 						}
 						if (additionalFields.poNumber) {
 							body.po_number = additionalFields.poNumber as string;
+						}
+						if (additionalFields.discount) {
+							body.discount = additionalFields.discount as number;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
@@ -1014,17 +1092,29 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.taxName3) {
 							body.tax_name3 = additionalFields.taxName3 as string;
 						}
-						if (additionalFields.taxtRate1) {
+						if (additionalFields.taxRate1) {
 							body.tax_rate1 = additionalFields.taxtRate1 as number;
 						}
-						if (additionalFields.taxtRate2) {
+						if (additionalFields.taxRate2) {
 							body.tax_rate2 = additionalFields.taxtRate2 as number;
 						}
-						if (additionalFields.taxtRate3) {
+						if (additionalFields.taxRate3) {
 							body.tax_rate3 = additionalFields.taxtRate3 as number;
 						}
-						if (additionalFields.discount) {
-							body.discount = additionalFields.discount as number;
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
+						}
+						if (additionalFields.autoBillEnabled) {
+							body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 						}
 						const invoceItemsValues = (that.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
@@ -1032,18 +1122,24 @@ export const InvoiceNinjaV5 = {
 							const invoiceItems: IItem[] = [];
 							for (const itemValue of invoceItemsValues) {
 								const item: IItem = {
-									cost: itemValue.cost as number,
-									notes: itemValue.description as string,
-									product_key: itemValue.service as string,
 									quantity: itemValue.quantity as number,
+									cost: itemValue.cost as number,
+									product_key: itemValue.service as string,
+									notes: itemValue.description as string,
+									discount: itemValue.discount as number,
 									tax_rate1: itemValue.taxRate1 as number,
 									tax_rate2: itemValue.taxRate2 as number,
+									tax_rate3: itemValue.taxRate3 as number,
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
+									tax_name3: itemValue.taxName3 as string,
+									custom_value1: itemValue.customValue1 as string,
+									custom_value2: itemValue.customValue2 as string,
+									custom_value3: itemValue.customValue3 as string,
+									custom_value4: itemValue.customValue4 as string,
 								};
 								invoiceItems.push(item);
 							}
-							body.line_items = invoiceItems;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,

@@ -237,9 +237,9 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Client Name or ID',
-				name: 'client',
+            {
+				displayName: 'Client',
+				name: 'clientId',
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -248,39 +248,20 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-			{
-				displayName: 'Auto Bill',
-				name: 'auto_bill_enabled',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Discount',
-				name: 'discount',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Invoice Date',
-				name: 'date',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Invoice Number',
-				name: 'number',
-				type: 'string',
+            {
+				displayName: 'Vendor',
+				name: 'vendorId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getVendorsV5',
+				},
 				default: '',
 			},
 			{
 				displayName: 'Invoice Status',
-				name: 'status_id',
+				name: 'statusId',
 				type: 'options',
 				options: [
 					{
@@ -295,21 +276,32 @@ export const invoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Is Amount Discount',
-				name: 'isAmountDiscount',
-				type: 'boolean',
-				default: false,
+				displayName: 'Design',
+				name: 'designId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getDesignsV5',
+				},
+				default: ''
 			},
 			{
-				displayName: 'Partial',
-				name: 'partial',
-				type: 'number',
-				default: 0,
+				displayName: 'Recurring Id',
+				name: 'recurringId',
+				type: 'string',
+				default: ''
 			},
 			{
-				displayName: 'Partial Due Date',
-				name: 'partialDueDate',
-				type: 'dateTime',
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Discount',
+				name: 'discount',
+				type: 'string',
 				default: '',
 			},
 			{
@@ -317,6 +309,48 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'poNumber',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Invoice Date',
+				name: 'date',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Terms',
+				name: 'terms',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Footer',
+				name: 'footer',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Uses Inclusive Taxes',
+				name: 'usesInclusiveTaxes',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Is Amount Discount',
+				name: 'isAmountDiscount',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Auto Bill',
+				name: 'autoBillEnabled',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Tax Name 1',
@@ -353,6 +387,18 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'taxRate3',
 				type: 'number',
 				default: 0,
+			},
+			{
+				displayName: 'Partial',
+				name: 'partial',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Partial Due Date',
+				name: 'partialDueDate',
+				type: 'dateTime',
+				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -430,31 +476,22 @@ export const invoiceFields: INodeProperties[] = [
 						default: 0,
 					},
 					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Service',
-						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						type: 'string',
-						default: '',
-					},
-					{
 						displayName: 'Anzahl',
 						name: 'quantity',
 						type: 'number',
 						typeOptions: {
 							minValue: 0,
 						},
-						default: 0,
+						default: 1,
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
 					},
 					{
 						displayName: 'Tax Name 1',
@@ -492,6 +529,34 @@ export const invoiceFields: INodeProperties[] = [
 						type: 'number',
 						default: 0,
 					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
 				],
 			},
 		],
@@ -527,9 +592,9 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Client Name or ID',
-				name: 'client',
+            {
+				displayName: 'Client',
+				name: 'clientId',
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -538,39 +603,20 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-			{
-				displayName: 'Auto Bill',
-				name: 'auto_bill_enabled',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Discount',
-				name: 'discount',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Invoice Date',
-				name: 'date',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Invoice Number',
-				name: 'number',
-				type: 'string',
+            {
+				displayName: 'Vendor',
+				name: 'vendorId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getVendorsV5',
+				},
 				default: '',
 			},
 			{
 				displayName: 'Invoice Status',
-				name: 'status_id',
+				name: 'statusId',
 				type: 'options',
 				options: [
 					{
@@ -585,21 +631,32 @@ export const invoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Is Amount Discount',
-				name: 'isAmountDiscount',
-				type: 'boolean',
-				default: false,
+				displayName: 'Design',
+				name: 'designId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getDesignsV5',
+				},
+				default: ''
 			},
 			{
-				displayName: 'Partial',
-				name: 'partial',
-				type: 'number',
-				default: 0,
+				displayName: 'Recurring Id',
+				name: 'recurringId',
+				type: 'string',
+				default: ''
 			},
 			{
-				displayName: 'Partial Due Date',
-				name: 'partialDueDate',
-				type: 'dateTime',
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Discount',
+				name: 'discount',
+				type: 'string',
 				default: '',
 			},
 			{
@@ -607,6 +664,48 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'poNumber',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Invoice Date',
+				name: 'date',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Terms',
+				name: 'terms',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Footer',
+				name: 'footer',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Uses Inclusive Taxes',
+				name: 'usesInclusiveTaxes',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Is Amount Discount',
+				name: 'isAmountDiscount',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Auto Bill',
+				name: 'autoBillEnabled',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Tax Name 1',
@@ -643,6 +742,18 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'taxRate3',
 				type: 'number',
 				default: 0,
+			},
+			{
+				displayName: 'Partial',
+				name: 'partial',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Partial Due Date',
+				name: 'partialDueDate',
+				type: 'dateTime',
+				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -720,31 +831,22 @@ export const invoiceFields: INodeProperties[] = [
 						default: 0,
 					},
 					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Service',
-						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						type: 'string',
-						default: '',
-					},
-					{
 						displayName: 'Anzahl',
 						name: 'quantity',
 						type: 'number',
 						typeOptions: {
 							minValue: 0,
 						},
-						default: 0,
+						default: 1,
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
 					},
 					{
 						displayName: 'Tax Name 1',
@@ -781,6 +883,34 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'taxRate3',
 						type: 'number',
 						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
 					},
 				],
 			},
