@@ -6,13 +6,13 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-@TODO: Check if more breaking changes were introduced
-
 In expressions, `DateTime.fromHTTP()`, `DateTime.fromISO()` and `DateTime.fromJSDate()` require an argument. Before, they returned `null` when called without an argument; now, they throw an error.
+
+Similarly, `$jmespath()` requires two argument. Before, they returned `null` when called without the needed number of arguments; now, it throws an error.
 
 ### When is action necessary?
 
-If you were relying on the above behavior, review your workflow to ensure the argument being passed in cannot be `undefined`.
+If you are relying on the above behavior, review your workflow to ensure you are passing in the required number of arguments.
 
 ## 0.202.0
 
