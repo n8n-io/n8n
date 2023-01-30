@@ -1,7 +1,8 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
-import { EventMessageTypeNames, JsonObject, JsonValue } from 'n8n-workflow';
-import { AbstractEventPayload } from './AbstractEventPayload';
-import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { JsonObject, JsonValue } from 'n8n-workflow';
+import { EventMessageTypeNames } from 'n8n-workflow';
+import type { AbstractEventPayload } from './AbstractEventPayload';
+import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const eventNamesAudit = [
 	'n8n.audit.user.signedup',
@@ -24,7 +25,7 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
 ] as const;
-export type EventNamesAuditType = typeof eventNamesAudit[number];
+export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 
 // --------------------------------------
 // EventMessage class for Audit events

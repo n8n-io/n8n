@@ -4,7 +4,7 @@ import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
 import * as GenericHelpers from '@/GenericHelpers';
 import config from '@/config';
-import {
+import type {
 	InviteEmailData,
 	PasswordResetData,
 	SendEmailResult,

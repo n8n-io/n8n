@@ -75,6 +75,11 @@ export class WorkflowPage extends BasePage {
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
 		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
+		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
+		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
+		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
+		ndvParameters: () => cy.getByTestId('parameter-item'),
+		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 	};
 	actions = {
 		visit: () => {

@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
-import { ITask, TaskInfo } from './TaskInterface';
+import type { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,5 +1,6 @@
 import express from 'express';
-import { deepCopy, INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import type { INodeCredentialTestResult } from 'n8n-workflow';
+import { deepCopy, LoggerProxy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
