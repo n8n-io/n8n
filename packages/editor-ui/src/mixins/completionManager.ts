@@ -19,8 +19,8 @@ export const completionManager = mixins(expressionManager).extend({
 		 */
 		expressionExtensionsCategories() {
 			return ExpressionExtensions.reduce<Record<string, string | undefined>>((acc, cur) => {
-				for (const funcName of Object.keys(cur.functions)) {
-					acc[funcName] = cur.typeName;
+				for (const fnName of Object.keys(cur.functions)) {
+					acc[fnName] = cur.typeName;
 				}
 
 				return acc;
