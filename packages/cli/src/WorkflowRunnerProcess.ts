@@ -108,8 +108,7 @@ class WorkflowRunnerProcess {
 		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 		// Load the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites(credentialTypes);
-		await credentialsOverwrites.init();
+		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = ExternalHooks();

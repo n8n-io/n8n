@@ -318,7 +318,7 @@ export class ExecuteBatch extends Command {
 		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 		// Load the credentials overwrites if any exist
-		await CredentialsOverwrites(credentialTypes).init();
+		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = ExternalHooks();
