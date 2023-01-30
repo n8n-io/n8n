@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import * as record from './record/Record.resource';
 
 export const versionDescription: INodeTypeDescription = {

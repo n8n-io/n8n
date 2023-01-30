@@ -1,7 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { TableSchema } from '../../helpers/BigQuery.types';
+import type { TableSchema } from '../../helpers/BigQuery.types';
 import { checkSchema } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 

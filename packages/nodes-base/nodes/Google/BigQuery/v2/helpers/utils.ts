@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, jsonParse, NodeOperationError } from 'n8n-workflow';
-import { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import type { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
 
 import { isEmpty, set } from 'lodash';
 

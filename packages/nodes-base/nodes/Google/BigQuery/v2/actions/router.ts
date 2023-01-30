@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleBigQuery } from './node.type';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { GoogleBigQuery } from './node.type';
 
 import * as record from './record/Record.resource';
 

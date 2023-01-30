@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
-import { SchemaField, TableSchema } from '../../helpers/BigQuery.types';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { SchemaField, TableSchema } from '../../helpers/BigQuery.types';
 import { getSchemaForSelectedFields, selectedFieldsToObject, simplify } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 

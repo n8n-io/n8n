@@ -1,4 +1,4 @@
-import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { googleApiRequest } from '../transport';
 
 export async function getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

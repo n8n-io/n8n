@@ -1,9 +1,10 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,

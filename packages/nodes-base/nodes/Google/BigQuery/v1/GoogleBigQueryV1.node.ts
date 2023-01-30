@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,8 +9,9 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+
+import { NodeApiError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
 
