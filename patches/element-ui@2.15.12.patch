@@ -1,5 +1,5 @@
 diff --git a/lib/element-ui.common.js b/lib/element-ui.common.js
-index 6209b8b7f21c6eea447dd4671b7c4cfc1ef5e9c2..a26772af8dcdcbc0e3a6058bda30c7f9f143cd5d 100644
+index 6209b8b7f21c6eea447dd4671b7c4cfc1ef5e9c2..027433a4cb4006a84a485884e73af8780450cb26 100644
 --- a/lib/element-ui.common.js
 +++ b/lib/element-ui.common.js
 @@ -21471,14 +21471,8 @@ mainvue_type_template_id_52060272_render._withStripped = true
