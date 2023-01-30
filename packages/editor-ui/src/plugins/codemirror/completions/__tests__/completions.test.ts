@@ -35,8 +35,22 @@ describe('Top-level completions', () => {
 		expect(completions('{{ | }}')).toHaveLength(dollarOptions().length);
 	});
 
-	test('should return non-dollar completions for: {{ D| }}', () => {
-		expect(completions('{{ D| }}')).toHaveLength(1); // DateTime
+	test('should return DateTime completion for: {{ D| }}', () => {
+		const found = completions('{{ D| }}');
+
+		if (!found) throw new Error('Expected to find DateTime completion');
+
+		expect(found).toHaveLength(1);
+		expect(found[0].label).toBe('DateTime');
+	});
+
+	test('should return Math completion for: {{ M| }}', () => {
+		const found = completions('{{ M| }}');
+
+		if (!found) throw new Error('Expected to find Math completion');
+
+		expect(found).toHaveLength(1);
+		expect(found[0].label).toBe('Math');
 	});
 
 	test('should return dollar completions for: {{ $| }}', () => {
