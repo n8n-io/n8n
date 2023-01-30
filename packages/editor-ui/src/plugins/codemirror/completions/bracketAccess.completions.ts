@@ -7,12 +7,12 @@ import type { Resolved } from './types';
 /**
  * Resolution-based completions offered at the start of bracket access notation.
  *
- * - `$json[`
- * - `$input.item.json[`
- * - `$json['field'][`
- * - `$json.myObj[`
- * - `$('Test').last().json.myArr[`
- * - `$input.first().json.myStr[`
+ * - `$json[|`
+ * - `$input.item.json[|`
+ * - `$json['field'][|`
+ * - `$json.myObj[|`
+ * - `$('Test').last().json.myArr[|`
+ * - `$input.first().json.myStr[|`
  */
 export function bracketAccessCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/\$[\S\s]*\[.*/);

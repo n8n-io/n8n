@@ -10,7 +10,7 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions offered at the dollar position: `$`
+ * Completions offered at the dollar position: `$|`
  */
 export function dollarCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/\$[^$]*/);
@@ -23,9 +23,6 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 
 	const userInput = word.text;
 
-	/**
-	 * If user typed anything after `$`, narrow down options based on user input.
-	 */
 	if (userInput !== '$') {
 		options = options.filter((o) => prefixMatch(o.label, userInput));
 	}
