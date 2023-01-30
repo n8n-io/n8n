@@ -123,6 +123,7 @@ export const description: INodeProperties[] = [
 								aggregation: [...NUMERICAL_AGGREGATIONS, 'countUnique', 'count'],
 							},
 						},
+						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Field',
@@ -138,6 +139,7 @@ export const description: INodeProperties[] = [
 								aggregation: NUMERICAL_AGGREGATIONS,
 							},
 						},
+						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Field',
@@ -153,6 +155,7 @@ export const description: INodeProperties[] = [
 								aggregation: ['countUnique', 'count'],
 							},
 						},
+						requiresDataPath: 'single',
 					},
 					// ----------------------------------------------------------------------------------------------------------
 					{
@@ -245,6 +248,7 @@ export const description: INodeProperties[] = [
 				'/options.outputFormat': ['singleItem'],
 			},
 		},
+		requiresDataPath: 'multiple',
 	},
 	{
 		displayName: 'Fields to Group By',
@@ -261,6 +265,7 @@ export const description: INodeProperties[] = [
 				'/options.outputFormat': ['singleItem'],
 			},
 		},
+		requiresDataPath: 'multiple',
 	},
 	// ----------------------------------------------------------------------------------------------------------
 	{

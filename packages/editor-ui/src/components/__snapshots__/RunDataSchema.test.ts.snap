@@ -33,9 +33,9 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   class="label"
                   data-depth="1"
                   data-name="name"
-                  data-path="[\\"name\\"]"
+                  data-path=".name"
                   data-target="mappable"
-                  data-value="{{ $json[\\"name\\"] }}"
+                  data-value="{{ $json.name }}"
                 >
                   <font-awesome-icon-stub
                     icon="font"
@@ -70,9 +70,9 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   class="label"
                   data-depth="1"
                   data-name="age"
-                  data-path="[\\"age\\"]"
+                  data-path=".age"
                   data-target="mappable"
-                  data-value="{{ $json[\\"age\\"] }}"
+                  data-value="{{ $json.age }}"
                 >
                   <font-awesome-icon-stub
                     icon="hashtag"
@@ -107,9 +107,9 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   class="label"
                   data-depth="1"
                   data-name="hobbies"
-                  data-path="[\\"hobbies\\"]"
+                  data-path=".hobbies"
                   data-target="mappable"
-                  data-value="{{ $json[\\"hobbies\\"] }}"
+                  data-value="{{ $json.hobbies }}"
                 >
                   <font-awesome-icon-stub
                     icon="list"
@@ -152,9 +152,9 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                       class="label"
                       data-depth="2"
                       data-name="string[0]"
-                      data-path="[\\"hobbies\\"][0]"
+                      data-path=".hobbies[0]"
                       data-target="mappable"
-                      data-value="{{ $json[\\"hobbies\\"][0] }}"
+                      data-value="{{ $json.hobbies[0] }}"
                     >
                       <font-awesome-icon-stub
                         icon="font"
@@ -191,9 +191,9 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                       class="label"
                       data-depth="2"
                       data-name="string[1]"
-                      data-path="[\\"hobbies\\"][1]"
+                      data-path=".hobbies[1]"
                       data-target="mappable"
-                      data-value="{{ $json[\\"hobbies\\"][1] }}"
+                      data-value="{{ $json.hobbies[1] }}"
                     >
                       <font-awesome-icon-stub
                         icon="font"
@@ -255,6 +255,256 @@ exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
           No data to show - item(s) exist, but they’re empty
         </span>
       </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
+<div>
+  <div
+    class="schemaWrapper"
+  >
+    <div
+      class=""
+    >
+      <div
+        class="schema"
+      >
+        <div
+          class="item"
+        >
+          <!---->
+          <!---->
+          <!---->
+          <!---->
+          <div
+            class="sub"
+          >
+            <div
+              class="item"
+              style="transition-delay: 0s;"
+            >
+              <div
+                class="pill mappable"
+                title="array"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="hello world"
+                  data-path="[\\"hello world\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"hello world\\"] }}"
+                >
+                  <font-awesome-icon-stub
+                    icon="list"
+                    size="sm"
+                  />
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    hello world
+                  </span>
+                </span>
+              </div>
+              <!---->
+              <input
+                checked="checked"
+                id="array-0-0"
+                type="checkbox"
+              />
+              <label
+                class="toggle"
+                for="array-0-0"
+              >
+                <font-awesome-icon-stub
+                  icon="angle-up"
+                />
+              </label>
+              <div
+                class="sub"
+              >
+                <div
+                  class="item"
+                  style="transition-delay: 0s;"
+                >
+                  <div
+                    class="pill mappable"
+                    title="object"
+                  >
+                    <span
+                      class="label"
+                      data-depth="2"
+                      data-name="object[0]"
+                      data-path="[\\"hello world\\"][0]"
+                      data-target="mappable"
+                      data-value="{{ $json[\\"hello world\\"][0] }}"
+                    >
+                      <font-awesome-icon-stub
+                        icon="cube"
+                        size="sm"
+                      />
+                      <span>
+                        hello world
+                      </span>
+                      <span
+                        class="arrayIndex"
+                      >
+                        [0]
+                      </span>
+                    </span>
+                  </div>
+                  <!---->
+                  <input
+                    checked="checked"
+                    id="object-1-0"
+                    type="checkbox"
+                  />
+                  <label
+                    class="toggle"
+                    for="object-1-0"
+                  >
+                    <font-awesome-icon-stub
+                      icon="angle-up"
+                    />
+                  </label>
+                  <div
+                    class="sub"
+                  >
+                    <div
+                      class="item"
+                      style="transition-delay: 0s;"
+                    >
+                      <div
+                        class="pill mappable"
+                        title="object"
+                      >
+                        <span
+                          class="label"
+                          data-depth="3"
+                          data-name="test"
+                          data-path="[\\"hello world\\"][0].test"
+                          data-target="mappable"
+                          data-value="{{ $json[\\"hello world\\"][0].test }}"
+                        >
+                          <font-awesome-icon-stub
+                            icon="cube"
+                            size="sm"
+                          />
+                          <!---->
+                          <span
+                            class=""
+                          >
+                            test
+                          </span>
+                        </span>
+                      </div>
+                      <!---->
+                      <input
+                        checked="checked"
+                        id="object-2-0"
+                        type="checkbox"
+                      />
+                      <label
+                        class="toggle"
+                        for="object-2-0"
+                      >
+                        <font-awesome-icon-stub
+                          icon="angle-up"
+                        />
+                      </label>
+                      <div
+                        class="sub"
+                      >
+                        <div
+                          class="item"
+                          style="transition-delay: 0s;"
+                        >
+                          <div
+                            class="pill mappable"
+                            title="number"
+                          >
+                            <span
+                              class="label"
+                              data-depth="4"
+                              data-name="more to think about"
+                              data-path="[\\"hello world\\"][0].test[\\"more to think about\\"]"
+                              data-target="mappable"
+                              data-value="{{ $json[\\"hello world\\"][0].test[\\"more to think about\\"] }}"
+                            >
+                              <font-awesome-icon-stub
+                                icon="hashtag"
+                                size="sm"
+                              />
+                              <!---->
+                              <span
+                                class=""
+                              >
+                                more to think about
+                              </span>
+                            </span>
+                          </div>
+                          <span
+                            class="text"
+                          >
+                            1
+                          </span>
+                          <!---->
+                          <!---->
+                          <!---->
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="item"
+                      style="transition-delay: 0.033s;"
+                    >
+                      <div
+                        class="pill mappable"
+                        title="string"
+                      >
+                        <span
+                          class="label"
+                          data-depth="3"
+                          data-name="test.how"
+                          data-path="[\\"hello world\\"][0][\\"test.how\\"]"
+                          data-target="mappable"
+                          data-value="{{ $json[\\"hello world\\"][0][\\"test.how\\"] }}"
+                        >
+                          <font-awesome-icon-stub
+                            icon="font"
+                            size="sm"
+                          />
+                          <!---->
+                          <span
+                            class=""
+                          >
+                            test.how
+                          </span>
+                        </span>
+                      </div>
+                      <span
+                        class="text"
+                      >
+                        ignore
+                      </span>
+                      <!---->
+                      <!---->
+                      <!---->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="teleporter hidden"
+        data-v-d4e6e290=""
+      />
     </div>
   </div>
 </div>
