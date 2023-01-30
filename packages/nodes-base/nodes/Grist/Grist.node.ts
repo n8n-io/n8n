@@ -75,25 +75,24 @@ export class Grist implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const { apiKey, planType, customSubdomain, selfHostedUrl, allowUnauthorizedCerts } =
-					credential.data as GristCredentials;
+				const credentials = credential.data as GristCredentials;
 
 				const endpoint = '/orgs';
 
 				const gristapiurl =
-					planType === 'free'
+					credentials.planType === 'free'
 						? `https://docs.getgrist.com/api${endpoint}`
-						: planType === 'paid'
-						? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-						: `${selfHostedUrl}/api${endpoint}`;
+						: credentials.planType === 'paid'
+						? `https://${credentials.customSubdomain}.getgrist.com/api${endpoint}`
+						: `${credentials.selfHostedUrl}/api${endpoint}`;
 
 				const options: OptionsWithUri = {
 					headers: {
-						Authorization: `Bearer ${apiKey}`,
+						Authorization: `Bearer ${credentials.apiKey}`,
 					},
 					method: 'GET',
 					uri: gristapiurl,
-					rejectUnauthorized: !allowUnauthorizedCerts || false,
+					rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 					qs: { limit: 1 },
 					json: true,
 				};
