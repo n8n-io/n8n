@@ -204,6 +204,7 @@ function isDomain(value: string) {
 function isEmail(value: string) {
 	const result = EMAIL_REGEXP.test(value);
 
+	// email regex is loose so check manually for now
 	if (result && value.includes(' ')) {
 		return false;
 	}
