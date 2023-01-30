@@ -15,7 +15,9 @@ entity { Plaintext | Resolvable | BrokenResolvable }
     OpenMarker resolvableChar* CloseMarker
   }
 
-  resolvableChar { @asciiLetter | @digit | @whitespace | $[()\[\]{<>~`!@#$%^&*\-\_+=|\\;:'",./?] | "}" ![}] | "\\}}" }
+  resolvableChar { unicodeChar | "}" ![}] | "\\}}" }
+
+  unicodeChar { $[\u0000-\u007C] | $[\u007E-\u06FF] }
 
   @precedence { BrokenResolvable, Resolvable }
 }

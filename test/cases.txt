@@ -245,3 +245,11 @@ Program(BrokenResolvable)
 ==>
 
 Program(BrokenResolvable)
+
+# Plaintext then Resolvable with non-ASCII chars then Plaintext
+
+a {{ 'áßи' }} a
+
+==>
+
+Program(Plaintext, Resolvable, Plaintext)

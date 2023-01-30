@@ -1,6 +1,6 @@
 {
   "name": "codemirror-lang-n8n-expression",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "n8n expression language support for CodeMirror 6",
   "scripts": {
     "test": "npm run prepare && mocha test/test.js",
