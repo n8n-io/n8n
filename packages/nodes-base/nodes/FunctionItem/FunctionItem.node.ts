@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import { NodeVM, NodeVMOptions, VMRequire } from 'vm2';
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { NodeVMOptions, VMRequire } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {

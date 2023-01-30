@@ -20,10 +20,10 @@ import {
 	randomPositiveDigit,
 } from '../integration/shared/random';
 
-import { Role } from '@/databases/entities/Role';
+import { Role } from '@db/entities/Role';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { User } from '@/databases/entities/User';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;

@@ -1,11 +1,11 @@
-import {
+import type {
 	GenericValue,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	IPairedItemData,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { assign, assignWith, get, isEqual, isNull, merge, mergeWith } from 'lodash';
 

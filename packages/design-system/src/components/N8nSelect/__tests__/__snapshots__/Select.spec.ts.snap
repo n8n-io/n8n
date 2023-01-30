@@ -1,7 +1,7 @@
 // Vitest Snapshot v1
 
 exports[`components > N8nSelect > should render correctly 1`] = `
-"<div class=\\"n8n-select _container_\\">
+"<div class=\\"n8n-select container\\">
   <!---->
   <div class=\\"el-select el-select--large\\">
     <!---->

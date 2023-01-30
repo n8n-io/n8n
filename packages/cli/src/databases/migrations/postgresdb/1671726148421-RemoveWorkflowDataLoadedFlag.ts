@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 
 export class RemoveWorkflowDataLoadedFlag1671726148421 implements MigrationInterface {
 	name = 'RemoveWorkflowDataLoadedFlag1671726148421';

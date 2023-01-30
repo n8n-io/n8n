@@ -1,4 +1,5 @@
-import { INodeTypeBaseDescription, IVersionedNodeType, VersionedNodeType } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
 import { GoogleBigQueryV1 } from './v1/GoogleBigQueryV1.node';
 import { GoogleBigQueryV2 } from './v2/GoogleBigQueryV2.node';
