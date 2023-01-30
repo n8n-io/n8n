@@ -68,11 +68,6 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return this.segments.filter((s): s is Html => s.kind !== 'resolvable');
 		},
 
-		// @TODO: Used?
-		cursorPosition(): number {
-			return this.editor.state.selection.ranges[0].from;
-		},
-
 		segments(): Segment[] {
 			const rawSegments: RawSegment[] = [];
 
