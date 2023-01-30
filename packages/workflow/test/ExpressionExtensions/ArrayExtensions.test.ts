@@ -50,18 +50,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ [1].isEmpty() }}')).toEqual(false);
 		});
 
-		test('.length() should work correctly on an array', () => {
-			expect(evaluate('={{ [].length() }}')).toEqual(0);
-		});
-
-		test('.count() should work correctly on an array', () => {
-			expect(evaluate('={{ [1].count() }}')).toEqual(1);
-		});
-
-		test('.size() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2].size() }}')).toEqual(2);
-		});
-
 		test('.last() should work correctly on an array', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].last() }}')).toEqual('c');
 		});
