@@ -12,7 +12,6 @@ import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type {
-	DatabaseType,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -70,7 +69,7 @@ export class ExecutionsService {
 		countFilter: IDataObject,
 		user: User,
 	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
