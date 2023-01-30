@@ -1558,6 +1558,7 @@ export interface IRunData {
 export interface ITaskData {
 	startTime: number;
 	executionTime: number;
+	executionStatus?: ExecutionStatus;
 	data?: ITaskDataConnections;
 	error?: ExecutionError;
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
@@ -1859,9 +1860,16 @@ export interface IExecutionsSummary {
 	status?: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
-	nodeErrors?: {
-		[key: string]: Array<{
-			[key: string]: string;
-		}>;
+	nodeExecutionStatus?: {
+		[key: string]: IExceutionSummaryNodeExecutionResult;
 	};
+}
+
+export interface IExceutionSummaryNodeExecutionResult {
+	executionStatus: ExecutionStatus;
+	errors?: Array<{
+		name?: string;
+		message?: string;
+		description?: string;
+	}>;
 }

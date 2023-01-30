@@ -274,7 +274,7 @@ export class ExecutionsService {
 
 		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
 			// inject potential node execution errors into the execution response
-			const nodeErrors = {};
+			const nodeExecutionStatus = {};
 			let lastNodeExecuted;
 			let executionError;
 			try {
@@ -298,9 +298,12 @@ export class ExecutionsService {
 									};
 								}
 							});
-						if (errors?.length > 0) {
-							Object.assign(nodeErrors, { [key]: errors });
-						}
+						Object.assign(nodeExecutionStatus, {
+							[key]: {
+								executionStatus: data.resultData.runData[key][0].executionStatus,
+								errors,
+							},
+						});
 					}
 				}
 			} catch {}
@@ -318,8 +321,8 @@ export class ExecutionsService {
 				status: execution.status,
 				lastNodeExecuted,
 				executionError,
-				nodeErrors,
-			};
+				nodeExecutionStatus,
+			} as IExecutionsSummary;
 		});
 		return {
 			count,

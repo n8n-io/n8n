@@ -769,6 +769,7 @@ export class WorkflowExecute {
 										main: executionData.data.main,
 									} as ITaskDataConnections,
 									source: [],
+									executionStatus: 'error',
 								},
 							],
 						},
@@ -1059,10 +1060,12 @@ export class WorkflowExecute {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
+						executionStatus: 'success',
 					};
 
 					if (executionError !== undefined) {
 						taskData.error = executionError;
+						taskData.executionStatus = 'error';
 
 						if (executionData.node.continueOnFail === true) {
 							// Workflow should continue running even if node errors

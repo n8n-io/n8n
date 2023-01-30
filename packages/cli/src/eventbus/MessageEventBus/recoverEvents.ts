@@ -76,26 +76,32 @@ export async function recoverExecutionDataFromEventLogMessages(
 				startTime: nodeStartedMessage ? nodeStartedMessage.ts.toUnixInteger() : 0,
 				executionTime,
 				source: [null],
+				executionStatus: 'unknown',
 			};
 
 			if (nodeStartedMessage && !nodeFinishedMessage) {
 				const nodeError = new NodeOperationError(
 					nodeByName,
-					'Node did not finish, possible out of memory issue',
+					'Node did not finish, possible out-of-memory issue',
 					{
-						message: 'Node did not finish',
-						description: 'Could be caused by an Out Of Memory issue.',
+						message: 'Node crashed',
+						description: 'possible out-of-memory issue.',
 					},
 				);
 				workflowError = new WorkflowOperationError(
-					'Workflow did not finish, possible Out Of Memory issue.',
+					'Workflow did not finish, possible out-of-memory issue.',
 				);
 				taskData.error = nodeError;
+				taskData.executionStatus = 'crashed';
 				executionData.resultData.lastNodeExecuted = nodeName;
 				if (nodeStartedMessage) lastNodeRunTimestamp = nodeStartedMessage.ts;
+			} else if (nodeStartedMessage && nodeFinishedMessage) {
+				taskData.executionStatus = 'success';
 			}
+
 			executionData.resultData.runData[nodeName] = [taskData];
 		}
+
 		if (!executionData.resultData.error && workflowError) {
 			executionData.resultData.error = workflowError;
 		}
