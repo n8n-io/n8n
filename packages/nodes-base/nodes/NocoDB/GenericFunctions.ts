@@ -1,15 +1,9 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	IPollFunctions,
-	jsonParse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IBinaryKeyData, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 interface IAttachment {
 	url: string;
@@ -40,7 +34,7 @@ export async function apiRequest(
 
 	const baseUrl = credentials.host as string;
 
-	query = query ?? {};
+	query = query || {};
 
 	const options: OptionsWithUri = {
 		method,

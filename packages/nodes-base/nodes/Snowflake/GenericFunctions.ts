@@ -1,6 +1,7 @@
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import snowflake from 'snowflake-sdk';
+import type snowflake from 'snowflake-sdk';
 
 export async function connect(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {

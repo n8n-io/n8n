@@ -14,7 +14,7 @@ export type Resource =
 export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 
 // @ts-ignore
-export type LanguageCodes = typeof LanguageOptions[number]['value'];
+export type LanguageCodes = (typeof LanguageOptions)[number]['value'];
 
 // ----------------------------------------
 //              UI fields

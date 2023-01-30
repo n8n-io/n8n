@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -12,8 +12,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	clean,
@@ -41,9 +41,9 @@ import { formFields, formOperations } from './FormDescription';
 
 import { ticketFields, ticketOperations } from './TicketDescription';
 
-import { IForm } from './FormInterface';
+import type { IForm } from './FormInterface';
 
-import { IAssociation, IDeal } from './DealInterface';
+import type { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
 
@@ -1412,8 +1412,8 @@ export class Hubspot implements INodeType {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
-							const sortBy = additionalFields.sortBy ?? 'createdate';
-							const direction = additionalFields.direction ?? 'DESCENDING';
+							const sortBy = additionalFields.sortBy || 'createdate';
+							const direction = additionalFields.direction || 'DESCENDING';
 
 							const body: IDataObject = {
 								sorts: [
@@ -2232,8 +2232,8 @@ export class Hubspot implements INodeType {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
-							const sortBy = additionalFields.sortBy ?? 'createdate';
-							const direction = additionalFields.direction ?? 'DESCENDING';
+							const sortBy = additionalFields.sortBy || 'createdate';
+							const direction = additionalFields.direction || 'DESCENDING';
 
 							const body: IDataObject = {
 								sorts: [

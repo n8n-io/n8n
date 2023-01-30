@@ -1,6 +1,11 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import moment from 'moment';
 
@@ -51,7 +56,7 @@ export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 
 		const now = moment().format();
 
-		qs.ValidToGreater = webhookData.lastTimeChecked ?? now;
+		qs.ValidToGreater = webhookData.lastTimeChecked || now;
 
 		qs.ValidToLess = now;
 

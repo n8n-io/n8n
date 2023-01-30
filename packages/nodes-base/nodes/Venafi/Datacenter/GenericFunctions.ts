@@ -1,13 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -30,7 +30,7 @@ export async function venafiApiRequest(
 		body,
 		qs,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
-		uri: uri ?? `${credentials.domain}${resource}`,
+		uri: uri || `${credentials.domain}${resource}`,
 		json: true,
 	};
 

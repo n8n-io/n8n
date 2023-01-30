@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 import { set } from 'lodash';
 
@@ -430,7 +429,7 @@ export class DateTime implements INodeType {
 						newDate = moment.unix(currentDate as unknown as number);
 					} else {
 						if (options.fromTimezone || options.toTimezone) {
-							const fromTimezone = options.fromTimezone ?? workflowTimezone;
+							const fromTimezone = options.fromTimezone || workflowTimezone;
 							if (options.fromFormat) {
 								newDate = moment.tz(
 									currentDate,

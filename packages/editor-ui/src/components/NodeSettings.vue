@@ -18,6 +18,7 @@
 				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI"
+						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
@@ -102,7 +103,9 @@
 					<node-credentials
 						:node="node"
 						:readonly="isReadOnly"
+						:showAll="true"
 						@credentialSelected="credentialSelected"
+						@valueChanged="valueChanged"
 						@blur="onParameterBlur"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 					/>

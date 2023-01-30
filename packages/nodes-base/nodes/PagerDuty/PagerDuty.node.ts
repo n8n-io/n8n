@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,7 +23,7 @@ import { logEntryFields, logEntryOperations } from './LogEntryDescription';
 
 import { userFields, userOperations } from './UserDescription';
 
-import { IIncident } from './IncidentInterface';
+import type { IIncident } from './IncidentInterface';
 
 import { snakeCase } from 'change-case';
 

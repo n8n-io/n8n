@@ -1,10 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { exec } from 'child_process';
 
@@ -38,7 +34,7 @@ async function execPromise(command: string): Promise<IExecReturnData> {
 
 			resolve(returnData);
 		}).on('exit', (code) => {
-			returnData.exitCode = code ?? 0;
+			returnData.exitCode = code || 0;
 		});
 	});
 }

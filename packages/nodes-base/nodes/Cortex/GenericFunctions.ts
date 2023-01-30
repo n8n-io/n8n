@@ -1,13 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 import moment from 'moment';
 
@@ -27,7 +27,7 @@ export async function cortexApiRequest(
 		headers: {},
 		method,
 		qs: query,
-		uri: uri ?? `${credentials.host}/api${resource}`,
+		uri: uri || `${credentials.host}/api${resource}`,
 		body,
 		json: true,
 	};

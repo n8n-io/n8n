@@ -1,14 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function citrixADCApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -28,7 +23,7 @@ export async function citrixADCApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `${url.replace(new RegExp('/$'), '')}/nitro/v1${resource}`,
+		uri: uri || `${url.replace(new RegExp('/$'), '')}/nitro/v1${resource}`,
 		json: true,
 	};
 

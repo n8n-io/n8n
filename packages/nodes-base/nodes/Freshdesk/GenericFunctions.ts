@@ -1,8 +1,10 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { BINARY_ENCODING, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -28,7 +30,7 @@ export async function freshdeskApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `https://${credentials.domain}.${endpoint}${resource}`,
+		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

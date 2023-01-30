@@ -1,6 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
 
 export class AddTriggerCountColumn1669823906995 implements MigrationInterface {
 	name = 'AddTriggerCountColumn1669823906995';
@@ -21,8 +20,6 @@ export class AddTriggerCountColumn1669823906995 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = getTablePrefix();
 
-		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN "triggerCount"`,
-		);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN "triggerCount"`);
 	}
 }

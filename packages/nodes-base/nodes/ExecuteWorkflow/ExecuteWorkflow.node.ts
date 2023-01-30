@@ -1,14 +1,14 @@
 import { readFile as fsReadFile } from 'fs/promises';
 
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWorkflowBase,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {

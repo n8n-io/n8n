@@ -17,7 +17,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { BinaryDataManager, eventEmitter, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
@@ -32,10 +32,12 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	Workflow,
-	WorkflowExecuteMode,
 	WorkflowHooks,
 } from 'n8n-workflow';
 
@@ -46,7 +48,7 @@ import * as Db from '@/Db';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
-import {
+import type {
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
@@ -88,7 +90,9 @@ export function executeErrorWorkflow(
 
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
+		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}workflow/${
+			workflowData.id
+		}/executions/${executionId}`;
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
@@ -1011,7 +1015,12 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(
+		executionId,
+		workflowData,
+		data,
+		additionalData.userId,
+	);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully

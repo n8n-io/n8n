@@ -1,8 +1,9 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -26,7 +27,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		url: uri ?? `https://${projectId}.${region}/${resource}.json`,
+		url: uri || `https://${projectId}.${region}/${resource}.json`,
 		json: true,
 	};
 

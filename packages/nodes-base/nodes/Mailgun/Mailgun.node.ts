@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -156,7 +156,7 @@ export class Mailgun implements INodeType {
 						attachments.push({
 							value: binaryDataBuffer,
 							options: {
-								filename: item.binary[propertyName].fileName ?? 'unknown',
+								filename: item.binary[propertyName].fileName || 'unknown',
 							},
 						});
 					}

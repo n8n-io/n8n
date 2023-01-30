@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -29,7 +30,7 @@ export async function zulipApiRequest(
 		method,
 		form: body,
 		qs: query,
-		uri: uri ?? `${endpoint}${resource}`,
+		uri: uri || `${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

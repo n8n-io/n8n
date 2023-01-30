@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Return the base API URL based on the user's environment.
@@ -30,7 +31,7 @@ export async function erpNextApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `${baseUrl}${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};

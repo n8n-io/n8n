@@ -1,14 +1,15 @@
-import { BINARY_ENCODING, IWebhookFunctions } from 'n8n-core';
+import type { IWebhookFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
@@ -529,7 +530,7 @@ export class Webhook implements INodeType {
 							const fileJson = file.toJSON();
 							returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
 								file.path,
-								fileJson.name ?? fileJson.filename,
+								fileJson.name || fileJson.filename,
 								fileJson.type as string,
 							);
 
@@ -559,7 +560,7 @@ export class Webhook implements INodeType {
 					},
 				};
 
-				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
 				returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
 					binaryFile.path,
 					mimeType,

@@ -1,9 +1,5 @@
-import {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import FormData from 'form-data';
 
@@ -35,7 +31,7 @@ export async function setupUpload(
 	const data = new FormData();
 	data.append('file', buffer, {
 		contentType: mimeType,
-		filename: mediaFileName ?? binaryFileName,
+		filename: mediaFileName || binaryFileName,
 	});
 	data.append('messaging_product', 'whatsapp');
 

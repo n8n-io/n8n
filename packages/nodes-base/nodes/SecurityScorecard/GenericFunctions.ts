@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function scorecardApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -22,7 +23,7 @@ export async function scorecardApiRequest(
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri ?? `https://api.securityscorecard.io/${resource}`,
+		uri: uri || `https://api.securityscorecard.io/${resource}`,
 		body,
 		json: true,
 	};

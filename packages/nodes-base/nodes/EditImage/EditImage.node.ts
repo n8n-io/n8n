@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,8 +7,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
@@ -1239,7 +1238,7 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						const font = options.font ?? operationData.font;
+						const font = options.font || operationData.font;
 
 						if (font && font !== 'default') {
 							gmInstance = gmInstance!.font(font as string);
