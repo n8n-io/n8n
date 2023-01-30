@@ -8,7 +8,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { dropcontactApiRequest } from './GenericFunction';
+import { dropcontactApiRequest, mapPairedItemsFrom } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
 	description: INodeTypeDescription = {
@@ -278,10 +278,11 @@ export class Dropcontact implements INodeType {
 
 				if (!responseData.success) {
 					if (this.continueOnFail()) {
-						returnData.push();
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
-							{ itemData: { item: 0 } },
+							{
+								itemData: mapPairedItemsFrom(entryData),
+							},
 						);
 						returnData.push(...executionData);
 					} else {
@@ -307,7 +308,9 @@ export class Dropcontact implements INodeType {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: responseData.reason }),
-								{ itemData: { item: 0 } },
+								{
+									itemData: mapPairedItemsFrom(entryData),
+								},
 							);
 							returnData.push(...executionData);
 						} else {
@@ -317,16 +320,20 @@ export class Dropcontact implements INodeType {
 							});
 						}
 					} else {
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.data),
-							{ itemData: { item: 0 } },
-						);
-						returnData.push(...executionData);
+						responseData.data.forEach((d: IDataObject, index: number) => {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(d),
+								{ itemData: { item: index } },
+							);
+							returnData.push(...executionData);
+						});
 					}
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: 0 } },
+						{
+							itemData: mapPairedItemsFrom(entryData),
+						},
 					);
 					returnData.push(...executionData);
 				}

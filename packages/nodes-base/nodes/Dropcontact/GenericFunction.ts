@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, IPairedItemData } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -31,4 +31,12 @@ export async function dropcontactApiRequest(
 	}
 
 	return this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
+}
+
+export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {
+	return Array.from(iterable, (_, i) => i).map((index) => {
+		return {
+			item: index,
+		};
+	});
 }
