@@ -1,13 +1,13 @@
 import moment from 'moment';
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class If implements INodeType {
 	description: INodeTypeDescription = {

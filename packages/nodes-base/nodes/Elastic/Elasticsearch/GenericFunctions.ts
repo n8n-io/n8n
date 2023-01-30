@@ -1,10 +1,11 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { ElasticsearchApiCredentials } from './types';
+import type { ElasticsearchApiCredentials } from './types';
 
 export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,

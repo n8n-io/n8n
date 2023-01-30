@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -15,27 +15,27 @@ import { clientFields, clientOperations } from './ClientDescription';
 
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import { IClient, IContact } from './ClientInterface';
+import type { IClient, IContact } from './ClientInterface';
 
 import { countryCodes } from './ISOCountryCodes';
 
-import { IInvoice, IItem } from './invoiceInterface';
+import type { IInvoice, IItem } from './invoiceInterface';
 
 import { taskFields, taskOperations } from './TaskDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
 import { paymentFields, paymentOperations } from './PaymentDescription';
 
-import { IPayment } from './PaymentInterface';
+import type { IPayment } from './PaymentInterface';
 
 import { expenseFields, expenseOperations } from './ExpenseDescription';
 
-import { IExpense } from './ExpenseInterface';
+import type { IExpense } from './ExpenseInterface';
 
 import { quoteFields, quoteOperations } from './QuoteDescription';
 
-import { IQuote } from './QuoteInterface';
+import type { IQuote } from './QuoteInterface';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {

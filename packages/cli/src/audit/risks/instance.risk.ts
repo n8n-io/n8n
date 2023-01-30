@@ -11,7 +11,7 @@ import {
 	WEBHOOK_VALIDATOR_NODE_TYPES,
 } from '@/audit/constants';
 import { getN8nPackageJson, inDevelopment } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk, n8n } from '@/audit/types';
 
 function getSecuritySettings() {

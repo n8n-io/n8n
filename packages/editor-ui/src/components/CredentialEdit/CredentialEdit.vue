@@ -12,12 +12,12 @@
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
-						<CredentialIcon :credentialTypeName="credentialTypeName" />
+						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.updateName"
+						:readonly="!credentialPermissions.updateName || !credentialType"
 						type="Credential"
 						@input="onNameEdit"
 						data-test-id="credential-name"
@@ -52,7 +52,7 @@
 			<hr />
 		</template>
 		<template #content>
-			<div :class="$style.container">
+			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
 				</div>
@@ -71,10 +71,14 @@
 						:parentTypes="parentTypes"
 						:requiredPropertiesFilled="requiredPropertiesFilled"
 						:credentialPermissions="credentialPermissions"
+						:mode="mode"
+						:selectedCredential="selectedCredential"
+						:showAuthTypeSelector="requiredCredentials"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"
+						@authTypeChanged="onAuthTypeChanged"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
@@ -107,7 +111,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import type { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialsResponse, IUser, NewCredentialsModal } from '@/Interface';
 
 import {
 	CredentialInformation,
@@ -116,6 +120,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
+	INodeCredentialDescription,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
@@ -134,12 +139,11 @@ import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
-import { EnterpriseEditionFeature } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import { getCredentialPermissions, IPermissions } from '@/permissions';
 import { IMenuItem } from 'n8n-design-system';
-import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -147,7 +151,13 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
-import { isValidCredentialResponse } from '@/utils';
+import {
+	isValidCredentialResponse,
+	getNodeAuthOptions,
+	getNodeCredentialForSelectedAuthType,
+	updateNodeAuthType,
+	isCredentialModalState,
+} from '@/utils';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -171,8 +181,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			required: true,
 		},
 		activeId: {
-			type: [String],
-			required: true,
+			type: [String, Number],
+			required: false,
 		},
 		mode: {
 			type: String,
@@ -196,22 +206,21 @@ export default mixins(showMessage, nodeHelpers).extend({
 			testedSuccessfully: false,
 			isRetesting: false,
 			EnterpriseEditionFeature,
+			selectedCredential: '',
+			requiredCredentials: false, // Are credentials required or optional for the node
+			hasUserSpecifiedName: false,
 		};
 	},
 	async mounted() {
-		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: { name: string }) => {
-			if (this.mode === 'new') {
-				accu[node.name] = { nodeType: node.name }; // enable all nodes by default
-			} else {
-				accu[node.name] = null;
-			}
+		this.requiredCredentials =
+			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
+			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
 
-			return accu;
-		}, {});
+		this.setupNodeAccess();
 
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
-				credentialTypeName: this.credentialTypeName,
+				credentialTypeName: this.defaultCredentialTypeName,
 			});
 
 			if (this.currentUser) {
@@ -264,6 +273,38 @@ export default mixins(showMessage, nodeHelpers).extend({
 			useUsersStore,
 			useWorkflowsStore,
 		),
+		activeNodeType(): INodeTypeDescription | null {
+			const activeNode = this.ndvStore.activeNode;
+
+			if (activeNode) {
+				return this.nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
+			}
+			return null;
+		},
+		selectedCredentialType(): INodeCredentialDescription | null {
+			if (this.mode !== 'new') {
+				return null;
+			}
+
+			// If there is already selected type, use it
+			if (this.selectedCredential !== '') {
+				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential);
+			} else if (this.requiredCredentials) {
+				// Otherwise, use credential type that corresponds to the first auth option in the node definition
+				const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
+				// But only if there is zero or one auth options available
+				if (nodeAuthOptions.length > 0 && this.activeNodeType?.credentials) {
+					return getNodeCredentialForSelectedAuthType(
+						this.activeNodeType,
+						nodeAuthOptions[0].value,
+					);
+				} else {
+					return this.activeNodeType?.credentials ? this.activeNodeType.credentials[0] : null;
+				}
+			}
+
+			return null;
+		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
@@ -282,7 +323,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				return null;
 			}
-
+			if (this.selectedCredentialType) {
+				return this.selectedCredentialType.name;
+			}
 			return `${this.activeId}`;
 		},
 		credentialType(): ICredentialType | null {
@@ -418,6 +461,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		defaultCredentialTypeName(): string {
+			let credentialTypeName = this.credentialTypeName;
+			if (!credentialTypeName || credentialTypeName === 'null') {
+				if (this.activeNodeType && this.activeNodeType.credentials) {
+					credentialTypeName = this.activeNodeType.credentials[0].name;
+				}
+			}
+			return credentialTypeName || '';
 		},
 	},
 	methods: {
@@ -614,6 +666,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		onNameEdit(text: string) {
 			this.hasUnsavedChanges = true;
+			this.hasUserSpecifiedName = true;
 			this.credentialName = text;
 		},
 
@@ -876,6 +929,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.isDeleting = false;
 			// Now that the credentials were removed check if any nodes used them
 			this.updateNodesCredentialsIssues();
+			this.credentialData = {};
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
@@ -945,6 +999,50 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 
 			window.addEventListener('message', receiveMessage, false);
+		},
+		async onAuthTypeChanged(type: string): Promise<void> {
+			if (!this.activeNodeType?.credentials) {
+				return;
+			}
+			const credentialsForType = getNodeCredentialForSelectedAuthType(this.activeNodeType, type);
+			if (credentialsForType) {
+				this.selectedCredential = credentialsForType.name;
+				this.resetCredentialData();
+				this.setupNodeAccess();
+				// Update current node auth type so credentials dropdown can be displayed properly
+				updateNodeAuthType(this.ndvStore.activeNode, type);
+				// Also update credential name but only if the default name is still used
+				if (this.hasUnsavedChanges && !this.hasUserSpecifiedName) {
+					const newDefaultName = await this.credentialsStore.getNewCredentialName({
+						credentialTypeName: this.defaultCredentialTypeName,
+					});
+					this.credentialName = newDefaultName;
+				}
+			}
+		},
+		setupNodeAccess(): void {
+			this.nodeAccess = this.nodesWithAccess.reduce(
+				(accu: NodeAccessMap, node: { name: string }) => {
+					if (this.mode === 'new') {
+						accu[node.name] = { nodeType: node.name }; // enable all nodes by default
+					} else {
+						accu[node.name] = null;
+					}
+
+					return accu;
+				},
+				{},
+			);
+		},
+		resetCredentialData(): void {
+			if (!this.credentialType) {
+				return;
+			}
+			for (const property of this.credentialType.properties) {
+				if (!this.credentialType.__overwrittenProperties?.includes(property.name)) {
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+				}
+			}
 		},
 	},
 });

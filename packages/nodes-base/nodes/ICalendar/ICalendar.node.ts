@@ -1,7 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { promisify } from 'util';
 

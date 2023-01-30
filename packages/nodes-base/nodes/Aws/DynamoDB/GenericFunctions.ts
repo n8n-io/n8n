@@ -1,13 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { deepCopy, IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { IRequestBody } from './types';
+import type { IRequestBody } from './types';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,

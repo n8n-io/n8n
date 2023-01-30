@@ -22,6 +22,7 @@ if (inE2ETests) {
 }
 if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
+	process.env.N8N_PUBLIC_API_SWAGGERUI_DISABLED = 'true';
 } else {
 	dotenv.config();
 }

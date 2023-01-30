@@ -1,12 +1,13 @@
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 export async function mauticApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,

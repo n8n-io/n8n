@@ -54,7 +54,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab } from '@/utils';
+import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -326,7 +326,7 @@ export default mixins(
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
 				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
+				if (lastId !== 0 && !isNaN(currentId)) {
 					if (currentId - lastId > 1) {
 						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
@@ -372,9 +372,8 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeNotInTheList =
-					existingExecutions.find((ex) => ex.id === this.activeExecution.id) === undefined;
-				if (activeNotInTheList && this.executions.length > 0) {
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
+				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -394,7 +393,22 @@ export default mixins(
 			try {
 				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
+					this.$showMessage(
+						{
+							title: this.$locale.baseText('executionsList.showError.refreshData.title'),
+							message: error.message,
+							type: 'error',
+							duration: 3500,
+						},
+						false,
+					);
+				} else {
+					this.$showError(
+						error,
+						this.$locale.baseText('executionsList.showError.refreshData.title'),
+					);
+				}
 				return [];
 			}
 		},

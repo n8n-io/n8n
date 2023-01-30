@@ -2,7 +2,11 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
 import * as Db from '@/Db';
-import { IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
+import type {
+	IExternalHooksClass,
+	IExternalHooksFileData,
+	IExternalHooksFunctions,
+} from '@/Interfaces';
 
 import config from '@/config';
 

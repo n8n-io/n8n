@@ -80,6 +80,13 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<html-editor
+					v-else-if="getArgument('editor') === 'htmlEditor' && isHtmlNode(node)"
+					:html="node.parameters.html"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<div
 					v-else-if="isEditor === true"
 					class="code-edit clickable ph-no-capture"
@@ -338,6 +345,7 @@ import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue'
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -346,7 +354,7 @@ import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from 
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { CODE_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE, HTML_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
@@ -354,6 +362,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
 
 export default mixins(
 	externalHooks,
@@ -366,6 +375,7 @@ export default mixins(
 	components: {
 		CodeEdit,
 		CodeNodeEditor,
+		HtmlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
@@ -949,6 +959,9 @@ export default mixins(
 		isCodeNode(node: INodeUi): boolean {
 			return node.type === CODE_NODE_TYPE;
 		},
+		isHtmlNode(node: INodeUi): boolean {
+			return node.type === HTML_NODE_TYPE;
+		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
 			const valueMatch = (value as string).match(
@@ -1078,6 +1091,8 @@ export default mixins(
 					}
 				}
 				this.loadRemoteParameterOptions();
+			} else if (command === 'formatHtml') {
+				htmlEditorEventBus.$emit('format-html');
 			}
 
 			if (this.node && (command === 'addExpression' || command === 'removeExpression')) {

@@ -1,15 +1,9 @@
-import { ContainerOptions, create_container, EventContext, Message, ReceiverOptions } from 'rhea';
+import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { create_container } from 'rhea';
 
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	deepCopy,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	jsonParse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {

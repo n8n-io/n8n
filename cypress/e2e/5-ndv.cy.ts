@@ -69,8 +69,8 @@ describe('NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Airtable', true);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
-		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur()
-		ndv.getters.parameterInput('application').find('input').eq(1).focus().blur()
+		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
+		ndv.getters.parameterInput('application').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
@@ -87,5 +87,4 @@ describe('NDV', () => {
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
 	});
-
 });

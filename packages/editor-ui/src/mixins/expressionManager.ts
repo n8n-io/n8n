@@ -10,7 +10,7 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
-import type { Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 
 export const expressionManager = mixins(workflowHelpers).extend({
 	props: {
@@ -62,6 +62,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 					return [...acc, ...Object.keys(cur.functions)];
 				}, []),
 			);
+		},
+
+		htmlSegments(): Html[] {
+			return this.segments.filter((s): s is Html => s.kind !== 'resolvable');
 		},
 
 		// @TODO: Used?

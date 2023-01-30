@@ -4,13 +4,13 @@
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import {
+import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
-import { EventMessageTypes } from '../EventMessageClasses';
+import type { EventMessageTypes } from '../EventMessageClasses';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';
 

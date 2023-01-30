@@ -10,7 +10,7 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-import {
+import type {
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,

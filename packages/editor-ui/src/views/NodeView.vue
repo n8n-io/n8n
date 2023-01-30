@@ -884,74 +884,61 @@ export default mixins(
 			});
 			this.stopLoading();
 		},
-		async openWorkflow(workflowId: string) {
+		async openWorkflow(workflow: IWorkflowDb) {
 			this.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
 			this.resetWorkspace();
-			let data: IWorkflowDb | undefined;
-			try {
-				data = await this.restApi().getWorkflow(workflowId);
-			} catch (error) {
-				this.$showError(error, this.$locale.baseText('nodeView.showError.openWorkflow.title'));
-				return;
-			}
 
-			if (!data) {
-				throw new Error(
-					this.$locale.baseText('nodeView.workflowWithIdCouldNotBeFound', {
-						interpolate: { workflowId },
-					}),
-				);
-			}
+			this.workflowsStore.addWorkflow(workflow);
+			this.workflowsStore.setActive(workflow.active || false);
+			this.workflowsStore.setWorkflowId(workflow.id);
+			this.workflowsStore.setWorkflowName({ newName: workflow.name, setStateDirty: false });
+			this.workflowsStore.setWorkflowSettings(workflow.settings || {});
+			this.workflowsStore.setWorkflowPinData(workflow.pinData || {});
+			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 
-			this.workflowsStore.addWorkflow(data);
-			this.workflowsStore.setActive(data.active || false);
-			this.workflowsStore.setWorkflowId(workflowId);
-			this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings(data.settings || {});
-			this.workflowsStore.setWorkflowPinData(data.pinData || {});
-			this.workflowsStore.setWorkflowVersionId(data.versionId);
-
-			if (data.ownedBy) {
+			if (workflow.ownedBy) {
 				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.id,
-					ownedBy: data.ownedBy,
+					workflowId: workflow.id,
+					ownedBy: workflow.ownedBy,
 				});
 			}
 
-			if (data.sharedWith) {
+			if (workflow.sharedWith) {
 				this.workflowsEEStore.setWorkflowSharedWith({
-					workflowId: data.id,
-					sharedWith: data.sharedWith,
+					workflowId: workflow.id,
+					sharedWith: workflow.sharedWith,
 				});
 			}
 
-			if (data.usedCredentials) {
-				this.workflowsStore.setUsedCredentials(data.usedCredentials);
+			if (workflow.usedCredentials) {
+				this.workflowsStore.setUsedCredentials(workflow.usedCredentials);
 			}
 
-			const tags = (data.tags || []) as ITag[];
+			const tags = (workflow.tags || []) as ITag[];
 			const tagIds = tags.map((tag) => tag.id);
 			this.workflowsStore.setWorkflowTagIds(tagIds || []);
 			this.tagsStore.upsertTags(tags);
 
-			await this.addNodes(data.nodes, data.connections);
+			await this.addNodes(workflow.nodes, workflow.connections);
 
 			if (!this.credentialsUpdated) {
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
-			this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-			if (selectedExecution?.workflowId !== workflowId) {
+			this.$externalHooks().run('workflow.open', {
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+			});
+			if (selectedExecution?.workflowId !== workflow.id) {
 				this.workflowsStore.activeWorkflowExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
 			} else {
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
 			this.stopLoading();
-			return data;
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
 			if (this.isTouchDevice) {
@@ -2503,7 +2490,7 @@ export default mixins(
 					workflowId = this.$route.params.name;
 				}
 				if (workflowId !== null) {
-					let workflow;
+					let workflow: IWorkflowDb | undefined = undefined;
 					try {
 						workflow = await this.restApi().getWorkflow(workflowId);
 					} catch (error) {
@@ -2517,7 +2504,7 @@ export default mixins(
 					if (workflow) {
 						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
-						await this.openWorkflow(workflowId);
+						await this.openWorkflow(workflow);
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow

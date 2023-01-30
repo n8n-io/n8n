@@ -3,7 +3,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { QueryFailedError } from 'typeorm';
 
 const FAKE_USER_ID = 'abcde-fghij';

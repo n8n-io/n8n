@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { set } from 'lodash';
 

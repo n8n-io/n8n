@@ -4,11 +4,10 @@
 import express from 'express';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
-import {
-	EventMessageWorkflow,
-	EventMessageWorkflowOptions,
-} from './EventMessageClasses/EventMessageWorkflow';
-import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
+import type { EventMessageWorkflowOptions } from './EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
+import type { EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
+import { eventBus } from './MessageEventBus/MessageEventBus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
@@ -19,20 +18,18 @@ import {
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import { eventNamesAll } from './EventMessageClasses';
-import {
-	EventMessageAudit,
-	EventMessageAuditOptions,
-} from './EventMessageClasses/EventMessageAudit';
+import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
 import { BadRequestError } from '../ResponseHelper';
-import {
-	MessageEventBusDestinationTypeNames,
+import type {
 	MessageEventBusDestinationWebhookOptions,
-	EventMessageTypeNames,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
-import { User } from '../databases/entities/User';
+import { MessageEventBusDestinationTypeNames, EventMessageTypeNames } from 'n8n-workflow';
+import type { User } from '../databases/entities/User';
 import * as ResponseHelper from '@/ResponseHelper';
-import { EventMessageNode, EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
+import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 
 export const eventBusRouter = express.Router();
 

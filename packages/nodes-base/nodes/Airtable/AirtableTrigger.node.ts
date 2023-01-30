@@ -1,12 +1,12 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 

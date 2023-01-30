@@ -1,12 +1,11 @@
-import {
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 

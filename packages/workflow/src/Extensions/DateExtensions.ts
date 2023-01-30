@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import { DateTime, DateTimeUnit, DurationLike, DurationObjectUnits, LocaleOptions } from 'luxon';
+import { DateTime } from 'luxon';
+import type {
+	DateTimeUnit,
+	DurationLike,
+	DurationObjectUnits,
+	LocaleOptions,
+} from 'luxon';
 import type { ExtensionMap } from './Extensions';
 
 type DurationUnit =

@@ -1,4 +1,5 @@
-import { IDataObject, INodeExecutionData, jsonParse } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { difference, get, intersection, isEmpty, isEqual, isNull, omit, set, union } from 'lodash';
 
 type PairToMatch = {

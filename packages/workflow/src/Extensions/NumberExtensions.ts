@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { ExtensionMap } from './Extensions';
+import type { ExtensionMap } from './Extensions';
 
 function format(value: number, extraArgs: unknown[]): string {
 	const [locales = 'en-US', config = {}] = extraArgs as [
