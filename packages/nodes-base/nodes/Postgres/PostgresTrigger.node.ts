@@ -1,22 +1,17 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IRun,
 	ITriggerFunctions,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { createDeferredPromise, LoggerProxy as Logger } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
 export class PostgresTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Postgres Trigger',
 		name: 'postgresTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:rabbitmq.png',
+		icon: 'file:postgres.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to RabbitMQ messages',
@@ -44,7 +39,6 @@ export class PostgresTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const queue = this.getNodeParameter('queue') as string;
 		const credentials = await this.getCredentials('postgres');
 		const pgp = pgPromise();
 
@@ -68,10 +62,12 @@ export class PostgresTrigger implements INodeType {
 		const db = pgp(config);
 		db.connect({ direct: true })
 			.then(async (connection) => {
-				connection.client.on('notification', function (data) {
+				console.log('Connected to database');
+				connection.client.on('notification', async (data) => {
 					console.log('Received: ', data);
+					this.emit([this.helpers.returnJsonArray([data])]);
 				});
-				return connection.none('LISTEN assets');
+				return connection.none('LISTEN new_testevent');
 			})
 			.catch(function (error) {
 				console.error('Error:', error);
