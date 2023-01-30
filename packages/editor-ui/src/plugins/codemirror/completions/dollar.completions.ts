@@ -67,7 +67,7 @@ export function dollarOptions() {
 			return option;
 		})
 		.concat(
-			...autocompletableNodeNames().map((nodeName) => ({
+			autocompletableNodeNames().map((nodeName) => ({
 				label: `$('${nodeName}')`,
 				type: 'keyword',
 				info: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
