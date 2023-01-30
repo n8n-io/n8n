@@ -3,12 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
-import {
-	LoggerProxy,
+import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';

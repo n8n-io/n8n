@@ -16,7 +16,7 @@ import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
 import type { PathLike } from 'fs';
-import { ExecutionStatus } from './ExecutionStatus';
+import type { ExecutionStatus } from './ExecutionStatus';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;

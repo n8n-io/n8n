@@ -11,7 +11,7 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { LessThanOrEqual } from 'typeorm';
+import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import config from '@/config';

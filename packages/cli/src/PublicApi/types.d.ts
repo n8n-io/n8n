@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';

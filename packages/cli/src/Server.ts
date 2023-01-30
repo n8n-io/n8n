@@ -36,7 +36,7 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type { FindManyOptions } from 'typeorm';
-import { In } from 'typeorm';
+import { Not, In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { RequestOptions } from 'oauth-1.0a';
@@ -129,7 +129,6 @@ import {
 import { getInstance as getMailerInstance } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
-	DatabaseType,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
@@ -145,7 +144,6 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';

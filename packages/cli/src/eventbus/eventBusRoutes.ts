@@ -28,7 +28,8 @@ import type {
 import { MessageEventBusDestinationTypeNames, EventMessageTypeNames } from 'n8n-workflow';
 import type { User } from '../databases/entities/User';
 import * as ResponseHelper from '@/ResponseHelper';
-import { EventMessageNode, EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
+import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 
 export const eventBusRouter = express.Router();

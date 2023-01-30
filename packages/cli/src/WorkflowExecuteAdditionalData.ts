@@ -33,13 +33,13 @@ import type {
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowHooks,
-	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { LessThanOrEqual } from 'typeorm';

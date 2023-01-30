@@ -3,7 +3,7 @@ import type { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import type { AbstractEventPayload } from './AbstractEventPayload';
-import { EventNamesNodeType } from '.';
+import type { EventNamesNodeType } from '.';
 
 // --------------------------------------
 // EventMessage class for Node events

@@ -32,9 +32,9 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.updated',
 ] as const;
 
-export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
-export type EventNamesAuditType = typeof eventNamesAudit[number];
-export type EventNamesNodeType = typeof eventNamesNode[number];
+export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
+export type EventNamesAuditType = (typeof eventNamesAudit)[number];
+export type EventNamesNodeType = (typeof eventNamesNode)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType

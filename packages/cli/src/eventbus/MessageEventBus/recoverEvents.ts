@@ -1,13 +1,9 @@
 import { parse, stringify } from 'flatted';
-import {
-	IRunExecutionData,
-	NodeOperationError,
-	WorkflowOperationError,
-	ITaskData,
-} from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
+import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import * as Db from '@/Db';
-import { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
-import { DateTime } from 'luxon';
+import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
+import type { DateTime } from 'luxon';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,

@@ -4,7 +4,7 @@ import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { AbstractEventPayload } from './AbstractEventPayload';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
-import { EventNamesTypes } from '.';
+import type { EventNamesTypes } from '.';
 
 function modifyUnderscoredKeys(
 	input: { [key: string]: any },

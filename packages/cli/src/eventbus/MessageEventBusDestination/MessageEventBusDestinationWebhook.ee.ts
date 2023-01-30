@@ -5,16 +5,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
-import axios, { AxiosRequestConfig, Method } from 'axios';
-import {
-	jsonParse,
-	LoggerProxy,
+import axios from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
+import { jsonParse, LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 } from 'n8n-workflow';
-import { jsonParse, LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
