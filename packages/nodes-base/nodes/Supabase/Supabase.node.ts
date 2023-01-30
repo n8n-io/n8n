@@ -18,6 +18,7 @@ import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	mapPairedItemsFrom,
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
@@ -155,20 +156,26 @@ export class Supabase implements INodeType {
 					records.push(record);
 				}
 				const endpoint = `/${tableId}`;
-				let createdRow;
 
 				try {
-					createdRow = await supabaseApiRequest.call(this, 'POST', endpoint, records);
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(createdRow),
-						{ itemData: { item: 0 } },
+					const createdRows: IDataObject[] = await supabaseApiRequest.call(
+						this,
+						'POST',
+						endpoint,
+						records,
 					);
-					returnData.push(...executionData);
+					createdRows.forEach((row, i) => {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(row),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					});
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.description }),
-							{ itemData: { item: 0 } },
+							{ itemData: mapPairedItemsFrom(records) },
 						);
 						returnData.push(...executionData);
 					} else {
@@ -223,6 +230,7 @@ export class Supabase implements INodeType {
 
 							continue;
 						}
+						throw error;
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(rows),
@@ -262,8 +270,8 @@ export class Supabase implements INodeType {
 
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(rows),
 						{ itemData: { item: i } },
@@ -322,6 +330,7 @@ export class Supabase implements INodeType {
 
 							continue;
 						}
+						throw error;
 					}
 				}
 			}
@@ -382,7 +391,6 @@ export class Supabase implements INodeType {
 
 					try {
 						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
-						returnData.push(...updatedRow);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow),
 							{ itemData: { item: i } },
@@ -397,6 +405,7 @@ export class Supabase implements INodeType {
 							returnData.push(...executionData);
 							continue;
 						}
+						throw error;
 					}
 				}
 			}
