@@ -831,16 +831,8 @@ export default mixins(
 .jtk-overlay {
 	z-index: 3;
 }
-.jtk-connector.success {
+.jtk-connector {
 	z-index: 4;
-
-	path:not(.jtk-connector-outline) {
-		stroke: var(--color-success-light);
-	}
-	path[jtk-overlay-id='endpoint-arrow'],
-	path[jtk-overlay-id='midpoint-arrow'] {
-		fill: var(--color-success-light);
-	}
 }
 .node-input-endpoint-label,
 .node-output-endpoint-label,
@@ -881,6 +873,16 @@ export default mixins(
 
 .drop-add-node-label {
 	z-index: 10;
+}
+
+.jtk-connector.success:not(.jtk-hover) {
+	path:not(.jtk-connector-outline) {
+		stroke: var(--color-success-light);
+	}
+	path[jtk-overlay-id='endpoint-arrow'],
+	path[jtk-overlay-id='midpoint-arrow'] {
+		fill: var(--color-success-light);
+	}
 }
 </style>
 
