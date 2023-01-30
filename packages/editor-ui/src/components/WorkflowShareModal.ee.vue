@@ -157,6 +157,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { isNavigationFailure } from 'vue-router';
 
 export default mixins(showMessage).extend({
 	name: 'workflow-share-modal',
@@ -429,7 +430,11 @@ export default mixins(showMessage).extend({
 			await this.usersStore.fetchUsers();
 		},
 		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			this.$router.push({ name: VIEWS.USERS_SETTINGS }).catch((failure) => {
+				if (!isNavigationFailure(failure)) {
+					console.error(failure);
+				}
+			});
 			this.modalBus.$emit('close');
 		},
 		trackTelemetry(data: ITelemetryTrackProperties) {

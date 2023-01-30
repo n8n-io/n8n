@@ -130,7 +130,7 @@ index 6209b8b7f21c6eea447dd4671b7c4cfc1ef5e9c2..a26772af8dcdcbc0e3a6058bda30c7f9
      if (reference.nodeType === 1) {
        Object(dom_["off"])(reference, 'mouseenter', this.show);
 diff --git a/packages/popover/src/main.vue b/packages/popover/src/main.vue
-index ab5d060182c2e671989f1aba190c85a074d2c754..d87f1b592d7d408d185229b9f9e29070ec2c6fe8 100644
+index ab5d060182c2e671989f1aba190c85a074d2c754..8b464ad39a78ac6efead5f687d977500642e45dc 100644
 --- a/packages/popover/src/main.vue
 +++ b/packages/popover/src/main.vue
 @@ -98,16 +98,9 @@ export default {
@@ -217,7 +217,6 @@ index ab5d060182c2e671989f1aba190c85a074d2c754..d87f1b592d7d408d185229b9f9e29070
    }
  };
  </script>
-\ No newline at end of file
 diff --git a/packages/tooltip/src/main.js b/packages/tooltip/src/main.js
 index dc930ec58d42328a4d62cddb22fd513db31793cf..d9a6afc80d27ea89b838a47f395e249131c1370c 100644
 --- a/packages/tooltip/src/main.js
