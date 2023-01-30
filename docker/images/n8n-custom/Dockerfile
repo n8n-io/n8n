@@ -6,6 +6,7 @@ FROM n8nio/base:${NODE_VERSION} as builder
 COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY scripts ./scripts
 COPY packages ./packages
+COPY patches ./patches
 
 RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
