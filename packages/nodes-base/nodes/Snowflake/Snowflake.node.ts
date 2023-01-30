@@ -195,11 +195,13 @@ export class Snowflake implements INodeType {
 			const data = copyInputItems(items, columns);
 			const binds = data.map((element) => Object.values(element));
 			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(data),
-				{ itemData: { item: 0 } },
-			);
-			returnData.push(...executionData);
+			data.forEach((d, i) => {
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(d),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
+			});
 		}
 
 		if (operation === 'update') {
@@ -224,11 +226,13 @@ export class Snowflake implements INodeType {
 			for (let i = 0; i < binds.length; i++) {
 				await execute(connection, query, binds[i] as unknown as snowflake.InsertBinds);
 			}
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(data),
-				{ itemData: { item: 0 } },
-			);
-			returnData.push(...executionData);
+			data.forEach((d, i) => {
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(d),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
+			});
 		}
 
 		await destroy(connection);
