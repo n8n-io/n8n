@@ -3,7 +3,7 @@ export type GristCredentials = {
 	planType: 'free' | 'paid' | 'selfHosted';
 	customSubdomain?: string;
 	selfHostedUrl?: string;
-	allowUnauthorizedCerts ?: boolean;
+	allowUnauthorizedCerts?: boolean;
 };
 
 export type GristColumns = {
