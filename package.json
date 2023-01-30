@@ -75,7 +75,6 @@
     },
     "patchedDependencies": {
       "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
-    },
-    "allowNonAppliedPatches": true
+    }
   }
 }
