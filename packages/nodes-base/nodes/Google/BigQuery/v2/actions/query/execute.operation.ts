@@ -22,19 +22,6 @@ export const description: INodeProperties[] = [
 			'SQL query to execute, more info <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>',
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['executeQuery'],
-				resource: ['query'],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -90,18 +77,23 @@ export const description: INodeProperties[] = [
 				description: 'How long to wait for the query to complete, in milliseconds',
 			},
 			{
+				displayName: 'Raw Output',
+				name: 'rawOutput',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					hide: {
+						dryRun: [true],
+					},
+				},
+			},
+			{
 				displayName: 'Use Legacy SQL',
 				name: 'useLegacySql',
 				type: 'boolean',
 				default: false,
 				description:
 					"Whether to use BigQuery's legacy SQL dialect for this query. If set to false, the query will use BigQuery's standard SQL.",
-			},
-			{
-				displayName: 'Return Whole Response',
-				name: 'returnWholeResponse',
-				type: 'boolean',
-				default: false,
 			},
 		],
 	},
@@ -124,13 +116,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			});
 
 			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
-			const simple = this.getNodeParameter('simple', i) as boolean;
-			const options = this.getNodeParameter('options', i);
-			let returnWholeResponse = false;
 
-			if (options.returnWholeResponse !== undefined) {
-				returnWholeResponse = options.returnWholeResponse as boolean;
-				delete options.returnWholeResponse;
+			const options = this.getNodeParameter('options', i);
+
+			let rawOutput = false;
+
+			if (options.rawOutput !== undefined) {
+				rawOutput = options.rawOutput as boolean;
+				delete options.rawOutput;
 			}
 
 			const qs: IDataObject = options;
@@ -156,7 +149,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			// console.log(response);
 
-			if (returnWholeResponse || qs.dryRun) {
+			if (rawOutput || qs.dryRun) {
 				responseData = response;
 			} else {
 				const { rows, schema } = response;
@@ -165,7 +158,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					const fields = (schema as TableSchema).fields;
 					responseData = rows;
 
-					responseData = simple ? simplify(responseData, fields) : responseData;
+					responseData = simplify(responseData, fields);
 				} else {
 					responseData = { success: true };
 				}

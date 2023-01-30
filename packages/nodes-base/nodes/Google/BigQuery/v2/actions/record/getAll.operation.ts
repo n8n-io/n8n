@@ -38,19 +38,6 @@ export const description: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['record'],
-				operation: ['getAll'],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -70,6 +57,11 @@ export const description: INodeProperties[] = [
 				default: '',
 				description:
 					'Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = "a,e.d.f"</code>',
+				displayOptions: {
+					hide: {
+						returnTableSchema: [true],
+					},
+				},
 			},
 			{
 				displayName: 'Return Table Schema',
@@ -77,6 +69,17 @@ export const description: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to return the table schema instead of the data',
+			},
+			{
+				displayName: 'Raw Output',
+				name: 'rawOutput',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					hide: {
+						returnTableSchema: [true],
+					},
+				},
 			},
 		],
 	},
@@ -92,16 +95,23 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	for (let i = 0; i < length; i++) {
 		try {
 			let responseData;
+
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			});
 			const datasetId = this.getNodeParameter('datasetId', i) as string;
 			const tableId = this.getNodeParameter('tableId', i) as string;
 			const returnAll = this.getNodeParameter('returnAll', i);
-			const simple = this.getNodeParameter('simple', i) as boolean;
+
 			const options = this.getNodeParameter('options', i);
 
-			let fields: SchemaField[] = [];
+			let rawOutput = false;
+
+			if (options.rawOutput !== undefined) {
+				rawOutput = options.rawOutput as boolean;
+			}
+
+			let schemaFields: SchemaField[] = [];
 			const qs: IDataObject = {};
 
 			try {
@@ -114,10 +124,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					)
 				).schema as TableSchema;
 
-				fields = tableSchema.fields;
+				schemaFields = tableSchema.fields;
 
 				if (options.returnTableSchema) {
-					return [{ json: tableSchema }];
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(tableSchema),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
+					continue;
 				}
 
 				if (options.selectedFields) {
@@ -148,7 +164,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 
 				if (!responseData?.length) {
-					return [];
+					continue;
 				}
 			} catch (error) {
 				if (error.message.includes('EXTERNAL')) {
@@ -165,19 +181,20 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 						{ query },
 					);
 
-					fields = (schema as TableSchema).fields;
+					schemaFields = (schema as TableSchema).fields;
 					responseData = rows;
 				} else {
 					throw error;
 				}
 			}
 
-			if (qs.selectedFields) {
-				const selected = selectedFieldsToObject(qs.selectedFields as string);
-				fields = getSchemaForSelectedFields(fields, selected);
+			if (!rawOutput) {
+				if (qs.selectedFields) {
+					const selected = selectedFieldsToObject(qs.selectedFields as string);
+					schemaFields = getSchemaForSelectedFields(schemaFields, selected);
+				}
+				responseData = simplify(responseData, schemaFields);
 			}
-
-			responseData = simple ? simplify(responseData, fields) : responseData;
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData),

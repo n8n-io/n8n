@@ -50,4 +50,5 @@ export const projectRLC: INodeProperties = {
 			url: '=https://console.cloud.google.com/bigquery?project={{$value}}',
 		},
 	],
+	description: 'Projects to which you have been granted any project role',
 };
