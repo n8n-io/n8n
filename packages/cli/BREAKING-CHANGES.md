@@ -6,9 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-In expressions, `DateTime.fromHTTP()`, `DateTime.fromISO()` and `DateTime.fromJSDate()` require an argument. Before, they returned `null` when called without an argument; now, they throw an error.
-
-Similarly, `$jmespath()` requires two arguments. Before, it returned `null` when called without the needed number of arguments; now, it throws an error.
+In expressions, `DateTime.fromHTTP()`, `DateTime.fromISO()` and `DateTime.fromJSDate()` require an argument. Before, they all resolved `null` when called without an argument; now, they throw an error when called without an argument.
 
 ### When is action necessary?
 
