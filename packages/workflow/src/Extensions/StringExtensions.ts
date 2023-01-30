@@ -184,11 +184,15 @@ function isUrl(value: string) {
 		return false;
 	}
 
-	// URL constructor tolerates missing `//` after protocol
-
-	if (url.protocol === 'http:' && value.slice(5, 7) === '//') return true;
-
-	if (url.protocol === 'https:' && value.slice(6, 8) === '//') return true;
+	// URL constructor tolerates missing `//` after protocol so check manually
+	for (const scheme of ['http:', 'https:']) {
+		if (
+			url.protocol === scheme &&
+			value.slice(scheme.length, scheme.length + '//'.length) === '//'
+		) {
+			return true;
+		}
+	}
 
 	return false;
 }
