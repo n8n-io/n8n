@@ -10,6 +10,7 @@ import { dateExtensions } from './DateExtensions';
 import { numberExtensions } from './NumberExtensions';
 import { stringExtensions } from './StringExtensions';
 import { objectExtensions } from './ObjectExtensions';
+import type { ExpressionKind } from 'ast-types/gen/kinds';
 
 const EXPRESSION_EXTENDER = 'extend';
 
@@ -134,16 +135,181 @@ function parseWithEsprimaNext(source: string, options?: any): any {
  */
 export const extendTransform = (expression: string): { code: string } | undefined => {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const ast = parse(expression, { parser: { parse: parseWithEsprimaNext } });
+		const ast = parse(expression, { parser: { parse: parseWithEsprimaNext } }) as types.ASTNode;
+
+		let currentChain = 1;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		visit(ast, {
 			visitChainExpression(path) {
 				this.traverse(path);
-				console.log(path);
+				const chainNumber = currentChain;
+				currentChain += 1;
+
+				const globalIdentifier = types.builders.identifier(
+					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+					// @ts-ignore
+					typeof window !== 'object' ? 'global' : 'window',
+				);
+				const undefinedIdentifier = types.builders.identifier('undefined');
+				const cancelIdentifier = types.builders.identifier(`chainCancelToken${chainNumber}`);
+				const valueIdentifier = types.builders.identifier(`chainValue${chainNumber}`);
+				const cancelMemberExpression = types.builders.memberExpression(
+					globalIdentifier,
+					cancelIdentifier,
+				);
+				const valueMemberExpression = types.builders.memberExpression(
+					globalIdentifier,
+					valueIdentifier,
+				);
+
+				const exprStack: ExpressionKind[] = [];
+				const patchedStack: ExpressionKind[] = [];
+
+				const buildCancelCheckWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.conditionalExpression(
+						types.builders.binaryExpression(
+							'===',
+							cancelMemberExpression,
+							types.builders.booleanLiteral(true),
+						),
+						undefinedIdentifier,
+						node,
+					);
+				};
+
+				const buildValueAssignWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.assignmentExpression('=', valueMemberExpression, node);
+				};
+
+				const buildOptionalWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.conditionalExpression(
+						types.builders.binaryExpression(
+							'===',
+							types.builders.logicalExpression(
+								'??',
+								buildValueAssignWrapper(node),
+								undefinedIdentifier,
+							),
+							undefinedIdentifier,
+						),
+						types.builders.booleanLiteral(true),
+						types.builders.booleanLiteral(false),
+					);
+				};
+
+				const buildCancelAssignWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.assignmentExpression('=', cancelMemberExpression, node);
+				};
+
+				let currentNode: ExpressionKind = path.node.expression;
+				let currentPatch: ExpressionKind | null = null;
+				let patchTop: ExpressionKind | null = null;
+
+				const updatePatch = (toPatch: ExpressionKind, node: ExpressionKind) => {
+					if (toPatch.type === 'MemberExpression' || toPatch.type === 'OptionalMemberExpression') {
+						toPatch.object = node;
+					} else if (
+						toPatch.type === 'CallExpression' ||
+						toPatch.type === 'OptionalCallExpression'
+					) {
+						toPatch.callee = node;
+					}
+				};
+
+				while (true) {
+					if (
+						currentNode.type === 'MemberExpression' ||
+						currentNode.type === 'OptionalMemberExpression' ||
+						currentNode.type === 'CallExpression' ||
+						currentNode.type === 'OptionalCallExpression'
+					) {
+						let patchNode: ExpressionKind;
+						if (
+							currentNode.type === 'MemberExpression' ||
+							currentNode.type === 'OptionalMemberExpression'
+						) {
+							patchNode = types.builders.memberExpression(
+								valueMemberExpression,
+								currentNode.property,
+							);
+						} else {
+							patchNode = types.builders.callExpression(
+								valueMemberExpression,
+								currentNode.arguments,
+							);
+						}
+
+						if (currentPatch) {
+							updatePatch(currentPatch, patchNode);
+						}
+
+						if (!patchTop) {
+							patchTop = patchNode;
+						}
+
+						currentPatch = patchNode;
+
+						if (currentNode.optional) {
+							patchedStack.push(patchTop);
+							patchTop = null;
+							currentPatch = null;
+						}
+
+						if (
+							currentNode.type === 'MemberExpression' ||
+							currentNode.type === 'OptionalMemberExpression'
+						) {
+							currentNode = currentNode.object;
+						} else {
+							currentNode = currentNode.callee;
+						}
+					} else {
+						if (currentPatch) {
+							updatePatch(currentPatch, currentNode);
+							if (!patchTop) {
+								patchTop = currentPatch;
+							}
+						}
+
+						if (patchTop) {
+							patchedStack.push(patchTop);
+						} else {
+							patchedStack.push(currentNode);
+						}
+						break;
+					}
+				}
+
+				patchedStack.reverse();
+
+				for (let i = 0; i < patchedStack.length; i++) {
+					let node = patchedStack[i];
+					node = buildCancelAssignWrapper(buildOptionalWrapper(node));
+					if (i !== 0) {
+						node = buildCancelCheckWrapper(node);
+					}
+					patchedStack[i] = node;
+				}
+
+				patchedStack.push(valueMemberExpression);
+
+				const sequenceNode = types.builders.sequenceExpression(patchedStack);
+
+				console.log(
+					'chain expression',
+					path,
+					path.node,
+					exprStack,
+					patchedStack,
+					print(sequenceNode)?.code,
+				);
+
+				path.replace(sequenceNode);
 			},
 		});
+
+		console.log('after:', print(ast)?.code);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		visit(ast, {

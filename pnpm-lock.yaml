@@ -928,6 +928,7 @@ importers:
       '@types/lodash.set': ^4.3.6
       '@types/luxon': ^2.0.9
       '@types/xml2js': ^0.4.3
+      ast-types: 0.15.2
       crypto-js: ^4.1.1
       esprima-next: 5.8.4
       jmespath: ^0.16.0
@@ -943,6 +944,7 @@ importers:
       xml2js: ^0.4.23
     dependencies:
       '@n8n_io/riot-tmpl': 2.0.0
+      ast-types: 0.15.2
       crypto-js: 4.1.1
       esprima-next: 5.8.4
       jmespath: 0.16.0

@@ -367,8 +367,6 @@ export class Expression {
 				}
 
 				let text = output.code;
-				console.log(chunk.text);
-				console.log(output.code);
 
 				// We need to cut off any trailing semicolons. These cause issues
 				// with certain types of expression and cause the whole expression
