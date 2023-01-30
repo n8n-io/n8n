@@ -12,6 +12,35 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
+
+export async function invoiceNinjaApiDownloadFile(
+	this: IExecuteFunctions, 
+	method: string,
+	endpoint: string,
+	) {
+	const credentials = await this.getCredentials('invoiceNinjaApi');
+	
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+	
+	const version = this.getNodeParameter('apiVersion', 0) as string;
+	
+	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
+	const baseUrl = credentials.url || defaultUrl;
+	
+	return this.helpers.request({
+		uri: `${baseUrl}/api/v1${endpoint}`,
+		method,
+		json: false,
+		encoding: null,
+		headers: {
+			'X-API-Token': credentials.apiToken,
+			'Accept': 'application/pdf'
+		},
+	});
+}
+
 export async function invoiceNinjaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,

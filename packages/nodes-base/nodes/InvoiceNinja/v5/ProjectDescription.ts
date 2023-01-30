@@ -156,7 +156,7 @@ export const projectFields: INodeProperties[] = [
 				resource: ['project'],
 			},
 		},
-		default: false,
+		default: true,
 		description: 'Whether to return all results or only up to a given perPage',
 	},
 	{

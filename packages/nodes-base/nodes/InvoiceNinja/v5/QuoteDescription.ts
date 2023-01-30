@@ -26,6 +26,12 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Get many quotes',
 			},
 			{
+				name: 'Download',
+				value: 'download',
+				description: 'Get PDF from quote',
+				action: 'Download quote',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new quote',
@@ -44,10 +50,10 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Delete a quote',
 			},
 			{
-				name: 'Email',
-				value: 'email',
-				description: 'Email an quote',
-				action: 'Email a quote',
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an quote',
+				action: 'Action to an quote',
 			},
 		],
 		default: 'create',
@@ -154,7 +160,7 @@ export const quoteFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		default: false,
+		default: true,
 		description: 'Whether to return all results or only up to a given perPage',
 	},
 	{
@@ -177,6 +183,24 @@ export const quoteFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  quote:download                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invitation Key OR Quote ID',
+		name: 'inputKey',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['quote'],
+				operation: ['download'],
+			},
+		},
+		description: 'Value \'key\' from entry of property \'invitations\' of an quote or the quote id.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 quote:create                               */
@@ -658,7 +682,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  quote:email                               */
+	/*                                  quote:action                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Quote ID',
@@ -670,8 +694,52 @@ export const quoteFields: INodeProperties[] = [
 			show: {
 				apiVersion: ['v5'],
 				resource: ['quote'],
-				operation: ['email'],
+				operation: ['action'],
 			},
 		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['quote'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Clone To Quote',
+				value: 'clone_to_quote',
+			},
+			{
+				name: 'Convert to Invoice',
+				value: 'convert_to_quote',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+			},
+			{
+				name: 'Mark Send',
+				value: 'mark_sent',
+			},
+			{
+				name: 'Approve',
+				value: 'approve',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+			},
+		],
 	},
 ];

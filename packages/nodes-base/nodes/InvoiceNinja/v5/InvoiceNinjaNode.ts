@@ -8,7 +8,7 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
+import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
 import { clientFields, clientOperations } from './ClientDescription';
 
@@ -670,7 +670,7 @@ export const InvoiceNinjaV5 = {
 						const expenseId = that.getNodeParameter('expenseId', i) as string;
 						const additionalFields = that.getNodeParameter('additionalFields', i);
 						const body: IExpense = {};
-						
+
 						if (additionalFields.userId) {
 							body.user_id = additionalFields.userId as string;
 						}
@@ -1043,14 +1043,6 @@ export const InvoiceNinjaV5 = {
 						);
 						responseData = responseData.data;
 					}
-					if (operation === 'email') {
-						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(
-							that,
-							'GET',
-							`/invoices/${invoiceId}/email`,
-						);
-					}
 					if (operation === 'get') {
 						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
 						const include = that.getNodeParameter('include', i) as Array<string>;
@@ -1114,13 +1106,57 @@ export const InvoiceNinjaV5 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'download') {
-						const invitationKey = that.getNodeParameter('invitationKey', i) as string;
+						const inputKey = that.getNodeParameter('inputKey', i) as string;
+						try {
+							responseData = await invoiceNinjaApiDownloadFile.call(
+								that,
+								'GET',
+								`/invoice/${inputKey}/download`,
+							).catch(err => {
+								if (err.description == 'no record found') return null; // handle not found
+								throw err;
+							});
+						} catch (er) {
+							// fetch invoice by id first to get invitationKey
+							let tmpInvoiceData = await invoiceNinjaApiRequest.call(
+								that,
+								'GET',
+								`/invoices/${inputKey}`,
+							).catch(err => {
+								if (err.description.includes('query results')) return null; // handle not found
+								throw err;
+							});
+							if (!tmpInvoiceData) throw new Error('No invoice found for this key');
+							if (!tmpInvoiceData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							console.log(tmpInvoiceData.data.invitations[0].key)
+							// download it with the fetched key
+							responseData = await invoiceNinjaApiDownloadFile.call(
+								that,
+								'GET',
+								`/invoice/${tmpInvoiceData.data.invitations[0].key}/download`,
+							);
+						}
+						returnData.push({
+							json: {},
+							binary: {
+								data: await that.helpers.prepareBinaryData(
+									responseData,
+									'invoice.pdf',
+									'application/pdf'
+								),
+							},
+
+						});
+						continue;
+					}
+					if (operation === 'action') {
+						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
+						const action = that.getNodeParameter('action', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
 							'GET',
-							`/invoices/${invitationKey}/download`,
+							`/invoices/${invoiceId}/${action}`,
 						);
-						responseData = responseData.data;
 					}
 				}
 				if (resource === 'payment') {
@@ -1498,7 +1534,7 @@ export const InvoiceNinjaV5 = {
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
 							'POST',
-							'/quote',
+							'/quotes',
 							body as IDataObject,
 						);
 						responseData = responseData.data;
@@ -1580,18 +1616,10 @@ export const InvoiceNinjaV5 = {
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
 							'PUT',
-							'/quote' + `/${quoteId}`,
+							'/quotes' + `/${quoteId}`,
 							body as IDataObject,
 						);
 						responseData = responseData.data;
-					}
-					if (operation === 'email') {
-						const quoteId = that.getNodeParameter('quoteId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(
-							that,
-							'GET',
-							`/quotes/${quoteId}/email`,
-						);
 					}
 					if (operation === 'get') {
 						const quoteId = that.getNodeParameter('quoteId', i) as string;
@@ -1605,7 +1633,10 @@ export const InvoiceNinjaV5 = {
 							`/quotes/${quoteId}`,
 							{},
 							qs,
-						);
+						).catch(err => {
+							if (err.description.includes('query results')) throw new Error('Quote was not found.'); // handle not found
+							throw err;
+						});
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
@@ -1626,7 +1657,7 @@ export const InvoiceNinjaV5 = {
 								that,
 								'data',
 								'GET',
-								'/invoices',
+								'/quotes',
 								{},
 								qs,
 							);
@@ -1645,6 +1676,15 @@ export const InvoiceNinjaV5 = {
 							`/quote/${quoteId}`,
 						);
 						responseData = responseData.data;
+					}
+					if (operation === 'action') {
+						const quoteId = that.getNodeParameter('quoteId', i) as string;
+						const action = that.getNodeParameter('action', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'GET',
+							`/quotes/${quoteId}/${action}`,
+						);
 					}
 				}
 				if (resource === 'task') {

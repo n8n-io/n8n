@@ -50,10 +50,10 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Delete an invoice',
 			},
 			{
-				name: 'Email',
-				value: 'email',
-				description: 'Email an invoice',
-				action: 'Email an invoice',
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an invoice',
+				action: 'Action to an invoice',
 			},
 		],
 		default: 'create',
@@ -70,20 +70,6 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['invoice'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -192,7 +178,7 @@ export const invoiceFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		default: false,
+		default: true,
 		description: 'Whether to return all results or only up to a given perPage',
 	},
 	{
@@ -217,11 +203,11 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:download                               */
+	/*                                  invoice:download                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invitation Key',
-		name: 'invitationKey',
+		displayName: 'Invitation Key OR Invoice ID',
+		name: 'inputKey',
 		type: 'string',
 		default: '',
 		required: true,
@@ -232,7 +218,7 @@ export const invoiceFields: INodeProperties[] = [
 				operation: ['download'],
 			},
 		},
-		description: 'Value \'key\' from entry of property \'invitations\' of an invoice',
+		description: 'Value \'key\' from entry of property \'invitations\' of an invoice or the invoice id.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 invoice:create                             */
@@ -818,7 +804,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:email                             */
+	/*                                  invoice:action                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
@@ -830,8 +816,56 @@ export const invoiceFields: INodeProperties[] = [
 			show: {
 				apiVersion: ['v5'],
 				resource: ['invoice'],
-				operation: ['email'],
+				operation: ['action'],
 			},
 		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Auto Bill',
+				value: 'auto_bill',
+			},
+			{
+				name: 'Clone To Quote',
+				value: 'clone_to_quote',
+			},
+			{
+				name: 'Clone to Invoice',
+				value: 'clone_to_invoice',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+			},
+			{
+				name: 'Mark Send',
+				value: 'mark_sent',
+			},
+			{
+				name: 'Mark Paid',
+				value: 'mark_paid',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+			},
+		],
 	},
 ];

@@ -148,7 +148,7 @@ export const paymentFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		default: false,
+		default: true,
 		description: 'Whether to return all results or only up to a given perPage',
 	},
 	{
