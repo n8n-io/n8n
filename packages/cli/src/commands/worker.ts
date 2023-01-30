@@ -5,21 +5,13 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import express from 'express';
 import http from 'http';
-import PCancelable from 'p-cancelable';
+import type PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-	Workflow,
-	LoggerProxy,
-	ErrorReporterProxy as ErrorReporter,
-	sleep,
-	ExecutionStatus,
-} from 'n8n-workflow';
+import type { IExecuteResponsePromiseData, INodeTypes, IRun, ExecutionStatus } from 'n8n-workflow';
+import { Workflow, LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
@@ -298,7 +290,7 @@ export class Worker extends Command {
 				const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 				// Load the credentials overwrites if any exist
-				await CredentialsOverwrites(credentialTypes).init();
+				CredentialsOverwrites(credentialTypes);
 
 				// Load all external hooks
 				const externalHooks = ExternalHooks();

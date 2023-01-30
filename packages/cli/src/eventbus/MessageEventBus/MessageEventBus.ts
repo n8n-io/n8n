@@ -11,17 +11,14 @@ import {
 	incrementPrometheusMetric,
 } from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
-import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
-import {
-	EventMessageAuditOptions,
-	EventMessageAudit,
-} from '../EventMessageClasses/EventMessageAudit';
-import {
-	EventMessageWorkflowOptions,
-	EventMessageWorkflow,
-} from '../EventMessageClasses/EventMessageWorkflow';
+import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
+import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
+import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
 import { isLogStreamingEnabled } from './MessageEventBusHelper';
-import { EventMessageNode, EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,

@@ -1,5 +1,5 @@
 import { BINARY_ENCODING } from 'n8n-core';
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,

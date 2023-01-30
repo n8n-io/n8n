@@ -1,5 +1,5 @@
 import { In } from 'typeorm';
-import {
+import type {
 	IDataObject,
 	IExecuteData,
 	INode,
@@ -7,22 +7,28 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	NodeApiError,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
-	NodeApiError,
 	NodeOperationError,
 	Workflow,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import { ICredentialsDb, IWorkflowErrorData, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type {
+	ICredentialsDb,
+	IWorkflowErrorData,
+	IWorkflowExecutionDataProcess,
+} from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { User } from '@db/entities/User';
 import { getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 

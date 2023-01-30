@@ -28,6 +28,7 @@
 						:truncateAt="3"
 						truncate
 						@click="onClickTag"
+						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
 					/>
 				</span>
@@ -188,6 +189,9 @@ export default mixins(showMessage, restApi).extend({
 			event.stopPropagation();
 
 			this.$emit('click:tag', tagId, event);
+		},
+		onExpandTags() {
+			this.$emit('expand:tags');
 		},
 		async onAction(action: string) {
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {

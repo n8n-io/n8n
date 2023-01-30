@@ -5,8 +5,8 @@ exports[`components > N8nTree > should render each tree with node class 1`] = `
   <div class=\\"nodeClass\\">
     <div><span>hello</span>
       <div class=\\"n8n-tree\\">
-        <div class=\\"nodeClass _indent_\\">
-          <div class=\\"_simple_\\"><span>test</span><span>:</span><span>world</span></div>
+        <div class=\\"nodeClass indent\\">
+          <div class=\\"simple\\"><span>test</span><span>:</span><span>world</span></div>
         </div>
       </div>
     </div>
@@ -14,11 +14,11 @@ exports[`components > N8nTree > should render each tree with node class 1`] = `
   <div class=\\"nodeClass\\">
     <div><span>options</span>
       <div class=\\"n8n-tree\\">
-        <div class=\\"nodeClass _indent_\\">
-          <div class=\\"_simple_\\"><span>0</span><span>:</span><span>yes</span></div>
+        <div class=\\"nodeClass indent\\">
+          <div class=\\"simple\\"><span>0</span><span>:</span><span>yes</span></div>
         </div>
-        <div class=\\"nodeClass _indent_\\">
-          <div class=\\"_simple_\\"><span>1</span><span>:</span><span>no</span></div>
+        <div class=\\"nodeClass indent\\">
+          <div class=\\"simple\\"><span>1</span><span>:</span><span>no</span></div>
         </div>
       </div>
     </div>
@@ -29,7 +29,7 @@ exports[`components > N8nTree > should render each tree with node class 1`] = `
 exports[`components > N8nTree > should render simple tree 1`] = `
 "<div class=\\"n8n-tree\\">
   <div class=\\"\\">
-    <div class=\\"_simple_\\"><span>hello</span><span>:</span><span>world</span></div>
+    <div class=\\"simple\\"><span>hello</span><span>:</span><span>world</span></div>
   </div>
 </div>"
 `;
@@ -39,8 +39,8 @@ exports[`components > N8nTree > should render tree 1`] = `
   <div class=\\"\\">
     <div><span>hello</span>
       <div class=\\"n8n-tree\\">
-        <div class=\\"_indent_\\">
-          <div class=\\"_simple_\\"><span>test</span><span>:</span><span>world</span></div>
+        <div class=\\"indent\\">
+          <div class=\\"simple\\"><span>test</span><span>:</span><span>world</span></div>
         </div>
       </div>
     </div>
@@ -48,11 +48,11 @@ exports[`components > N8nTree > should render tree 1`] = `
   <div class=\\"\\">
     <div><span>options</span>
       <div class=\\"n8n-tree\\">
-        <div class=\\"_indent_\\">
-          <div class=\\"_simple_\\"><span>0</span><span>:</span><span>yes</span></div>
+        <div class=\\"indent\\">
+          <div class=\\"simple\\"><span>0</span><span>:</span><span>yes</span></div>
         </div>
-        <div class=\\"_indent_\\">
-          <div class=\\"_simple_\\"><span>1</span><span>:</span><span>no</span></div>
+        <div class=\\"indent\\">
+          <div class=\\"simple\\"><span>1</span><span>:</span><span>no</span></div>
         </div>
       </div>
     </div>
@@ -65,8 +65,8 @@ exports[`components > N8nTree > should render tree with slots 1`] = `
   <div class=\\"\\">
     <div><span>label</span>
       <div class=\\"n8n-tree\\">
-        <div class=\\"_indent_\\">
-          <div class=\\"_simple_\\"><span>label</span><span>:</span><span>value</span></div>
+        <div class=\\"indent\\">
+          <div class=\\"simple\\"><span>label</span><span>:</span><span>value</span></div>
         </div>
       </div>
     </div>
@@ -74,11 +74,11 @@ exports[`components > N8nTree > should render tree with slots 1`] = `
   <div class=\\"\\">
     <div><span>label</span>
       <div class=\\"n8n-tree\\">
-        <div class=\\"_indent_\\">
-          <div class=\\"_simple_\\"><span>label</span><span>:</span><span>value</span></div>
+        <div class=\\"indent\\">
+          <div class=\\"simple\\"><span>label</span><span>:</span><span>value</span></div>
         </div>
-        <div class=\\"_indent_\\">
-          <div class=\\"_simple_\\"><span>label</span><span>:</span><span>value</span></div>
+        <div class=\\"indent\\">
+          <div class=\\"simple\\"><span>label</span><span>:</span><span>value</span></div>
         </div>
       </div>
     </div>

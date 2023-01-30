@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
-import { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
+import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
 
 /**
  * Top-level properties where an error message can be found in an API response.

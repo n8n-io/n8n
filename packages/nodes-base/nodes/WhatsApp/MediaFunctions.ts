@@ -1,9 +1,5 @@
-import {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import FormData from 'form-data';
 

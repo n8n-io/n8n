@@ -1,10 +1,6 @@
 import { v4 as uuid } from 'uuid';
-import {
-	INodeCredentials,
-	LoggerProxy,
-	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationTypeNames,
-} from 'n8n-workflow';
+import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';

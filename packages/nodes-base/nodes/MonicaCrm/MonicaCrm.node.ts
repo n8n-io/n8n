@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -42,7 +42,7 @@ import {
 	taskOperations,
 } from './descriptions';
 
-import { LoaderGetResponse, Option } from './types';
+import type { LoaderGetResponse, Option } from './types';
 
 export class MonicaCrm implements INodeType {
 	description: INodeTypeDescription = {

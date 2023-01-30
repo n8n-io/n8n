@@ -1,8 +1,10 @@
 import { normalizeItems } from 'n8n-core';
-import { NodeVM, NodeVMOptions } from 'vm2';
+import type { NodeVMOptions } from 'vm2';
+import { NodeVM } from 'vm2';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import { CodeNodeMode, isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
+import type { CodeNodeMode } from './utils';
+import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 
 import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } from 'n8n-workflow';
 

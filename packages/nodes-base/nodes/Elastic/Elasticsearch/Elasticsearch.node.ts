@@ -1,18 +1,18 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 
-import { DocumentGetAllOptions, FieldsUiValues } from './types';
+import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
 import { omit } from 'lodash';
 

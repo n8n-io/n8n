@@ -40,8 +40,7 @@ const defaultLdapConfig = {
 };
 
 beforeAll(async () => {
-	await testDb.init();
-	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'] });
 
 	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
 
@@ -56,8 +55,6 @@ beforeAll(async () => {
 	);
 
 	utils.initConfigFile();
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 	await utils.initLdapManager();
 });
 

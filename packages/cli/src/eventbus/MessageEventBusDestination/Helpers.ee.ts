@@ -5,7 +5,7 @@ import {
 	LoggerProxy,
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
-import config from '../../config';
+import config from '@/config';
 import type { EventMessageTypes } from '../EventMessageClasses';
 import type { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry.ee';

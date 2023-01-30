@@ -1,3 +1,4 @@
+import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
@@ -37,6 +38,7 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IDisplayOptions,
 	IExecutionsSummary,
 	IAbstractEventMessage,
 } from 'n8n-workflow';
@@ -1081,16 +1083,28 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export interface IModalState {
+export type Modals =
+	| {
+			[key: string]: ModalState;
+	  }
+	| {
+			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	  };
+
+export type ModalState = {
 	open: boolean;
 	mode?: string | null;
 	data?: Record<string, unknown>;
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
-}
+};
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type NewCredentialsModal = ModalState & {
+	showAuthSelector?: boolean;
+};
+
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1136,28 +1150,12 @@ export interface NDVState {
 	};
 }
 
-export interface IUiState {
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
-	isPageLoading: boolean;
-	currentView: string;
-	fakeDoorFeatures: IFakeDoor[];
-	nodeViewInitialized: boolean;
-	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
-}
-
 export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
+	modals: Modals;
 	isPageLoading: boolean;
 	currentView: string;
 	mainPanelPosition: number;
@@ -1450,4 +1448,10 @@ export type UsageState = {
 		};
 		managementToken?: string;
 	};
+};
+
+export type NodeAuthenticationOption = {
+	name: string;
+	value: string;
+	displayOptions?: IDisplayOptions;
 };

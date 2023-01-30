@@ -7,8 +7,8 @@ import {
 	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';
