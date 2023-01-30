@@ -12,7 +12,9 @@ import {
 } from '@/plugins/codemirror/completions/datatype.completions';
 
 import { mockNodes, mockProxy } from './mock';
-import { completions } from './utils';
+import { CompletionContext, CompletionSource, CompletionResult } from '@codemirror/autocomplete';
+import { EditorState } from '@codemirror/state';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 
 beforeEach(() => {
 	setActivePinia(createTestingPinia());
@@ -38,7 +40,7 @@ describe('Top-level completions', () => {
 	test('should return DateTime completion for: {{ D| }}', () => {
 		const found = completions('{{ D| }}');
 
-		if (!found) throw new Error('Expected to find DateTime completion');
+		if (!found) throw new Error('Expected to find completion');
 
 		expect(found).toHaveLength(1);
 		expect(found[0].label).toBe('DateTime');
@@ -47,7 +49,7 @@ describe('Top-level completions', () => {
 	test('should return Math completion for: {{ M| }}', () => {
 		const found = completions('{{ M| }}');
 
-		if (!found) throw new Error('Expected to find Math completion');
+		if (!found) throw new Error('Expected to find completion');
 
 		expect(found).toHaveLength(1);
 		expect(found[0].label).toBe('Math');
@@ -135,6 +137,44 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
+	describe('bracket-aware completions', () => {
+		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
+		const { $input } = mockProxy;
+
+		test('should return bracket-aware completions for: {{ $input.item.json.str.| }}', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json.str);
+
+			const found = completions('{{ $input.item.json.str.|() }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(extensions('string').length);
+			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
+		});
+
+		test('should return bracket-aware completions for: {{ $input.item.json.num.| }}', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json.num);
+
+			const found = completions('{{ $input.item.json.num.|() }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(extensions('number').length);
+			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
+		});
+
+		test('should return bracket-aware completions for: {{ $input.item.json.arr.| }}', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json.arr);
+
+			const found = completions('{{ $input.item.json.arr.|() }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(extensions('array').length);
+			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
+		});
+	});
+
 	describe('references', () => {
 		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input, $ } = mockProxy;
@@ -156,19 +196,34 @@ describe('Resolution-based completions', () => {
 		test('should return completions for: {{ $input.item.| }}', () => {
 			resolveParameterSpy.mockReturnValue($input.item);
 
-			expect(completions('{{ $input.item.| }}')).toHaveLength(1); // json
+			const found = completions('{{ $input.item.| }}');
+
+			if (!found) throw new Error('Expected to find completion');
+
+			expect(found).toHaveLength(1);
+			expect(found[0].label).toBe('json');
 		});
 
 		test('should return completions for: {{ $input.first().| }}', () => {
 			resolveParameterSpy.mockReturnValue($input.first());
 
-			expect(completions('{{ $input.first().| }}')).toHaveLength(1); // json
+			const found = completions('{{ $input.first().| }}');
+
+			if (!found) throw new Error('Expected to find completion');
+
+			expect(found).toHaveLength(1);
+			expect(found[0].label).toBe('json');
 		});
 
 		test('should return completions for: {{ $input.last().| }}', () => {
 			resolveParameterSpy.mockReturnValue($input.last());
 
-			expect(completions('{{ $input.last().| }}')).toHaveLength(1); // json
+			const found = completions('{{ $input.last().| }}');
+
+			if (!found) throw new Error('Expected to find completion');
+
+			expect(found).toHaveLength(1);
+			expect(found[0].label).toBe('json');
 		});
 
 		test('should return no completions for: {{ $input.all().| }}', () => {
@@ -247,7 +302,7 @@ describe('Resolution-based completions', () => {
 
 				const found = completions(expression);
 
-				if (!found) throw new Error('Expected to find bracket access completions');
+				if (!found) throw new Error('Expected to find completions');
 
 				expect(found).toHaveLength(Object.keys($input.item.json).length);
 				expect(found.map((c) => c.label).every((l) => l.endsWith(']')));
@@ -260,7 +315,7 @@ describe('Resolution-based completions', () => {
 
 				const found = completions(expression);
 
-				if (!found) throw new Error('Expected to find bracket access completions');
+				if (!found) throw new Error('Expected to find completions');
 
 				expect(found).toHaveLength(Object.keys($input.item.json.obj).length);
 				expect(found.map((c) => c.label).every((l) => l.endsWith(']')));
@@ -268,3 +323,34 @@ describe('Resolution-based completions', () => {
 		});
 	});
 });
+
+export function completions(docWithCursor: string) {
+	const cursorPosition = docWithCursor.indexOf('|');
+
+	const doc = docWithCursor.slice(0, cursorPosition) + docWithCursor.slice(cursorPosition + 1);
+
+	const state = EditorState.create({
+		doc,
+		selection: { anchor: cursorPosition },
+		extensions: [n8nLang()],
+	});
+
+	const context = new CompletionContext(state, cursorPosition, false);
+
+	for (const completionSource of state.languageDataAt<CompletionSource>(
+		'autocomplete',
+		cursorPosition,
+	)) {
+		const result = completionSource(context);
+
+		if (isCompletionResult(result)) return result.options;
+	}
+
+	return null;
+}
+
+function isCompletionResult(
+	candidate: ReturnType<CompletionSource>,
+): candidate is CompletionResult {
+	return candidate !== null && 'from' in candidate && 'options' in candidate;
+}
