@@ -82,7 +82,7 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 	if (resolved instanceof Date) return extensions('date');
 
 	if (Array.isArray(resolved)) {
-		if (toResolve.endsWith('all()')) return [];
+		if (/all\(.*?\)/.test(toResolve)) return [];
 
 		const arrayExtensions = extensions('array');
 
