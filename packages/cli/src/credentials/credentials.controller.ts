@@ -1,7 +1,8 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
-import { deepCopy, INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import type { INodeCredentialTestResult } from 'n8n-workflow';
+import { deepCopy, LoggerProxy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -177,7 +178,7 @@ credentialsController.patch(
 
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
-		if (responseData === undefined) {
+		if (responseData === null) {
 			throw new ResponseHelper.NotFoundError(
 				`Credential ID "${credentialId}" could not be found to be updated.`,
 			);

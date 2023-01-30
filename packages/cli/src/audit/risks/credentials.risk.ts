@@ -1,9 +1,10 @@
+import type { FindOperator } from 'typeorm';
 import { MoreThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import * as Db from '@/Db';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
@@ -46,7 +47,7 @@ async function getExecutionsInPastDays(days: number) {
 	return Db.collections.Execution.find({
 		select: ['workflowData'],
 		where: {
-			startedAt: MoreThanOrEqual(utcDate),
+			startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
 		},
 	});
 }

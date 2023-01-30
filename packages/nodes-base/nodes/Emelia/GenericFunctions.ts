@@ -1,30 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	INodeCredentialTestResult,
 	INodePropertyOptions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
-
-/**
- * Make an authenticated GraphQL request to Emelia.
- */
-export async function emeliaGraphqlRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	body: object = {},
-) {
-	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
-
-	if (response.errors) {
-		throw new NodeApiError(this.getNode(), response);
-	}
-
-	return response;
-}
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an authenticated REST API request to Emelia, used for trigger node.
@@ -54,6 +38,22 @@ export async function emeliaApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+/**
+ * Make an authenticated GraphQL request to Emelia.
+ */
+export async function emeliaGraphqlRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	body: object = {},
+) {
+	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
+
+	if (response.errors) {
+		throw new NodeApiError(this.getNode(), response);
+	}
+
+	return response;
 }
 
 /**

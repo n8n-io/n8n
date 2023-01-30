@@ -82,10 +82,14 @@ export default mixins(showMessage).extend({
 					}),
 				});
 			} catch (error) {
+				let message = this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator');
+				if (error.httpStatusCode === 422) {
+					message = this.$locale.baseText(error.message);
+				}
 				this.$showMessage({
 					type: 'error',
 					title: this.$locale.baseText('forgotPassword.sendingEmailError'),
-					message: this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator'),
+					message,
 				});
 			}
 			this.loading = false;

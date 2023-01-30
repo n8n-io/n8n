@@ -1,13 +1,13 @@
 import { parse } from 'flatted';
-import { In, Not, Raw, LessThan, IsNull, FindOperator } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
 
 import * as Db from '@/Db';
 import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { ExecutionStatus } from '@/PublicApi/types';
+import type { ExecutionStatus } from '@/PublicApi/types';
 
 function prepareExecutionData(
-	execution: IExecutionFlattedDb | undefined,
+	execution: IExecutionFlattedDb | null,
 ): IExecutionResponseApi | undefined {
 	if (!execution) return undefined;
 
@@ -21,11 +21,10 @@ function prepareExecutionData(
 }
 
 function getStatusCondition(status: ExecutionStatus) {
-	const condition: {
-		finished?: boolean;
-		waitTill?: FindOperator<ExecutionEntity>;
-		stoppedAt?: FindOperator<ExecutionEntity>;
-	} = {};
+	const condition: Pick<
+		FindOptionsWhere<IExecutionFlattedDb>,
+		'finished' | 'waitTill' | 'stoppedAt'
+	> = {};
 
 	if (status === 'success') {
 		condition.finished = true;
@@ -65,12 +64,7 @@ export async function getExecutions(params: {
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: string[];
 }): Promise<IExecutionResponseApi[]> {
-	type WhereClause = Record<
-		string,
-		string | boolean | FindOperator<string | Partial<ExecutionEntity>>
-	>;
-
-	let where: WhereClause = {};
+	let where: FindOptionsWhere<IExecutionFlattedDb> = {};
 
 	if (params.lastId && params.excludedExecutionsIds?.length) {
 		where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
