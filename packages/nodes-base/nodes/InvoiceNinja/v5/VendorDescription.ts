@@ -84,13 +84,14 @@ export const vendorFields: INodeProperties[] = [
 				displayName: 'Include',
 				name: 'include',
 				type: 'multiOptions',
+				description: 'Additional resources to fetch related to this resource.',
 				options: [
 					{
 						name: 'Invoices',
 						value: 'invoices',
 					},
 				],
-				default: 'invoices',
+				default: [],
 			},
 		],
 	},
@@ -126,60 +127,59 @@ export const vendorFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Include',
+		name: 'include',
+		type: 'multiOptions',
+		description: 'Additional resources to fetch related to this resource.',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['getAll'],
 				resource: ['vendor'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'multiOptions',
-				options: [
-					{
-						name: 'Invoices',
-						value: 'invoices',
-					},
-				],
-				default: 'invoices',
-			},
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						perPage: [false],
-					},
-				},
-				default: false,
-				description: 'Whether to return all results or only up to a given perPage',
-			},
-			{
-				displayName: 'Limit',
-				name: 'perPage',
-				type: 'number',
-				displayOptions: {
-					show: {
-						returnAll: [false],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 100,
-				},
-				default: 50,
-				description: 'Max number of results to return',
+				name: 'Invoices',
+				value: 'invoices',
 			},
 		],
+		default: [],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['vendor'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given perPage',
+	},
+	{
+		displayName: 'Limit',
+		name: 'perPage',
+		type: 'number',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['vendor'],
+				operation: ['getAll'],
+			},
+			hide: {
+				returnAll: [true],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 vendor:create                              */
@@ -193,8 +193,8 @@ export const vendorFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['vendor'],
+				operation: ['create'],
 			},
 		},
 		options: [

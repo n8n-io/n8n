@@ -482,9 +482,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const clientId = that.getNodeParameter('clientId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -512,11 +512,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.email) {
 							qs.email = filters.email as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -526,7 +527,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/clients', {}, qs);
 							responseData = responseData.data;
 						}
@@ -810,11 +812,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.clientId) {
 							qs.client_id = filters.clientId as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -824,7 +827,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/expenses', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1049,9 +1053,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -1079,11 +1083,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.overdue) {
 							qs.overdue = filters.overdue as boolean;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -1093,7 +1098,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/invoices', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1205,9 +1211,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const paymentId = that.getNodeParameter('paymentId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -1226,11 +1232,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.number) {
 							qs.number = filters.number as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -1240,7 +1247,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/payments', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1365,9 +1373,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const projectId = that.getNodeParameter('projectId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -1386,11 +1394,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.number) {
 							qs.number = filters.number as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -1400,7 +1409,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/projects', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1585,9 +1595,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const quoteId = that.getNodeParameter('quoteId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -1606,11 +1616,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.number) {
 							qs.number = filters.number as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -1620,7 +1631,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/invoices', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1743,9 +1755,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const taskId = that.getNodeParameter('taskId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -1764,11 +1776,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.number) {
 							qs.number = filters.number as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -1778,7 +1791,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/tasks', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1955,9 +1969,9 @@ export const InvoiceNinjaV5 = {
 					}
 					if (operation === 'get') {
 						const vendorId = that.getNodeParameter('vendorId', i) as string;
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -1976,11 +1990,12 @@ export const InvoiceNinjaV5 = {
 						if (filters.number) {
 							qs.number = filters.number as string;
 						}
-						const options = that.getNodeParameter('options', i);
-						if (options.include) {
-							qs.include = options.include as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
 						}
-						if (options.returnAll) {
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								that,
 								'data',
@@ -1990,7 +2005,8 @@ export const InvoiceNinjaV5 = {
 								qs,
 							);
 						} else {
-							if(options.perPage) qs.per_page = options.perPage;
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
 							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/vendors', {}, qs);
 							responseData = responseData.data;
 						}

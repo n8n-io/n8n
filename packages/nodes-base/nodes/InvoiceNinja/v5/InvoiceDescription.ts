@@ -87,24 +87,30 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['get'],
 				resource: ['invoice'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Include',
+		name: 'include',
+		type: 'multiOptions',
+		description: 'Additional resources to fetch related to this resource.',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-				],
-				default: 'client',
+				name: 'Client',
+				value: 'client',
 			},
 		],
+		default: [],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  invoice:getAll                            */
@@ -156,11 +162,10 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Include',
+		name: 'include',
+		type: 'multiOptions',
+		description: 'Additional resources to fetch related to this resource.',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -170,46 +175,46 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'multiOptions',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-				],
-				default: 'client',
-			},
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						perPage: [false],
-					},
-				},
-				default: false,
-				description: 'Whether to return all results or only up to a given perPage',
-			},
-			{
-				displayName: 'Limit',
-				name: 'perPage',
-				type: 'number',
-				displayOptions: {
-					show: {
-						returnAll: [false],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 100,
-				},
-				default: 50,
-				description: 'Max number of results to return',
+				name: 'Client',
+				value: 'client',
 			},
 		],
+		default: [],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given perPage',
+	},
+	{
+		displayName: 'Limit',
+		name: 'perPage',
+		type: 'number',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['getAll'],
+			},
+			hide: {
+				returnAll: [true],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  invoice:download                               */
