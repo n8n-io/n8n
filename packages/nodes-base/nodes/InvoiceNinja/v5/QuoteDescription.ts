@@ -131,8 +131,8 @@ export const quoteFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['getAll'],
 				resource: ['quote'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -150,8 +150,8 @@ export const quoteFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['getAll'],
 				resource: ['quote'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -164,8 +164,8 @@ export const quoteFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['getAll'],
 				resource: ['quote'],
+				operation: ['getAll'],
 			},
 			hide: {
 				returnAll: [true],
@@ -190,8 +190,8 @@ export const quoteFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['quote'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -428,8 +428,8 @@ export const quoteFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['quote'],
+				operation: ['update'],
 			},
 		},
 		options: [

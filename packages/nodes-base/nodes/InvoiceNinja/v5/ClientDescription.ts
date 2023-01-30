@@ -202,8 +202,8 @@ export const clientFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		options: [

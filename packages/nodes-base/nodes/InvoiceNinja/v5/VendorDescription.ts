@@ -491,8 +491,8 @@ export const vendorFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -166,8 +166,8 @@ export const projectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['getAll'],
 				resource: ['project'],
+				operation: ['getAll'],
 			},
 			hide: {
 				returnAll: [true],
@@ -192,8 +192,8 @@ export const projectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['project'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -330,8 +330,8 @@ export const projectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['project'],
+				operation: ['update'],
 			},
 		},
 		options: [

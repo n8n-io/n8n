@@ -187,8 +187,8 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['payment'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -200,8 +200,8 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['payment'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -218,8 +218,8 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['payment'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -438,8 +438,8 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['payment'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -451,8 +451,8 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['payment'],
+				operation: ['update'],
 			},
 		},
 		typeOptions: {
@@ -469,8 +469,8 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['payment'],
+				operation: ['update'],
 			},
 		},
 		options: [

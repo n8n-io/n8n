@@ -184,8 +184,8 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['create'],
 				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -318,8 +318,8 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				operation: ['update'],
 				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		options: [
