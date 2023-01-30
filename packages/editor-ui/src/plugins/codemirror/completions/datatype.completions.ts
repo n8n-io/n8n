@@ -75,7 +75,9 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 
 	if (typeof resolved === 'string') return extensions('string');
 
-	if (['$now', '$today'].includes(toResolve)) return luxonInstanceOptions();
+	if (['$now', '$today'].includes(toResolve)) {
+		return [...luxonInstanceOptions(), ...extensions('date')];
+	}
 
 	if (resolved instanceof Date) return extensions('date');
 
@@ -161,7 +163,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 
 	let rawKeys = Object.keys(resolved);
 
-	if (name === '$()' || resolved.isMockProxy) {
+	if (name === '$()') {
 		rawKeys = Reflect.ownKeys(resolved) as string[];
 	}
 
@@ -196,9 +198,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 		/json('])?$/.test(toResolve) ||
 		toResolve === '$execution' ||
 		toResolve.endsWith('params') ||
-		toResolve === 'Math' ||
-		resolved.isMockProxy ||
-		resolved.__isMockObject;
+		toResolve === 'Math';
 
 	if (skipObjectExtensions) return keys;
 
@@ -209,7 +209,7 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 	try {
 		obj[key];
 	} catch (error) {
-		// e.g. attempting to access non-parent node with `$()`
+		// e.g. attempt to access disconnected node with `$()`
 		throw new Error('Cannot generate options', { cause: error });
 	}
 }

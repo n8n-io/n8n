@@ -183,7 +183,14 @@ function isUrl(value: string) {
 	} catch (_error) {
 		return false;
 	}
-	return url.protocol === 'http:' || url.protocol === 'https:';
+
+	// URL constructor tolerates missing `//` after protocol
+
+	if (url.protocol === 'http:' && value.slice(5, 7) === '//') return true;
+
+	if (url.protocol === 'https:' && value.slice(6, 8) === '//') return true;
+
+	return false;
 }
 
 function isDomain(value: string) {
@@ -360,7 +367,6 @@ isUrl.doc = {
 	name: 'isUrl',
 	description: 'Checks if a string is a valid URL',
 	returnType: 'boolean',
-	aliases: ['isURL'],
 };
 
 isEmpty.doc = {
@@ -434,7 +440,6 @@ export const stringExtensions: ExtensionMap = {
 		isEmail,
 		isNumeric,
 		isUrl,
-		isURL: isUrl,
 		isEmpty,
 		isNotEmpty,
 		extractEmail,
