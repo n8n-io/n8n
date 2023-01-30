@@ -549,7 +549,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		nameChanged(name: string) {
 			if (this.node) {
-				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name));
 			}
 			// @ts-ignore
 			this.valueChanged({
