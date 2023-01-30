@@ -212,6 +212,10 @@ function isEmail(value: string) {
 	return result;
 }
 
+function toTitleCase(value: string) {
+	return titleCase(value);
+}
+
 function replaceSpecialChars(value: string) {
 	return transliterate(value, { unknown: '?' });
 }
@@ -275,10 +279,6 @@ function extractUrl(value: string) {
 		return undefined;
 	}
 	return matched[0];
-}
-
-function toTitleCase(value: string) {
-	return titleCase(value);
 }
 
 removeMarkdown.doc = {
