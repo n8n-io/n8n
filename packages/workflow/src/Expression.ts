@@ -28,7 +28,6 @@ import { extendedFunctions } from './Extensions/ExtendedFunctions';
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
 
-// @TODO: Duplicated below, remove?
 // Make sure that error get forwarded
 tmpl.tmpl.errorHandler = (error: Error) => {
 	if (error instanceof ExpressionError) {
