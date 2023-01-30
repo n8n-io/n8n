@@ -688,10 +688,11 @@ export class ExecuteBatch extends Command {
 
 					if (data.data.resultData.error) {
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-prototype-builtins
-						executionResult.error = data.data.resultData.error.hasOwnProperty('description')
-							? // @ts-ignore
-							  data.data.resultData.error.description
-							: data.data.resultData.error.message;
+						executionResult.error =
+							data.data.resultData.error.hasOwnProperty('description') &&
+							data.data.resultData.error.description
+								? data.data.resultData.error.description
+								: data.data.resultData.error.message;
 						if (data.data.resultData.lastNodeExecuted !== undefined) {
 							executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
 						}
