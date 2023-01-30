@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 import { DateTime } from 'luxon';
-import type {
-	DateTimeUnit,
-	DurationLike,
-	DurationObjectUnits,
-	LocaleOptions,
-} from 'luxon';
+import type { DateTimeUnit, DurationLike, DurationObjectUnits, LocaleOptions } from 'luxon';
 import type { ExtensionMap } from './Extensions';
 
 type DurationUnit =
@@ -215,7 +210,7 @@ isWeekend.doc = {
 	description: 'Checks if the Date falls on a Saturday or Sunday',
 };
 
-// @TODO: Extensions below will be documented in next phase
+// @TODO: Extensions below will be surfaced in next phase
 
 beginningOf.doc = {
 	name: 'beginningOf',

@@ -58,7 +58,7 @@ isOdd.doc = {
 	returnType: 'boolean',
 };
 
-// @TODO: Extensions below will be documented in next phase
+// @TODO: Extensions below will be surfaced in next phase
 
 format.doc = {
 	name: 'format',

@@ -400,7 +400,7 @@ extractUrl.doc = {
 	returnType: 'string',
 };
 
-// @TODO: Extensions below will be documented in next phase
+// @TODO: Extensions below will be surfaced in next phase
 
 hash.doc = {
 	name: 'hash',

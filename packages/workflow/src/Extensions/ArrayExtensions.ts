@@ -423,7 +423,7 @@ sum.doc = {
 	returnType: 'number',
 };
 
-// @TODO: Extensions below will be documented in next phase
+// @TODO: Extensions below will be surfaced in next phase
 
 chunk.doc = {
 	name: 'chunk',
