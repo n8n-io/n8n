@@ -1,13 +1,12 @@
-import {
+import type {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	IHttpRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 import MailComposer from 'nodemailer/lib/mail-composer';
 export namespace SendInBlueNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };

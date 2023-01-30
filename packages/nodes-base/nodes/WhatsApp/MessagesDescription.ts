@@ -1,5 +1,5 @@
 import countryCodes from 'currency-codes';
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import {
 	cleanPhoneNumber,
 	componentsRequest,

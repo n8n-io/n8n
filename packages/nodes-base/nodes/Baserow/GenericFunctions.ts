@@ -1,10 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { Accumulator, BaserowCredentials, LoadedResource } from './types';
+import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
 /**
  * Make a request to Baserow API.

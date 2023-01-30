@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import PCancelable from 'p-cancelable';
 
-import {
+import type {
 	ExecutionError,
 	IConnection,
 	IDataObject,
@@ -30,13 +30,12 @@ import {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
-	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
-	WorkflowOperationError,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 

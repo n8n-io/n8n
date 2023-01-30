@@ -15,7 +15,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
-import { IExecutionPushResponse } from '@/Interfaces';
+import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
 

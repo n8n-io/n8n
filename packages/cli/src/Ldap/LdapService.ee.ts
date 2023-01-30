@@ -1,9 +1,10 @@
 /* eslint-disable no-underscore-dangle */
-import { Client, Entry as LdapUser, ClientOptions } from 'ldapts';
+import type { Entry as LdapUser, ClientOptions } from 'ldapts';
+import { Client } from 'ldapts';
 import type { LdapConfig } from './types';
 import { formatUrl, getMappingAttributes } from './helpers';
 import { BINARY_AD_ATTRIBUTES } from './constants';
-import { ConnectionOptions } from 'tls';
+import type { ConnectionOptions } from 'tls';
 
 export class LdapService {
 	private client: Client | undefined;

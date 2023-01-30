@@ -1,6 +1,6 @@
 import { Not } from 'typeorm';
 import * as Db from '@/Db';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {

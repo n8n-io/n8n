@@ -1,13 +1,14 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 async function getMetadata(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
