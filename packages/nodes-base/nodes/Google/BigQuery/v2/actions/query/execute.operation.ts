@@ -40,7 +40,7 @@ export const description: INodeProperties[] = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getDatasets',
-					loadOptionsDependsOn: ['projectId'],
+					loadOptionsDependsOn: ['projectId.value'],
 				},
 				default: '',
 				description:
@@ -146,8 +146,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				`/v2/projects/${projectId}/queries`,
 				qs,
 			);
-
-			// console.log(response);
 
 			if (rawOutput || qs.dryRun) {
 				responseData = response;

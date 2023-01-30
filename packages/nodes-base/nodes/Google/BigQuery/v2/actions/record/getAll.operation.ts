@@ -99,8 +99,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			});
-			const datasetId = this.getNodeParameter('datasetId', i) as string;
-			const tableId = this.getNodeParameter('tableId', i) as string;
+			const datasetId = this.getNodeParameter('datasetId', i, undefined, {
+				extractValue: true,
+			});
+			const tableId = this.getNodeParameter('tableId', i, undefined, {
+				extractValue: true,
+			});
+
 			const returnAll = this.getNodeParameter('returnAll', i);
 
 			const options = this.getNodeParameter('options', i);

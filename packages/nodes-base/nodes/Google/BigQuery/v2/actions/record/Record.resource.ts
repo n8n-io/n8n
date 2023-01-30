@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { projectRLC } from '../commonDescriptions/RLC.description';
+import { datasetRLC, projectRLC, tableRLC } from '../commonDescriptions/RLC.description';
 import * as create from './create.operation';
 import * as getAll from './getAll.operation';
 
@@ -36,48 +36,25 @@ export const description: INodeProperties[] = [
 		...projectRLC,
 		displayOptions: {
 			show: {
-				operation: ['create', 'getAll'],
 				resource: ['record'],
 			},
 		},
 	},
 	{
-		displayName: 'Dataset Name or ID',
-		name: 'datasetId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDatasets',
-			loadOptionsDependsOn: ['projectId'],
-		},
-		required: true,
+		...datasetRLC,
 		displayOptions: {
 			show: {
-				operation: ['create', 'getAll'],
 				resource: ['record'],
 			},
 		},
-		default: '',
-		description:
-			'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table Name or ID',
-		name: 'tableId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['projectId', 'datasetId'],
-		},
-		required: true,
+		...tableRLC,
 		displayOptions: {
 			show: {
-				operation: ['create', 'getAll'],
 				resource: ['record'],
 			},
 		},
-		default: '',
-		description:
-			'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	...create.description,
 	...getAll.description,

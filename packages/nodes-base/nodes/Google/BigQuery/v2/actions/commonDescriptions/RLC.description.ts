@@ -52,3 +52,67 @@ export const projectRLC: INodeProperties = {
 	],
 	description: 'Projects to which you have been granted any project role',
 };
+
+export const datasetRLC: INodeProperties = {
+	displayName: 'Dataset',
+	name: 'datasetId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'searchDatasets',
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Dataset ID',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const tableRLC: INodeProperties = {
+	displayName: 'Table',
+	name: 'tableId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'searchTables',
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Table ID',
+					},
+				},
+			],
+		},
+	],
+};

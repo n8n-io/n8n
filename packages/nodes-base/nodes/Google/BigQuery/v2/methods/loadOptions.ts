@@ -20,29 +20,16 @@ export async function getDatasets(this: ILoadOptionsFunctions): Promise<INodePro
 	return returnData;
 }
 
-export async function getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getSchema(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const projectId = this.getNodeParameter('projectId', undefined, {
 		extractValue: true,
 	});
-	const datasetId = this.getCurrentNodeParameter('datasetId');
-	const returnData: INodePropertyOptions[] = [];
-	const { tables } = await googleApiRequest.call(
-		this,
-		'GET',
-		`/v2/projects/${projectId}/datasets/${datasetId}/tables`,
-	);
-	for (const table of tables) {
-		returnData.push({
-			name: table.tableReference.tableId as string,
-			value: table.tableReference.tableId,
-		});
-	}
-	return returnData;
-}
-export async function getSchema(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const projectId = this.getCurrentNodeParameter('projectId');
-	const datasetId = this.getCurrentNodeParameter('datasetId');
-	const tableId = this.getCurrentNodeParameter('tableId');
+	const datasetId = this.getNodeParameter('datasetId', undefined, {
+		extractValue: true,
+	});
+	const tableId = this.getNodeParameter('tableId', undefined, {
+		extractValue: true,
+	});
 
 	const returnData: INodePropertyOptions[] = [];
 
@@ -58,7 +45,8 @@ export async function getSchema(this: ILoadOptionsFunctions): Promise<INodePrope
 			name: field.name as string,
 			value: field.name as string,
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
-			description: `type: ${field.type as string} mode: ${field.mode as string}`,
+			description:
+				`type: ${field.type as string}` + (field.mode ? ` mode: ${field.mode as string}` : ''),
 		});
 	}
 	return returnData;

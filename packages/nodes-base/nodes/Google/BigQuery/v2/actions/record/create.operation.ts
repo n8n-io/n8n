@@ -75,7 +75,7 @@ export const description: INodeProperties[] = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['projectId', 'datasetId', 'tableId'],
+							loadOptionsDependsOn: ['projectId.value', 'datasetId.value', 'tableId.value'],
 							loadOptionsMethod: 'getSchema',
 						},
 						default: '',
@@ -158,8 +158,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const projectId = this.getNodeParameter('projectId', 0, undefined, {
 		extractValue: true,
 	});
-	const datasetId = this.getNodeParameter('datasetId', 0) as string;
-	const tableId = this.getNodeParameter('tableId', 0) as string;
+	const datasetId = this.getNodeParameter('datasetId', 0, undefined, {
+		extractValue: true,
+	});
+	const tableId = this.getNodeParameter('tableId', 0, undefined, {
+		extractValue: true,
+	});
+
 	const options = this.getNodeParameter('options', 0);
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
