@@ -80,9 +80,10 @@
 				/>
 
 				<html-editor
-					v-else-if="getArgument('editor') === 'htmlEditor' && isHtmlNode(node)"
+					v-else-if="getArgument('editor') === 'htmlEditor'"
 					:html="node.parameters.html"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -353,7 +354,7 @@ import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from 
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { CODE_NODE_TYPE, HTML_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
@@ -783,6 +784,9 @@ export default mixins(
 		isSecretParameter(): boolean {
 			return this.getArgument('password') === true;
 		},
+		isHtmlEditor(): boolean {
+			return this.getArgument('editor') === 'htmlEditor';
+		},
 	},
 	methods: {
 		isRemoteParameterOption(option: INodePropertyOptions) {
@@ -957,9 +961,6 @@ export default mixins(
 		},
 		isCodeNode(node: INodeUi): boolean {
 			return node.type === CODE_NODE_TYPE;
-		},
-		isHtmlNode(node: INodeUi): boolean {
-			return node.type === HTML_NODE_TYPE;
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb

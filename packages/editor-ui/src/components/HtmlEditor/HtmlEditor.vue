@@ -36,10 +36,15 @@ export default mixins(expressionManager).extend({
 	props: {
 		html: {
 			type: String,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
 			default: false,
+		},
+		rows: {
+			type: Number,
+			default: -1,
 		},
 	},
 	data() {
@@ -185,6 +190,8 @@ export default mixins(expressionManager).extend({
 				}
 			}
 
+			if (formatted.length === 0) return;
+
 			this.editor.dispatch({
 				changes: { from: 0, to: this.doc.length, insert: formatted.join('\n\n') },
 			});
@@ -194,7 +201,13 @@ export default mixins(expressionManager).extend({
 	mounted() {
 		htmlEditorEventBus.$on('format-html', this.format);
 
-		const state = EditorState.create({ doc: this.html, extensions: this.extensions });
+		let doc = this.html;
+
+		if (this.html === '' && this.rows > 0) {
+			doc = '\n'.repeat(this.rows - 1);
+		}
+
+		const state = EditorState.create({ doc, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.root(), state });
 
