@@ -31,7 +31,7 @@ describe('No completions', () => {
 });
 
 describe('Top-level completions', () => {
-	test('should return blank completions for: {{ | }}', () => {
+	test('should return dollar completions for blank position: {{ | }}', () => {
 		expect(completions('{{ | }}')).toHaveLength(dollarOptions().length);
 	});
 
