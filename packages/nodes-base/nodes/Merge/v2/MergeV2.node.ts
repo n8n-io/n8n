@@ -122,6 +122,7 @@ const versionDescription: INodeTypeDescription = {
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'e.g. id',
 							hint: ' Enter the field name as text',
+							requiresDataPath: 'single',
 						},
 						{
 							displayName: 'Input 2 Field',
@@ -131,6 +132,7 @@ const versionDescription: INodeTypeDescription = {
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'e.g. id',
 							hint: ' Enter the field name as text',
+							requiresDataPath: 'single',
 						},
 					],
 				},
