@@ -155,7 +155,9 @@ export const description: INodeProperties[] = [
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
-	const projectId = this.getNodeParameter('projectId', 0) as string;
+	const projectId = this.getNodeParameter('projectId', 0, undefined, {
+		extractValue: true,
+	});
 	const datasetId = this.getNodeParameter('datasetId', 0) as string;
 	const tableId = this.getNodeParameter('tableId', 0) as string;
 	const options = this.getNodeParameter('options', 0);

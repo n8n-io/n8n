@@ -12,8 +12,8 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['query'],
-				resource: ['record'],
+				operation: ['executeQuery'],
+				resource: ['query'],
 			},
 		},
 		default: '',
@@ -27,8 +27,8 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['query'],
-				resource: ['record'],
+				operation: ['executeQuery'],
+				resource: ['query'],
 			},
 		},
 		default: true,
@@ -42,8 +42,8 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: ['query'],
-				resource: ['record'],
+				operation: ['executeQuery'],
+				resource: ['query'],
 			},
 		},
 		options: [
@@ -93,9 +93,15 @@ export const description: INodeProperties[] = [
 				displayName: 'Use Legacy SQL',
 				name: 'useLegacySql',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description:
-					"Whether to use BigQuery's legacy SQL dialect for this query. The default value is true. If set to false, the query will use BigQuery's standard SQL",
+					"Whether to use BigQuery's legacy SQL dialect for this query. If set to false, the query will use BigQuery's standard SQL.",
+			},
+			{
+				displayName: 'Return Whole Response',
+				name: 'returnWholeResponse',
+				type: 'boolean',
+				default: false,
 			},
 		],
 	},
@@ -113,10 +119,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			let responseData;
 
-			const projectId = this.getNodeParameter('projectId', i) as string;
+			const projectId = this.getNodeParameter('projectId', i, undefined, {
+				extractValue: true,
+			});
+
 			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
 			const simple = this.getNodeParameter('simple', i) as boolean;
 			const options = this.getNodeParameter('options', i);
+			let returnWholeResponse = false;
+
+			if (options.returnWholeResponse !== undefined) {
+				returnWholeResponse = options.returnWholeResponse as boolean;
+				delete options.returnWholeResponse;
+			}
 
 			const qs: IDataObject = options;
 			qs.query = sqlQuery;
@@ -128,6 +143,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				};
 			}
 
+			if (qs.useLegacySql === undefined) {
+				qs.useLegacySql = false;
+			}
+
 			const response = await googleApiRequest.call(
 				this,
 				'POST',
@@ -135,15 +154,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs,
 			);
 
-			if (!qs.dryRun) {
+			// console.log(response);
+
+			if (returnWholeResponse || qs.dryRun) {
+				responseData = response;
+			} else {
 				const { rows, schema } = response;
 
-				const fields = (schema as TableSchema).fields;
-				responseData = rows;
+				if (rows !== undefined && schema !== undefined) {
+					const fields = (schema as TableSchema).fields;
+					responseData = rows;
 
-				responseData = simple ? simplify(responseData, fields) : responseData;
-			} else {
-				responseData = response;
+					responseData = simple ? simplify(responseData, fields) : responseData;
+				} else {
+					responseData = { success: true };
+				}
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

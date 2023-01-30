@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as record from './record/Record.resource';
+import * as query from './query/Query.resource';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',
@@ -64,9 +65,14 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Record',
 					value: 'record',
 				},
+				{
+					name: 'Query',
+					value: 'query',
+				},
 			],
 			default: 'record',
 		},
 		...record.description,
+		...query.description,
 	],
 };

@@ -1,20 +1,10 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { googleApiRequest } from '../transport';
 
-export async function getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const { projects } = await googleApiRequest.call(this, 'GET', '/v2/projects');
-	for (const project of projects) {
-		returnData.push({
-			name: project.friendlyName as string,
-			value: project.id,
-		});
-	}
-	return returnData;
-}
-
 export async function getDatasets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const projectId = this.getCurrentNodeParameter('projectId');
+	const projectId = this.getNodeParameter('projectId', undefined, {
+		extractValue: true,
+	});
 	const returnData: INodePropertyOptions[] = [];
 	const { datasets } = await googleApiRequest.call(
 		this,
@@ -31,7 +21,9 @@ export async function getDatasets(this: ILoadOptionsFunctions): Promise<INodePro
 }
 
 export async function getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const projectId = this.getCurrentNodeParameter('projectId');
+	const projectId = this.getNodeParameter('projectId', undefined, {
+		extractValue: true,
+	});
 	const datasetId = this.getCurrentNodeParameter('datasetId');
 	const returnData: INodePropertyOptions[] = [];
 	const { tables } = await googleApiRequest.call(

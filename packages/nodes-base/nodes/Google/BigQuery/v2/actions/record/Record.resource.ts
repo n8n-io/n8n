@@ -1,9 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { projectRLC } from '../commonDescriptions/RLC.description';
 import * as create from './create.operation';
 import * as getAll from './getAll.operation';
-import * as query from './query.operation';
 
-export { create, getAll, query };
+export { create, getAll };
 
 export const description: INodeProperties[] = [
 	{
@@ -29,32 +29,17 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve records from table',
 				action: 'Get many records',
 			},
-			{
-				name: 'Query',
-				value: 'query',
-				description: 'Run a SQL query',
-				action: 'Run a SQL query',
-			},
 		],
 		default: 'create',
 	},
 	{
-		displayName: 'Project Name or ID',
-		name: 'projectId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-		},
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
-				operation: ['create', 'getAll', 'query'],
+				operation: ['create', 'getAll'],
 				resource: ['record'],
 			},
 		},
-		default: '',
-		description:
-			'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Dataset Name or ID',
@@ -96,5 +81,4 @@ export const description: INodeProperties[] = [
 	},
 	...create.description,
 	...getAll.description,
-	...query.description,
 ];

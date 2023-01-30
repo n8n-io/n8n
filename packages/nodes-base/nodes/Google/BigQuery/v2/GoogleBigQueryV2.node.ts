@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { loadOptions } from './methods';
+import { loadOptions, listSearch } from './methods';
 import { versionDescription } from './actions/versionDescription';
 import { router } from './actions/router';
 
@@ -22,7 +22,7 @@ export class GoogleBigQueryV2 implements INodeType {
 		};
 	}
 
-	methods = { loadOptions };
+	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return router.call(this);
