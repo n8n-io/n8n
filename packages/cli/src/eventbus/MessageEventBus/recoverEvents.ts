@@ -78,14 +78,14 @@ export async function recoverExecutionDataFromEventLogMessages(
 			if (nodeStartedMessage && !nodeFinishedMessage) {
 				const nodeError = new NodeOperationError(
 					nodeByName,
-					'Node did not finish, possible out-of-memory issue',
+					'Node crashed, possible out-of-memory issue',
 					{
 						message: 'Node crashed',
-						description: 'possible out-of-memory issue.',
+						description: 'possible out-of-memory issue',
 					},
 				);
 				workflowError = new WorkflowOperationError(
-					'Workflow did not finish, possible out-of-memory issue.',
+					'Workflow did not finish, possible out-of-memory issue',
 				);
 				taskData.error = nodeError;
 				taskData.executionStatus = 'crashed';
