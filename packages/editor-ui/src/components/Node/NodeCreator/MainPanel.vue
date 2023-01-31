@@ -337,7 +337,7 @@ const {
 } = useNodeCreatorStore();
 
 const activeView = computed(() => {
-	return VIEWS.find((v) => v.value === useNodeCreatorStore().selectedView) || TRIGGER_NODE_FILTER;
+	return VIEWS.find((v) => v.value === useNodeCreatorStore().selectedView) || VIEWS[0];
 });
 const telemetry = instance?.proxy.$telemetry;
 const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
@@ -348,8 +348,14 @@ const containsAPIAction = computed(
 		) === true,
 );
 
-const computedCategorizedItems = computed(() =>
-	getCategorizedList(computedCategoriesWithNodes.value, true),
+const computedCategorizedItems = computed(() => {
+	if(isActionsActive.value) {
+		return sortActions(getCategorizedList(computedCategoriesWithNodes.value, true));
+	}
+
+
+	return getCategorizedList(computedCategoriesWithNodes.value, true);
+}
 );
 
 const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
@@ -405,9 +411,9 @@ const filteredMergedAppNodes = computed(() => {
 });
 
 const computedCategoriesWithNodes = computed(() => {
-	if (!state.activeNodeActions) return getCategoriesWithNodes(filteredMergedAppNodes.value, []);
+	if (!state.activeNodeActions) return getCategoriesWithNodes(filteredMergedAppNodes.value);
 
-	return getCategoriesWithNodes(selectedNodeActions.value, [], state.activeNodeActions.displayName);
+	return getCategoriesWithNodes(selectedNodeActions.value, state.activeNodeActions.displayName);
 });
 
 const selectedNodeActions = computed<INodeActionTypeDescription[]>(
@@ -415,7 +421,7 @@ const selectedNodeActions = computed<INodeActionTypeDescription[]>(
 );
 const isAppEventSubcategory = computed(() => state.selectedSubcategory === '*');
 const isActionsActive = computed(() => state.activeNodeActions !== null);
-const firstLevelItems = computed(() => (isRoot.value ? items.value : []));
+const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : []));
 
 const items = computed(() => activeView.value.items);
 
@@ -424,6 +430,28 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 		? transformCreateElements(selectedNodeActions.value)
 		: transformCreateElements(filteredMergedAppNodes.value);
 });
+
+// If the user is in the root view, we want to show trigger nodes first
+// otherwise we want to show them last
+function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateElement[] {
+	const elements = {
+		trigger: [] as INodeCreateElement[],
+		regular: [] as INodeCreateElement[],
+	}
+
+	nodeCreateElements.forEach((el) => {
+		const isTriggersCategory = el.type === 'category' && el.key === 'Triggers';
+		const isTriggerAction = el.type === 'action' && el.category === 'Triggers';
+
+		elements[isTriggersCategory || isTriggerAction ? 'trigger' : 'regular'].push(el);
+	});
+
+	if(useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER) {
+		return [...elements.trigger, ...elements.regular];
+	}
+
+	return [...elements.regular, ...elements.trigger];
+}
 
 function transformCreateElements(
 	createElements: Array<INodeTypeDescription | INodeActionTypeDescription>,

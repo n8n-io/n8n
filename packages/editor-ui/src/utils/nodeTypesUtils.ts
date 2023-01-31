@@ -84,17 +84,12 @@ const addNodeToCategory = (
 
 export const getCategoriesWithNodes = (
 	nodeTypes: INodeTypeDescription[],
-	personalizedNodeTypes: string[],
 	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
 ): ICategoriesWithNodes => {
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
 		a.displayName > b.displayName ? 1 : -1,
 	);
 	const result = sorted.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-		if (personalizedNodeTypes.includes(nodeType.name)) {
-			addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, uncategorizedSubcategory);
-		}
-
 		if (!nodeType.codex || !nodeType.codex.categories) {
 			addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
 			return accu;
