@@ -1,6 +1,6 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
-import { IForm } from './FormInterface';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IDataObject } from 'n8n-workflow';
+import type { IForm } from './FormInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
 export async function submitForm(

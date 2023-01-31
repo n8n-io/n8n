@@ -19,16 +19,12 @@ let authAgent: AuthAgent;
 let license: License;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['license'], applyAuth: true });
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['license'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);

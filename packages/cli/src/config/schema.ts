@@ -972,6 +972,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			ldap: {
+				format: Boolean,
+				default: false,
+			},
 			logStreaming: {
 				format: Boolean,
 				default: false,

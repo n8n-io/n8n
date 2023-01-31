@@ -47,16 +47,13 @@ let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['nodes'], applyAuth: true });
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['nodes'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
 	authAgent = utils.createAuthAgent(app);
 
 	utils.initConfigFile();
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {

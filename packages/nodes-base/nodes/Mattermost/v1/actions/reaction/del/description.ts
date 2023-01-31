@@ -1,4 +1,4 @@
-import { ReactionProperties } from '../../Interfaces';
+import type { ReactionProperties } from '../../Interfaces';
 
 export const reactionDeleteDescription: ReactionProperties = [
 	{

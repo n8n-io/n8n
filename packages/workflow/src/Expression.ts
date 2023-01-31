@@ -1,7 +1,7 @@
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import {
+import type {
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -20,12 +20,8 @@ import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
 import { extend, hasExpressionExtension, hasNativeMethod } from './Extensions';
-import {
-	ExpressionChunk,
-	ExpressionCode,
-	joinExpression,
-	splitExpression,
-} from './Extensions/ExpressionParser';
+import type { ExpressionChunk, ExpressionCode } from './Extensions/ExpressionParser';
+import { joinExpression, splitExpression } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 
@@ -314,10 +310,14 @@ export class Expression {
 	}
 
 	extendSyntax(bracketedExpression: string): string {
-		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
-			return bracketedExpression;
-
 		const chunks = splitExpression(bracketedExpression);
+
+		const codeChunks = chunks
+			.filter((c) => c.type === 'code')
+			.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
+
+		if (!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression))
+			return bracketedExpression;
 
 		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
 			if (chunk.type === 'code') {

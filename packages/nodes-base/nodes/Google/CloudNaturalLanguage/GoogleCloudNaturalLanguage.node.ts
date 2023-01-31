@@ -1,8 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { IData } from './Interface';
+import type { IData } from './Interface';
 
 import { googleApiRequest } from './GenericFunctions';
 

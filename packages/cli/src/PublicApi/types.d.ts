@@ -1,5 +1,5 @@
-import express from 'express';
-import { IDataObject } from 'n8n-workflow';
+import type express from 'express';
+import type { IDataObject } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
@@ -7,7 +7,7 @@ import type { Role } from '@db/entities/Role';
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 
 import type { Risk } from '@/audit/types';
 

@@ -13,7 +13,7 @@ import get from 'lodash.get';
 import merge from 'lodash.merge';
 import set from 'lodash.set';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	IHttpRequestOptions,

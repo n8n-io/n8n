@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 

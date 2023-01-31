@@ -1,6 +1,6 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -19,7 +19,7 @@ import {
 	uploadAttachments,
 } from './GenericFunctions';
 
-import { ITweet } from './TweetInterface';
+import type { ITweet } from './TweetInterface';
 
 import ISO6391 from 'iso-639-1';
 

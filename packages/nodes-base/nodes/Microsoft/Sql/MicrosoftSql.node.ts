@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,14 +9,14 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import { chunk, flatten } from '../../../utils/utilities';
 
 import mssql from 'mssql';
 
-import { ITables } from './TableInterface';
+import type { ITables } from './TableInterface';
 
 import {
 	copyInputItem,

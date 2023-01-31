@@ -2,10 +2,9 @@
 
 import Vue from 'vue';
 import Fragment from 'vue-fragment';
+import VueAgile from 'vue-agile';
 
 import 'regenerator-runtime/runtime';
-
-import VueAgile from 'vue-agile';
 
 import ElementUI from 'element-ui';
 import { Loading, MessageBox, Message, Notification } from 'element-ui';
@@ -14,13 +13,13 @@ import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 
 Vue.use(Fragment.Plugin);
+Vue.use(VueAgile);
 
 Vue.use(ElementUI);
 Vue.use(designSystemComponents);
 
 Vue.component('enterprise-edition', EnterpriseEdition);
 
-Vue.use(VueAgile);
 Vue.use(Loading.directive);
 
 Vue.prototype.$loading = Loading.service;
