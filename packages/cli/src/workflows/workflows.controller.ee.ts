@@ -210,6 +210,7 @@ EEWorkflowController.get(
 			EEWorkflows.addOwnerAndSharings(workflow);
 			workflow.nodes = [];
 			delete workflow.sharedWith;
+			delete workflow.usedCredentials;
 			return workflow;
 		});
 	}),
