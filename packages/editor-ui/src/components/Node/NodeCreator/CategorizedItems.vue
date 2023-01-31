@@ -101,7 +101,7 @@ import {
 	SubcategoryCreateElement,
 	NodeCreateElement,
 	CategoryCreateElement,
-INodeItemProps,
+	INodeItemProps,
 } from '@/Interface';
 import {
 	WEBHOOK_NODE_TYPE,
@@ -114,7 +114,6 @@ import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-
 
 export interface Props {
 	showSubcategoryIcon?: boolean;
@@ -173,10 +172,14 @@ const searchBar = ref<InstanceType<typeof SearchBar>>();
 const scrollableContainer = ref<InstanceType<typeof HTMLElement>>();
 
 const activeSubcategory = computed<INodeCreateElement | null>(() => {
-	return state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1]?.subcategory || null;
+	return (
+		state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1]?.subcategory || null
+	);
 });
 
-const categoriesKeys = computed(() => props.categorizedItems.filter((item) => item.type === 'category').map((item) => item.key));
+const categoriesKeys = computed(() =>
+	props.categorizedItems.filter((item) => item.type === 'category').map((item) => item.key),
+);
 const activeSubcategoryTitle = computed<string>(() => {
 	if (!activeSubcategory.value || !activeSubcategory.value.properties) return '';
 
@@ -213,7 +216,8 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 			);
 		});
 	} else {
-		const matchingNodes = subcategorizedItems.value.length > 0 ? subcategorizedItems.value : props.searchItems;
+		const matchingNodes =
+			subcategorizedItems.value.length > 0 ? subcategorizedItems.value : props.searchItems;
 
 		returnItems = getFilteredNodes(matchingNodes);
 	}
@@ -233,7 +237,7 @@ const globalFilteredNodeTypes = computed<INodeCreateElement[]>(() => {
 });
 
 const otherCategoryNodes = computed(() => {
-	let nodes = [];
+	const nodes = [];
 
 	// Get diff of nodes between `globalFilteredNodeTypes` and `filteredNodeTypes`
 	for (const node of globalFilteredNodeTypes.value) {
@@ -248,7 +252,7 @@ const otherCategoryNodes = computed(() => {
 });
 
 const mergedFilteredNodes = computed<INodeCreateElement[]>(() => {
-	if(props.hideOtherCategoryItems) return filteredNodeTypes.value;
+	if (props.hideOtherCategoryItems) return filteredNodeTypes.value;
 
 	const isExpanded = state.activeCategories.includes(OTHER_RESULT_CATEGORY);
 	const searchCategory: CategoryCreateElement = {
@@ -265,7 +269,7 @@ const mergedFilteredNodes = computed<INodeCreateElement[]>(() => {
 	if (otherCategoryNodes.value.length > 0) {
 		nodeTypes.push(searchCategory);
 	}
-	if(isExpanded) {
+	if (isExpanded) {
 		nodeTypes.push(...otherCategoryNodes.value);
 	}
 
@@ -278,36 +282,44 @@ const subcategorizedItems = computed<INodeCreateElement[]>(() => {
 	if (!activeSubcategory.value) return [];
 
 	const items = props.searchItems.filter((el: INodeCreateElement) => {
-		if(!activeSubcategory.value) return false;
+		if (!activeSubcategory.value) return false;
 
-		const subcategories = Object.values((el.properties as INodeItemProps).nodeType.codex?.subcategories || {}).flat();
-		return subcategories.includes(activeSubcategory.value.key)
+		const subcategories = Object.values(
+			(el.properties as INodeItemProps).nodeType.codex?.subcategories || {},
+		).flat();
+		return subcategories.includes(activeSubcategory.value.key);
 	});
 
-	return items.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedView));
+	return items.filter((el: INodeCreateElement) =>
+		matchesSelectType(el, nodeCreatorStore.selectedView),
+	);
 });
 
 const filteredCategorizedItems = computed<INodeCreateElement[]>(() => {
 	let categoriesCount = 0;
-	const reducedItems = props.categorizedItems.reduce((acc: INodeCreateElement[], el: INodeCreateElement) => {
-		if(el.type === 'category') {
-			el.properties.expanded = state.activeCategories.includes(el.key);
-			categoriesCount++;
-			return [...acc, el]
-		};
+	const reducedItems = props.categorizedItems.reduce(
+		(acc: INodeCreateElement[], el: INodeCreateElement) => {
+			if (el.type === 'category') {
+				el.properties.expanded = state.activeCategories.includes(el.key);
+				categoriesCount++;
+				return [...acc, el];
+			}
 
-		if(el.type === 'action' && state.activeCategories.includes(el.category)) {
-			return [...acc, el]
-		}
+			if (el.type === 'action' && state.activeCategories.includes(el.category)) {
+				return [...acc, el];
+			}
 
-		return acc;
-	}, [])
+			return acc;
+		},
+		[],
+	);
 
 	// If there is only one category we don't show it
-	if(categoriesCount <= 1) return reducedItems.filter((el: INodeCreateElement) => el.type !== 'category');
+	if (categoriesCount <= 1)
+		return reducedItems.filter((el: INodeCreateElement) => el.type !== 'category');
 
 	return reducedItems;
-})
+});
 
 const renderedItems = computed<INodeCreateElement[]>(() => {
 	if (props.firstLevelItems.length > 0 && activeSubcategory.value === null)
@@ -333,10 +345,12 @@ function trimTriggerNodeName(nodeName: string) {
 	return nodeName.toLowerCase().replace('trigger', '');
 }
 function getFilteredNodes(items: INodeCreateElement[]) {
-	return (sublimeSearch<INodeCreateElement>(searchFilter.value, items, [
-		{ key: 'properties.nodeType.displayName', weight: 2 },
-		{ key: 'properties.nodeType.codex.alias', weight: 1 },
-	]) || []).map(({ item }) => item);
+	return (
+		sublimeSearch<INodeCreateElement>(searchFilter.value, items, [
+			{ key: 'properties.nodeType.displayName', weight: 2 },
+			{ key: 'properties.nodeType.codex.alias', weight: 1 },
+		]) || []
+	).map(({ item }) => item);
 }
 function getScrollTop() {
 	return scrollableContainer.value?.scrollTop || 0;
@@ -518,9 +532,12 @@ watch(
 		if (subcategory) onSubcategorySelected(subcategory, false);
 	},
 );
-watch(() => props.categorizedItems, () => {
-	state.activeCategories = [...categoriesKeys.value, OTHER_RESULT_CATEGORY]
-});
+watch(
+	() => props.categorizedItems,
+	() => {
+		state.activeCategories = [...categoriesKeys.value, OTHER_RESULT_CATEGORY];
+	},
+);
 
 onUnmounted(() => {
 	nodeCreatorStore.setFilter('');

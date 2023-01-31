@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="{'node-wrapper': true, 'node-wrapper--trigger': isTriggerNode}"
+		:class="{ 'node-wrapper': true, 'node-wrapper--trigger': isTriggerNode }"
 		:style="nodePosition"
 		:id="nodeId"
 		data-test-id="canvas-node"
@@ -774,7 +774,7 @@ export default mixins(
 		bottom: 0;
 		margin: auto;
 		margin-right: var(--spacing-2xs);
-		color: var(--color-primary)
+		color: var(--color-primary);
 	}
 }
 

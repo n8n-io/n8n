@@ -349,14 +349,12 @@ const containsAPIAction = computed(
 );
 
 const computedCategorizedItems = computed(() => {
-	if(isActionsActive.value) {
+	if (isActionsActive.value) {
 		return sortActions(getCategorizedList(computedCategoriesWithNodes.value, true));
 	}
 
-
 	return getCategorizedList(computedCategoriesWithNodes.value, true);
-}
-);
+});
 
 const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
 	if (!state.activeNodeActions) return undefined;
@@ -367,7 +365,7 @@ const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => 
 		properties: {
 			subcategory: state.activeNodeActions.displayName,
 			description: '',
-			icon: `${baseUrl}/${state.activeNodeActions.iconUrl}`,
+			icon: `${baseUrl}${state.activeNodeActions.iconUrl}`,
 		},
 	};
 });
@@ -437,7 +435,7 @@ function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateEleme
 	const elements = {
 		trigger: [] as INodeCreateElement[],
 		regular: [] as INodeCreateElement[],
-	}
+	};
 
 	nodeCreateElements.forEach((el) => {
 		const isTriggersCategory = el.type === 'category' && el.key === 'Triggers';
@@ -446,7 +444,7 @@ function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateEleme
 		elements[isTriggersCategory || isTriggerAction ? 'trigger' : 'regular'].push(el);
 	});
 
-	if(useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER) {
+	if (useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER) {
 		return [...elements.trigger, ...elements.regular];
 	}
 
@@ -550,7 +548,7 @@ function onSubcategoryClose(activeSubcategories: INodeCreateElement[]) {
 }
 
 function shouldShowNodeActions(node: INodeCreateElement) {
-	if(state.isRoot && useNodeCreatorStore().itemsFilter === '') return false;
+	if (state.isRoot && useNodeCreatorStore().itemsFilter === '') return false;
 	// Do not show actions for core categories
 	if (node.type === 'node')
 		return !node.properties.nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY);

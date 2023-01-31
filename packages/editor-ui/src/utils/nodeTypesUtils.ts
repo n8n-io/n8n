@@ -113,7 +113,7 @@ export const getCategoriesWithNodes = (
 	return result;
 };
 
-const getCategories = (categoriesWithNodes: ICategoriesWithNodes, ): string[] => {
+const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 	const excludeFromSort = [
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,

@@ -533,5 +533,4 @@ export default mixins(showMessage, workflowHelpers).extend({
 		margin-bottom: var(--spacing-m);
 	}
 }
-
 </style>
