@@ -49,6 +49,7 @@ import { recurringInvoiceFields, recurringInvoiceOperations } from './RecurringI
 import { IRecurringInvoice, IRecurringInvoiceItem } from './RecurringInvoiceInterface';
 import { recurringExpenseFields, recurringExpenseOperations } from './RecurringExpenseDescription';
 import { IRecurringExpense } from './RecurringExpenseInterface';
+import { IVendor, IVendorContact } from './VendorInterface';
 
 const headProperties: INodeProperties[] = [{
 	displayName: 'Resource (V5)',
@@ -3081,12 +3082,33 @@ export const InvoiceNinjaV5 = {
 				if (resource === 'vendor') {
 					if (operation === 'create') {
 						const additionalFields = that.getNodeParameter('additionalFields', i);
-						const body: IClient = {};
-						if (additionalFields.vendorName) {
-							body.name = additionalFields.vendorName as string;
+						const body: IVendor = {};
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
+						}
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
+						}
+						if (additionalFields.name) {
+							body.name = additionalFields.name as string;
+						}
+						if (additionalFields.website) {
+							body.website = additionalFields.website as string;
+						}
+						if (additionalFields.phone) {
+							body.phone = additionalFields.phone as string;
+						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as string;
+						}
+						if (additionalFields.vatNumber) {
+							body.vat_number = additionalFields.vatNumber as string;
 						}
 						if (additionalFields.idNumber) {
 							body.id_number = additionalFields.idNumber as string;
+						}
+						if (additionalFields.number) {
+							body.number = additionalFields.number as string;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
@@ -3106,51 +3128,36 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.customValue4) {
 							body.custom_value4 = additionalFields.customValue4 as string;
 						}
-						if (additionalFields.vatNumber) {
-							body.vat_number = additionalFields.vatNumber as string;
-						}
-						if (additionalFields.phone) {
-							body.phone = additionalFields.phone as string;
-						}
-						if (additionalFields.website) {
-							body.website = additionalFields.website as string;
+						const AddressValue = (
+							that.getNodeParameter('addressUi', i) as IDataObject
+						).AddressValue as IDataObject;
+						if (AddressValue) {
+							body.address1 = AddressValue.address1 as string;
+							body.address2 = AddressValue.address2 as string;
+							body.city = AddressValue.city as string;
+							body.state = AddressValue.state as string;
+							body.postal_code = AddressValue.postalCode as string;
+							body.country_id = AddressValue.countryCode as string;
 						}
 						const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
 							.contacstValues as IDataObject[];
 						if (contactsValues) {
-							const contacts: IClientContact[] = [];
+							const contacts: IVendorContact[] = [];
 							for (const contactValue of contactsValues) {
-								const contact: IClientContact = {
+								const contact: IVendorContact = {
 									first_name: contactValue.firstName as string,
 									last_name: contactValue.lastName as string,
 									email: contactValue.email as string,
 									phone: contactValue.phone as string,
+									custom_value1: contactValue.customValue1 as string,
+									custom_value2: contactValue.customValue2 as string,
+									custom_value3: contactValue.customValue3 as string,
+									custom_value4: contactValue.customValue4 as string,
+									send_email: contactValue.sendEmail as boolean,
 								};
 								contacts.push(contact);
 							}
 							body.contacts = contacts;
-						}
-						const shippingAddressValue = (
-							that.getNodeParameter('shippingAddressUi', i) as IDataObject
-						).shippingAddressValue as IDataObject;
-						if (shippingAddressValue) {
-							body.shipping_address1 = shippingAddressValue.streetAddress as string;
-							body.shipping_address2 = shippingAddressValue.aptSuite as string;
-							body.shipping_city = shippingAddressValue.city as string;
-							body.shipping_state = shippingAddressValue.state as string;
-							body.shipping_postal_code = shippingAddressValue.postalCode as string;
-							body.shipping_country_id = shippingAddressValue.countryCode as string;
-						}
-						const billingAddressValue = (
-							that.getNodeParameter('billingAddressUi', i) as IDataObject
-						).billingAddressValue as IDataObject;
-						if (billingAddressValue) {
-							body.address1 = billingAddressValue.streetAddress as string;
-							body.address2 = billingAddressValue.aptSuite as string;
-							body.city = billingAddressValue.city as string;
-							body.state = billingAddressValue.state as string;
-							body.postal_code = billingAddressValue.postalCode as string;
-							body.country_id = billingAddressValue.countryCode as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,
@@ -3163,12 +3170,33 @@ export const InvoiceNinjaV5 = {
 					if (operation === 'update') {
 						const vendorId = that.getNodeParameter('vendorId', i) as string;
 						const additionalFields = that.getNodeParameter('additionalFields', i);
-						const body: IClient = {};
-						if (additionalFields.vendorName) {
-							body.name = additionalFields.vendorName as string;
+						const body: IVendor = {};
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
+						}
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
+						}
+						if (additionalFields.name) {
+							body.name = additionalFields.name as string;
+						}
+						if (additionalFields.website) {
+							body.website = additionalFields.website as string;
+						}
+						if (additionalFields.phone) {
+							body.phone = additionalFields.phone as string;
+						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as string;
+						}
+						if (additionalFields.vatNumber) {
+							body.vat_number = additionalFields.vatNumber as string;
 						}
 						if (additionalFields.idNumber) {
 							body.id_number = additionalFields.idNumber as string;
+						}
+						if (additionalFields.number) {
+							body.number = additionalFields.number as string;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
@@ -3188,51 +3216,36 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.customValue4) {
 							body.custom_value4 = additionalFields.customValue4 as string;
 						}
-						if (additionalFields.vatNumber) {
-							body.vat_number = additionalFields.vatNumber as string;
-						}
-						if (additionalFields.phone) {
-							body.phone = additionalFields.phone as string;
-						}
-						if (additionalFields.website) {
-							body.website = additionalFields.website as string;
+						const AddressValue = (
+							that.getNodeParameter('addressUi', i) as IDataObject
+						).AddressValue as IDataObject;
+						if (AddressValue) {
+							body.address1 = AddressValue.address1 as string;
+							body.address2 = AddressValue.address2 as string;
+							body.city = AddressValue.city as string;
+							body.state = AddressValue.state as string;
+							body.postal_code = AddressValue.postalCode as string;
+							body.country_id = AddressValue.countryCode as string;
 						}
 						const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
 							.contacstValues as IDataObject[];
 						if (contactsValues) {
-							const contacts: IClientContact[] = [];
+							const contacts: IVendorContact[] = [];
 							for (const contactValue of contactsValues) {
-								const contact: IClientContact = {
+								const contact: IVendorContact = {
 									first_name: contactValue.firstName as string,
 									last_name: contactValue.lastName as string,
 									email: contactValue.email as string,
 									phone: contactValue.phone as string,
+									custom_value1: contactValue.customValue1 as string,
+									custom_value2: contactValue.customValue2 as string,
+									custom_value3: contactValue.customValue3 as string,
+									custom_value4: contactValue.customValue4 as string,
+									send_email: contactValue.sendEmail as boolean,
 								};
 								contacts.push(contact);
 							}
 							body.contacts = contacts;
-						}
-						const shippingAddressValue = (
-							that.getNodeParameter('shippingAddressUi', i) as IDataObject
-						).shippingAddressValue as IDataObject;
-						if (shippingAddressValue) {
-							body.shipping_address1 = shippingAddressValue.streetAddress as string;
-							body.shipping_address2 = shippingAddressValue.aptSuite as string;
-							body.shipping_city = shippingAddressValue.city as string;
-							body.shipping_state = shippingAddressValue.state as string;
-							body.shipping_postal_code = shippingAddressValue.postalCode as string;
-							body.shipping_country_id = shippingAddressValue.countryCode as string;
-						}
-						const billingAddressValue = (
-							that.getNodeParameter('billingAddressUi', i) as IDataObject
-						).billingAddressValue as IDataObject;
-						if (billingAddressValue) {
-							body.address1 = billingAddressValue.streetAddress as string;
-							body.address2 = billingAddressValue.aptSuite as string;
-							body.city = billingAddressValue.city as string;
-							body.state = billingAddressValue.state as string;
-							body.postal_code = billingAddressValue.postalCode as string;
-							body.country_id = billingAddressValue.countryCode as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							that,

@@ -198,21 +198,43 @@ export const vendorFields: INodeProperties[] = [
 			},
 		},
 		options: [
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
 			{
-				displayName: 'Vendor Name',
-				name: 'vendorName',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'ID Number',
-				name: 'idNumber',
+				displayName: 'Number',
+				name: 'number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'VAT Number',
-				name: 'vatNumber',
+				displayName: 'Website',
+				name: 'website',
 				type: 'string',
 				default: '',
 			},
@@ -223,8 +245,20 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Website',
-				name: 'website',
+				displayName: 'Currency ID',
+				name: 'currencyId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'VAT Number',
+				name: 'vatNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'ID Number',
+				name: 'idNumber',
 				type: 'string',
 				default: '',
 			},
@@ -284,9 +318,9 @@ export const vendorFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Billing Address',
-		name: 'billingAddressUi',
-		placeholder: 'Add Billing Address',
+		displayName: 'Address',
+		name: 'addressUi',
+		placeholder: 'Add Address',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -301,18 +335,18 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'billingAddressValue',
-				displayName: 'Billing Address',
+				name: 'AddressValue',
+				displayName: 'Address',
 				values: [
 					{
-						displayName: 'Street Address',
-						name: 'streetAddress',
+						displayName: 'Address Line 1',
+						name: 'address1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Apt/Suite',
-						name: 'aptSuite',
+						displayName: 'Address Line 2',
+						name: 'address2',
 						type: 'string',
 						default: '',
 					},
@@ -336,7 +370,7 @@ export const vendorFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Country Code',
-						name: 'countryCode',
+						name: 'countryId',
 						type: 'options',
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -393,73 +427,43 @@ export const vendorFields: INodeProperties[] = [
 						displayName: 'Phone',
 						name: 'phone',
 						type: 'string',
+						required: false,
 						default: '',
 					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Shipping Address',
-		name: 'shippingAddressUi',
-		placeholder: 'Add Shipping Address',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: false,
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['vendor'],
-				operation: ['create'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'shippingAddressValue',
-				displayName: 'Shipping Address',
-				values: [
 					{
-						displayName: 'Street Address',
-						name: 'streetAddress',
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'Apt/Suite',
-						name: 'aptSuite',
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'City',
-						name: 'city',
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'State',
-						name: 'state',
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
-						name: 'postalCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Country Code',
-						name: 'countryCode',
-						type: 'options',
-						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-						typeOptions: {
-							loadOptionsMethod: 'getCountryCodesV5',
-						},
-						default: '',
+						displayName: 'Send E-Mails',
+						name: 'sendEmail',
+						type: 'boolean',
+						required: false,
+						default: true,
 					},
 				],
 			},
@@ -495,89 +499,164 @@ export const vendorFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Vendor Name',
-				name: 'vendorName',
-				type: 'string',
-				default: '',
+		options: [{
+			displayName: 'Address',
+			name: 'addressUi',
+			placeholder: 'Add Address',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: false,
 			},
-			{
-				displayName: 'ID Number',
-				name: 'idNumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'VAT Number',
-				name: 'vatNumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Website',
-				name: 'website',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Private Notes',
-				name: 'privateNotes',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
+			displayOptions: {
+				show: {
+					apiVersion: ['v5'],
+					resource: ['vendor'],
+					operation: ['create'],
 				},
-				default: '',
 			},
-			{
-				displayName: 'Public Notes',
-				name: 'publicNotes',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
+			default: {},
+			options: [
+				{
+					name: 'AddressValue',
+					displayName: 'Address',
+					values: [
+						{
+							displayName: 'Address Line 1',
+							name: 'address1',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Address Line 2',
+							name: 'address2',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'City',
+							name: 'city',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'State',
+							name: 'state',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Postal Code',
+							name: 'postalCode',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Country Code',
+							name: 'countryId',
+							type: 'options',
+							description:
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							typeOptions: {
+								loadOptionsMethod: 'getCountryCodesV5',
+							},
+							default: '',
+						},
+					],
 				},
-				default: '',
+			],
+		},
+		{
+			displayName: 'Contacts',
+			name: 'contactsUi',
+			placeholder: 'Add Contact',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
 			},
-			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'string',
-				typeOptions: {},
-				default: '',
+			displayOptions: {
+				show: {
+					apiVersion: ['v5'],
+					resource: ['vendor'],
+					operation: ['create'],
+				},
 			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'string',
-				typeOptions: {},
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 3',
-				name: 'customValue3',
-				type: 'string',
-				typeOptions: {},
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 4',
-				name: 'customValue4',
-				type: 'string',
-				typeOptions: {},
-				default: '',
-			},
+			default: {},
+			options: [
+				{
+					name: 'contactValues',
+					displayName: 'Contact',
+					values: [
+						{
+							displayName: 'First Name',
+							name: 'firstName',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Last Name',
+							name: 'lastName',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Email',
+							name: 'email',
+							type: 'string',
+							placeholder: 'name@email.com',
+							default: '',
+						},
+						{
+							displayName: 'Phone',
+							name: 'phone',
+							type: 'string',
+							required: false,
+							default: '',
+						},
+						{
+							displayName: 'Custom Value 1',
+							name: 'customValue1',
+							type: 'string',
+							required: false,
+							default: '',
+						},
+						{
+							displayName: 'Custom Value 2',
+							name: 'customValue2',
+							type: 'string',
+							required: false,
+							default: '',
+						},
+						{
+							displayName: 'Custom Value 3',
+							name: 'customValue3',
+							type: 'string',
+							required: false,
+							default: '',
+						},
+						{
+							displayName: 'Custom Value 4',
+							name: 'customValue4',
+							type: 'string',
+							required: false,
+							default: '',
+						},
+						{
+							displayName: 'Send E-Mails',
+							name: 'sendEmail',
+							type: 'boolean',
+							required: false,
+							default: true,
+						},
+					],
+				},
+			],
+		},
 		],
 	},
 	{
-		displayName: 'Billing Address',
-		name: 'billingAddressUi',
-		placeholder: 'Add Billing Address',
+		displayName: 'Address',
+		name: 'addressUi',
+		placeholder: 'Add Address',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: false,
@@ -592,18 +671,18 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'billingAddressValue',
-				displayName: 'Billing Address',
+				name: 'AddressValue',
+				displayName: 'Address',
 				values: [
 					{
-						displayName: 'Street Address',
-						name: 'streetAddress',
+						displayName: 'Address Line 1',
+						name: 'address1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Apt/Suite',
-						name: 'aptSuite',
+						displayName: 'Address Line 2',
+						name: 'address2',
 						type: 'string',
 						default: '',
 					},
@@ -627,7 +706,7 @@ export const vendorFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Country Code',
-						name: 'countryCode',
+						name: 'countryId',
 						type: 'options',
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -684,73 +763,43 @@ export const vendorFields: INodeProperties[] = [
 						displayName: 'Phone',
 						name: 'phone',
 						type: 'string',
+						required: false,
 						default: '',
 					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Shipping Address',
-		name: 'shippingAddressUi',
-		placeholder: 'Add Shipping Address',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: false,
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['vendor'],
-				operation: ['update'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'shippingAddressValue',
-				displayName: 'Shipping Address',
-				values: [
 					{
-						displayName: 'Street Address',
-						name: 'streetAddress',
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'Apt/Suite',
-						name: 'aptSuite',
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'City',
-						name: 'city',
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'State',
-						name: 'state',
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
 						type: 'string',
+						required: false,
 						default: '',
 					},
 					{
-						displayName: 'Postal Code',
-						name: 'postalCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Country Code',
-						name: 'countryCode',
-						type: 'options',
-						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-						typeOptions: {
-							loadOptionsMethod: 'getCountryCodesV5',
-						},
-						default: '',
+						displayName: 'Send E-Mails',
+						name: 'sendEmail',
+						type: 'boolean',
+						required: false,
+						default: true,
 					},
 				],
 			},
