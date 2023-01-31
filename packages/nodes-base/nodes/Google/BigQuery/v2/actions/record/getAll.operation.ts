@@ -51,17 +51,17 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Fields',
 				name: 'selectedFields',
-				type: 'string',
-				default: '',
+				type: 'multiOptions',
 				description:
-					'Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = "a,e.d.f"</code>',
-				displayOptions: {
-					hide: {
-						returnTableSchema: [true],
-					},
+					'Subset of fields to return. String of comma-separated values can be set in expression. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsDependsOn: ['projectId.value', 'datasetId.value', 'tableId.value'],
+					loadOptionsMethod: 'getSchema',
 				},
+				default: [],
 			},
 			{
 				displayName: 'Return Table Schema',
@@ -142,7 +142,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 
 				if (options.selectedFields) {
-					qs.selectedFields = options.selectedFields;
+					if (Array.isArray(options.selectedFields)) {
+						qs.selectedFields = (options.selectedFields as string[]).join(',');
+					} else {
+						qs.selectedFields = options.selectedFields as string;
+					}
 				}
 
 				if (returnAll) {
@@ -172,10 +176,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					continue;
 				}
 			} catch (error) {
-				if (error.message.includes('EXTERNAL')) {
+				if (error.message.includes('EXTERNAL') || error.message.includes('VIEW')) {
 					const limit = this.getNodeParameter('limit', i, 0);
 
-					const query = `SELECT * FROM [${projectId}:${datasetId}.${tableId}]${
+					const query = `SELECT * FROM ${projectId}.${datasetId}.${tableId}${
 						limit ? ' LIMIT ' + limit.toString() : ''
 					};`;
 
@@ -183,7 +187,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 						this,
 						'POST',
 						`/v2/projects/${projectId}/queries`,
-						{ query },
+						{ query, useLegacySql: false },
 					);
 
 					schemaFields = (schema as TableSchema).fields;

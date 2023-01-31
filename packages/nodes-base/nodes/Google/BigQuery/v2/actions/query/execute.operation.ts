@@ -15,11 +15,32 @@ export const description: INodeProperties[] = [
 				operation: ['executeQuery'],
 				resource: ['query'],
 			},
+			hide: {
+				'/options.useLegacySql': [true],
+			},
 		},
 		default: '',
 		placeholder: 'SELECT * FROM dataset.table LIMIT 100',
+		hint: 'Standard SQL syntax',
 		description:
-			'SQL query to execute, more info <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>',
+			'SQL query to execute, you can find more information <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>. Standard SQL syntax used by default, but you can also use Legacy SQL syntax by using optinon \'Use Legacy SQL\'.',
+	},
+	{
+		displayName: 'SQL Query',
+		name: 'sqlQuery',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['executeQuery'],
+				resource: ['query'],
+				'/options.useLegacySql': [true],
+			},
+		},
+		default: '',
+		placeholder: 'SELECT * FROM [project:dataset.table] LIMIT 100;',
+		hint: 'Legacy SQL syntax',
+		description:
+			'SQL query to execute, you can find more information about Legacy SQL syntax <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>',
 	},
 	{
 		displayName: 'Options',
@@ -126,28 +147,28 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				delete options.rawOutput;
 			}
 
-			const qs: IDataObject = options;
-			qs.query = sqlQuery;
+			const body: IDataObject = options;
+			body.query = sqlQuery;
 
-			if (qs.defaultDataset) {
-				qs.defaultDataset = {
+			if (body.defaultDataset) {
+				body.defaultDataset = {
 					datasetId: options.defaultDataset,
 					projectId,
 				};
 			}
 
-			if (qs.useLegacySql === undefined) {
-				qs.useLegacySql = false;
+			if (body.useLegacySql === undefined) {
+				body.useLegacySql = false;
 			}
 
 			const response = await googleApiRequest.call(
 				this,
 				'POST',
 				`/v2/projects/${projectId}/queries`,
-				qs,
+				body,
 			);
 
-			if (rawOutput || qs.dryRun) {
+			if (rawOutput || body.dryRun) {
 				responseData = response;
 			} else {
 				const { rows, schema } = response;
@@ -158,7 +179,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 					responseData = simplify(responseData, fields);
 				} else {
-					responseData = { success: true };
+					responseData = response;
 				}
 			}
 
