@@ -84,6 +84,7 @@
 					:html="node.parameters.html"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
+					:disableExpressionColoring="!isHtmlNode(node)"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -353,7 +354,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -961,6 +962,9 @@ export default mixins(
 		},
 		isCodeNode(node: INodeUi): boolean {
 			return node.type === CODE_NODE_TYPE;
+		},
+		isHtmlNode(node: INodeUi): boolean {
+			return node.type === HTML_NODE_TYPE;
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb

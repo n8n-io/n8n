@@ -33,7 +33,8 @@ export const theme = [
 		'.cm-gutters': {
 			backgroundColor: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
-			borderRadius: 'var(--border-radius-base)',
+			borderTopLeftRadius: 'var(--border-radius-base)',
+			borderBottomLeftRadius: 'var(--border-radius-base)',
 		},
 		'.cm-scroller': {
 			overflow: 'auto',

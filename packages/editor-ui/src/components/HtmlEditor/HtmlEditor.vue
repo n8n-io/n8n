@@ -46,6 +46,10 @@ export default mixins(expressionManager).extend({
 			type: Number,
 			default: -1,
 		},
+		disableExpressionColoring: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -77,8 +81,8 @@ export default mixins(expressionManager).extend({
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
 
-					highlighter.removeColor(this.editor, this.htmlSegments);
-					highlighter.addColor(this.editor, this.resolvableSegments);
+					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
+					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 
 					this.$emit('valueChanged', this.doc);
 				}),
@@ -149,7 +153,31 @@ export default mixins(expressionManager).extend({
 			return root;
 		},
 
+		isMissingHtmlTags() {
+			const zerothSection = this.sections.at(0);
+
+			return (
+				!zerothSection?.content.trim().startsWith('<html') &&
+				!zerothSection?.content.trim().endsWith('</html>')
+			);
+		},
+
 		format() {
+			if (this.sections.length === 1 && this.isMissingHtmlTags()) {
+				const zerothSection = this.sections.at(0) as Section;
+
+				const formatted = prettier
+					.format(zerothSection.content, {
+						parser: 'html',
+						plugins: [htmlParser],
+					})
+					.trim();
+
+				return this.editor.dispatch({
+					changes: { from: 0, to: this.doc.length, insert: formatted },
+				});
+			}
+
 			const formatted = [];
 
 			for (const { kind, content } of this.sections) {
@@ -196,6 +224,12 @@ export default mixins(expressionManager).extend({
 				changes: { from: 0, to: this.doc.length, insert: formatted.join('\n\n') },
 			});
 		},
+
+		getHighlighter() {
+			if (this.disableExpressionColoring) return;
+
+			return highlighter;
+		},
 	},
 
 	mounted() {
@@ -211,7 +245,7 @@ export default mixins(expressionManager).extend({
 
 		this.editor = new EditorView({ parent: this.root(), state });
 
-		highlighter.addColor(this.editor, this.resolvableSegments);
+		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 	},
 
 	destroyed() {
