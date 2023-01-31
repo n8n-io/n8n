@@ -103,11 +103,11 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .nodeIconWrapper {
-	width: 26px;
-	height: 26px;
+	width: var(--node-icon-size, 26px);
+	height: var(--node-icon-size, 26px);
 	border-radius: var(--border-radius-small);
 	color: var(--node-icon-color, #444);
-	line-height: 26px;
+	line-height: var(--node-icon-size, 26px);
 	font-size: 1.1em;
 	overflow: hidden;
 	text-align: center;

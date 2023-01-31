@@ -1,19 +1,14 @@
 <template>
 	<div :class="{ [$style.mainPanel]: true, [$style.isRoot]: isRoot }">
 		<CategorizedItems
-			:expandAllCategories="isActionsActive"
 			:subcategoryOverride="nodeAppSubcategory"
 			:alwaysShowSearch="isActionsActive"
+			:hideOtherCategoryItems="isActionsActive"
 			:categorizedItems="computedCategorizedItems"
-			:categoriesWithNodes="computedCategoriesWithNodes"
-			:initialActiveIndex="0"
 			:searchItems="searchItems"
 			:withActionsGetter="shouldShowNodeActions"
 			:firstLevelItems="firstLevelItems"
 			:showSubcategoryIcon="isActionsActive"
-			:flatten="!isActionsActive && isAppEventSubcategory"
-			:filterByType="false"
-			:lazyRender="true"
 			:allItems="transformCreateElements(mergedAppNodes)"
 			:searchPlaceholder="searchPlaceholder"
 			ref="categorizedItemsRef"
@@ -23,7 +18,7 @@
 			@actionsOpen="setActiveActionsNodeType"
 			@actionSelected="onActionSelected"
 		>
-			<template #noResults="{ filteredAllNodeTypes, filteredNodeTypes }">
+			<template #noResults="{ filteredAllNodeTypes }">
 				<no-results
 					data-test-id="categorized-no-results"
 					:showRequest="!isActionsActive && filteredAllNodeTypes.length === 0"
@@ -140,6 +135,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
 import ItemIterator from './ItemIterator.vue';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 const instance = getCurrentInstance();
 
@@ -331,11 +327,10 @@ const state = reactive({
 	latestNodeData: null as INodeTypeDescription | null,
 });
 const categorizedItemsRef = ref<InstanceType<typeof CategorizedItems>>();
-
+const { baseUrl } = useRootStore();
 const { $externalHooks } = new externalHooks();
 const {
 	mergedAppNodes,
-	setShowTabs,
 	getActionData,
 	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
@@ -362,14 +357,11 @@ const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => 
 
 	return {
 		type: 'subcategory',
+		key: state.activeNodeActions.name,
 		properties: {
 			subcategory: state.activeNodeActions.displayName,
-			nodeType: {
-				description: '',
-				key: state.activeNodeActions.name,
-				iconUrl: state.activeNodeActions.iconUrl,
-				icon: state.activeNodeActions.icon,
-			},
+			description: '',
+			icon: `${baseUrl}/${state.activeNodeActions.iconUrl}`,
 		},
 	};
 });
@@ -426,7 +418,7 @@ const isActionsActive = computed(() => state.activeNodeActions !== null);
 const firstLevelItems = computed(() => (isRoot.value ? items.value : []));
 
 const items = computed(() => activeView.value.items);
-const isSearchActive = computed(() => useNodeCreatorStore().itemsFilter !== '');
+
 const searchItems = computed<INodeCreateElement[]>(() => {
 	return state.activeNodeActions
 		? transformCreateElements(selectedNodeActions.value)
@@ -490,7 +482,6 @@ async function fetchNodeDetails() {
 
 function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
 	state.activeNodeActions = nodeType;
-	setShowTabs(false);
 	fetchNodeDetails();
 
 	if (nodeType) trackActionsView();
@@ -531,9 +522,7 @@ function onSubcategoryClose(activeSubcategories: INodeCreateElement[]) {
 }
 
 function shouldShowNodeActions(node: INodeCreateElement) {
-	if (isAppEventSubcategory.value) return true;
-	if (state.isRoot && !isSearchActive.value) return false;
-	// Do not show actions for core category when searching
+	// Do not show actions for core categories
 	if (node.type === 'node')
 		return !node.properties.nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY);
 

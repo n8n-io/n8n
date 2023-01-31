@@ -762,6 +762,8 @@ export interface IActionItemProps {
 
 export interface ICategoryItemProps {
 	expanded: boolean;
+	category: string;
+	name: string;
 }
 
 export interface CreateElementBase {
@@ -787,6 +789,7 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
+	category: string;
 	properties: IActionItemProps;
 }
 

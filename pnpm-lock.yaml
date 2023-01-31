@@ -627,7 +627,6 @@ importers:
       '@jsplumb/connector-bezier': 5.13.2
       '@jsplumb/core': 5.13.2
       '@jsplumb/util': 5.13.2
-      '@types/lodash.differenceby': 4.8.7
       axios: 0.21.4
       codemirror-lang-html-n8n: 1.0.0
       codemirror-lang-n8n-expression: 0.1.0_zyklskjzaprvz25ee7sq7godcq
@@ -683,6 +682,7 @@ importers:
       '@types/jsonpath': 0.2.0
       '@types/lodash-es': 4.17.6
       '@types/lodash.camelcase': 4.3.7
+      '@types/lodash.differenceby': 4.8.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.set': 4.3.7
       '@types/luxon': 2.4.0
@@ -6221,7 +6221,7 @@ packages:
     resolution: {integrity: sha512-gYrwTWwXRyqYI81dwKS4z5We1jofGS+tbyYX9RMeOmlI2pNr32WTiDRiyYs4IVAmvPhVC0FQXDkg66bIIYhpeQ==}
     dependencies:
       '@types/lodash': 4.14.186
-    dev: false
+    dev: true
 
   /@types/lodash.get/4.4.7:
     resolution: {integrity: sha512-af34Mj+KdDeuzsJBxc/XeTtOx0SZHZNLd+hdrn+PcKGQs0EG2TJTzQAOTCZTgDJCArahlCzLWSy8c2w59JRz7Q==}
@@ -6916,7 +6916,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.55.0+terser@5.16.1
+      vite: 4.0.4_sass@1.57.1
       vue: 2.7.14
     dev: true
 

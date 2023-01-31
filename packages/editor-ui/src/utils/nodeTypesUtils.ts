@@ -118,7 +118,7 @@ export const getCategoriesWithNodes = (
 	return result;
 };
 
-const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
+const getCategories = (categoriesWithNodes: ICategoriesWithNodes, ): string[] => {
 	const excludeFromSort = [
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
@@ -152,8 +152,9 @@ export const getCategorizedList = (
 		const categoryEl: INodeCreateElement = {
 			type: 'category',
 			key: category,
-			category,
 			properties: {
+				category,
+				name: category,
 				expanded: categoryIsExpanded,
 			},
 		};
@@ -176,7 +177,6 @@ export const getCategorizedList = (
 				const subcategoryEl: INodeCreateElement = {
 					type: 'subcategory',
 					key: `${category}_${subcategory}`,
-					category,
 					properties: {
 						subcategory,
 						description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],

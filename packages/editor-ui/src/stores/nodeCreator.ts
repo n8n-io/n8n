@@ -246,15 +246,11 @@ function resourceCategories(
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 	state: (): INodeCreatorState => ({
 		itemsFilter: '',
-		showTabs: true,
 		showScrim: false,
 		selectedView: TRIGGER_NODE_FILTER,
 		rootViewHistory: [],
 	}),
 	actions: {
-		setShowTabs(isVisible: boolean) {
-			this.showTabs = isVisible;
-		},
 		setShowScrim(isVisible: boolean) {
 			this.showScrim = isVisible;
 		},

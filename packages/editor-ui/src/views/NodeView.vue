@@ -764,7 +764,6 @@ export default mixins(
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
-			this.$nextTick(() => this.nodeCreatorStore.setShowTabs(false));
 		},
 		async openExecution(executionId: string) {
 			this.startLoading();
