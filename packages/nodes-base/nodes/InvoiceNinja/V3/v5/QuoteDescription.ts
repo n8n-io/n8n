@@ -221,44 +221,59 @@ export const quoteFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Client Name or ID',
-				name: 'client',
+				name: 'clientId',
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClientsV5',
 				},
+				default: '', 
+			},
+			{
+				displayName: 'Vendor Name or ID',
+				name: 'vendorId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getVendorsV5',
+				},
+				default: '', 
+			},
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
 				default: '',
 			},
 			{
-				displayName: 'Auto Bill',
-				name: 'auto_bill_enabled',
-				type: 'boolean',
-				default: false,
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
 			},
 			{
-				displayName: 'Discount',
-				name: 'discount',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Quote Date',
-				name: 'quoteDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Quote Number',
-				name: 'quoteNumber',
-				type: 'string',
-				default: '',
+				displayName: 'Balance',
+				name: 'balance',
+				type: 'number',
+				default: 0,
 			},
 			{
 				displayName: 'Quote Status',
@@ -277,8 +292,64 @@ export const quoteFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Is Amount Discount',
-				name: 'isAmountDiscount',
+				displayName: 'Design',
+				name: 'designId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getDesignsV5',
+				},
+				default: ''
+			},
+			{
+				displayName: 'Recurring ID',
+				name: 'recurringId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Quote Number',
+				name: 'quoteNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Po Number',
+				name: 'poNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Discount',
+				name: 'discount',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Quote Date',
+				name: 'date',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Terms',
+				name: 'terms',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Uses Inclusive Taxes',
+				name: 'usesInclusiveTaxes',
 				type: 'boolean',
 				default: false,
 			},
@@ -295,8 +366,14 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Po Number',
-				name: 'poNumber',
+				displayName: 'Is Amount Discount',
+				name: 'isAmountDiscount',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Footer',
+				name: 'footer',
 				type: 'string',
 				default: '',
 			},
@@ -342,6 +419,12 @@ export const quoteFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Auto Bill',
+				name: 'auto_bill_enabled',
+				type: 'boolean',
+				default: false,
+			},
 		],
 	},
 	{
@@ -372,31 +455,22 @@ export const quoteFields: INodeProperties[] = [
 						default: 0,
 					},
 					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Service',
-						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Quantity',
+						displayName: 'Anzahl',
 						name: 'quantity',
 						type: 'number',
 						typeOptions: {
 							minValue: 0,
 						},
-						default: 0,
+						default: 1,
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
 					},
 					{
 						displayName: 'Tax Name 1',
@@ -411,6 +485,12 @@ export const quoteFields: INodeProperties[] = [
 						default: '',
 					},
 					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
 						displayName: 'Tax Rate 1',
 						name: 'taxRate1',
 						type: 'number',
@@ -421,6 +501,40 @@ export const quoteFields: INodeProperties[] = [
 						name: 'taxRate2',
 						type: 'number',
 						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
 					},
 				],
 			},
@@ -459,44 +573,59 @@ export const quoteFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Client Name or ID',
-				name: 'client',
+				name: 'clientId',
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClientsV5',
 				},
+				default: '', 
+			},
+			{
+				displayName: 'Vendor Name or ID',
+				name: 'vendorId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getVendorsV5',
+				},
+				default: '', 
+			},
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
 				default: '',
 			},
 			{
-				displayName: 'Auto Bill',
-				name: 'auto_bill_enabled',
-				type: 'boolean',
-				default: false,
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
 			},
 			{
-				displayName: 'Discount',
-				name: 'discount',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Quote Date',
-				name: 'quoteDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Quote Number',
-				name: 'quoteNumber',
-				type: 'string',
-				default: '',
+				displayName: 'Balance',
+				name: 'balance',
+				type: 'number',
+				default: 0,
 			},
 			{
 				displayName: 'Quote Status',
@@ -515,8 +644,64 @@ export const quoteFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Is Amount Discount',
-				name: 'isAmountDiscount',
+				displayName: 'Design',
+				name: 'designId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getDesignsV5',
+				},
+				default: ''
+			},
+			{
+				displayName: 'Recurring ID',
+				name: 'recurringId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Quote Number',
+				name: 'quoteNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Po Number',
+				name: 'poNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Discount',
+				name: 'discount',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Quote Date',
+				name: 'date',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Terms',
+				name: 'terms',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Uses Inclusive Taxes',
+				name: 'usesInclusiveTaxes',
 				type: 'boolean',
 				default: false,
 			},
@@ -533,8 +718,14 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Po Number',
-				name: 'poNumber',
+				displayName: 'Is Amount Discount',
+				name: 'isAmountDiscount',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Footer',
+				name: 'footer',
 				type: 'string',
 				default: '',
 			},
@@ -580,6 +771,12 @@ export const quoteFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Auto Bill',
+				name: 'auto_bill_enabled',
+				type: 'boolean',
+				default: false,
+			},
 		],
 	},
 	{
@@ -610,54 +807,85 @@ export const quoteFields: INodeProperties[] = [
 						default: 0,
 					},
 					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Service',
-						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Quantity',
+						displayName: 'Anzahl',
 						name: 'quantity',
 						type: 'number',
 						typeOptions: {
 							minValue: 0,
 						},
+						default: 1,
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
 						default: 0,
 					},
 					{
 						displayName: 'Custom Value 1',
 						name: 'customValue1',
 						type: 'string',
+						typeOptions: {},
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 2',
 						name: 'customValue2',
 						type: 'string',
+						typeOptions: {},
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 3',
 						name: 'customValue3',
 						type: 'string',
+						typeOptions: {},
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 4',
 						name: 'customValue4',
 						type: 'string',
+						typeOptions: {},
 						default: '',
 					},
 				],
