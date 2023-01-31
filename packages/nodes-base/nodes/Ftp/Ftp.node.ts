@@ -13,7 +13,8 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
-import { Readable, pipeline } from 'stream';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream';
 import { promisify } from 'util';
 import { file as tmpFile } from 'tmp-promise';
 
