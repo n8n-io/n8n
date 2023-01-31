@@ -1,6 +1,11 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { notionApiRequest, simplifyObjects } from './GenericFunctions';
 
@@ -10,7 +15,7 @@ import { getDatabases } from './SearchFunctions';
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
-		displayName: 'Notion Trigger (Beta)',
+		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
 		group: ['trigger'],
@@ -49,7 +54,7 @@ export class NotionTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'In Notion, make sure you <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api#add-connections-to-pages" target="_blank">share your database with your integration</a> . Otherwise it won\'t be accessible, or listed here.',
+					'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 				name: 'notionNotice',
 				type: 'notice',
 				default: '',

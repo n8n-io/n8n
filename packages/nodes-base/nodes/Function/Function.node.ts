@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { NodeVMOptions } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -148,21 +147,24 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options = {
+		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
 			require: {
-				external: false as boolean | { modules: string[] },
+				external: false as boolean | { modules: string[]; transitive: boolean },
 				builtin: [] as string[],
 			},
 		};
 
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN && typeof options.require === 'object') {
 			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
 		}
 
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL && typeof options.require === 'object') {
+			options.require.external = {
+				modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+				transitive: false,
+			};
 		}
 
 		const vm = new NodeVM(options);

@@ -15,7 +15,7 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
-import { PathLike } from 'fs';
+import type { PathLike } from 'fs';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -980,7 +980,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1039,6 +1039,7 @@ export interface INodeProperties {
 	>;
 	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
+	requiresDataPath?: 'single' | 'multiple';
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -1131,6 +1132,10 @@ export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 export interface IParameterDependencies {
 	[key: string]: string[];
 }
+
+export type IParameterLabel = {
+	size?: 'small' | 'medium';
+};
 
 export interface IPollResponse {
 	closeFunction?: () => Promise<void>;

@@ -1,11 +1,11 @@
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
-import express from 'express';
+import type express from 'express';
 
 import { ActiveWebhooks } from 'n8n-core';
 
-import {
+import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	WebhookHttpMethod,
@@ -13,7 +13,7 @@ import {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
+import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';

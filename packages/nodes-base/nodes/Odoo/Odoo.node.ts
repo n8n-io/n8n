@@ -1,8 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { OptionsWithUri } from 'request';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import {
-	deepCopy,
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -13,6 +12,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import {
 	contactDescription,
@@ -25,8 +25,8 @@ import {
 	opportunityOperations,
 } from './descriptions';
 
+import type { IOdooFilterOperations } from './GenericFunctions';
 import {
-	IOdooFilterOperations,
 	odooCreate,
 	odooDelete,
 	odooGet,

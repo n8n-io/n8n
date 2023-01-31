@@ -1,7 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,13 +8,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
 
-import { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
+import type { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
 
 import { createHmac } from 'crypto';
 

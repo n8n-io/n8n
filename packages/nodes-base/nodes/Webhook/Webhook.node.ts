@@ -1,14 +1,15 @@
-import { BINARY_ENCODING, IWebhookFunctions } from 'n8n-core';
+import type { IWebhookFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';

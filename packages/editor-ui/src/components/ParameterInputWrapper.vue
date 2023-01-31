@@ -53,7 +53,7 @@ import {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
+import { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';

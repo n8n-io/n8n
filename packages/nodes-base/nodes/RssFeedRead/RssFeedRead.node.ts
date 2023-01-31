@@ -1,14 +1,25 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import Parser from 'rss-parser';
 import { URL } from 'url';
+
+// Utility function
+
+function validateURL(url: string) {
+	try {
+		const _parseUrl = new URL(url);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
 
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,16 +92,5 @@ export class RssFeedRead implements INodeType {
 			}
 			throw error;
 		}
-	}
-}
-
-// Utility function
-
-function validateURL(url: string) {
-	try {
-		const _parseUrl = new URL(url);
-		return true;
-	} catch (err) {
-		return false;
 	}
 }

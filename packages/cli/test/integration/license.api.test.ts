@@ -13,24 +13,18 @@ const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let authAgent: AuthAgent;
 let license: License;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['license'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['license'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
@@ -43,11 +37,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['Settings'], testDbName);
+	await testDb.truncate(['Settings']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /license should return license information to the instance owner', async () => {

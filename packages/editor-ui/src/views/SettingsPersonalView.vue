@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div>
+		<div v-if="!signInWithLdap">
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -58,10 +58,11 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -87,6 +88,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 			{
@@ -98,6 +100,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 			{
@@ -110,14 +113,21 @@ export default mixins(showMessage).extend({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 		];
 	},
 	computed: {
-		...mapStores(useUIStore, useUsersStore),
+		...mapStores(useUIStore, useUsersStore, useSettingsStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
+		},
+		signInWithLdap(): boolean {
+			return this.currentUser?.signInType === 'ldap';
+		},
+		isLDAPFeatureEnabled(): boolean {
+			return this.settingsStore.settings.enterprise.ldap === true;
 		},
 	},
 	methods: {

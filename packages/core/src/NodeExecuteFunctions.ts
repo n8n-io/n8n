@@ -12,7 +12,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
-import {
+import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -39,22 +39,14 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	LoggerProxy as Logger,
 	IExecuteData,
-	OAuth2GrantType,
 	IGetNodeParameterOptions,
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
-	deepCopy,
-	fileTypeFromMimeType,
 	ICredentialTestFunctions,
 	BinaryHelperFunctions,
 	RequestHelperFunctions,
@@ -69,22 +61,35 @@ import {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeHelpers,
+	NodeOperationError,
+	WorkflowDataProxy,
+	LoggerProxy as Logger,
+	OAuth2GrantType,
+	deepCopy,
+	fileTypeFromMimeType,
+	ExpressionError,
+} from 'n8n-workflow';
 
 import { Agent } from 'https';
 import { stringify } from 'qs';
-import clientOAuth1, { Token } from 'oauth-1.0a';
+import type { Token } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
-import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
-import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
+import type { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import requestPromise from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
-import { IncomingHttpHeaders } from 'http';
-import axios, {
+import type { IncomingHttpHeaders } from 'http';
+import type {
 	AxiosError,
 	AxiosPromise,
 	AxiosProxyConfig,
@@ -92,6 +97,7 @@ import axios, {
 	AxiosResponse,
 	Method,
 } from 'axios';
+import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import type { Readable } from 'stream';
 import { access as fsAccess } from 'fs/promises';
@@ -1801,12 +1807,15 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
-
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+			returnData = [{ name: undefined, value: undefined }];
+		} else {
+			if (e.context) e.context.parameter = parameterName;
+			e.cause = value;
+			throw e;
+		}
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages

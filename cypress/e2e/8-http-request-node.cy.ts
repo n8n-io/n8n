@@ -1,24 +1,26 @@
-import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { WorkflowPage, WorkflowsPage, NDV } from '../pages';
 
-const WorkflowsPage = new WorkflowsPageClass();
-const WorkflowPage = new WorkflowPageClass();
+const workflowsPage = new WorkflowsPage();
+const workflowPage = new WorkflowPage();
+const ndv = new NDV();
 
 describe('HTTP Request node', () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
 
 	it('should make a request with a URL and receive a response', () => {
-		WorkflowsPage.actions.createWorkflowFromCard();
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
-		WorkflowPage.actions.addNodeToCanvas('HTTP Request');
-		WorkflowPage.actions.openNodeNdv('HTTP Request');
-		WorkflowPage.actions.typeIntoParameterInput('url', 'https://catfact.ninja/fact');
+		cy.visit(workflowsPage.url);
 
-		WorkflowPage.actions.executeNodeFromNdv();
+		workflowsPage.actions.createWorkflowFromCard();
+		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addNodeToCanvas('HTTP Request');
+		workflowPage.actions.openNode('HTTP Request');
+		ndv.actions.typeIntoParameterInput('url', 'https://catfact.ninja/fact');
 
-		WorkflowPage.getters.ndvOutputPanel().contains('fact');
+		ndv.actions.execute();
+
+		ndv.getters.outputPanel().contains('fact');
 	});
 });
