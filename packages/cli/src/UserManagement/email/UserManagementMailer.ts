@@ -2,7 +2,6 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import * as GenericHelpers from '@/GenericHelpers';
 import config from '@/config';
 import type {
 	InviteEmailData,
@@ -23,9 +22,7 @@ async function getTemplate(
 ): Promise<Template> {
 	let template = templates[templateName];
 	if (!template) {
-		const templateOverride = (await GenericHelpers.getConfigValue(
-			`userManagement.emails.templates.${templateName}`,
-		)) as string;
+		const templateOverride = config.getEnv(`userManagement.emails.templates.${templateName}`);
 
 		let markup;
 		if (templateOverride && existsSync(templateOverride)) {
