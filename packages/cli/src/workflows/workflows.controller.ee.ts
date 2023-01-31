@@ -205,7 +205,6 @@ EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
-		await EEWorkflows.addCredentialsToWorkflows(workflows, req.user);
 
 		return workflows.map((workflow: WorkflowWithSharingsAndCredentials) => {
 			EEWorkflows.addOwnerAndSharings(workflow);
