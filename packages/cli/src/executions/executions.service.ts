@@ -3,17 +3,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse, Workflow } from 'n8n-workflow';
-import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import type { IDataObject, IWorkflowBase, JsonObject } from 'n8n-workflow';
+import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
+import type { FindOperator, FindOptionsWhere } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
-import { User } from '@/databases/entities/User';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '@/GenericHelpers';
-import {
+import type { User } from '@db/entities/User';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -22,7 +23,8 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { DatabaseType, Db, GenericHelpers } from '..';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -30,7 +32,7 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
-	workflowId?: number | string;
+	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 }
@@ -55,7 +57,7 @@ export class ExecutionsService {
 	 * Function to get the workflow Ids for a User
 	 * Overridden in EE version to ignore roles
 	 */
-	static async getWorkflowIdsForUser(user: User): Promise<number[]> {
+	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows using owner role
 		return getSharedWorkflowIds(user, ['owner']);
 	}
@@ -67,7 +69,7 @@ export class ExecutionsService {
 		countFilter: IDataObject,
 		user: User,
 	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
@@ -154,34 +156,33 @@ export class ExecutionsService {
 					filter: req.query.filter,
 				});
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
 
 		// safeguard against querying workflowIds not shared with the user
-		if (filter?.workflowId !== undefined) {
-			const workflowId = parseInt(filter.workflowId.toString());
-			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
-				LoggerProxy.verbose(
-					`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
-				);
-				return {
-					count: 0,
-					estimated: false,
-					results: [],
-				};
-			}
+		const workflowId = filter?.workflowId?.toString();
+		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
+			LoggerProxy.verbose(
+				`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
+			);
+			return {
+				count: 0,
+				estimated: false,
+				results: [],
+			};
 		}
 
 		const limit = req.query.limit
 			? parseInt(req.query.limit, 10)
-			: DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
+			: GenericHelpers.DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
 
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+			const queue = await Queue.getInstance();
+			const currentJobs = await queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
 
@@ -192,7 +193,7 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const findWhere = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -212,7 +213,7 @@ export class ExecutionsService {
 		}
 
 		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+			rangeQuery.push('id NOT IN (:...executingWorkflowIds)');
 			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
 		}
 
@@ -247,7 +248,7 @@ export class ExecutionsService {
 
 		const formattedExecutions = executions.map((execution) => {
 			return {
-				id: execution.id.toString(),
+				id: execution.id,
 				finished: execution.finished,
 				mode: execution.mode,
 				retryOf: execution.retryOf?.toString(),
@@ -255,7 +256,7 @@ export class ExecutionsService {
 				waitTill: execution.waitTill as Date | undefined,
 				startedAt: execution.startedAt,
 				stoppedAt: execution.stoppedAt,
-				workflowId: execution.workflowData?.id?.toString() ?? '',
+				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
 			};
 		});
@@ -293,13 +294,8 @@ export class ExecutionsService {
 			return ResponseHelper.unflattenExecutionData(execution);
 		}
 
-		const { id, ...rest } = execution;
-
 		// @ts-ignore
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return execution;
 	}
 
 	static async retryExecution(req: ExecutionRequest.Retry): Promise<boolean> {
@@ -367,7 +363,9 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = fullExecutionData.workflowData.id as string;
-			const workflowData = (await Db.collections.Workflow.findOne(workflowId)) as IWorkflowBase;
+			const workflowData = (await Db.collections.Workflow.findOneBy({
+				id: workflowId,
+			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
 				throw new Error(
@@ -441,7 +439,7 @@ export class ExecutionsService {
 				}
 			} catch (error) {
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
@@ -450,66 +448,39 @@ export class ExecutionsService {
 			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 		}
 
-		const binaryDataManager = BinaryDataManager.getInstance();
-
-		// delete executions by date, if user may access the underlying workflows
+		const where: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		if (deleteBefore) {
-			const filters: IDataObject = {
-				startedAt: LessThanOrEqual(deleteBefore),
-			};
+			// delete executions by date, if user may access the underlying workflows
+			where.startedAt = LessThanOrEqual(deleteBefore);
+			Object.assign(where, requestFilters);
+		} else if (ids) {
+			// delete executions by IDs, if user may access the underlying workflows
+			where.id = In(ids);
+		} else return;
 
-			let query = Db.collections.Execution.createQueryBuilder()
-				.select()
-				.where({
-					...filters,
-					workflowId: In(sharedWorkflowIds),
-				});
+		const executions = await Db.collections.Execution.find({
+			select: ['id'],
+			where,
+		});
 
-			if (requestFilters) {
-				query = query.andWhere(requestFilters);
-			}
-
-			const executions = await query.getMany();
-
-			if (!executions.length) return;
-
-			const idsToDelete = executions.map(({ id }) => id.toString());
-
-			await Promise.all(
-				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-			);
-
-			await Db.collections.Execution.delete({ id: In(idsToDelete) });
-
-			return;
-		}
-
-		// delete executions by IDs, if user may access the underlying workflows
-
-		if (ids) {
-			const executions = await Db.collections.Execution.find({
-				where: {
-					id: In(ids),
-					workflowId: In(sharedWorkflowIds),
-				},
-			});
-
-			if (!executions.length) {
+		if (!executions.length) {
+			if (ids) {
 				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
 					userId: req.user.id,
 					executionIds: ids,
 				});
-				return;
 			}
-
-			const idsToDelete = executions.map(({ id }) => id.toString());
-
-			await Promise.all(
-				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-			);
-
-			await Db.collections.Execution.delete(idsToDelete);
+			return;
 		}
+
+		const idsToDelete = executions.map(({ id }) => id);
+
+		const binaryDataManager = BinaryDataManager.getInstance();
+		await Promise.all(
+			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+		);
+
+		await Db.collections.Execution.delete(idsToDelete);
 	}
 }

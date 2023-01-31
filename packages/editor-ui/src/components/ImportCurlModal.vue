@@ -67,10 +67,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useUIStore,
-		),
+		...mapStores(useNDVStore, useUIStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},

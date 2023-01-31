@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -222,7 +222,7 @@ export class CoinGecko implements INodeType {
 								this,
 								'',
 								'GET',
-								`/coins/markets`,
+								'/coins/markets',
 								{},
 								qs,
 							);
@@ -231,7 +231,7 @@ export class CoinGecko implements INodeType {
 
 							qs.per_page = limit;
 
-							responseData = await coinGeckoApiRequest.call(this, 'GET', `/coins/markets`, {}, qs);
+							responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/markets', {}, qs);
 						}
 					}
 
@@ -442,7 +442,8 @@ export class CoinGecko implements INodeType {
 						const currencies = this.getNodeParameter('currencies', i) as string[];
 						const options = this.getNodeParameter('options', i);
 
-						(qs.ids = ids), (qs.vs_currencies = currencies.join(','));
+						qs.ids = ids;
+						qs.vs_currencies = currencies.join(',');
 
 						Object.assign(qs, options);
 

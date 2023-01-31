@@ -1,18 +1,14 @@
 <template>
-	<component :is="tag"
-		:class="{[$style.dragging]: isDragging }"
+	<component
+		:is="tag"
+		:class="{ [$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
 		ref="wrapper"
 	>
 		<slot :isDragging="isDragging"></slot>
 
 		<Teleport to="body">
-			<div
-				ref="draggable"
-				:class="$style.draggable"
-				:style="draggableStyle"
-				v-show="isDragging"
-			>
+			<div ref="draggable" :class="$style.draggable" :style="draggableStyle" v-show="isDragging">
 				<slot name="preview" :canDrop="canDrop" :el="draggingEl"></slot>
 			</div>
 		</Teleport>
@@ -68,9 +64,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-		),
+		...mapStores(useNDVStore),
 		canDrop(): boolean {
 			return this.ndvStore.canDraggableDrop;
 		},
@@ -91,7 +85,9 @@ export default Vue.extend({
 
 			this.draggingEl = e.target as HTMLElement;
 			if (this.targetDataKey && this.draggingEl.dataset?.target !== this.targetDataKey) {
-				this.draggingEl = this.draggingEl.closest(`[data-target="${this.targetDataKey}"]`) as HTMLElement;
+				this.draggingEl = this.draggingEl.closest(
+					`[data-target="${this.targetDataKey}"]`,
+				) as HTMLElement;
 			}
 
 			if (this.targetDataKey && this.draggingEl?.dataset?.target !== this.targetDataKey) {
@@ -116,11 +112,12 @@ export default Vue.extend({
 				return;
 			}
 
-			if(!this.isDragging) {
+			if (!this.isDragging) {
 				this.isDragging = true;
 
-				const data = this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : (this.data || '');
-				this.ndvStore.draggableStartDragging({type: this.type, data: data || '' });
+				const data =
+					this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : this.data || '';
+				this.ndvStore.draggableStartDragging({ type: this.type, data: data || '' });
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';
@@ -128,7 +125,7 @@ export default Vue.extend({
 
 			this.animationFrameId = window.requestAnimationFrame(() => {
 				if (this.canDrop && this.stickyPosition) {
-					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
+					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1] };
 				} else {
 					this.draggablePosition = { x: e.pageX, y: e.pageY };
 				}

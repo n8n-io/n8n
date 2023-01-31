@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
 import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
@@ -14,9 +14,8 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from './Interfaces';
-
-const inDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+} from '@/Interfaces';
+import { inDevelopment } from '@/constants';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -67,6 +66,12 @@ export class NotFoundError extends ResponseError {
 export class ConflictError extends ResponseError {
 	constructor(message: string, hint: string | undefined = undefined) {
 		super(message, 409, 409, hint);
+	}
+}
+
+export class UnprocessableRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, 422);
 	}
 }
 
@@ -226,7 +231,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 	};
 
 	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id.toString();
+		returnData.id = fullExecutionData.id;
 	}
 
 	if (fullExecutionData.retryOf !== undefined) {
@@ -247,7 +252,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  */
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id.toString(),
+		id: fullExecutionData.id,
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,

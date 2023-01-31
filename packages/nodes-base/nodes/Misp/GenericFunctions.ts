@@ -1,10 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { MispCredentials } from './types';
+import type { MispCredentials } from './types';
 
 import { URL } from 'url';
 
@@ -40,7 +41,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {

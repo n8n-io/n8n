@@ -1,12 +1,12 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { gitlabApiRequest } from './GenericFunctions';
 
@@ -87,7 +87,7 @@ export class GitlabTrigger implements INodeType {
 			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when GitLab events occur',
 		defaults: {
-			name: 'Gitlab Trigger',
+			name: 'GitLab Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

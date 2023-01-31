@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -32,7 +32,7 @@ import {
 	zohoApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
+import type {
 	CamelCaseResource,
 	GetAllFilterOptions,
 	LoadedAccounts,
@@ -76,7 +76,7 @@ export class ZohoCrm implements INodeType {
 		version: 1,
 		description: 'Consume Zoho CRM API',
 		defaults: {
-			name: 'Zoho',
+			name: 'Zoho CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

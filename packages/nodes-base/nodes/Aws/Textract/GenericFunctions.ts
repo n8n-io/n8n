@@ -1,24 +1,25 @@
 import { URL } from 'url';
 
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IHttpRequestOptions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 function getEndpointForService(
 	service: string,
@@ -147,7 +148,7 @@ export async function validateCredentials(
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(
-		getEndpointForService(service, credentials) + `?Action=GetCallerIdentity&Version=2011-06-15`,
+		getEndpointForService(service, credentials) + '?Action=GetCallerIdentity&Version=2011-06-15',
 	);
 
 	// Sign AWS API request with the user credentials
@@ -173,7 +174,7 @@ export async function validateCredentials(
 		body: signOpts.body,
 	};
 
-	const response = await this.helpers.request!(options);
+	const response = await this.helpers.request(options);
 
 	return new Promise((resolve, reject) => {
 		parseString(response, { explicitArray: false }, (err, data) => {

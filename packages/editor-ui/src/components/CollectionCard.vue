@@ -1,9 +1,5 @@
 <template>
-	<Card
-		:loading="loading"
-		:title="collection.name"
-		@click="onClick"
-	>
+	<Card :loading="loading" :title="collection.name" @click="onClick">
 		<template #footer>
 			<n8n-text size="small" color="text-light">
 				{{ collection.workflows.length }}
@@ -42,6 +38,4 @@ export default mixins(genericHelpers).extend({
 });
 </script>
 
-<style lang="scss" module>
-
-</style>
+<style lang="scss" module></style>

@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
+import type { IBinaryKeyData, IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -19,7 +20,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		});
 	}
 
-	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
+	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index);
 
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
 		throw new NodeOperationError(
@@ -56,7 +57,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	}
 
 	//endpoint
-	const endpoint = `files`;
+	const endpoint = 'files';
 	const { headers } = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
 	return this.helpers.returnJsonArray({ fileId: headers.location.split('/').pop() });
 }

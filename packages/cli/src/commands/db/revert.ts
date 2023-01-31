@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
-import { Connection, ConnectionOptions, createConnection } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
-
-import * as Db from '@/Db';
+import { getConnectionOptions } from '@/Db';
+import config from '@/config';
 
 export class DbRevertMigrationCommand extends Command {
 	static description = 'Revert last database migration';
@@ -17,39 +18,29 @@ export class DbRevertMigrationCommand extends Command {
 		help: flags.help({ char: 'h' }),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow, @typescript-eslint/no-unused-vars
-		const { flags } = this.parse(DbRevertMigrationCommand);
+		this.parse(DbRevertMigrationCommand);
 
 		let connection: Connection | undefined;
 		try {
-			await Db.init();
-			connection = Db.collections.Credentials.manager.connection;
-
-			if (!connection) {
-				throw new Error(`No database connection available.`);
-			}
-
-			const connectionOptions: ConnectionOptions = Object.assign(connection.options, {
+			const dbType = config.getEnv('database.type');
+			const connectionOptions: ConnectionOptions = {
+				...getConnectionOptions(dbType),
 				subscribers: [],
 				synchronize: false,
 				migrationsRun: false,
 				dropSchema: false,
 				logging: ['query', 'error', 'schema'],
-			});
-
-			// close connection in order to reconnect with updated options
-			await connection.close();
-			connection = await createConnection(connectionOptions);
-
+			};
+			connection = new Connection(connectionOptions);
+			await connection.initialize();
 			await connection.undoLastMigration();
-			await connection.close();
+			await connection.destroy();
 		} catch (error) {
-			if (connection) await connection.close();
+			if (connection?.isInitialized) await connection.destroy();
 
 			console.error('Error reverting last migration. See log messages for details.');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument

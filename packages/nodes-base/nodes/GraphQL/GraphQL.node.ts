@@ -1,16 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { RequestPromiseOptions } from 'request-promise-native';
+import type { OptionsWithUri } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -398,9 +397,9 @@ export class GraphQL implements INodeType {
 								throw new NodeOperationError(
 									this.getNode(),
 									'Using variables failed:\n' +
-										requestOptions.body.variables +
+										(requestOptions.body.variables as string) +
 										'\n\nWith error message:\n' +
-										error,
+										(error as string),
 									{ itemIndex },
 								);
 							}
@@ -426,7 +425,7 @@ export class GraphQL implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 				if (responseFormat === 'string') {
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,

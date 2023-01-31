@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { IBinaryDataConfig } from 'n8n-core';
-import { schema } from './schema';
+import type { IBinaryDataConfig } from 'n8n-core';
+import type { schema } from './schema';
 
 // -----------------------------------
 //          transformers
@@ -81,6 +81,8 @@ type ExceptionPaths = {
 	'nodes.include': string[] | undefined;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'userManagement.skipInstanceOwnerSetup': boolean;
+	'ldap.loginLabel': string;
+	'ldap.loginEnabled': boolean;
 };
 
 // -----------------------------------

@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -48,7 +48,7 @@ export class MailjetEmailApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `https://api.mailjet.com`,
+			baseURL: 'https://api.mailjet.com',
 			url: '/v3/REST/template',
 			method: 'GET',
 		},

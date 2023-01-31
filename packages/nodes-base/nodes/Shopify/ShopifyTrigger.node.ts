@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { shopifyApiRequest } from './GenericFunctions';
 
@@ -79,7 +84,7 @@ export class ShopifyTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName: 'Topic',
+				displayName: 'Trigger On',
 				name: 'topic',
 				type: 'options',
 				default: '',
@@ -321,7 +326,6 @@ export class ShopifyTrigger implements INodeType {
 						value: 'themes/update',
 					},
 				],
-				description: 'Event that triggers the webhook',
 			},
 		],
 	};
@@ -333,7 +337,7 @@ export class ShopifyTrigger implements INodeType {
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const { webhooks } = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
 				for (const webhook of webhooks) {
@@ -348,7 +352,7 @@ export class ShopifyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks.json`;
+				const endpoint = '/webhooks.json';
 				const body = {
 					webhook: {
 						topic,

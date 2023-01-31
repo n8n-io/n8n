@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	microsoftApiRequest,
@@ -91,7 +91,7 @@ export class MicrosoftExcel implements INodeType {
 					this,
 					'value',
 					'GET',
-					`/drive/root/search(q='.xlsx')`,
+					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
 				);
@@ -529,7 +529,7 @@ export class MicrosoftExcel implements INodeType {
 								this,
 								'value',
 								'GET',
-								`/drive/root/search(q='.xlsx')`,
+								"/drive/root/search(q='.xlsx')",
 								{},
 								qs,
 							);
@@ -538,7 +538,7 @@ export class MicrosoftExcel implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								`/drive/root/search(q='.xlsx')`,
+								"/drive/root/search(q='.xlsx')",
 								{},
 								qs,
 							);

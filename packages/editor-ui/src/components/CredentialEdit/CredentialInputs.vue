@@ -1,17 +1,21 @@
 <template>
 	<div @keydown.stop :class="$style.container" v-if="credentialProperties.length">
-		<form v-for="parameter in credentialProperties" :key="parameter.name" autocomplete="off" data-test-id="credential-connection-parameter">
+		<form
+			v-for="parameter in credentialProperties"
+			:key="parameter.name"
+			autocomplete="off"
+			data-test-id="credential-connection-parameter"
+			@submit.prevent
+		>
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
-			<n8n-notice
-				v-if="parameter.type === 'notice'"
-				:content="parameter.displayName"
-			/>
+			<n8n-notice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
 			<parameter-input-expanded
 				v-else
 				:parameter="parameter"
 				:value="credentialData[parameter.name]"
 				:documentationUrl="documentationUrl"
 				:showValidationWarnings="showValidationWarnings"
+				:label="label"
 				eventSource="credentials"
 				@change="valueChanged"
 			/>
@@ -21,9 +25,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
-
-import { IUpdateInformation } from '../../Interface';
-
+import { IParameterLabel } from 'n8n-workflow';
+import { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 
 export default Vue.extend({
@@ -36,6 +39,13 @@ export default Vue.extend({
 	],
 	components: {
 		ParameterInputExpanded,
+	},
+	data(): { label: IParameterLabel } {
+		return {
+			label: {
+				size: 'medium',
+			},
+		};
 	},
 	methods: {
 		valueChanged(parameterData: IUpdateInformation) {

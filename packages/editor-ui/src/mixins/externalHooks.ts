@@ -6,15 +6,14 @@ import Vue from 'vue';
 
 declare global {
 	interface Window {
-		n8nExternalHooks?: Record<string, Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>>;
+		n8nExternalHooks?: Record<
+			string,
+			Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>
+		>;
 	}
 }
 
-export async function runExternalHook(
-	eventName: string,
-	store: Store,
-	metadata?: IDataObject,
-) {
+export async function runExternalHook(eventName: string, store: Store, metadata?: IDataObject) {
 	if (!window.n8nExternalHooks) {
 		return;
 	}

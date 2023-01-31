@@ -1,8 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,8 +10,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getToken,
@@ -73,7 +73,7 @@ export class Strapi implements INodeType {
 
 				options = {
 					headers: {
-						'content-type': `application/json`,
+						'content-type': 'application/json',
 					},
 					method: 'POST',
 					body: {

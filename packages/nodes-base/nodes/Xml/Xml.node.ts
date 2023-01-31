@@ -1,11 +1,7 @@
 import { Builder, Parser } from 'xml2js';
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -220,7 +216,7 @@ export class Xml implements INodeType {
 		const items = this.getInputData();
 
 		const mode = this.getNodeParameter('mode', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 		const options = this.getNodeParameter('options', 0, {});
 
 		let item: INodeExecutionData;

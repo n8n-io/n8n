@@ -1,13 +1,14 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -18,14 +19,6 @@ interface IContact {
 const fieldCache: {
 	[key: string]: IDataObject[];
 } = {};
-
-export async function getFields(this: IExecuteFunctions, listId: string) {
-	if (fieldCache[listId]) {
-		return fieldCache[listId];
-	}
-	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
-	return fieldCache[listId];
-}
 
 export async function egoiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -55,10 +48,18 @@ export async function egoiApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function getFields(this: IExecuteFunctions, listId: string) {
+	if (fieldCache[listId]) {
+		return fieldCache[listId];
+	}
+	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+	return fieldCache[listId];
 }
 
 export async function egoiApiRequestAllItems(

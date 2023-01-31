@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
+import type {
 	IHookFunctions,
 	INodeType,
 	INodeTypeDescription,
@@ -18,7 +18,7 @@ export class SendInBlueTrigger implements INodeType {
 		],
 		displayName: 'SendInBlue Trigger',
 		defaults: {
-			name: 'SendInBlue-Trigger',
+			name: 'SendInBlue Trigger',
 		},
 		description: 'Starts the workflow when SendInBlue events occur',
 		group: ['trigger'],

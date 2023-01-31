@@ -63,6 +63,15 @@ jobs:
           pnpm cypress:install
           pnpm test:e2e:all
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: |
+            cypress/screenshots
+          retention-days: 1
+
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
         if: failure()

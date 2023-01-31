@@ -1,7 +1,9 @@
-import type { WorkflowExecuteMode } from 'n8n-workflow';
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { WorkflowExecuteMode } from 'n8n-workflow';
+import { Column, Entity, Generated, Index, PrimaryColumn } from 'typeorm';
 import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
-import type { IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
+import { IWorkflowDb } from '@/Interfaces';
+import type { IExecutionFlattedDb } from '@/Interfaces';
+import { idStringifier } from '../utils/transformers';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -10,8 +12,9 @@ import type { IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
 @Index(['workflowId', 'finished', 'id'])
 @Index(['workflowId', 'waitTill', 'id'])
 export class ExecutionEntity implements IExecutionFlattedDb {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	@Column('text')
 	data: string;
@@ -38,7 +41,7 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column(jsonColumnType)
 	workflowData: IWorkflowDb;
 
-	@Column({ nullable: true })
+	@Column({ nullable: true, transformer: idStringifier })
 	workflowId: string;
 
 	@Column({ type: datetimeColumnType, nullable: true })

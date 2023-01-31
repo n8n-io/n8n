@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
 
@@ -922,7 +922,7 @@ export class Nasa implements INodeType {
 
 						propertyName = 'near_earth_objects';
 
-						endpoint = `/neo/rest/v1/neo/browse`;
+						endpoint = '/neo/rest/v1/neo/browse';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1050,7 +1050,7 @@ export class Nasa implements INodeType {
 				}
 
 				if (resource === 'earthImagery') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
 
@@ -1072,7 +1072,7 @@ export class Nasa implements INodeType {
 					download = this.getNodeParameter('download', 0);
 
 					if (download) {
-						const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = await nasaApiRequest.call(
 							this,

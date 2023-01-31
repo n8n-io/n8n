@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 const data = [
 	{
@@ -55,7 +60,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Datastore',
+			name: 'Customer Datastore (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

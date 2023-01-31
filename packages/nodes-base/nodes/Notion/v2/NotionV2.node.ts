@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,10 +8,10 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import type { SortData } from '../GenericFunctions';
 import {
 	downloadFiles,
 	extractDatabaseId,
@@ -342,12 +342,12 @@ export class NotionV2 implements INodeType {
 							this,
 							'results',
 							'POST',
-							`/search`,
+							'/search',
 							body,
 						);
 					} else {
 						body.page_size = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
+						responseData = await notionApiRequest.call(this, 'POST', '/search', body);
 						responseData = responseData.results;
 					}
 					if (simple) {
@@ -457,7 +457,7 @@ export class NotionV2 implements INodeType {
 					if (propertiesValues.length !== 0) {
 						body.properties = Object.assign(
 							body.properties,
-							mapProperties(propertiesValues, timezone, 2) as IDataObject,
+							mapProperties.call(this, propertiesValues, timezone, 2) as IDataObject,
 						);
 					}
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
@@ -536,8 +536,7 @@ export class NotionV2 implements INodeType {
 						delete body.filter;
 					}
 					if (sort) {
-						//@ts-expect-error
-						body.sorts = mapSorting(sort);
+						body.sorts = mapSorting(sort as SortData[]);
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -590,7 +589,7 @@ export class NotionV2 implements INodeType {
 						properties: {},
 					};
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone, 2) as IDataObject;
+						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple) {

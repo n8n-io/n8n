@@ -1,7 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { promisify } from 'util';
 
@@ -308,7 +313,7 @@ export class ICalendar implements INodeType {
 				const start = this.getNodeParameter('start', i) as string;
 				let end = this.getNodeParameter('end', i) as string;
 				end = allDay ? moment(end).utc().add(1, 'day').format() : end;
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				let fileName = 'event.ics';
 

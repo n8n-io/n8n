@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,7 +8,8 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function sentryIoApiRequest(
 	this:
@@ -72,10 +73,30 @@ export async function sentryIoApiRequest(
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'sentryIoOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
+	}
+}
+
+function getNext(link: string) {
+	if (link === undefined) {
+		return;
+	}
+	const next = link.split(',')[1];
+	if (next.includes('rel="next"')) {
+		return next.split(';')[0].replace('<', '').replace('>', '').trim();
+	}
+}
+
+function hasMore(link: string) {
+	if (link === undefined) {
+		return;
+	}
+	const next = link.split(',')[1];
+	if (next.includes('rel="next"')) {
+		return next.includes('results="true"');
 	}
 }
 
@@ -108,24 +129,4 @@ export async function sentryApiRequestAllItems(
 	} while (hasMore(link));
 
 	return returnData;
-}
-
-function getNext(link: string) {
-	if (link === undefined) {
-		return;
-	}
-	const next = link.split(',')[1];
-	if (next.includes('rel="next"')) {
-		return next.split(';')[0].replace('<', '').replace('>', '').trim();
-	}
-}
-
-function hasMore(link: string) {
-	if (link === undefined) {
-		return;
-	}
-	const next = link.split(',')[1];
-	if (next.includes('rel="next"')) {
-		return next.includes('results="true"');
-	}
 }

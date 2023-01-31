@@ -1,14 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	mapEndpoint,
@@ -182,7 +182,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/doc/table/schema`,
+					'/now/doc/table/schema',
 					{},
 					{},
 				);
@@ -214,7 +214,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/table/sys_dictionary`,
+					'/now/table/sys_dictionary',
 					{},
 					qs,
 				);
@@ -236,7 +236,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/table/cmdb_ci_service`,
+					'/now/table/cmdb_ci_service',
 					{},
 					qs,
 				);
@@ -779,7 +779,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							`/now/table/incident`,
+							'/now/table/incident',
 							body,
 						);
 						responseData = response.result;
@@ -821,7 +821,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/incident`,
+								'/now/table/incident',
 								{},
 								qs,
 							);
@@ -830,7 +830,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								`/now/table/incident`,
+								'/now/table/incident',
 								{},
 								qs,
 							);

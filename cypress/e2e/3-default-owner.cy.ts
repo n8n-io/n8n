@@ -1,8 +1,17 @@
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { SettingsUsersPage, SignupPage, WorkflowsPage, WorkflowPage, CredentialsPage, CredentialsModal, MessageBox } from '../pages';
+import {
+	SettingsUsersPage,
+	SignupPage,
+	WorkflowsPage,
+	WorkflowPage,
+	CredentialsPage,
+	CredentialsModal,
+	MessageBox,
+} from '../pages';
+import { SettingsUsagePage } from '../pages/settings-usage';
 
-import { MainSidebar, SettingsSidebar } from "../pages/sidebar";
+import { MainSidebar, SettingsSidebar } from '../pages/sidebar';
 
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
@@ -15,6 +24,7 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 const settingsUsersPage = new SettingsUsersPage();
+const settingsUsagePage = new SettingsUsagePage();
 
 const messageBox = new MessageBox();
 
@@ -29,7 +39,7 @@ describe('Default owner', () => {
 	});
 	beforeEach(() => {
 		cy.visit('/');
-	})
+	});
 
 	it('should skip owner setup', () => {
 		cy.skipSetup();
@@ -74,6 +84,9 @@ describe('Default owner', () => {
 	it('should be able to setup UM from settings', () => {
 		mainSidebar.getters.settings().should('be.visible');
 		mainSidebar.actions.goToSettings();
+		cy.url().should('include', settingsUsagePage.url);
+
+		settingsSidebar.actions.goToUsers();
 		cy.url().should('include', settingsUsersPage.url);
 
 		settingsUsersPage.actions.goToOwnerSetup();
@@ -84,7 +97,7 @@ describe('Default owner', () => {
 	it('should be able to setup instance and migrate workflows and credentials', () => {
 		cy.setup({ email, firstName, lastName, password });
 
-		messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential')
+		messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential');
 
 		messageBox.actions.confirm();
 		cy.url().should('include', settingsUsersPage.url);
@@ -106,4 +119,3 @@ describe('Default owner', () => {
 		credentialsPage.getters.credentialCards().should('have.length', 1);
 	});
 });
-

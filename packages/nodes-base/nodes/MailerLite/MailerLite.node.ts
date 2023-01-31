@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -136,14 +136,14 @@ export class MailerLite implements INodeType {
 							responseData = await mailerliteApiRequestAllItems.call(
 								this,
 								'GET',
-								`/subscribers`,
+								'/subscribers',
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
+							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
 						}
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber

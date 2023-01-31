@@ -1,8 +1,8 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -235,7 +235,7 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					`/workspaces`,
+					'/workspaces',
 				);
 				for (const workspace of workspaces) {
 					returnData.push({

@@ -7,18 +7,18 @@ import set from 'lodash.set';
 import split from 'lodash.split';
 import unset from 'lodash.unset';
 import { Credentials, UserSettings } from 'n8n-core';
-import {
-	LoggerProxy,
+import type {
 	WorkflowExecuteMode,
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
 	IDataObject,
 } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { RESPONSE_ERROR_MESSAGES, TEMPLATES_DIR } from '@/constants';
 import {
 	CredentialsHelper,
@@ -26,8 +26,8 @@ import {
 	getCredentialWithoutUser,
 } from '@/CredentialsHelper';
 import { getLogger } from '@/Logger';
-import { OAuthRequest } from '@/requests';
-import { externalHooks } from '@/Server';
+import type { OAuthRequest } from '@/requests';
+import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
@@ -93,10 +93,12 @@ oauth2CredentialController.get(
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
+		// Generic Oauth2 API is an exception because it needs to save the scope
+		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
 		if (
 			decryptedDataOriginal?.scope &&
 			credentialType.includes('OAuth2') &&
-			!['oAuth2Api'].includes(credentialType)
+			!genericOAuth2.includes(credentialType)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -127,7 +129,7 @@ oauth2CredentialController.get(
 			state: stateEncodedStr,
 		};
 
-		await externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+		await ExternalHooks().run('oauth2.authenticate', [oAuthOptions]);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 
@@ -279,7 +281,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			}
 
-			await externalHooks.run('oauth2.callback', [oAuth2Parameters]);
+			await ExternalHooks().run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 

@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -129,7 +129,7 @@ export class GSuiteAdmin implements INodeType {
 
 					Object.assign(body, additionalFields);
 
-					responseData = await googleApiRequest.call(this, 'POST', `/directory/v1/groups`, body);
+					responseData = await googleApiRequest.call(this, 'POST', '/directory/v1/groups', body);
 				}
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/delete
@@ -175,14 +175,14 @@ export class GSuiteAdmin implements INodeType {
 							this,
 							'groups',
 							'GET',
-							`/directory/v1/groups`,
+							'/directory/v1/groups',
 							{},
 							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i);
 
-						responseData = await googleApiRequest.call(this, 'GET', `/directory/v1/groups`, {}, qs);
+						responseData = await googleApiRequest.call(this, 'GET', '/directory/v1/groups', {}, qs);
 
 						responseData = responseData.groups;
 					}
@@ -251,7 +251,7 @@ export class GSuiteAdmin implements INodeType {
 						delete body.emailUi;
 					}
 
-					responseData = await googleApiRequest.call(this, 'POST', `/directory/v1/users`, body, qs);
+					responseData = await googleApiRequest.call(this, 'POST', '/directory/v1/users', body, qs);
 
 					if (makeAdmin) {
 						await googleApiRequest.call(
@@ -345,14 +345,14 @@ export class GSuiteAdmin implements INodeType {
 							this,
 							'users',
 							'GET',
-							`/directory/v1/users`,
+							'/directory/v1/users',
 							{},
 							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i);
 
-						responseData = await googleApiRequest.call(this, 'GET', `/directory/v1/users`, {}, qs);
+						responseData = await googleApiRequest.call(this, 'GET', '/directory/v1/users', {}, qs);
 
 						responseData = responseData.users;
 					}

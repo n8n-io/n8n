@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -10,15 +10,11 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	awsApiRequestREST,
-	IExpenseDocument,
-	simplify,
-	validateCredentials,
-} from './GenericFunctions';
+import type { IExpenseDocument } from './GenericFunctions';
+import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,7 +116,7 @@ export class AwsTextract implements INodeType {
 			try {
 				//https://docs.aws.amazon.com/textract/latest/dg/API_AnalyzeExpense.html
 				if (operation === 'analyzeExpense') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 
 					if (items[i].binary === undefined) {

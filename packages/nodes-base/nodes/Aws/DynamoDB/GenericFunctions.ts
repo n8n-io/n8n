@@ -1,13 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { deepCopy, IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { IRequestBody } from './types';
+import type { IRequestBody } from './types';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -66,7 +67,8 @@ export async function awsApiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await awsApiRequest.call(this, service, method, path, body, headers);
+		const originalHeaders = Object.assign({}, headers); //The awsapirequest function adds the hmac signature to the headers, if we pass the modified headers back in on the next call it will fail with invalid signature
+		responseData = await awsApiRequest.call(this, service, method, path, body, originalHeaders);
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}

@@ -1,9 +1,10 @@
-import { LicenseManager, TLicenseContainerStr } from '@n8n_io/license-sdk';
-import { ILogger } from 'n8n-workflow';
+import type { TEntitlement, TLicenseContainerStr } from '@n8n_io/license-sdk';
+import { LicenseManager } from '@n8n_io/license-sdk';
+import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
-import { LICENSE_FEATURES, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import { LICENSE_FEATURES, N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
 
 async function loadCertStr(): Promise<TLicenseContainerStr> {
 	const databaseSettings = await Db.collections.Settings.findOne({
@@ -35,7 +36,7 @@ export class License {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string, version: string) {
+	async init(instanceId: string) {
 		if (this.manager) {
 			return;
 		}
@@ -48,7 +49,7 @@ export class License {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: config.getEnv('license.tenantId'),
-				productIdentifier: `n8n-${version}`,
+				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled,
 				autoRenewOffset,
 				logger: this.logger,
@@ -70,17 +71,7 @@ export class License {
 			return;
 		}
 
-		if (this.manager.isValid()) {
-			return;
-		}
-
-		try {
-			await this.manager.activate(activationKey);
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not activate license', e);
-			}
-		}
+		await this.manager.activate(activationKey);
 	}
 
 	async renew() {
@@ -88,13 +79,7 @@ export class License {
 			return;
 		}
 
-		try {
-			await this.manager.renew();
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not renew license', e);
-			}
-		}
+		await this.manager.renew();
 	}
 
 	isFeatureEnabled(feature: string): boolean {
@@ -107,6 +92,64 @@ export class License {
 
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+	}
+
+	isLogStreamingEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
+	}
+
+	isLdapEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+	}
+
+	getCurrentEntitlements() {
+		return this.manager?.getCurrentEntitlements() ?? [];
+	}
+
+	getFeatureValue(
+		feature: string,
+		requireValidCert?: boolean,
+	): undefined | boolean | number | string {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		return this.manager.getFeatureValue(feature, requireValidCert);
+	}
+
+	getManagementJwt(): string {
+		if (!this.manager) {
+			return '';
+		}
+		return this.manager.getManagementJwt();
+	}
+
+	/**
+	 * Helper function to get the main plan for a license
+	 */
+	getMainPlan(): TEntitlement | undefined {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		const entitlements = this.getCurrentEntitlements();
+		if (!entitlements.length) {
+			return undefined;
+		}
+
+		return entitlements.find(
+			(entitlement) =>
+				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
+		);
+	}
+
+	// Helper functions for computed data
+	getTriggerLimit(): number {
+		return (this.getFeatureValue('quota:activeWorkflows') ?? -1) as number;
+	}
+
+	getPlanName(): string {
+		return (this.getFeatureValue('planName') ?? 'Community') as string;
 	}
 }
 

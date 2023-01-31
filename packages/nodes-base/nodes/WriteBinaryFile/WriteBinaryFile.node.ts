@@ -1,10 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { writeFile as fsWriteFile } from 'fs/promises';
 
@@ -69,7 +65,7 @@ export class WriteBinaryFile implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
 				const options = this.getNodeParameter('options', 0, {});

@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
@@ -41,7 +42,7 @@ export async function matrixApiRequest(
 			option.overridePrefix || 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
@@ -75,7 +76,7 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return matrixApiRequest.call(this, 'POST', `/createRoom`, body);
+			return matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
 			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
@@ -184,7 +185,7 @@ export async function handleMatrixCall(
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 
 			let body;
 			const qs: IDataObject = {};
@@ -214,7 +215,7 @@ export async function handleMatrixCall(
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,
 				'POST',
-				`/upload`,
+				'/upload',
 				body,
 				qs,
 				headers,

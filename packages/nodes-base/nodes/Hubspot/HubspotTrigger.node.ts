@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
@@ -23,7 +23,7 @@ export class HubspotTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
-			name: 'Hubspot Trigger',
+			name: 'HubSpot Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -328,7 +328,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), 'You must define at least one event');
 				}
 
 				for (const event of events) {

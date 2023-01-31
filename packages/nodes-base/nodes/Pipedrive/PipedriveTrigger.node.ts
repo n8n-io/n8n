@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	INodeType,
 	INodeTypeDescription,
@@ -11,7 +11,7 @@ import { pipedriveApiRequest } from './GenericFunctions';
 
 import basicAuth from 'basic-auth';
 
-import { Response } from 'express';
+import type { Response } from 'express';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -222,7 +222,7 @@ export class PipedriveTrigger implements INodeType {
 				const eventObject = this.getNodeParameter('object') as string;
 
 				// Webhook got created before so check if it still exists
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const responseData = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
 
@@ -250,7 +250,7 @@ export class PipedriveTrigger implements INodeType {
 				const eventAction = this.getNodeParameter('action') as string;
 				const eventObject = this.getNodeParameter('object') as string;
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const body = {
 					event_action: eventAction,

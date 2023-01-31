@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
 
@@ -407,7 +407,7 @@ export class Pushbullet implements INodeType {
 						}
 
 						if (type === 'file') {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -430,7 +430,7 @@ export class Pushbullet implements INodeType {
 								file_name,
 								file_type,
 								file_url,
-							} = await pushbulletApiRequest.call(this, 'POST', `/upload-request`, {
+							} = await pushbulletApiRequest.call(this, 'POST', '/upload-request', {
 								file_name: binaryData.fileName,
 								file_type: binaryData.mimeType,
 							});
@@ -453,7 +453,7 @@ export class Pushbullet implements INodeType {
 							body.file_url = file_url;
 						}
 
-						responseData = await pushbulletApiRequest.call(this, 'POST', `/pushes`, body);
+						responseData = await pushbulletApiRequest.call(this, 'POST', '/pushes', body);
 					}
 
 					if (operation === 'getAll') {

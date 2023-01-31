@@ -75,34 +75,47 @@ export const CODE_NODE_EDITOR_THEME = [
 			cursor: BASE_STYLING.diagnosticButton.cursor,
 		},
 	}),
-	syntaxHighlighting(HighlightStyle.define([
-		{
-			tag: tags.comment,
-			color: 'var(--color-code-tags-comment)',
-		},
-		{
-			tag: [tags.string, tags.special(tags.brace)],
-			color: 'var(--color-code-tags-string)',
-		},
-		{
-			tag: [tags.number, tags.self, tags.bool, tags.null],
-			color: 'var(--color-code-tags-primitive)',
-		},
-		{
-			tag: tags.keyword,
-			color: 'var(--color-code-tags-keyword)',
-		},
-		{
-			tag: tags.operator,
-			color: 'var(--color-code-tags-operator)',
-		},
-		{
-			tag: [tags.variableName, tags.propertyName, tags.attributeName, tags.regexp, tags.className, tags.typeName],
-			color: 'var(--color-code-tags-variable)',
-		},
-		{
-			tag: [tags.definition(tags.typeName), tags.definition(tags.propertyName), tags.function(tags.variableName)],
-			color: 'var(--color-code-tags-definition)',
-		},
-	])),
+	syntaxHighlighting(
+		HighlightStyle.define([
+			{
+				tag: tags.comment,
+				color: 'var(--color-code-tags-comment)',
+			},
+			{
+				tag: [tags.string, tags.special(tags.brace)],
+				color: 'var(--color-code-tags-string)',
+			},
+			{
+				tag: [tags.number, tags.self, tags.bool, tags.null],
+				color: 'var(--color-code-tags-primitive)',
+			},
+			{
+				tag: tags.keyword,
+				color: 'var(--color-code-tags-keyword)',
+			},
+			{
+				tag: tags.operator,
+				color: 'var(--color-code-tags-operator)',
+			},
+			{
+				tag: [
+					tags.variableName,
+					tags.propertyName,
+					tags.attributeName,
+					tags.regexp,
+					tags.className,
+					tags.typeName,
+				],
+				color: 'var(--color-code-tags-variable)',
+			},
+			{
+				tag: [
+					tags.definition(tags.typeName),
+					tags.definition(tags.propertyName),
+					tags.function(tags.variableName),
+				],
+				color: 'var(--color-code-tags-definition)',
+			},
+		]),
+	),
 ];

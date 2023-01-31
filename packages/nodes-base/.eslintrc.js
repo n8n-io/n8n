@@ -1,14 +1,16 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/node'],
-	parserOptions: {
-		project: ['./tsconfig.json'],
-		tsconfigRootDir: __dirname,
-	},
+
+	...sharedOptions(__dirname),
 
 	rules: {
+		'@typescript-eslint/consistent-type-imports': 'error',
+
 		// TODO: remove all the following rules
 		eqeqeq: 'off',
 		'id-denylist': 'off',
@@ -20,22 +22,16 @@ module.exports = {
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
 		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		'@typescript-eslint/no-this-alias': 'off',
-		'@typescript-eslint/no-throw-literal': 'off',
-		'@typescript-eslint/no-unnecessary-qualifier': 'off',
-		'@typescript-eslint/no-unsafe-argument': 'off',
-		'@typescript-eslint/no-unsafe-assignment': 'off',
-		'@typescript-eslint/no-unsafe-call': 'off',
-		'@typescript-eslint/no-unsafe-member-access': 'off',
-		'@typescript-eslint/no-unsafe-return': 'off',
-		'@typescript-eslint/no-unused-expressions': 'off',
-		'@typescript-eslint/no-use-before-define': 'off',
-		'@typescript-eslint/no-var-requires': 'off',
-		'@typescript-eslint/prefer-nullish-coalescing': 'off',
-		'@typescript-eslint/restrict-plus-operands': 'off',
-		'@typescript-eslint/restrict-template-expressions': 'off',
+		'@typescript-eslint/no-unsafe-argument': 'off', //1538 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-assignment': 'off', //7084 problems, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-call': 'off', //541 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-return': 'off', //438 errors, better to fix in separate PR
+		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
+		'@typescript-eslint/restrict-template-expressions': 'off', //1152 errors, better to fix in separate PR
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'@typescript-eslint/prefer-nullish-coalescing': 'off',
 	},
 
 	overrides: [
@@ -67,6 +63,7 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
 				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
+				'n8n-nodes-base/node-class-description-name-miscased': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',

@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,8 +10,8 @@ import {
 import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 import { userFields, userOperations } from './UserDescription';
-import { IPost } from './PostInterface';
-import { IUser } from './UserInterface';
+import type { IPost } from './PostInterface';
+import type { IUser } from './UserInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -416,7 +416,7 @@ export class Wordpress implements INodeType {
 						const reassign = this.getNodeParameter('reassign', i) as string;
 						qs.reassign = reassign;
 						qs.force = true;
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
+						responseData = await wordpressApiRequest.call(this, 'DELETE', '/users/me', {}, qs);
 					}
 				}
 				const exectutionData = this.helpers.constructExecutionMetaData(

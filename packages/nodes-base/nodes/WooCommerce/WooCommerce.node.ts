@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -17,8 +17,8 @@ import {
 } from './GenericFunctions';
 import { productFields, productOperations } from './ProductDescription';
 import { orderFields, orderOperations } from './OrderDescription';
-import { IDimension, IImage, IProduct } from './ProductInterface';
-import {
+import type { IDimension, IImage, IProduct } from './ProductInterface';
+import type {
 	IAddress,
 	ICouponLine,
 	IFeeLine,

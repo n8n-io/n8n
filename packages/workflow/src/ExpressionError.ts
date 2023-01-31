@@ -1,4 +1,4 @@
-import { IDataObject } from './Interfaces';
+import type { IDataObject } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 
 /**
@@ -48,5 +48,12 @@ export class ExpressionError extends ExecutionBaseError {
 				}
 			});
 		}
+	}
+}
+
+export class ExpressionExtensionError extends ExpressionError {
+	constructor(message: string) {
+		super(message);
+		this.context.failExecution = true;
 	}
 }

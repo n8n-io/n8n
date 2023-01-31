@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { handleListing, redditApiRequest } from './GenericFunctions';
 
@@ -138,7 +138,7 @@ export class Reddit implements INodeType {
 						const postTypePrefix = 't3_';
 
 						const qs: IDataObject = {
-							id: postTypePrefix + this.getNodeParameter('postId', i),
+							id: postTypePrefix + (this.getNodeParameter('postId', i) as string),
 						};
 
 						await redditApiRequest.call(this, 'POST', 'api/del', qs);
@@ -228,7 +228,7 @@ export class Reddit implements INodeType {
 
 						const qs: IDataObject = {
 							text: this.getNodeParameter('commentText', i),
-							thing_id: postTypePrefix + this.getNodeParameter('postId', i),
+							thing_id: postTypePrefix + (this.getNodeParameter('postId', i) as string),
 						};
 
 						responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
@@ -255,7 +255,7 @@ export class Reddit implements INodeType {
 						const commentTypePrefix = 't1_';
 
 						const qs: IDataObject = {
-							id: commentTypePrefix + this.getNodeParameter('commentId', i),
+							id: commentTypePrefix + (this.getNodeParameter('commentId', i) as string),
 						};
 
 						await redditApiRequest.call(this, 'POST', 'api/del', qs);
@@ -272,7 +272,7 @@ export class Reddit implements INodeType {
 
 						const qs: IDataObject = {
 							text: this.getNodeParameter('replyText', i),
-							thing_id: commentTypePrefix + this.getNodeParameter('commentId', i),
+							thing_id: commentTypePrefix + (this.getNodeParameter('commentId', i) as string),
 						};
 
 						responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
@@ -308,7 +308,7 @@ export class Reddit implements INodeType {
 						let username;
 
 						if (details === 'saved') {
-							({ name: username } = await redditApiRequest.call(this, 'GET', `api/v1/me`, {}));
+							({ name: username } = await redditApiRequest.call(this, 'GET', 'api/v1/me', {}));
 						}
 
 						responseData =

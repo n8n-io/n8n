@@ -72,9 +72,7 @@ export default Vue.extend({
 		TemplateDetailsBlock,
 	},
 	computed: {
-		...mapStores(
-			useTemplatesStore,
-		),
+		...mapStores(useTemplatesStore),
 	},
 	methods: {
 		abbreviateNumber,

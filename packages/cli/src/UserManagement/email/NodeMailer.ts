@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { createTransport, Transporter } from 'nodemailer';
+import type { Transporter } from 'nodemailer';
+import { createTransport } from 'nodemailer';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
-import { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
+import type { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
 
 export class NodeMailer implements UserManagementMailerImplementation {
-	private transport: Transporter;
+	private transport?: Transporter;
 
-	constructor() {
+	async init(): Promise<void> {
 		this.transport = createTransport({
 			host: config.getEnv('userManagement.emails.smtp.host'),
 			port: config.getEnv('userManagement.emails.smtp.port'),
@@ -20,12 +21,15 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	}
 
 	async verifyConnection(): Promise<void> {
+		if (!this.transport) {
+			await this.init();
+		}
 		const host = config.getEnv('userManagement.emails.smtp.host');
 		const user = config.getEnv('userManagement.emails.smtp.auth.user');
 		const pass = config.getEnv('userManagement.emails.smtp.auth.pass');
 
 		try {
-			await this.transport.verify();
+			await this.transport?.verify();
 		} catch (error) {
 			const message: string[] = [];
 			if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST).');
@@ -36,6 +40,9 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
+		if (!this.transport) {
+			await this.init();
+		}
 		let sender = config.getEnv('userManagement.emails.smtp.sender');
 		const user = config.getEnv('userManagement.emails.smtp.auth.user');
 
@@ -44,7 +51,7 @@ export class NodeMailer implements UserManagementMailerImplementation {
 		}
 
 		try {
-			await this.transport.sendMail({
+			await this.transport?.sendMail({
 				from: sender,
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
@@ -57,12 +64,9 @@ export class NodeMailer implements UserManagementMailerImplementation {
 		} catch (error) {
 			ErrorReporter.error(error);
 			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
-			return {
-				success: false,
-				error,
-			};
+			throw error;
 		}
 
-		return { success: true };
+		return { emailSent: true };
 	}
 }

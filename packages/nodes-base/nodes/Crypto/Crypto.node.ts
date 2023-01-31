@@ -1,9 +1,8 @@
 import { set } from 'lodash';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -11,15 +10,10 @@ import {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import {
-	BinaryToTextEncoding,
-	createHash,
-	createHmac,
-	createSign,
-	getHashes,
-	randomBytes,
-} from 'crypto';
+import type { BinaryToTextEncoding } from 'crypto';
+import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
 
 import { v4 as uuid } from 'uuid';
 
@@ -434,12 +428,12 @@ export class Crypto implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				item = items[i];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
 
 				if (action === 'generate') {
-					const encodingType = this.getNodeParameter('encodingType', i) as string;
+					const encodingType = this.getNodeParameter('encodingType', i);
 					if (encodingType === 'uuid') {
 						newValue = uuid();
 					} else {

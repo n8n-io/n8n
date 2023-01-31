@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -245,7 +245,9 @@ export class MicrosoftTeams implements INodeType {
 							.map((member: IDataObject) => member.displayName)
 							.join(', ');
 					}
-					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
+					const chatName = `${chat.topic || '(no title) - ' + (chat.id as string)} (${
+						chat.chatType
+					})`;
 					const chatId = chat.id;
 					returnData.push({
 						name: chatName,
@@ -499,7 +501,7 @@ export class MicrosoftTeams implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/v1.0/planner/tasks`,
+							'/v1.0/planner/tasks',
 							body,
 						);
 					}

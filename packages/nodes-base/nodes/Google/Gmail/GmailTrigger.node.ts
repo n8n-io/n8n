@@ -1,14 +1,22 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	LoggerProxy as Logger,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { googleApiRequest, parseRawEmail, prepareQuery, simplifyOutput } from './GenericFunctions';
+import {
+	googleApiRequest,
+	googleApiRequestAllItems,
+	parseRawEmail,
+	prepareQuery,
+	simplifyOutput,
+} from './GenericFunctions';
 
 import { DateTime } from 'luxon';
 
@@ -186,11 +194,45 @@ export class GmailTrigger implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the labels to display them to user so that he can
+			// select them easily
+			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const labels = await googleApiRequestAllItems.call(
+					this,
+					'labels',
+					'GET',
+					'/gmail/v1/users/me/labels',
+				);
+
+				for (const label of labels) {
+					returnData.push({
+						name: label.name,
+						value: label.id,
+					});
+				}
+
+				return returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+			},
+		},
+	};
+
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
 		let responseData;
 
-		const now = Math.floor(DateTime.now().toSeconds()) + '';
+		const now = Math.floor(DateTime.now().toSeconds()).toString();
 		const startDate = (webhookData.lastTimeChecked as string) || +now;
 		const endDate = +now;
 
@@ -211,7 +253,7 @@ export class GmailTrigger implements INodeType {
 			responseData = await googleApiRequest.call(
 				this,
 				'GET',
-				`/gmail/v1/users/me/messages`,
+				'/gmail/v1/users/me/messages',
 				{},
 				qs,
 			);

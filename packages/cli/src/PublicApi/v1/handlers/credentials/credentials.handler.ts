@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import express from 'express';
+import type express from 'express';
 
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { CredentialRequest } from '@/requests';
-import { CredentialTypeRequest } from '../../../types';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { CredentialRequest } from '@/requests';
+import type { CredentialTypeRequest } from '../../../types';
 import { authorize } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
@@ -39,7 +39,7 @@ export = {
 				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
 
 				// LoggerProxy.verbose('New credential created', {
-				// 	credentialId: newCredential.id,
+				// 	credentialsId: newCredential.id,
 				// 	ownerId: req.user.id,
 				// });
 
@@ -77,8 +77,6 @@ export = {
 			}
 
 			await removeCredential(credential);
-			credential.id = Number(credentialId);
-
 			return res.json(sanitizeCredentials(credential));
 		},
 	],

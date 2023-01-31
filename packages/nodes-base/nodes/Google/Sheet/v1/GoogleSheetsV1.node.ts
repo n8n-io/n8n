@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -11,24 +11,20 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	GoogleSheet,
+import type {
 	ILookupValues,
 	ISheetUpdateData,
 	IToDelete,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheet';
+import { GoogleSheet } from './GoogleSheet';
 
-import {
-	getAccessToken,
-	googleApiRequest,
-	hexToRgb,
-	IGoogleAuthCredentials,
-} from './GenericFunctions';
+import type { IGoogleAuthCredentials } from './GenericFunctions';
+import { getAccessToken, googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
 
@@ -481,7 +477,7 @@ export class GoogleSheetsV1 implements INodeType {
 							: undefined;
 						body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+						responseData = await googleApiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 
 						returnData.push(responseData);
 					} catch (error) {

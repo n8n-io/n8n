@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,8 +10,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { jenkinsApiRequest, tolerateTrailingSlash } from './GenericFunctions';
 
@@ -428,7 +428,7 @@ export class Jenkins implements INodeType {
 		loadOptions: {
 			async getJobs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = `/api/json`;
+				const endpoint = '/api/json';
 				const { jobs } = await jenkinsApiRequest.call(this, 'GET', endpoint);
 				for (const job of jobs) {
 					returnData.push({
@@ -530,7 +530,7 @@ export class Jenkins implements INodeType {
 							from: job,
 						};
 
-						const endpoint = `/createItem`;
+						const endpoint = '/createItem';
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
 							responseData = { success: true };
@@ -553,7 +553,7 @@ export class Jenkins implements INodeType {
 
 						const body = this.getNodeParameter('xml', i) as string;
 
-						const endpoint = `/createItem`;
+						const endpoint = '/createItem';
 						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams, body, {
 							headers,
 							json: false,
@@ -573,17 +573,17 @@ export class Jenkins implements INodeType {
 							};
 						}
 
-						const endpoint = `/quietDown`;
+						const endpoint = '/quietDown';
 						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
 						responseData = { success: true };
 					}
 					if (operation === 'cancelQuietDown') {
-						const endpoint = `/cancelQuietDown`;
+						const endpoint = '/cancelQuietDown';
 						await jenkinsApiRequest.call(this, 'POST', endpoint);
 						responseData = { success: true };
 					}
 					if (operation === 'restart') {
-						const endpoint = `/restart`;
+						const endpoint = '/restart';
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint);
 						} catch (error) {
@@ -595,7 +595,7 @@ export class Jenkins implements INodeType {
 						}
 					}
 					if (operation === 'safeRestart') {
-						const endpoint = `/safeRestart`;
+						const endpoint = '/safeRestart';
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint);
 						} catch (error) {
@@ -607,12 +607,12 @@ export class Jenkins implements INodeType {
 						}
 					}
 					if (operation === 'exit') {
-						const endpoint = `/exit`;
+						const endpoint = '/exit';
 						await jenkinsApiRequest.call(this, 'POST', endpoint);
 						responseData = { success: true };
 					}
 					if (operation === 'safeExit') {
-						const endpoint = `/safeExit`;
+						const endpoint = '/safeExit';
 						await jenkinsApiRequest.call(this, 'POST', endpoint);
 						responseData = { success: true };
 					}

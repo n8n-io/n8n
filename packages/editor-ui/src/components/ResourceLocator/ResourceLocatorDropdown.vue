@@ -10,7 +10,15 @@
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
-			<n8n-input size="medium" :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search" :placeholder="$locale.baseText('resourceLocator.search.placeholder')">
+			<n8n-input
+				size="medium"
+				:value="filter"
+				:clearable="true"
+				@input="onFilterInput"
+				@blur="onSearchBlur"
+				ref="search"
+				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
 				</template>
@@ -19,14 +27,26 @@
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
-		<div :class="$style.messageContainer" v-else-if="!errorView && sortedResources.length === 0 && !loading">
+		<div
+			:class="$style.messageContainer"
+			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+		>
 			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
-		<div v-else-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
+		<div
+			v-else-if="!errorView"
+			ref="resultsContainer"
+			:class="{ [$style.container]: true, [$style.pushDownResults]: filterable }"
+			@scroll="onResultsEnd"
+		>
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
-				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === value, [$style.hovering]: hoverIndex === i }"
+				:class="{
+					[$style.resourceItem]: true,
+					[$style.selected]: result.value === value,
+					[$style.hovering]: hoverIndex === i,
+				}"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -51,7 +71,7 @@
 			</div>
 		</div>
 		<template #reference>
-    		<slot />
+			<slot />
 		</template>
 	</n8n-popover>
 </template>
@@ -110,33 +130,36 @@ export default Vue.extend({
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
 			const seen = new Set();
-			const { selected, notSelected } = this.resources.reduce((acc, item: IResourceLocatorResultExpanded) => {
-				if (seen.has(item.value)) {
+			const { selected, notSelected } = this.resources.reduce(
+				(acc, item: IResourceLocatorResultExpanded) => {
+					if (seen.has(item.value)) {
+						return acc;
+					}
+					seen.add(item.value);
+
+					if (this.value && item.value === this.value) {
+						acc.selected = item;
+					} else {
+						acc.notSelected.push(item);
+					}
+
 					return acc;
-				}
-				seen.add(item.value);
-
-				if (this.value && item.value === this.value) {
-					acc.selected = item;
-				} else {
-					acc.notSelected.push(item);
-				}
-
-				return acc;
-			}, { selected: null as IResourceLocatorResultExpanded | null, notSelected: [] as IResourceLocatorResultExpanded[] });
+				},
+				{
+					selected: null as IResourceLocatorResultExpanded | null,
+					notSelected: [] as IResourceLocatorResultExpanded[],
+				},
+			);
 
 			if (selected) {
-				return [
-					selected,
-					...notSelected,
-				];
+				return [selected, ...notSelected];
 			}
 
 			return notSelected;
 		},
 	},
 	methods: {
-		openUrl(event: MouseEvent ,url: string) {
+		openUrl(event: MouseEvent, url: string) {
 			event.preventDefault();
 			event.stopPropagation();
 
@@ -152,14 +175,13 @@ export default Vue.extend({
 					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
 					if (container && Array.isArray(items) && items.length === 1) {
 						const item = items[0];
-						if ((item.offsetTop + item.clientHeight) > (container.scrollTop + container.offsetHeight)) {
+						if (item.offsetTop + item.clientHeight > container.scrollTop + container.offsetHeight) {
 							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
 							container.scrollTo({ top });
 						}
 					}
 				}
-			}
-			else if (e.key === 'ArrowUp') {
+			} else if (e.key === 'ArrowUp') {
 				if (this.hoverIndex > 0) {
 					this.hoverIndex--;
 
@@ -172,11 +194,9 @@ export default Vue.extend({
 						}
 					}
 				}
-			}
-			else if (e.key === 'Enter') {
+			} else if (e.key === 'Enter') {
 				this.$emit('input', this.sortedResources[this.hoverIndex].value);
 			}
-
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
@@ -207,7 +227,7 @@ export default Vue.extend({
 			const container = this.$refs.resultsContainer as HTMLElement;
 			if (container) {
 				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
-				if (diff > -(SCROLL_MARGIN_PX)  && diff < SCROLL_MARGIN_PX) {
+				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}
 			}

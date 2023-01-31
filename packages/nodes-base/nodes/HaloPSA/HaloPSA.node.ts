@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -37,6 +37,7 @@ import {
 export class HaloPSA implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HaloPSA',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'haloPSA',
 		icon: 'file:halopsa.svg',
 		group: ['input'],
@@ -143,7 +144,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					`/TicketType`,
+					'/TicketType',
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -178,7 +179,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					`/agent`,
+					'/agent',
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -294,7 +295,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'clients',
 								'GET',
-								`/client`,
+								'/client',
 								tokens.access_token,
 								{},
 								qs,
@@ -305,7 +306,7 @@ export class HaloPSA implements INodeType {
 							const { clients } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/client`,
+								'/client',
 								tokens.access_token,
 								{},
 								qs,
@@ -401,7 +402,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'sites',
 								'GET',
-								`/site`,
+								'/site',
 								tokens.access_token,
 								{},
 								qs,
@@ -412,7 +413,7 @@ export class HaloPSA implements INodeType {
 							const { sites } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/site`,
+								'/site',
 								tokens.access_token,
 								{},
 								qs,
@@ -510,7 +511,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'tickets',
 								'GET',
-								`/tickets`,
+								'/tickets',
 								tokens.access_token,
 								{},
 								qs,
@@ -521,7 +522,7 @@ export class HaloPSA implements INodeType {
 							const { tickets } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/tickets`,
+								'/tickets',
 								tokens.access_token,
 								{},
 								qs,
@@ -618,7 +619,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'users',
 								'GET',
-								`/users`,
+								'/users',
 								tokens.access_token,
 								{},
 								qs,
@@ -629,7 +630,7 @@ export class HaloPSA implements INodeType {
 							const { users } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/users`,
+								'/users',
 								tokens.access_token,
 								{},
 								qs,

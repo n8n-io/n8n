@@ -1,10 +1,11 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { ElasticsearchApiCredentials } from './types';
+import type { ElasticsearchApiCredentials } from './types';
 
 export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,
@@ -68,7 +69,7 @@ export async function elasticsearchApiRequestAllItems(
 			track_total_hits: false, //Disable the tracking of total hits to speed up pagination
 		};
 
-		responseData = await elasticsearchApiRequest.call(this, 'GET', `/_search`, requestBody, qs);
+		responseData = await elasticsearchApiRequest.call(this, 'GET', '/_search', requestBody, qs);
 		if (responseData?.hits?.hits) {
 			returnData = returnData.concat(responseData.hits.hits);
 			const lastHitIndex = responseData.hits.hits.length - 1;
@@ -84,7 +85,7 @@ export async function elasticsearchApiRequestAllItems(
 			requestBody.search_after = searchAfter;
 			requestBody.pit = { id: pit, keep_alive: '1m' };
 
-			responseData = await elasticsearchApiRequest.call(this, 'GET', `/_search`, requestBody, qs);
+			responseData = await elasticsearchApiRequest.call(this, 'GET', '/_search', requestBody, qs);
 
 			if (responseData?.hits?.hits?.length) {
 				returnData = returnData.concat(responseData.hits.hits);
@@ -96,7 +97,7 @@ export async function elasticsearchApiRequestAllItems(
 			}
 		}
 
-		await elasticsearchApiRequest.call(this, 'DELETE', `/_pit`, { id: pit });
+		await elasticsearchApiRequest.call(this, 'DELETE', '/_pit', { id: pit });
 
 		return returnData;
 	} catch (error) {

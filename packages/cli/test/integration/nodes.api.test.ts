@@ -21,10 +21,6 @@ import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
-jest.mock('@/telemetry');
-
-jest.mock('@/Push');
-
 jest.mock('@/CommunityNodes/helpers', () => {
 	return {
 		...jest.requireActual('@/CommunityNodes/helpers'),
@@ -47,33 +43,28 @@ jest.mock('@/CommunityNodes/packageModel', () => {
 const mockedEmptyPackage = mocked(utils.emptyPackage);
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['nodes'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['nodes'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
 	authAgent = utils.createAuthAgent(app);
 
 	utils.initConfigFile();
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User'], testDbName);
+	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User']);
 
 	mocked(executeCommand).mockReset();
 	mocked(findInstalledPackage).mockReset();
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 /**

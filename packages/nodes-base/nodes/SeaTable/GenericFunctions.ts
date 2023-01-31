@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, IPollFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 import { schema } from './Schema';
 
-import {
+import type {
 	ICredential,
 	ICtx,
 	IDtableMetadataColumn,
@@ -19,6 +20,56 @@ import {
 } from './Interfaces';
 
 import _ from 'lodash';
+
+const userBaseUri = (uri?: string) => {
+	if (uri === undefined) {
+		return uri;
+	}
+
+	if (uri.endsWith('/')) {
+		return uri.slice(0, -1);
+	}
+
+	return uri;
+};
+
+export function resolveBaseUri(ctx: ICtx) {
+	return ctx?.credentials?.environment === 'cloudHosted'
+		? 'https://cloud.seatable.io'
+		: userBaseUri(ctx?.credentials?.domain);
+}
+
+export async function getBaseAccessToken(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	ctx: ICtx,
+) {
+	if (ctx?.base?.access_token !== undefined) {
+		return;
+	}
+
+	const options: OptionsWithUri = {
+		headers: {
+			Authorization: `Token ${ctx?.credentials?.token}`,
+		},
+		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
+		json: true,
+	};
+
+	ctx.base = await this.helpers.request(options);
+}
+
+function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
+	const endpointVariables: IEndpointVariables = {};
+	endpointVariables.access_token = ctx?.base?.access_token;
+	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
+
+	return endpoint.replace(
+		/({{ *(access_token|dtable_uuid|server) *}})/g,
+		(match: string, expr: string, name: TEndpointVariableName) => {
+			return endpointVariables[name] || match;
+		},
+	);
+}
 
 export async function seaTableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -57,8 +108,7 @@ export async function seaTableApiRequest(
 	}
 
 	try {
-		//@ts-ignore
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -112,7 +162,7 @@ export async function getTableColumns(
 		this,
 		ctx,
 		'GET',
-		`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 	);
 	for (const table of tables) {
 		if (table.name === tableName) {
@@ -131,36 +181,11 @@ export async function getTableViews(
 		this,
 		ctx,
 		'GET',
-		`/dtable-server/api/v1/dtables/{{dtable_uuid}}/views`,
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/views',
 		{},
 		{ table_name: tableName },
 	);
 	return views;
-}
-
-export async function getBaseAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	ctx: ICtx,
-) {
-	if (ctx?.base?.access_token !== undefined) {
-		return;
-	}
-
-	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Token ${ctx?.credentials?.token}`,
-		},
-		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
-		json: true,
-	};
-
-	ctx.base = await this.helpers.request!(options);
-}
-
-export function resolveBaseUri(ctx: ICtx) {
-	return ctx?.credentials?.environment === 'cloudHosted'
-		? 'https://cloud.seatable.io'
-		: userBaseUri(ctx?.credentials?.domain);
 }
 
 export function simplify(data: { results: IRow[] }, metadata: IDataObject) {
@@ -194,6 +219,14 @@ const nonInternalPredicate = (name: string) => !Object.keys(schema.internalNames
 const namePredicate = (name: string) => (named: IName) => named.name === name;
 export const nameOfPredicate = (names: readonly IName[]) => (name: string) =>
 	names.find(namePredicate(name));
+
+const normalize = (subject: string): string => (subject ? subject.normalize() : '');
+
+export const split = (subject: string): string[] =>
+	normalize(subject)
+		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
+		.filter((s) => s.length)
+		.map((s) => s.replace(/\\([\s\S])/gm, ($0, $1) => $1));
 
 export function columnNamesToArray(columnNames: string): string[] {
 	return columnNames ? split(columnNames).filter(nonInternalPredicate).filter(uniquePredicate) : [];
@@ -308,36 +341,3 @@ export const dtableSchemaColumns = (columns: TDtableMetadataColumns): TDtableMet
 
 export const updateAble = (columns: TDtableMetadataColumns): TDtableMetadataColumns =>
 	columns.filter(dtableSchemaIsUpdateAbleColumn);
-
-function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
-	const endpointVariables: IEndpointVariables = {};
-	endpointVariables.access_token = ctx?.base?.access_token;
-	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
-
-	return endpoint.replace(
-		/({{ *(access_token|dtable_uuid|server) *}})/g,
-		(match: string, expr: string, name: TEndpointVariableName) => {
-			return endpointVariables[name] || match;
-		},
-	);
-}
-
-const normalize = (subject: string): string => (subject ? subject.normalize() : '');
-
-export const split = (subject: string): string[] =>
-	normalize(subject)
-		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
-		.filter((s) => s.length)
-		.map((s) => s.replace(/\\([\s\S])/gm, ($0, $1) => $1));
-
-const userBaseUri = (uri?: string) => {
-	if (uri === undefined) {
-		return uri;
-	}
-
-	if (uri.endsWith('/')) {
-		return uri.slice(0, -1);
-	}
-
-	return uri;
-};

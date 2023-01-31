@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -323,12 +323,12 @@ export class NotionV1 implements INodeType {
 							this,
 							'results',
 							'POST',
-							`/search`,
+							'/search',
 							body,
 						);
 					} else {
 						body.page_size = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
+						responseData = await notionApiRequest.call(this, 'POST', '/search', body);
 						responseData = responseData.results;
 					}
 
@@ -359,7 +359,7 @@ export class NotionV1 implements INodeType {
 						[],
 					) as IDataObject[];
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone) as IDataObject;
+						body.properties = mapProperties.call(this, properties, timezone) as IDataObject;
 					}
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
@@ -460,7 +460,7 @@ export class NotionV1 implements INodeType {
 						properties: {},
 					};
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone) as IDataObject;
+						body.properties = mapProperties.call(this, properties, timezone) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple) {

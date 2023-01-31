@@ -1,15 +1,16 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
+import type { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -205,6 +206,94 @@ export function adjustAddresses(addresses: [{ street: string; [key: string]: str
 	return _addresses;
 }
 
+function getConditionTypeFields(): INodeProperties {
+	return {
+		displayName: 'Condition Type',
+		name: 'condition_type',
+		type: 'options',
+		options: [
+			{
+				name: 'Equals',
+				value: 'eq',
+			},
+			{
+				name: 'Greater than',
+				value: 'gt',
+			},
+			{
+				name: 'Greater than or equal',
+				value: 'gteq',
+			},
+			{
+				name: 'In',
+				value: 'in',
+				description: 'The value can contain a comma-separated list of values',
+			},
+			{
+				name: 'Less Than',
+				value: 'lt',
+			},
+			{
+				name: 'Less Than or Equal',
+				value: 'lte',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
+			},
+			{
+				name: 'More or Equal',
+				value: 'moreq',
+			},
+			{
+				name: 'Not Equal',
+				value: 'neq',
+			},
+			{
+				name: 'Not In',
+				value: 'nin',
+				description: 'The value can contain a comma-separated list of values',
+			},
+			{
+				name: 'Not Null',
+				value: 'notnull',
+			},
+			{
+				name: 'Null',
+				value: 'null',
+			},
+		],
+		default: 'eq',
+	};
+}
+
+function getConditions(attributeFunction: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Field',
+			name: 'field',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: attributeFunction,
+			},
+			default: '',
+		},
+		getConditionTypeFields(),
+		{
+			displayName: 'Value',
+			name: 'value',
+			type: 'string',
+			displayOptions: {
+				hide: {
+					condition_type: ['null', 'notnull'],
+				},
+			},
+			default: '',
+		},
+	];
+}
+
 export function getSearchFilters(
 	resource: string,
 	filterableAttributeFunction: string,
@@ -380,94 +469,6 @@ export function getSearchFilters(
 					],
 				},
 			],
-		},
-	];
-}
-
-function getConditionTypeFields(): INodeProperties {
-	return {
-		displayName: 'Condition Type',
-		name: 'condition_type',
-		type: 'options',
-		options: [
-			{
-				name: 'Equals',
-				value: 'eq',
-			},
-			{
-				name: 'Greater than',
-				value: 'gt',
-			},
-			{
-				name: 'Greater than or equal',
-				value: 'gteq',
-			},
-			{
-				name: 'In',
-				value: 'in',
-				description: 'The value can contain a comma-separated list of values',
-			},
-			{
-				name: 'Less Than',
-				value: 'lt',
-			},
-			{
-				name: 'Less Than or Equal',
-				value: 'lte',
-			},
-			{
-				name: 'Like',
-				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified',
-			},
-			{
-				name: 'More or Equal',
-				value: 'moreq',
-			},
-			{
-				name: 'Not Equal',
-				value: 'neq',
-			},
-			{
-				name: 'Not In',
-				value: 'nin',
-				description: 'The value can contain a comma-separated list of values',
-			},
-			{
-				name: 'Not Null',
-				value: 'notnull',
-			},
-			{
-				name: 'Null',
-				value: 'null',
-			},
-		],
-		default: 'eq',
-	};
-}
-
-function getConditions(attributeFunction: string): INodeProperties[] {
-	return [
-		{
-			displayName: 'Field',
-			name: 'field',
-			type: 'options',
-			typeOptions: {
-				loadOptionsMethod: attributeFunction,
-			},
-			default: '',
-		},
-		getConditionTypeFields(),
-		{
-			displayName: 'Value',
-			name: 'value',
-			type: 'string',
-			displayOptions: {
-				hide: {
-					condition_type: ['null', 'notnull'],
-				},
-			},
-			default: '',
 		},
 	];
 }
@@ -990,7 +991,7 @@ export async function getProductAttributes(
 		this,
 		'items',
 		'GET',
-		`/rest/default/V1/products/attributes`,
+		'/rest/default/V1/products/attributes',
 		{},
 		{
 			search_criteria: 0,

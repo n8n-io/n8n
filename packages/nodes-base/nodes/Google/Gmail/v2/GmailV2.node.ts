@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,14 +9,14 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IEmail } from '../GenericFunctions';
 import {
 	encodeEmail,
 	googleApiRequest,
 	googleApiRequestAllItems,
-	IEmail,
 	parseRawEmail,
 	prepareEmailAttachments,
 	prepareEmailBody,
@@ -260,7 +260,7 @@ export class GmailV2 implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+						responseData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 
 						responseData = this.helpers.returnJsonArray(responseData.labels);
 
@@ -390,7 +390,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'messages',
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -399,7 +399,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -613,7 +613,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'drafts',
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -622,7 +622,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -713,7 +713,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'threads',
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);
@@ -722,7 +722,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);

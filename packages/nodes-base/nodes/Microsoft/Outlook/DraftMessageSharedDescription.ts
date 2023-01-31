@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const draftMessageSharedFields: INodeProperties[] = [
 	// Get & Get All operations

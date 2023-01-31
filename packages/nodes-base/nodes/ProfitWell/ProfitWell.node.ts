@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -94,7 +94,7 @@ export class ProfitWell implements INodeType {
 			try {
 				if (resource === 'company') {
 					if (operation === 'getSetting') {
-						responseData = await profitWellApiRequest.call(this, 'GET', `/company/settings/`);
+						responseData = await profitWellApiRequest.call(this, 'GET', '/company/settings/');
 					}
 				}
 				if (resource === 'metric') {

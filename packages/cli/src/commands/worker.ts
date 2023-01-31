@@ -1,35 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import http from 'http';
-import PCancelable from 'p-cancelable';
+import type PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-	Workflow,
-	LoggerProxy,
-	sleep,
-} from 'n8n-workflow';
-
-import { FindOneOptions, getConnectionManager } from 'typeorm';
+import type { IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import { Workflow, LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -41,13 +28,30 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
+import * as CrashJournal from '@/CrashJournal';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { N8N_VERSION } from '@/constants';
+import { initErrorHandling } from '@/ErrorReporting';
+
+const exitWithCrash = async (message: string, error: unknown) => {
+	ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+	await sleep(2000);
+	process.exit(1);
+};
+
+const exitSuccessFully = async () => {
+	try {
+		await CrashJournal.cleanup();
+	} finally {
+		process.exit();
+	}
+};
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
 
-	static examples = [`$ n8n worker --concurrency=5`];
+	static examples = ['$ n8n worker --concurrency=5'];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -63,16 +67,13 @@ export class Worker extends Command {
 
 	static jobQueue: Queue.JobQueue;
 
-	static processExitCode = 0;
-	// static activeExecutions = ActiveExecutions.getInstance();
-
 	/**
 	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
 	static async stopProcess() {
-		LoggerProxy.info(`Stopping n8n...`);
+		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -86,10 +87,10 @@ export class Worker extends Command {
 
 			const stopTime = new Date().getTime() + maxStopTime;
 
-			setTimeout(() => {
+			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(Worker.processExitCode);
+				await exitSuccessFully();
 			}, maxStopTime);
 
 			// Wait for active workflow executions to finish
@@ -107,15 +108,15 @@ export class Worker extends Command {
 				await sleep(500);
 			}
 		} catch (error) {
-			LoggerProxy.error('There was an error shutting down n8n.', error);
+			await exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(Worker.processExitCode);
+		await exitSuccessFully();
 	}
 
 	async runJob(job: Queue.Job, nodeTypes: INodeTypes): Promise<Queue.JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const executionDb = await Db.collections.Execution.findOne(executionId);
+		const executionDb = await Db.collections.Execution.findOneBy({ id: executionId });
 
 		if (!executionDb) {
 			LoggerProxy.error(
@@ -135,14 +136,13 @@ export class Worker extends Command {
 
 		let { staticData } = currentExecutionDb.workflowData;
 		if (loadStaticData) {
-			const findOptions = {
+			const workflowData = await Db.collections.Workflow.findOne({
 				select: ['id', 'staticData'],
-			} as FindOneOptions;
-			const workflowData = await Db.collections.Workflow.findOne(
-				currentExecutionDb.workflowData.id,
-				findOptions,
-			);
-			if (workflowData === undefined) {
+				where: {
+					id: currentExecutionDb.workflowData.id,
+				},
+			});
+			if (workflowData === null) {
 				LoggerProxy.error(
 					'Worker execution failed because workflow could not be found in database.',
 					{
@@ -260,20 +260,18 @@ export class Worker extends Command {
 		process.once('SIGTERM', Worker.stopProcess);
 		process.once('SIGINT', Worker.stopProcess);
 
+		await initErrorHandling();
+		await CrashJournal.init();
+
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
 				const { flags } = this.parse(Worker);
 
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch((error) => {
-					logger.error(`There was an error initializing DB: "${error.message}"`);
-
-					Worker.processExitCode = 1;
-					// @ts-ignore
-					process.emit('SIGINT');
-					process.exit(1);
-				});
+				const startDbInitPromise = Db.init().catch(async (error: Error) =>
+					exitWithCrash('There was an error initializing DB', error),
+				);
 
 				// Make sure the settings exist
 				await UserSettings.prepareUserSettings();
@@ -287,7 +285,7 @@ export class Worker extends Command {
 				const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 				// Load the credentials overwrites if any exist
-				await CredentialsOverwrites(credentialTypes).init();
+				CredentialsOverwrites(credentialTypes);
 
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
@@ -299,20 +297,20 @@ export class Worker extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
-				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
+				const queue = await Queue.getInstance();
+				Worker.jobQueue = queue.getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
-				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
-				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
 
 				console.info('\nn8n worker is now ready');
-				console.info(` * Version: ${versions.cli}`);
+				console.info(` * Version: ${N8N_VERSION}`);
 				console.info(` * Concurrency: ${flags.concurrency}`);
 				console.info('');
 
@@ -376,10 +374,10 @@ export class Worker extends Command {
 						async (req: express.Request, res: express.Response) => {
 							LoggerProxy.debug('Health check started!');
 
-							const connection = getConnectionManager().get();
+							const connection = Db.getConnection();
 
 							try {
-								if (!connection.isConnected) {
+								if (!connection.isInitialized) {
 									// Connection is not active
 									throw new Error('No active database connection!');
 								}
@@ -427,12 +425,7 @@ export class Worker extends Command {
 					});
 				}
 			} catch (error) {
-				logger.error(`Worker process cannot continue. "${error.message}"`);
-
-				Worker.processExitCode = 1;
-				// @ts-ignore
-				process.emit('SIGINT');
-				process.exit(1);
+				await exitWithCrash('Worker process cannot continue.', error);
 			}
 		})();
 	}

@@ -1,17 +1,21 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment';
 
 import * as losslessJSON from 'lossless-json';
+
+function convertLosslessNumber(key: any, value: any) {
+	if (value?.isLosslessNumber) {
+		return value.toString();
+	} else {
+		return value;
+	}
+}
 
 /**
  * Make an authenticated API request to GoToWebinar.
@@ -57,7 +61,7 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, {
+		const response = await this.helpers.requestOAuth2.call(this, 'goToWebinarOAuth2Api', options, {
 			tokenExpiredStatusCode: 403,
 		});
 
@@ -274,12 +278,4 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 	});
 
 	return returnData;
-}
-
-function convertLosslessNumber(key: any, value: any) {
-	if (value?.isLosslessNumber) {
-		return value.toString();
-	} else {
-		return value;
-	}
 }

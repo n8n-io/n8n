@@ -4,6 +4,7 @@ import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
+import { inTest } from '@/constants';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
@@ -37,10 +38,7 @@ export function loadSurveyFromDisk(): string | null {
 
 let logFinishTimeout: NodeJS.Timeout;
 
-export function logMigrationStart(
-	migrationName: string,
-	disableLogging = process.env.NODE_ENV === 'test',
-): void {
+export function logMigrationStart(migrationName: string, disableLogging = inTest): void {
 	if (disableLogging) return;
 
 	if (!logFinishTimeout) {
@@ -52,10 +50,7 @@ export function logMigrationStart(
 	clearTimeout(logFinishTimeout);
 }
 
-export function logMigrationEnd(
-	migrationName: string,
-	disableLogging = process.env.NODE_ENV === 'test',
-): void {
+export function logMigrationEnd(migrationName: string, disableLogging = inTest): void {
 	if (disableLogging) return;
 
 	getLogger().debug(`Finished migration ${migrationName}`);
@@ -96,16 +91,7 @@ export async function runInBatches(
 	} while (batchedQueryResults.length === limit);
 }
 
-export const getTablePrefix = () => {
-	const tablePrefix = config.getEnv('database.tablePrefix');
-
-	if (config.getEnv('database.type') === 'postgresdb') {
-		const schema = config.getEnv('database.postgresdb.schema');
-		return [schema, tablePrefix].join('.');
-	}
-
-	return tablePrefix;
-};
+export const getTablePrefix = () => config.getEnv('database.tablePrefix');
 
 export const escapeQuery = (
 	queryRunner: QueryRunner,

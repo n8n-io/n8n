@@ -1,34 +1,39 @@
 import config from '@/config';
-import { InternalHooksManager } from '../../src';
-import { nodeFetchedData, workflowExecutionCompleted } from '../../src/events/WorkflowStatistics';
-import { WorkflowExecuteMode } from 'n8n-workflow';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
+import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
+import { QueryFailedError } from 'typeorm';
 
 const FAKE_USER_ID = 'abcde-fghij';
 
 const mockedFirstProductionWorkflowSuccess = jest.fn((...args) => {});
 const mockedFirstWorkflowDataLoad = jest.fn((...args) => {});
-const mockedError = jest.spyOn(console, 'error');
 
 jest.spyOn(InternalHooksManager, 'getInstance').mockImplementation((...args) => {
-	const actual = jest.requireActual('../../src/InternalHooks');
+	const actual = jest.requireActual('@/InternalHooks');
 	return {
 		...actual,
 		onFirstProductionWorkflowSuccess: mockedFirstProductionWorkflowSuccess,
 		onFirstWorkflowDataLoad: mockedFirstWorkflowDataLoad,
 	};
 });
-jest.mock('../../src/Db', () => {
+jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Workflow: {
 				update: jest.fn(({ id, dataLoaded }, updateArgs) => {
-					if (id === 1) return { affected: 1 };
+					if (id === '1') return { affected: 1 };
 					return { affected: 0 };
 				}),
 			},
 			WorkflowStatistics: {
+				// Have made a tech debt ticket to refactor this test suite for later
 				insert: jest.fn(({ count, name, workflowId }) => {
-					if (workflowId === -1) throw new Error('test error');
+					if (workflowId === '-1') throw new QueryFailedError('test error', [], '');
+					else if (name === StatisticsNames.dataLoaded && workflowId === '2')
+						throw new QueryFailedError('test error 2', [], '');
 					return null;
 				}),
 				update: jest.fn((...args) => {}),
@@ -36,7 +41,7 @@ jest.mock('../../src/Db', () => {
 		},
 	};
 });
-jest.mock('../../src/UserManagement/UserManagementHelper', () => {
+jest.mock('@/UserManagement/UserManagementHelper', () => {
 	return {
 		getWorkflowOwner: jest.fn((workflowId) => {
 			return { id: FAKE_USER_ID };
@@ -48,6 +53,7 @@ describe('Events', () => {
 	beforeAll(() => {
 		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
+		LoggerProxy.init(getLogger());
 	});
 
 	afterAll(() => {
@@ -58,7 +64,6 @@ describe('Events', () => {
 	beforeEach(() => {
 		mockedFirstProductionWorkflowSuccess.mockClear();
 		mockedFirstWorkflowDataLoad.mockClear();
-		mockedError.mockClear();
 	});
 
 	afterEach(() => {});
@@ -81,7 +86,6 @@ describe('Events', () => {
 				startedAt: new Date(),
 			};
 			await workflowExecutionCompleted(workflow, runData);
-			expect(mockedError).toBeCalledTimes(1);
 		});
 
 		test('should create metrics for production successes', async () => {
@@ -105,7 +109,7 @@ describe('Events', () => {
 			expect(mockedFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(mockedFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflow.id, 10),
+				workflow_id: workflow.id,
 			});
 		});
 
@@ -164,7 +168,6 @@ describe('Events', () => {
 				parameters: {},
 			};
 			await nodeFetchedData(workflowId, node);
-			expect(mockedError).toBeCalledTimes(1);
 		});
 
 		test('should create metrics when the db is updated', async () => {
@@ -182,7 +185,7 @@ describe('Events', () => {
 			expect(mockedFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(mockedFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflowId, 10),
+				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
 			});
@@ -209,7 +212,7 @@ describe('Events', () => {
 			expect(mockedFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(mockedFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflowId, 10),
+				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
 				credential_type: 'testCredentials',

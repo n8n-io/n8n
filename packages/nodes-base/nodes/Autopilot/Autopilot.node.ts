@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -169,7 +169,7 @@ export class Autopilot implements INodeType {
 							delete body.newEmail;
 						}
 
-						responseData = await autopilotApiRequest.call(this, 'POST', `/contact`, {
+						responseData = await autopilotApiRequest.call(this, 'POST', '/contact', {
 							contact: body,
 						});
 					}
@@ -198,7 +198,7 @@ export class Autopilot implements INodeType {
 							this,
 							'contacts',
 							'GET',
-							`/contacts`,
+							'/contacts',
 							{},
 							qs,
 						);
@@ -280,7 +280,7 @@ export class Autopilot implements INodeType {
 							name,
 						};
 
-						responseData = await autopilotApiRequest.call(this, 'POST', `/list`, body);
+						responseData = await autopilotApiRequest.call(this, 'POST', '/list', body);
 					}
 
 					if (operation === 'getAll') {

@@ -1,5 +1,5 @@
 <template>
-	<n8n-text :size="size" :color="color" :compact="true" class="n8n-icon">
+	<n8n-text :size="size" :color="color" :compact="true" class="n8n-icon" v-on="$listeners">
 		<font-awesome-icon :icon="icon" :spin="spin" :class="$style[size]" />
 	</n8n-text>
 </template>

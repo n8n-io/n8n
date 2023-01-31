@@ -17,8 +17,8 @@
 			:disabled="isReadOnly"
 			@input="onViewSelected"
 			:options="[
-				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed'},
-				{ label: $locale.baseText('parameterInput.expression'), value: 'expression'},
+				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
+				{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
 			]"
 		/>
 	</div>
@@ -28,6 +28,9 @@
 import { NodeParameterValueType } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import { useNDVStore } from '@/stores/ndv';
+import { mapStores } from 'pinia';
+import { HTML_NODE_TYPE } from '@/constants';
 
 export default Vue.extend({
 	name: 'parameter-options',
@@ -39,7 +42,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		value: {
-			type: [Object, String, Number, Boolean] as PropType<NodeParameterValueType>,
+			type: [Object, String, Number, Boolean, Array] as PropType<NodeParameterValueType>,
 		},
 		showOptions: {
 			type: Boolean,
@@ -51,13 +54,14 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		isDefault (): boolean {
+		...mapStores(useNDVStore),
+		isDefault(): boolean {
 			return this.parameter.default === this.value;
 		},
 		isValueExpression(): boolean {
 			return isValueExpression(this.parameter, this.value);
 		},
-		shouldShowOptions (): boolean {
+		shouldShowOptions(): boolean {
 			if (this.isReadOnly === true) {
 				return false;
 			}
@@ -80,17 +84,29 @@ export default Vue.extend({
 
 			return false;
 		},
-		selectedView () {
+		selectedView() {
 			if (this.isValueExpression) {
 				return 'expression';
 			}
 
 			return 'fixed';
 		},
-		hasRemoteMethod (): boolean {
+		hasRemoteMethod(): boolean {
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
-		actions (): Array<{label: string, value: string, disabled?: boolean}> {
+		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
+			if (
+				this.ndvStore.activeNode?.type === HTML_NODE_TYPE &&
+				this.ndvStore.activeNode?.parameters.operation === 'generateHtmlTemplate'
+			) {
+				return [
+					{
+						label: 'Format HTML',
+						value: 'formatHtml',
+					},
+				];
+			}
+
 			const actions = [
 				{
 					label: this.$locale.baseText('parameterInput.resetValue'),
@@ -99,7 +115,12 @@ export default Vue.extend({
 				},
 			];
 
-			if (this.hasRemoteMethod || (this.parameter.type === 'resourceLocator' && isResourceLocatorValue(this.value) && this.value.mode === 'list')) {
+			if (
+				this.hasRemoteMethod ||
+				(this.parameter.type === 'resourceLocator' &&
+					isResourceLocatorValue(this.value) &&
+					this.value.mode === 'list')
+			) {
 				return [
 					{
 						label: this.$locale.baseText('parameterInput.refreshList'),
@@ -117,15 +138,15 @@ export default Vue.extend({
 			this.$emit('menu-expanded', visible);
 		},
 		onViewSelected(selected: string) {
-			if (selected === 'expression' ) {
-				this.$emit('optionSelected', this.isValueExpression? 'openExpression': 'addExpression');
+			if (selected === 'expression') {
+				this.$emit('optionSelected', this.isValueExpression ? 'openExpression' : 'addExpression');
 			}
 
 			if (selected === 'fixed' && this.isValueExpression) {
 				this.$emit('optionSelected', 'removeExpression');
 			}
 		},
-		getArgument (argumentName: string): string | number | boolean | undefined {
+		getArgument(argumentName: string): string | number | boolean | undefined {
 			if (this.parameter.typeOptions === undefined) {
 				return undefined;
 			}

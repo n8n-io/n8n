@@ -1,5 +1,5 @@
 <template>
-	<div ref="codeNodeEditor" class="ph-no-capture" />
+	<div ref="codeNodeEditor" class="ph-no-capture"></div>
 </template>
 
 <script lang="ts">
@@ -49,9 +49,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		content(): string {
 			if (!this.editor) return '';
 

@@ -1,6 +1,7 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, jsonParse, NodeApiError } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -33,7 +34,7 @@ export async function cockpitApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

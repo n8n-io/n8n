@@ -9,15 +9,11 @@
 </template>
 
 <script lang="ts">
-
 import Vue from 'vue';
 
-export default Vue.extend(
-	{
-		name: 'PageContentWrapper',
-	},
-);
-
+export default Vue.extend({
+	name: 'PageContentWrapper',
+});
 </script>
 
 <style scoped>

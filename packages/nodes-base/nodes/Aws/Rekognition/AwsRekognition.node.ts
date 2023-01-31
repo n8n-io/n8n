@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestREST, keysTPascalCase } from './GenericFunctions';
 
@@ -415,7 +415,7 @@ export class AwsRekognition implements INodeType {
 							const binaryData = this.getNodeParameter('binaryData', 0);
 
 							if (binaryData) {
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 								if (items[i].binary === undefined) {
 									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
