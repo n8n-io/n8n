@@ -329,7 +329,6 @@ export default mixins(showMessage).extend({
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 			this.localStorageMappingFlag = true;
 		},
 	},
