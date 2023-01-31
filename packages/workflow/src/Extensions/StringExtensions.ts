@@ -173,6 +173,8 @@ function quote(value: string, extraArgs: string[]) {
 }
 
 function isNumeric(value: string) {
+	if (value.includes(' ')) return false;
+
 	return !isNaN(value as unknown as number) && !isNaN(parseFloat(value));
 }
 
