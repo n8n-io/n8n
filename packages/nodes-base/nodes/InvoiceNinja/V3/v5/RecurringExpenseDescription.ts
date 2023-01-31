@@ -267,7 +267,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -714,7 +714,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category',
 				name: 'categoryId',
 				type: 'options',
 				description:

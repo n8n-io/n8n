@@ -371,7 +371,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -523,7 +523,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -732,7 +732,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -878,7 +878,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryId',
 						type: 'options',
 						description:

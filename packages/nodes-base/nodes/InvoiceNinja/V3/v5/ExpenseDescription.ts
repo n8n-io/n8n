@@ -259,7 +259,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -659,7 +659,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Name or ID',
+				displayName: 'Category',
 				name: 'categoryId',
 				type: 'options',
 				description:

@@ -43,6 +43,12 @@ export const paymentOperations: INodeProperties[] = [
 				description: 'Delete a payment',
 				action: 'Delete a payment',
 			},
+			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an payment',
+				action: 'Action to an payment',
+			},
 		],
 		default: 'create',
 	},
@@ -184,40 +190,6 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Name or ID',
-		name: 'invoice',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getInvoicesV5',
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['payment'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Amount',
-		name: 'amount',
-		type: 'number',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['payment'],
-				operation: ['create'],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-		},
-		default: 0,
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -231,9 +203,92 @@ export const paymentFields: INodeProperties[] = [
 			},
 		},
 		options: [
+            {
+				displayName: 'Client',
+				name: 'clientId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClientsV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectsV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Refunded',
+				name: 'refunded',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Applied',
+				name: 'applied',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Transaction Reference',
+				name: 'transactionReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Date',
+				name: 'dateTime',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Is Manual',
+				name: 'isManual',
+				type: 'boolean',
+				default: '',
+			},
 			{
 				displayName: 'Payment Type',
-				name: 'type_id',
+				name: 'typeId',
 				type: 'options',
 				options: [
 					{
@@ -368,8 +423,60 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Transfer Reference',
-				name: 'transferReference',
+				displayName: 'Invitation ID',
+				name: 'invitationId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Client Contact ID',
+				name: 'clientContactId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Company Gateway ID',
+				name: 'companyGatewayId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Payment Status',
+				name: 'statusId',
+				type: 'options',
+				options: [
+					{
+						name: 'Draft',
+						value: 1,
+					},
+					{
+						name: 'Sent',
+						value: 2,
+					},
+				],
+				default: 1,
+			},
+            {
+				displayName: 'Currency ID',
+				name: 'currencyId',
+				type: 'string',
+				default: '',
+			},
+            {
+				displayName: 'Exchange Rate',
+				name: 'exchangeRate',
+				type: 'number',
+				default: 1,
+			},
+            {
+				displayName: 'Exchange Currency ID',
+				name: 'exchangeCurrencyId',
 				type: 'string',
 				default: '',
 			},
@@ -435,40 +542,6 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Invoice Name or ID',
-		name: 'invoice',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getInvoicesV5',
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['payment'],
-				operation: ['update'],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Amount',
-		name: 'amount',
-		type: 'number',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['payment'],
-				operation: ['update'],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-		},
-		default: 0,
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -482,9 +555,92 @@ export const paymentFields: INodeProperties[] = [
 			},
 		},
 		options: [
+            {
+				displayName: 'Client',
+				name: 'clientId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClientsV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectsV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Refunded',
+				name: 'refunded',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Applied',
+				name: 'applied',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Transaction Reference',
+				name: 'transactionReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Date',
+				name: 'dateTime',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Is Manual',
+				name: 'isManual',
+				type: 'boolean',
+				default: '',
+			},
 			{
 				displayName: 'Payment Type',
-				name: 'type_id',
+				name: 'typeId',
 				type: 'options',
 				options: [
 					{
@@ -619,8 +775,60 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Transfer Reference',
-				name: 'transferReference',
+				displayName: 'Invitation ID',
+				name: 'invitationId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Client Contact ID',
+				name: 'clientContactId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Company Gateway ID',
+				name: 'companyGatewayId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Payment Status',
+				name: 'statusId',
+				type: 'options',
+				options: [
+					{
+						name: 'Draft',
+						value: 1,
+					},
+					{
+						name: 'Sent',
+						value: 2,
+					},
+				],
+				default: 1,
+			},
+            {
+				displayName: 'Currency ID',
+				name: 'currencyId',
+				type: 'string',
+				default: '',
+			},
+            {
+				displayName: 'Exchange Rate',
+				name: 'exchangeRate',
+				type: 'number',
+				default: 1,
+			},
+            {
+				displayName: 'Exchange Currency ID',
+				name: 'exchangeCurrencyId',
 				type: 'string',
 				default: '',
 			},
@@ -684,5 +892,50 @@ export const paymentFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  payment:action                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payment ID',
+		name: 'paymentId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Send Email',
+				value: 'email',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+			},
+		],
 	},
 ];

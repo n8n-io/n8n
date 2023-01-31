@@ -335,7 +335,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -451,7 +451,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -626,7 +626,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryCode',
 						type: 'options',
 						description:
@@ -742,7 +742,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryCode',
 						type: 'options',
 						description:

@@ -260,6 +260,17 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectsV5',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Invoice Status',
 				name: 'statusId',
 				type: 'options',
@@ -399,6 +410,12 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'partialDueDate',
 				type: 'dateTime',
 				default: '',
+			},
+            {
+				displayName: 'Exchange Rate',
+				name: 'exchangeRate',
+				type: 'number',
+				default: 1,
 			},
 			{
 				displayName: 'Private Notes',
@@ -615,6 +632,17 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectsV5',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Invoice Status',
 				name: 'statusId',
 				type: 'options',
@@ -754,6 +782,12 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'partialDueDate',
 				type: 'dateTime',
 				default: '',
+			},
+            {
+				displayName: 'Exchange Rate',
+				name: 'exchangeRate',
+				type: 'number',
+				default: 1,
 			},
 			{
 				displayName: 'Private Notes',

@@ -980,6 +980,9 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.taxRate3) {
 							body.tax_rate3 = additionalFields.taxtRate3 as number;
 						}
+						if (additionalFields.exchangeRate) {
+							body.exchange_rate = additionalFields.exchangeRate as number;
+						}
 						if (additionalFields.customValue1) {
 							body.custom_value1 = additionalFields.customValue1 as string;
 						}
@@ -1116,6 +1119,9 @@ export const InvoiceNinjaV5 = {
 						}
 						if (additionalFields.taxRate3) {
 							body.tax_rate3 = additionalFields.taxtRate3 as number;
+						}
+						if (additionalFields.exchangeRate) {
+							body.exchange_rate = additionalFields.exchangeRate as number;
 						}
 						if (additionalFields.customValue1) {
 							body.custom_value1 = additionalFields.customValue1 as string;
@@ -1288,18 +1294,66 @@ export const InvoiceNinjaV5 = {
 							await invoiceNinjaApiRequest.call(that, 'GET', `/invoices/${invoice}`, {}, qs)
 						).data?.client_id as string;
 						const amount = that.getNodeParameter('amount', i) as number;
-						const body: IPayment = {
-							invoices: [{
-								invoice_id: invoice,
-							}],
-							amount,
-							client_id: client,
-						};
-						if (additionalFields.type_id) {
-							body.type_id = additionalFields.type_id as string;
+						const body: IPayment = {};
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
 						}
-						if (additionalFields.transferReference) {
-							body.transaction_reference = additionalFields.transferReference as string;
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
+						}
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.refunded) {
+							body.refunded = additionalFields.refunded as number;
+						}
+						if (additionalFields.applied) {
+							body.applied = additionalFields.applied as number;
+						}
+						if (additionalFields.transactionReference) {
+							body.transaction_reference = additionalFields.transactionReference as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.isManual) {
+							body.is_manual = additionalFields.isManual as boolean;
+						}
+						if (additionalFields.typeId) {
+							body.type_id = additionalFields.typeId as string;
+						}
+						if (additionalFields.invitationId) {
+							body.invitation_id = additionalFields.invitationId as string;
+						}
+						if (additionalFields.number) {
+							body.number = additionalFields.number as string;
+						}
+						if (additionalFields.clientId) {
+							body.client_id = additionalFields.clientId as string;
+						}
+						if (additionalFields.clientContactId) {
+							body.client_contact_id = additionalFields.clientContactId as string;
+						}
+						if (additionalFields.companyGatewayId) {
+							body.company_gateway_id = additionalFields.companyGatewayId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.projectId) {
+							body.project_id = additionalFields.projectId as string;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as string;
+						}
+						if (additionalFields.exchangeRate) {
+							body.exchange_rate = additionalFields.exchangeRate as number;
+						}
+						if (additionalFields.exchangeCurrencyId) {
+							body.exchange_currency_id = additionalFields.exchangeCurrencyId as string;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
@@ -1332,16 +1386,66 @@ export const InvoiceNinjaV5 = {
 							await invoiceNinjaApiRequest.call(that, 'GET', `/invoices/${invoice}`, {}, qs)
 						).data?.client_id as string;
 						const amount = that.getNodeParameter('amount', i) as number;
-						const body: IPayment = {
-							invoices: [{ invoice_id: invoice }],
-							amount,
-							client_id: client,
-						};
-						if (additionalFields.type_id) {
-							body.type_id = additionalFields.type_id as string;
+						const body: IPayment = {};
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
 						}
-						if (additionalFields.transferReference) {
-							body.transaction_reference = additionalFields.transferReference as string;
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
+						}
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.refunded) {
+							body.refunded = additionalFields.refunded as number;
+						}
+						if (additionalFields.applied) {
+							body.applied = additionalFields.applied as number;
+						}
+						if (additionalFields.transactionReference) {
+							body.transaction_reference = additionalFields.transactionReference as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.isManual) {
+							body.is_manual = additionalFields.isManual as boolean;
+						}
+						if (additionalFields.typeId) {
+							body.type_id = additionalFields.typeId as string;
+						}
+						if (additionalFields.invitationId) {
+							body.invitation_id = additionalFields.invitationId as string;
+						}
+						if (additionalFields.number) {
+							body.number = additionalFields.number as string;
+						}
+						if (additionalFields.clientId) {
+							body.client_id = additionalFields.clientId as string;
+						}
+						if (additionalFields.clientContactId) {
+							body.client_contact_id = additionalFields.clientContactId as string;
+						}
+						if (additionalFields.companyGatewayId) {
+							body.company_gateway_id = additionalFields.companyGatewayId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.projectId) {
+							body.project_id = additionalFields.projectId as string;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as string;
+						}
+						if (additionalFields.exchangeRate) {
+							body.exchange_rate = additionalFields.exchangeRate as number;
+						}
+						if (additionalFields.exchangeCurrencyId) {
+							body.exchange_currency_id = additionalFields.exchangeCurrencyId as string;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
@@ -1418,6 +1522,15 @@ export const InvoiceNinjaV5 = {
 							`/payments/${paymentId}`,
 						);
 						responseData = responseData.data;
+					}
+					if (operation === 'action') {
+						const paymentId = that.getNodeParameter('paymentId', i) as string;
+						const action = that.getNodeParameter('action', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'GET',
+							`/payments/${paymentId}/${action}`,
+						);
 					}
 				}
 				if (resource === 'project') {
