@@ -1878,6 +1878,18 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.taxAmount3) {
 							body.tax_amount3 = additionalFields.taxAmount3 as number;
 						}
+						if (additionalFields.remainingCycles) {
+							body.remaining_cycles = additionalFields.remainingCycles as number;
+						}
+						if (additionalFields.frequencyId) {
+							body.frequency_id = additionalFields.frequencyId as string;
+						}
+						if (additionalFields.nextSendDate) {
+							body.next_send_date = additionalFields.nextSendDate as string;
+						}
+						if (additionalFields.taxAmount3) {
+							body.tax_amount3 = additionalFields.taxAmount3 as number;
+						}
 						if (additionalFields.publicNotes) {
 							body.public_notes = additionalFields.publicNotes as string;
 						}
@@ -1998,6 +2010,15 @@ export const InvoiceNinjaV5 = {
 						}
 						if (additionalFields.taxAmount3) {
 							body.tax_amount3 = additionalFields.taxAmount3 as number;
+						}
+						if (additionalFields.remainingCycles) {
+							body.remaining_cycles = additionalFields.remainingCycles as number;
+						}
+						if (additionalFields.frequencyId) {
+							body.frequency_id = additionalFields.frequencyId as string;
+						}
+						if (additionalFields.nextSendDate) {
+							body.next_send_date = additionalFields.nextSendDate as string;
 						}
 						if (additionalFields.publicNotes) {
 							body.public_notes = additionalFields.publicNotes as string;
@@ -2187,6 +2208,15 @@ export const InvoiceNinjaV5 = {
 						if (additionalFields.taxRate3) {
 							body.tax_rate3 = additionalFields.taxtRate3 as number;
 						}
+						if (additionalFields.remainingCycles) {
+							body.remaining_cycles = additionalFields.remainingCycles as number;
+						}
+						if (additionalFields.frequencyId) {
+							body.frequency_id = additionalFields.frequencyId as string;
+						}
+						if (additionalFields.nextSendDate) {
+							body.next_send_date = additionalFields.nextSendDate as string;
+						}
 						if (additionalFields.customValue1) {
 							body.custom_value1 = additionalFields.customValue1 as string;
 						}
@@ -2320,6 +2350,15 @@ export const InvoiceNinjaV5 = {
 						}
 						if (additionalFields.taxRate3) {
 							body.tax_rate3 = additionalFields.taxtRate3 as number;
+						}
+						if (additionalFields.remainingCycles) {
+							body.remaining_cycles = additionalFields.remainingCycles as number;
+						}
+						if (additionalFields.frequencyId) {
+							body.frequency_id = additionalFields.frequencyId as string;
+						}
+						if (additionalFields.nextSendDate) {
+							body.next_send_date = additionalFields.nextSendDate as string;
 						}
 						if (additionalFields.customValue1) {
 							body.custom_value1 = additionalFields.customValue1 as string;
