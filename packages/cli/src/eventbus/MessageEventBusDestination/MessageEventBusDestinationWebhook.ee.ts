@@ -6,22 +6,21 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
-import axios, { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
+import axios from 'axios';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageTypes } from '../EventMessageClasses';
-import {
-	jsonParse,
-	LoggerProxy,
+import type { EventMessageTypes } from '../EventMessageClasses';
+import type {
 	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 } from 'n8n-workflow';
-import { CredentialsHelper } from '../../CredentialsHelper';
+import { jsonParse, LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
-import config from '../../config';
+import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 

@@ -15,16 +15,9 @@ let globalOwnerRole: Role;
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['workflows'],
-		applyAuth: true,
-	});
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['workflows'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {

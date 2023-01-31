@@ -1,22 +1,21 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
 
@@ -27,7 +26,6 @@ import moment from 'moment-timezone';
 import { validate as uuidValidate } from 'uuid';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
-	if (!value || typeof value !== 'string') return false;
 	if (uuidValidate(value)) return true;
 	if (value.length == 32) {
 		//prettier-ignore
@@ -156,6 +154,10 @@ export function getBlockTypes() {
 			name: 'Numbered List Item',
 			value: 'numbered_list_item',
 		},
+		{
+			name: 'Image',
+			value: 'image',
+		},
 	];
 }
 
@@ -254,6 +256,15 @@ function getTexts(
 	return results;
 }
 
+function getTextBlocks(block: IDataObject) {
+	return {
+		text:
+			block.richText === false
+				? formatText(block.textContent as string).text
+				: getTexts(((block.text as IDataObject).text as any) || []),
+	};
+}
+
 export function formatBlocks(blocks: IDataObject[]) {
 	const results = [];
 	for (const block of blocks) {
@@ -262,9 +273,9 @@ export function formatBlocks(blocks: IDataObject[]) {
 			type: block.type,
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
-				// prettier-ignore
-
-				text: (block.richText === false) ? formatText(block.textContent as string).text : getTexts((block.text as IDataObject).text as any || []),
+				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
+				// prettier-ignore,
+				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}
@@ -313,12 +324,16 @@ function getPropertyKeyValue(
 			result = {
 				type: 'relation',
 				relation: value.relationValue
-					.filter((rv: string) => {
-						return uuidValidateWithoutDashes.call(this, rv);
+					.filter((relation: any) => {
+						return relation && typeof relation === 'string';
 					})
 					.reduce((acc: [], cur: any) => {
-						return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-					}, []),
+						return acc.concat(cur.split(',').map((relation: string) => relation.trim()));
+					}, [])
+					.filter((relation: string) => {
+						return uuidValidateWithoutDashes.call(this, relation);
+					})
+					.map((relation: string) => ({ id: relation })),
 			};
 			break;
 		case 'multi_select':

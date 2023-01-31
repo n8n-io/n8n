@@ -8,11 +8,8 @@ import compression from 'compression';
 import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
-import {
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
-	WebhookHttpMethod,
-} from 'n8n-workflow';
+import type { WebhookHttpMethod } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -25,7 +22,7 @@ import {
 	sendSuccessResponse,
 	ServiceUnavailableError,
 } from '@/ResponseHelper';
-import { corsMiddleware } from '@/middlewares/cors';
+import { corsMiddleware } from '@/middlewares';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';

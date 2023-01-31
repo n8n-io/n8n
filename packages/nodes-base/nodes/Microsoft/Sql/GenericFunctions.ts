@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { ITables } from './TableInterface';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { ITables } from './TableInterface';
 
 /**
  * Returns a copy of the item which only contains the json data and

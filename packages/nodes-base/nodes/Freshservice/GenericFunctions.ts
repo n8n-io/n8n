@@ -1,15 +1,16 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
+import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
 	LoadedUser,
 	RolesParameter,
 } from './types';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { omit } from 'lodash';
 

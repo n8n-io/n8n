@@ -1,18 +1,26 @@
 import vue from '@vitejs/plugin-vue2';
-import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig, PluginOption } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+
 import packageJSON from './package.json';
 
 const vendorChunks = ['vue', 'vue-router'];
+const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
 	'vue2-boring-avatars',
 	'vue-template-compiler',
 	'jquery',
 	'@fontsource/open-sans',
+	'normalize-wheel',
+	'stream-browserify',
+	'lodash.camelcase',
+	'lodash.debounce',
+	'lodash.get',
+	'lodash.orderby',
+	'lodash.set',
 ];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
@@ -22,7 +30,7 @@ function renderChunks() {
 	const chunks: Record<string, string[]> = {};
 
 	Object.keys(dependencies).forEach((key) => {
-		if ([...vendorChunks, ...ignoreChunks].includes(key)) {
+		if ([...vendorChunks, ...n8nChunks, ...ignoreChunks].includes(key)) {
 			return;
 		}
 
@@ -46,19 +54,13 @@ export default mergeConfig(
 		define: {
 			// This causes test to fail but is required for actually running it
 			...(process.env.NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins: [
 			legacy({
 				targets: ['defaults', 'not IE 11'],
 			}),
 			vue(),
-			...(createHtmlPlugin({
-				inject: {
-					data: {
-						BASE_PATH: publicPath,
-					},
-				},
-			}) as PluginOption[]),
 			monacoEditorPlugin({
 				publicPath: 'assets/monaco-editor',
 				customDistPath: (root: string, buildOutDir: string, base: string) =>
@@ -68,7 +70,7 @@ export default mergeConfig(
 		resolve: {
 			alias: [
 				{ find: '@', replacement: resolve(__dirname, 'src') },
-				{ find: 'stream', replacement: '' },
+				{ find: 'stream', replacement: 'stream-browserify' },
 				{
 					find: /^n8n-design-system\//,
 					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
@@ -108,6 +110,7 @@ export default mergeConfig(
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
+						n8n: n8nChunks,
 						...renderChunks(),
 					},
 				},
@@ -119,6 +122,11 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			css: {
+				modules: {
+					classNameStrategy: 'non-scoped',
+				},
+			},
 		},
 	}),
 );

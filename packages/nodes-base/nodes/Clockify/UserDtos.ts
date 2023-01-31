@@ -1,5 +1,5 @@
-import { IDataObject } from 'n8n-workflow';
-import { IMembershipDto } from './CommonDtos';
+import type { IDataObject } from 'n8n-workflow';
+import type { IMembershipDto } from './CommonDtos';
 
 enum UserStatusEnum {
 	ACTIVE,

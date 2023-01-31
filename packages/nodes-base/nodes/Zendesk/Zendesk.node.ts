@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 
@@ -21,7 +20,7 @@ import { userFields, userOperations } from './UserDescription';
 
 import { organizationFields, organizationOperations } from './OrganizationDescription';
 
-import { IComment, ITicket } from './TicketInterface';
+import type { IComment, ITicket } from './TicketInterface';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,16 +1,11 @@
-import {
-	CompressionTypes,
-	Kafka as apacheKafka,
-	KafkaConfig,
-	SASLOptions,
-	TopicMessages,
-} from 'kafkajs';
+import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
+import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -19,8 +14,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {

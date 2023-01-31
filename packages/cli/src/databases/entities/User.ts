@@ -12,7 +12,7 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser } from 'n8n-workflow';
-import type { Role } from './Role';
+import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';

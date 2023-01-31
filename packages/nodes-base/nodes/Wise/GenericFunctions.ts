@@ -1,13 +1,9 @@
 import { createSign } from 'crypto';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Wise.
