@@ -715,13 +715,12 @@ export class TodoistV2 implements INodeType {
 
 				if (responseData !== undefined && Array.isArray(responseData?.data)) {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				} else {
 					if (responseData?.hasOwnProperty('success')) {
-						returnData.push();
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: responseData.success }),
 							{ itemData: { item: i } },
