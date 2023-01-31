@@ -61,11 +61,9 @@ describe('Canvas Actions', () => {
 	it('should add note between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
-		cy.get('.connection-actions .add').as('AddNodeConnectionButton');
-		cy.get('@AddNodeConnectionButton').invoke('show');
-		cy.get('@AddNodeConnectionButton').should('be.visible').click();
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.getters.nodeConnections().first().realHover();
+		cy.get('.connection-actions .add').filter(':visible').should('be.visible').click()
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		// And last node should be pushed to the right
@@ -219,8 +217,8 @@ describe('Canvas Actions', () => {
 	it('should delete connections by pressing the delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
-		cy.get('.connection-actions .delete').click();
+		WorkflowPage.getters.nodeConnections().first().realHover();
+		cy.get('.connection-actions .delete').filter(':visible').should('be.visible').click();
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 

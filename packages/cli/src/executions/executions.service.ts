@@ -12,7 +12,6 @@ import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type {
-	DatabaseType,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -70,7 +69,7 @@ export class ExecutionsService {
 		countFilter: IDataObject,
 		user: User,
 	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
@@ -224,8 +223,19 @@ export class ExecutionsService {
 			});
 		}
 
-		let query = Db.collections.Execution.createQueryBuilder()
-			.select()
+		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		let query = Db.collections.Execution.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.waitTill',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowData',
+			])
 			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);
