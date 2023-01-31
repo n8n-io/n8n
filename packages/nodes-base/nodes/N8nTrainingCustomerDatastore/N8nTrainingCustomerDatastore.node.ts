@@ -139,7 +139,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				);
 				returnData.push.apply(returnData, executionData);
 			} else if (responseData !== undefined) {
-				returnData.push.apply(responseData);
+				returnData.push({ json: responseData });
 			}
 		}
 		return this.prepareOutputData(returnData);
