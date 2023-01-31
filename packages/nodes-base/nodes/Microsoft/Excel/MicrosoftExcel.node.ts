@@ -121,11 +121,13 @@ export class MicrosoftExcel implements INodeType {
 				}
 
 				return {
-					results: (response.value as IDataObject[]).map((workbook: IDataObject) => ({
-						name: (workbook.name as string).replace('.xlsx', ''),
-						value: workbook.id as string,
-						url: workbook.webUrl as string,
-					})),
+					results: (response.value as IDataObject[]).map((workbook: IDataObject) => {
+						return {
+							name: (workbook.name as string).replace('.xlsx', ''),
+							value: workbook.id as string,
+							url: workbook.webUrl as string,
+						};
+					}),
 					paginationToken: response['@odata.nextLink'],
 				};
 			},
@@ -201,7 +203,7 @@ export class MicrosoftExcel implements INodeType {
 					const [sheetName, sheetRange] = address.split('!' as string);
 
 					const url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName)}${
-						sheetRange ? ':' + (sheetRange as string) : ''
+						sheetRange ? '!' + (sheetRange as string) : ''
 					}`;
 
 					results.push({ name, value, url });
@@ -755,7 +757,18 @@ export class MicrosoftExcel implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${workbookId}`);
+						try {
+							await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${workbookId}`);
+						} catch (error) {
+							if (error?.description.includes('Lock token does not match existing lock')) {
+								const description =
+									'Lock token does not match existing lock, this error could happen if the file is opened in the browser or the Office client, please close file and try again.';
+
+								throw new NodeOperationError(this.getNode(), error, { itemIndex: i, description });
+							} else {
+								throw error;
+							}
+						}
 
 						responseData = { success: true };
 					}
@@ -885,8 +898,13 @@ export class MicrosoftExcel implements INodeType {
 						extractValue: true,
 					}) as string;
 
-					let range = this.getNodeParameter('range', 0) as string;
+					let range = this.getNodeParameter('range', 0, '') as string;
 					const dataMode = this.getNodeParameter('dataMode', 0) as string;
+
+					if (dataMode === 'nothing') {
+						// returnData.push({ json: {} });
+						return [this.helpers.returnJsonArray(returnData)];
+					}
 
 					let worksheetData: IDataObject = {};
 
