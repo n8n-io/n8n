@@ -20,6 +20,33 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.beginningOf("week") should work correctly on a string', () => {
+			const evaluatedDate = evaluate('={{ "2023-01-30".toDate().beginningOf("week") }}');
+			const expectedDate = DateTime.local(2023, 1, 30, { zone: TEST_TIMEZONE }).toJSDate();
+
+			if (evaluatedDate && evaluatedDate instanceof Date) {
+				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
+			}
+		});
+
+		test('.beginningOf("month") should work correctly on a string', () => {
+			const evaluatedDate = evaluate('={{ "2023-06-16".toDate().beginningOf("month") }}');
+			const expectedDate = DateTime.local(2023, 6, 1, { zone: TEST_TIMEZONE }).toJSDate();
+
+			if (evaluatedDate && evaluatedDate instanceof Date) {
+				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
+			}
+		});
+
+		test('.beginningOf("year") should work correctly on a string', () => {
+			const evaluatedDate = evaluate('={{ "2023-01-30".toDate().beginningOf("year") }}');
+			const expectedDate = DateTime.local(2023, 1, 1, { zone: TEST_TIMEZONE }).toJSDate();
+
+			if (evaluatedDate && evaluatedDate instanceof Date) {
+				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
+			}
+		});
+
 		test('.endOfMonth() should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}')).toEqual(
 				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }).toJSDate(),
