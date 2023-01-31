@@ -70,6 +70,7 @@ import {
 	OAuth2GrantType,
 	deepCopy,
 	fileTypeFromMimeType,
+	ExpressionError,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1806,12 +1807,15 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
-
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+			returnData = [{ name: undefined, value: undefined }];
+		} else {
+			if (e.context) e.context.parameter = parameterName;
+			e.cause = value;
+			throw e;
+		}
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages
