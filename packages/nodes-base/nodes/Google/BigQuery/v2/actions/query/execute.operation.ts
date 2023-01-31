@@ -178,8 +178,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					responseData = rows;
 
 					responseData = simplify(responseData, fields);
+				} else if (schema && !rows?.length) {
+					responseData = [];
 				} else {
-					responseData = response;
+					responseData = { success: true };
 				}
 			}
 
