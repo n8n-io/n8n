@@ -233,7 +233,7 @@ const telemetry = instance?.proxy.$telemetry;
 const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(
 	() =>
-	activeNodeActions.value?.properties.some((p) =>
+		activeNodeActions.value?.properties.some((p) =>
 			p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
 		) === true,
 );

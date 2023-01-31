@@ -60,7 +60,7 @@ function filterActions(actions: INodeActionTypeDescription[]) {
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
 			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
-			if(isApiCall) return false;
+			if (isApiCall) return false;
 
 			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
 			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
