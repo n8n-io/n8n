@@ -13,7 +13,7 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
-				<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
+				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
 				<n8n-tooltip
 					v-if="!!$slots.tooltip"
 					placement="top"
@@ -36,7 +36,6 @@
 
 <script setup lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import TriggerIcon from './TriggerIcon.vue';
 import N8nTooltip from '../N8nTooltip';
 
 export interface Props {
@@ -60,7 +59,7 @@ defineEmits<{
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: 11px 8px 11px 0;
+	padding: 12px 8px 12px 0;
 
 	&.hasAction {
 		user-select: none;
@@ -114,7 +113,8 @@ defineEmits<{
 }
 
 .triggerIcon {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing-3xs);
+	color: var(--color-primary);
 }
 </style>
 

@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="node-wrapper"
+		:class="{'node-wrapper': true, 'node-wrapper--trigger': isTriggerNode}"
 		:style="nodePosition"
 		:id="nodeId"
 		data-test-id="canvas-node"
@@ -15,6 +15,8 @@
 				'is-touch-device': isTouchDevice,
 			}"
 		>
+			<font-awesome-icon icon="bolt" size="lg" v-if="isTriggerNode" class="trigger-icon" />
+
 			<div
 				:class="nodeClass"
 				:style="nodeStyle"
@@ -190,6 +192,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { EnableNodeToggleCommand } from '@/models/history';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default mixins(
 	externalHooks,
@@ -202,6 +205,7 @@ export default mixins(
 	name: 'Node',
 	components: {
 		TitledList,
+		FontAwesomeIcon,
 		NodeIcon,
 	},
 	props: {
@@ -641,7 +645,6 @@ export default mixins(
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
 			background-color: var(--color-background-xlight);
-
 			&.executing {
 				background-color: var(--color-primary-tint-3) !important;
 
@@ -761,6 +764,18 @@ export default mixins(
 			}
 		}
 	}
+	&--trigger .node-default .node-box {
+		border-radius: 32px 8px 8px 32px;
+	}
+	.trigger-icon {
+		position: absolute;
+		right: 100%;
+		top: 0;
+		bottom: 0;
+		margin: auto;
+		margin-right: var(--spacing-2xs);
+		color: var(--color-primary)
+	}
 }
 
 .select-background {
@@ -778,6 +793,10 @@ export default mixins(
 	top: -8px !important;
 	height: 116px;
 	width: 116px !important;
+
+	.node-wrapper--trigger & {
+		border-radius: 32px 8px 8px 32px;
+	}
 }
 
 .disabled-linethrough {

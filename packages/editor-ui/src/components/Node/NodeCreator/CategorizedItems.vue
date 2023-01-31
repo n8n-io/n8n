@@ -202,7 +202,6 @@ const selectedViewType = computed(() => nodeCreatorStore.selectedView);
 
 const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 	const filter = searchFilter.value;
-	const startTime = performance.now();
 
 	let returnItems: INodeCreateElement[] = [];
 	if (defaultLocale !== 'en') {
@@ -218,9 +217,6 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 
 		returnItems = getFilteredNodes(matchingNodes);
 	}
-
-	const endTime = performance.now();
-	console.log('Filtered node types took:' + (endTime - startTime).toFixed(3) + ' milliseconds');
 	return returnItems;
 });
 
@@ -431,7 +427,6 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 	}
 }
 function selected(element: INodeCreateElement) {
-	console.log('🚀 ~ file: CategorizedItems.vue:467 ~ selected ~ element', element);
 	const typeHandler = {
 		category: () => onCategorySelected(element),
 		subcategory: () => onSubcategorySelected(element),
