@@ -657,7 +657,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary' });
 			}
 
-			if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
+			if (this.isPaneTypeInput) {
 				defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
 			}
 
