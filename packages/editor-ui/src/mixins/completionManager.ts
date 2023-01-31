@@ -1,11 +1,8 @@
 import mixins from 'vue-typed-mixins';
 import { ExpressionExtensions } from 'n8n-workflow';
-import { EditorView, keymap, ViewUpdate } from '@codemirror/view';
-import { completionStatus } from '@codemirror/autocomplete';
+import { EditorView, ViewUpdate } from '@codemirror/view';
 
 import { expressionManager } from './expressionManager';
-
-import type { Extension } from '@codemirror/state';
 
 export const completionManager = mixins(expressionManager).extend({
 	data() {
@@ -25,23 +22,6 @@ export const completionManager = mixins(expressionManager).extend({
 
 				return acc;
 			}, {});
-		},
-
-		/**
-		 * Prevent completions dismissal from also closing container if modal.
-		 */
-		previewKeymap(): Extension {
-			return keymap.of([
-				{
-					any(view: EditorView, event: KeyboardEvent) {
-						if (event.key === 'Escape' && completionStatus(view.state) !== null) {
-							event.stopPropagation();
-						}
-
-						return false;
-					},
-				},
-			]);
 		},
 	},
 	methods: {

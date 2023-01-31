@@ -10,10 +10,10 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, completionStatus } from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -81,7 +81,19 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 	mounted() {
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
-			Prec.highest(this.previewKeymap),
+			Prec.highest(
+				keymap.of([
+					{
+						any(view: EditorView, event: KeyboardEvent) {
+							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
+								event.stopPropagation();
+							}
+
+							return false;
+						},
+					},
+				]),
+			),
 			autocompletion(),
 			n8nLang(),
 			history(),

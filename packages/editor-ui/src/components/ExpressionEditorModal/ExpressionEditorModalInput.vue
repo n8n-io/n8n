@@ -1,10 +1,10 @@
 <template>
-	<div ref="root" class="ph-no-capture" @keydown.stop @keydown.esc="onClose"></div>
+	<div ref="root" class="ph-no-capture" @keydown.stop></div>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
@@ -42,7 +42,20 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 		const extensions = [
 			inputTheme(),
 			autocompletion(),
-			Prec.highest(this.previewKeymap),
+			Prec.highest(
+				keymap.of([
+					{
+						any: (_: EditorView, event: KeyboardEvent) => {
+							if (event.key === 'Escape') {
+								event.stopPropagation();
+								this.$emit('close');
+							}
+
+							return false;
+						},
+					},
+				]),
+			),
 			n8nLang(),
 			history(),
 			expressionInputHandler(),
@@ -93,9 +106,6 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 		this.editor?.destroy();
 	},
 	methods: {
-		onClose() {
-			this.$emit('close');
-		},
 		itemSelected({ variable }: IVariableItemSelected) {
 			if (!this.editor || this.isReadOnly) return;
 
