@@ -285,7 +285,7 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		placeholder: 'e.g. A1:B2',
 		default: '',
-		description: 'The address or the name of the range',
+		description: 'The sheet range to read the data from specified using a A1-style notation',
 		hint: 'Leave blank to return entire worksheet',
 	},
 	{
@@ -396,7 +396,7 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		placeholder: 'e.g. A1:B2',
 		default: '',
-		description: 'The address or the name of the range',
+		description: 'The sheet range to read the data from specified using a A1-style notation',
 		hint: 'First row must contain column names. Leave blank for entire worksheet.',
 	},
 	{
@@ -412,7 +412,7 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		placeholder: 'e.g. A1:B2',
 		default: '',
-		description: 'The address or the name of the range',
+		description: 'The sheet range to read the data from specified using a A1-style notation',
 		hint: 'Leave blank for entire worksheet',
 	},
 	{

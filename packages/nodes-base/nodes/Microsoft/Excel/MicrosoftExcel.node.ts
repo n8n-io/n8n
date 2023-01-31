@@ -133,7 +133,11 @@ export class MicrosoftExcel implements INodeType {
 			async getWorksheetsList(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 				const workbookId = workbookRLC.value as string;
-				const workbookURL = workbookRLC.cachedResultUrl as string;
+				let workbookURL = workbookRLC.cachedResultUrl as string;
+
+				if (workbookURL.includes('1drv.ms')) {
+					workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
+				}
 
 				let response: IDataObject = {};
 
@@ -159,7 +163,11 @@ export class MicrosoftExcel implements INodeType {
 			async getWorksheetTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 				const workbookId = workbookRLC.value as string;
-				const workbookURL = workbookRLC.cachedResultUrl as string;
+				let workbookURL = workbookRLC.cachedResultUrl as string;
+
+				if (workbookURL.includes('1drv.ms')) {
+					workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
+				}
 
 				const worksheetId = this.getNodeParameter('worksheet', undefined, {
 					extractValue: true,
@@ -190,7 +198,11 @@ export class MicrosoftExcel implements INodeType {
 						},
 					);
 
-					const url = `${workbookURL}&activeCell=${encodeURIComponent(address)}`;
+					const [sheetName, sheetRange] = address.split('!' as string);
+
+					const url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName)}${
+						sheetRange ? ':' + (sheetRange as string) : ''
+					}`;
 
 					results.push({ name, value, url });
 				}
