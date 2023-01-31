@@ -259,6 +259,7 @@ export const dealFields: INodeProperties[] = [
 				placeholder: 'Select from the list',
 				typeOptions: {
 					searchListMethod: 'searchDeals',
+					searchable: true,
 				},
 			},
 			{
@@ -441,6 +442,7 @@ export const dealFields: INodeProperties[] = [
 				placeholder: 'Select from the list',
 				typeOptions: {
 					searchListMethod: 'searchDeals',
+					searchable: true,
 				},
 			},
 			{
@@ -655,6 +657,7 @@ export const dealFields: INodeProperties[] = [
 				placeholder: 'Select from the list',
 				typeOptions: {
 					searchListMethod: 'searchDeals',
+					searchable: true,
 				},
 			},
 			{

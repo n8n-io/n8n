@@ -553,6 +553,7 @@ export const contactFields: INodeProperties[] = [
 				placeholder: 'Select from the list',
 				typeOptions: {
 					searchListMethod: 'searchContacts',
+					searchable: true,
 				},
 			},
 			{
@@ -818,6 +819,7 @@ export const contactFields: INodeProperties[] = [
 				placeholder: 'Select from the list',
 				typeOptions: {
 					searchListMethod: 'searchContacts',
+					searchable: true,
 				},
 			},
 			{

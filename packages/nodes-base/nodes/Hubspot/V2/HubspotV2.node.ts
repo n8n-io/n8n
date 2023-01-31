@@ -8,6 +8,7 @@ import {
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
+	INodeListSearchItems,
 	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
@@ -1001,39 +1002,71 @@ export class HubspotV2 implements INodeType {
 					})),
 				};
 			},
-			async searchContacts(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+			async searchContacts(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
 				const endpoint = '/contacts/v1/lists/all/contacts/all';
 				const qs: IDataObject = {
 					property: ['email'],
 				};
-				const contacts = await hubspotApiRequestAllItems.call(
+				const contacts = (await hubspotApiRequestAllItems.call(
 					this,
 					'contacts',
 					'GET',
 					endpoint,
 					{},
 					qs,
-				);
-				return {
-					// tslint:disable-next-line: no-any
-					results: contacts.map((b: any) => ({
-						name: b.properties?.email?.value || b.vid,
-						value: b.vid,
-					})),
-				};
+				)) as Array<{ vid: string; properties: { email: { value: string } } }>;
+				const results: INodeListSearchItems[] = contacts
+					.map((c) => ({
+						name: c.properties.email.value || c.vid,
+						value: c.vid,
+					}))
+					.filter(
+						(c) =>
+							!filter ||
+							c.name.toLowerCase().includes(filter.toLowerCase()) ||
+							c.value?.toString() === filter,
+					)
+					.sort((a, b) => {
+						return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+					});
+
+				return { results };
 			},
-			async searchDeals(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+			async searchDeals(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
 				const endpoint = '/deals/v1/deal/paged';
 				const qs: IDataObject = {
 					properties: ['dealname'],
 				};
-				const deals = await hubspotApiRequestAllItems.call(this, 'deals', 'GET', endpoint, {}, qs);
+				const deals = (await hubspotApiRequestAllItems.call(
+					this,
+					'deals',
+					'GET',
+					endpoint,
+					{},
+					qs,
+				)) as Array<{ dealId: string; properties: { dealname: { value: string } } }>;
+				const results: INodeListSearchItems[] = deals
+					.map((c) => ({
+						name: c.properties?.dealname?.value || c.dealId,
+						value: c.dealId,
+					}))
+					.filter(
+						(c) =>
+							!filter ||
+							c.name.toString().toLowerCase().includes(filter.toString().toLowerCase()) ||
+							c.value?.toString() === filter,
+					)
+					.sort((a, b) => {
+						return a.name.toString().toLowerCase() < b.name.toString().toLowerCase() ? -1 : 1;
+					});
 				return {
-					// tslint:disable-next-line: no-any
-					results: deals.map((b: any) => ({
-						name: b.properties?.dealname?.value || b.dealId,
-						value: b.dealId,
-					})),
+					results,
 				};
 			},
 			async searchEngagements(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
