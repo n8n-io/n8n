@@ -60,7 +60,6 @@ import type {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
-	ExpressionError,
 } from 'n8n-workflow';
 import {
 	NodeApiError,
@@ -71,6 +70,7 @@ import {
 	OAuth2GrantType,
 	deepCopy,
 	fileTypeFromMimeType,
+	ExpressionError,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
