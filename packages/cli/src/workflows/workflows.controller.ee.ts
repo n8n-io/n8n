@@ -209,6 +209,7 @@ EEWorkflowController.get(
 
 		return workflows.map((workflow: WorkflowWithSharingsAndCredentials) => {
 			EEWorkflows.addOwnerAndSharings(workflow);
+			workflow.nodes = [];
 			delete workflow.sharedWith;
 			return workflow;
 		});
