@@ -1,18 +1,15 @@
+import config from '@/config';
 import type { ICredentialDataDecryptedObject, ICredentialTypes } from 'n8n-workflow';
 import { deepCopy, LoggerProxy as Logger, jsonParse } from 'n8n-workflow';
 import type { ICredentialsOverwrite } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
 
 class CredentialsOverwritesClass {
 	private overwriteData: ICredentialsOverwrite = {};
 
 	private resolvedTypes: string[] = [];
 
-	constructor(private credentialTypes: ICredentialTypes) {}
-
-	async init() {
-		const data = (await GenericHelpers.getConfigValue('credentials.overwrite.data')) as string;
-
+	constructor(private credentialTypes: ICredentialTypes) {
+		const data = config.getEnv('credentials.overwrite.data');
 		const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
 			errorMessage: 'The credentials-overwrite is not valid JSON.',
 		});

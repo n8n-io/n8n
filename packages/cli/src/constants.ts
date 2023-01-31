@@ -3,11 +3,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
-import {
-	n8n,
-	RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES,
-	UserSettings,
-} from 'n8n-core';
+import type { n8n } from 'n8n-core';
+import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 const { NODE_ENV, E2E_TESTS } = process.env;

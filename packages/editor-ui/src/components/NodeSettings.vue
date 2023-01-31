@@ -103,7 +103,9 @@
 					<node-credentials
 						:node="node"
 						:readonly="isReadOnly"
+						:showAll="true"
 						@credentialSelected="credentialSelected"
+						@valueChanged="valueChanged"
 						@blur="onParameterBlur"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 					/>
@@ -547,7 +549,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		nameChanged(name: string) {
 			if (this.node) {
-				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name));
 			}
 			// @ts-ignore
 			this.valueChanged({

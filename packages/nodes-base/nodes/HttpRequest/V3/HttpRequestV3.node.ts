@@ -1,24 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request-promise-native';
+import type { OptionsWithUri } from 'request-promise-native';
 
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
-	IAuthDataSanitizeKeys,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';

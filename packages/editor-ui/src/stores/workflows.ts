@@ -50,6 +50,7 @@ import {
 	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
+	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
@@ -194,7 +195,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getNodeById() {
 			return (nodeId: string): INodeUi | undefined =>
-				this.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
+				this.workflow.nodes.find((node: INodeUi) => {
+					return node.id === nodeId;
+				});
 		},
 		nodesIssuesExist(): boolean {
 			for (const node of this.workflow.nodes) {
@@ -256,6 +259,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const workflows = await getWorkflows(rootStore.getRestApiContext);
 			this.setWorkflows(workflows);
 			return workflows;
+		},
+
+		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
+			this.addWorkflow(workflow);
+			return workflow;
 		},
 
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {

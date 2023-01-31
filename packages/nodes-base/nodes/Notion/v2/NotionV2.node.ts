@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,10 +8,10 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import type { SortData } from '../GenericFunctions';
 import {
 	downloadFiles,
 	extractDatabaseId,
@@ -26,7 +26,6 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-	SortData,
 	validateJSON,
 } from '../GenericFunctions';
 

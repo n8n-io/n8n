@@ -22,7 +22,8 @@ export class NDV extends BasePage {
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
-		outputTbodyCell: (row: number, cell: number) => this.getters.outputTableRow(row).find('td').eq(cell),
+		outputTbodyCell: (row: number, cell: number) =>
+			this.getters.outputTableRow(row).find('td').eq(cell),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
@@ -44,10 +45,10 @@ export class NDV extends BasePage {
 		setPinnedData: (data: object) => {
 			this.getters.editPinnedDataButton().click();
 
-			const editor = this.getters.pinnedDataEditor()
+			const editor = this.getters.pinnedDataEditor();
 			editor.click();
 			editor.type(`{selectall}{backspace}`);
-			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'),'{{}'));
+			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
 
 			this.getters.savePinnedDataButton().click();
 		},
@@ -55,18 +56,11 @@ export class NDV extends BasePage {
 			this.getters.parameterInput(parameterName).type(content);
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
-			this.getters
-				.parameterInput(parameterName)
-				.find('.option-headline')
-				.contains(content)
-				.click();
+			this.getters.parameterInput(parameterName).find('.option-headline').contains(content).click();
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
-			this.getters.nodeRenameInput()
-				.should('be.visible')
-				.type('{selectall}')
-				.type(newName);
+			this.getters.nodeRenameInput().should('be.visible').type('{selectall}').type(newName);
 			cy.get('body').type('{enter}');
 		},
 	};
