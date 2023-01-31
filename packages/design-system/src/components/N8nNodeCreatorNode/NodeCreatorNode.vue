@@ -59,7 +59,7 @@ defineEmits<{
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: 12px 8px 12px 0;
+	padding: var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs) 0;
 
 	&.hasAction {
 		user-select: none;

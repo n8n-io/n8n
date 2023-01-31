@@ -34,7 +34,6 @@ const subcategoryName = computed(() => camelcase(props.item.subcategory));
 	--action-arrow-color: var(--color-text-light);
 	margin-left: 15px;
 	margin-right: 12px;
-	padding: 11px 4px 11px 0;
 }
 .withTopBorder {
 	border-top: 1px solid var(--color-foreground-base);
