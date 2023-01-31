@@ -29,6 +29,7 @@ export async function invoiceNinjaApiDownloadFile(
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
 	const baseUrl = credentials.url || defaultUrl;
 	
+	// TODO: API-KEY
 	return this.helpers.request({
 		uri: `${baseUrl}/api/v1${endpoint}`,
 		method,
@@ -100,8 +101,7 @@ export async function invoiceNinjaApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
-	query: IDataObject = {},
-	max: number = 0
+	query: IDataObject = {}
 ) {
 	const returnData: IDataObject[] = [];
 

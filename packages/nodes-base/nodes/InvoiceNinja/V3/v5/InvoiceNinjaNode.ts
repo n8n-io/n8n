@@ -50,6 +50,8 @@ import { IRecurringInvoice, IRecurringInvoiceItem } from './RecurringInvoiceInte
 import { recurringExpenseFields, recurringExpenseOperations } from './RecurringExpenseDescription';
 import { IRecurringExpense } from './RecurringExpenseInterface';
 import { IVendor, IVendorContact } from './VendorInterface';
+import { creditFields, creditOperations } from './CreditDescription';
+import { ICredit } from './CreditInterface';
 
 const headProperties: INodeProperties[] = [{
 	displayName: 'Resource (V5)',
@@ -72,6 +74,10 @@ const headProperties: INodeProperties[] = [{
 			value: 'vendor',
 		},
 		{
+			name: 'Quote',
+			value: 'quote',
+		},
+		{
 			name: 'Invoice',
 			value: 'invoice',
 		},
@@ -92,8 +98,8 @@ const headProperties: INodeProperties[] = [{
 			value: 'payment',
 		},
 		{
-			name: 'Quote',
-			value: 'quote',
+			name: 'Credit',
+			value: 'credit',
 		},
 		{
 			name: 'Project',
@@ -137,6 +143,8 @@ export const InvoiceNinjaV5 = {
 			...projectFields,
 			...quoteOperations,
 			...quoteFields,
+			...creditOperations,
+			...creditFields,
 		],
 	},
 
@@ -590,6 +598,305 @@ export const InvoiceNinjaV5 = {
 							'DELETE',
 							`/clients/${clientId}`,
 						);
+						responseData = responseData.data;
+					}
+				}
+				if (resource === 'credit') {
+					if (operation === 'create') {
+						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const body: ICredit = {};
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
+						}
+						if (additionalFields.project) {
+							body.project_id = additionalFields.project as string;
+						}
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
+						}
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.balance) {
+							body.balance = additionalFields.balance as number;
+						}
+						if (additionalFields.clientId) {
+							body.client_id = additionalFields.clientId as string;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.recurringId) {
+							body.recurring_id = additionalFields.recurringId as string;
+						}
+						if (additionalFields.number) {
+							body.number = additionalFields.number as string;
+						}
+						if (additionalFields.discount) {
+							body.discount = additionalFields.discount as number;
+						}
+						if (additionalFields.poNumber) {
+							body.po_number = additionalFields.poNumber as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.nextSendDate) {
+							body.next_send_date = additionalFields.nextSendDate as string;
+						}
+						if (additionalFields.dueDate) {
+							body.due_date = additionalFields.dueDate as string;
+						}
+						if (additionalFields.terms) {
+							body.terms = additionalFields.terms as string;
+						}
+						if (additionalFields.privateNotes) {
+							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.usesInclusiveTaxes) {
+							body.uses_inclusive_taxes = additionalFields.usesInclusiveTaxes as boolean;
+						}
+						if (additionalFields.taxName1) {
+							body.tax_name1 = additionalFields.taxName1 as string;
+						}
+						if (additionalFields.taxName2) {
+							body.tax_name2 = additionalFields.taxName2 as string;
+						}
+						if (additionalFields.taxName3) {
+							body.tax_name3 = additionalFields.taxName3 as string;
+						}
+						if (additionalFields.taxRate1) {
+							body.tax_rate1 = additionalFields.taxtRate1 as number;
+						}
+						if (additionalFields.taxRate2) {
+							body.tax_rate2 = additionalFields.taxtRate2 as number;
+						}
+						if (additionalFields.taxRate3) {
+							body.tax_rate3 = additionalFields.taxtRate3 as number;
+						}
+						if (additionalFields.isAmountDiscount) {
+							body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
+						}
+						if (additionalFields.footer) {
+							body.footer = additionalFields.footer as string;
+						}
+						if (additionalFields.partial) {
+							body.partial = additionalFields.partial as number;
+						}
+						if (additionalFields.partialDueDate) {
+							body.partial_due_date = additionalFields.partialDueDate as string;
+						}
+						if (additionalFields.exchangeRate) {
+							body.exchange_rate = additionalFields.exchangeRate as number;
+						}
+						if (additionalFields.paidToDate) {
+							body.paid_to_date = additionalFields.paidToDate as number;
+						}
+						if (additionalFields.subscriptionId) {
+							body.subscription_id = additionalFields.subscriptionId as string;
+						}
+						if (additionalFields.autoBillEnabled) {
+							body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
+						}						
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'POST',
+							'/credits',
+							body as IDataObject,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'update') {
+						const creditId = that.getNodeParameter('creditId', i) as string;
+						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const body: ICredit = {};
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
+						}
+						if (additionalFields.project) {
+							body.project_id = additionalFields.project as string;
+						}
+						if (additionalFields.assignedUserId) {
+							body.assigned_user_id = additionalFields.assignedUserId as string;
+						}
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.balance) {
+							body.balance = additionalFields.balance as number;
+						}
+						if (additionalFields.clientId) {
+							body.client_id = additionalFields.clientId as string;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.recurringId) {
+							body.recurring_id = additionalFields.recurringId as string;
+						}
+						if (additionalFields.number) {
+							body.number = additionalFields.number as string;
+						}
+						if (additionalFields.discount) {
+							body.discount = additionalFields.discount as number;
+						}
+						if (additionalFields.poNumber) {
+							body.po_number = additionalFields.poNumber as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.nextSendDate) {
+							body.next_send_date = additionalFields.nextSendDate as string;
+						}
+						if (additionalFields.dueDate) {
+							body.due_date = additionalFields.dueDate as string;
+						}
+						if (additionalFields.terms) {
+							body.terms = additionalFields.terms as string;
+						}
+						if (additionalFields.privateNotes) {
+							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.usesInclusiveTaxes) {
+							body.uses_inclusive_taxes = additionalFields.usesInclusiveTaxes as boolean;
+						}
+						if (additionalFields.taxName1) {
+							body.tax_name1 = additionalFields.taxName1 as string;
+						}
+						if (additionalFields.taxName2) {
+							body.tax_name2 = additionalFields.taxName2 as string;
+						}
+						if (additionalFields.taxName3) {
+							body.tax_name3 = additionalFields.taxName3 as string;
+						}
+						if (additionalFields.taxRate1) {
+							body.tax_rate1 = additionalFields.taxtRate1 as number;
+						}
+						if (additionalFields.taxRate2) {
+							body.tax_rate2 = additionalFields.taxtRate2 as number;
+						}
+						if (additionalFields.taxRate3) {
+							body.tax_rate3 = additionalFields.taxtRate3 as number;
+						}
+						if (additionalFields.isAmountDiscount) {
+							body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
+						}
+						if (additionalFields.footer) {
+							body.footer = additionalFields.footer as string;
+						}
+						if (additionalFields.partial) {
+							body.partial = additionalFields.partial as number;
+						}
+						if (additionalFields.partialDueDate) {
+							body.partial_due_date = additionalFields.partialDueDate as string;
+						}
+						if (additionalFields.exchangeRate) {
+							body.exchange_rate = additionalFields.exchangeRate as number;
+						}
+						if (additionalFields.paidToDate) {
+							body.paid_to_date = additionalFields.paidToDate as number;
+						}
+						if (additionalFields.subscriptionId) {
+							body.subscription_id = additionalFields.subscriptionId as string;
+						}
+						if (additionalFields.autoBillEnabled) {
+							body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
+						}	
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'PUT',
+							`/credits/${creditId}`,
+							body as IDataObject,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'get') {
+						const creditId = that.getNodeParameter('creditId', i) as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
+						}
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'GET',
+							`/credits/${creditId}`,
+							{},
+							qs,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.number) {
+							qs.number = filters.number as string;
+						}
+						if (filters.creditStatus) {
+							qs.credit_status = filters.creditStatus.toString() as string;
+						}
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
+						}
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/credits',
+								{},
+								qs,
+							);
+						} else {
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/credits', {}, qs);
+							responseData = responseData.data;
+						}
+					}
+					if (operation === 'delete') {
+						const creditId = that.getNodeParameter('creditId', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/credits/${creditId}`);
 						responseData = responseData.data;
 					}
 				}

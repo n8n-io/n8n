@@ -219,7 +219,7 @@ export const expenseFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 			},
-            {
+			{
 				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
@@ -230,7 +230,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Vendor',
 				name: 'vendorId',
 				type: 'options',
@@ -241,7 +241,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Bank Account',
 				name: 'bankId',
 				type: 'options',
@@ -252,7 +252,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
@@ -269,7 +269,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Should be invoiced',
 				name: 'should_be_invoiced',
 				type: 'boolean',
@@ -286,7 +286,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
@@ -297,7 +297,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Connected Project ID or Name',
 				name: 'projectId',
 				type: 'options',
@@ -308,7 +308,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Connected Invoice ID or Name',
 				name: 'invoiceId',
 				type: 'options',
@@ -319,7 +319,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Connected Recuring Expense ID or Name',
 				name: 'recurringExpenseId',
 				type: 'options',
@@ -465,7 +465,7 @@ export const expenseFields: INodeProperties[] = [
 					},
 				],
 				default: 1,
-			},		
+			},
 			{
 				displayName: 'Tax Name 1',
 				name: 'taxName1',
@@ -507,13 +507,13 @@ export const expenseFields: INodeProperties[] = [
 				name: 'transactionReference',
 				type: 'string',
 				default: '',
-			},	
+			},
 			{
 				displayName: 'Transaction Id',
 				name: 'transactionId',
 				type: 'string',
 				default: '',
-			},	
+			},
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
@@ -619,7 +619,7 @@ export const expenseFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 			},
-            {
+			{
 				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
@@ -630,7 +630,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Vendor',
 				name: 'vendorId',
 				type: 'options',
@@ -641,7 +641,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Bank Account',
 				name: 'bankId',
 				type: 'options',
@@ -652,7 +652,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
@@ -669,7 +669,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Should be invoiced',
 				name: 'should_be_invoiced',
 				type: 'boolean',
@@ -686,7 +686,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
@@ -697,7 +697,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Connected Project ID or Name',
 				name: 'projectId',
 				type: 'options',
@@ -708,7 +708,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Connected Invoice ID or Name',
 				name: 'invoiceId',
 				type: 'options',
@@ -719,7 +719,7 @@ export const expenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Connected Recuring Expense ID or Name',
 				name: 'recurringExpenseId',
 				type: 'options',
@@ -865,7 +865,7 @@ export const expenseFields: INodeProperties[] = [
 					},
 				],
 				default: 1,
-			},		
+			},
 			{
 				displayName: 'Tax Name 1',
 				name: 'taxName1',
@@ -907,13 +907,13 @@ export const expenseFields: INodeProperties[] = [
 				name: 'transactionReference',
 				type: 'string',
 				default: '',
-			},	
+			},
 			{
 				displayName: 'Transaction ID',
 				name: 'transactionId',
 				type: 'string',
 				default: '',
-			},	
+			},
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
