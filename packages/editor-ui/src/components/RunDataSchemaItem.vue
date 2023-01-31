@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { INodeUi, Schema } from '@/Interface';
 import { checkExhaustive, shorten } from '@/utils';
+import { getMappedExpression } from '@/utils/mappingUtils';
 
 type Props = {
 	schema: Schema;
@@ -35,7 +36,12 @@ const text = computed(() =>
 );
 
 const getJsonParameterPath = (path: string): string =>
-	`{{ ${props.distanceFromActive === 1 ? '$json' : `$node["${props.node!.name}"].json`}${path} }}`;
+	getMappedExpression({
+		nodeName: props.node!.name,
+		distanceFromActive: props.distanceFromActive,
+		path,
+	});
+
 const transitionDelay = (i: number) => `${i * 0.033}s`;
 
 const getIconBySchemaType = (type: Schema['type']): string => {

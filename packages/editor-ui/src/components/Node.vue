@@ -1,5 +1,12 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node">
+	<div
+		class="node-wrapper"
+		:style="nodePosition"
+		:id="nodeId"
+		data-test-id="canvas-node"
+		:ref="data.name"
+		:data-name="data.name"
+	>
 		<div class="select-background" v-show="isSelected"></div>
 		<div
 			:class="{
@@ -7,8 +14,6 @@
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
 			}"
-			:data-name="data.name"
-			:ref="data.name"
 		>
 			<div
 				:class="nodeClass"
@@ -515,7 +520,6 @@ export default mixins(
 						this.data.name,
 						!this.data.disabled,
 						this.data.disabled === true,
-						this,
 					),
 				);
 				this.$telemetry.track('User clicked node hover button', {
@@ -698,6 +702,7 @@ export default mixins(
 
 			.items-count {
 				font-size: var(--font-size-s);
+				padding: 0;
 			}
 		}
 
@@ -807,20 +812,33 @@ export default mixins(
 		}
 	}
 }
-
+.dot-output-endpoint:hover circle {
+	fill: var(--color-primary);
+}
 /** connector */
 .jtk-connector {
 	z-index: 3;
+}
+
+.jtk-floating-endpoint {
+	opacity: 0;
 }
 
 .jtk-connector path {
 	transition: stroke 0.1s ease-in-out;
 }
 
-.jtk-connector.success {
+.jtk-overlay {
+	z-index: 3;
+}
+.jtk-connector {
 	z-index: 4;
 }
-
+.node-input-endpoint-label,
+.node-output-endpoint-label,
+.connection-run-items-label {
+	z-index: 5;
+}
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
@@ -828,20 +846,12 @@ export default mixins(
 .jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
-
 .jtk-endpoint.dot-output-endpoint {
 	z-index: 7;
-}
-
-.jtk-overlay {
-	z-index: 7;
+	overflow: auto;
 }
 
 .disabled-linethrough {
-	z-index: 8;
-}
-
-.jtk-connector.jtk-dragging {
 	z-index: 8;
 }
 
@@ -849,9 +859,12 @@ export default mixins(
 .jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
 }
+.rect-input-endpoint > * {
+	pointer-events: none;
+}
 
 .connection-actions {
-	z-index: 10;
+	z-index: 100;
 }
 
 .node-options {
@@ -861,88 +874,207 @@ export default mixins(
 .drop-add-node-label {
 	z-index: 10;
 }
+
+.jtk-connector.success:not(.jtk-hover) {
+	path:not(.jtk-connector-outline) {
+		stroke: var(--color-success-light);
+	}
+	path[jtk-overlay-id='endpoint-arrow'],
+	path[jtk-overlay-id='midpoint-arrow'] {
+		fill: var(--color-success-light);
+	}
+}
 </style>
 
 <style lang="scss">
-$--stalklength: 40px;
-$--box-size-medium: 24px;
-$--box-size-small: 18px;
+:root {
+	--endpoint-size-small: 14px;
+	--endpoint-size-medium: 18px;
+	--stalk-size: 40px;
+	--stalk-success-size: 87px;
+	--stalk-long-size: 127px;
+	--plus-endpoint-box-size: 24px;
+	--plus-endpoint-box-size-small: 17px;
+}
+
+.plus-svg-circle {
+	z-index: 111;
+	circle {
+		stroke: var(--color-foreground-xdark);
+		stroke-width: 2px;
+		fill: var(--color-foreground-xdark);
+	}
+
+	&:hover {
+		circle {
+			stroke: var(--color-primary);
+			fill: var(--color-primary);
+		}
+	}
+}
+.plus-stalk {
+	width: calc(var(--stalk-size) + 2px);
+	border: 1px solid var(--color-foreground-dark);
+	margin-left: calc(var(--stalk-size) / 2);
+	z-index: 3;
+	&.ep-success {
+		border-color: var(--color-success-light);
+
+		&:after {
+			content: attr(data-label);
+			position: absolute;
+			left: 0;
+			right: 0;
+			bottom: 100%;
+			margin: auto;
+			margin-bottom: 2px;
+			text-align: center;
+
+			line-height: 1.3em;
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-regular);
+			color: var(--color-success);
+		}
+	}
+}
+.connection-run-items-label {
+	// Disable points events so that the label does not block the connection
+	// mouse over event.
+	pointer-events: none;
+	span {
+		border-radius: 7px;
+		background-color: hsla(
+			var(--color-canvas-background-h),
+			var(--color-canvas-background-s),
+			var(--color-canvas-background-l),
+			0.85
+		);
+		line-height: 1.3em;
+		padding: 0px 3px;
+		white-space: nowrap;
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+		color: var(--color-success);
+		margin-top: -15px;
+
+		&.floating {
+			position: absolute;
+			top: -6px;
+			transform: translateX(-50%);
+		}
+	}
+}
+
+.connection-input-name-label {
+	position: relative;
+
+	span {
+		position: absolute;
+		top: -10px;
+		left: -60px;
+	}
+}
 
 .plus-endpoint {
 	cursor: pointer;
-
-	.plus-stalk {
-		border-top: 2px solid var(--color-foreground-dark);
-		position: absolute;
-		width: $--stalklength;
-		height: 0;
-		right: 100%;
-		top: calc(50% - 1px);
+	z-index: 10;
+	margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size) / 2) - 1px);
+	g {
+		fill: var(--color-background-xlight);
 		pointer-events: none;
-
-		.connection-run-items-label {
-			position: relative;
-			width: 100%;
-
-			span {
-				display: none;
-				left: calc(50% + 4px);
-			}
-		}
 	}
 
-	.plus-container {
-		color: var(--color-foreground-xdark);
-		border: 2px solid var(--color-foreground-xdark);
-		background-color: var(--color-background-xlight);
-		border-radius: var(--border-radius-base);
-		height: $--box-size-medium;
-		width: $--box-size-medium;
-
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		font-size: var(--font-size-2xs);
-		position: absolute;
-
-		top: 0;
-		right: 0;
-		pointer-events: none;
-
-		&.small {
-			height: $--box-size-small;
-			width: $--box-size-small;
-			font-size: 8px;
+	&:hover {
+		path {
+			fill: var(--color-primary);
 		}
-
-		.fa-plus {
-			width: 1em;
+		rect {
+			stroke: var(--color-primary);
 		}
 	}
+	path {
+		fill: var(--color-foreground-xdark);
+	}
+	rect {
+		stroke: var(--color-foreground-xdark);
+	}
 
-	.drop-hover-message {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-2xs);
-		line-height: var(--font-line-height-regular);
-		color: var(--color-text-light);
+	&.small {
+		margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size-small) / 2));
+		g {
+			transform: scale(0.75);
+			transform-origin: center;
+		}
+		rect {
+			stroke-width: 2.5;
+		}
+	}
+	&:hover .plus-container {
+		color: var(--color-primary);
+		border: 2px solid var(--color-primary);
+	}
+	&:hover .drop-hover-message {
+		display: block;
+	}
 
-		position: absolute;
-		top: -6px;
-		left: calc(100% + 8px);
-		width: 200px;
+	&.hidden {
 		display: none;
 	}
+}
 
-	&.hidden > * {
-		display: none;
+.node-input-endpoint-label,
+.node-output-endpoint-label {
+	background-color: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
+	border-radius: 7px;
+	font-size: 0.7em;
+	padding: 2px;
+	white-space: nowrap;
+}
+
+.node-output-endpoint-label {
+	margin-left: calc(var(--endpoint-size-small) + var(--spacing-3xs));
+}
+.node-input-endpoint-label {
+	text-align: right;
+	margin-left: -25px;
+
+	&--moved {
+		margin-left: -40px;
 	}
-
-	&.success .plus-stalk {
-		border-color: var(--color-success-light);
-
-		span {
-			display: inline;
-		}
+}
+.hover-message.jtk-overlay {
+	--hover-message-width: 110px;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-regular);
+	color: var(--color-text-light);
+	width: var(--hover-message-width);
+	margin-left: calc(
+		(var(--hover-message-width) / 2) + var(--stalk-size) + var(--plus-endpoint-box-size) +
+			var(--spacing-2xs)
+	);
+	opacity: 0;
+	pointer-events: none;
+	&.small {
+		margin-left: calc(
+			(var(--hover-message-width) / 2) + var(--stalk-size) + var(--plus-endpoint-box-size-small) +
+				var(--spacing-2xs)
+		);
 	}
+	&.visible {
+		pointer-events: all;
+		opacity: 1;
+	}
+}
+.ep-success {
+	--stalk-size: var(--stalk-success-size);
+}
+.long-stalk {
+	--stalk-size: var(--stalk-long-size);
 }
 </style>
