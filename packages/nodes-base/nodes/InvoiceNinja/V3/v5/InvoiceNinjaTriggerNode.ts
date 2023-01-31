@@ -16,8 +16,8 @@ const eventID: { [key: string]: string } = {
 
 	create_vendor: '5',
 	update_vendor: '13',
-	archive_vendor: 'wip1', // WIP
-	restore_vendor: 'wip2', // WIP
+	archive_vendor: '48',
+	restore_vendor: '49',
 	delete_vendor: '14',
 
 	create_invoice: '2',
@@ -104,14 +104,14 @@ const headProperties: INodeProperties[] = [{
 			name: 'Vendor Updated',
 			value: 'update_vendor',
 		},
-		// {										// WIP
-		// 	name: 'Vendor Archived',
-		// 	value: 'archive_vendor',
-		// },
-		// {
-		// 	name: 'Vendor Restored',
-		// 	value: 'restore_vendor',
-		// },
+		{
+			name: 'Vendor Archived',
+			value: 'archive_vendor',
+		},
+		{
+			name: 'Vendor Restored',
+			value: 'restore_vendor',
+		},
 		{
 			name: 'Vendor Deleted',
 			value: 'delete_vendor',
