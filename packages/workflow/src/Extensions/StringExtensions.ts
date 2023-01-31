@@ -113,7 +113,7 @@ function removeTags(value: string): string {
 }
 
 function toDate(value: string): Date {
-	const date = new Date(value.toString());
+	const date = new Date(Date.parse(value));
 
 	if (date.toString() === 'Invalid Date') {
 		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
