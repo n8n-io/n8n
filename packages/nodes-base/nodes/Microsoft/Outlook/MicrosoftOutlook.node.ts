@@ -196,7 +196,11 @@ export class MicrosoftOutlook implements INodeType {
 							);
 							returnData.push(...executionData);
 						} else {
-							returnData.push(responseData);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
 
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
@@ -233,7 +237,11 @@ export class MicrosoftOutlook implements INodeType {
 							body,
 							{},
 						);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -276,7 +284,11 @@ export class MicrosoftOutlook implements INodeType {
 
 						responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});
 
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -385,7 +397,11 @@ export class MicrosoftOutlook implements INodeType {
 							await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`);
 						}
 
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -811,7 +827,11 @@ export class MicrosoftOutlook implements INodeType {
 							undefined,
 							qs,
 						);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -904,7 +924,11 @@ export class MicrosoftOutlook implements INodeType {
 						}
 
 						responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -967,7 +991,11 @@ export class MicrosoftOutlook implements INodeType {
 							{},
 							qs,
 						);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -1098,7 +1126,11 @@ export class MicrosoftOutlook implements INodeType {
 							`/mailFolders/${folderId}`,
 							body,
 						);
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
