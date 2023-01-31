@@ -1121,7 +1121,6 @@
 	"settings.users.setupSMTPInfo": "You will need details of an {link} to complete the setup.",
 	"settings.users.setupSMTPInfo.link": "SMTP server",
 	"settings.users.smtpToAddUsersWarning": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/hosting/authentication/user-management-self-hosted/\">Instructions</a>",
-	"settings.users.smtpToAddUsersWarning": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/hosting/authentication/user-management-self-hosted/\">Instructions</a>",
 	"settings.users.transferWorkflowsAndCredentials": "Transfer their workflows and credentials to another user",
 	"settings.users.transferredToUser": "Data transferred to {user}",
 	"settings.users.userDeleted": "User deleted",
@@ -1535,7 +1534,6 @@
 	"contextual.credentials.sharing.unavailable.button": "View plans",
 	"contextual.credentials.sharing.unavailable.button.cloud": "Upgrade now",
 	"contextual.credentials.sharing.unavailable.button.desktop": "View plans",
-
 	"contextual.workflows.sharing.title": "Sharing",
 	"contextual.workflows.sharing.unavailable.title": "Sharing",
 	"contextual.workflows.sharing.unavailable.title.cloud": "Upgrade to collaborate",
@@ -1632,8 +1630,7 @@
 	"settings.ldap.form.pageSize.infoText": "Max number of records to return per page during synchronization. 0 for unlimited",
 	"settings.ldap.form.searchTimeout.label": "Search Timeout (Seconds)",
 	"settings.ldap.form.searchTimeout.infoText": "The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server",
-	"settings.ldap.section.synchronization.title": "Synchronization"
-	"contextual.upgradeLinkUrl.desktop": "https://n8n.io/pricing",
+	"settings.ldap.section.synchronization.title": "Synchronization",
 	"settings.mfa.secret": "Secret {secret}",
 	"settings.mfa": "MFA",
 	"settings.mfa.title": "Multi-factor Authentication",
