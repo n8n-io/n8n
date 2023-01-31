@@ -134,7 +134,6 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
-import ItemIterator from './ItemIterator.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
 
 const instance = getCurrentInstance();
@@ -332,6 +331,7 @@ const { $externalHooks } = new externalHooks();
 const {
 	mergedAppNodes,
 	getActionData,
+	itemsFilter,
 	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
 } = useNodeCreatorStore();
@@ -522,6 +522,7 @@ function onSubcategoryClose(activeSubcategories: INodeCreateElement[]) {
 }
 
 function shouldShowNodeActions(node: INodeCreateElement) {
+	if(state.isRoot && useNodeCreatorStore().itemsFilter === '') return false;
 	// Do not show actions for core categories
 	if (node.type === 'node')
 		return !node.properties.nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY);
