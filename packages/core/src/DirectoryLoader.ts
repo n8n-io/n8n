@@ -19,6 +19,9 @@ import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
 import { loadClassInIsolation } from './ClassLoader';
 
+const CUSTOM_API_CALL_NAME = 'Custom API Call';
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
 function toJSON(this: ICredentialType) {
 	return {
 		...this,
@@ -54,6 +57,58 @@ export abstract class DirectoryLoader {
 		return path.resolve(this.directory, file);
 	}
 
+	protected isOAuth(credType: ICredentialType) {
+		return (
+			Array.isArray(credType.extends) &&
+			credType.extends.some((parentType) =>
+				['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+			)
+		);
+	}
+
+	/**
+	 * Whether any of the node's credential types may be used to
+	 * make a request from a node other than itself.
+	 */
+	protected supportsProxyAuth(description: INodeTypeDescription) {
+		if (!description.credentials) return false;
+
+		// const credentialTypes = CredentialTypes();
+
+		return description.credentials.some(({ name }) => {
+			const credType = this.credentialTypes[name].type;
+
+			if (credType.authenticate !== undefined) return true;
+
+			return this.isOAuth(credType);
+		});
+	}
+
+	/**
+	 * Inject a `Custom API Call` option into `resource` and `operation`
+	 * parameters in a node that supports proxy auth.
+	 */
+	protected injectCustomApiCallOption(description: INodeTypeDescription) {
+		if (!this.supportsProxyAuth(description)) return description;
+
+		description.properties.forEach((p) => {
+			if (
+				['resource', 'operation'].includes(p.name) &&
+				Array.isArray(p.options) &&
+				p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+			) {
+				p.options.push({
+					name: CUSTOM_API_CALL_NAME,
+					value: CUSTOM_API_CALL_KEY,
+				});
+			}
+
+			return p;
+		});
+
+		return description;
+	}
+
 	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
 		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
@@ -84,6 +139,7 @@ export abstract class DirectoryLoader {
 
 		if ('nodeVersions' in tempNode) {
 			for (const versionNode of Object.values(tempNode.nodeVersions)) {
+				this.injectCustomApiCallOption(versionNode.description);
 				this.fixIconPath(versionNode.description, filePath);
 			}
 
@@ -99,10 +155,11 @@ export abstract class DirectoryLoader {
 			}
 		} else {
 			// Short renaming to avoid type issues
-			const tmpNode = tempNode;
-			nodeVersion = Array.isArray(tmpNode.description.version)
-				? tmpNode.description.version.slice(-1)[0]
-				: tmpNode.description.version;
+
+			this.injectCustomApiCallOption(tempNode.description);
+			nodeVersion = Array.isArray(tempNode.description.version)
+				? tempNode.description.version.slice(-1)[0]
+				: tempNode.description.version;
 		}
 
 		this.known.nodes[fullNodeName] = {
