@@ -36,45 +36,56 @@ import { quoteFields, quoteOperations } from './QuoteDescription';
 
 import { IQuote } from './QuoteInterface';
 
-const headProperties: INodeProperties[] = [{
-	displayName: 'Resource (V4)',
-	name: 'resource',
-	type: 'options',
-	noDataExpression: true,
-	displayOptions: {
-		show: {
-			apiVersion: ['v4'],
+const headProperties: INodeProperties[] = [
+	{
+		displayName: '<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
+		name: 'notice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				apiVersion: ['v4'],
+			},
 		},
-	},
-	description: 'You are using InvoiceNinja V4: <br />Check documentation for additional fields: <a href="https://invoice-ninja.readthedocs.io/en/latest/" target="_blank">https://invoice-ninja.readthedocs.io/en/latest/</a><br /><br />Change your Version at the Node-Settings.',
-	options: [
-		{
-			name: 'Client',
-			value: 'client',
+		default: '',
+	}, {
+		displayName: 'Resource (V4)',
+		name: 'resource',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v4'],
+			},
 		},
-		{
-			name: 'Expense',
-			value: 'expense',
-		},
-		{
-			name: 'Invoice',
-			value: 'invoice',
-		},
-		{
-			name: 'Payment',
-			value: 'payment',
-		},
-		{
-			name: 'Quote',
-			value: 'quote',
-		},
-		{
-			name: 'Task',
-			value: 'task',
-		},
-	],
-	default: 'client',
-}];
+		description: 'You are using InvoiceNinja V4: <br />Check documentation for additional fields: <a href="https://invoice-ninja.readthedocs.io/en/latest/" target="_blank">https://invoice-ninja.readthedocs.io/en/latest/</a><br /><br />Change your Version at the Node-Settings.',
+		options: [
+			{
+				name: 'Client',
+				value: 'client',
+			},
+			{
+				name: 'Expense',
+				value: 'expense',
+			},
+			{
+				name: 'Invoice',
+				value: 'invoice',
+			},
+			{
+				name: 'Payment',
+				value: 'payment',
+			},
+			{
+				name: 'Quote',
+				value: 'quote',
+			},
+			{
+				name: 'Task',
+				value: 'task',
+			},
+		],
+		default: 'client',
+	}];
 
 export const InvoiceNinjaV4 = {
 	description: {
