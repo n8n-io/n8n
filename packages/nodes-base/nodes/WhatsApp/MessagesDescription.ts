@@ -1,4 +1,5 @@
-import { INodeProperties } from 'n8n-workflow';
+import countryCodes from 'currency-codes';
+import type { INodeProperties } from 'n8n-workflow';
 import {
 	cleanPhoneNumber,
 	componentsRequest,
@@ -10,11 +11,12 @@ import {
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
-let currencies = require('currency-codes/data');
-currencies = currencies.map(({ code, currency }: { code: string; currency: string }) => ({
-	name: `${code} - ${currency}`,
-	value: code,
-}));
+const currencies = countryCodes.data.map(
+	({ code, currency }: { code: string; currency: string }) => ({
+		name: `${code} - ${currency}`,
+		value: code,
+	}),
+);
 
 export const messageFields: INodeProperties[] = [
 	{

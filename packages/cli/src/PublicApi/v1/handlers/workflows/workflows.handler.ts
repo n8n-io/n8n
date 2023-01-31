@@ -1,15 +1,15 @@
-import express from 'express';
+import type express from 'express';
 
-import { FindConditions, FindManyOptions, In } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 
-import * as Db from '@/Db';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
-import { WorkflowRequest } from '../../../types';
+import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
@@ -28,6 +28,7 @@ import {
 	getWorkflowIdsViaTags,
 	parseTagNames,
 } from './workflows.service';
+import { WorkflowsService } from '@/workflows/workflows.services';
 
 export = {
 	createWorkflow: [
@@ -58,27 +59,16 @@ export = {
 	deleteWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { id } = req.params;
+			const { id: workflowId } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
-
-			if (!sharedWorkflow) {
+			const workflow = await WorkflowsService.delete(req.user, workflowId);
+			if (!workflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (sharedWorkflow.workflow.active) {
-				// deactivate before deleting
-				await ActiveWorkflowRunner.getInstance().remove(id);
-			}
-
-			await Db.collections.Workflow.delete(id);
-
-			void InternalHooksManager.getInstance().onWorkflowDeleted(req.user, id, true);
-			await ExternalHooks().run('workflow.afterDelete', [id]);
-
-			return res.json(sharedWorkflow.workflow);
+			return res.json(workflow);
 		},
 	],
 	getWorkflow: [
@@ -111,7 +101,7 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const where: FindConditions<WorkflowEntity> = {
+			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
 			};
 			const query: FindManyOptions<WorkflowEntity> = {

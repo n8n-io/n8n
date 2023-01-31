@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { capitalCase } from 'change-case';
 

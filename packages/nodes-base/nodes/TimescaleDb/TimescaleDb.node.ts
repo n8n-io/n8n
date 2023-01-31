@@ -1,11 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { pgInsert, pgQuery, pgUpdate } from '../Postgres/Postgres.node.functions';
 

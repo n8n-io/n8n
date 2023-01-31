@@ -1,5 +1,12 @@
 import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
 import { disableMfa, enableMfa, getMfaQr } from '@/api/mfa';
+import {
+	getLdapConfig,
+	getLdapSynchronizations,
+	runLdapSync,
+	testLdapConnection,
+	updateLdapConfig,
+} from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import {
@@ -17,6 +24,7 @@ import {
 	ISettingsState,
 	IUserResponse,
 	WorkflowCallerPolicyDefaultOption,
+	ILdapConfig,
 } from '@/Interface';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -44,6 +52,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				enabled: false,
 			},
 		},
+		ldap: {
+			loginLabel: '',
+			loginEnabled: false,
+		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
@@ -70,6 +82,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		publicApiPath(): string {
 			return this.api.path;
+		},
+		isLdapLoginEnabled(): boolean {
+			return this.ldap.loginEnabled;
+		},
+		ldapLoginLabel(): string {
+			return this.ldap.loginLabel;
 		},
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;
@@ -149,6 +167,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.userManagement.smtpSetup = settings.userManagement.smtpSetup;
 			this.api = settings.publicApi;
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
+			this.ldap.loginEnabled = settings.ldap.loginEnabled;
+			this.ldap.loginLabel = settings.ldap.loginLabel;
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
@@ -274,6 +294,26 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
 			await deleteApiKey(rootStore.getRestApiContext);
+		},
+		async getLdapConfig() {
+			const rootStore = useRootStore();
+			return await getLdapConfig(rootStore.getRestApiContext);
+		},
+		async getLdapSynchronizations(pagination: { page: number }) {
+			const rootStore = useRootStore();
+			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+		},
+		async testLdapConnection() {
+			const rootStore = useRootStore();
+			return await testLdapConnection(rootStore.getRestApiContext);
+		},
+		async updateLdapConfig(ldapConfig: ILdapConfig) {
+			const rootStore = useRootStore();
+			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+		},
+		async runLdapSync(data: IDataObject) {
+			const rootStore = useRootStore();
+			return await runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			Vue.set(this, 'saveDataErrorExecution', newValue);

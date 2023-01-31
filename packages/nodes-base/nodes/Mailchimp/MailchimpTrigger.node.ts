@@ -1,13 +1,13 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { mailchimpApiRequest } from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {

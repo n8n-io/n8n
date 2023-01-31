@@ -1,10 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	generateReturning,
@@ -367,7 +363,9 @@ export class CrateDb implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columns);
 					queries.push(
-						pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+						(pgp.helpers.update(itemCopy, cs) as string) +
+							pgp.as.format(where, itemCopy) +
+							returning,
 					);
 				}
 				const _updateItems = await db.multi(pgp.helpers.concat(queries));

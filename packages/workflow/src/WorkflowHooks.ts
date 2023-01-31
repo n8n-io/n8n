@@ -1,4 +1,4 @@
-import {
+import type {
 	IWorkflowBase,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,

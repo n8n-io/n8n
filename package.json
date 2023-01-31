@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.210.1",
+  "version": "0.213.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -42,13 +42,14 @@
     "@types/jest": "^29.2.5",
     "@types/node": "^16.18.11",
     "cross-env": "^7.0.3",
-    "cypress": "^10.11.0",
+    "cypress": "^10.0.3",
+    "cypress-real-events": "^1.7.6",
     "jest": "^29.3.1",
     "jest-environment-jsdom": "^29.3.1",
     "jest-mock": "^29.3.1",
     "nock": "^13.2.9",
     "node-fetch": "^2.6.7",
-    "prettier": "^2.8.2",
+    "prettier": "^2.8.3",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.1.6",
     "start-server-and-test": "^1.15.2",
@@ -67,8 +68,13 @@
       "browserslist": "^4.21.4",
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
+      "jsonwebtoken": "9.0.0",
+      "prettier": "^2.8.3",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
+    },
+    "patchedDependencies": {
+      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
     }
   }
 }

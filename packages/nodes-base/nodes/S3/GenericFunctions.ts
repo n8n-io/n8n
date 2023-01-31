@@ -1,21 +1,29 @@
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
 import { get } from 'lodash';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
+
+function queryToString(params: IDataObject) {
+	return Object.keys(params)
+		.map((key) => key + '=' + (params[key] as string))
+		.join('&');
+}
 
 export async function s3ApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -205,10 +213,4 @@ export async function s3ApiRequestSOAPAllItems(
 	);
 
 	return returnData;
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }

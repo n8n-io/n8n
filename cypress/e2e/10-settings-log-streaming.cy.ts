@@ -86,7 +86,7 @@ describe('Log Streaming Settings', () => {
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
 		settingsLogStreamingPage.getters.getSelectDestinationType().click();
-		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(1).click();
+		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(0).click();
 		settingsLogStreamingPage.getters.getSelectDestinationButton().click();
 		settingsLogStreamingPage.getters
 			.getDestinationNameInput()

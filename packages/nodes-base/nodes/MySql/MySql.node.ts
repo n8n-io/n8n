@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -7,13 +7,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 // @ts-ignore
-import mysql2 from 'mysql2/promise';
+import type mysql2 from 'mysql2/promise';
 
 import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {

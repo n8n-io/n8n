@@ -1,6 +1,11 @@
 <template>
 	<div class="parameter-input-list-wrapper">
-		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{ indent }">
+		<div
+			v-for="(parameter, index) in filteredParameters"
+			:key="parameter.name"
+			:class="{ indent }"
+			data-test-id="parameter-item"
+		>
 			<slot v-if="indexToShowSlotAt === index" />
 
 			<div
@@ -93,11 +98,13 @@
 
 				<parameter-input-full
 					:parameter="parameter"
+					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="true"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
+					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
 		</div>
@@ -108,13 +115,7 @@
 </template>
 
 <script lang="ts">
-import {
-	deepCopy,
-	INodeParameters,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValue,
-} from 'n8n-workflow';
+import { deepCopy, INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -126,10 +127,12 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { Component } from 'vue';
-import { mapState, mapStores } from 'pinia';
+import { Component, PropType } from 'vue';
+import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -140,14 +143,36 @@ export default mixins(workflowHelpers).extend({
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		ImportParameter,
 	},
-	props: [
-		'nodeValues', // INodeParameters
-		'parameters', // INodeProperties
-		'path', // string
-		'hideDelete', // boolean
-		'indent',
-		'isReadOnly',
-	],
+	props: {
+		nodeValues: {
+			type: Object as PropType<INodeParameters>,
+			required: true,
+		},
+		parameters: {
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		hideDelete: {
+			type: Boolean,
+			default: false,
+		},
+		indent: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		hiddenIssuesInputs: {
+			type: Array as PropType<string[]>,
+			default: () => [],
+		},
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
 		nodeTypeVersion(): number | null {
@@ -162,6 +187,12 @@ export default mixins(workflowHelpers).extend({
 			}
 			return '';
 		},
+		nodeType(): INodeTypeDescription | null {
+			if (this.node) {
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+			}
+			return null;
+		},
 		filteredParameters(): INodeProperties[] {
 			return this.parameters.filter((parameter: INodeProperties) =>
 				this.displayNodeParameter(parameter),
@@ -173,20 +204,32 @@ export default mixins(workflowHelpers).extend({
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+		nodeAuthFields(): INodeProperties[] {
+			return getNodeAuthFields(this.nodeType);
+		},
 		indexToShowSlotAt(): number {
 			let index = 0;
+			// For nodes that use old credentials UI, keep credentials below authentication field in NDV
+			// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
+			const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.nodeType?.name || '') ? 1 : 0;
 			const credentialsDependencies = this.getCredentialsDependencies();
 
 			this.filteredParameters.forEach((prop, propIndex) => {
 				if (credentialsDependencies.has(prop.name)) {
-					index = propIndex + 1;
+					index = propIndex + fieldOffset;
 				}
 			});
 
 			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
 		},
+		mainNodeAuthField(): INodeProperties | null {
+			return getMainAuthField(this.nodeType || undefined);
+		},
 	},
 	methods: {
+		onParameterBlur(parameterName: string) {
+			this.$emit('parameterBlur', parameterName);
+		},
 		getCredentialsDependencies() {
 			const dependencies = new Set();
 			const nodeType = this.nodeTypesStore.getNodeType(
@@ -252,7 +295,6 @@ export default mixins(workflowHelpers).extend({
 
 			return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 		},
-
 		displayNodeParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
 				return false;
@@ -261,6 +303,16 @@ export default mixins(workflowHelpers).extend({
 			if (
 				this.isCustomApiCallSelected(this.nodeValues) &&
 				this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+			) {
+				return false;
+			}
+
+			// Hide authentication related fields since it will now be part of credentials modal
+			if (
+				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
+				this.mainNodeAuthField &&
+				(parameter.name === this.mainNodeAuthField?.name ||
+					this.shouldHideAuthRelatedParameter(parameter))
 			) {
 				return false;
 			}
@@ -335,6 +387,15 @@ export default mixins(workflowHelpers).extend({
 			if (action === 'activate') {
 				this.$emit('activate');
 			}
+		},
+		isNodeAuthField(name: string): boolean {
+			return this.nodeAuthFields.find((field) => field.name === name) !== undefined;
+		},
+		shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {
+			// TODO: For now, hide all fields that are used in authentication fields displayOptions
+			// Ideally, we should check if any non-auth field depends on it before hiding it but
+			// since there is no such case, omitting it to avoid additional computation
+			return isAuthRelatedParameter(this.nodeAuthFields, parameter);
 		},
 	},
 	watch: {

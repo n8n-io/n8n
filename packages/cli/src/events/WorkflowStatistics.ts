@@ -1,7 +1,7 @@
-import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { QueryFailedError } from 'typeorm';
 
@@ -24,7 +24,7 @@ export async function workflowExecutionCompleted(
 
 	// Get the workflow id
 	const workflowId = workflowData.id;
-	if (workflowId === undefined) return;
+	if (!workflowId) return;
 
 	// Try insertion and if it fails due to key conflicts then update the existing entry instead
 	try {
@@ -59,7 +59,11 @@ export async function workflowExecutionCompleted(
 	}
 }
 
-export async function nodeFetchedData(workflowId: string, node: INode): Promise<void> {
+export async function nodeFetchedData(
+	workflowId: string | undefined | null,
+	node: INode,
+): Promise<void> {
+	if (!workflowId) return;
 	// Try to insert the data loaded statistic
 	try {
 		await Db.collections.WorkflowStatistics.insert({

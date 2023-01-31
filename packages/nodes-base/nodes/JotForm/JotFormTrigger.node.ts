@@ -1,16 +1,16 @@
 import * as formidable from 'formidable';
 
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
 
