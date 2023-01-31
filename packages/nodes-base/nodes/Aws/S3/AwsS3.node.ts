@@ -576,7 +576,11 @@ export class AwsS3 implements INodeType {
 							{},
 							region,
 						);
-						returnData.push(responseData.CopyObjectResult);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.CopyObjectResult),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
