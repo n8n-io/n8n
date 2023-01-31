@@ -299,6 +299,7 @@ export class ExecutionsService {
 							[key]: {
 								executionStatus: data.resultData.runData[key][0].executionStatus,
 								errors,
+								data: data.resultData.runData[key][0].data ?? undefined,
 							},
 						});
 					}

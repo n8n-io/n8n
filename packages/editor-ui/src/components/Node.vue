@@ -409,6 +409,8 @@ export default mixins(
 					borderColor = getStyleTokenValue('--color-danger');
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
+				} else if (this.nodeExecutionStatus === 'unknown') {
+					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
 				}

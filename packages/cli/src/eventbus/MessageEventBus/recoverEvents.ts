@@ -4,6 +4,7 @@ import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
+import { InternalHooksManager } from '../../InternalHooksManager';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -80,8 +81,9 @@ export async function recoverExecutionDataFromEventLogMessages(
 					nodeByName,
 					'Node crashed, possible out-of-memory issue',
 					{
-						message: 'Node crashed',
-						description: 'possible out-of-memory issue',
+						message: 'Execution stopped at this node',
+						description:
+							'n8n may have run out of memory while executing it. More context and tips on how to avoid this <a href=”https://docs.n8n.io/flow-logic/error-handling/memory-errors”>in the docs</a>',
 					},
 				);
 				workflowError = new WorkflowOperationError(
@@ -93,6 +95,19 @@ export async function recoverExecutionDataFromEventLogMessages(
 				if (nodeStartedMessage) lastNodeRunTimestamp = nodeStartedMessage.ts;
 			} else if (nodeStartedMessage && nodeFinishedMessage) {
 				taskData.executionStatus = 'success';
+				taskData.data = {
+					main: [
+						[
+							{
+								json: {
+									error:
+										'This node does not contain any data. Its state was recovered from the event log.',
+								},
+								pairedItem: undefined,
+							},
+						],
+					],
+				};
 			}
 
 			executionData.resultData.runData[nodeName] = [taskData];
@@ -127,6 +142,16 @@ export async function recoverExecutionDataFromEventLogMessages(
 				data: stringify(executionData),
 				status: 'crashed',
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
+			});
+			const internalHooks = InternalHooksManager.getInstance();
+			await internalHooks.onWorkflowPostExecute(executionId, executionEntry.workflowData, {
+				data: executionData,
+				finished: false,
+				mode: executionEntry.mode,
+				waitTill: executionEntry.waitTill ?? undefined,
+				startedAt: executionEntry.startedAt,
+				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
+				status: 'crashed',
 			});
 		}
 		return executionData;
