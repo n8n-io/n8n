@@ -7,12 +7,7 @@
 		:showActionArrow="true"
 	>
 		<template #icon>
-			<n8n-node-icon
-				type="icon"
-				:name="item.icon"
-				:circle="false"
-				:showTooltip="false"
-			/>
+			<n8n-node-icon type="icon" :name="item.icon" :circle="false" :showTooltip="false" />
 		</template>
 	</n8n-node-creator-node>
 </template>

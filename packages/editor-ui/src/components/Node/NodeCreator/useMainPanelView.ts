@@ -17,7 +17,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default () => {
 	const instance = getCurrentInstance();
-	const nodeCreatorStore  = useNodeCreatorStore();
+	const nodeCreatorStore = useNodeCreatorStore();
 
 	const VIEWS = [
 		{
@@ -92,7 +92,9 @@ export default () => {
 		{
 			value: TRIGGER_NODE_FILTER,
 			title: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
-			description: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
+			description: instance?.proxy.$locale.baseText(
+				'nodeCreator.triggerHelperPanel.selectATriggerDescription',
+			),
 			items: [
 				{
 					key: '*',
@@ -208,6 +210,6 @@ export default () => {
 	});
 
 	return {
-		activeView
-	}
-}
+		activeView,
+	};
+};

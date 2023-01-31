@@ -54,14 +54,11 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterActions(
-	actions: INodeActionTypeDescription[],
-	isTriggerRoot: boolean,
-) {
+function filterActions(actions: INodeActionTypeDescription[], isTriggerRoot: boolean) {
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
 			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
-			if(isApiCall) return false;
+			if (isApiCall) return false;
 
 			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
 			if (!isTriggerRoot && isPlaceholderTriggerAction) return false;
@@ -302,7 +299,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		visibleNodesWithActions(): INodeTypeDescription[] {
 			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
 			const nodesWithActions = nodes.map((node) => {
-
 				node.actions = [
 					...triggersCategory(node),
 					...operationsCategory(node),

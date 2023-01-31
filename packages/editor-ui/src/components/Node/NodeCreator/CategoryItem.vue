@@ -1,7 +1,6 @@
 <template>
 	<div :class="$style.category">
-		<span :class="$style.name" v-text="item.name">
-		</span>
+		<span :class="$style.name" v-text="item.name"/>
 		<font-awesome-icon v-if="item.expanded" icon="chevron-down" :class="$style.arrow" />
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>

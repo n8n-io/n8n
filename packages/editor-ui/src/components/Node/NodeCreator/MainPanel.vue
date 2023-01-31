@@ -169,7 +169,7 @@ const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => 
 			subcategory: state.activeNodeActions.displayName,
 			description: '',
 			iconType: state.activeNodeActions.iconUrl ? 'file' : 'icon',
-			icon: icon,
+			icon,
 		},
 	};
 });
@@ -224,7 +224,6 @@ const selectedNodeActions = computed<INodeActionTypeDescription[]>(
 const isAppEventSubcategory = computed(() => state.selectedSubcategory === '*');
 const isActionsActive = computed(() => state.activeNodeActions !== null);
 const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : []));
-
 
 const searchItems = computed<INodeCreateElement[]>(() => {
 	return state.activeNodeActions

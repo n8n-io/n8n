@@ -66,8 +66,7 @@
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 				/>
 				<div v-if="searchFilter.length > 0 && mergedFilteredNodes.length === 0">
-					<slot name="noResults">
-					</slot>
+					<slot name="noResults"/>
 				</div>
 				<div :class="$style.footer" v-else-if="$slots.footer">
 					<slot name="footer" />
@@ -103,9 +102,7 @@ import {
 	CategoryCreateElement,
 	INodeItemProps,
 } from '@/Interface';
-import {
-	WEBHOOK_NODE_TYPE,
-} from '@/constants';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
