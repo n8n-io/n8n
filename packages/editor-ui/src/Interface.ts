@@ -741,13 +741,15 @@ export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
 	key?: string;
+	iconType: string;
 	icon?: string;
 	defaults?: INodeParameters;
-	iconData?: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
+}
+export interface ViewItemProps {
+	withTopBorder: boolean;
+	title: string;
+	description: string;
+	icon: string;
 }
 
 export interface INodeItemProps {
@@ -774,6 +776,7 @@ export interface CreateElementBase {
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
+	category?: string[];
 	properties: INodeItemProps;
 }
 
@@ -786,6 +789,10 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
 	properties: ISubcategoryItemProps;
 }
+export interface ViewCreateElement extends CreateElementBase {
+	type: 'view';
+	properties: ViewItemProps;
+}
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
@@ -797,6 +804,7 @@ export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| ViewCreateElement
 	| ActionCreateElement;
 
 export interface ICategoriesWithNodes {
@@ -1099,7 +1107,6 @@ export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_F
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showTabs: boolean;
 	showScrim: boolean;
 	rootViewHistory: INodeFilterType[];
 	selectedView: INodeFilterType;

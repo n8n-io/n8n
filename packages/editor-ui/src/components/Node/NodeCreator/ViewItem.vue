@@ -13,7 +13,6 @@
 			<n8n-node-icon
 				type="icon"
 				:name="view.icon"
-				:color="view.color"
 				:circle="false"
 				:showTooltip="false"
 			></n8n-node-icon>
@@ -22,11 +21,13 @@
 </template>
 
 <script setup lang="ts">
+import { ViewItemProps } from '@/Interface';
+
 export interface Props {
-	view: Record<string, unknown>;
+	view: ViewItemProps;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 </script>
 
 <style lang="scss" module>

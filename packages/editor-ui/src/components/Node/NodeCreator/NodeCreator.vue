@@ -21,13 +21,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, reactive, toRefs } from 'vue';
-
-import { INodeCreateElement } from '@/Interface';
+import { watch, reactive, toRefs } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
@@ -45,8 +42,6 @@ const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
 });
-
-const visibleNodeTypes = computed(() => useNodeTypesStore().visibleNodeTypes);
 
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator

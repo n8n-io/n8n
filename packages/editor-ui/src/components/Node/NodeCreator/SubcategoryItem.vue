@@ -1,8 +1,6 @@
 <template>
 	<n8n-node-creator-node
-		:class="{
-			[$style.subCategory]: true,
-		}"
+		:class="$style.subCategory"
 		:title="$locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`)"
 		:isTrigger="false"
 		:description="$locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`)"
@@ -12,19 +10,19 @@
 			<n8n-node-icon
 				type="icon"
 				:name="item.icon"
-				:color="item.color"
 				:circle="false"
 				:showTooltip="false"
-			></n8n-node-icon>
+			/>
 		</template>
 	</n8n-node-creator-node>
 </template>
 
 <script setup lang="ts">
+import { ISubcategoryItemProps } from '@/Interface';
 import camelcase from 'lodash.camelcase';
 import { computed } from 'vue';
 export interface Props {
-	item: Record<string, unknown>;
+	item: ISubcategoryItemProps;
 }
 
 const props = defineProps<Props>();

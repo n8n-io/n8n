@@ -28,6 +28,7 @@
 				v-else-if="item.type === 'node'"
 				:nodeType="item.properties.nodeType"
 				:allow-actions="withActionsGetter && withActionsGetter(item)"
+				:allow-description="withDescriptionGetter && withDescriptionGetter(item)"
 				@dragstart="wrappedEmit('dragstart', item, $event)"
 				@dragend="wrappedEmit('dragend', item, $event)"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
@@ -56,16 +57,13 @@
 </template>
 
 <script setup lang="ts">
-import { INodeCreateElement, CategoryCreateElement, NodeCreateElement } from '@/Interface';
+import { INodeCreateElement, NodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
 import ActionItem from './ActionItem.vue';
 import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -73,6 +71,7 @@ export interface Props {
 	disabled?: boolean;
 	lazyRender?: boolean;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
+	withDescriptionGetter?: (element: NodeCreateElement) => boolean;
 	enableGlobalCategoriesCounter?: boolean;
 }
 

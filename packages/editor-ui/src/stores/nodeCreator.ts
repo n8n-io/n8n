@@ -14,9 +14,7 @@ import {
 	STORES,
 	MANUAL_TRIGGER_NODE_TYPE,
 	CORE_NODES_CATEGORY,
-	CALENDLY_TRIGGER_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
-	WEBHOOK_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
@@ -304,14 +302,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		visibleNodesWithActions(): INodeTypeDescription[] {
 			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
 			const nodesWithActions = nodes.map((node) => {
-				// const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
-				// Core nodes shouldn't support actions
-				node.actions = [];
-				node.actions.push(
+
+				node.actions = [
 					...triggersCategory(node),
 					...operationsCategory(node),
 					...resourceCategories(node),
-				);
+				];
 
 				return node;
 			});

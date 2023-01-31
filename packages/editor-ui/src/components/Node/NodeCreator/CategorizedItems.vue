@@ -29,8 +29,9 @@
 					<n8n-node-icon
 						:class="$style.nodeIcon"
 						v-if="showSubcategoryIcon && activeSubcategory.properties.icon"
-						type="file"
+						:type="activeSubcategory.properties.iconType || 'unknown'"
 						:src="activeSubcategory.properties.icon"
+						:name="activeSubcategory.properties.icon"
 						:circle="false"
 						:showTooltip="false"
 					/>
@@ -50,7 +51,6 @@
 						? searchPlaceholder
 						: $locale.baseText('nodeCreator.searchBar.searchNodes')
 				"
-				ref="searchBar"
 				@input="onNodeFilterChange"
 			/>
 
@@ -59,12 +59,17 @@
 					:elements="searchFilter.length === 0 ? renderedItems : mergedFilteredNodes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					:with-actions-getter="withActionsGetter"
-					:lazyRender="lazyRender"
+					:with-description-getter="withDescriptionGetter"
+					:lazyRender="true"
 					@selected="selected"
 					@actionsOpen="$listeners.actionsOpen"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 				/>
-				<div :class="$style.footer" v-if="$slots.footer">
+				<div v-if="searchFilter.length > 0 && mergedFilteredNodes.length === 0">
+					<slot name="noResults">
+					</slot>
+				</div>
+				<div :class="$style.footer" v-else-if="$slots.footer">
 					<slot name="footer" />
 				</div>
 			</div>
@@ -85,19 +90,14 @@ import {
 	nextTick,
 } from 'vue';
 import camelcase from 'lodash.camelcase';
-import differenceBy from 'lodash.differenceby';
 import { externalHooks } from '@/mixins/externalHooks';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
-import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
 import {
 	INodeCreateElement,
 	ISubcategoryItemProps,
 	ICategoryItemProps,
-	ICategoriesWithNodes,
 	SubcategoryCreateElement,
 	NodeCreateElement,
 	CategoryCreateElement,
@@ -105,9 +105,6 @@ import {
 } from '@/Interface';
 import {
 	WEBHOOK_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	ALL_NODE_FILTER,
-	NODE_TYPE_COUNT_MAPPER,
 } from '@/constants';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
@@ -123,6 +120,7 @@ export interface Props {
 	lazyRender?: boolean;
 	searchPlaceholder?: string;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
+	withDescriptionGetter?: (element: NodeCreateElement) => boolean;
 	searchItems?: INodeCreateElement[];
 	firstLevelItems?: INodeCreateElement[];
 	categorizedItems: INodeCreateElement[];
@@ -658,7 +656,7 @@ const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state
 	background: transparent;
 	border: none;
 	cursor: pointer;
-	padding: 0 var(--spacing-s) 0 0;
+	padding: 0 var(--spacing-xs) 0 0;
 }
 
 .subcategoryBackIcon {

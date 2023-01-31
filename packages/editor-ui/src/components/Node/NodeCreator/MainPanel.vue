@@ -7,68 +7,55 @@
 			:categorizedItems="computedCategorizedItems"
 			:searchItems="searchItems"
 			:withActionsGetter="shouldShowNodeActions"
+			:withDescriptionGetter="shouldShowNodeDescription"
 			:firstLevelItems="firstLevelItems"
 			:showSubcategoryIcon="isActionsActive"
 			:allItems="transformCreateElements(mergedAppNodes)"
 			:searchPlaceholder="searchPlaceholder"
-			ref="categorizedItemsRef"
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
 			@nodeTypeSelected="onNodeTypeSelected"
 			@actionsOpen="setActiveActionsNodeType"
 			@actionSelected="onActionSelected"
 		>
-			<template #noResults="{ filteredAllNodeTypes }">
+			<template #noResults>
 				<no-results
 					data-test-id="categorized-no-results"
-					:showRequest="!isActionsActive && filteredAllNodeTypes.length === 0"
-					:show-icon="!isActionsActive && filteredAllNodeTypes.length === 0"
+					:showRequest="!isActionsActive"
+					:show-icon="!isActionsActive"
 				>
-					<!-- Partial results -->
-					<!-- <template v-else #title>
+					<template #title v-if="!isActionsActive">
 						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
-					</template> -->
+					</template>
 
-					<!-- <template v-if="isActionsActive" #action>
+					<template v-if="isActionsActive" #action>
 						<p
 							v-if="containsAPIAction"
 							v-html="getCustomAPICallHintLocale('apiCallNoResult')"
 							class="clickable"
-							@click.stop="addHttpNode"
+							@click.stop="addHttpNode(true)"
 						/>
 						<p v-else v-text="$locale.baseText('nodeCreator.noResults.noMatchingActions')" />
-					</template> -->
+					</template>
 
-					<!-- <template v-else-if="filteredAllNodeTypes.length === 0" #action>
+					<template v-else #action>
 						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
 						<n8n-link
-							@click="selectHttpRequest"
-							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
+							v-if="[REGULAR_NODE_FILTER].includes(useNodeCreatorStore().selectedView)"
+							@click="addHttpNode"
 						>
 							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 						</n8n-link>
-						<template v-if="nodeCreatorStore.selectedView === ALL_NODE_FILTER">
-							{{ $locale.baseText('nodeCreator.noResults.or') }}
-						</template> -->
 
-					<!-- <n8n-link
-							@click="selectWebhook"
-							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
+						<n8n-link
+							v-if="[TRIGGER_NODE_FILTER].includes(useNodeCreatorStore().selectedView)"
+							@click="addWebHookNode()"
 						>
 							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
-						</n8n-link> -->
-					<!-- {{ $locale.baseText('nodeCreator.noResults.node') }}
-					</template> -->
-
-					<!-- <n8n-link
-						@click="selectWebhook"
-						v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
-					>
-						{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+						</n8n-link>
 						{{ $locale.baseText('nodeCreator.noResults.node') }}
-					</n8n-link> -->
+					</template>
 				</no-results>
-				<!-- <p>{{ filteredAllNodeTypes.length }}<p -->
 			</template>
 
 			<template #header>
@@ -89,7 +76,7 @@
 				<span
 					v-html="getCustomAPICallHintLocale('apiCall')"
 					class="clickable"
-					@click.stop="addHttpNode"
+					@click.stop="addHttpNode(true)"
 				/>
 			</template>
 		</CategorizedItems>
@@ -105,6 +92,7 @@ import {
 } from 'n8n-workflow';
 import {
 	INodeCreateElement,
+	NodeCreateElement,
 	IActionItemProps,
 	SubcategoryCreateElement,
 	IUpdateInformation,
@@ -112,19 +100,11 @@ import {
 import {
 	CORE_NODES_CATEGORY,
 	WEBHOOK_NODE_TYPE,
-	OTHER_TRIGGER_NODES_SUBCATEGORY,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	EMAIL_IMAP_NODE_TYPE,
 	CUSTOM_API_CALL_NAME,
 	HTTP_REQUEST_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	REGULAR_NODE_FILTER,
-	TRANSFORM_DATA_SUBCATEGORY,
-	FILES_SUBCATEGORY,
-	FLOWS_CONTROL_SUBCATEGORY,
-	HELPERS_SUBCATEGORY,
 	TRIGGER_NODE_FILTER,
 } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
@@ -135,185 +115,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
+import useMainPanelView from './useMainPanelView';
 
 const instance = getCurrentInstance();
-
-const VIEWS = [
-	{
-		value: REGULAR_NODE_FILTER,
-		title: 'What happens next?',
-		items: [
-			{
-				key: '*',
-				type: 'subcategory',
-				title: 'Action in an app',
-				properties: {
-					subcategory: 'App Regular Nodes',
-					icon: 'info-circle',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: TRANSFORM_DATA_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					subcategory: TRANSFORM_DATA_SUBCATEGORY,
-					icon: 'pen',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: FILES_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					subcategory: FILES_SUBCATEGORY,
-					icon: 'file-alt',
-					color: '#7D838F',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: FLOWS_CONTROL_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					subcategory: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'code-branch',
-					color: '#7D838F',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: HELPERS_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					subcategory: HELPERS_SUBCATEGORY,
-					icon: 'toolbox',
-					color: '#7D838F',
-				},
-			},
-			{
-				key: TRIGGER_NODE_FILTER,
-				type: 'view',
-				properties: {
-					title: 'Add another trigger',
-					icon: 'bolt',
-					color: '#7D838F',
-					withTopBorder: true,
-					description: 'Triggers start your workflow. Workflows can have multiple triggers.',
-				},
-			},
-		],
-	},
-	{
-		value: TRIGGER_NODE_FILTER,
-		title: 'Select a trigger',
-		description: 'A trigger is a step that starts your workflow',
-		items: [
-			{
-				key: '*',
-				type: 'subcategory',
-				title: instance?.proxy.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
-				properties: {
-					subcategory: 'App Trigger Nodes',
-					icon: 'satellite-dish',
-				},
-			},
-			{
-				key: SCHEDULE_TRIGGER_NODE_TYPE,
-				type: 'node',
-				properties: {
-					nodeType: {
-						group: [],
-						name: SCHEDULE_TRIGGER_NODE_TYPE,
-						displayName: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName',
-						),
-						description: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.scheduleTriggerDescription',
-						),
-						icon: 'fa:clock',
-						defaults: {
-							color: '#7D838F',
-						},
-					},
-				},
-			},
-			{
-				key: WEBHOOK_NODE_TYPE,
-				type: 'node',
-				properties: {
-					nodeType: {
-						group: [],
-						name: WEBHOOK_NODE_TYPE,
-						displayName: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.webhookTriggerDisplayName',
-						),
-						description: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.webhookTriggerDescription',
-						),
-						iconData: {
-							type: 'file',
-							icon: 'webhook',
-							fileBuffer: '/static/webhook-icon.svg',
-						},
-						defaults: {
-							color: '#7D838F',
-						},
-					},
-				},
-			},
-			{
-				key: MANUAL_TRIGGER_NODE_TYPE,
-				type: 'node',
-				properties: {
-					nodeType: {
-						group: [],
-						name: MANUAL_TRIGGER_NODE_TYPE,
-						displayName: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.manualTriggerDisplayName',
-						),
-						description: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.manualTriggerDescription',
-						),
-						icon: 'fa:mouse-pointer',
-						defaults: {
-							color: '#7D838F',
-						},
-					},
-				},
-			},
-			{
-				key: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-				type: 'node',
-				properties: {
-					nodeType: {
-						group: [],
-						name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-						displayName: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.workflowTriggerDisplayName',
-						),
-						description: instance?.proxy.$locale.baseText(
-							'nodeCreator.triggerHelperPanel.workflowTriggerDescription',
-						),
-						icon: 'fa:sign-out-alt',
-						defaults: {
-							color: '#7D838F',
-						},
-					},
-				},
-			},
-			{
-				type: 'subcategory',
-				key: OTHER_TRIGGER_NODES_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					subcategory: OTHER_TRIGGER_NODES_SUBCATEGORY,
-					icon: 'folder-open',
-				},
-			},
-		],
-	},
-];
 
 const emit = defineEmits({
 	nodeTypeSelected: (nodeTypes: string[]) => true,
@@ -325,22 +129,17 @@ const state = reactive({
 	activeNodeActions: null as INodeTypeDescription | null,
 	latestNodeData: null as INodeTypeDescription | null,
 });
-const categorizedItemsRef = ref<InstanceType<typeof CategorizedItems>>();
 const { baseUrl } = useRootStore();
 const { $externalHooks } = new externalHooks();
 const {
 	mergedAppNodes,
 	getActionData,
-	itemsFilter,
 	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
 } = useNodeCreatorStore();
-
-const activeView = computed(() => {
-	return VIEWS.find((v) => v.value === useNodeCreatorStore().selectedView) || VIEWS[0];
-});
+const { activeView } = useMainPanelView();
 const telemetry = instance?.proxy.$telemetry;
-const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
+const { isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(
 	() =>
 		state.latestNodeData?.properties.some((p) =>
@@ -359,13 +158,18 @@ const computedCategorizedItems = computed(() => {
 const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
 	if (!state.activeNodeActions) return undefined;
 
+	const icon = state.activeNodeActions.iconUrl
+		? `${baseUrl}${state.activeNodeActions.iconUrl}`
+		: state.activeNodeActions.icon?.split(':')[1];
+
 	return {
 		type: 'subcategory',
 		key: state.activeNodeActions.name,
 		properties: {
 			subcategory: state.activeNodeActions.displayName,
 			description: '',
-			icon: `${baseUrl}${state.activeNodeActions.iconUrl}`,
+			iconType: state.activeNodeActions.iconUrl ? 'file' : 'icon',
+			icon: icon,
 		},
 	};
 });
@@ -421,7 +225,6 @@ const isAppEventSubcategory = computed(() => state.selectedSubcategory === '*');
 const isActionsActive = computed(() => state.activeNodeActions !== null);
 const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : []));
 
-const items = computed(() => activeView.value.items);
 
 const searchItems = computed<INodeCreateElement[]>(() => {
 	return state.activeNodeActions
@@ -519,7 +322,7 @@ function onActionSelected(actionCreateElement: INodeCreateElement) {
 	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
 	setAddedNodeActionParameters(actionUpdateData, telemetry);
 }
-function addHttpNode() {
+function addWebHookNode() {
 	const updateData = {
 		name: '',
 		key: HTTP_REQUEST_NODE_TYPE,
@@ -528,12 +331,26 @@ function addHttpNode() {
 		},
 	} as IUpdateInformation;
 
-	emit('nodeTypeSelected', [MANUAL_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
-	setAddedNodeActionParameters(updateData, telemetry, false);
+	emit('nodeTypeSelected', [WEBHOOK_NODE_TYPE]);
+}
 
-	const app_identifier = state.activeNodeActions?.name;
-	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
-	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+function addHttpNode(isAction: boolean) {
+	const updateData = {
+		name: '',
+		key: HTTP_REQUEST_NODE_TYPE,
+		value: {
+			authentication: 'predefinedCredentialType',
+		},
+	} as IUpdateInformation;
+
+	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
+	if (isAction) {
+		setAddedNodeActionParameters(updateData, telemetry, false);
+
+		const app_identifier = state.activeNodeActions?.name;
+		$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+		telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	}
 }
 
 function onSubcategorySelected(subcategory: INodeCreateElement) {
@@ -547,13 +364,14 @@ function onSubcategoryClose(activeSubcategories: INodeCreateElement[]) {
 	state.selectedSubcategory = activeSubcategories[activeSubcategories.length - 1]?.key ?? '';
 }
 
+function shouldShowNodeDescription(node: NodeCreateElement) {
+	return (node.category || []).includes(CORE_NODES_CATEGORY);
+}
+
 function shouldShowNodeActions(node: INodeCreateElement) {
 	if (state.isRoot && useNodeCreatorStore().itemsFilter === '') return false;
-	// Do not show actions for core categories
-	if (node.type === 'node')
-		return !node.properties.nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY);
 
-	return false;
+	return true;
 }
 
 function trackActionsView() {
