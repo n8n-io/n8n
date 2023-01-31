@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class N8nTrainingCustomerMessenger implements INodeType {
 	description: INodeTypeDescription = {
