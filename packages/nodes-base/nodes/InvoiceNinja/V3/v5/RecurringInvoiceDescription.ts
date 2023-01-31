@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const invoiceOperations: INodeProperties[] = [
+export const recurringInvoiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -9,71 +9,71 @@ export const invoiceOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a invoice',
-				action: 'Get an invoice',
+				description: 'Get data of a recurringInvoice',
+				action: 'Get an recurringInvoice',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of many invoices',
-				action: 'Get many invoices',
+				description: 'Get data of many recurringInvoices',
+				action: 'Get many recurringInvoices',
 			},
 			{
 				name: 'Download',
 				value: 'download',
-				description: 'Get PDF from invoice',
-				action: 'Download invoice',
+				description: 'Get PDF from recurringInvoice',
+				action: 'Download recurringInvoice',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new invoice',
-				action: 'Create an invoice',
+				description: 'Create a new recurringInvoice',
+				action: 'Create an recurringInvoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an existing invoice',
-				action: 'Update an invoice',
+				description: 'Update an existing recurringInvoice',
+				action: 'Update an recurringInvoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a invoice',
-				action: 'Delete an invoice',
+				description: 'Delete a recurringInvoice',
+				action: 'Delete an recurringInvoice',
 			},
 			{
 				name: 'Action',
 				value: 'action',
-				description: 'Performs an action to an invoice',
-				action: 'Action to an invoice',
+				description: 'Performs an action to an recurringInvoice',
+				action: 'Action to an recurringInvoice',
 			},
 		],
 		default: 'create',
 	},
 ];
 
-export const invoiceFields: INodeProperties[] = [
+export const recurringInvoiceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:get                               */
+	/*                                  recurringInvoice:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice ID',
-		name: 'invoiceId',
+		displayName: 'Recurring Invoice ID',
+		name: 'recurringInvoiceId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['get'],
 			},
 		},
@@ -86,7 +86,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['get'],
 			},
 		},
@@ -99,7 +99,7 @@ export const invoiceFields: INodeProperties[] = [
 		default: [],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:getAll                            */
+	/*                                  recurringInvoice:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Filters',
@@ -110,7 +110,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['getAll'],
 			},
 		},
@@ -122,28 +122,10 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Recurring Invoice Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'Without Deleted Clients',
-				name: ' withoutDeletedClients',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Upcomming',
-				name: ' upcomming',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Overdue',
-				name: ' overdue',
-				type: 'boolean',
-				default: false,
 			},
 		],
 	},
@@ -155,7 +137,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['getAll'],
 			},
 		},
@@ -174,7 +156,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['getAll'],
 			},
 		},
@@ -188,7 +170,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['getAll'],
 			},
 			hide: {
@@ -203,10 +185,10 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:download                          */
+	/*                                  recurringInvoice:download                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invitation Key OR Invoice ID',
+		displayName: 'Invitation Key OR Recurring Invoice ID',
 		name: 'inputKey',
 		type: 'string',
 		default: '',
@@ -214,14 +196,14 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['download'],
 			},
 		},
-		description: 'Value \'key\' from entry of property \'invitations\' of an invoice or the invoice id.',
+		description: 'Value \'key\' from entry of property \'invitations\' of an recurringInvoice or the recurringInvoice id.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 invoice:create                             */
+	/*                                 recurringInvoice:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
@@ -232,8 +214,8 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
 				operation: ['create'],
+				resource: ['recurringInvoice'],
 			},
 		},
 		options: [
@@ -260,7 +242,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Status',
+				displayName: 'Recurring Invoice Status',
 				name: 'statusId',
 				type: 'options',
 				options: [
@@ -287,12 +269,6 @@ export const invoiceFields: INodeProperties[] = [
 				default: ''
 			},
 			{
-				displayName: 'Recurring Id',
-				name: 'recurringId',
-				type: 'string',
-				default: ''
-			},
-			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -311,7 +287,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Recurring Invoice Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -449,9 +425,9 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
-		placeholder: 'Add Invoice Item',
+		displayName: 'Recurring Invoice Items',
+		name: 'recurringInvoiceItemsUi',
+		placeholder: 'Add Recurring Invoice Item',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -459,15 +435,15 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['create'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				name: 'invoiceItemsValues',
-				displayName: 'Invoice Item',
+				name: 'recurringInvoiceItemsValues',
+				displayName: 'Recurring Invoice Item',
 				values: [
 					{
 						displayName: 'Cost',
@@ -562,18 +538,18 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 invoice:update                             */
+	/*                                 recurringInvoice:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice ID',
-		name: 'invoiceId',
+		displayName: 'Recurring Invoice ID',
+		name: 'recurringInvoiceId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['update'],
 			},
 		},
@@ -587,8 +563,8 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
+				resource: ['recurringInvoice'],
 				operation: ['update'],
-				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -615,7 +591,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Status',
+				displayName: 'Recurring Invoice Status',
 				name: 'statusId',
 				type: 'options',
 				options: [
@@ -642,12 +618,6 @@ export const invoiceFields: INodeProperties[] = [
 				default: ''
 			},
 			{
-				displayName: 'Recurring Id',
-				name: 'recurringId',
-				type: 'string',
-				default: ''
-			},
-			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -666,7 +636,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Recurring Invoice Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -804,9 +774,9 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
-		placeholder: 'Add Invoice Item',
+		displayName: 'Recurring Invoice Items',
+		name: 'recurringInvoiceItemsUi',
+		placeholder: 'Add Recurring Invoice Item',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -814,15 +784,15 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['update'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				name: 'invoiceItemsValues',
-				displayName: 'Invoice Item',
+				name: 'recurringInvoiceItemsValues',
+				displayName: 'Recurring Invoice Item',
 				values: [
 					{
 						displayName: 'Cost',
@@ -917,35 +887,35 @@ export const invoiceFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 invoice:delete                             */
+	/*                                 recurringInvoice:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice ID',
-		name: 'invoiceId',
+		displayName: 'Recurring Invoice ID',
+		name: 'recurringInvoiceId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['delete'],
 			},
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:action                              */
+	/*                                  recurringInvoice:action                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice ID',
-		name: 'invoiceId',
+		displayName: 'Recurring Invoice ID',
+		name: 'recurringInvoiceId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['action'],
 			},
 		},
@@ -959,34 +929,26 @@ export const invoiceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['recurringInvoice'],
 				operation: ['action'],
 			},
 		},
 		options: [
 			{
-				name: 'Auto Bill',
-				value: 'auto_bill',
+				name: 'Start',
+				value: 'start',
 			},
 			{
-				name: 'Clone To Quote',
-				value: 'clone_to_quote',
+				name: 'Stop',
+				value: 'stop',
 			},
 			{
-				name: 'Clone to Invoice',
-				value: 'clone_to_invoice',
+				name: 'Send Recurring Invoice Now',
+				value: 'send_now',
 			},
 			{
 				name: 'Send Email',
 				value: 'email',
-			},
-			{
-				name: 'Mark Send',
-				value: 'mark_sent',
-			},
-			{
-				name: 'Mark Paid',
-				value: 'mark_paid',
 			},
 			{
 				name: 'Archive',
