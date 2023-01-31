@@ -53,7 +53,7 @@ describe('NDV', () => {
 	});
 
 	it('should show correct validation state for resource locator params', () => {
-		workflowPage.actions.addNodeToCanvas('Typeform', true);
+		workflowPage.actions.addNodeToCanvas('Typeform', true, false);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
 		cy.get('[class*=hasIssues]').should('have.length', 0);
@@ -66,7 +66,7 @@ describe('NDV', () => {
 
 	it('should show validation errors only after blur or re-opening of NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual Trigger');
-		workflowPage.actions.addNodeToCanvas('Airtable', true);
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
