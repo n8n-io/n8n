@@ -14,12 +14,11 @@ import type { FindManyOptions, ObjectLiteral } from 'typeorm';
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
+import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import type {
-	DatabaseType,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
@@ -63,7 +62,8 @@ export class WaitTrackerClass {
 				waitTill: 'ASC',
 			},
 		};
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+
+		const dbType = config.getEnv('database.type');
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286

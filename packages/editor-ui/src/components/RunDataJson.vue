@@ -79,6 +79,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -169,11 +170,13 @@ export default mixins(externalHooks).extend({
 			return shorten(el.dataset.name || '', 16, 2);
 		},
 		getJsonParameterPath(path: string): string {
-			const convertedPath = convertPath(path);
-			return `{{ ${convertedPath.replace(
-				/^(\["?\d"?])/,
-				this.distanceFromActive === 1 ? '$json' : `$node["${this.node!.name}"].json`,
-			)} }}`;
+			const subPath = path.replace(/^(\["?\d"?])/, ''); // remove item position
+
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: subPath,
+			});
 		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.path) {

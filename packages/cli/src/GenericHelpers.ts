@@ -5,22 +5,19 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type express from 'express';
-import { readFile as fsReadFile } from 'fs/promises';
 import type {
 	ExecutionError,
-	IDataObject,
 	INode,
 	IRunExecutionData,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
+import { Like } from 'typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { ICredentialsDb, IExecutionDb, IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
-// eslint-disable-next-line import/order
-import { Like } from 'typeorm';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -28,7 +25,6 @@ import type { User } from '@db/entities/User';
 
 /**
  * Returns the base URL n8n is reachable from
- *
  */
 export function getBaseUrl(): string {
 	const protocol = config.getEnv('protocol');
@@ -44,71 +40,9 @@ export function getBaseUrl(): string {
 
 /**
  * Returns the session id if one is set
- *
  */
 export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
-}
-
-/**
- * Extracts configuration schema for key
- */
-function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
-	const configKeyParts = configKey.split('.');
-
-	// eslint-disable-next-line no-restricted-syntax
-	for (const key of configKeyParts) {
-		if (configSchema[key] === undefined) {
-			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		} else if ((configSchema[key]! as IDataObject)._cvtProperties === undefined) {
-			configSchema = configSchema[key] as IDataObject;
-		} else {
-			configSchema = (configSchema[key] as IDataObject)._cvtProperties as IDataObject;
-		}
-	}
-	return configSchema;
-}
-
-/**
- * Gets value from config with support for "_FILE" environment variables
- *
- * @param {string} configKey The key of the config data to get
- */
-export async function getConfigValue(
-	configKey: string,
-): Promise<string | boolean | number | undefined> {
-	// Get the environment variable
-	const configSchema = config.getSchema();
-	// @ts-ignore
-	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
-	// Check if environment variable is defined for config key
-	if (currentSchema.env === undefined) {
-		// No environment variable defined, so return value from config
-		// @ts-ignore
-		return config.getEnv(configKey);
-	}
-
-	// Check if special file environment variable exists
-	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
-	if (fileEnvironmentVariable === undefined) {
-		// Does not exist, so return value from config
-		// @ts-ignore
-		return config.getEnv(configKey);
-	}
-
-	let data;
-	try {
-		data = await fsReadFile(fileEnvironmentVariable, 'utf8');
-	} catch (error) {
-		if (error.code === 'ENOENT') {
-			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
-		}
-
-		throw error;
-	}
-
-	return data;
 }
 
 /**

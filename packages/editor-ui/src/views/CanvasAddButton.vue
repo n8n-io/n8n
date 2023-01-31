@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="$style.container"
+		:class="$style.canvasAddButton"
 		:style="containerCssVars"
 		ref="container"
 		data-test-id="canvas-add-button"
@@ -44,7 +44,7 @@ const containerCssVars = computed(() => ({
 </script>
 
 <style lang="scss" module>
-.container {
+.canvasAddButton {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
