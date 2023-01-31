@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const expenseOperations: INodeProperties[] = [
+export const recurringExpenseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -9,59 +9,59 @@ export const expenseOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of an expense',
-				action: 'Get an expense',
+				description: 'Get data of an recurring expense',
+				action: 'Get an recurring expense',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of many expenses',
-				action: 'Get many expenses',
+				description: 'Get data of many recurring expenses',
+				action: 'Get many recurring expenses',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new expense',
-				action: 'Create an expense',
+				description: 'Create a new recurring expense',
+				action: 'Create an recurring expense',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an existing expense',
-				action: 'Update an expense',
+				description: 'Update an existing recurring expense',
+				action: 'Update an recurring expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an expense',
-				action: 'Delete an expense',
+				description: 'Delete an recurring expense',
+				action: 'Delete an recurring expense',
 			},
 		],
 		default: 'create',
 	},
 ];
 
-export const expenseFields: INodeProperties[] = [
+export const recurringExpenseFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                  expense:get                               */
+	/*                                  recurringExpense:get                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense ID',
-		name: 'expenseId',
+		displayName: 'Recurring Expense ID',
+		name: 'recurringExpenseId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['get'],
 			},
 		},
@@ -74,7 +74,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['get'],
 			},
 		},
@@ -83,11 +83,15 @@ export const expenseFields: INodeProperties[] = [
 				name: 'Client',
 				value: 'client',
 			},
+			{
+				name: 'Vendor',
+				value: 'vendor',
+			},
 		],
 		default: [],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  expense:getAll                             */
+	/*                                  recurringExpense:getAll                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Filters',
@@ -98,7 +102,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['getAll'],
 			},
 		},
@@ -110,7 +114,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expense Number',
+				displayName: 'Recurring Expense Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -131,7 +135,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['getAll'],
 			},
 		},
@@ -139,6 +143,10 @@ export const expenseFields: INodeProperties[] = [
 			{
 				name: 'Client',
 				value: 'client',
+			},
+			{
+				name: 'Vendor',
+				value: 'vendor',
 			},
 		],
 		default: [],
@@ -150,7 +158,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['getAll'],
 			},
 		},
@@ -164,7 +172,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['getAll'],
 			},
 			hide: {
@@ -179,7 +187,7 @@ export const expenseFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 expense:create                             */
+	/*                                 recurringExpense:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
@@ -190,7 +198,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['create'],
 			},
 		},
@@ -305,28 +313,6 @@ export const expenseFields: INodeProperties[] = [
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
-				},
-				default: '',
-			},
-            {
-				displayName: 'Connected Invoice ID or Name',
-				name: 'invoiceId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getInvoicesV5',
-				},
-				default: '',
-			},
-            {
-				displayName: 'Connected Recuring Expense ID or Name',
-				name: 'recurringExpenseId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getRecuringExpensesV5',
 				},
 				default: '',
 			},
@@ -565,18 +551,18 @@ export const expenseFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 expense:update                             */
+	/*                                 recurringExpense:update                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense ID',
-		name: 'expenseId',
+		displayName: 'Recurring Expense ID',
+		name: 'recurringExpenseId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['update'],
 			},
 		},
@@ -590,7 +576,7 @@ export const expenseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['update'],
 			},
 		},
@@ -705,28 +691,6 @@ export const expenseFields: INodeProperties[] = [
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
-				},
-				default: '',
-			},
-            {
-				displayName: 'Connected Invoice ID or Name',
-				name: 'invoiceId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getInvoicesV5',
-				},
-				default: '',
-			},
-            {
-				displayName: 'Connected Recuring Expense ID or Name',
-				name: 'recurringExpenseId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getRecuringExpensesV5',
 				},
 				default: '',
 			},
@@ -965,18 +929,18 @@ export const expenseFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 expense:delete                             */
+	/*                                 recurringExpense:delete                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense ID',
-		name: 'expenseId',
+		displayName: 'Recurring Expense ID',
+		name: 'recurringExpenseId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['expense'],
+				resource: ['recurringExpense'],
 				operation: ['delete'],
 			},
 		},

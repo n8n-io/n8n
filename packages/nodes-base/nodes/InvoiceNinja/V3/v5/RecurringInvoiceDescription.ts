@@ -62,7 +62,7 @@ export const recurringInvoiceOperations: INodeProperties[] = [
 
 export const recurringInvoiceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                  recurringInvoice:get                               */
+	/*                                  recurringInvoice:get                      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Recurring Invoice ID',
@@ -99,7 +99,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		default: [],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  recurringInvoice:getAll                            */
+	/*                                  recurringInvoice:getAll                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Filters',
@@ -887,7 +887,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 recurringInvoice:delete                             */
+	/*                                 recurringInvoice:delete                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Recurring Invoice ID',
@@ -904,7 +904,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  recurringInvoice:action                              */
+	/*                                  recurringInvoice:action                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Recurring Invoice ID',
