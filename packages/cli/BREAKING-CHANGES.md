@@ -10,7 +10,7 @@ In expressions, `DateTime.fromHTTP()`, `DateTime.fromISO()` and `DateTime.fromJS
 
 ### When is action necessary?
 
-If you are relying on the above behavior, review your workflow to ensure you are passing in the required number of arguments.
+If you are relying on the above behavior, review your workflow to ensure you are passing in the required argument.
 
 ## 0.202.0
 
