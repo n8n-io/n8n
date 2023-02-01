@@ -1,7 +1,8 @@
 import { normalizeItems } from 'n8n-core';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import { CodeNodeMode, isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
+import type { CodeNodeMode } from './utils';
+import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 import type { python, py } from 'pythonia';
 
 import type {
@@ -21,6 +22,7 @@ export class SandboxPython {
 	private exec: py['exec'];
 
 	constructor(private workflowMode: WorkflowExecuteMode, private nodeMode: CodeNodeMode) {
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const { python, builtins } = require('pythonia');
 		this.python = python;
 		this.exec = builtins.exec;
@@ -137,8 +139,8 @@ responseCallback(cleanup_proxy_data(main()))
 				// to be wrapped in `json` when normalizing items below.
 
 				if (
-					executionResult.some((item) =>
-						Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
+					executionResult.some((resultItem) =>
+						Object.keys(resultItem).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
 					)
 				) {
 					Object.keys(item).forEach((key) => {
