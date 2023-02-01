@@ -47,7 +47,6 @@ export function usePostHog() {
 		}
 
 		const id = user ? `${instanceId}#${user.id}` : instanceId;
-		console.log('yo', id, traits);
 		window.posthog?.identify(id, traits);
 
 		setTimeout(() => {
