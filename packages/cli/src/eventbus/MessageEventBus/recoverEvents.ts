@@ -31,7 +31,6 @@ export async function recoverExecutionDataFromEventLogMessages(
 			executionData?.resultData?.runData &&
 			Object.keys(executionData.resultData.runData).length > 0
 		) {
-			nodeNames = Object.keys(executionData.resultData.runData);
 		} else {
 			if (!executionData.resultData) {
 				executionData.resultData = {
@@ -42,8 +41,8 @@ export async function recoverExecutionDataFromEventLogMessages(
 					executionData.resultData.runData = {};
 				}
 			}
-			nodeNames = executionEntry.workflowData.nodes.map((n) => n.name);
 		}
+		nodeNames = executionEntry.workflowData.nodes.map((n) => n.name);
 
 		let lastNodeRunTimestamp: DateTime | undefined = undefined;
 
@@ -69,12 +68,17 @@ export async function recoverExecutionDataFromEventLogMessages(
 					? nodeFinishedMessage.ts.diff(nodeStartedMessage.ts).toMillis()
 					: 0;
 
-			const taskData: ITaskData = {
-				startTime: nodeStartedMessage ? nodeStartedMessage.ts.toUnixInteger() : 0,
-				executionTime,
-				source: [null],
-				executionStatus: 'unknown',
-			};
+			let taskData: ITaskData;
+			if (executionData.resultData.runData[nodeName]?.length > 0) {
+				taskData = executionData.resultData.runData[nodeName][0];
+			} else {
+				taskData = {
+					startTime: nodeStartedMessage ? nodeStartedMessage.ts.toUnixInteger() : 0,
+					executionTime,
+					source: [null],
+					executionStatus: 'unknown',
+				};
+			}
 
 			if (nodeStartedMessage && !nodeFinishedMessage) {
 				const nodeError = new NodeOperationError(
@@ -95,22 +99,26 @@ export async function recoverExecutionDataFromEventLogMessages(
 				if (nodeStartedMessage) lastNodeRunTimestamp = nodeStartedMessage.ts;
 			} else if (nodeStartedMessage && nodeFinishedMessage) {
 				taskData.executionStatus = 'success';
-				taskData.data = {
-					main: [
-						[
-							{
-								json: {
-									error:
-										'This node does not contain any data. Its state was recovered from the event log.',
+				if (taskData.data === undefined) {
+					taskData.data = {
+						main: [
+							[
+								{
+									json: {
+										message:
+											'This node does not contain any data. Its state was recovered from the event log.',
+									},
+									pairedItem: undefined,
 								},
-								pairedItem: undefined,
-							},
+							],
 						],
-					],
-				};
+					};
+				}
 			}
 
-			executionData.resultData.runData[nodeName] = [taskData];
+			if (!executionData.resultData.runData[nodeName]) {
+				executionData.resultData.runData[nodeName] = [taskData];
+			}
 		}
 
 		if (!executionData.resultData.error && workflowError) {
