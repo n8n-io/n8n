@@ -105,6 +105,7 @@
     "lodash.debounce": "^4.0.8",
     "mock-jwks": "^1.0.9",
     "nodemon": "^2.0.2",
+    "n8n-editor-ui": "~0.180.3",
     "run-script-os": "^1.0.7",
     "tsc-alias": "^1.8.2",
     "tsconfig-paths": "^4.1.2"
@@ -167,7 +168,6 @@
     "luxon": "^3.1.0",
     "mysql2": "~2.3.3",
     "n8n-core": "~0.153.0",
-    "n8n-editor-ui": "~0.180.3",
     "n8n-nodes-base": "~0.212.2",
     "n8n-workflow": "~0.135.0",
     "nodemailer": "^6.7.1",

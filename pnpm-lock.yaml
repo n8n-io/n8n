@@ -295,7 +295,6 @@ importers:
       luxon: 3.1.1
       mysql2: 2.3.3
       n8n-core: link:../core
-      n8n-editor-ui: link:../editor-ui
       n8n-nodes-base: link:../nodes-base
       n8n-workflow: link:../workflow
       nodemailer: 6.8.0
@@ -369,6 +368,7 @@ importers:
       concurrently: 5.3.0
       lodash.debounce: 4.0.8
       mock-jwks: 1.0.9_nock@13.2.9
+      n8n-editor-ui: link:../editor-ui
       nodemon: 2.0.20
       run-script-os: 1.1.6
       tsc-alias: 1.8.2
