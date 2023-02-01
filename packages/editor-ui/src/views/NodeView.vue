@@ -402,55 +402,45 @@ export default mixins(
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		const nextTab = getNodeViewTab(to);
-		// Only react if leaving workflow tab and going to a separate page
-		if (!nextTab) {
-			// Skip check if in the middle of template import
-			if (from.name === VIEWS.TEMPLATE_IMPORT) {
-				next();
-				return;
-			}
-			// Make sure workflow id is empty when leaving the editor
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			const result = this.uiStore.stateIsDirty;
-			if (result) {
-				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					true,
-				);
-
-				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) await this.settingsStore.fetchPromptsData();
-					this.uiStore.stateIsDirty = false;
-
-					if (from.name === VIEWS.NEW_WORKFLOW) {
-						// Replace the current route with the new workflow route
-						// before navigating to the new route when saving new workflow.
-						this.$router.replace(
-							{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
-							() => {
-								// We can't use next() here since vue-router
-								// would prevent the navigation with an error
-								this.$router.push(to as RawLocation);
-							},
-						);
-					} else {
-						next();
-					}
-				} else if (confirmModal === MODAL_CANCEL) {
-					await this.resetWorkspace();
-					this.uiStore.stateIsDirty = false;
-
-					next();
-				} else if (confirmModal === MODAL_CLOSE) {
-					next(false);
+		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
+			next();
+			return;
+		}
+		// Make sure workflow id is empty when leaving the editor
+		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		if (this.uiStore.stateIsDirty) {
+			const confirmModal = await this.confirmModal(
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				true,
+			);
+			if (confirmModal === MODAL_CONFIRMED) {
+				const saved = await this.saveCurrentWorkflow({}, false);
+				if (saved) {
+					await this.settingsStore.fetchPromptsData();
 				}
-			} else {
+				this.uiStore.stateIsDirty = false;
+
+				if (from.name === VIEWS.NEW_WORKFLOW) {
+					// Replace the current route with the new workflow route
+					// before navigating to the new route when saving new workflow.
+					this.$router.replace(
+						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
+						() => {
+							// We can't use next() here since vue-router
+							// would prevent the navigation with an error
+							this.$router.push(to as RawLocation);
+						},
+					);
+				} else {
+					next();
+				}
+			} else if (confirmModal === MODAL_CANCEL) {
+				await this.resetWorkspace();
+				this.uiStore.stateIsDirty = false;
 				next();
 			}
 		} else {
