@@ -11,9 +11,6 @@ export const completionManager = mixins(expressionManager).extend({
 		};
 	},
 	computed: {
-		/**
-		 * Map of expression extensions to categories, only for telemetry.
-		 */
 		expressionExtensionsCategories() {
 			return ExpressionExtensions.reduce<Record<string, string | undefined>>((acc, cur) => {
 				for (const fnName of Object.keys(cur.functions)) {
