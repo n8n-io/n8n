@@ -1365,8 +1365,3 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
-
-export interface Experiment {
-	name: string;
-	variant: Record<string, string | boolean>;
-}

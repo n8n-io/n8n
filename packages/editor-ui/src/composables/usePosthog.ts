@@ -1,9 +1,9 @@
-import { Experiment, IUser } from '@/Interface';
+import { IUser } from '@/Interface';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { watch, onMounted, ref, Ref } from 'vue';
 import { Telemetry } from '@/plugins/telemetry';
-import { EXPERIMENTS } from '@/constants';
+import { ASSUMPTION_EXPERIMENT } from '@/constants';
 
 export function usePostHog() {
 	const usersStore = useUsersStore();
@@ -19,9 +19,9 @@ export function usePostHog() {
 	};
 
 	const trackAssumptionExperiment = () => {
-		const variant = getVariant(EXPERIMENTS.assumptions.name);
-		const isDemo = variant === EXPERIMENTS.assumptions.variant.demo;
-		const isVideo = variant === EXPERIMENTS.assumptions.variant.video;
+		const variant = getVariant(ASSUMPTION_EXPERIMENT.name);
+		const isDemo = variant === ASSUMPTION_EXPERIMENT.demo;
+		const isVideo = variant === ASSUMPTION_EXPERIMENT.video;
 
 		if (typeof variant === 'string') {
 			telemetry.value?.track('User is part of experiment', {

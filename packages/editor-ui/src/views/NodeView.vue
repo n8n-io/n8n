@@ -194,7 +194,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
-	POSTHOG_ASSUMPTION_TEST,
+	ASSUMPTION_EXPERIMENT,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -297,6 +297,7 @@ import {
 	ready,
 } from '@jsplumb/browser-ui';
 import { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
+import { usePostHog } from '@/composables/usePosthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2459,7 +2460,8 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-video') {
+			const posthog = usePostHog();
+			if (posthog.isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
