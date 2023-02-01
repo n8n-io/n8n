@@ -48,6 +48,10 @@ export class Expression {
 		this.workflow = workflow;
 	}
 
+	static resolveWithoutWorkflow(expression: string) {
+		return tmpl.tmpl(expression, {});
+	}
+
 	/**
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object

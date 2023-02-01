@@ -1,5 +1,5 @@
 import mixins from 'vue-typed-mixins';
-import { ExpressionExtensions } from 'n8n-workflow';
+import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 
@@ -170,12 +170,17 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			};
 
 			try {
-				result.resolved = this.resolveExpression('=' + resolvable, undefined, {
-					targetItem: targetItem ?? undefined,
-					inputNodeName: this.ndvStore.ndvInputNodeName,
-					inputRunIndex: this.ndvStore.ndvInputRunIndex,
-					inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-				});
+				if (!useNDVStore().activeNode) {
+					// e.g. credential modal
+					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
+				} else {
+					result.resolved = this.resolveExpression('=' + resolvable, undefined, {
+						targetItem: targetItem ?? undefined,
+						inputNodeName: this.ndvStore.ndvInputNodeName,
+						inputRunIndex: this.ndvStore.ndvInputRunIndex,
+						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+					});
+				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
 				result.error = true;
