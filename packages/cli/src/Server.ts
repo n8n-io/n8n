@@ -35,6 +35,7 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions } from 'typeorm';
 import { In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
@@ -1416,8 +1417,22 @@ class Server extends AbstractServer {
 			);
 		}
 
+		const staticOptions: ServeStaticOptions = {
+			cacheControl: false,
+			setHeaders: (res: express.Response, path: string) => {
+				const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+				const cacheControl = isIndex
+					? 'no-cache, no-store, must-revalidate'
+					: 'max-age=86400, immutable';
+				res.header('Cache-Control', cacheControl);
+			},
+		};
 		if (!config.getEnv('endpoints.disableUi')) {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(EDITOR_UI_DIST_DIR));
+			this.app.use(
+				'/',
+				express.static(GENERATED_STATIC_DIR, staticOptions),
+				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+			);
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
@@ -1425,7 +1440,7 @@ class Server extends AbstractServer {
 				next();
 			});
 		} else {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR, staticOptions));
 		}
 	}
 }
