@@ -13,13 +13,8 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	awsApiRequestREST,
-	IExpenseDocument,
-	IQueriesConfig,
-	simplify,
-	validateCredentials,
-} from './GenericFunctions';
+import type { IExpenseDocument } from './GenericFunctions';
+import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {
