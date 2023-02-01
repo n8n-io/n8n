@@ -1,20 +1,14 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
-} from 'n8n-workflow';
+import type { IBinaryKeyData, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -30,7 +24,7 @@ export async function twitterApiRequest(
 		method,
 		body,
 		qs,
-		url: uri ?? `https://api.twitter.com/1.1${resource}`,
+		url: uri || `https://api.twitter.com/1.1${resource}`,
 		json: true,
 	};
 	try {

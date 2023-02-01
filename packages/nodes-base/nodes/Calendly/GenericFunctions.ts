@@ -1,8 +1,8 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -46,7 +46,7 @@ export async function calendlyApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `${endpoint}${resource}`,
+		uri: uri || `${endpoint}${resource}`,
 		json: true,
 	};
 

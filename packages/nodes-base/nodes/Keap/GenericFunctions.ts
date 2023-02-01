@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -29,7 +30,7 @@ export async function keapApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.infusionsoft.com/crm/rest/v1${resource}`,
+		uri: uri || `https://api.infusionsoft.com/crm/rest/v1${resource}`,
 		json: true,
 	};
 	try {

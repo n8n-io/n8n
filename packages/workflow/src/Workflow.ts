@@ -14,7 +14,7 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 
-import {
+import type {
 	IConnections,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
@@ -49,7 +49,7 @@ import {
 	IRunNodeResponse,
 	NodeParameterValueType,
 } from './Interfaces';
-import { IDeferredPromise } from './DeferredPromise';
+import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
@@ -1211,7 +1211,6 @@ export class Workflow {
 
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
-			connectionInputData = connectionInputData.slice(0, 1);
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
 				newInputData[inputName] = inputData[inputName].map((input) => {

@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -28,7 +29,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
+		uri: uri || `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
 		json: true,
 	};
 

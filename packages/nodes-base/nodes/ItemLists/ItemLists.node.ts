@@ -1,14 +1,15 @@
-import { NodeVM, NodeVMOptions } from 'vm2';
-import { IExecuteFunctions } from 'n8n-core';
+import type { NodeVMOptions } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
 
@@ -49,6 +50,8 @@ const shuffleArray = (array: any[]) => {
 	}
 };
 
+import * as summarize from './summarize.operation';
+
 export class ItemLists implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Item Lists',
@@ -84,10 +87,10 @@ export class ItemLists implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Aggregate Items',
+						name: 'Concatenate Items',
 						value: 'aggregateItems',
-						description: 'Combine fields into a single new item',
-						action: 'Combine fields into a single new item',
+						description: 'Combine fields into a list in a single new item',
+						action: 'Combine fields into a list in a single new item',
 					},
 					{
 						name: 'Limit',
@@ -113,11 +116,16 @@ export class ItemLists implements INodeType {
 						description: 'Turn a list inside item(s) into separate items',
 						action: 'Turn a list inside item(s) into separate items',
 					},
+					{
+						name: 'Summarize',
+						value: 'summarize',
+						description: 'Aggregate items together (pivot table)',
+						action: 'Aggregate items together (pivot table)',
+					},
 				],
 				default: 'splitOutItems',
 			},
 			// Split out items - Fields
-
 			{
 				displayName: 'Field To Split Out',
 				name: 'fieldToSplitOut',
@@ -131,6 +139,7 @@ export class ItemLists implements INodeType {
 					},
 				},
 				description: 'The name of the input field to break out into separate items',
+				requiresDataPath: 'single',
 			},
 			{
 				displayName: 'Include',
@@ -189,6 +198,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -248,6 +258,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Rename Field',
@@ -268,6 +279,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description:
 									'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -338,6 +350,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -374,6 +387,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -445,6 +459,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -480,6 +495,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -536,6 +552,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Order',
@@ -765,6 +782,8 @@ return 0;`,
 					},
 				],
 			},
+			// Remove duplicates - Fields
+			...summarize.description,
 		],
 	};
 
@@ -1388,6 +1407,8 @@ return 0;`,
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
 				return this.prepareOutputData(newItems);
+			} else if (operation === 'summarize') {
+				return summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}

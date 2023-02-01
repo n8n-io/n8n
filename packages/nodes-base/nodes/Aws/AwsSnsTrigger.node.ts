@@ -1,15 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
 

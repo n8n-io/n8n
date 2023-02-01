@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function coinGeckoApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -22,7 +23,7 @@ export async function coinGeckoApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.coingecko.com/api/v3${endpoint}`,
+		uri: uri || `https://api.coingecko.com/api/v3${endpoint}`,
 		json: true,
 	};
 

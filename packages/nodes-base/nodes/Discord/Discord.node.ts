@@ -1,15 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { DiscordAttachment, DiscordWebhook } from './Interfaces';
+import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
 export class Discord implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Discord',

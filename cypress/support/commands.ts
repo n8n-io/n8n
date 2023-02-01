@@ -23,7 +23,7 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-
+import "cypress-real-events";
 import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';

@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function tapfiliateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -28,7 +29,7 @@ export async function tapfiliateApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.tapfiliate.com/1.6${endpoint}`,
+		uri: uri || `https://api.tapfiliate.com/1.6${endpoint}`,
 		json: true,
 	};
 

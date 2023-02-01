@@ -23,16 +23,16 @@ let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['me'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
+});
 
-	utils.initTestLogger();
-	utils.initTestTelemetry();
+beforeEach(async () => {
+	await testDb.truncate(['User']);
 });
 
 afterAll(async () => {
@@ -40,10 +40,6 @@ afterAll(async () => {
 });
 
 describe('Owner shell', () => {
-	beforeEach(async () => {
-		await testDb.truncate(['User']);
-	});
-
 	test('GET /me should return sanitized owner shell', async () => {
 		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
@@ -236,10 +232,6 @@ describe('Member', () => {
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: JSON.stringify(true) },
 		);
-	});
-
-	afterEach(async () => {
-		await testDb.truncate(['User']);
 	});
 
 	test('GET /me should return sanitized member', async () => {
@@ -439,10 +431,6 @@ describe('Member', () => {
 describe('Owner', () => {
 	beforeEach(async () => {
 		config.set('userManagement.isInstanceOwnerSetUp', true);
-	});
-
-	afterEach(async () => {
-		await testDb.truncate(['User']);
 	});
 
 	test('GET /me should return sanitized owner', async () => {

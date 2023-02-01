@@ -1,13 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodePropertyOptions,
-	LoggerProxy as Logger,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import { LoggerProxy as Logger, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -104,7 +100,7 @@ export async function salesforceApiRequest(
 			const options = getOptions.call(
 				this,
 				method,
-				uri ?? endpoint,
+				uri || endpoint,
 				body,
 				qs,
 				instance_url as string,
@@ -125,7 +121,7 @@ export async function salesforceApiRequest(
 			const options = getOptions.call(
 				this,
 				method,
-				uri ?? endpoint,
+				uri || endpoint,
 				body,
 				qs,
 				credentials.oauthTokenData.instance_url,

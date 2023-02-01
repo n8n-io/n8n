@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	encodeURIComponentOnce,
@@ -23,7 +22,7 @@ import { eventFields, eventOperations } from './EventDescription';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
 
-import { IEvent } from './EventInterface';
+import type { IEvent } from './EventInterface';
 
 import moment from 'moment-timezone';
 
@@ -144,7 +143,7 @@ export class GoogleCalendar implements INodeType {
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
 						const options = this.getNodeParameter('options', i);
-						const outputFormat = options.outputFormat ?? 'availability';
+						const outputFormat = options.outputFormat || 'availability';
 						const tz = this.getNodeParameter('options.timezone', i, '', {
 							extractValue: true,
 						}) as string;

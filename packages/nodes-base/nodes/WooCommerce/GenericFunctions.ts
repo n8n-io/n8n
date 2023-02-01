@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,9 +8,9 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
-import { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
+import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
 import { createHash } from 'crypto';
 
@@ -39,7 +39,7 @@ export async function woocommerceApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `${credentials.url}/wp-json/wc/v3${resource}`,
+		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
 

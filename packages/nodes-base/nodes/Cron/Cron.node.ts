@@ -1,12 +1,6 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeHelpers,
-	toCronExpression,
-	TriggerTime,
-} from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { INodeType, INodeTypeDescription, ITriggerResponse, TriggerTime } from 'n8n-workflow';
+import { NodeHelpers, toCronExpression } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 

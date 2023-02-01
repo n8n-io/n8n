@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
 
@@ -320,7 +320,7 @@ export class HubspotTrigger implements INodeType {
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
 					targetUrl: webhookUrl,
-					maxConcurrentRequests: additionalFields.maxConcurrentRequests ?? 5,
+					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
 				};
 
 				await hubspotApiRequest.call(this, 'PUT', endpoint, body);

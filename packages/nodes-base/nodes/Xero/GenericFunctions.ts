@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function xeroApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -21,7 +22,7 @@ export async function xeroApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.xero.com/api.xro/2.0${resource}`,
+		uri: uri || `https://api.xero.com/api.xro/2.0${resource}`,
 		json: true,
 	};
 	try {

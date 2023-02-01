@@ -1,12 +1,11 @@
 import uniq from 'lodash.uniq';
+import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	UserSettings,
 	CustomDirectoryLoader,
-	DirectoryLoader,
 	PackageDirectoryLoader,
 	LazyPackageDirectoryLoader,
-	Types,
 } from 'n8n-core';
 import type {
 	ICredentialTypes,
@@ -27,8 +26,8 @@ import {
 } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
-import { InstalledNodes } from '@db/entities/InstalledNodes';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { executeCommand } from '@/CommunityNodes/helpers';
 import { CLI_DIR, GENERATED_STATIC_DIR, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
