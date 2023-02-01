@@ -149,9 +149,16 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 						displayName: 'Column',
 						name: 'column',
-						type: 'string',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: ['worksheet.value'],
+							loadOptionsMethod: 'getWorksheetColumnRow',
+						},
 						default: '',
 					},
 					{
@@ -437,7 +444,7 @@ export const worksheetFields: INodeProperties[] = [
 			show: {
 				operation: ['updateRange'],
 				resource: ['worksheet'],
-				dataMode: ['autoMap'],
+				dataMode: ['autoMap', 'define'],
 			},
 		},
 		placeholder: 'e.g. A1:B2',
@@ -513,12 +520,18 @@ export const worksheetFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Column to Match On',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column to match on',
 		name: 'columnToMatchOn',
-		type: 'string',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['worksheet.value', 'workbook.value', 'range'],
+			loadOptionsMethod: 'getWorksheetColumnRow',
+		},
 		default: '',
-		placeholder: 'e.g. ID',
-		required: true,
+		hint: "Used to find the correct row to update. Doesn't get changed.",
 		displayOptions: {
 			show: {
 				operation: ['updateRange'],
@@ -562,9 +575,16 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 						displayName: 'Column',
 						name: 'column',
-						type: 'string',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: ['columnToMatchOn'],
+							loadOptionsMethod: 'getWorksheetColumnRowSkipColumnToMatchOn',
+						},
 						default: '',
 					},
 					{
