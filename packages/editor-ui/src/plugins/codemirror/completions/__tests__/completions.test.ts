@@ -9,6 +9,7 @@ import {
 	extensions,
 	luxonInstanceOptions,
 	luxonStaticOptions,
+	natives,
 } from '@/plugins/codemirror/completions/datatype.completions';
 
 import { mockNodes, mockProxy } from './mock';
@@ -105,21 +106,27 @@ describe('Resolution-based completions', () => {
 			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce('abc');
 
-			expect(completions('{{ "abc".| }}')).toHaveLength(extensions('string').length);
+			expect(completions('{{ "abc".| }}')).toHaveLength(
+				natives('string').length + extensions('string').length,
+			);
 		});
 
 		test('should return completions for number literal: {{ (123).| }}', () => {
 			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce(123);
 
-			expect(completions('{{ (123).| }}')).toHaveLength(extensions('number').length);
+			expect(completions('{{ (123).| }}')).toHaveLength(
+				natives('number').length + extensions('number').length,
+			);
 		});
 
 		test('should return completions for array literal: {{ [1, 2, 3].| }}', () => {
 			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce([1, 2, 3]);
 
-			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(extensions('array').length);
+			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(
+				natives('array').length + extensions('array').length,
+			);
 		});
 
 		test('should return completions for object literal', () => {
@@ -128,7 +135,7 @@ describe('Resolution-based completions', () => {
 			resolveParameterSpy.mockReturnValueOnce(object);
 
 			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
-				Object.keys(object).length + extensions('object').length,
+				Object.keys(object).length + natives('object').length + extensions('object').length,
 			);
 		});
 	});
