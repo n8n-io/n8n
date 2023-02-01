@@ -16,6 +16,8 @@ import {
 	microsoftApiRequestAllItems,
 	microsoftApiRequestAllItemsSkip,
 	prepareOutput,
+	updateByAutoMaping,
+	updateByDefinedValues,
 } from './GenericFunctions';
 
 import { workbookFields, workbookOperations } from './WorkbookDescription';
@@ -947,16 +949,34 @@ export class MicrosoftExcel implements INodeType {
 						);
 					}
 
+					if (
+						worksheetData.values === undefined ||
+						(worksheetData.values as string[][]).length <= 1
+					) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No data found in the specified range, mapping not possible, you can use raw mode instead to update selected range',
+						);
+					}
+
+					const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
+
+					if (dataMode === 'define') {
+						const values = updateByDefinedValues.call(
+							this,
+							items,
+							worksheetData.values as string[][],
+							updateAll,
+						);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+							{ values },
+						);
+					}
+
 					if (dataMode === 'autoMap') {
-						if (
-							worksheetData.values === undefined ||
-							(worksheetData.values as string[][]).length <= 1
-						) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'No data found in the specified range could not auto map, you can use raw mode instead to update selected range',
-							);
-						}
 						const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
 
 						if (!items.some(({ json }) => json[columnToMatchOn] !== undefined)) {
@@ -966,53 +986,19 @@ export class MicrosoftExcel implements INodeType {
 							);
 						}
 
-						const [columns, ...values] = worksheetData.values as string[][];
-						const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
-						const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
-
-						const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
-
-						const itemsData = items.map((item) => item.json);
-						for (const item of itemsData) {
-							const columnValue = item[columnToMatchOn] as string;
-
-							const rowIndexes: number[] = [];
-							if (updateAll) {
-								columnToMatchOnData.forEach((value, index) => {
-									if (value === columnValue || Number(value) === Number(columnValue)) {
-										rowIndexes.push(index);
-									}
-								});
-							} else {
-								const rowIndex = columnToMatchOnData.findIndex(
-									(value) => value === columnValue || Number(value) === Number(columnValue),
-								);
-
-								if (rowIndex === -1) continue;
-
-								rowIndexes.push(rowIndex);
-							}
-
-							if (!rowIndexes.length) continue;
-
-							const updatedRow: Array<string | null> = [];
-
-							for (const columnName of columns) {
-								const updateValue =
-									item[columnName] === undefined ? null : (item[columnName] as string);
-								updatedRow.push(updateValue);
-							}
-
-							for (const rowIndex of rowIndexes) {
-								values[rowIndex] = updatedRow as string[];
-							}
-						}
+						const values = updateByAutoMaping.call(
+							this,
+							items,
+							worksheetData.values as string[][],
+							columnToMatchOn,
+							updateAll,
+						);
 
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
 							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
-							{ values: [columns, ...values] },
+							{ values },
 						);
 					}
 
