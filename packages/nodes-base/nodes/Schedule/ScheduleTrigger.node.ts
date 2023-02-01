@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 import moment from 'moment';
-import { IRecurencyRule } from './SchedulerInterface';
+import type { IRecurencyRule } from './SchedulerInterface';
 import { recurencyCheck } from './GenericFunctions';
 
 export class ScheduleTrigger implements INodeType {

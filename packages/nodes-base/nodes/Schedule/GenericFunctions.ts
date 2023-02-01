@@ -1,4 +1,4 @@
-import { IRecurencyRule } from './SchedulerInterface';
+import type { IRecurencyRule } from './SchedulerInterface';
 import moment from 'moment';
 
 export function recurencyCheck(
