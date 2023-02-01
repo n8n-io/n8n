@@ -2460,8 +2460,7 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			const posthog = usePostHog();
-			if (posthog.isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
+			if (usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
