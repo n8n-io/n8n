@@ -111,9 +111,11 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
-				try {
-					this.trackCompletion(viewUpdate, this.path);
-				} catch {}
+				setTimeout(() => {
+					try {
+						this.trackCompletion(viewUpdate, this.path);
+					} catch {}
+				});
 
 				this.$emit('change', {
 					value: this.unresolvedExpression,
