@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 import { tmpdir } from 'os';
 import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
@@ -40,7 +39,7 @@ if (!inE2ETests && !inTest) {
 	const { N8N_CONFIG_FILES } = process.env;
 	if (N8N_CONFIG_FILES !== undefined) {
 		const configFiles = N8N_CONFIG_FILES.split(',');
-		Logger.debug('Loading config overwrites', configFiles);
+		console.debug('Loading config overwrites', configFiles);
 		config.loadFile(configFiles);
 	}
 
@@ -61,7 +60,7 @@ if (!inE2ETests && !inTest) {
 						}
 						throw error;
 					}
-					Logger.debug('Loading config overwrite', { fileName });
+					console.debug('Loading config overwrite', { fileName });
 					acc[key] = value;
 				}
 			}
