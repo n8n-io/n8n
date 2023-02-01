@@ -151,7 +151,7 @@ describe('Credentials', () => {
 	it('should correctly render required and optional credentials', () => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
-		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true);
+		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
 		cy.get('body').type('{downArrow}');
 		cy.get('body').type('{enter}');
 		// Select incoming authentication

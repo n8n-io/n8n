@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -10,7 +11,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+import { file as tmpFile } from 'tmp-promise';
 
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
@@ -32,6 +38,8 @@ interface ReturnFtpItem {
 	sticky?: boolean;
 	path: string;
 }
+
+const streamPipeline = promisify(pipeline);
 
 async function callRecursiveList(
 	path: string,
@@ -580,18 +588,22 @@ export class Ftp implements INodeType {
 
 					if (operation === 'download') {
 						const path = this.getNodeParameter('path', i) as string;
+						const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
+						try {
+							await sftp!.get(path, createWriteStream(binaryFile.path));
 
-						responseData = await sftp!.get(path);
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
+							const filePathDownload = this.getNodeParameter('path', i) as string;
 
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
+							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+								binaryFile.path,
+								filePathDownload,
+							);
 
-						const filePathDownload = this.getNodeParameter('path', i) as string;
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-							responseData as Buffer,
-							filePathDownload,
-						);
-
-						returnItems.push(items[i]);
+							returnItems.push(items[i]);
+						} finally {
+							await binaryFile.cleanup();
+						}
 					}
 
 					if (operation === 'upload') {
@@ -609,8 +621,8 @@ export class Ftp implements INodeType {
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[propertyNameUpload] === undefined) {
+							const itemBinaryData = item.binary[propertyNameUpload];
+							if (itemBinaryData === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${propertyNameUpload}" does not exists on item!`,
@@ -618,8 +630,13 @@ export class Ftp implements INodeType {
 								);
 							}
 
-							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
-							await sftp!.put(buffer, remotePath);
+							let uploadData: Buffer | Readable;
+							if (itemBinaryData.id) {
+								uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+							} else {
+								uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+							}
+							await sftp!.put(uploadData, remotePath);
 						} else {
 							// Is text file
 							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
@@ -669,27 +686,23 @@ export class Ftp implements INodeType {
 
 					if (operation === 'download') {
 						const path = this.getNodeParameter('path', i) as string;
+						const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
+						try {
+							const stream = await ftp!.get(path);
+							await streamPipeline(stream, createWriteStream(binaryFile.path));
 
-						responseData = await ftp!.get(path);
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
+							const filePathDownload = this.getNodeParameter('path', i) as string;
 
-						// Convert readable stream to buffer so that can be displayed properly
-						const chunks = [];
-						for await (const chunk of responseData) {
-							chunks.push(chunk);
+							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+								binaryFile.path,
+								filePathDownload,
+							);
+
+							returnItems.push(items[i]);
+						} finally {
+							await binaryFile.cleanup();
 						}
-
-						// @ts-ignore
-						responseData = Buffer.concat(chunks);
-
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-
-						const filePathDownload = this.getNodeParameter('path', i) as string;
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-							responseData,
-							filePathDownload,
-						);
-
-						returnItems.push(items[i]);
 					}
 
 					if (operation === 'rename') {
@@ -718,8 +731,8 @@ export class Ftp implements INodeType {
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[propertyNameUpload] === undefined) {
+							const itemBinaryData = item.binary[propertyNameUpload];
+							if (itemBinaryData === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${propertyNameUpload}" does not exists on item!`,
@@ -727,15 +740,20 @@ export class Ftp implements INodeType {
 								);
 							}
 
-							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							let uploadData: Buffer | Readable;
+							if (itemBinaryData.id) {
+								uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+							} else {
+								uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+							}
 
 							try {
-								await ftp!.put(buffer, remotePath);
+								await ftp!.put(uploadData, remotePath);
 							} catch (error) {
 								if (error.code === 553) {
 									// Create directory
 									await ftp!.mkdir(dirPath, true);
-									await ftp!.put(buffer, remotePath);
+									await ftp!.put(uploadData, remotePath);
 								} else {
 									throw new NodeApiError(this.getNode(), error);
 								}

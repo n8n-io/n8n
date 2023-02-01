@@ -789,7 +789,7 @@
     "lodash.set": "^4.3.2",
     "lodash.unset": "^4.5.2",
     "lossless-json": "^1.0.4",
-    "luxon": "~2.3.0",
+    "luxon": "^3.1.0",
     "mailparser": "^3.2.0",
     "moment": "~2.29.2",
     "moment-timezone": "^0.5.28",

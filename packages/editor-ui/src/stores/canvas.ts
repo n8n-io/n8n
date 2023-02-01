@@ -1,29 +1,44 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { jsPlumb } from 'jsplumb';
 import { v4 as uuid } from 'uuid';
 import normalizeWheel from 'normalize-wheel';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
+import { useHistoryStore } from '@/stores/history';
 import { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
-import { START_NODE_TYPE } from '@/constants';
-import '@/plugins/N8nCustomConnectorType';
-import '@/plugins/PlusEndpointType';
+import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import type {
+	BeforeStartEventParams,
+	BrowserJsPlumbInstance,
+	DragStopEventParams,
+} from '@jsplumb/browser-ui';
+import { newInstance } from '@jsplumb/browser-ui';
+import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
+import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
+import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
+import { EndpointFactory, Connectors } from '@jsplumb/core';
+import { MoveNodeCommand } from '@/models/history';
 import {
 	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
 	getMidCanvasPosition,
 	getNewNodePosition,
 	getZoomToFit,
 	PLACEHOLDER_TRIGGER_NODE_SIZE,
+	CONNECTOR_FLOWCHART_TYPE,
+	GRID_SIZE,
 } from '@/utils/nodeViewUtils';
+import { PointXY } from '@jsplumb/util';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
-	const jsPlumbInstance = jsPlumb.getInstance();
+	const historyStore = useHistoryStore();
+
+	const jsPlumbInstance = ref<BrowserJsPlumbInstance>();
+	const isDragging = ref<boolean>(false);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(() =>
@@ -34,6 +49,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
+
+	Connectors.register(N8nConnector.type, N8nConnector);
+	N8nPlusEndpointRenderer.register();
+	EndpointFactory.registerHandler(N8nPlusEndpointHandler);
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
 		const position = getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
@@ -59,7 +78,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
-		jsPlumbInstance.setZoom(zoomLevel);
+		jsPlumbInstance.value?.setZoom(zoomLevel);
 		uiStore.nodeViewOffsetPosition = offset;
 	};
 
@@ -122,8 +141,106 @@ export const useCanvasStore = defineStore('canvas', () => {
 		wheelMoveWorkflow(e);
 	};
 
+	function initInstance(container: Element) {
+		// Make sure to clean-up previous instance if it exists
+		if (jsPlumbInstance.value) {
+			jsPlumbInstance.value.destroy();
+			jsPlumbInstance.value.reset();
+			jsPlumbInstance.value = undefined;
+		}
+
+		jsPlumbInstance.value = newInstance({
+			container,
+			connector: CONNECTOR_FLOWCHART_TYPE,
+			resizeObserver: false,
+			dragOptions: {
+				cursor: 'pointer',
+				grid: { w: GRID_SIZE, h: GRID_SIZE },
+				start: (params: BeforeStartEventParams) => {
+					const draggedNode = params.drag.getDragElement();
+					const nodeName = draggedNode.getAttribute('data-name');
+					if (!nodeName) return;
+					isDragging.value = true;
+
+					const isSelected = uiStore.isNodeSelected(nodeName);
+
+					if (params.e && !isSelected) {
+						// Only the node which gets dragged directly gets an event, for all others it is
+						// undefined. So check if the currently dragged node is selected and if not clear
+						// the drag-selection.
+						jsPlumbInstance.value?.clearDragSelection();
+						uiStore.resetSelectedNodes();
+					}
+
+					uiStore.addActiveAction('dragActive');
+					return true;
+				},
+				stop: (params: DragStopEventParams) => {
+					const draggedNode = params.drag.getDragElement();
+					const nodeName = draggedNode.getAttribute('data-name');
+					if (!nodeName) return;
+					const nodeData = workflowStore.getNodeByName(nodeName);
+					isDragging.value = false;
+					if (uiStore.isActionActive('dragActive') && nodeData) {
+						const moveNodes = uiStore.getSelectedNodes.slice();
+						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
+						if (!selectedNodeNames.includes(nodeData.name)) {
+							// If the current node is not in selected add it to the nodes which
+							// got moved manually
+							moveNodes.push(nodeData);
+						}
+
+						if (moveNodes.length > 1) {
+							historyStore.startRecordingUndo();
+						}
+						// This does for some reason just get called once for the node that got clicked
+						// even though "start" and "drag" gets called for all. So lets do for now
+						// some dirty DOM query to get the new positions till I have more time to
+						// create a proper solution
+						let newNodePosition: XYPosition;
+						moveNodes.forEach((node: INodeUi) => {
+							const element = document.getElementById(node.id);
+							if (element === null) {
+								return;
+							}
+
+							newNodePosition = [
+								parseInt(element.style.left!.slice(0, -2), 10),
+								parseInt(element.style.top!.slice(0, -2), 10),
+							];
+
+							const updateInformation = {
+								name: node.name,
+								properties: {
+									position: newNodePosition,
+								},
+							};
+							const oldPosition = node.position;
+							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
+								historyStore.pushCommandToUndo(
+									new MoveNodeCommand(node.name, oldPosition, newNodePosition),
+								);
+								workflowStore.updateNodeProperties(updateInformation);
+							}
+						});
+						if (moveNodes.length > 1) {
+							historyStore.stopRecordingUndo();
+						}
+					}
+				},
+				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
+			},
+		});
+		jsPlumbInstance.value?.setDragConstrainFunction((pos: PointXY) => {
+			const isReadOnly = uiStore.isReadOnlyView;
+			if (isReadOnly) {
+				// Do not allow to move nodes in readOnly mode
+				return null;
+			}
+			return pos;
+		});
+	}
 	return {
-		jsPlumbInstance,
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,
@@ -135,5 +252,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomOut,
 		zoomToFit,
 		wheelScroll,
+		initInstance,
+		jsPlumbInstance,
 	};
 });
