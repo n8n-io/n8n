@@ -210,7 +210,7 @@ isWeekend.doc = {
 	description: 'Checks if the Date falls on a Saturday or Sunday',
 };
 
-// @TODO: Extensions below will be surfaced in next phase
+// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 beginningOf.doc = {
 	name: 'beginningOf',

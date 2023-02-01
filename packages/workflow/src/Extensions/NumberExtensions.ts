@@ -58,7 +58,7 @@ isOdd.doc = {
 	returnType: 'boolean',
 };
 
-// @TODO: Extensions below will be surfaced in next phase
+// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 format.doc = {
 	name: 'format',
