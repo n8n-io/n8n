@@ -946,6 +946,8 @@
 	"personalizationModal.leadGeneration": "Lead generation, enrichment, routing",
 	"personalizationModal.customerCommunication": "Customer communication",
 	"personalizationModal.customerActions": "Actions when lead changes status",
+	"personalizationModal.yourEmailAddress": "Your email address",
+	"personalizationModal.email": "Enter your email..",
 	"personalizationModal.adCampaign": "Ad campaign management",
 	"personalizationModal.reporting": "Reporting",
 	"personalizationModal.dataSynching": "Data syncing",
