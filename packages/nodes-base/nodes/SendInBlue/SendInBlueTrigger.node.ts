@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
+import type {
 	IHookFunctions,
 	INodeType,
 	INodeTypeDescription,

@@ -3,16 +3,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
-import {
+import type {
 	INodesGraphResult,
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	TelemetryHelpers,
 } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
-import {
+import type {
 	IDiagnosticInfo,
 	IInternalHooksClass,
 	ITelemetryUserDeletionData,
@@ -20,7 +20,7 @@ import {
 	IExecutionTrackProperties,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
-import { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';

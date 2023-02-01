@@ -11,18 +11,21 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
+import type { IProcessMessage } from 'n8n-core';
+import { BinaryDataManager, WorkflowExecute } from 'n8n-core';
 
-import {
-	ErrorReporterProxy as ErrorReporter,
+import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
-	LoggerProxy as Logger,
-	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+} from 'n8n-workflow';
+import {
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy as Logger,
+	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
@@ -34,7 +37,7 @@ import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import {
+import type {
 	IExecutionFlattedDb,
 	IProcessMessageDataHook,
 	IWorkflowExecutionDataProcess,

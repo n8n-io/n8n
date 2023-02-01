@@ -1,6 +1,7 @@
-import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
-import { EventMessageTypes } from '../EventMessageClasses/';
+import type { EventMessageTypes } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'events';
@@ -11,17 +12,14 @@ import {
 	incrementPrometheusMetric,
 } from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
-import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
-import {
-	EventMessageAuditOptions,
-	EventMessageAudit,
-} from '../EventMessageClasses/EventMessageAudit';
-import {
-	EventMessageWorkflowOptions,
-	EventMessageWorkflow,
-} from '../EventMessageClasses/EventMessageWorkflow';
+import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
+import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
+import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
 import { isLogStreamingEnabled } from './MessageEventBusHelper';
-import { EventMessageNode, EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,

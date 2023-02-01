@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { messageFields, messageTypeFields } from './MessagesDescription';
 import { mediaFields, mediaTypeFields } from './MediaDescription';

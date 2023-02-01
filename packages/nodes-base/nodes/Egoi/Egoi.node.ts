@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,7 +11,7 @@ import {
 
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 
-import { ICreateMemberBody } from './Interfaces';
+import type { ICreateMemberBody } from './Interfaces';
 
 import moment from 'moment-timezone';
 

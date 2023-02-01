@@ -15,7 +15,7 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
-import { PathLike } from 'fs';
+import type { PathLike } from 'fs';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -185,6 +185,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	body?: IDataObject;
 	headers?: IDataObject;
 	qs?: IDataObject;
+	url?: string;
 	skipSslCertificateValidation?: boolean | string;
 }
 
@@ -529,6 +530,7 @@ export interface IN8nHttpFullResponse {
 
 export interface IN8nRequestOperations {
 	pagination?:
+		| IN8nRequestOperationPaginationGeneric
 		| IN8nRequestOperationPaginationOffset
 		| ((
 				this: IExecutePaginationFunctions,
@@ -539,7 +541,15 @@ export interface IN8nRequestOperations {
 export interface IN8nRequestOperationPaginationBase {
 	type: string;
 	properties: {
-		[key: string]: string | number;
+		[key: string]: unknown;
+	};
+}
+
+export interface IN8nRequestOperationPaginationGeneric extends IN8nRequestOperationPaginationBase {
+	type: 'generic';
+	properties: {
+		continue: boolean | string;
+		request: IRequestOptionsSimplifiedAuth;
 	};
 }
 
@@ -1039,6 +1049,7 @@ export interface INodeProperties {
 	>;
 	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
+	requiresDataPath?: 'single' | 'multiple';
 }
 
 export interface INodePropertyModeTypeOptions {

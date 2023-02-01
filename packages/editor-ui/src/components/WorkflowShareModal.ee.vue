@@ -154,6 +154,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage';
+import { BaseTextKey } from '@/plugins/i18n';
+import { isNavigationFailure } from 'vue-router';
 
 export default mixins(showMessage).extend({
 	name: 'workflow-share-modal',
@@ -175,7 +177,7 @@ export default mixins(showMessage).extend({
 
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
-			loading: false,
+			loading: true,
 			modalBus: new Vue(),
 			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
@@ -199,8 +201,9 @@ export default mixins(showMessage).extend({
 		modalTitle(): string {
 			return this.$locale.baseText(
 				this.isSharingEnabled
-					? this.uiStore.contextBasedTranslationKeys.workflows.sharing.title
-					: this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title,
+					? (this.uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
+					: (this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
+							.title as BaseTextKey),
 				{
 					interpolate: { name: this.workflow.name },
 				},
@@ -380,7 +383,7 @@ export default mixins(showMessage).extend({
 						},
 					),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', {
-						interpolate: { name: user.fullName },
+						interpolate: { name: user.fullName as string },
 					}),
 					null,
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.confirmButtonText'),
@@ -425,7 +428,11 @@ export default mixins(showMessage).extend({
 			await this.usersStore.fetchUsers();
 		},
 		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			this.$router.push({ name: VIEWS.USERS_SETTINGS }).catch((failure) => {
+				if (!isNavigationFailure(failure)) {
+					console.error(failure);
+				}
+			});
 			this.modalBus.$emit('close');
 		},
 		trackTelemetry(data: ITelemetryTrackProperties) {
@@ -437,18 +444,37 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl);
+			let linkUrl = this.$locale.baseText(
+				this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey,
+			);
 			if (linkUrl.includes('subscription')) {
 				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
 			}
 
 			window.open(linkUrl, '_blank');
 		},
+		async initialize() {
+			if (this.isSharingEnabled) {
+				await this.loadUsers();
+
+				if (
+					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+					!this.workflow.sharedWith?.length // Sharing info already loaded
+				) {
+					await this.workflowsStore.fetchWorkflow(this.workflow.id);
+				}
+			}
+
+			this.loading = false;
+		},
 	},
 	mounted() {
-		if (this.isSharingEnabled) {
-			this.loadUsers();
-		}
+		this.initialize();
+	},
+	watch: {
+		workflow(workflow) {
+			this.sharedWith = workflow.sharedWith;
+		},
 	},
 });
 </script>

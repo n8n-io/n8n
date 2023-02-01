@@ -1,18 +1,18 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
 
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { responderFields, respondersOperations } from './ResponderDescription';
 
@@ -20,7 +20,7 @@ import { jobFields, jobOperations } from './JobDescription';
 
 import { upperFirst } from 'lodash';
 
-import { IJob } from './AnalyzerInterface';
+import type { IJob } from './AnalyzerInterface';
 
 import { createHash } from 'crypto';
 

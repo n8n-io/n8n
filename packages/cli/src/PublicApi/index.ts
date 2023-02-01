@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import express, { Router } from 'express';
+import type { Router } from 'express';
+import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -47,6 +48,10 @@ async function createApiRouter(
 			}),
 		);
 	}
+
+	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (req, res) => {
+		res.sendFile(openApiSpecPath);
+	});
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,

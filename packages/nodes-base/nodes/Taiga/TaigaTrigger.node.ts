@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -8,7 +8,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { IHookFunctions } from 'n8n-core';
+import type { IHookFunctions } from 'n8n-core';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
 

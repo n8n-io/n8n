@@ -1,6 +1,6 @@
 import type Bull from 'bull';
 import type { RedisOptions } from 'ioredis';
-import { IExecuteResponsePromiseData } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
