@@ -1,12 +1,7 @@
-import { ITriggerFunctions } from 'n8n-core';
+import type { ITriggerFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import mqtt from 'mqtt';
 
@@ -128,9 +123,7 @@ export class MqttTrigger implements INodeType {
 			client = mqtt.connect(brokerUrl, clientOptions);
 		}
 
-		const self = this;
-
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
 					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
@@ -155,7 +148,7 @@ export class MqttTrigger implements INodeType {
 								//@ts-ignore
 								result = [message as string];
 							}
-							self.emit([self.helpers.returnJsonArray(result)]);
+							this.emit([this.helpers.returnJsonArray(result)]);
 							resolve(true);
 						});
 					});
@@ -165,7 +158,7 @@ export class MqttTrigger implements INodeType {
 					reject(error);
 				});
 			});
-		}
+		};
 
 		if (this.getMode() === 'trigger') {
 			await manualTriggerFunction();

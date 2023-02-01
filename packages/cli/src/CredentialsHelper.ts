@@ -9,11 +9,10 @@
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 import get from 'lodash.get';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsExpressionResolveValues,
-	ICredentialsHelper,
 	ICredentialTestFunction,
 	ICredentialTestRequestData,
 	IHttpRequestOptions,
@@ -25,28 +24,31 @@ import {
 	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
-	VersionedNodeType,
 	IRequestOptionsSimplified,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
-	NodeHelpers,
-	RoutingNode,
-	Workflow,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
-	LoggerProxy as Logger,
-	ErrorReporterProxy as ErrorReporter,
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
 	ICredentialTypes,
 } from 'n8n-workflow';
+import {
+	ICredentialsHelper,
+	VersionedNodeType,
+	NodeHelpers,
+	RoutingNode,
+	Workflow,
+	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
+} from 'n8n-workflow';
 
 import * as Db from '@/Db';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { User } from '@db/entities/User';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { User } from '@db/entities/User';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -270,7 +272,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					relations: ['credentials'],
 					where: { credentials: { id: nodeCredential.id, type }, userId },
 			  }).then((shared) => shared.credentials)
-			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
+			: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
 
 		if (!credential) {
 			throw new Error(
@@ -765,8 +767,8 @@ export async function getCredentialForUser(
  */
 export async function getCredentialWithoutUser(
 	credentialId: string,
-): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialId);
+): Promise<ICredentialsDb | null> {
+	return Db.collections.Credentials.findOneBy({ id: credentialId });
 }
 
 export function createCredentialsFromCredentialsEntity(

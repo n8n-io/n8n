@@ -10,15 +10,15 @@ import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+import type { FindManyOptions, ObjectLiteral } from 'typeorm';
+import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
+import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ActiveExecutions from '@/ActiveExecutions';
-import {
-	DatabaseType,
+import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
@@ -62,7 +62,8 @@ export class WaitTrackerClass {
 				waitTill: 'ASC',
 			},
 		};
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+
+		const dbType = config.getEnv('database.type');
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -107,9 +108,9 @@ export class WaitTrackerClass {
 		}
 
 		// Also check in database
-		const execution = await Db.collections.Execution.findOne(executionId);
+		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
 
-		if (execution === undefined || !execution.waitTill) {
+		if (execution === null || !execution.waitTill) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
@@ -146,9 +147,11 @@ export class WaitTrackerClass {
 
 		(async () => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution.findOne(executionId);
+			const fullExecutionDataFlatted = await Db.collections.Execution.findOneBy({
+				id: executionId,
+			});
 
-			if (fullExecutionDataFlatted === undefined) {
+			if (fullExecutionDataFlatted === null) {
 				throw new Error(`The execution with the id "${executionId}" does not exist.`);
 			}
 

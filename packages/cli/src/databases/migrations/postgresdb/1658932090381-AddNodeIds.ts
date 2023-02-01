@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { runInBatches } from '@db/utils/migrationHelpers';
 import { v4 as uuid } from 'uuid';
+import { getTablePrefix, runInBatches } from '@db/utils/migrationHelpers';
 
 // add node ids in workflow objects
 
@@ -9,13 +8,7 @@ export class AddNodeIds1658932090381 implements MigrationInterface {
 	name = 'AddNodeIds1658932090381';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
+		const tablePrefix = getTablePrefix();
 
 		const workflowsQuery = `
 			SELECT id, nodes
@@ -49,13 +42,7 @@ export class AddNodeIds1658932090381 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
+		const tablePrefix = getTablePrefix();
 
 		const workflowsQuery = `
 			SELECT id, nodes

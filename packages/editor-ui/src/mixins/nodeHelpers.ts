@@ -309,7 +309,7 @@ export const nodeHelpers = mixins(restApi).extend({
 					if (credentialTypeDescription.required) {
 						foundIssues[credentialTypeDescription.name] = [
 							this.$locale.baseText('nodeIssues.credentials.notSet', {
-								interpolate: { type: credentialDisplayName },
+								interpolate: { type: nodeType.displayName },
 							}),
 						];
 					}
@@ -505,7 +505,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				this.updateNodeCredentialIssues(node);
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(
-						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this),
+						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
 					);
 				}
 			}
