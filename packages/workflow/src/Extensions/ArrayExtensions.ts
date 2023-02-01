@@ -1,87 +1,7 @@
 import { ExpressionError, ExpressionExtensionError } from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 import { compact as oCompact, merge as oMerge } from './ObjectExtensions';
-
-function deepCompare(left: unknown, right: unknown): boolean {
-	if (left === right) {
-		return true;
-	}
-
-	// Check to see if they're the basic type
-	if (typeof left !== typeof right) {
-		return false;
-	}
-
-	if (typeof left === 'number' && isNaN(left) && isNaN(right as number)) {
-		return true;
-	}
-
-	// Explicitly return false if certain primitives don't equal each other
-	if (['number', 'string', 'bigint', 'boolean', 'symbol'].includes(typeof left) && left !== right) {
-		return false;
-	}
-
-	// Quickly check how many properties each has to avoid checking obviously mismatching
-	// objects
-	if (Object.keys(left as object).length !== Object.keys(right as object).length) {
-		return false;
-	}
-
-	// Quickly check if they're arrays
-	if (Array.isArray(left) !== Array.isArray(right)) {
-		return false;
-	}
-
-	// Check if arrays are equal, ordering is important
-	if (Array.isArray(left)) {
-		if (left.length !== (right as unknown[]).length) {
-			return false;
-		}
-		return left.every((v, i) => deepCompare(v, (right as object[])[i]));
-	}
-
-	// Check right first quickly. This is to see if we have mismatched properties.
-	// We'll check the left more indepth later to cover all our bases.
-	for (const key in right as object) {
-		if ((left as object).hasOwnProperty(key) !== (right as object).hasOwnProperty(key)) {
-			return false;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		} else if (typeof (left as any)[key] !== typeof (right as any)[key]) {
-			return false;
-		}
-	}
-
-	// Check left more in depth
-	for (const key in left as object) {
-		if ((left as object).hasOwnProperty(key) !== (right as object).hasOwnProperty(key)) {
-			return false;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		} else if (typeof (left as any)[key] !== typeof (right as any)[key]) {
-			return false;
-		}
-
-		if (
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			typeof (left as any)[key] === 'object'
-		) {
-			if (
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-				(left as any)[key] !== (right as any)[key] &&
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-				!deepCompare((left as any)[key], (right as any)[key])
-			) {
-				return false;
-			}
-		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			if ((left as any)[key] !== (right as any)[key]) {
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
+import deepEqual from 'deep-equal';
 
 function first(value: unknown[]): unknown {
 	return value[0];
@@ -127,8 +47,8 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		return value.reduce<unknown[]>((l, v) => {
 			if (typeof v === 'object' && v !== null && extraArgs.every((i) => i in v)) {
 				const alreadySeen = l.find((i) =>
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-					extraArgs.every((j) => deepCompare((i as any)[j], (v as any)[j])),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
+					extraArgs.every((j) => deepEqual((i as any)[j], (v as any)[j])),
 				);
 				if (!alreadySeen) {
 					l.push(v);
@@ -138,7 +58,8 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		}, []);
 	}
 	return value.reduce<unknown[]>((l, v) => {
-		if (l.findIndex((i) => deepCompare(i, v)) === -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (l.findIndex((i) => deepEqual(i, v)) === -1) {
 			l.push(v);
 		}
 		return l;
@@ -312,7 +233,8 @@ function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
-		if (newArr.findIndex((w) => deepCompare(w, v)) === -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (newArr.findIndex((w) => deepEqual(w, v)) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -328,7 +250,8 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		if (others.findIndex((w) => deepCompare(w, v)) === -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (others.findIndex((w) => deepEqual(w, v)) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -344,12 +267,14 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		if (others.findIndex((w) => deepCompare(w, v)) !== -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (others.findIndex((w) => deepEqual(w, v)) !== -1) {
 			newArr.push(v);
 		}
 	}
 	for (const v of others) {
-		if (value.findIndex((w) => deepCompare(w, v)) !== -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (value.findIndex((w) => deepEqual(w, v)) !== -1) {
 			newArr.push(v);
 		}
 	}
