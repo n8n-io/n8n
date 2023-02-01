@@ -24,6 +24,7 @@
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import {
+	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRMED,
@@ -121,36 +122,34 @@ export default mixins(
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		const nextTab = getNodeViewTab(to);
-		// When leaving for a page that's not a workflow view tab, ask to save changes
-		if (!nextTab) {
-			const result = this.uiStore.stateIsDirty;
-			if (result) {
-				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					true,
-				);
+		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
+			next();
+			return;
+		}
+		if (this.uiStore.stateIsDirty) {
+			const confirmModal = await this.confirmModal(
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				true,
+			);
 
-				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.settingsStore.fetchPromptsData();
-					this.uiStore.stateIsDirty = false;
-					next();
-				} else if (confirmModal === MODAL_CANCEL) {
-					this.uiStore.stateIsDirty = false;
-					next();
-				} else if (confirmModal === MODAL_CLOSE) {
-					next(false);
+			if (confirmModal === MODAL_CONFIRMED) {
+				const saved = await this.saveCurrentWorkflow({}, false);
+				if (saved) {
+					await this.settingsStore.fetchPromptsData();
 				}
-			} else {
+				this.uiStore.stateIsDirty = false;
+				next();
+			} else if (confirmModal === MODAL_CANCEL) {
+				this.uiStore.stateIsDirty = false;
 				next();
 			}
+		} else {
+			next();
 		}
-		next();
 	},
 	async mounted() {
 		this.loading = true;
