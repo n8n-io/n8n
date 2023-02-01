@@ -21,6 +21,7 @@ beforeEach(() => {
 	setActivePinia(createTestingPinia());
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
+	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
 });
 
 describe('No completions', () => {
