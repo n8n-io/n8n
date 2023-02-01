@@ -15,12 +15,9 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { CUSTOM_NODES_CATEGORY } from './Constants';
+import { CUSTOM_NODES_CATEGORY, CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME } from './Constants';
 import type { n8n } from './Interfaces';
 import { loadClassInIsolation } from './ClassLoader';
-
-const CUSTOM_API_CALL_NAME = 'Custom API Call';
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -57,15 +54,6 @@ export abstract class DirectoryLoader {
 		return path.resolve(this.directory, file);
 	}
 
-	protected isOAuth(credType: ICredentialType) {
-		return (
-			Array.isArray(credType.extends) &&
-			credType.extends.some((parentType) =>
-				['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-			)
-		);
-	}
-
 	/**
 	 * Whether any of the node's credential types may be used to
 	 * make a request from a node other than itself.
@@ -73,14 +61,17 @@ export abstract class DirectoryLoader {
 	protected supportsProxyAuth(description: INodeTypeDescription) {
 		if (!description.credentials) return false;
 
-		// const credentialTypes = CredentialTypes();
-
 		return description.credentials.some(({ name }) => {
 			const credType = this.credentialTypes[name].type;
 
 			if (credType.authenticate !== undefined) return true;
 
-			return this.isOAuth(credType);
+			return (
+				Array.isArray(credType.extends) &&
+				credType.extends.some((parentType) =>
+					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+				)
+			);
 		});
 	}
 
@@ -88,8 +79,8 @@ export abstract class DirectoryLoader {
 	 * Inject a `Custom API Call` option into `resource` and `operation`
 	 * parameters in a node that supports proxy auth.
 	 */
-	protected injectCustomApiCallOption(description: INodeTypeDescription) {
-		if (!this.supportsProxyAuth(description)) return description;
+	private injectCustomApiCallOption(description: INodeTypeDescription) {
+		if (!this.supportsProxyAuth(description)) return;
 
 		description.properties.forEach((p) => {
 			if (
@@ -102,11 +93,7 @@ export abstract class DirectoryLoader {
 					value: CUSTOM_API_CALL_KEY,
 				});
 			}
-
-			return p;
 		});
-
-		return description;
 	}
 
 	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
