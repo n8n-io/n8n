@@ -126,7 +126,6 @@ export abstract class DirectoryLoader {
 
 		if ('nodeVersions' in tempNode) {
 			for (const versionNode of Object.values(tempNode.nodeVersions)) {
-				this.injectCustomApiCallOption(versionNode.description);
 				this.fixIconPath(versionNode.description, filePath);
 			}
 
