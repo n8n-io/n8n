@@ -163,8 +163,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 						type: 'text',
 						placeholder: this.$locale.baseText('personalizationModal.email'),
 					},
-					shouldDisplay: () => true,
-					// this.settingsStore.isDesktopDeployment && !this.usersStore.currentUser?.firstName,
+					shouldDisplay: () =>
+						this.settingsStore.isDesktopDeployment && !this.usersStore.currentUser?.firstName,
 				},
 				{
 					name: COMPANY_TYPE_KEY,
