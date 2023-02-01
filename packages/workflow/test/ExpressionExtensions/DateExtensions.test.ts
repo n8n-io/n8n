@@ -67,5 +67,29 @@ describe('Data Transformation Functions', () => {
 			const date = new Date(2022, 0, 3);
 			expect(evaluate(`={{ "${getLocalISOString(date)}".toDate() }}`)).toEqual(date);
 		});
+
+		test('.inBetween() should work on string and Date', () => {
+			expect(evaluate(`={{ $now.isBetween('2023-06-23'.toDate(), '2023-06-23') }}`)).toBeDefined();
+		});
+
+		test('.inBetween() should work on string and DateTime', () => {
+			expect(evaluate(`={{ $now.isBetween($now, '2023-06-23') }}`)).toBeDefined();
+		});
+
+		test('.inBetween() should not work for invalid strings', () => {
+			expect(evaluate(`={{ $now.isBetween($now, 'invalid') }}`)).toBeUndefined();
+		});
+
+		test('.inBetween() should not work for numbers', () => {
+			expect(evaluate(`={{ $now.isBetween($now, 1) }}`)).toBeUndefined();
+		});
+
+		test('.inBetween() should not work for a single argument', () => {
+			expect(() => evaluate(`={{ $now.isBetween($now) }}`)).toThrow();
+		});
+
+		test('.inBetween() should not work for a more than two arguments', () => {
+			expect(() => evaluate(`={{ $now.isBetween($now, '2023-06-23', '2023-09-21'.toDate()) }}`)).toThrow();
+		});
 	});
 });
