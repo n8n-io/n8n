@@ -22,6 +22,7 @@
 			</div>
 			<Modals />
 			<Telemetry />
+			<Posthog />
 		</div>
 	</div>
 </template>
@@ -30,6 +31,7 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
+import Posthog from './components/Posthog.vue';
 import { HIRING_BANNER, LOCAL_STORAGE_THEME, POSTHOG_ASSUMPTION_TEST, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
@@ -53,6 +55,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		LoadingView,
 		Telemetry,
 		Modals,
+		Posthog,
 	},
 	setup() {
 		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
