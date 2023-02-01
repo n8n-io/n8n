@@ -82,7 +82,7 @@ function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
 	if (isDateTime(date)) {
 		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 	}
-	const dateTime = DateTime.fromJSDate(date, { zone: 'UTC' });
+	const dateTime = DateTime.fromJSDate(date).setZone('system');
 	return dateTime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 }
 

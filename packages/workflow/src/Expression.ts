@@ -60,7 +60,15 @@ export class Expression {
 			throw new Error('invalid DateTime');
 		}
 
-		const result = JSON.stringify(value)
+		let result = '';
+		if (value instanceof Date) {
+			// We don't want to use JSON.stringify for dates since it disregards client timezone
+			result = DateTime.fromJSDate(value).setZone('system').toISO();
+		} else {
+			result = JSON.stringify(value);
+		}
+
+		result = result
 			.replace(/,"/g, ', "') // spacing for
 			.replace(/":/g, '": '); // readability
 
