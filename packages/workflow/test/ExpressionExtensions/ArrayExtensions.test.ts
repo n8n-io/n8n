@@ -42,6 +42,14 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.unique() should work on an arrays containing nulls, objects and arrays', () => {
+			expect(
+				evaluate(
+					'={{ [1, 2, 3, "as", {}, {}, 1, 2, [1,2], "[sad]", "[sad]", null].unique() }}',
+				),
+			).toEqual([1, 2, 3, "as", {}, [1,2], "[sad]", null]);
+		});
+
 		test('.isEmpty() should work correctly on an array', () => {
 			expect(evaluate('={{ [].isEmpty() }}')).toEqual(true);
 		});
@@ -119,12 +127,28 @@ describe('Data Transformation Functions', () => {
 			).toEqual([{ test1: 1 }, { test2: 2 }, { test1: 1, test3: 3 }, { test4: 4 }]);
 		});
 
+		test('.union() should work on an arrays containing nulls, objects and arrays', () => {
+			expect(
+				evaluate(
+					'={{ [1, 2, "dd", {}, null].union([1, {}, null, 3]) }}',
+				),
+			).toEqual([1, 2, "dd", {}, null, 3]);
+		});
+
 		test('.intersection() should work on an array of objects', () => {
 			expect(
 				evaluate(
 					'={{ [{ test1: 1 }, { test2: 2 }].intersection([{ test1: 1, test3: 3 }, { test2: 2 }, { test4: 4 }]) }}',
 				),
 			).toEqual([{ test2: 2 }]);
+		});
+
+		test('.intersection() should work on an arrays containing nulls, objects and arrays', () => {
+			expect(
+				evaluate(
+					'={{ [1, 2, "dd", {}, null].intersection([1, {}, null]) }}',
+				),
+			).toEqual([1, {}, null]);
 		});
 
 		test('.difference() should work on an array of objects', () => {
@@ -137,6 +161,14 @@ describe('Data Transformation Functions', () => {
 			expect(
 				evaluate('={{ [{ test1: 1 }, { test2: 2 }].difference([{ test1: 1 }, { test2: 2 }]) }}'),
 			).toEqual([]);
+		});
+
+		test('.difference() should work on an arrays containing nulls, objects and arrays', () => {
+			expect(
+				evaluate(
+					'={{ [1, 2, "dd", {}, null, ["a", 1]].difference([1, {}, null, ["a", 1]]) }}',
+				),
+			).toEqual([2, "dd"]);
 		});
 
 		test('.compact() should work on an array', () => {
