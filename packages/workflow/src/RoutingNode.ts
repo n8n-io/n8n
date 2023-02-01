@@ -180,7 +180,7 @@ export class RoutingNode {
 						runIndex,
 						executeData,
 						{ $credentials: credentials, $version: this.node.typeVersion },
-						true,
+						false,
 					) as string | NodeParameterValue;
 
 					const tempOptions = this.getRequestOptionsFromParameters(
@@ -380,7 +380,7 @@ export class RoutingNode {
 							$value: parameterValue,
 							$version: this.node.typeVersion,
 						},
-						true,
+						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnItem as Record<string, any>)[key] = propertyValue;
@@ -725,7 +725,7 @@ export class RoutingNode {
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: value },
-							true,
+							false,
 						) as string;
 					}
 
