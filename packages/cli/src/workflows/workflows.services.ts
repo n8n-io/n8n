@@ -1,5 +1,5 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import { INode, IPinData, JsonObject, NodeApiError } from 'n8n-workflow';
 import { jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
@@ -336,8 +336,12 @@ export class WorkflowsService {
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
 
+				let message;
+				if (error instanceof NodeApiError) message = error.description;
+				message = message ?? (error as Error).message;
+
 				// Now return the original error for UI to display
-				throw new ResponseHelper.BadRequestError((error as Error).message);
+				throw new ResponseHelper.BadRequestError(message);
 			}
 		}
 
