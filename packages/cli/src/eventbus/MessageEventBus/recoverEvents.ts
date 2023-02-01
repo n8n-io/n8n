@@ -87,7 +87,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 					{
 						message: 'Execution stopped at this node',
 						description:
-							'n8n may have run out of memory while executing it. More context and tips on how to avoid this <a href=”https://docs.n8n.io/flow-logic/error-handling/memory-errors”>in the docs</a>',
+							"n8n may have run out of memory while executing it. More context and tips on how to avoid this <a href='https://docs.n8n.io/flow-logic/error-handling/memory-errors' target='_blank'>in the docs</a>",
 					},
 				);
 				workflowError = new WorkflowOperationError(

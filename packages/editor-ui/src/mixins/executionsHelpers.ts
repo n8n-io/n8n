@@ -61,7 +61,7 @@ export const executionHelpers = mixins(genericHelpers).extend({
 				}
 			} else if (execution.status === 'crashed') {
 				status.name = 'crashed';
-				status.label = this.$locale.baseText('executionsList.crashed');
+				status.label = this.$locale.baseText('executionsList.error');
 				if (execution.stoppedAt) {
 					status.runningTime = this.displayTimer(
 						new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(),

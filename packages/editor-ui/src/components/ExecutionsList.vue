@@ -339,7 +339,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					},
 					{
 						id: 'crashed',
-						name: this.$locale.baseText('executionsList.crashed'),
+						name: this.$locale.baseText('executionsList.error'),
 					},
 					{
 						id: 'new',
@@ -840,7 +840,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
 				} else if (status === 'crashed') {
-					text = this.$locale.baseText('executionsList.crashed');
+					text = this.$locale.baseText('executionsList.error');
 				} else if (status === 'new') {
 					text = this.$locale.baseText('executionsList.new');
 				} else if (status === 'running') {
@@ -862,7 +862,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
 				} else if (status === 'crashed') {
-					path = 'executionsList.statusCrashed';
+					path = 'executionsList.statusText';
 				} else if (status === 'new') {
 					path = 'executionsList.statusNew';
 				} else if (status === 'running') {
