@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { INode, IPinData, JsonObject, NodeApiError } from 'n8n-workflow';
-import { jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import pick from 'lodash.pick';
