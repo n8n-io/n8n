@@ -68,22 +68,18 @@ describe('Top-level completions', () => {
 	});
 });
 
-/**
- * @ts-expect-error below is needed as long as `resolveParameter` is mistyped
- */
-
 describe('Luxon method completions', () => {
 	const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 
 	test('should return class completions for: {{ DateTime.| }}', () => {
-		// @ts-expect-error
+		// @ts-expect-error Spied function is mistyped
 		resolveParameterSpy.mockReturnValueOnce(DateTime);
 
 		expect(completions('{{ DateTime.| }}')).toHaveLength(luxonStaticOptions().length);
 	});
 
 	test('should return instance completions for: {{ $now.| }}', () => {
-		// @ts-expect-error
+		// @ts-expect-error Spied function is mistyped
 		resolveParameterSpy.mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $now.| }}')).toHaveLength(
@@ -92,7 +88,7 @@ describe('Luxon method completions', () => {
 	});
 
 	test('should return instance completions for: {{ $today.| }}', () => {
-		// @ts-expect-error
+		// @ts-expect-error Spied function is mistyped
 		resolveParameterSpy.mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $today.| }}')).toHaveLength(
@@ -106,21 +102,21 @@ describe('Resolution-based completions', () => {
 
 	describe('literals', () => {
 		test('should return completions for string literal: {{ "abc".| }}', () => {
-			// @ts-expect-error
+			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce('abc');
 
 			expect(completions('{{ "abc".| }}')).toHaveLength(extensions('string').length);
 		});
 
 		test('should return completions for number literal: {{ (123).| }}', () => {
-			// @ts-expect-error
+			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce(123);
 
 			expect(completions('{{ (123).| }}')).toHaveLength(extensions('number').length);
 		});
 
 		test('should return completions for array literal: {{ [1, 2, 3].| }}', () => {
-			// @ts-expect-error
+			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce([1, 2, 3]);
 
 			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(extensions('array').length);
