@@ -643,6 +643,13 @@ export const worksheetFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to update all matching rows or just the first match',
 			},
+			{
+				displayName: 'Upsert',
+				name: 'upsert',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to insert a new row if no match is found',
+			},
 		],
 		displayOptions: {
 			show: {

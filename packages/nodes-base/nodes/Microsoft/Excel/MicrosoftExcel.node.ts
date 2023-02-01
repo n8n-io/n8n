@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import type { SheetData } from './GenericFunctions';
+
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
@@ -858,11 +860,14 @@ export class MicrosoftExcel implements INodeType {
 					}
 
 					const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
+					const upsert = this.getNodeParameter('options.upsert', 0, false) as boolean;
 
 					let updatedRows: number[] = [];
+					let appendData: IDataObject[] = [];
+					let values: SheetData = [];
 
 					if (dataMode === 'define') {
-						const [values, updated] = updateByDefinedValues.call(
+						const [toUpdate, updated, toAppend] = updateByDefinedValues.call(
 							this,
 							items,
 							worksheetData.values as string[][],
@@ -870,13 +875,8 @@ export class MicrosoftExcel implements INodeType {
 						);
 
 						updatedRows = updated;
-
-						responseData = await microsoftApiRequest.call(
-							this,
-							'PATCH',
-							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
-							{ values },
-						);
+						appendData = toAppend;
+						values = toUpdate;
 					}
 
 					if (dataMode === 'autoMap') {
@@ -889,7 +889,7 @@ export class MicrosoftExcel implements INodeType {
 							);
 						}
 
-						const [values, updated] = updateByAutoMaping.call(
+						const [toUpdate, updated, toAppend] = updateByAutoMaping.call(
 							this,
 							items,
 							worksheetData.values as string[][],
@@ -898,14 +898,39 @@ export class MicrosoftExcel implements INodeType {
 						);
 
 						updatedRows = updated;
-
-						responseData = await microsoftApiRequest.call(
-							this,
-							'PATCH',
-							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
-							{ values },
-						);
+						appendData = toAppend;
+						values = toUpdate;
 					}
+
+					if (upsert && appendData.length) {
+						const appendValues: string[][] = [];
+
+						const columnsRow = (worksheetData.values as string[][])[0];
+
+						for (const [index, item] of appendData.entries()) {
+							const updateRow: string[] = [];
+
+							for (const column of columnsRow) {
+								updateRow.push(item[column] as string);
+							}
+
+							appendValues.push(updateRow);
+							updatedRows.push(index + values.length + 1);
+						}
+
+						values = values.concat(appendValues);
+						const [rangeFrom, rangeTo] = range.split(':');
+						const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+
+						range = `${rangeFrom}:${cellDataTo[1]}${Number(cellDataTo[2]) + appendValues.length}`;
+					}
+
+					responseData = await microsoftApiRequest.call(
+						this,
+						'PATCH',
+						`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+						{ values },
+					);
 
 					const rawData = this.getNodeParameter('rawData', 0);
 

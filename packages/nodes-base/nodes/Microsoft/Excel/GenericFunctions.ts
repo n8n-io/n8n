@@ -138,11 +138,13 @@ export function updateByDefinedValues(
 	items: INodeExecutionData[],
 	sheetData: SheetData,
 	updateAll = false,
-): [SheetData, number[]] {
+): [SheetData, number[], IDataObject[]] {
 	const [columns, ...originalValues] = sheetData;
 	const updateValues: SheetData = originalValues.map((row) => row.map(() => null));
 
 	const updatedRowsIndexes = new Set<number>();
+	const dataToAppend: IDataObject[] = [];
+
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', itemIndex) as string;
 		const valueToMatchOn = this.getNodeParameter('valueToMatchOn', itemIndex) as string;
@@ -171,7 +173,16 @@ export function updateByDefinedValues(
 					Number(row[columnToMatchOnIndex]) === Number(valueToMatchOn),
 			);
 
-			if (rowIndex === -1) continue;
+			if (rowIndex === -1) {
+				const appendItem: IDataObject = {};
+				appendItem[columnToMatchOn] = valueToMatchOn;
+
+				for (const entry of definedFields) {
+					appendItem[entry.column] = entry.fieldValue;
+				}
+				dataToAppend.push(appendItem);
+				continue;
+			}
 
 			rowIndexes.push(rowIndex);
 		}
@@ -189,6 +200,7 @@ export function updateByDefinedValues(
 	return [
 		[columns, ...updateValues],
 		[0, ...Array.from(updatedRowsIndexes).map((index) => index + 1)], //add columns index and shift by 1
+		dataToAppend,
 	];
 }
 
@@ -198,12 +210,14 @@ export function updateByAutoMaping(
 	sheetData: SheetData,
 	columnToMatchOn: string,
 	updateAll = false,
-): [SheetData, number[]] {
+): [SheetData, number[], IDataObject[]] {
 	const [columns, ...values] = sheetData;
 	const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
 	const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
 
 	const updatedRowsIndexes = new Set<number>();
+	const dataToAppend: IDataObject[] = [];
+
 	const itemsData = items.map((item) => item.json);
 	for (const item of itemsData) {
 		const columnValue = item[columnToMatchOn] as string;
@@ -225,7 +239,10 @@ export function updateByAutoMaping(
 			rowIndexes.push(rowIndex);
 		}
 
-		if (!rowIndexes.length) continue;
+		if (!rowIndexes.length) {
+			dataToAppend.push(item);
+			continue;
+		}
 
 		const updatedRow: Array<string | null> = [];
 
@@ -243,5 +260,6 @@ export function updateByAutoMaping(
 	return [
 		[columns, ...values],
 		[0, ...Array.from(updatedRowsIndexes).map((index) => index + 1)], //add columns index and shift by 1
+		dataToAppend,
 	];
 }
