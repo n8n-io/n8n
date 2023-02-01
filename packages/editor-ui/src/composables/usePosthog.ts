@@ -15,7 +15,11 @@ export function usePostHog() {
 	};
 
 	const getVariant = (experiment: string): string | boolean | undefined => {
-		return window.posthog?.getFeatureFlag(experiment);
+		try {
+			return window.posthog?.getFeatureFlag(experiment);
+		} catch (e) {
+			return false;
+		}
 	};
 
 	const trackAssumptionExperiment = () => {
@@ -36,22 +40,24 @@ export function usePostHog() {
 	};
 
 	const identify = (instanceId: string, user?: IUser | null, versionCli?: string) => {
-		const traits: Record<string, string> = { instance_id: instanceId };
-		if (versionCli) {
-			traits.version_cli = versionCli;
-		}
-		if (user && user.createdAt instanceof Date) {
-			traits.joined_at = user.createdAt.toISOString();
-		} else if (user && typeof user.createdAt === 'string') {
-			traits.joined_at = user.createdAt;
-		}
+		try {
+			const traits: Record<string, string> = { instance_id: instanceId };
+			if (versionCli) {
+				traits.version_cli = versionCli;
+			}
+			if (user && user.createdAt instanceof Date) {
+				traits.joined_at = user.createdAt.toISOString();
+			} else if (user && typeof user.createdAt === 'string') {
+				traits.joined_at = user.createdAt;
+			}
 
-		const id = user ? `${instanceId}#${user.id}` : instanceId;
-		window.posthog?.identify(id, traits);
+			const id = user ? `${instanceId}#${user.id}` : instanceId;
+			window.posthog?.identify(id, traits);
 
-		setTimeout(() => {
-			trackAssumptionExperiment();
-		}, 0);
+			setTimeout(() => {
+				trackAssumptionExperiment();
+			}, 0);
+		} catch (e) {}
 	};
 
 	const init = (tracking: Telemetry) => {
