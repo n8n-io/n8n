@@ -3696,7 +3696,7 @@ export default mixins(
 			this.createNodeActive = createNodeActive;
 
 			const mode =
-				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'default';
+				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
