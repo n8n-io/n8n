@@ -241,7 +241,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		});
 	}
 
-	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value);
+	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value as BrowserJsPlumbInstance);
 	return {
 		isDemo,
 		nodeViewScale,
