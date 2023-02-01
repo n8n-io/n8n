@@ -185,7 +185,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		isDemoTest(): boolean {
 			const posthog = usePostHog();
-			return posthog.isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video);
+			return posthog.isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
