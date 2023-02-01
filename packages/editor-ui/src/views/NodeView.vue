@@ -2754,10 +2754,10 @@ export default mixins(
 		},
 		getJSPlumbEndpoints(nodeName: string): Endpoint[] {
 			const node = this.workflowsStore.getNodeByName(nodeName);
-			const nodeEl = this.instance.getManagedElement(node?.id)
+			const nodeEl = this.instance.getManagedElement(node?.id);
 
 			const endpoints = this.instance?.getEndpoints(nodeEl);
-			return endpoints
+			return endpoints;
 		},
 		getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
 			const endpoints = this.getJSPlumbEndpoints(nodeName);
