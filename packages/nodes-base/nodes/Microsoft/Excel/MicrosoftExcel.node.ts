@@ -855,10 +855,35 @@ export class MicrosoftExcel implements INodeType {
 					values = processJsonInput(data, 'Data') as string[][];
 				}
 
-				if (dataMode === 'autoMap') {
-					const columnsRow = (worksheetData.values as string[][])[0];
+				const columnsRow = (worksheetData.values as string[][])[0];
 
+				if (dataMode === 'autoMap') {
 					const itemsData = items.map((item) => item.json);
+					for (const item of itemsData) {
+						const updateRow: string[] = [];
+
+						for (const column of columnsRow) {
+							updateRow.push(item[column] as string);
+						}
+
+						values.push(updateRow);
+					}
+				}
+
+				if (dataMode === 'define') {
+					const itemsData: IDataObject[] = [];
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const updateData: IDataObject = {};
+						const definedFields = this.getNodeParameter('fieldsUi.values', itemIndex, []) as Array<{
+							column: string;
+							fieldValue: string;
+						}>;
+						for (const entry of definedFields) {
+							updateData[entry.column] = entry.fieldValue;
+						}
+						itemsData.push(updateData);
+					}
+
 					for (const item of itemsData) {
 						const updateRow: string[] = [];
 
@@ -889,7 +914,7 @@ export class MicrosoftExcel implements INodeType {
 
 				const rawData = this.getNodeParameter('rawData', 0);
 
-				returnData.push(...prepareOutput.call(this, responseData, rawData));
+				returnData.push(...prepareOutput.call(this, responseData, rawData, 0, 1, columnsRow));
 			} else if (operation === 'updateRange') {
 				try {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
@@ -904,7 +929,6 @@ export class MicrosoftExcel implements INodeType {
 					const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
 					if (dataMode === 'nothing') {
-						// returnData.push({ json: {} });
 						return [this.helpers.returnJsonArray(returnData)];
 					}
 
@@ -961,13 +985,18 @@ export class MicrosoftExcel implements INodeType {
 
 					const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
 
+					let updatedRows: number[] = [];
+
 					if (dataMode === 'define') {
-						const values = updateByDefinedValues.call(
+						const [values, updated] = updateByDefinedValues.call(
 							this,
 							items,
 							worksheetData.values as string[][],
 							updateAll,
 						);
+
+						updatedRows = updated;
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
@@ -986,13 +1015,15 @@ export class MicrosoftExcel implements INodeType {
 							);
 						}
 
-						const values = updateByAutoMaping.call(
+						const [values, updated] = updateByAutoMaping.call(
 							this,
 							items,
 							worksheetData.values as string[][],
 							columnToMatchOn,
 							updateAll,
 						);
+
+						updatedRows = updated;
 
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -1004,7 +1035,9 @@ export class MicrosoftExcel implements INodeType {
 
 					const rawData = this.getNodeParameter('rawData', 0);
 
-					returnData.push(...prepareOutput.call(this, responseData, rawData));
+					returnData.push(
+						...prepareOutput.call(this, responseData, rawData, 0, 1, undefined, updatedRows),
+					);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(

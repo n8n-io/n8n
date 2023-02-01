@@ -81,18 +81,27 @@ export const worksheetFields: INodeProperties[] = [
 		displayName: 'Data Mode',
 		name: 'dataMode',
 		type: 'options',
-		default: 'raw',
+		default: 'define',
 		options: [
 			{
-				name: 'Auto-Map',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMap',
-				description:
-					'Automatically map data to columns, first row in worksheet must contain column names',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Map Each Column Below',
+				value: 'define',
+				description: 'Set the value for each destination column',
 			},
 			{
 				name: 'Raw',
 				value: 'raw',
 				description: 'Send raw data as JSON',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Do not send anything',
 			},
 		],
 		displayOptions: {
@@ -117,6 +126,43 @@ export const worksheetFields: INodeProperties[] = [
 				dataMode: ['raw'],
 			},
 		},
+	},
+	{
+		displayName: 'Values to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				operation: ['append'],
+				resource: ['worksheet'],
+				dataMode: ['define'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Column',
+						name: 'column',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'RAW Data',

@@ -90,19 +90,28 @@ export function prepareOutput(
 	rawData: boolean,
 	keyRow = 0,
 	firstDataRow = 1,
+	columnsRow?: string[],
+	updatedRows?: number[],
 ) {
 	const returnData: INodeExecutionData[] = [];
 
 	if (!rawData) {
-		if (responseData.values === null) {
+		let values = responseData.values;
+		if (values === null) {
 			throw new NodeOperationError(this.getNode(), 'Operation did not return data');
 		}
 
-		const columns = responseData.values[keyRow];
-		for (let rowIndex = firstDataRow; rowIndex < responseData.values.length; rowIndex++) {
+		const columns = columnsRow ? columnsRow : values[keyRow];
+		const startIndex = columnsRow ? 0 : firstDataRow;
+
+		if (updatedRows) {
+			values = values.filter((_, index) => updatedRows.includes(index));
+		}
+
+		for (let rowIndex = startIndex; rowIndex < values.length; rowIndex++) {
 			const data: IDataObject = {};
 			for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-				data[columns[columnIndex]] = responseData.values[rowIndex][columnIndex];
+				data[columns[columnIndex]] = values[rowIndex][columnIndex];
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ ...data }),
@@ -129,10 +138,11 @@ export function updateByDefinedValues(
 	items: INodeExecutionData[],
 	sheetData: SheetData,
 	updateAll = false,
-): SheetData {
+): [SheetData, number[]] {
 	const [columns, ...originalValues] = sheetData;
 	const updateValues: SheetData = originalValues.map((row) => row.map(() => null));
 
+	const updatedRowsIndexes = new Set<number>();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', itemIndex) as string;
 		const valueToMatchOn = this.getNodeParameter('valueToMatchOn', itemIndex) as string;
@@ -171,11 +181,15 @@ export function updateByDefinedValues(
 				const columnIndex = columns.indexOf(entry.column);
 				if (rowIndex === -1) continue;
 				updateValues[rowIndex][columnIndex] = entry.fieldValue;
+				updatedRowsIndexes.add(rowIndex);
 			}
 		}
 	}
 
-	return [columns, ...updateValues];
+	return [
+		[columns, ...updateValues],
+		[0, ...Array.from(updatedRowsIndexes).map((index) => index + 1)], //add columns index and shift by 1
+	];
 }
 
 export function updateByAutoMaping(
@@ -184,11 +198,12 @@ export function updateByAutoMaping(
 	sheetData: SheetData,
 	columnToMatchOn: string,
 	updateAll = false,
-): SheetData {
+): [SheetData, number[]] {
 	const [columns, ...values] = sheetData;
 	const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
 	const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
 
+	const updatedRowsIndexes = new Set<number>();
 	const itemsData = items.map((item) => item.json);
 	for (const item of itemsData) {
 		const columnValue = item[columnToMatchOn] as string;
@@ -221,8 +236,12 @@ export function updateByAutoMaping(
 
 		for (const rowIndex of rowIndexes) {
 			values[rowIndex] = updatedRow as string[];
+			updatedRowsIndexes.add(rowIndex);
 		}
 	}
 
-	return [columns, ...values];
+	return [
+		[columns, ...values],
+		[0, ...Array.from(updatedRowsIndexes).map((index) => index + 1)], //add columns index and shift by 1
+	];
 }
