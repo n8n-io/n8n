@@ -20,7 +20,6 @@ import router from './router';
 
 import { runExternalHook } from '@/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
-import { PosthogPlugin } from './plugins/posthog';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
@@ -30,7 +29,6 @@ import { useWebhooksStore } from './stores/webhooks';
 Vue.config.productionTip = false;
 
 Vue.use(TelemetryPlugin);
-Vue.use(PosthogPlugin);
 Vue.use((vue) => I18nPlugin(vue));
 Vue.use(PiniaVuePlugin);
 

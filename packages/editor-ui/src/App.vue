@@ -22,7 +22,6 @@
 			</div>
 			<Modals />
 			<Telemetry />
-			<Posthog />
 		</div>
 	</div>
 </template>
@@ -31,7 +30,6 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import Posthog from './components/Posthog.vue';
 import { HIRING_BANNER, LOCAL_STORAGE_THEME, POSTHOG_ASSUMPTION_TEST, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
@@ -48,6 +46,7 @@ import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
 import { historyHelper } from '@/mixins/history';
+import { usePostHog } from '@/composables/usePosthog';
 
 export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',
@@ -55,7 +54,6 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		LoadingView,
 		Telemetry,
 		Modals,
-		Posthog,
 	},
 	setup() {
 		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
@@ -183,6 +181,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 			}
 		},
 		trackExperiments() {
+			const posthog = usePostHog();
 			const assumption = window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST);
 			const isVideo = assumption === 'assumption-video';
 			const isDemo = assumption === 'assumption-demo';
@@ -205,6 +204,8 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 
 		this.trackPage();
 		this.$externalHooks().run('app.mount');
+
+		usePostHog().init(this.$telemetry);
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();

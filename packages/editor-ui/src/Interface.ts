@@ -36,6 +36,22 @@ import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
 
+declare global {
+	interface Window {
+		posthog?: {
+			isFeatureEnabled(flagName: string): boolean;
+			getFeatureFlag(flagName: string): boolean | string;
+			identify(
+				id: string,
+				userProperties?: Record<string, string>,
+				userPropertiesOnce?: Record<string, string>,
+			): void;
+			reset(resetDeviceId?: boolean): void;
+			reloadFeatureFlags(): void;
+		};
+	}
+}
+
 export type EndpointStyle = {
 	width?: number;
 	height?: number;
@@ -1349,3 +1365,8 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
+
+export interface Experiment {
+	name: string;
+	variant: Record<string, string | boolean>;
+}

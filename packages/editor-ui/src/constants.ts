@@ -1,3 +1,5 @@
+import { Experiment } from "./Interface";
+
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
@@ -461,3 +463,14 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';
+
+export const EXPERIMENTS = {
+	assumptions: {
+		name: 'adore-assumption-tests',
+		variant: {
+			control: 'control',
+			demo: 'assumption-demo',
+			video: 'assumption-video',
+		},
+	},
+};
