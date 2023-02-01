@@ -50,7 +50,6 @@ export function usePostHog() {
 		window.posthog?.identify(id, traits);
 
 		setTimeout(() => {
-			window.posthog?.reloadFeatureFlags();
 			trackAssumptionExperiment();
 		}, 0);
 	};
