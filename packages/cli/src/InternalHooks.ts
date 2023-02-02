@@ -337,6 +337,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 					user_id: userId,
 					workflow_id: workflow.id,
 					status: properties.success ? 'success' : 'failed',
+					executionStatus: runData?.status ?? 'unknown',
 					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
 					node_graph_string: properties.node_graph_string as string,

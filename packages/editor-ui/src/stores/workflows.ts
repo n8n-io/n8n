@@ -36,7 +36,9 @@ import {
 	INodeIssueData,
 	INodeParameters,
 	IPinData,
+	IRun,
 	IRunData,
+	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
 	NodeHelpers,
@@ -446,8 +448,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
-		setWorkflowExecutionRunData(workflowResultData: IRun | null): void {
-			this.workflowExecutionData.data = workflowResultData;
+		setWorkflowExecutionRunData(workflowResultData: IRunExecutionData): void {
+			if (this.workflowExecutionData) this.workflowExecutionData.data = workflowResultData;
 		},
 
 		setWorkflowSettings(workflowSettings: IWorkflowSettings): void {
@@ -928,7 +930,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
-			this.setWorkflowExecutionRunData(finishedActiveExecution.data);
+			if (finishedActiveExecution.data) {
+				this.setWorkflowExecutionRunData(
+					finishedActiveExecution.data as unknown as IRunExecutionData,
+				);
+			}
 		},
 
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {

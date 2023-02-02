@@ -1,10 +1,12 @@
 import { parse, stringify } from 'flatted';
-import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { IRun, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { InternalHooksManager } from '../../InternalHooksManager';
+import * as Push from '@/Push';
+import type { IPushDataExecutionFinished } from '../../Interfaces';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -106,7 +108,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 								{
 									json: {
 										message:
-											'This node does not contain any data. Its state was recovered from the event log.',
+											'The execution was interrupted, so the data was not saved. Try fixing the workflow and re-executing.',
 									},
 									pairedItem: undefined,
 								},
@@ -161,6 +163,23 @@ export async function recoverExecutionDataFromEventLogMessages(
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 				status: 'crashed',
 			});
+			const sendData: IPushDataExecutionFinished = {
+				executionId,
+				data: {
+					data: executionData,
+					finished: false,
+					mode: executionEntry.mode,
+					waitTill: executionEntry.waitTill ?? undefined,
+					startedAt: executionEntry.startedAt,
+					stoppedAt: lastNodeRunTimestamp?.toJSDate(),
+					status: 'crashed',
+				} as unknown as IRun,
+			};
+
+			setTimeout(() => {
+				const pushInstance = Push.getInstance();
+				pushInstance.send('executionFinished', sendData);
+			}, 10000);
 		}
 		return executionData;
 	}

@@ -773,7 +773,7 @@ export class WorkflowRunner {
 				);
 				// Process did exit with error code, so something went wrong.
 				const executionError = new WorkflowOperationError(
-					'Workflow execution process did crash for an unknown reason!',
+					'Workflow execution process crashed for an unknown reason!',
 				);
 
 				await this.processError(
