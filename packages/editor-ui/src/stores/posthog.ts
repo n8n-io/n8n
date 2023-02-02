@@ -53,6 +53,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		window.posthog?.onFeatureFlags((flags: string[], map: Record<string, string | boolean>) => {
 			featureFlags.value = map;
+			console.log('resolved flags', JSON.stringify(flags));
 		});
 	};
 
