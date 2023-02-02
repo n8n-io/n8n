@@ -55,7 +55,7 @@ export class Code implements INodeType {
 						value: 'javaScript',
 					},
 					{
-						name: 'Python',
+						name: 'Python (Beta)',
 						value: 'python',
 					},
 				],
@@ -97,9 +97,7 @@ export class Code implements INodeType {
 			// Python
 			{
 				displayName: 'Python',
-				// TODO: Rename
-				name: 'jsCode',
-				// name: 'pythonCode',
+				name: 'pythonCode',
 				typeOptions: {
 					editor: 'codeNodeEditor',
 					editorLanguage: 'python',
@@ -139,13 +137,13 @@ export class Code implements INodeType {
 		const language = this.getNodeParameter('language', 0) as string;
 
 		if (language === 'python') {
-			const pythonCode = this.getNodeParameter('jsCode', 0) as string;
-
 			// ----------------------------------
 			//        runOnceForAllItems
 			// ----------------------------------
 
 			if (nodeMode === 'runOnceForAllItems') {
+				const pythonCode = this.getNodeParameter('pythonCode', 0) as string;
+
 				const context = getSandboxContextPython.call(this);
 
 				if (workflowMode === 'manual') {
@@ -183,6 +181,8 @@ export class Code implements INodeType {
 			const sandbox = new SandboxPython(workflowMode, nodeMode);
 
 			for (let index = 0; index < items.length; index++) {
+				const pythonCode = this.getNodeParameter('pythonCode', index) as string;
+
 				const context = getSandboxContextPython.call(this, index);
 
 				if (workflowMode === 'manual') {

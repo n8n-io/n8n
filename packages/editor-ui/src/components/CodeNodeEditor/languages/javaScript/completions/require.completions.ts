@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import { AUTOCOMPLETABLE_BUILT_IN_MODULES } from '../constants';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
+import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
 import { useSettingsStore } from '@/stores/settings';
 
 export const requireCompletions = (Vue as CodeNodeEditorMixin).extend({

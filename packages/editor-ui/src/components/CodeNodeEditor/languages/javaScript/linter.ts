@@ -5,13 +5,13 @@ import * as esprima from 'esprima-next';
 import {
 	DEFAULT_LINTER_DELAY_IN_MS,
 	DEFAULT_LINTER_SEVERITY,
-	OFFSET_FOR_SCRIPT_WRAPPER,
-} from './constants';
-import { walk } from './utils';
+} from '@/components/CodeNodeEditor/constants';
+import { OFFSET_FOR_SCRIPT_WRAPPER } from './constants';
+import { walk } from '../../utils';
 
 import type { EditorView } from '@codemirror/view';
 import type { Node } from 'estree';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { CodeNodeEditorMixin, RangeNode } from '../../types';
 
 export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {

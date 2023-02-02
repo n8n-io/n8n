@@ -1,9 +1,9 @@
 import Vue from 'vue';
-import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
-import { addVarType } from '../utils';
+import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor//constants';
+import { addVarType } from '@/components/CodeNodeEditor/utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
-import type { CodeNodeEditorMixin } from '../types';
+import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 

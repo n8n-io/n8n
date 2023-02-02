@@ -11,13 +11,14 @@ import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 
 import { baseExtensions } from './baseExtensions';
-import { linterExtension } from './linter';
-import { completerExtension } from './completer';
+import { linterExtension } from './languages/javaScript/linter';
+import { completerExtension } from './languages/javaScript/completer';
 import { CODE_NODE_EDITOR_THEME } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
-import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
+import * as javaScriptConstants from './languages/javaScript/constants';
+import * as pythonScriptConstants from './languages/python/constants';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 
@@ -52,6 +53,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			this.reloadLinter();
 			this.refreshPlaceholder();
 		},
+		language() {
+			this.refreshPlaceholder();
+		},
 	},
 	computed: {
 		...mapStores(useRootStore),
@@ -60,16 +64,19 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 			return this.editor.state.doc.toString();
 		},
+		languageConstants() {
+			return this.language === 'python' ? pythonScriptConstants : javaScriptConstants;
+		},
 		placeholder(): string {
 			return {
-				runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
-				runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
+				runOnceForAllItems: this.languageConstants.ALL_ITEMS_PLACEHOLDER,
+				runOnceForEachItem: this.languageConstants.EACH_ITEM_PLACEHOLDER,
 			}[this.mode];
 		},
 		previousPlaceholder(): string {
 			return {
-				runOnceForAllItems: EACH_ITEM_PLACEHOLDER,
-				runOnceForEachItem: ALL_ITEMS_PLACEHOLDER,
+				runOnceForAllItems: this.languageConstants.EACH_ITEM_PLACEHOLDER,
+				runOnceForEachItem: this.languageConstants.ALL_ITEMS_PLACEHOLDER,
 			}[this.mode];
 		},
 	},
@@ -141,7 +148,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
 	},
 	mounted() {
-		console.log(this.language);
 		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
 
 		const stateBasedExtensions = [

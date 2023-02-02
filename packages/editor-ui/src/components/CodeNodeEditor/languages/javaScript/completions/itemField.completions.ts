@@ -1,7 +1,7 @@
 import Vue from 'vue';
-import { addVarType, escape } from '../utils';
+import { addVarType, escape } from '@/components/CodeNodeEditor/utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
+import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
 
 export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
