@@ -62,16 +62,19 @@ export abstract class DirectoryLoader {
 		if (!description.credentials) return false;
 
 		return description.credentials.some(({ name }) => {
-			const credType = this.credentialTypes[name].type;
+			if (name in this.credentialTypes) {
+				const credType = this.credentialTypes[name].type;
 
-			if (credType.authenticate !== undefined) return true;
+				if (credType.authenticate !== undefined) return true;
 
-			return (
-				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
-			);
+				return (
+					Array.isArray(credType.extends) &&
+					credType.extends.some((parentType) =>
+						['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+					)
+				);
+			}
+			return false;
 		});
 	}
 
