@@ -990,7 +990,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {

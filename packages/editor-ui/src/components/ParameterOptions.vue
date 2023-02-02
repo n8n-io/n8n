@@ -61,6 +61,12 @@ export default Vue.extend({
 		isValueExpression(): boolean {
 			return isValueExpression(this.parameter, this.value);
 		},
+		isHtmlEditor(): boolean {
+			return this.getArgument('editor') === 'htmlEditor';
+		},
+		isSqlEditor(): boolean {
+			return this.getArgument('editor') === 'sqlEditor';
+		},
 		shouldShowOptions(): boolean {
 			if (this.isReadOnly === true) {
 				return false;
@@ -95,14 +101,20 @@ export default Vue.extend({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
-			if (
-				this.ndvStore.activeNode?.type === HTML_NODE_TYPE &&
-				this.ndvStore.activeNode?.parameters.operation === 'generateHtmlTemplate'
-			) {
+			if (this.isHtmlEditor && !this.isValueExpression) {
 				return [
 					{
 						label: 'Format HTML',
 						value: 'formatHtml',
+					},
+				];
+			}
+
+			if (this.isSqlEditor && !this.isValueExpression) {
+				return [
+					{
+						label: 'Format SQL',
+						value: 'formatSql',
 					},
 				];
 			}

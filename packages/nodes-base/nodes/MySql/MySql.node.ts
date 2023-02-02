@@ -71,6 +71,11 @@ export class MySql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				typeOptions: {
+					editor: 'sqlEditor',
+					rows: 5,
+					dialect: 'mysql',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],

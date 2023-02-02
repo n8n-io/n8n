@@ -87,6 +87,14 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<sql-editor
+					v-else-if="getArgument('editor') === 'sqlEditor'"
+					:query="node.parameters.query"
+					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<div
 					v-else-if="isEditor === true"
 					class="code-edit clickable ph-no-capture"
@@ -346,6 +354,7 @@ import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -363,6 +372,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
+import { sqlEditorEventBus } from '@/event-bus/sql-editor-event-bus';
 
 export default mixins(
 	externalHooks,
@@ -385,6 +395,7 @@ export default mixins(
 		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
+		SqlEditor,
 		TextEdit,
 		ImportParameter,
 	},
@@ -1093,6 +1104,8 @@ export default mixins(
 				this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
 				htmlEditorEventBus.$emit('format-html');
+			} else if (command === 'formatSql') {
+				sqlEditorEventBus.$emit('format-sql');
 			}
 
 			if (this.node && (command === 'addExpression' || command === 'removeExpression')) {

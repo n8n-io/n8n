@@ -525,6 +525,7 @@ importers:
       '@codemirror/autocomplete': ^6.4.0
       '@codemirror/commands': ^6.1.0
       '@codemirror/lang-javascript': ^6.1.2
+      '@codemirror/lang-sql': ^6.4.0
       '@codemirror/language': ^6.2.1
       '@codemirror/lint': ^6.0.0
       '@codemirror/state': ^6.1.4
@@ -584,6 +585,7 @@ importers:
       prismjs: ^1.17.1
       sass: ^1.55.0
       sass-loader: ^10.1.1
+      sql-formatter: ^12.1.0
       stream-browserify: ^3.0.0
       string-template-parser: ^1.2.6
       timeago.js: ^4.0.2
@@ -611,6 +613,7 @@ importers:
       '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/commands': 6.1.2
       '@codemirror/lang-javascript': 6.1.2
+      '@codemirror/lang-sql': 6.4.0_gu445lycfriim3kznnyeahleva
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
       '@codemirror/state': 6.1.4
@@ -650,6 +653,7 @@ importers:
       pinia: 2.0.23_vj744rb3neneiaeb3oalctaenu
       prettier: 2.8.3
       prismjs: 1.29.0
+      sql-formatter: 12.1.0
       stream-browserify: 3.0.0
       timeago.js: 4.0.2
       uuid: 8.3.2
@@ -2994,6 +2998,19 @@ packages:
       '@codemirror/view': 6.5.1
       '@lezer/common': 1.0.1
       '@lezer/javascript': 1.0.2
+    dev: false
+
+  /@codemirror/lang-sql/6.4.0_gu445lycfriim3kznnyeahleva:
+    resolution: {integrity: sha512-UWGK1+zc9+JtkiT+XxHByp4N6VLgLvC2x0tIudrJG26gyNtn0hWOVoB0A8kh/NABPWkKl3tLWDYf2qOBJS9Zdw==}
+    dependencies:
+      '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/language': 6.2.1
+      '@codemirror/state': 6.1.4
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/view'
+      - '@lezer/common'
     dev: false
 
   /@codemirror/language/6.2.1:
@@ -6908,7 +6925,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.57.1
+      vite: 4.0.4_sass@1.55.0+terser@5.16.1
       vue: 2.7.14
     dev: true
 
@@ -20051,6 +20068,14 @@ packages:
 
   /sprintf-js/1.1.2:
     resolution: {integrity: sha512-VE0SOVEHCk7Qc8ulkWw3ntAzXuqf7S2lvwQaDLRnUeIEaKNQJzV6BwmLKhOqT61aGhfUMrXeaBk+oDGCzvhcug==}
+    dev: false
+
+  /sql-formatter/12.1.0:
+    resolution: {integrity: sha512-XwbFwdes2SuETEj/a0WY2MjweFFzgn5phDum4WOdWjk+aay84xXPUl9BzevB89PLykx+4d9GRdXRaiY1VHzytg==}
+    hasBin: true
+    dependencies:
+      argparse: 2.0.1
+      nearley: 2.20.1
     dev: false
 
   /sqlite3/5.1.4:
