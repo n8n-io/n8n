@@ -44,33 +44,27 @@ if (!inE2ETests && !inTest) {
 	}
 
 	// Overwrite config from files defined in "_FILE" environment variables
-	const overwrites = Object.entries(process.env).reduce<Record<string, string>>(
-		(acc, [envName, fileName]) => {
-			if (envName.endsWith('_FILE') && fileName) {
-				const configEnvName = envName.replace(/_FILE$/, '');
-				// @ts-ignore
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const key = config._env[configEnvName]?.[0] as string;
-				if (key) {
-					let value: string;
-					try {
-						value = readFileSync(fileName, 'utf8').trim();
-					} catch (error) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						if (error.code === 'ENOENT') {
-							throw new Error(`The file "${fileName}" could not be found.`);
-						}
-						throw error;
+	Object.entries(process.env).forEach(([envName, fileName]) => {
+		if (envName.endsWith('_FILE') && fileName) {
+			const configEnvName = envName.replace(/_FILE$/, '');
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const key = config._env[configEnvName]?.[0] as string;
+			if (key) {
+				let value: string;
+				try {
+					value = readFileSync(fileName, 'utf8');
+				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					if (error.code === 'ENOENT') {
+						throw new Error(`The file "${fileName}" could not be found.`);
 					}
-					console.debug('Loading config overwrite', { fileName });
-					acc[key] = value;
+					throw error;
 				}
+				config.set(key, value);
 			}
-			return acc;
-		},
-		{},
-	);
-	config.load(overwrites);
+		}
+	});
 }
 
 config.validate({
