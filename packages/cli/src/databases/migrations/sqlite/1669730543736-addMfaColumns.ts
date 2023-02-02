@@ -21,6 +21,7 @@ export class AddMfaColumns1669730543736 implements MigrationInterface {
 				"resetPasswordTokenExpiration" integer DEFAULT NULL,
 				"mfaEnabled" boolean DEFAULT false,
 				"mfaSecret" varchar DEFAULT NULL,
+				"mfaRecoveryCodes" varchar DEFAULT NULL,
 				"personalizationAnswers" text,
 				"createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 				"updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),

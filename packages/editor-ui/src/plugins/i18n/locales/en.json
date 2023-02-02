@@ -1637,5 +1637,6 @@
 	"settings.mfa.updateConfiguration": "MFA configuration updated",
 	"settings.mfa.invalidAuthenticatorCode": "Invalid authenticator code",
 	"settings.personal.enableMfa": "Add MFA to account",
-	"settings.personal.disableMfa": "Remove MFA to account"
+	"settings.personal.disableMfa": "Remove MFA to account",
+	"mfa.setup.invalidAuthenticatorCode": "{code} is not a valid number"
 }

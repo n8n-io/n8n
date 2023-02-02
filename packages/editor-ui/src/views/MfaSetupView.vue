@@ -55,6 +55,7 @@ import QrcodeVue from 'qrcode.vue';
 import Logo from '../components/Logo.vue';
 import { VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 import { mapStores } from 'pinia';
 
 export default mixins(showMessage).extend({
@@ -91,9 +92,10 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-		),
+		...mapStores(useSettingsStore, useUsersStore),
+		isUserLoggedIn() {
+			return this.usersStore.currentUser ? true : false;
+		},
 	},
 	methods: {
 		onInput() {

@@ -19,6 +19,7 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
@@ -113,6 +114,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 				curlCommand: '',
 				httpNodeParameters: '',
+			},
+			[MFA_SETUP_MODAL_KEY]: {
+				open: false,
 			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,

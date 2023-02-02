@@ -87,6 +87,10 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
+		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
+			<MfaSetupModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -134,6 +138,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -156,6 +161,7 @@ import DeleteUserModal from './DeleteUserModal.vue';
 import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
+import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 
@@ -184,6 +190,7 @@ export default Vue.extend({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
+		MfaSetupModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -207,6 +214,7 @@ export default Vue.extend({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
+		MFA_SETUP_MODAL_KEY,
 	}),
 });
 </script>

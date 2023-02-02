@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import express from 'express';
+import type express from 'express';
 import type { User } from '../databases/entities/User';
 
 export type AuthenticatedRequest<
@@ -12,6 +12,13 @@ export type AuthenticatedRequest<
 };
 
 export declare namespace MFA {
-	type activate = AuthenticatedRequest<{}, {}, { code: string }, {}>;
+	type verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
+	type validateRecoveryCode = AuthenticatedRequest<
+		{},
+		{},
+		{ recoveryCode: { enabled: boolean } },
+		{}
+	>;
 }

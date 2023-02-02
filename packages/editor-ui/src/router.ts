@@ -559,23 +559,6 @@ const router = new Router({
 					},
 				},
 				{
-					path: '/mfa-setup',
-					name: VIEWS.MFA_SETUP,
-					components: {
-						settingsView: MfaSetupView,
-					},
-					meta: {
-						permissions: {
-							allow: {
-								shouldAllow: () => {
-									const usersStore = useUsersStore();
-									return usersStore.mfaEnabled === false;
-								},
-							},
-						},
-					},
-				},
-				{
 					path: 'log-streaming',
 					name: VIEWS.LOG_STREAMING_SETTINGS,
 					components: {

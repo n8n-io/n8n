@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY, SignInType, VIEWS } from '@/constants';
+import { CHANGE_PASSWORD_MODAL_KEY, MFA_SETUP_MODAL_KEY, SignInType, VIEWS } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
@@ -189,7 +189,9 @@ export default mixins(showMessage).extend({
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 		},
 		onMfaEnableClick() {
-			this.$router.push({ name: VIEWS.MFA_SETUP });
+			console.log('ajaj papa');
+			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
+			//	this.$router.push({ name: VIEWS.MFA_SETUP });
 		},
 		async onMfaDisableClick() {
 			const settingStore = useSettingsStore();
