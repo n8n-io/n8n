@@ -34,6 +34,10 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 		if (error.context.failExecution) {
 			throw error;
 		}
+
+		if (typeof process === 'undefined' && error.clientOnly) {
+			throw error;
+		}
 	}
 };
 
@@ -44,6 +48,10 @@ export class Expression {
 		this.workflow = workflow;
 	}
 
+	static resolveWithoutWorkflow(expression: string) {
+		return tmpl.tmpl(expression, {});
+	}
+
 	/**
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
@@ -51,7 +59,16 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-		return `[${typeName}: ${JSON.stringify(value)}]`;
+
+		if (DateTime.isDateTime(value) && value.invalidReason !== null) {
+			throw new Error('invalid DateTime');
+		}
+
+		const result = JSON.stringify(value)
+			.replace(/,"/g, ', "') // spacing for
+			.replace(/":/g, '": '); // readability
+
+		return `[${typeName}: ${result}]`;
 	}
 
 	/**
@@ -268,7 +285,11 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
-			throw new Error('This is a function. Please add ()');
+
+			if (returnValue.name === 'DateTime')
+				throw new Error('this is a DateTime, please access its methods');
+
+			throw new Error('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -293,6 +314,10 @@ export class Expression {
 				if (error.context.failExecution) {
 					throw error;
 				}
+
+				if (typeof process === 'undefined' && error.clientOnly) {
+					throw error;
+				}
 			}
 
 			// Syntax errors resolve to `Error` on the frontend and `null` on the backend.
@@ -304,6 +329,19 @@ export class Expression {
 				error.name === 'SyntaxError'
 			) {
 				throw new Error('invalid syntax');
+			}
+
+			if (
+				typeof process === 'undefined' &&
+				error instanceof Error &&
+				error.name === 'TypeError' &&
+				error.message.endsWith('is not a function')
+			) {
+				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
+
+				if (!match?.groups?.msg) return null;
+
+				throw new Error(match.groups.msg);
 			}
 		}
 		return null;
@@ -325,7 +363,7 @@ export class Expression {
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (!output?.code) {
-					throw new ExpressionExtensionError('Failed to extend syntax');
+					throw new ExpressionExtensionError('invalid syntax');
 				}
 
 				let text = output.code;
