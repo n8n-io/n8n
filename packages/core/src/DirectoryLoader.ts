@@ -58,7 +58,7 @@ export abstract class DirectoryLoader {
 	 * Whether any of the node's credential types may be used to
 	 * make a request from a node other than itself.
 	 */
-	protected supportsProxyAuth(description: INodeTypeDescription) {
+	private supportsProxyAuth(description: INodeTypeDescription) {
 		if (!description.credentials) return false;
 
 		return description.credentials.some(({ name }) => {
@@ -131,6 +131,7 @@ export abstract class DirectoryLoader {
 
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: currentVersionNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.injectCustomApiCallOption(currentVersionNode.description);
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
