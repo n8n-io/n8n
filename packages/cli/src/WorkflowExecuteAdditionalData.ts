@@ -67,6 +67,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -583,13 +584,19 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
+					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
+					// As a result, we should remove any sensitive information before saving to the database
+					const { shared, ...workflowData } = this.workflowData as WorkflowEntity;
+
+					console.log(this.workflowData, '\n', workflowData);
+
 					const fullExecutionData: IExecutionDb = {
 						data: fullRunData.data,
 						mode: fullRunData.mode,
 						finished: fullRunData.finished ? fullRunData.finished : false,
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
-						workflowData: this.workflowData,
+						workflowData,
 						waitTill: fullRunData.waitTill,
 					};
 
