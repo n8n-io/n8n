@@ -151,13 +151,13 @@ export class GithubTrigger implements INodeType {
 						placeholder: 'https://github.com/n8n-io/n8n',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
+							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
+									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
 									errorMessage: 'Not a valid Github Repository URL',
 								},
 							},
@@ -172,7 +172,7 @@ export class GithubTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[-_a-zA-Z0-9]+',
+									regex: '[-_.0-9a-zA-Z]+',
 									errorMessage: 'Not a valid Github Repository Name',
 								},
 							},
@@ -436,7 +436,6 @@ export class GithubTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -453,8 +452,6 @@ export class GithubTrigger implements INodeType {
 					extractValue: true,
 				}) as string;
 				const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
-
-				console.log('checkExists', { owner, repository, endpoint });
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
@@ -490,8 +487,6 @@ export class GithubTrigger implements INodeType {
 				const events = this.getNodeParameter('events', []);
 
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
-
-				console.log('create', { owner, repository, endpoint });
 
 				const body = {
 					name: 'web',
@@ -561,8 +556,6 @@ export class GithubTrigger implements INodeType {
 					}) as string;
 					const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 					const body = {};
-
-					console.log('delete', { owner, repository, endpoint });
 
 					try {
 						await githubApiRequest.call(this, 'DELETE', endpoint, body);
