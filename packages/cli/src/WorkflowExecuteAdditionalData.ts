@@ -588,8 +588,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					// As a result, we should remove any sensitive information before saving to the database
 					const { shared, ...workflowData } = this.workflowData as WorkflowEntity;
 
-					console.log(this.workflowData, '\n', workflowData);
-
 					const fullExecutionData: IExecutionDb = {
 						data: fullRunData.data,
 						mode: fullRunData.mode,
