@@ -6,12 +6,12 @@ export const convertToDateTime = (value: string | Date | DateTime): DateTime | u
 	let converted: DateTime | undefined;
 
 	if (typeof value === 'string') {
-		converted = DateTime.fromJSDate(new Date(value), { zone: 'system' });
+		converted = DateTime.fromJSDate(new Date(value));
 		if (converted.invalidReason !== null) {
 			return;
 		}
 	} else if (value instanceof Date) {
-		converted = DateTime.fromJSDate(value, { zone: 'system' });
+		converted = DateTime.fromJSDate(value);
 	} else if (DateTime.isDateTime(value)) {
 		converted = value;
 	} else {
