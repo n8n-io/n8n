@@ -262,6 +262,8 @@ export class Telemetry {
 			}
 		};
 
+		options.useBeacon = true;
+
 		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}

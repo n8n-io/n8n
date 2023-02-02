@@ -1,4 +1,4 @@
-import { watch, ref, Ref } from 'vue';
+import { ref, Ref } from 'vue';
 import { Telemetry } from '@/plugins/telemetry';
 import { ASSUMPTION_EXPERIMENT } from '@/constants';
 import { defineStore } from 'pinia';
@@ -23,7 +23,7 @@ export const usePostHog = defineStore('posthog', () => {
 		});
 	};
 
-	const trackAssumptionExperiment = () => {
+	window.addEventListener('beforeunload', (e) => {
 		const variant = getVariant(ASSUMPTION_EXPERIMENT.name);
 		if (typeof variant !== 'string') {
 			return;
@@ -36,16 +36,7 @@ export const usePostHog = defineStore('posthog', () => {
 			name: 'edu_001',
 			variant: isDemo ? 'demo' : isVideo ? 'video' : 'control',
 		});
-	};
-
-	watch(
-		() => featureFlags.value[ASSUMPTION_EXPERIMENT.name],
-		(curr, prev) => {
-			if (curr && !prev) {
-				trackAssumptionExperiment();
-			}
-		},
-	);
+	});
 
 	return {
 		init,
