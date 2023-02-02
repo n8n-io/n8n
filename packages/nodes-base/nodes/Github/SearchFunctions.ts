@@ -1,4 +1,8 @@
-import { ILoadOptionsFunctions, INodeListSearchItems, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+} from 'n8n-workflow';
 import { githubApiRequest } from './GenericFunctions';
 
 type UserSearchItem = {
