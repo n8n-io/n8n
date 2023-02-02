@@ -134,7 +134,10 @@
 				</div>
 			</div>
 			<div
-				:class="{ 'disabled-linethrough': true, success: workflowDataItems > 0 }"
+				:class="{
+					'disabled-linethrough': true,
+					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
+				}"
 				v-if="showDisabledLinethrough"
 			></div>
 		</div>
