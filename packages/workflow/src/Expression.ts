@@ -60,7 +60,7 @@ export class Expression {
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 
-		if (DateTime.isDateTime(value)) {
+		if (DateTime.isDateTime(value) && value.invalidReason !== null) {
 			throw new Error('invalid DateTime');
 		}
 
