@@ -22,17 +22,11 @@ describe('Data Transformation Functions', () => {
 				{ value: 3, string: '3' },
 				{ value: 4, string: '4' },
 				{ value: 5, string: '5' },
-				{ value: 6, string: '6' }
+				{ value: 6, string: '6' },
+				{ value: { something: 'else' } }
 			].pluck("value") }}`),
 			).toEqual(
-				expect.arrayContaining([
-					{ value: 1 },
-					{ value: 2 },
-					{ value: 3 },
-					{ value: 4 },
-					{ value: 5 },
-					{ value: 6 },
-				]),
+				expect.arrayContaining([1, 2, 3, 4, 5, 6, { something: 'else' }]),
 			);
 		});
 

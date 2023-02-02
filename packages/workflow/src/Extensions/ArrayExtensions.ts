@@ -24,17 +24,19 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 		throw new ExpressionError('arguments must be passed to pluck');
 	}
 	const fieldsToPluck = extraArgs;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return (value as any[]).map((element: object) => {
-		const entries = Object.entries(element);
-		return entries.reduce((p, c) => {
-			const [key, val] = c as [string, Date | string | number];
-			if (fieldsToPluck.includes(key)) {
-				Object.assign(p, { [key]: val });
-			}
-			return p;
-		}, {});
-	}) as unknown[];
+	const plucked = value.reduce<unknown[]>((result, current) => {
+		if (typeof current !== 'object') {
+			result.push(current);
+		} else if (current) {
+			Object.keys(current).forEach((k) => {
+				if (current && fieldsToPluck.includes(k)) {
+					result.push((current as { [key: string]: unknown })[k]);
+				}
+			});
+		}
+		return result;
+	}, new Array<unknown>());
+	return plucked;
 }
 
 function randomItem(value: unknown[]): unknown {
