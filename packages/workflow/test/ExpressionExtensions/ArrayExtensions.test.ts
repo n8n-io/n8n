@@ -77,6 +77,17 @@ describe('Data Transformation Functions', () => {
 			]);
 		});
 
+		test('.merge() should work correctly without arguments', () => {
+			expect(
+				evaluate(
+					'={{ [{ a: 1, some: null }, { a: 2, c: "something" }, 2, "asds", { b: 23 }, null, [1, 2]].merge() }}',
+				),
+			).toEqual([
+				{"a": 1, "some": null, "c": "something", "b": 23},
+				2, "asds", null, [1, 2]
+			]);
+		});
+
 		test('.smartJoin() should work correctly on an array of objects', () => {
 			expect(
 				evaluate(

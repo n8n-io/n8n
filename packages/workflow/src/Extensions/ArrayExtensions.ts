@@ -204,6 +204,21 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 
 function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
+
+	if (others === undefined) {
+		// If there are no arguments passed, merge all objects within the array
+		const result: unknown[] = [];
+		const merged = value.reduce((combined, current) => {
+			if (current !== null && typeof current === 'object' && !Array.isArray(current)) {
+				combined = oMerge(combined as object, [current]);
+			} else {
+				result.push(current);
+			}
+			return combined;
+		}, {});
+		return [merged, ...result];
+	}
+
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
 			'merge(): expected array arg, e.g. .merge([{ id: 1, otherValue: 3 }])',
