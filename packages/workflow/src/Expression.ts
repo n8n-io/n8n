@@ -66,8 +66,10 @@ export class Expression {
 
 		let result = '';
 		if (value instanceof Date) {
-			// We don't want to use JSON.stringify for dates since it disregards client timezone
-			result = DateTime.fromJSDate(value).setZone('system').toISO();
+			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
+			result = DateTime.fromJSDate(value, {
+				zone: this.workflow.settings.timezone?.toString() ?? 'default',
+			}).toISO();
 		} else {
 			result = JSON.stringify(value);
 		}
