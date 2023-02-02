@@ -7,6 +7,8 @@ export interface IUser {
 	isOwner: boolean;
 	isPendingUser: boolean;
 	inviteAcceptUrl?: string;
+	disabled: boolean;
+	signInType: string;
 }
 
 export interface IUserListAction {

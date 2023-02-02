@@ -1,17 +1,17 @@
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IPollFunctions,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
-import { ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import type { ValueRenderOption } from './v2/helpers/GoogleSheets.types';
 
 import {
 	arrayOfArraysToJson,

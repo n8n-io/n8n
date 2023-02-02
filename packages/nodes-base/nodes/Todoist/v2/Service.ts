@@ -10,8 +10,8 @@ import {
 	UpdateHandler,
 } from './OperationHandler';
 
-import { Context } from '../GenericFunctions';
-import { IDataObject } from 'n8n-workflow';
+import type { Context } from '../GenericFunctions';
+import type { IDataObject } from 'n8n-workflow';
 
 export class TodoistService implements Service {
 	async execute(

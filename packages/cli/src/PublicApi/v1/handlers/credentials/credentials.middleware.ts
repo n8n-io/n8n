@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 
-import express from 'express';
+import type express from 'express';
 import { validate } from 'jsonschema';
 
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialRequest } from '../../../types';
+import type { CredentialRequest } from '../../../types';
 import { toJsonSchema } from './credentials.service';
 
 export const validCredentialType = (

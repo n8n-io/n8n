@@ -554,12 +554,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 			},
 			getWorkflowName(workflowId: string): string | undefined {
-				const workflow = this.workflows.find((data) => data.id === workflowId);
-				if (workflow === undefined) {
-					return undefined;
-				}
-
-				return workflow.name;
+				return this.workflows.find((data) => data.id === workflowId)?.name;
 			},
 			async loadActiveExecutions(): Promise<void> {
 				const activeExecutions = await this.restApi().getCurrentExecutions(
@@ -585,7 +580,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				// iF you use firstId, filtering id >= 504 you won't
 				// ever get ids 500, 501, 502 and 503 when they finish
 				const pastExecutionsPromise: Promise<IExecutionsListResponse> =
-					this.restApi().getPastExecutions(filter, 30);
+					this.restApi().getPastExecutions(filter, this.requestItemsPerRequest);
 				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> =
 					this.restApi().getCurrentExecutions({});
 
@@ -603,7 +598,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.workflowsStore.activeExecutions = results[1];
 
 				// execution IDs are typed as string, int conversion is necessary so we can order.
-				const alreadyPresentExecutionIds = this.finishedExecutions.map((exec) =>
+				const alreadyPresentExecutions = [...this.finishedExecutions];
+				const alreadyPresentExecutionIds = alreadyPresentExecutions.map((exec) =>
 					parseInt(exec.id, 10),
 				);
 				let lastId = 0;
@@ -611,7 +607,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				for (let i = results[0].results.length - 1; i >= 0; i--) {
 					const currentItem = results[0].results[i];
 					const currentId = parseInt(currentItem.id, 10);
-					if (lastId !== 0 && isNaN(currentId) === false) {
+					if (lastId !== 0 && !isNaN(currentId)) {
 						// We are doing this iteration to detect possible gaps.
 						// The gaps are used to remove executions that finished
 						// and were deleted from database but were displaying
@@ -631,14 +627,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						// Execution that we received is already present.
 
 						if (
-							this.finishedExecutions[executionIndex].finished === false &&
+							alreadyPresentExecutions[executionIndex].finished === false &&
 							currentItem.finished === true
 						) {
 							// Concurrency stuff. This might happen if the execution finishes
 							// prior to saving all information to database. Somewhat rare but
 							// With auto refresh and several executions, it happens sometimes.
 							// So we replace the execution data so it displays correctly.
-							this.finishedExecutions[executionIndex] = currentItem;
+							alreadyPresentExecutions[executionIndex] = currentItem;
 						}
 
 						continue;
@@ -646,23 +642,25 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 					// Find the correct position to place this newcomer
 					let j;
-					for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-						if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
-							this.finishedExecutions.splice(j + 1, 0, currentItem);
+					for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
+						if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
+							alreadyPresentExecutions.splice(j + 1, 0, currentItem);
 							break;
 						}
 					}
 					if (j === -1) {
-						this.finishedExecutions.unshift(currentItem);
+						alreadyPresentExecutions.unshift(currentItem);
 					}
 				}
-				this.finishedExecutions = this.finishedExecutions.filter(
+				const alreadyPresentExecutionsFiltered = alreadyPresentExecutions.filter(
 					(execution) =>
 						!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
 				);
 				this.finishedExecutionsCount = results[0].count;
 				this.finishedExecutionsCountEstimated = results[0].estimated;
-				this.workflowsStore.addToCurrentExecutions(this.finishedExecutions);
+
+				Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
+				this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 			},
 			async loadFinishedExecutions(): Promise<void> {
 				if (this.filter.status === 'running') {

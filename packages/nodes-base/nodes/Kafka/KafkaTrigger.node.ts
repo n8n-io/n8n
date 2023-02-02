@@ -1,19 +1,18 @@
-import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions } from 'kafkajs';
+import type { KafkaConfig, SASLOptions } from 'kafkajs';
+import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { ITriggerFunctions } from 'n8n-core';
+import type { ITriggerFunctions } from 'n8n-core';
 
-import {
-	createDeferredPromise,
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IRun,
 	ITriggerResponse,
-	NodeOperationError,
-	LoggerProxy as Logger,
 } from 'n8n-workflow';
+import { createDeferredPromise, NodeOperationError, LoggerProxy as Logger } from 'n8n-workflow';
 import { MessageTracker } from './MessageTracker';
 
 export class KafkaTrigger implements INodeType {
@@ -140,22 +139,23 @@ export class KafkaTrigger implements INodeType {
 						displayName: 'Delete From Queue When Read',
 						name: 'acknowledge',
 						type: 'options',
-						options:[
+						options: [
 							{
 								name: 'Execution Finishes',
 								value: 'executionFinishes',
-								description: 'After the workflow execution finished. No matter if the execution was successful or not.',
+								description:
+									'After the workflow execution finished. No matter if the execution was successful or not.',
 							},
 							{
 								name: 'Execution Finishes Successfully',
 								value: 'executionFinishesSuccessfully',
-								description: 'After the workflow execution finished successfully.',
+								description: 'After the workflow execution finished successfully',
 							},
 							{
 								name: 'Immediately',
 								value: 'immediately',
-								description: 'Immediately after the message was received.',
-							}
+								description: 'Immediately after the message was received',
+							},
 						],
 						default: 'immediately',
 						description: 'When to acknowledge the message',
@@ -268,7 +268,7 @@ export class KafkaTrigger implements INodeType {
 				if (!closeGotCalled) {
 					this.emitError(new Error('Connection got closed unexpectedly'));
 				}
-			})
+			});
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
@@ -312,10 +312,10 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					let responsePromise = undefined;
-					if (acknowledgeMode !== 'immediately')	{
+					if (acknowledgeMode !== 'immediately') {
 						responsePromise = await createDeferredPromise<IRun>();
 					}
-					this.emit([this.helpers.returnJsonArray([data])],undefined, responsePromise);
+					this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
 
 					if (responsePromise) {
 						await responsePromise.promise().then(async (data: IRun) => {
@@ -350,10 +350,10 @@ export class KafkaTrigger implements INodeType {
 					{
 						node: node.name,
 						workflow: workflow.id,
-					}
-				)
+					},
+				);
 			}
-		}
+		};
 
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the

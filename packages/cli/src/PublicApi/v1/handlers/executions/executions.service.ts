@@ -1,5 +1,6 @@
 import { parse } from 'flatted';
-import { In, Not, Raw, LessThan, IsNull, FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
 
 import * as Db from '@/Db';
 import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
@@ -29,7 +29,7 @@ import { fileFields, fileOperations } from './FileDescription';
 
 import { companyFields, companyOperations } from './CompanyDescription';
 
-import {
+import type {
 	IAddress,
 	IContact,
 	IEmailContact,
@@ -38,17 +38,17 @@ import {
 	ISocialAccount,
 } from './ConctactInterface';
 
-import { IAttachment, IEmail } from './EmaiIInterface';
+import type { IAttachment, IEmail } from './EmaiIInterface';
 
-import { INote } from './ContactNoteInterface';
+import type { INote } from './ContactNoteInterface';
 
-import { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
+import type { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
 
-import { IEcommerceProduct } from './EcommerceProductInterface';
+import type { IEcommerceProduct } from './EcommerceProductInterface';
 
-import { IFile } from './FileInterface';
+import type { IFile } from './FileInterface';
 
-import { ICompany } from './CompanyInterface';
+import type { ICompany } from './CompanyInterface';
 
 import { capitalCase, pascalCase } from 'change-case';
 

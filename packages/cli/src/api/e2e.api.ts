@@ -9,7 +9,7 @@ import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
-import { Role } from '@/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 
@@ -19,6 +19,8 @@ if (process.env.E2E_TESTS !== 'true') {
 }
 
 const tablesToTruncate = [
+	'auth_identity',
+	'auth_provider_sync_history',
 	'event_destinations',
 	'shared_workflow',
 	'shared_credentials',
