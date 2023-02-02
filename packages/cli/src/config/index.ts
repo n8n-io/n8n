@@ -47,9 +47,11 @@ if (!inE2ETests && !inTest) {
 	const overwrites = Object.entries(process.env).reduce<Record<string, string>>(
 		(acc, [envName, fileName]) => {
 			if (envName.endsWith('_FILE') && fileName) {
-				const key = envName.replace(/_FILE$/, '');
+				const configEnvName = envName.replace(/_FILE$/, '');
 				// @ts-ignore
-				if (key in config._env) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				const key = config._env[configEnvName]?.[0] as string;
+				if (key) {
 					let value: string;
 					try {
 						value = readFileSync(fileName, 'utf8').trim();
