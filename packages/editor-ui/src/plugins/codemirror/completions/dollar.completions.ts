@@ -6,6 +6,7 @@ import {
 	setRank,
 	prefixMatch,
 	stripExcessParens,
+	hasActiveNode,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
@@ -45,6 +46,8 @@ export function dollarOptions() {
 	const rank = setRank(['$json', '$input']);
 	const SKIP = new Set();
 	const DOLLAR_FUNCTIONS = ['$jmespath'];
+
+	if (!hasActiveNode()) return []; // e.g. credential modal
 
 	if (receivesNoBinaryData()) SKIP.add('$binary');
 

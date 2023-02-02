@@ -6,11 +6,11 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-In expressions, `DateTime.fromHTTP()`, `DateTime.fromISO()` and `DateTime.fromJSDate()` require an argument. Before, they all resolved `null` when called without an argument; now, they throw an error when called without an argument.
+Invalid Luxon datetimes no longer resolve to `null`. Now they throw the error `invalid DateTime`.
 
 ### When is action necessary?
 
-If you are relying on the above behavior, review your workflow to ensure you are passing in the required number of arguments.
+If you are relying on the above behavior, review your workflow to ensure you handle invalid Luxon datetimes.
 
 ## 0.202.0
 

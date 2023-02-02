@@ -126,11 +126,7 @@ export const setupAuthMiddlewares = (
 			`/${restEndpoint}/ldap/sync`,
 			`/${restEndpoint}/ldap/test-connection`,
 		];
-		const getRestrictedUrls = [
-			`/${restEndpoint}/users`,
-			`/${restEndpoint}/ldap/sync`,
-			`/${restEndpoint}/ldap/config`,
-		];
+		const getRestrictedUrls = [`/${restEndpoint}/ldap/sync`, `/${restEndpoint}/ldap/config`];
 		const putRestrictedUrls = [`/${restEndpoint}/ldap/config`];
 		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
 		if (

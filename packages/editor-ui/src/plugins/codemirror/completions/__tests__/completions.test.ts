@@ -9,6 +9,7 @@ import {
 	extensions,
 	luxonInstanceOptions,
 	luxonStaticOptions,
+	natives,
 } from '@/plugins/codemirror/completions/datatype.completions';
 
 import { mockNodes, mockProxy } from './mock';
@@ -20,6 +21,7 @@ beforeEach(() => {
 	setActivePinia(createTestingPinia());
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
+	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
 });
 
 describe('No completions', () => {
@@ -68,22 +70,18 @@ describe('Top-level completions', () => {
 	});
 });
 
-/**
- * @ts-expect-error below is needed as long as `resolveParameter` is mistyped
- */
-
 describe('Luxon method completions', () => {
 	const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 
 	test('should return class completions for: {{ DateTime.| }}', () => {
-		// @ts-expect-error
+		// @ts-expect-error Spied function is mistyped
 		resolveParameterSpy.mockReturnValueOnce(DateTime);
 
 		expect(completions('{{ DateTime.| }}')).toHaveLength(luxonStaticOptions().length);
 	});
 
 	test('should return instance completions for: {{ $now.| }}', () => {
-		// @ts-expect-error
+		// @ts-expect-error Spied function is mistyped
 		resolveParameterSpy.mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $now.| }}')).toHaveLength(
@@ -92,7 +90,7 @@ describe('Luxon method completions', () => {
 	});
 
 	test('should return instance completions for: {{ $today.| }}', () => {
-		// @ts-expect-error
+		// @ts-expect-error Spied function is mistyped
 		resolveParameterSpy.mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $today.| }}')).toHaveLength(
@@ -106,24 +104,30 @@ describe('Resolution-based completions', () => {
 
 	describe('literals', () => {
 		test('should return completions for string literal: {{ "abc".| }}', () => {
-			// @ts-expect-error
+			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce('abc');
 
-			expect(completions('{{ "abc".| }}')).toHaveLength(extensions('string').length);
+			expect(completions('{{ "abc".| }}')).toHaveLength(
+				natives('string').length + extensions('string').length,
+			);
 		});
 
 		test('should return completions for number literal: {{ (123).| }}', () => {
-			// @ts-expect-error
+			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce(123);
 
-			expect(completions('{{ (123).| }}')).toHaveLength(extensions('number').length);
+			expect(completions('{{ (123).| }}')).toHaveLength(
+				natives('number').length + extensions('number').length,
+			);
 		});
 
 		test('should return completions for array literal: {{ [1, 2, 3].| }}', () => {
-			// @ts-expect-error
+			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce([1, 2, 3]);
 
-			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(extensions('array').length);
+			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(
+				natives('array').length + extensions('array').length,
+			);
 		});
 
 		test('should return completions for object literal', () => {
@@ -132,7 +136,7 @@ describe('Resolution-based completions', () => {
 			resolveParameterSpy.mockReturnValueOnce(object);
 
 			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
-				Object.keys(object).length + extensions('object').length,
+				Object.keys(object).length + natives('object').length + extensions('object').length,
 			);
 		});
 	});

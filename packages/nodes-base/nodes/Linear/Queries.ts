@@ -122,8 +122,8 @@ export const query = {
 		}`;
 	},
 	getIssues() {
-		return `query Issue ($first: Int){
-					issues (first: $first){
+		return `query Issue ($first: Int, $after: String){
+					issues (first: $first, after: $after){
 						nodes {
 						id,
 						title,
@@ -148,6 +148,10 @@ export const query = {
 							id
 							name
 						}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
 					}
 				}
 			}`;

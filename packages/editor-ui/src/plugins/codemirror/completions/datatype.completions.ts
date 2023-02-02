@@ -1,4 +1,4 @@
-import { ExpressionExtensions, IDataObject } from 'n8n-workflow';
+import { ExpressionExtensions, NativeMethods, IDataObject } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -14,7 +14,7 @@ import {
 	stripExcessParens,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { ExtensionTypeName, Resolved } from './types';
+import type { ExtensionTypeName, FnToDoc, Resolved } from './types';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -71,42 +71,67 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 function datatypeOptions(resolved: Resolved, toResolve: string) {
 	if (resolved === null) return [];
 
-	if (typeof resolved === 'number') return extensions('number');
+	if (typeof resolved === 'number') {
+		return [...natives('number'), ...extensions('number')];
+	}
 
-	if (typeof resolved === 'string') return extensions('string');
+	if (typeof resolved === 'string') {
+		return [...natives('string'), ...extensions('string')];
+	}
 
 	if (['$now', '$today'].includes(toResolve)) {
 		return [...luxonInstanceOptions(), ...extensions('date')];
 	}
 
-	if (resolved instanceof Date) return extensions('date');
+	if (resolved instanceof Date) {
+		return [...natives('date'), ...extensions('date')];
+	}
 
 	if (Array.isArray(resolved)) {
 		if (/all\(.*?\)/.test(toResolve)) return [];
 
-		const arrayExtensions = extensions('array');
+		const arrayMethods = [...natives('array'), ...extensions('array')];
 
 		if (resolved.length > 0 && resolved.some((i) => typeof i !== 'number')) {
 			const NUMBER_ONLY_ARRAY_EXTENSIONS = new Set(['max()', 'min()', 'sum()', 'average()']);
 
-			return arrayExtensions.filter((e) => !NUMBER_ONLY_ARRAY_EXTENSIONS.has(e.label));
+			return arrayMethods.filter((m) => !NUMBER_ONLY_ARRAY_EXTENSIONS.has(m.label));
 		}
 
-		return arrayExtensions;
+		return arrayMethods;
 	}
 
-	if (typeof resolved === 'object') return objectOptions(toResolve, resolved);
+	if (typeof resolved === 'object') {
+		return objectOptions(toResolve, resolved);
+	}
 
 	return [];
 }
+
+export const natives = (typeName: ExtensionTypeName): Completion[] => {
+	const natives = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
+
+	if (!natives) return [];
+
+	return toOptions(natives.functions, typeName);
+};
 
 export const extensions = (typeName: ExtensionTypeName) => {
 	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!extensions) return [];
 
-	return Object.entries(extensions.functions)
-		.filter(([_, fn]) => fn.length === 1) // @TODO: Remove in next phase
+	const fnToDoc = Object.entries(extensions.functions).reduce<FnToDoc>((acc, [fnName, fn]) => {
+		if (fn.length !== 1) return acc; // @TODO_NEXT_PHASE: Remove to allow extensions which take args
+
+		return { ...acc, [fnName]: { doc: fn.doc } };
+	}, {});
+
+	return toOptions(fnToDoc, typeName);
+};
+
+export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
+	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([fnName, fn]) => {
 			const option: Completion = {
@@ -172,7 +197,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const keys = rank(rawKeys)
+	const localKeys = rank(rawKeys)
 		.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
 		.map((key) => {
 			ensureKeyCanBeResolved(resolved, key);
@@ -200,9 +225,9 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 		toResolve.endsWith('params') ||
 		toResolve === 'Math';
 
-	if (skipObjectExtensions) return keys;
+	if (skipObjectExtensions) return [...localKeys, ...natives('object')];
 
-	return [...keys, ...extensions('object')];
+	return [...localKeys, ...natives('object'), ...extensions('object')];
 };
 
 function ensureKeyCanBeResolved(obj: IDataObject, key: string) {

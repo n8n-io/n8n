@@ -350,20 +350,13 @@ randomItem.doc = {
 	returnType: 'number',
 };
 
-unique.doc = {
-	name: 'unique',
-	description: 'Returns a random element from an array',
-	returnType: 'array item',
-	aliases: ['removeDuplicates'],
-};
-
 sum.doc = {
 	name: 'sum',
 	description: 'Returns the total sum all the values in an array of parsable numbers',
 	returnType: 'number',
 };
 
-// @TODO: Extensions below will be surfaced in next phase
+// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 chunk.doc = {
 	name: 'chunk',
@@ -403,6 +396,12 @@ smartJoin.doc = {
 union.doc = {
 	name: 'union',
 	returnType: 'array',
+};
+
+unique.doc = {
+	name: 'unique',
+	returnType: 'array item',
+	aliases: ['removeDuplicates'],
 };
 
 export const arrayExtensions: ExtensionMap = {

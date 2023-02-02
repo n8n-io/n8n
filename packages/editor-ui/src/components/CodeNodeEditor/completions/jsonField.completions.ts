@@ -234,7 +234,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 			jsonOutput: IDataObject,
 			matcher: string, // e.g. `$input.first().json` or `x` (user-defined variable)
 		) {
-			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${matcher}[`)) {
+			if (
+				/\.json\[/.test(preCursor.text) ||
+				new RegExp(`(${escape(matcher)})\\[`).test(preCursor.text)
+			) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${matcher}['${field}']`)
 					.map((label) => ({
@@ -248,7 +251,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			if (preCursor.text.endsWith('.json.') || preCursor.text.endsWith(`${matcher}.`)) {
+			if (
+				/\.json\./.test(preCursor.text) ||
+				new RegExp(`(${escape(matcher)})\.`).test(preCursor.text)
+			) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.filter(isAllowedInDotNotation)
 					.map((field) => `${matcher}.${field}`)

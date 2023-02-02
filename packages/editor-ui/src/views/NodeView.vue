@@ -52,7 +52,6 @@
 							@runWorkflow="onRunNode"
 							@moved="onNodeMoved"
 							@run="onNodeRun"
-							:ref="`node-${nodeData.id}`"
 							:key="`${nodeData.id}_node`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
@@ -76,7 +75,6 @@
 							@nodeSelected="nodeSelectedByName"
 							@removeNode="(name) => removeNode(name, true)"
 							:key="`${nodeData.id}_sticky`"
-							:ref="`node-${nodeData.id}`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
 							:instance="instance"
@@ -402,55 +400,46 @@ export default mixins(
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		const nextTab = getNodeViewTab(to);
-		// Only react if leaving workflow tab and going to a separate page
-		if (!nextTab) {
-			// Skip check if in the middle of template import
-			if (from.name === VIEWS.TEMPLATE_IMPORT) {
-				next();
-				return;
-			}
-			// Make sure workflow id is empty when leaving the editor
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			const result = this.uiStore.stateIsDirty;
-			if (result) {
-				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					true,
-				);
-
-				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) await this.settingsStore.fetchPromptsData();
-					this.uiStore.stateIsDirty = false;
-
-					if (from.name === VIEWS.NEW_WORKFLOW) {
-						// Replace the current route with the new workflow route
-						// before navigating to the new route when saving new workflow.
-						this.$router.replace(
-							{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
-							() => {
-								// We can't use next() here since vue-router
-								// would prevent the navigation with an error
-								this.$router.push(to as RawLocation);
-							},
-						);
-					} else {
-						next();
-					}
-				} else if (confirmModal === MODAL_CANCEL) {
-					await this.resetWorkspace();
-					this.uiStore.stateIsDirty = false;
-
-					next();
-				} else if (confirmModal === MODAL_CLOSE) {
-					next(false);
+		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
+			next();
+			return;
+		}
+		if (this.uiStore.stateIsDirty) {
+			const confirmModal = await this.confirmModal(
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				true,
+			);
+			if (confirmModal === MODAL_CONFIRMED) {
+				// Make sure workflow id is empty when leaving the editor
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+				const saved = await this.saveCurrentWorkflow({}, false);
+				if (saved) {
+					await this.settingsStore.fetchPromptsData();
 				}
-			} else {
+				this.uiStore.stateIsDirty = false;
+
+				if (from.name === VIEWS.NEW_WORKFLOW) {
+					// Replace the current route with the new workflow route
+					// before navigating to the new route when saving new workflow.
+					this.$router.replace(
+						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
+						() => {
+							// We can't use next() here since vue-router
+							// would prevent the navigation with an error
+							this.$router.push(to as RawLocation);
+						},
+					);
+				} else {
+					next();
+				}
+			} else if (confirmModal === MODAL_CANCEL) {
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+				await this.resetWorkspace();
+				this.uiStore.stateIsDirty = false;
 				next();
 			}
 		} else {
@@ -1979,8 +1968,9 @@ export default mixins(
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
-			trackHistory = false,
 		) {
+			this.uiStore.stateIsDirty = true;
+
 			if (
 				this.getConnection(
 					sourceNodeName,
@@ -2039,17 +2029,11 @@ export default mixins(
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-					this.connectTwoNodes(
-						newNodeData.name,
-						0,
-						targetNodeName,
-						targetOutputIndex,
-						trackHistory,
-					);
+					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex);
 				}
 
 				// Connect active node to the newly created one
-				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, trackHistory);
+				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
 			}
 			this.historyStore.stopRecordingUndo();
 		},
@@ -2102,13 +2086,7 @@ export default mixins(
 							const sourceNodeName = sourceNode.name;
 							const outputIndex = connection.parameters.index;
 
-							this.connectTwoNodes(
-								sourceNodeName,
-								outputIndex,
-								this.pullConnActiveNodeName,
-								0,
-								true,
-							);
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 							this.pullConnActiveNodeName = null;
 						}
 						return;
@@ -2181,10 +2159,6 @@ export default mixins(
 						},
 					];
 
-					this.workflowsStore.addConnection({
-						connection: connectionData,
-						setStateDirty: true,
-					});
 					this.dropPrevented = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
@@ -2331,7 +2305,7 @@ export default mixins(
 						if (connectionInfo) {
 							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
 						}
-						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
+						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 						this.pullConnActiveNodeName = null;
 						await this.$nextTick();
 						this.historyStore.stopRecordingUndo();
@@ -2553,7 +2527,7 @@ export default mixins(
 			window.addEventListener('beforeunload', (e) => {
 				if (this.isDemo) {
 					return;
-				} else if (this.uiStore.stateIsDirty === true) {
+				} else if (this.uiStore.stateIsDirty) {
 					const confirmationMessage = this.$locale.baseText(
 						'nodeView.itLooksLikeYouHaveBeenEditingSomething',
 					);
@@ -2595,12 +2569,8 @@ export default mixins(
 					uuids: uuid,
 					detachable: !this.isReadOnly,
 				});
-			} else {
-				const connectionProperties = { connection, setStateDirty: false };
-				// When nodes get connected it gets saved automatically to the storage
-				// so if we do not connect we have to save the connection manually
-				this.workflowsStore.addConnection(connectionProperties);
 			}
+			this.workflowsStore.addConnection({ connection });
 
 			setTimeout(() => {
 				this.addPinDataConnections(this.workflowsStore.pinData);
@@ -2784,12 +2754,10 @@ export default mixins(
 		},
 		getJSPlumbEndpoints(nodeName: string): Endpoint[] {
 			const node = this.workflowsStore.getNodeByName(nodeName);
-			const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0]
-				.$el as Element;
+			const nodeEl = this.instance.getManagedElement(node?.id);
 
-			const endpoints = this.instance?.getEndpoints(nodeEls);
-
-			return endpoints as Endpoint[];
+			const endpoints = this.instance?.getEndpoints(nodeEl);
+			return endpoints;
 		},
 		getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
 			const endpoints = this.getJSPlumbEndpoints(nodeName);
@@ -2984,7 +2952,6 @@ export default mixins(
 								sourceNodeOutputIndex,
 								targetNodeName,
 								targetNodeOuputIndex,
-								trackHistory,
 							);
 
 							if (waitForNewConnection) {
@@ -4088,7 +4055,8 @@ export default mixins(
 	position: relative;
 	display: flex;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
+	width: 100%;
 }
 
 .shake {

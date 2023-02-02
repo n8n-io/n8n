@@ -4,6 +4,7 @@ export {
 	hasExpressionExtension,
 	hasNativeMethod,
 	extendTransform,
+	EXTENSION_OBJECTS as ExpressionExtensions,
 } from './ExpressionExtension';
 
-export { EXTENSION_OBJECTS as ExpressionExtensions } from './ExpressionExtension';
+export type { DocMetadata } from './Extensions';

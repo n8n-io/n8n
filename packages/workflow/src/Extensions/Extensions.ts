@@ -4,7 +4,7 @@ export interface ExtensionMap {
 	functions: Record<string, Function & { doc?: DocMetadata }>;
 }
 
-type DocMetadata = {
+export type DocMetadata = {
 	name: string;
 	returnType: string;
 	description?: string;

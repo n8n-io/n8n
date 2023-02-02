@@ -86,6 +86,8 @@ export function hasNoParams(toResolve: string) {
 //        state-based utils
 // ----------------------------------
 
+export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
+
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
