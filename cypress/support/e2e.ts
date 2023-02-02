@@ -14,15 +14,16 @@
 // ***********************************************************
 
 import './commands';
-beforeEach(() => {
-	cy.intercept(
-		'/**/*',
-		{ middleware: true },
-		(req) => {
-			req.on('before:response', (res) => {
-				// force all API responses to not be cached
-				res.headers['cache-control'] = 'no-cache, no-store'
-			})
-		}
-	)
+// Disable browser caching before each test
+before(() => {
+	if (Cypress.browser.family === 'chromium') {
+		Cypress.automation('remote:debugger:protocol', {
+			command: 'Network.enable',
+			params: {}
+		});
+		Cypress.automation('remote:debugger:protocol', {
+			command: 'Network.setCacheDisabled',
+			params: { cacheDisabled: true }
+		});
+	}
 })
