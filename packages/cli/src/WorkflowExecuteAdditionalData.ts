@@ -41,7 +41,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import { pick as lodashPick } from 'lodash';
+import pick from 'lodash.pick';
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
@@ -586,7 +586,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
 					// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
-					const pristineWorkflowData: IWorkflowBase = lodashPick(this.workflowData, [
+					const pristineWorkflowData: IWorkflowBase = pick(this.workflowData, [
 						'id',
 						'name',
 						'active',
