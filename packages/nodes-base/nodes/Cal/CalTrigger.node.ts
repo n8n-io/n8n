@@ -59,6 +59,11 @@ export class CalTrigger implements INodeType {
 						value: 'BOOKING_RESCHEDULED',
 						description: 'Receive notifications when a Cal event is rescheduled',
 					},
+					{
+						name: 'Meeting Ended',
+						value: 'MEETING_ENDED',
+						description: 'Receive notifications when a Cal event or meeting has ended',
+					},
 				],
 				default: [],
 				required: true,
@@ -131,7 +136,7 @@ export class CalTrigger implements INodeType {
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const data = await calApiRequest.call(this, 'GET', '/hooks', {});
+				const data = await calApiRequest.call(this, 'GET', '/webhooks', {});
 
 				for (const webhook of data.webhooks) {
 					if (webhook.subscriberUrl === webhookUrl) {
@@ -161,7 +166,7 @@ export class CalTrigger implements INodeType {
 					...(options as object),
 				};
 
-				const responseData = await calApiRequest.call(this, 'POST', '/hooks', body);
+				const responseData = await calApiRequest.call(this, 'POST', '/webhooks', body);
 
 				if (responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
@@ -174,7 +179,7 @@ export class CalTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/hooks/${webhookData.webhookId}`;
+					const endpoint = `/webhooks/${webhookData.webhookId}`;
 
 					try {
 						await calApiRequest.call(this, 'DELETE', endpoint);
