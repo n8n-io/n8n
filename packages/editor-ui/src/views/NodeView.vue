@@ -52,7 +52,6 @@
 							@runWorkflow="onRunNode"
 							@moved="onNodeMoved"
 							@run="onNodeRun"
-							:ref="`node-${nodeData.id}`"
 							:key="`${nodeData.id}_node`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
@@ -76,7 +75,6 @@
 							@nodeSelected="nodeSelectedByName"
 							@removeNode="(name) => removeNode(name, true)"
 							:key="`${nodeData.id}_sticky`"
-							:ref="`node-${nodeData.id}`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
 							:instance="instance"
@@ -406,8 +404,6 @@ export default mixins(
 			next();
 			return;
 		}
-		// Make sure workflow id is empty when leaving the editor
-		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		if (this.uiStore.stateIsDirty) {
 			const confirmModal = await this.confirmModal(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -418,6 +414,8 @@ export default mixins(
 				true,
 			);
 			if (confirmModal === MODAL_CONFIRMED) {
+				// Make sure workflow id is empty when leaving the editor
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
@@ -439,6 +437,7 @@ export default mixins(
 					next();
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				await this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
@@ -2755,12 +2754,10 @@ export default mixins(
 		},
 		getJSPlumbEndpoints(nodeName: string): Endpoint[] {
 			const node = this.workflowsStore.getNodeByName(nodeName);
-			const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0]
-				.$el as Element;
+			const nodeEl = this.instance.getManagedElement(node?.id);
 
-			const endpoints = this.instance?.getEndpoints(nodeEls);
-
-			return endpoints as Endpoint[];
+			const endpoints = this.instance?.getEndpoints(nodeEl);
+			return endpoints;
 		},
 		getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
 			const endpoints = this.getJSPlumbEndpoints(nodeName);
