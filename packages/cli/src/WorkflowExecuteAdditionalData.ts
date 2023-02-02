@@ -585,8 +585,19 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
-					// As a result, we should remove any sensitive information before saving to the database
-					const { shared, ...workflowData } = this.workflowData as WorkflowEntity;
+					// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
+					const pristineWorkflowData: IWorkflowBase = {
+						id: this.workflowData.id,
+						name: this.workflowData.name,
+						active: this.workflowData.active,
+						createdAt: this.workflowData.createdAt,
+						updatedAt: this.workflowData.updatedAt,
+						nodes: this.workflowData.nodes,
+						connections: this.workflowData.connections,
+						settings: this.workflowData.settings,
+						staticData: this.workflowData.staticData,
+						pinData: this.workflowData.pinData,
+					};
 
 					const fullExecutionData: IExecutionDb = {
 						data: fullRunData.data,
@@ -594,7 +605,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						finished: fullRunData.finished ? fullRunData.finished : false,
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
-						workflowData,
+						workflowData: pristineWorkflowData,
 						waitTill: fullRunData.waitTill,
 					};
 
