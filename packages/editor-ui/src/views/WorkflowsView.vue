@@ -137,7 +137,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { usePostHog } from '@/composables/usePosthog';
+import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -184,6 +184,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
+			alert(`render ${usePostHog().getVariant(ASSUMPTION_EXPERIMENT.name)}`);
 			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {

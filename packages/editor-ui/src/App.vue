@@ -46,7 +46,7 @@ import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
 import { historyHelper } from '@/mixins/history';
-import { usePostHog } from '@/composables/usePosthog';
+import { usePostHog } from '@/stores/posthog';
 
 export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',

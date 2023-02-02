@@ -297,7 +297,7 @@ import {
 	ready,
 } from '@jsplumb/browser-ui';
 import { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
-import { usePostHog } from '@/composables/usePosthog';
+import { usePostHog } from '@/stores/posthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;

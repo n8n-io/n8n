@@ -462,7 +462,7 @@ export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
 export const ASSUMPTION_EXPERIMENT = {
-	name: 'adore-assumption-tests',
+	name: 'adore-assumption-tests-1',
 	control: 'control',
 	demo: 'assumption-demo',
 	video: 'assumption-video',

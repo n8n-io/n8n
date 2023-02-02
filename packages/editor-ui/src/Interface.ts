@@ -47,6 +47,9 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset(resetDeviceId?: boolean): void;
+			onFeatureFlags(
+				callback: (keys: string[], map: Record<string, boolean | string>) => void,
+			): void;
 		};
 	}
 }
