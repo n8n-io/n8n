@@ -67,7 +67,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
