@@ -28,8 +28,6 @@
 import { NodeParameterValueType } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
-import { useNDVStore } from '@/stores/ndv';
-import { mapStores } from 'pinia';
 
 export default Vue.extend({
 	name: 'parameter-options',
@@ -53,7 +51,6 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(useNDVStore),
 		isDefault(): boolean {
 			return this.parameter.default === this.value;
 		},
