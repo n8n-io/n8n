@@ -15,7 +15,7 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { CUSTOM_NODES_CATEGORY } from './Constants';
+import { CUSTOM_NODES_CATEGORY, CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME } from './Constants';
 import type { n8n } from './Interfaces';
 import { loadClassInIsolation } from './ClassLoader';
 
@@ -54,6 +54,48 @@ export abstract class DirectoryLoader {
 		return path.resolve(this.directory, file);
 	}
 
+	/**
+	 * Whether any of the node's credential types may be used to
+	 * make a request from a node other than itself.
+	 */
+	private supportsProxyAuth(description: INodeTypeDescription) {
+		if (!description.credentials) return false;
+
+		return description.credentials.some(({ name }) => {
+			const credType = this.credentialTypes[name].type;
+
+			if (credType.authenticate !== undefined) return true;
+
+			return (
+				Array.isArray(credType.extends) &&
+				credType.extends.some((parentType) =>
+					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+				)
+			);
+		});
+	}
+
+	/**
+	 * Inject a `Custom API Call` option into `resource` and `operation`
+	 * parameters in a node that supports proxy auth.
+	 */
+	private injectCustomApiCallOption(description: INodeTypeDescription) {
+		if (!this.supportsProxyAuth(description)) return;
+
+		description.properties.forEach((p) => {
+			if (
+				['resource', 'operation'].includes(p.name) &&
+				Array.isArray(p.options) &&
+				p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+			) {
+				p.options.push({
+					name: CUSTOM_API_CALL_NAME,
+					value: CUSTOM_API_CALL_KEY,
+				});
+			}
+		});
+	}
+
 	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
 		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
@@ -89,6 +131,7 @@ export abstract class DirectoryLoader {
 
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: currentVersionNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.injectCustomApiCallOption(currentVersionNode.description);
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
@@ -99,10 +142,11 @@ export abstract class DirectoryLoader {
 			}
 		} else {
 			// Short renaming to avoid type issues
-			const tmpNode = tempNode;
-			nodeVersion = Array.isArray(tmpNode.description.version)
-				? tmpNode.description.version.slice(-1)[0]
-				: tmpNode.description.version;
+
+			this.injectCustomApiCallOption(tempNode.description);
+			nodeVersion = Array.isArray(tempNode.description.version)
+				? tempNode.description.version.slice(-1)[0]
+				: tempNode.description.version;
 		}
 
 		this.known.nodes[fullNodeName] = {

@@ -11,6 +11,8 @@ export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
 export const TUNNEL_SUBDOMAIN_ENV = 'N8N_TUNNEL_SUBDOMAIN';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
+export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 export const RESPONSE_ERROR_MESSAGES = {
 	NO_ENCRYPTION_KEY: 'Encryption key is missing or was not set',
