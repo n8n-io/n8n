@@ -44,6 +44,14 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
+		test('.removeFieldsContaining should not work for empty string', () => {
+			expect(
+				() => evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("") }}',
+				),
+			).toThrow();
+		});
+
 		test('.keepFieldsContaining should work on an object', () => {
 			expect(
 				evaluate(
@@ -52,6 +60,14 @@ describe('Data Transformation Functions', () => {
 			).toEqual({
 				test1: 'i exist',
 			});
+		});
+
+		test('.keepFieldsContaining should not work for empty string', () => {
+			expect(
+				() => evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("") }}',
+				),
+			).toThrow();
 		});
 
 		test('.compact should work on an object', () => {
