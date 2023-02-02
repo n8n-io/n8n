@@ -176,6 +176,8 @@ describe('RoutingNode', () => {
 							value2: 'v2',
 							value3: 'v3',
 							value4: 4,
+							value6: 'value1,value2',
+							value7: 'value3,value4',
 							lowerLevel: {
 								lowLevelValue1: 1,
 								lowLevelValue2: 'llv2',
@@ -334,6 +336,35 @@ describe('RoutingNode', () => {
 									},
 								},
 							},
+
+							// Test resolve of value and properties including as objects
+							{
+								displayName: 'Value 6',
+								name: 'value6',
+								type: 'string',
+								routing: {
+									send: {
+										property: '={{ `value${5+1}A` }}',
+										type: 'query',
+										value: '={{$value.toUpperCase()}}',
+									},
+								},
+								default: '',
+							},
+							{
+								displayName: 'Value 7',
+								name: 'value7',
+								type: 'string',
+								routing: {
+									send: {
+										property: '={{ `value${6+1}B` }}',
+										type: 'body',
+										value: "={{$value.split(',')}}",
+									},
+								},
+								default: '',
+							},
+
 							{
 								displayName: 'Lower Level',
 								name: 'lowerLevel',
@@ -509,10 +540,12 @@ describe('RoutingNode', () => {
 								name: 'cSName1',
 								value: 'cSValue1',
 							},
+							value6A: 'VALUE1,VALUE2',
 						},
 						body: {
 							value1: 'v1',
 							'topLevel.value2': 'v2',
+							value7B: ['value3', 'value4'],
 							lowerLevel: {
 								value3: 'v3',
 							},
@@ -543,6 +576,8 @@ describe('RoutingNode', () => {
 									value2: 'v2',
 									value3: 'v3',
 									value4: 4,
+									value6: 'value1,value2',
+									value7: 'value3,value4',
 									lowerLevel: {
 										lowLevelValue1: 1,
 										lowLevelValue2: 'llv2',

@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeListSearchItems } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
@@ -56,8 +56,20 @@ export async function jiraSoftwareCloudApiRequest(
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
-
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	} catch (error) {
+		if (
+			error.description?.includes &&
+			error.description.includes("Field 'priority' cannot be set")
+		) {
+			throw new NodeApiError(this.getNode(), error, {
+				message:
+					"Field 'priority' cannot be set. You need to add the Priority field to your Jira Project's Issue Types.",
+			});
+		}
+		throw error;
+	}
 }
 
 export async function jiraSoftwareCloudApiRequestAllItems(
@@ -65,7 +77,6 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -81,9 +92,12 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query.startAt = responseData.startAt + responseData.maxResults;
-		body.startAt = responseData.startAt + responseData.maxResults;
-	} while (responseData.startAt + responseData.maxResults < responseData.total);
+		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+	} while (
+		(responseData.startAt as number) + (responseData.maxResults as number) <
+		responseData.total
+	);
 
 	return returnData;
 }
@@ -195,3 +209,22 @@ export const allEvents = [
 	'worklog_updated',
 	'worklog_deleted',
 ];
+
+export function filterSortSearchListItems(items: INodeListSearchItems[], filter?: string) {
+	return items
+		.filter(
+			(item) =>
+				!filter ||
+				item.name.toLowerCase().includes(filter.toLowerCase()) ||
+				item.value.toString().toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+				return -1;
+			}
+			if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+				return 1;
+			}
+			return 0;
+		});
+}

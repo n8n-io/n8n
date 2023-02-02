@@ -47,16 +47,6 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /owner/skip-setup',
 ];
 
-/**
- * Mapping tables link entities but, unlike `SharedWorkflow` and `SharedCredentials`,
- * have no entity representation. Therefore, mapping tables must be cleared
- * on truncation of any of the collections they link.
- */
-export const MAPPING_TABLES_TO_CLEAR: Record<string, string[] | undefined> = {
-	Workflow: ['workflows_tags'],
-	Tag: ['workflows_tags'],
-};
-
 export const COMMUNITY_PACKAGE_VERSION = {
 	CURRENT: '0.1.0',
 	UPDATED: '0.2.0',
@@ -71,10 +61,3 @@ export const COMMUNITY_NODE_VERSION = {
  * Timeout (in milliseconds) to account for DB being slow to initialize.
  */
 export const DB_INITIALIZATION_TIMEOUT = 30_000;
-
-/**
- * Mapping tables having no entity representation.
- */
-export const MAPPING_TABLES = {
-	WorkflowsTags: 'workflows_tags',
-} as const;

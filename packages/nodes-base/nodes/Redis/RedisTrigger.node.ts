@@ -1,12 +1,7 @@
-import { ITriggerFunctions } from 'n8n-core';
+import type { ITriggerFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import redis from 'redis';
 
@@ -88,9 +83,7 @@ export class RedisTrigger implements INodeType {
 
 		const client = redis.createClient(redisOptions);
 
-		const self = this;
-
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
 					for (const channel of channels) {
@@ -104,12 +97,12 @@ export class RedisTrigger implements INodeType {
 						}
 
 						if (options.onlyMessage) {
-							self.emit([self.helpers.returnJsonArray({ message })]);
+							this.emit([this.helpers.returnJsonArray({ message })]);
 							resolve(true);
 							return;
 						}
 
-						self.emit([self.helpers.returnJsonArray({ channel, message })]);
+						this.emit([this.helpers.returnJsonArray({ channel, message })]);
 						resolve(true);
 					});
 				});
@@ -118,7 +111,7 @@ export class RedisTrigger implements INodeType {
 					reject(error);
 				});
 			});
-		}
+		};
 
 		if (this.getMode() === 'trigger') {
 			await manualTriggerFunction();

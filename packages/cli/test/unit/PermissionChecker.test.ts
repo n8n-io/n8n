@@ -20,20 +20,18 @@ import {
 	randomPositiveDigit,
 } from '../integration/shared/random';
 
-import { Role } from '@/databases/entities/Role';
+import { Role } from '@db/entities/Role';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { User } from '@/databases/entities/User';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 
-let testDbName = '';
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	mockNodeTypes = MockNodeTypes({
 		loaded: {
@@ -51,12 +49,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'SharedCredentials'], testDbName);
-	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
+	await testDb.truncate(['SharedWorkflow', 'SharedCredentials', 'Workflow', 'Credentials', 'User']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 describe('PermissionChecker.check()', () => {

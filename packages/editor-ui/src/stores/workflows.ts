@@ -50,6 +50,7 @@ import {
 	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
+	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
@@ -194,7 +195,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getNodeById() {
 			return (nodeId: string): INodeUi | undefined =>
-				this.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
+				this.workflow.nodes.find((node: INodeUi) => {
+					return node.id === nodeId;
+				});
 		},
 		nodesIssuesExist(): boolean {
 			for (const node of this.workflow.nodes) {
@@ -227,6 +230,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				this.nodeMetadata[nodeName] && this.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
+		isNodePristine(): (name: string) => boolean {
+			return (nodeName: string) =>
+				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine === true;
+		},
 		// Executions getters
 		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
 			return (id: string): IExecutionsSummary | undefined =>
@@ -252,6 +259,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const workflows = await getWorkflows(rootStore.getRestApiContext);
 			this.setWorkflows(workflows);
 			return workflows;
+		},
+
+		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
+			this.addWorkflow(workflow);
+			return workflow;
 		},
 
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
@@ -301,7 +315,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		setWorkflowName(data: { newName: string; setStateDirty: boolean }): void {
-			if (data.setStateDirty === true) {
+			if (data.setStateDirty) {
 				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 			}
@@ -518,15 +532,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
-		addConnection(data: { connection: IConnection[]; setStateDirty: boolean }): void {
+		addConnection(data: { connection: IConnection[] }): void {
 			if (data.connection.length !== 2) {
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
-			}
-			const uiStore = useUIStore();
-			if (data.setStateDirty === true) {
-				uiStore.stateIsDirty = true;
 			}
 
 			const sourceData: IConnection = data.connection[0];
@@ -612,7 +622,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		removeAllConnections(data: { setStateDirty: boolean }): void {
-			if (data && data.setStateDirty === true) {
+			if (data && data.setStateDirty) {
 				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 			}
@@ -731,7 +741,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
 			}
+
 			this.workflow.nodes.push(nodeData);
+			// Init node metadata
+			if (!this.nodeMetadata[nodeData.name]) {
+				Vue.set(this.nodeMetadata, nodeData.name, {});
+			}
 		},
 
 		removeNode(node: INodeUi): void {
@@ -752,7 +767,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-			if (data.setStateDirty === true) {
+			if (data.setStateDirty) {
 				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 			}
@@ -821,6 +836,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (!this.nodeMetadata[node.name]) {
 				Vue.set(this.nodeMetadata, node.name, {});
 			}
+
 			Vue.set(this.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
@@ -959,6 +975,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					this.currentWorkflowExecutions.push(execution);
 				}
 			});
+		},
+		setNodePristine(nodeName: string, isPristine: boolean): void {
+			Vue.set(this.nodeMetadata[nodeName], 'pristine', isPristine);
 		},
 	},
 });

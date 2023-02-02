@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	getRangeString,
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
-import {
+import type {
 	ILookupValues,
 	RangeDetectionOptions,
 	SheetProperties,

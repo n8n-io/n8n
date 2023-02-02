@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { PostHog } from 'posthog-node';
-import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
-import { IExecutionTrackProperties } from '@/Interfaces';
+import type { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
 import { getLicense } from '@/License';
 import { LicenseService } from '@/license/License.service';

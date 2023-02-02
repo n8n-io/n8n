@@ -1,5 +1,5 @@
 import 'tsconfig-paths/register';
-import { createConnection } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
 import config from '@/config';
 import { getBootstrapDBOptions } from './integration/shared/testDb';
 
@@ -7,7 +7,8 @@ export default async () => {
 	const dbType = config.getEnv('database.type').replace(/db$/, '');
 	if (dbType !== 'postgres' && dbType !== 'mysql') return;
 
-	const connection = await createConnection(getBootstrapDBOptions(dbType));
+	const connection = new Connection(getBootstrapDBOptions(dbType));
+	await connection.initialize();
 
 	const query =
 		dbType === 'postgres' ? 'SELECT datname as "Database" FROM pg_database' : 'SHOW DATABASES';
@@ -20,5 +21,5 @@ export default async () => {
 
 	const promises = databases.map((dbName) => connection.query(`DROP DATABASE ${dbName};`));
 	await Promise.all(promises);
-	await connection.close();
+	await connection.destroy();
 };

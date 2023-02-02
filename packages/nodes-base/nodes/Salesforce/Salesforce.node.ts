@@ -1,34 +1,32 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	LoggerProxy as Logger,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { accountFields, accountOperations } from './AccountDescription';
 
-import { IAccount } from './AccountInterface';
+import type { IAccount } from './AccountInterface';
 
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
 
-import { IAttachment } from './AttachmentInterface';
+import type { IAttachment } from './AttachmentInterface';
 
-import { ICampaignMember } from './CampaignMemberInterface';
+import type { ICampaignMember } from './CampaignMemberInterface';
 
 import { caseFields, caseOperations } from './CaseDescription';
 
-import { ICase, ICaseComment } from './CaseInterface';
+import type { ICase, ICaseComment } from './CaseInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IContact } from './ContactInterface';
+import type { IContact } from './ContactInterface';
 
 import { customObjectFields, customObjectOperations } from './CustomObjectDescription';
 
@@ -43,19 +41,19 @@ import {
 
 import { leadFields, leadOperations } from './LeadDescription';
 
-import { ILead } from './LeadInterface';
+import type { ILead } from './LeadInterface';
 
-import { INote } from './NoteInterface';
+import type { INote } from './NoteInterface';
 
 import { opportunityFields, opportunityOperations } from './OpportunityDescription';
 
-import { IOpportunity } from './OpportunityInterface';
+import type { IOpportunity } from './OpportunityInterface';
 
 import { searchFields, searchOperations } from './SearchDescription';
 
 import { taskFields, taskOperations } from './TaskDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
 import { userFields, userOperations } from './UserDescription';
 
@@ -303,7 +301,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -349,7 +347,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -1083,6 +1081,9 @@ export class Salesforce implements INodeType {
 							Company: company,
 							LastName: lastname,
 						};
+						if (additionalFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
+						}
 						if (additionalFields.email !== undefined) {
 							body.Email = additionalFields.email as string;
 						}
@@ -1186,6 +1187,9 @@ export class Salesforce implements INodeType {
 								'You must add at least one update field',
 								{ itemIndex: i },
 							);
+						}
+						if (updateFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
 						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;

@@ -1,6 +1,8 @@
 import { Expression, INodeExecutionData, Workflow } from '../../src';
 import * as Helpers from '../Helpers';
 
+export const TEST_TIMEZONE = 'America/New_York';
+
 export const nodeTypes = Helpers.NodeTypes();
 export const workflow = new Workflow({
 	nodes: [
@@ -28,6 +30,15 @@ export const evaluate = (value: string, values?: INodeExecutionData[]) =>
 		'node',
 		values ?? [],
 		'manual',
-		'America/New_York',
+		TEST_TIMEZONE,
 		{},
 	);
+
+export const getLocalISOString = (date: Date) => {
+	const offset = date.getTimezoneOffset();
+	const offsetAbs = Math.abs(offset);
+	const isoString = new Date(date.getTime() - offset * 60 * 1000).toISOString();
+	const hours = String(Math.floor(offsetAbs / 60)).padStart(2, '0');
+	const minutes = String(offsetAbs % 60).padStart(2, '0');
+	return `${isoString.slice(0, -1)}${offset > 0 ? '-' : '+'}${hours}:${minutes}`;
+};
