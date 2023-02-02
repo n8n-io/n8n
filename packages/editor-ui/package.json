@@ -46,7 +46,7 @@
     "@jsplumb/util": "^5.13.2",
     "axios": "^0.21.1",
     "codemirror-lang-html-n8n": "^1.0.0",
-    "codemirror-lang-n8n-expression": "^0.1.0",
+    "codemirror-lang-n8n-expression": "^0.2.0",
     "dateformat": "^3.0.3",
     "esprima-next": "5.8.4",
     "fast-json-stable-stringify": "^2.1.0",

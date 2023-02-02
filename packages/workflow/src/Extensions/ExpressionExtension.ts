@@ -11,15 +11,15 @@ import { objectExtensions } from './ObjectExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
-function isBlank(value: unknown) {
+function isEmpty(value: unknown) {
 	return value === null || value === undefined || !value;
 }
 
-function isPresent(value: unknown) {
-	return !isBlank(value);
+function isNotEmpty(value: unknown) {
+	return !isEmpty(value);
 }
 
-const EXTENSION_OBJECTS = [
+export const EXTENSION_OBJECTS = [
 	arrayExtensions,
 	dateExtensions,
 	numberExtensions,
@@ -29,8 +29,8 @@ const EXTENSION_OBJECTS = [
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 const genericExtensions: Record<string, Function> = {
-	isBlank,
-	isPresent,
+	isEmpty,
+	isNotEmpty,
 };
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(

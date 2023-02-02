@@ -558,7 +558,7 @@ importers:
       axios: ^0.21.1
       c8: ^7.12.0
       codemirror-lang-html-n8n: ^1.0.0
-      codemirror-lang-n8n-expression: ^0.1.0
+      codemirror-lang-n8n-expression: ^0.2.0
       dateformat: ^3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: ^2.1.0
@@ -627,7 +627,7 @@ importers:
       '@jsplumb/util': 5.13.2
       axios: 0.21.4
       codemirror-lang-html-n8n: 1.0.0
-      codemirror-lang-n8n-expression: 0.1.0_zyklskjzaprvz25ee7sq7godcq
+      codemirror-lang-n8n-expression: 0.2.0_zyklskjzaprvz25ee7sq7godcq
       dateformat: 3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: 2.1.0
@@ -937,6 +937,7 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^3.1.0
       recast: ^0.21.5
+      title-case: ^3.0.3
       transliteration: ^2.3.5
       xml2js: ^0.4.23
     dependencies:
@@ -950,6 +951,7 @@ importers:
       lodash.set: 4.3.2
       luxon: 3.1.1
       recast: 0.21.5
+      title-case: 3.0.3
       transliteration: 2.3.5
       xml2js: 0.4.23
     devDependencies:
@@ -9441,8 +9443,8 @@ packages:
       '@lezer/lr': 1.2.3
     dev: false
 
-  /codemirror-lang-n8n-expression/0.1.0_zyklskjzaprvz25ee7sq7godcq:
-    resolution: {integrity: sha512-20ss5p0koTu5bfivr1sBHYs7cpjWT2JhVB5gn7TX9WWPt+v/9p9tEcYSOyL/sm+OFuWh698Cgnmrba4efQnMCQ==}
+  /codemirror-lang-n8n-expression/0.2.0_zyklskjzaprvz25ee7sq7godcq:
+    resolution: {integrity: sha512-kdlpzevdCpWcpbNcwES9YZy+rDFwWOdO6Z78SWxT6jMhCPmdHQmO+gJ39aXAXlUI7OGLfOBtg1/ONxPjRpEIYQ==}
     dependencies:
       '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/language': 6.2.1
@@ -20972,7 +20974,6 @@ packages:
     resolution: {integrity: sha512-e1zGYRvbffpcHIrnuqT0Dh+gEJtDaxDSoG4JAIpq4oDFyooziLBIiYQv0GBT4FUAnUop5uZ1hiIAj7oAF6sOCA==}
     dependencies:
       tslib: 2.4.0
-    dev: true
 
   /tlds/1.231.0:
     resolution: {integrity: sha512-L7UQwueHSkGxZHQBXHVmXW64oi+uqNtzFt2x6Ssk7NVnpIbw16CRs4eb/jmKOZ9t2JnqZ/b3Cfvo97lnXqKrhw==}
