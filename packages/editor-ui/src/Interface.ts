@@ -50,6 +50,7 @@ declare global {
 			onFeatureFlags(
 				callback: (keys: string[], map: Record<string, boolean | string>) => void,
 			): void;
+			reloadFeatureFlags(): void;
 		};
 	}
 }

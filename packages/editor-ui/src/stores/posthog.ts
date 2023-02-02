@@ -16,6 +16,12 @@ export const usePostHog = defineStore('posthog', () => {
 		window.posthog?.reset();
 	};
 
+	const reloadFeatureFlags = () => {
+		try {
+			window.posthog?.reloadFeatureFlags();
+		} catch (e) {}
+	};
+
 	const getVariant = (experiment: string): string | boolean | undefined => {
 		return featureFlags.value[experiment];
 	};
@@ -72,6 +78,9 @@ export const usePostHog = defineStore('posthog', () => {
 				onLogout();
 			}
 			identify();
+			if (userId && !prevId) {
+				reloadFeatureFlags();
+			}
 		},
 	);
 
