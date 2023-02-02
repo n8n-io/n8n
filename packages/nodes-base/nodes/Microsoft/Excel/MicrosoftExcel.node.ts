@@ -6,9 +6,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { SheetData } from './GenericFunctions';
+import type { RangeUpdateOptions, UpdateSummary } from './GenericFunctions';
 
 import {
 	microsoftApiRequest,
@@ -17,6 +18,7 @@ import {
 	prepareOutput,
 	updateByAutoMaping,
 	updateByDefinedValues,
+	updateOrUpsertRange,
 } from './GenericFunctions';
 
 import * as loadOptions from './loadOptions';
@@ -788,9 +790,7 @@ export class MicrosoftExcel implements INodeType {
 					{ values },
 				);
 
-				const rawData = this.getNodeParameter('rawData', 0);
-
-				returnData.push(...prepareOutput.call(this, responseData, rawData, 0, 1, columnsRow));
+				returnData.push(...prepareOutput.call(this, responseData, { columnsRow }));
 			} else if (operation === 'updateRange') {
 				try {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
@@ -859,24 +859,21 @@ export class MicrosoftExcel implements INodeType {
 						);
 					}
 
-					const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
-					const upsert = this.getNodeParameter('options.upsert', 0, false) as boolean;
+					const options = this.getNodeParameter('options', 0, {}) as RangeUpdateOptions;
 
-					let updatedRows: number[] = [];
-					let appendData: IDataObject[] = [];
-					let values: SheetData = [];
+					let updateSummary: UpdateSummary = {
+						updatedData: [],
+						updatedRows: [],
+						appendData: [],
+					};
 
 					if (dataMode === 'define') {
-						const [toUpdate, updated, toAppend] = updateByDefinedValues.call(
+						updateSummary = updateByDefinedValues.call(
 							this,
 							items,
 							worksheetData.values as string[][],
-							updateAll,
+							options.updateAll,
 						);
-
-						updatedRows = updated;
-						appendData = toAppend;
-						values = toUpdate;
 					}
 
 					if (dataMode === 'autoMap') {
@@ -889,54 +886,30 @@ export class MicrosoftExcel implements INodeType {
 							);
 						}
 
-						const [toUpdate, updated, toAppend] = updateByAutoMaping.call(
+						updateSummary = updateByAutoMaping.call(
 							this,
 							items,
 							worksheetData.values as string[][],
 							columnToMatchOn,
-							updateAll,
+							options.updateAll,
 						);
-
-						updatedRows = updated;
-						appendData = toAppend;
-						values = toUpdate;
 					}
 
-					if (upsert && appendData.length) {
-						const appendValues: string[][] = [];
+					const columnsRow = (worksheetData.values as string[][])[0];
 
-						const columnsRow = (worksheetData.values as string[][])[0];
-
-						for (const [index, item] of appendData.entries()) {
-							const updateRow: string[] = [];
-
-							for (const column of columnsRow) {
-								updateRow.push(item[column] as string);
-							}
-
-							appendValues.push(updateRow);
-							updatedRows.push(index + values.length + 1);
-						}
-
-						values = values.concat(appendValues);
-						const [rangeFrom, rangeTo] = range.split(':');
-						const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-
-						range = `${rangeFrom}:${cellDataTo[1]}${Number(cellDataTo[2]) + appendValues.length}`;
-					}
-
-					responseData = await microsoftApiRequest.call(
+					responseData = await updateOrUpsertRange.call(
 						this,
-						'PATCH',
-						`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
-						{ values },
+						updateSummary,
+						workbookId,
+						worksheetId,
+						range,
+						columnsRow,
+						options.upsert,
 					);
 
-					const rawData = this.getNodeParameter('rawData', 0);
+					const { updatedRows } = updateSummary;
 
-					returnData.push(
-						...prepareOutput.call(this, responseData, rawData, 0, 1, undefined, updatedRows),
-					);
+					returnData.push(...prepareOutput.call(this, responseData, { updatedRows }));
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -1089,12 +1062,12 @@ export class MicrosoftExcel implements INodeType {
 
 							if (!rawData) {
 								const keyRow = this.getNodeParameter('keyRow', i) as number;
-								const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
+								const firstDataRow = this.getNodeParameter('dataStartRow', i) as number;
 								returnData.push(
-									...prepareOutput.call(this, responseData, rawData, keyRow, dataStartRow),
+									...prepareOutput.call(this, responseData, { rawData, keyRow, firstDataRow }),
 								);
 							} else {
-								returnData.push(...prepareOutput.call(this, responseData, rawData));
+								returnData.push(...prepareOutput.call(this, responseData, { rawData }));
 							}
 						}
 					} catch (error) {
