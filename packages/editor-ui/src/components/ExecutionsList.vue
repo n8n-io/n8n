@@ -927,6 +927,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	grid-template-rows: 1fr 0;
 	position: relative;
 	height: 100%;
+	width: 100%;
+	max-width: 1280px;
 }
 
 .execList {
