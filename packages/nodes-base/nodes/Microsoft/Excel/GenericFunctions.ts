@@ -3,10 +3,6 @@ import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions 
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export type RangeUpdateOptions = {
-	upsert?: boolean;
-	updateAll?: boolean;
-};
 export type SheetRow = Array<string | null>;
 export type SheetData = SheetRow[];
 export type UpdateSummary = {
@@ -198,18 +194,20 @@ export function updateByDefinedValues(
 					Number(row[columnToMatchOnIndex]) === Number(valueToMatchOn),
 			);
 
-			if (rowIndex === -1) {
-				const appendItem: IDataObject = {};
-				appendItem[columnToMatchOn] = valueToMatchOn;
-
-				for (const entry of definedFields) {
-					appendItem[entry.column] = entry.fieldValue;
-				}
-				appendData.push(appendItem);
-				continue;
+			if (rowIndex !== -1) {
+				rowIndexes.push(rowIndex);
 			}
+		}
 
-			rowIndexes.push(rowIndex);
+		if (!rowIndexes.length) {
+			const appendItem: IDataObject = {};
+			appendItem[columnToMatchOn] = valueToMatchOn;
+
+			for (const entry of definedFields) {
+				appendItem[entry.column] = entry.fieldValue;
+			}
+			appendData.push(appendItem);
+			continue;
 		}
 
 		for (const rowIndex of rowIndexes) {

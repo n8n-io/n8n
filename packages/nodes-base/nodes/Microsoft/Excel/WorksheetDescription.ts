@@ -20,6 +20,14 @@ export const worksheetOperations: INodeProperties[] = [
 				action: 'Append data to worksheet',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
+				name: 'Append or Update',
+				value: 'upsert',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-upsert
+				description: 'Append a new row or update the current one if it already exists (upsert)',
+				action: 'Append or update a sheet',
+			},
+			{
 				name: 'Clear',
 				value: 'clear',
 				description: 'Clear worksheet',
@@ -59,7 +67,7 @@ export const worksheetFields: INodeProperties[] = [
 		...workbookRLC,
 		displayOptions: {
 			show: {
-				operation: ['append', 'delete', 'clear', 'getAll', 'getContent', 'updateRange'],
+				operation: ['append', 'delete', 'clear', 'getAll', 'getContent', 'updateRange', 'upsert'],
 				resource: ['worksheet'],
 			},
 		},
@@ -68,7 +76,7 @@ export const worksheetFields: INodeProperties[] = [
 		...worksheetRLC,
 		displayOptions: {
 			show: {
-				operation: ['append', 'delete', 'clear', 'getContent', 'updateRange'],
+				operation: ['append', 'delete', 'clear', 'getContent', 'updateRange', 'upsert'],
 				resource: ['worksheet'],
 			},
 		},
@@ -442,7 +450,7 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				dataMode: ['autoMap', 'define'],
 			},
@@ -503,6 +511,35 @@ export const worksheetFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		default: 'define',
+		options: [
+			{
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMap',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Map Each Column Below',
+				value: 'define',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Do not send anything',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['upsert'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
 		displayName: 'Data',
 		name: 'data',
 		type: 'json',
@@ -534,7 +571,7 @@ export const worksheetFields: INodeProperties[] = [
 		hint: "Used to find the correct row to update. Doesn't get changed.",
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				dataMode: ['autoMap', 'define'],
 			},
@@ -547,7 +584,7 @@ export const worksheetFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				dataMode: ['define'],
 			},
@@ -563,7 +600,7 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				dataMode: ['define'],
 			},
@@ -603,7 +640,7 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 			},
 			hide: {
@@ -622,7 +659,7 @@ export const worksheetFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				rawData: [true],
 			},
@@ -643,17 +680,10 @@ export const worksheetFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to update all matching rows or just the first match',
 			},
-			{
-				displayName: 'Upsert',
-				name: 'upsert',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to insert a new row if no match is found',
-			},
 		],
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				dataMode: ['autoMap', 'define'],
 			},

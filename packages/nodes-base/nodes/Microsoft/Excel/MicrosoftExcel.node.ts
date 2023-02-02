@@ -9,7 +9,7 @@ import type {
 
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { RangeUpdateOptions, UpdateSummary } from './GenericFunctions';
+import type { UpdateSummary } from './GenericFunctions';
 
 import {
 	microsoftApiRequest,
@@ -791,7 +791,7 @@ export class MicrosoftExcel implements INodeType {
 				);
 
 				returnData.push(...prepareOutput.call(this, responseData, { columnsRow }));
-			} else if (operation === 'updateRange') {
+			} else if (operation === 'updateRange' || operation === 'upsert') {
 				try {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 						extractValue: true,
@@ -859,7 +859,7 @@ export class MicrosoftExcel implements INodeType {
 						);
 					}
 
-					const options = this.getNodeParameter('options', 0, {}) as RangeUpdateOptions;
+					const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
 
 					let updateSummary: UpdateSummary = {
 						updatedData: [],
@@ -872,7 +872,7 @@ export class MicrosoftExcel implements INodeType {
 							this,
 							items,
 							worksheetData.values as string[][],
-							options.updateAll,
+							updateAll,
 						);
 					}
 
@@ -891,11 +891,13 @@ export class MicrosoftExcel implements INodeType {
 							items,
 							worksheetData.values as string[][],
 							columnToMatchOn,
-							options.updateAll,
+							updateAll,
 						);
 					}
 
 					const columnsRow = (worksheetData.values as string[][])[0];
+
+					const upsert = operation === 'upsert' ? true : false;
 
 					responseData = await updateOrUpsertRange.call(
 						this,
@@ -904,7 +906,7 @@ export class MicrosoftExcel implements INodeType {
 						worksheetId,
 						range,
 						columnsRow,
-						options.upsert,
+						upsert,
 					);
 
 					const { updatedRows } = updateSummary;
