@@ -574,7 +574,7 @@ importers:
       lodash.get: ^4.4.2
       lodash.orderby: ^4.6.0
       lodash.set: ^4.3.2
-      luxon: ^2.3.0
+      luxon: ^3.1.0
       monaco-editor: ^0.33.0
       n8n-design-system: ~0.52.0
       n8n-workflow: ~0.134.0
@@ -642,7 +642,7 @@ importers:
       lodash.get: 4.4.2
       lodash.orderby: 4.6.0
       lodash.set: 4.3.2
-      luxon: 2.3.2
+      luxon: 3.1.1
       monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
       n8n-workflow: link:../workflow
@@ -792,7 +792,7 @@ importers:
       lodash.set: ^4.3.2
       lodash.unset: ^4.5.2
       lossless-json: ^1.0.4
-      luxon: ~2.3.0
+      luxon: ^3.1.0
       mailparser: ^3.2.0
       moment: ~2.29.2
       moment-timezone: ^0.5.28
@@ -852,7 +852,7 @@ importers:
       lodash.set: 4.3.2
       lodash.unset: 4.5.2
       lossless-json: 1.0.5
-      luxon: 2.3.2
+      luxon: 3.1.1
       mailparser: 3.5.0
       moment: 2.29.4
       moment-timezone: 0.5.37
@@ -935,7 +935,7 @@ importers:
       lodash.isequal: ^4.5.0
       lodash.merge: ^4.6.2
       lodash.set: ^4.3.2
-      luxon: ~2.3.0
+      luxon: ^3.1.0
       recast: ^0.21.5
       transliteration: ^2.3.5
       xml2js: ^0.4.23
@@ -948,7 +948,7 @@ importers:
       lodash.isequal: 4.5.0
       lodash.merge: 4.6.2
       lodash.set: 4.3.2
-      luxon: 2.3.2
+      luxon: 3.1.1
       recast: 0.21.5
       transliteration: 2.3.5
       xml2js: 0.4.23
@@ -15760,11 +15760,6 @@ packages:
 
   /lru_map/0.3.3:
     resolution: {integrity: sha512-Pn9cox5CsMYngeDbmChANltQl+5pi6XmTrraMSzhPmMBbmgcxmqWry0U3PGapCU1yB4/LqCcom7qhHZiF/jGfQ==}
-    dev: false
-
-  /luxon/2.3.2:
-    resolution: {integrity: sha512-MlAQQVMFhGk4WUA6gpfsy0QycnKP0+NlCBJRVRNPxxSIbjrCbQ65nrpJD3FVyJNZLuJ0uoqL57ye6BmDYgHaSw==}
-    engines: {node: '>=12'}
     dev: false
 
   /luxon/3.1.1:

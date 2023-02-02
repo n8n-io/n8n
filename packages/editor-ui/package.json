@@ -61,7 +61,7 @@
     "lodash.get": "^4.4.2",
     "lodash.orderby": "^4.6.0",
     "lodash.set": "^4.3.2",
-    "luxon": "^2.3.0",
+    "luxon": "^3.1.0",
     "monaco-editor": "^0.33.0",
     "n8n-design-system": "~0.52.0",
     "n8n-workflow": "~0.134.0",
