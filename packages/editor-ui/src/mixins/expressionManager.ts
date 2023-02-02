@@ -1,9 +1,5 @@
 import mixins from 'vue-typed-mixins';
-<<<<<<< HEAD
-import { ExpressionExtensions } from 'n8n-workflow';
-=======
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
->>>>>>> master
 import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 
