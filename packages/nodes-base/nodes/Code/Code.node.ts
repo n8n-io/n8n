@@ -147,7 +147,9 @@ export class Code implements INodeType {
 				const context = getSandboxContextPython.call(this);
 
 				if (workflowMode === 'manual') {
-					context.print = this.sendMessageToUI;
+					context.printOverwrite = this.sendMessageToUI;
+				} else {
+					context.printOverwrite = null;
 				}
 
 				const sandbox = new SandboxPython(workflowMode, nodeMode);
@@ -182,7 +184,9 @@ export class Code implements INodeType {
 				const context = getSandboxContextPython.call(this, index);
 
 				if (workflowMode === 'manual') {
-					context.print = this.sendMessageToUI;
+					context.printOverwrite = this.sendMessageToUI;
+				} else {
+					context.printOverwrite = null;
 				}
 
 				try {

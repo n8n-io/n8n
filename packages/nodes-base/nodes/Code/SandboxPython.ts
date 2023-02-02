@@ -28,7 +28,10 @@ export class SandboxPython {
 
 	private async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
 		const runCode = `
-from js_context import _, _getNodeParameter, _getWorkflowStaticData, helpers, _execution, _input, _item, _itemIndex, _jmesPath,_mode, _now, _parameter, _prevNode, _runIndex, _self, _today, _workflow, DateTime, Duration, Interval
+from js_context import printOverwrite, _, _getNodeParameter, _getWorkflowStaticData, helpers, _execution, _input, _item, _itemIndex, _jmesPath,_mode, _now, _parameter, _prevNode, _runIndex, _self, _today, _workflow, DateTime, Duration, Interval
+
+if printOverwrite:
+  print = printOverwrite
 
 def main():
 ${this.code
