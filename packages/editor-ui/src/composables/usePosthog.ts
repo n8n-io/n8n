@@ -1,7 +1,7 @@
 import { IUser } from '@/Interface';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { watch, onMounted, ref, Ref } from 'vue';
+import { watch, ref, Ref } from 'vue';
 import { Telemetry } from '@/plugins/telemetry';
 import { ASSUMPTION_EXPERIMENT } from '@/constants';
 
