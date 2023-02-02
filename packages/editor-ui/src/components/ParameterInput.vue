@@ -38,6 +38,7 @@
 				:value="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
+				:path="path"
 				@valueChanged="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
