@@ -73,8 +73,7 @@ export abstract class DirectoryLoader {
 						['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
 					)
 				);
-			}
-			return false;
+			} else throw new Error(`Unknown credential type ${name}`);
 		});
 	}
 
@@ -299,14 +298,23 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 			absolute: true,
 		});
 
+		const credentials = [];
+		const nodes = [];
 		for (const filePath of filePaths) {
 			const [fileName, type] = path.parse(filePath).name.split('.');
-
-			if (type === 'node') {
-				this.loadNodeFromFile('CUSTOM', fileName, filePath);
-			} else if (type === 'credentials') {
-				this.loadCredentialFromFile(fileName, filePath);
+			if (type === 'credentials') {
+				credentials.push({ fileName, filePath });
+			} else if (type === 'node') {
+				nodes.push({ fileName, filePath });
 			}
+		}
+
+		for (const { fileName, filePath } of credentials) {
+			this.loadCredentialFromFile(fileName, filePath);
+		}
+
+		for (const { fileName, filePath } of nodes) {
+			this.loadNodeFromFile('CUSTOM', fileName, filePath);
 		}
 	}
 }
