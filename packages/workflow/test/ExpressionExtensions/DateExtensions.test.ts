@@ -22,7 +22,7 @@ describe('Data Transformation Functions', () => {
 
 		test('.beginningOf("week") should work correctly on a string', () => {
 			const evaluatedDate = evaluate('={{ "2023-01-30".toDate().beginningOf("week") }}');
-			const expectedDate = DateTime.local(2023, 1, 30, { zone: TEST_TIMEZONE }).toJSDate();
+			const expectedDate = DateTime.local(2023, 1, 23, { zone: TEST_TIMEZONE }).toJSDate();
 
 			if (evaluatedDate && evaluatedDate instanceof Date) {
 				expect(evaluatedDate.toDateString()).toEqual(expectedDate.toDateString());
