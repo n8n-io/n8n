@@ -446,6 +446,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
+		setWorkflowExecutionRunData(workflowResultData: IRun | null): void {
+			this.workflowExecutionData.data = workflowResultData;
+		},
+
 		setWorkflowSettings(workflowSettings: IWorkflowSettings): void {
 			Vue.set(this.workflow, 'settings', workflowSettings);
 		},
@@ -924,6 +928,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
+			this.setWorkflowExecutionRunData(finishedActiveExecution.data);
 		},
 
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {

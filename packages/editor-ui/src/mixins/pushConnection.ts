@@ -228,7 +228,6 @@ export const pushConnection = mixins(
 			if (receivedData.type === 'executionFinished') {
 				// The workflow finished executing
 				const pushData = receivedData.data;
-
 				this.workflowsStore.finishActiveExecution(pushData);
 
 				if (!this.uiStore.isActionActive('workflowRunning')) {
@@ -247,7 +246,13 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+
+				if (pushData.data.status === 'crashed') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'pushConnection.executionFailed.message',
+					);
+				}
 
 				const lineNumber =
 					runDataExecuted &&

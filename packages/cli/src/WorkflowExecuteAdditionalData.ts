@@ -343,16 +343,22 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				// Clone the object except the runData. That one is not supposed
 				// to be send. Because that data got send piece by piece after
 				// each node which finished executing
-				const pushRunData = {
-					...fullRunData,
-					data: {
-						...fullRunData.data,
-						resultData: {
-							...fullRunData.data.resultData,
-							runData: {},
+				// Edit: we now DO send the runData to the UI if mode=manual so that it shows the point of crashes
+				let pushRunData;
+				if (fullRunData.mode === 'manual') {
+					pushRunData = fullRunData;
+				} else {
+					pushRunData = {
+						...fullRunData,
+						data: {
+							...fullRunData.data,
+							resultData: {
+								...fullRunData.data.resultData,
+								runData: {},
+							},
 						},
-					},
-				};
+					};
+				}
 
 				// Push data to editor-ui once workflow finished
 				Logger.debug(`Save execution progress to database for execution ID ${this.executionId} `, {
