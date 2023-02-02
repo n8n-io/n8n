@@ -5,9 +5,10 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { Compartment, EditorState } from '@codemirror/state';
+import { Compartment, EditorState, EditorStateConfig } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
 
 import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './linter';
@@ -32,8 +33,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			type: Boolean,
 			default: false,
 		},
-		jsCode: {
+		code: {
 			type: String,
+		},
+		language: {
+			type: String,
+			default: 'javaScript',
 		},
 	},
 	data() {
@@ -136,35 +141,50 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
 	},
 	mounted() {
+		console.log(this.language);
 		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
 
 		const stateBasedExtensions = [
-			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
-
 				this.trackCompletion(viewUpdate);
-
 				this.$emit('valueChanged', this.content);
 			}),
 		];
 
 		// empty on first load, default param value
-		if (this.jsCode === '') {
+		if (this.code === '') {
 			this.$emit('valueChanged', this.placeholder);
 		}
 
-		const state = EditorState.create({
-			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
-			extensions: [
-				...baseExtensions,
-				...stateBasedExtensions,
-				CODE_NODE_EDITOR_THEME,
-				javascript(),
-				this.autocompletionExtension(),
-			],
-		});
+		let editorSettings: EditorStateConfig;
+		if (this.language === 'python') {
+			editorSettings = {
+				doc: this.code === '' ? this.placeholder : this.code,
+				extensions: [
+					...baseExtensions,
+					...stateBasedExtensions,
+					CODE_NODE_EDITOR_THEME,
+					python(),
+					// this.autocompletionExtension(),
+				],
+			};
+		} else {
+			editorSettings = {
+				doc: this.code === '' ? this.placeholder : this.code,
+				extensions: [
+					this.linterCompartment.of(this.linterExtension()),
+					...baseExtensions,
+					...stateBasedExtensions,
+					CODE_NODE_EDITOR_THEME,
+					javascript(),
+					this.autocompletionExtension(),
+				],
+			};
+		}
+
+		const state = EditorState.create(editorSettings);
 
 		this.editor = new EditorView({
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,

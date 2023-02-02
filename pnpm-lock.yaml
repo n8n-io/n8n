@@ -525,6 +525,7 @@ importers:
       '@codemirror/autocomplete': ^6.4.0
       '@codemirror/commands': ^6.1.0
       '@codemirror/lang-javascript': ^6.1.2
+      '@codemirror/lang-python': ^6.1.1
       '@codemirror/language': ^6.2.1
       '@codemirror/lint': ^6.0.0
       '@codemirror/state': ^6.1.4
@@ -611,6 +612,7 @@ importers:
       '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/commands': 6.1.2
       '@codemirror/lang-javascript': 6.1.2
+      '@codemirror/lang-python': 6.1.1_zyklskjzaprvz25ee7sq7godcq
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
       '@codemirror/state': 6.1.4
@@ -2996,6 +2998,18 @@ packages:
       '@lezer/javascript': 1.0.2
     dev: false
 
+  /@codemirror/lang-python/6.1.1_zyklskjzaprvz25ee7sq7godcq:
+    resolution: {integrity: sha512-AddGMIKUssUAqaDKoxKWA5GAzy/CVE0eSY7/ANgNzdS1GYBkp6N49XKEyMElkuN04UsZ+bTIQdj+tVV75NMwJw==}
+    dependencies:
+      '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/language': 6.2.1
+      '@lezer/python': 1.1.1
+    transitivePeerDependencies:
+      - '@codemirror/state'
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
+
   /@codemirror/language/6.2.1:
     resolution: {integrity: sha512-MC3svxuvIj0MRpFlGHxLS6vPyIdbTr2KKPEW46kCoCXw2ktb4NTkpkPBI/lSP/FoNXLCBJ0mrnUi1OoZxtpW1Q==}
     dependencies:
@@ -3806,6 +3820,13 @@ packages:
     resolution: {integrity: sha512-qpB7rBzH8f6Mzjv2AVZRahcm+2Cf7nbIH++uXbvVOL1yIRvVWQ3HAM/saeBLCyz/togB7LGo76qdJYL1uKQlqA==}
     dependencies:
       '@lezer/common': 1.0.1
+    dev: false
+
+  /@lezer/python/1.1.1:
+    resolution: {integrity: sha512-ArUGh9kvdaOVu6IkSaYUS9WFQeMAFVWKRuZo6vexnxoeCLnxf0Y9DCFEAMMa7W9SQBGYE55OarSpPqSkdOXSCA==}
+    dependencies:
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
     dev: false
 
   /@lit-labs/react/1.1.1:
@@ -6908,7 +6929,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.57.1
+      vite: 4.0.4_sass@1.55.0+terser@5.16.1
       vue: 2.7.14
     dev: true
 

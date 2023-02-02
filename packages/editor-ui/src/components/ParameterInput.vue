@@ -74,7 +74,8 @@
 				<code-node-editor
 					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCode="node.parameters.jsCode"
+					:code="node.parameters.jsCode"
+					:language="getArgument('editorLanguage')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>

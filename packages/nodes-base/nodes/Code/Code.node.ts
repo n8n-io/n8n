@@ -68,6 +68,7 @@ export class Code implements INodeType {
 				name: 'jsCode',
 				typeOptions: {
 					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
 				},
 				displayOptions: {
 					show: {
@@ -101,6 +102,7 @@ export class Code implements INodeType {
 				// name: 'pythonCode',
 				typeOptions: {
 					editor: 'codeNodeEditor',
+					editorLanguage: 'python',
 				},
 				displayOptions: {
 					show: {
