@@ -50,6 +50,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const init = (tracking: Telemetry) => {
 		telemetry.value = tracking;
 		identify();
+		reloadFeatureFlags();
 
 		window.posthog?.onFeatureFlags((flags: string[], map: Record<string, string | boolean>) => {
 			featureFlags.value = map;
@@ -79,9 +80,7 @@ export const usePostHog = defineStore('posthog', () => {
 				onLogout();
 			}
 			identify();
-			if (userId && !prevId) {
-				reloadFeatureFlags();
-			}
+			reloadFeatureFlags();
 		},
 	);
 
