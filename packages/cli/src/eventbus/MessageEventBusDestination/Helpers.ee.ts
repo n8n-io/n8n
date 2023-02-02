@@ -1,12 +1,12 @@
 /* eslint-disable import/no-cycle */
-import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
+import type { EventDestinations } from '@db/entities/MessageEventBusDestinationEntity';
 import { promClient } from '@/metrics';
 import {
 	EventMessageTypeNames,
 	LoggerProxy,
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
-import config from '../../config';
+import config from '@/config';
 import type { EventMessageTypes } from '../EventMessageClasses';
 import type { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry.ee';

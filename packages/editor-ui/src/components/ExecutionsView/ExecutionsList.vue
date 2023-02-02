@@ -24,6 +24,7 @@
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import {
+	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRMED,
@@ -121,36 +122,34 @@ export default mixins(
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		const nextTab = getNodeViewTab(to);
-		// When leaving for a page that's not a workflow view tab, ask to save changes
-		if (!nextTab) {
-			const result = this.uiStore.stateIsDirty;
-			if (result) {
-				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					true,
-				);
+		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
+			next();
+			return;
+		}
+		if (this.uiStore.stateIsDirty) {
+			const confirmModal = await this.confirmModal(
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				true,
+			);
 
-				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.settingsStore.fetchPromptsData();
-					this.uiStore.stateIsDirty = false;
-					next();
-				} else if (confirmModal === MODAL_CANCEL) {
-					this.uiStore.stateIsDirty = false;
-					next();
-				} else if (confirmModal === MODAL_CLOSE) {
-					next(false);
+			if (confirmModal === MODAL_CONFIRMED) {
+				const saved = await this.saveCurrentWorkflow({}, false);
+				if (saved) {
+					await this.settingsStore.fetchPromptsData();
 				}
-			} else {
+				this.uiStore.stateIsDirty = false;
+				next();
+			} else if (confirmModal === MODAL_CANCEL) {
+				this.uiStore.stateIsDirty = false;
 				next();
 			}
+		} else {
+			next();
 		}
-		next();
 	},
 	async mounted() {
 		this.loading = true;
@@ -326,7 +325,7 @@ export default mixins(
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
 				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
+				if (lastId !== 0 && !isNaN(currentId)) {
 					if (currentId - lastId > 1) {
 						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
@@ -372,10 +371,8 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeNotInTheList = !existingExecutions.some(
-					(ex) => ex.id === this.activeExecution?.id,
-				);
-				if (activeNotInTheList && this.executions.length > 0) {
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
+				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,

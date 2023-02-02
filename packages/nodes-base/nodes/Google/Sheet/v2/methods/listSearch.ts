@@ -1,11 +1,11 @@
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { ResourceLocator } from '../helpers/GoogleSheets.types';
+import { NodeOperationError } from 'n8n-workflow';
+import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import { apiRequest } from '../transport';
 

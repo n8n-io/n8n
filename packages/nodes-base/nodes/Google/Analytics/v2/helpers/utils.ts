@@ -1,10 +1,6 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeListSearchItems,
-	INodePropertyOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IDataObject, INodeListSearchItems, INodePropertyOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 
 // tslint:disable-next-line:no-any

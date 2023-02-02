@@ -1,4 +1,5 @@
-import { INodeTypeBaseDescription, IVersionedNodeType, VersionedNodeType } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
 import { GoogleSheetsV1 } from './v1/GoogleSheetsV1.node';
 import { GoogleSheetsV2 } from './v2/GoogleSheetsV2.node';

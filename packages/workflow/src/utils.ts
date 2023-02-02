@@ -1,4 +1,4 @@
-import { BinaryFileType } from './Interfaces';
+import type { BinaryFileType } from './Interfaces';
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 

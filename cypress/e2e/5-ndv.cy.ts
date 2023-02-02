@@ -53,7 +53,7 @@ describe('NDV', () => {
 	});
 
 	it('should show correct validation state for resource locator params', () => {
-		workflowPage.actions.addNodeToCanvas('Typeform', true);
+		workflowPage.actions.addNodeToCanvas('Typeform', true, false);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
 		cy.get('[class*=hasIssues]').should('have.length', 0);
@@ -66,11 +66,11 @@ describe('NDV', () => {
 
 	it('should show validation errors only after blur or re-opening of NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual Trigger');
-		workflowPage.actions.addNodeToCanvas('Airtable', true);
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
-		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur()
-		ndv.getters.parameterInput('application').find('input').eq(1).focus().blur()
+		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
+		ndv.getters.parameterInput('application').find('input').eq(1).focus().blur();
 		cy.get('.has-issues').should('have.length', 2);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
@@ -88,4 +88,15 @@ describe('NDV', () => {
 		});
 	});
 
+	it('should show http node hint if node has custom api option', () => {
+		workflowPage.actions.addNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addNodeToCanvas('Slack', true, true);
+		ndv.getters.httpRequestNotice().should('not.exist');
+		ndv.getters.parameterInput('operation').click();
+		ndv.getters.parameterInput('operation').contains('Custom API').click();
+		ndv.getters.httpRequestNotice().should('be.visible');
+		ndv.getters.parameterInput('operation').click();
+		ndv.getters.parameterInput('operation').contains('Post').click();
+		ndv.getters.httpRequestNotice().should('not.exist');
+	});
 });

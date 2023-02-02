@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 
-import express from 'express';
+import type express from 'express';
 
-import { AuthenticatedRequest, PaginatatedRequest } from '../../../types';
+import type { AuthenticatedRequest, PaginatatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 export const authorize =

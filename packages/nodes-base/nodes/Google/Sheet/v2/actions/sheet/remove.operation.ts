@@ -1,7 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 
 export async function execute(
 	this: IExecuteFunctions,

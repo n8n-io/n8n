@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -15,27 +15,27 @@ import { clientFields, clientOperations } from './ClientDescription';
 
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import { IClient, IContact } from './ClientInterface';
+import type { IClient, IContact } from './ClientInterface';
 
 import { countryCodes } from './ISOCountryCodes';
 
-import { IInvoice, IItem } from './invoiceInterface';
+import type { IInvoice, IItem } from './invoiceInterface';
 
 import { taskFields, taskOperations } from './TaskDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
 import { paymentFields, paymentOperations } from './PaymentDescription';
 
-import { IPayment } from './PaymentInterface';
+import type { IPayment } from './PaymentInterface';
 
 import { expenseFields, expenseOperations } from './ExpenseDescription';
 
-import { IExpense } from './ExpenseInterface';
+import type { IExpense } from './ExpenseInterface';
 
 import { quoteFields, quoteOperations } from './QuoteDescription';
 
-import { IQuote } from './QuoteInterface';
+import type { IQuote } from './QuoteInterface';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -472,15 +472,25 @@ export class InvoiceNinja implements INodeType {
 									cost: itemValue.cost as number,
 									notes: itemValue.description as string,
 									product_key: itemValue.service as string,
-									qty: itemValue.hours as number,
 									tax_rate1: itemValue.taxRate1 as number,
 									tax_rate2: itemValue.taxRate2 as number,
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
 								};
+								if (apiVersion === 'v4') {
+									item.qty = itemValue.hours as number;
+								}
+								if (apiVersion === 'v5') {
+									item.quantity = itemValue.hours as number;
+								}
 								invoiceItems.push(item);
 							}
-							body.invoice_items = invoiceItems;
+							if (apiVersion === 'v4') {
+								body.invoice_items = invoiceItems;
+							}
+							if (apiVersion === 'v5') {
+								body.line_items = invoiceItems;
+							}
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
@@ -902,15 +912,25 @@ export class InvoiceNinja implements INodeType {
 									cost: itemValue.cost as number,
 									notes: itemValue.description as string,
 									product_key: itemValue.service as string,
-									qty: itemValue.hours as number,
 									tax_rate1: itemValue.taxRate1 as number,
 									tax_rate2: itemValue.taxRate2 as number,
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
 								};
+								if (apiVersion === 'v4') {
+									item.qty = itemValue.hours as number;
+								}
+								if (apiVersion === 'v5') {
+									item.quantity = itemValue.hours as number;
+								}
 								invoiceItems.push(item);
 							}
-							body.invoice_items = invoiceItems;
+							if (apiVersion === 'v4') {
+								body.invoice_items = invoiceItems;
+							}
+							if (apiVersion === 'v5') {
+								body.line_items = invoiceItems;
+							}
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,

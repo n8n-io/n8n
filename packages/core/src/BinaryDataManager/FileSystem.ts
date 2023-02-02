@@ -3,9 +3,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
 import type { Readable } from 'stream';
-import { BinaryMetadata, jsonParse } from 'n8n-workflow';
+import type { BinaryMetadata } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
 const PREFIX_METAFILE = 'binarymeta';
 const PREFIX_PERSISTED_METAFILE = 'persistedmeta';
