@@ -18,6 +18,9 @@ export const theme = [
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-code-caret)',
 		},
+		'&.cm-editor.cm-focused': {
+			outline: '0',
+		},
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
 			backgroundColor: 'var(--color-code-selection)',
 		},
@@ -30,6 +33,8 @@ export const theme = [
 		'.cm-gutters': {
 			backgroundColor: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
+			borderTopLeftRadius: 'var(--border-radius-base)',
+			borderBottomLeftRadius: 'var(--border-radius-base)',
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
