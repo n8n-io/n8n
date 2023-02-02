@@ -12,9 +12,7 @@ import type {
 	IRun,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeOperationError, LoggerProxy as Logger } from 'n8n-workflow';
-import { MessageTracker } from './MessageTracker';
-
+import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka Trigger',
@@ -136,29 +134,12 @@ export class KafkaTrigger implements INodeType {
 						description: 'Whether to try to parse the message to an object',
 					},
 					{
-						displayName: 'Delete From Queue When Read',
-						name: 'acknowledge',
-						type: 'options',
-						options: [
-							{
-								name: 'Execution Finishes',
-								value: 'executionFinishes',
-								description:
-									'After the workflow execution finished. No matter if the execution was successful or not.',
-							},
-							{
-								name: 'Execution Finishes Successfully',
-								value: 'executionFinishesSuccessfully',
-								description: 'After the workflow execution finished successfully',
-							},
-							{
-								name: 'Immediately',
-								value: 'immediately',
-								description: 'Immediately after the message was received',
-							},
-						],
-						default: 'immediately',
-						description: 'When to acknowledge the message',
+						displayName: 'Parallel Processing',
+						name: 'parallelProcessing',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to process messages in parallel or by keeping the message in order',
 					},
 					{
 						displayName: 'Only Message',
@@ -230,15 +211,11 @@ export class KafkaTrigger implements INodeType {
 
 		const kafka = new apacheKafka(config);
 
-		let maxInFlightRequests = (
+		const maxInFlightRequests = (
 			this.getNodeParameter('options.maxInFlightRequests', null) === 0
 				? null
 				: this.getNodeParameter('options.maxInFlightRequests', null)
 		) as number;
-
-		if (this.getMode() === 'manual') {
-			maxInFlightRequests = 1;
-		}
 
 		const consumer = kafka.consumer({
 			groupId,
@@ -247,10 +224,10 @@ export class KafkaTrigger implements INodeType {
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
 
-		let acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
+		let parallelProcessing = options.parallelProcessing as boolean;
 
-		if (maxInFlightRequests !== null && acknowledgeMode === 'immediately') {
-			acknowledgeMode = 'executionFinishes';
+		if (maxInFlightRequests !== null) {
+			parallelProcessing = true;
 		}
 
 		await consumer.connect();
@@ -260,25 +237,14 @@ export class KafkaTrigger implements INodeType {
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
-		const messageTracker = new MessageTracker();
-		let closeGotCalled = false;
 
 		const startConsumer = async () => {
-			consumer.on('consumer.disconnect', async () => {
-				if (!closeGotCalled) {
-					this.emitError(new Error('Connection got closed unexpectedly'));
-				}
-			});
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
 				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
 					let value = message.value?.toString() as string;
-
-					if (acknowledgeMode !== 'immediately') {
-						messageTracker.received(message);
-					}
 
 					if (options.jsonParseMessage) {
 						try {
@@ -312,24 +278,10 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					let responsePromise = undefined;
-					if (acknowledgeMode !== 'immediately') {
+					if (parallelProcessing) {
 						responsePromise = await createDeferredPromise<IRun>();
 					}
 					this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
-
-					if (responsePromise) {
-						await responsePromise.promise().then(async (data: IRun) => {
-							if (data.data.resultData.error) {
-								if (acknowledgeMode === 'executionFinishesSuccessfully') {
-									messageTracker.answered(message);
-									return;
-								}
-							}
-							messageTracker.answered(message);
-						});
-					}
-
-					this.emit([this.helpers.returnJsonArray([data])]);
 				},
 			});
 		};
@@ -338,22 +290,9 @@ export class KafkaTrigger implements INodeType {
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		const closeFunction = async () => {
-			closeGotCalled = true;
-			try {
-				return await messageTracker.closeChannel(consumer);
-			} catch (error) {
-				const workflow = this.getWorkflow();
-				const node = this.getNode();
-				Logger.error(
-					`Error while closing Kafka consumer for workflow "${workflow.name}" and node "${node.name}"`,
-					{
-						node: node.name,
-						workflow: workflow.id,
-					},
-				);
-			}
-		};
+		async function closeFunction() {
+			await consumer.disconnect();
+		}
 
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
