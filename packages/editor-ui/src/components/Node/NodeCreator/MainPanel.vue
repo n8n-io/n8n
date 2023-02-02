@@ -40,17 +40,11 @@
 
 					<template v-else #action>
 						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-						<n8n-link
-							v-if="[REGULAR_NODE_FILTER].includes(useNodeCreatorStore().selectedView)"
-							@click="addHttpNode"
-						>
+						<n8n-link v-if="[REGULAR_NODE_FILTER].includes(selectedView)" @click="addHttpNode">
 							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 						</n8n-link>
 
-						<n8n-link
-							v-if="[TRIGGER_NODE_FILTER].includes(useNodeCreatorStore().selectedView)"
-							@click="addWebHookNode()"
-						>
+						<n8n-link v-if="[TRIGGER_NODE_FILTER].includes(selectedView)" @click="addWebHookNode()">
 							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 						</n8n-link>
 						{{ $locale.baseText('nodeCreator.noResults.node') }}
@@ -106,6 +100,7 @@ import {
 	STICKY_NODE_TYPE,
 	REGULAR_NODE_FILTER,
 	TRIGGER_NODE_FILTER,
+	N8N_NODE_TYPE,
 } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
@@ -147,6 +142,7 @@ const containsAPIAction = computed(
 		) === true,
 );
 
+const selectedView = computed(() => useNodeCreatorStore().selectedView);
 const computedCategorizedItems = computed(() => {
 	if (isActionsActive.value) {
 		return sortActions(getCategorizedList(computedCategoriesWithNodes.value, true));
@@ -202,8 +198,8 @@ const filteredMergedAppNodes = computed(() => {
 			// Only show nodes without action within their view
 			if (!hasActions) {
 				return isRegularNode
-					? useNodeCreatorStore().selectedView === REGULAR_NODE_FILTER
-					: useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
+					? selectedView.value === REGULAR_NODE_FILTER
+					: selectedView.value === TRIGGER_NODE_FILTER;
 			}
 
 			return true;
@@ -246,7 +242,7 @@ function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateEleme
 		elements[isTriggersCategory || isTriggerAction ? 'trigger' : 'regular'].push(el);
 	});
 
-	if (useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER) {
+	if (selectedView.value === TRIGGER_NODE_FILTER) {
 		return [...elements.trigger, ...elements.regular];
 	}
 
@@ -264,17 +260,22 @@ function transformCreateElements(
 		return textA < textB ? -1 : textA > textB ? 1 : 0;
 	});
 
-	return sorted.map((nodeType) => ({
-		type: 'node',
-		category: nodeType.codex?.categories,
-		key: nodeType.name,
-		properties: {
-			nodeType,
-			subcategory: state.activeNodeActions?.displayName ?? '',
-		},
-		includedByTrigger: nodeType.group.includes('trigger'),
-		includedByRegular: !nodeType.group.includes('trigger'),
-	}));
+	return sorted.map((nodeType) => {
+		// N8n node is a special case since it's the only core node that is both trigger and regular
+		// if we have more cases like this we should add more robust logic
+		const isN8nNode = nodeType.name.includes(N8N_NODE_TYPE);
+		return {
+			type: 'node',
+			category: nodeType.codex?.categories,
+			key: nodeType.name,
+			properties: {
+				nodeType,
+				subcategory: state.activeNodeActions?.displayName ?? '',
+			},
+			includedByTrigger: isN8nNode || nodeType.group.includes('trigger'),
+			includedByRegular: isN8nNode || !nodeType.group.includes('trigger'),
+		};
+	});
 }
 
 function onNodeTypeSelected(nodeTypes: string[]) {

@@ -21,7 +21,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
 import { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
-import { i18n } from '@/plugins/i18n';
+import { BaseTextKey, i18n } from '@/plugins/i18n';
 import { externalHooks } from '@/mixins/externalHooks';
 import { Telemetry } from '@/plugins/telemetry';
 
@@ -61,7 +61,6 @@ function filterActions(actions: INodeActionTypeDescription[], isTriggerRoot: boo
 			if (isApiCall) return false;
 
 			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
-			if (!isTriggerRoot && isPlaceholderTriggerAction) return false;
 			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
 		},
 	);
@@ -321,20 +320,18 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				})
 				.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
 					const clonedNode = deepCopy(node);
-					const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
 					const actions = node.actions || [];
 					// Do not merge core nodes
-					const normalizedName = isCoreNode
-						? node.name
-						: node.name.toLowerCase().replace('trigger', '');
+					const normalizedName = node.name.toLowerCase().replace('trigger', '');
 					const existingNode = acc[normalizedName];
 
+					if (node.name.includes('.n8n')) {
+						console.log('n8n baby');
+					}
 					if (existingNode) existingNode.actions?.push(...actions);
 					else acc[normalizedName] = clonedNode;
 
-					if (!isCoreNode) {
-						acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
-					}
+					acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
 
 					return acc;
 				}, {});

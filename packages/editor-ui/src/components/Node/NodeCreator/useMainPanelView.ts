@@ -27,10 +27,9 @@ export default () => {
 				{
 					key: '*',
 					type: 'subcategory',
-					title: 'Action in an app',
 					properties: {
 						subcategory: 'App Regular Nodes',
-						icon: 'info-circle',
+						icon: 'globe',
 					},
 				},
 				{

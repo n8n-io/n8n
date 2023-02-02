@@ -34,6 +34,7 @@
 						:name="activeSubcategory.properties.icon"
 						:circle="false"
 						:showTooltip="false"
+						:size="16"
 					/>
 					<span v-text="activeSubcategoryTitle" />
 				</template>
@@ -66,7 +67,7 @@
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 				/>
 				<div v-if="searchFilter.length > 0 && mergedFilteredNodes.length === 0">
-					<slot name="noResults"/>
+					<slot name="noResults" />
 				</div>
 				<div :class="$style.footer" v-else-if="$slots.footer">
 					<slot name="footer" />
@@ -80,7 +81,6 @@
 import {
 	computed,
 	reactive,
-	onMounted,
 	watch,
 	getCurrentInstance,
 	toRefs,
