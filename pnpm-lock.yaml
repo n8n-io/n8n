@@ -810,7 +810,7 @@ importers:
       pg-promise: ^10.5.8
       pretty-bytes: ^5.6.0
       promise-ftp: ^1.3.5
-      pythonia: ^1.0.0
+      pyodide: ^0.22.1
       redis: ^3.1.1
       request: ^2.88.2
       rhea: ^1.0.11
@@ -870,7 +870,7 @@ importers:
       pg-promise: 10.12.0
       pretty-bytes: 5.6.0
       promise-ftp: 1.3.5_promise-ftp-common@1.1.5
-      pythonia: 1.0.0_ws@7.5.9
+      pyodide: 0.22.1
       redis: 3.1.2
       request: 2.88.2
       rhea: 1.0.24
@@ -1093,7 +1093,7 @@ packages:
       '@types/node-fetch': 2.6.2
       '@types/tunnel': 0.0.3
       form-data: 4.0.0
-      node-fetch: 2.6.7
+      node-fetch: 2.6.8
       process: 0.11.10
       tough-cookie: 4.1.2
       tslib: 2.4.0
@@ -3279,7 +3279,7 @@ packages:
       debug: 4.3.4
       espree: 9.4.0
       globals: 13.17.0
-      ignore: 5.2.0
+      ignore: 5.2.4
       import-fresh: 3.3.0
       js-yaml: 4.1.0
       minimatch: 3.1.2
@@ -8391,6 +8391,10 @@ packages:
   /balanced-match/1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
+  /base-64/1.0.0:
+    resolution: {integrity: sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg==}
+    dev: false
+
   /base/0.11.2:
     resolution: {integrity: sha512-5T6P4xPgpp0YDFvSWwEZ4NoE3aM4QBQXDzmVbraCkFj8zHM+mba8SyqB5DbZWyR7mYHo6Y7BdQo3MoA4m0TeQg==}
     engines: {node: '>=0.10.0'}
@@ -8896,10 +8900,6 @@ packages:
     dependencies:
       inherits: 2.0.4
       readable-stream: 2.3.7
-    dev: false
-
-  /caller/1.1.0:
-    resolution: {integrity: sha512-n+21IZC3j06YpCWaxmUy5AnVqhmCIM2bQtqQyy00HJlmStRt6kwDX5F9Z97pqwAB+G/tgSz6q/kUBbNyQzIubw==}
     dev: false
 
   /callsites/3.1.0:
@@ -11627,7 +11627,7 @@ packages:
       glob-parent: 6.0.2
       globals: 13.17.0
       grapheme-splitter: 1.0.4
-      ignore: 5.2.0
+      ignore: 5.2.4
       import-fresh: 3.3.0
       imurmurhash: 0.1.4
       is-glob: 4.0.3
@@ -16634,7 +16634,6 @@ packages:
         optional: true
     dependencies:
       whatwg-url: 5.0.0
-    dev: true
 
   /node-gyp-build-optional-packages/5.0.3:
     resolution: {integrity: sha512-k75jcVzk5wnnc/FMxsf4udAoTEUv2jY3ycfdSd3yWu6Cnd1oee6/CfZJApyscA4FJOmdoixWwiwOyf16RzD5JA==}
@@ -18446,20 +18445,22 @@ packages:
     resolution: {integrity: sha512-LN6QV1IJ9ZhxWTNdktaPClrNfp8xdSAYS0Zk2ddX7XsXZAxckMHPCBcHRo0cTcEIgYPRiGEkmji3Idkh2yFtYw==}
     engines: {node: '>=6'}
 
+  /pyodide/0.22.1:
+    resolution: {integrity: sha512-6+PkFLTC+kcBKtFQxYBxR44J5IBxLm8UGkobLgZv1SxzV9qOU2rb0YYf0qDtlnfDiN/IQd2uckf+D8Zwe88Mqg==}
+    dependencies:
+      base-64: 1.0.0
+      node-fetch: 2.6.8
+      ws: 8.12.0
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
+    dev: false
+
   /python-struct/1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
     dependencies:
       long: 4.0.0
-    dev: false
-
-  /pythonia/1.0.0_ws@7.5.9:
-    resolution: {integrity: sha512-DMpVciipMnHSpSVSGTjdTla3JEKCXIqLMdgV9H+a5XUMrMv5pD8L3xBHiZI65a/K4pc7DFZ92ezkLGeW+Rfm1g==}
-    peerDependencies:
-      ws: ^7.5.1
-    dependencies:
-      caller: 1.1.0
-      chalk: 4.1.2
-      ws: 7.5.9
     dev: false
 
   /qqjs/0.3.11:
@@ -23228,7 +23229,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-    dev: true
 
   /ws/8.9.0:
     resolution: {integrity: sha512-Ja7nszREasGaYUYCI2k4lCKIRTt+y7XuqVoHR44YpI49TtryyqbqvDMn5eqfW7e6HzTukDRIsXqzVHScqRcafg==}

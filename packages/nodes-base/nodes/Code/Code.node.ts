@@ -156,12 +156,10 @@ export class Code implements INodeType {
 					items = (await sandbox.runCode(context, pythonCode)) as INodeExecutionData[];
 				} catch (error) {
 					if (!this.continueOnFail()) {
-						sandbox.close();
 						return Promise.reject(error);
 					}
 					items = [{ json: { error: error.message } }];
 				}
-				sandbox.close();
 
 				for (const item of items) {
 					standardizeOutput(item.json);
@@ -191,7 +189,6 @@ export class Code implements INodeType {
 					item = (await sandbox.runCode(context, pythonCode, index)) as INodeExecutionData;
 				} catch (error) {
 					if (!this.continueOnFail()) {
-						sandbox.close();
 						return Promise.reject(error);
 					}
 					returnData.push({ json: { error: error.message } });
@@ -206,8 +203,6 @@ export class Code implements INodeType {
 					});
 				}
 			}
-
-			sandbox.close();
 
 			return this.prepareOutputData(returnData);
 		}
