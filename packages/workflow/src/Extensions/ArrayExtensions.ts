@@ -87,20 +87,16 @@ function first(value: unknown[]): unknown {
 	return value[0];
 }
 
-function isBlank(value: unknown[]): boolean {
+function isEmpty(value: unknown[]): boolean {
 	return value.length === 0;
 }
 
-function isPresent(value: unknown[]): boolean {
+function isNotEmpty(value: unknown[]): boolean {
 	return value.length > 0;
 }
 
 function last(value: unknown[]): unknown {
 	return value[value.length - 1];
-}
-
-function length(value: unknown[]): number {
-	return Array.isArray(value) ? value.length : 0;
 }
 
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
@@ -121,7 +117,7 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	}) as unknown[];
 }
 
-function random(value: unknown[]): unknown {
+function randomItem(value: unknown[]): unknown {
 	const len = value === undefined ? 0 : value.length;
 	return len ? value[Math.floor(Math.random() * len)] : undefined;
 }
@@ -149,7 +145,15 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 	}, []);
 }
 
+const ensureNumberArray = (arr: unknown[], { fnName }: { fnName: string }) => {
+	if (arr.some((i) => typeof i !== 'number')) {
+		throw new ExpressionExtensionError(`${fnName}(): all array elements must be numbers`);
+	}
+};
+
 function sum(value: unknown[]): number {
+	ensureNumberArray(value, { fnName: 'sum' });
+
 	return value.reduce((p: number, c: unknown) => {
 		if (typeof c === 'string') {
 			return p + parseFloat(c);
@@ -162,6 +166,8 @@ function sum(value: unknown[]): number {
 }
 
 function min(value: unknown[]): number {
+	ensureNumberArray(value, { fnName: 'min' });
+
 	return Math.min(
 		...value.map((v) => {
 			if (typeof v === 'string') {
@@ -176,6 +182,8 @@ function min(value: unknown[]): number {
 }
 
 function max(value: unknown[]): number {
+	ensureNumberArray(value, { fnName: 'max' });
+
 	return Math.max(
 		...value.map((v) => {
 			if (typeof v === 'string') {
@@ -190,6 +198,8 @@ function max(value: unknown[]): number {
 }
 
 export function average(value: unknown[]) {
+	ensureNumberArray(value, { fnName: 'average' });
+
 	// This would usually be NaN but I don't think users
 	// will expect that
 	if (value.length === 0) {
@@ -200,7 +210,11 @@ export function average(value: unknown[]) {
 
 function compact(value: unknown[]): unknown[] {
 	return value
-		.filter((v) => v !== null && v !== undefined)
+		.filter((v) => {
+			if (v && typeof v === 'object' && Object.keys(v).length === 0) return false;
+
+			return v !== null && v !== undefined && v !== 'nil' && v !== '';
+		})
 		.map((v) => {
 			if (typeof v === 'object' && v !== null) {
 				return oCompact(v);
@@ -213,7 +227,7 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 	const [keyField, valueField] = extraArgs;
 	if (!keyField || !valueField || typeof keyField !== 'string' || typeof valueField !== 'string') {
 		throw new ExpressionExtensionError(
-			'smartJoin requires 2 arguments: keyField and nameField. e.g. .smartJoin("name", "value")',
+			'smartJoin(): expected two string args, e.g. .smartJoin("name", "value")',
 		);
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
@@ -229,8 +243,8 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 
 function chunk(value: unknown[], extraArgs: number[]) {
 	const [chunkSize] = extraArgs;
-	if (typeof chunkSize !== 'number') {
-		throw new ExpressionExtensionError('chunk requires 1 parameter: chunkSize. e.g. .chunk(5)');
+	if (typeof chunkSize !== 'number' || chunkSize === 0) {
+		throw new ExpressionExtensionError('chunk(): expected non-zero numeric arg, e.g. .chunk(5)');
 	}
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {
@@ -241,30 +255,10 @@ function chunk(value: unknown[], extraArgs: number[]) {
 	return chunks;
 }
 
-function filter(value: unknown[], extraArgs: unknown[]): unknown[] {
-	const [field, term] = extraArgs as [string | (() => void), unknown | string];
-	if (typeof field !== 'string' && typeof field !== 'function') {
-		throw new ExpressionExtensionError(
-			'filter requires 1 or 2 arguments: (field and term), (term and [optional keepOrRemove "keep" or "remove" default "keep"] (for string arrays)), or function. e.g. .filter("type", "home") or .filter((i) => i.type === "home") or .filter("home", [optional keepOrRemove]) (for string arrays)',
-		);
-	}
-	if (value.every((i) => typeof i === 'string') && typeof field === 'string') {
-		return (value as string[]).filter((i) =>
-			term === 'remove' ? !i.includes(field) : i.includes(field),
-		);
-	} else if (typeof field === 'string') {
-		return value.filter(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			(v) => typeof v === 'object' && v !== null && field in v && (v as any)[field] === term,
-		);
-	}
-	return value.filter(field);
-}
-
 function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 	if (extraArgs.length === 0 || extraArgs.length % 2 !== 0) {
 		throw new ExpressionExtensionError(
-			'renameKeys requires an even amount of arguments: from1, to1 [, from2, to2, ...]. e.g. .renameKeys("name", "title")',
+			'renameKeys(): expected an even amount of args: from1, to1 [, from2, to2, ...]. e.g. .renameKeys("name", "title")',
 		);
 	}
 	return value.map((v) => {
@@ -291,7 +285,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'merge requires 1 argument that is an array. e.g. .merge([{ id: 1, otherValue: 3 }])',
+			'merge(): expected array arg, e.g. .merge([{ id: 1, otherValue: 3 }])',
 		);
 	}
 	const listLength = value.length > others.length ? value.length : others.length;
@@ -314,9 +308,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
 function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
-		throw new ExpressionExtensionError(
-			'union requires 1 argument that is an array. e.g. .union([1, 2, 3, 4])',
-		);
+		throw new ExpressionExtensionError('union(): expected array arg, e.g. .union([1, 2, 3, 4])');
 	}
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
@@ -331,7 +323,7 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'difference requires 1 argument that is an array. e.g. .difference([1, 2, 3, 4])',
+			'difference(): expected array arg, e.g. .difference([1, 2, 3, 4])',
 		);
 	}
 	const newArr: unknown[] = [];
@@ -347,7 +339,7 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'difference requires 1 argument that is an array. e.g. .difference([1, 2, 3, 4])',
+			'intersection(): expected array arg, e.g. .intersection([1, 2, 3, 4])',
 		);
 	}
 	const newArr: unknown[] = [];
@@ -364,27 +356,129 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	return unique(newArr, []);
 }
 
+average.doc = {
+	name: 'average',
+	description: 'Returns the mean average of all values in the array',
+	returnType: 'number',
+};
+
+compact.doc = {
+	name: 'compact',
+	description: 'Removes all empty values from the array',
+	returnType: 'array',
+};
+
+isEmpty.doc = {
+	name: 'isEmpty',
+	description: 'Checks if the array doesn’t have any elements',
+	returnType: 'boolean',
+};
+
+isNotEmpty.doc = {
+	name: 'isNotEmpty',
+	description: 'Checks if the array has elements',
+	returnType: 'boolean',
+};
+
+first.doc = {
+	name: 'first',
+	description: 'Returns the first element of the array',
+	returnType: 'array item',
+};
+
+last.doc = {
+	name: 'last',
+	description: 'Returns the last element of the array',
+	returnType: 'array item',
+};
+
+max.doc = {
+	name: 'max',
+	description: 'Gets the maximum value from a number-only array',
+	returnType: 'number',
+};
+
+min.doc = {
+	name: 'min',
+	description: 'Gets the minimum value from a number-only array',
+	returnType: 'number',
+};
+
+randomItem.doc = {
+	name: 'randomItem',
+	description: 'Returns a random element from an array',
+	returnType: 'number',
+};
+
+sum.doc = {
+	name: 'sum',
+	description: 'Returns the total sum all the values in an array of parsable numbers',
+	returnType: 'number',
+};
+
+// @TODO_NEXT_PHASE: Surface extensions below which take args
+
+chunk.doc = {
+	name: 'chunk',
+	returnType: 'array',
+};
+
+difference.doc = {
+	name: 'difference',
+	returnType: 'array',
+};
+
+intersection.doc = {
+	name: 'intersection',
+	returnType: 'array',
+};
+
+merge.doc = {
+	name: 'merge',
+	returnType: 'array',
+};
+
+pluck.doc = {
+	name: 'pluck',
+	returnType: 'array',
+};
+
+renameKeys.doc = {
+	name: 'renameKeys',
+	returnType: 'array',
+};
+
+smartJoin.doc = {
+	name: 'smartJoin',
+	returnType: 'array',
+};
+
+union.doc = {
+	name: 'union',
+	returnType: 'array',
+};
+
+unique.doc = {
+	name: 'unique',
+	returnType: 'array item',
+	aliases: ['removeDuplicates'],
+};
+
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
-		count: length,
-		duplicates: unique,
-		filter,
+		removeDuplicates: unique,
 		first,
 		last,
-		length,
 		pluck,
 		unique,
-		random,
-		randomItem: random,
-		remove: unique,
-		size: length,
+		randomItem,
 		sum,
 		min,
 		max,
 		average,
-		isPresent,
-		isBlank,
+		isNotEmpty,
+		isEmpty,
 		compact,
 		smartJoin,
 		chunk,
