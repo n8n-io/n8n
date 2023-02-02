@@ -97,7 +97,7 @@ export class GithubTrigger implements INodeType {
 						placeholder: 'https://github.com/n8n-io',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
+							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)',
 						},
 						validation: [
 							{
@@ -151,7 +151,7 @@ export class GithubTrigger implements INodeType {
 						placeholder: 'https://github.com/n8n-io/n8n',
 						extractValue: {
 							type: 'regex',
-							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
+							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
 						},
 						validation: [
 							{
