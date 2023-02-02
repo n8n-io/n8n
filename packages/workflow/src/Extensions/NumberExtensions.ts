@@ -1,6 +1,6 @@
 /**
  * @jest-environment jsdom
-*/
+ */
 import { ExpressionExtensionError } from './../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 
