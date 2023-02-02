@@ -1,7 +1,7 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
@@ -458,5 +458,22 @@ export class WorkflowsService {
 		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
+	}
+
+	static async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
+		const qb = Db.collections.Workflow.createQueryBuilder('workflow');
+		return qb
+			.update()
+			.set({
+				triggerCount,
+				updatedAt: () => {
+					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+						return 'updatedAt';
+					}
+					return '"updatedAt"';
+				},
+			})
+			.where('id = :id', { id })
+			.execute();
 	}
 }
