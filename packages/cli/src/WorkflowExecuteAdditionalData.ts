@@ -41,6 +41,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
+import { pick as lodashPick } from 'lodash';
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
@@ -67,7 +68,6 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
-import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -586,18 +586,18 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
 					// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
-					const pristineWorkflowData: IWorkflowBase = {
-						id: this.workflowData.id,
-						name: this.workflowData.name,
-						active: this.workflowData.active,
-						createdAt: this.workflowData.createdAt,
-						updatedAt: this.workflowData.updatedAt,
-						nodes: this.workflowData.nodes,
-						connections: this.workflowData.connections,
-						settings: this.workflowData.settings,
-						staticData: this.workflowData.staticData,
-						pinData: this.workflowData.pinData,
-					};
+					const pristineWorkflowData: IWorkflowBase = lodashPick(this.workflowData, [
+						'id',
+						'name',
+						'active',
+						'createdAt',
+						'updatedAt',
+						'nodes',
+						'connections',
+						'settings',
+						'staticData',
+						'pinData',
+					]);
 
 					const fullExecutionData: IExecutionDb = {
 						data: fullRunData.data,
