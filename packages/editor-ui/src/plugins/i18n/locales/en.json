@@ -876,6 +876,7 @@
 	"parameterInput.error": "ERROR",
 	"parameterInput.expression": "Expression",
 	"parameterInput.fixed": "Fixed",
+	"parameterInput.formatHtml": "Format HTML",
 	"parameterInput.issues": "Issues",
 	"parameterInput.loadingOptions": "Loading options...",
 	"parameterInput.openEditWindow": "Open Edit Window",

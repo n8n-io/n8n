@@ -785,9 +785,6 @@ export default mixins(
 		isSecretParameter(): boolean {
 			return this.getArgument('password') === true;
 		},
-		isHtmlEditor(): boolean {
-			return this.getArgument('editor') === 'htmlEditor';
-		},
 	},
 	methods: {
 		isRemoteParameterOption(option: INodePropertyOptions) {

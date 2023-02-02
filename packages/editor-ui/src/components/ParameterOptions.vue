@@ -97,10 +97,10 @@ export default Vue.extend({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
-			if (this.isHtmlEditor) {
+			if (this.isHtmlEditor && !this.isValueExpression) {
 				return [
 					{
-						label: 'Format HTML',
+						label: this.$locale.baseText('parameterInput.formatHtml'),
 						value: 'formatHtml',
 					},
 				];
