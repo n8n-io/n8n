@@ -920,6 +920,7 @@ importers:
       '@n8n_io/eslint-config': ''
       '@n8n_io/riot-tmpl': ^2.0.0
       '@types/crypto-js': ^4.1.1
+      '@types/deep-equal': ^1.0.1
       '@types/express': ^4.17.6
       '@types/jmespath': ^0.15.0
       '@types/lodash.get': ^4.4.6
@@ -959,6 +960,7 @@ importers:
     devDependencies:
       '@n8n_io/eslint-config': link:../@n8n_io/eslint-config
       '@types/crypto-js': 4.1.1
+      '@types/deep-equal': 1.0.1
       '@types/express': 4.17.14
       '@types/jmespath': 0.15.0
       '@types/lodash.get': 4.4.7
@@ -5983,6 +5985,10 @@ packages:
 
   /@types/dateformat/3.0.1:
     resolution: {integrity: sha512-KlPPdikagvL6ELjWsljbyDIPzNCeliYkqRpI+zea99vBBbCIA5JNshZAwQKTON139c87y9qvTFVgkFd14rtS4g==}
+    dev: true
+
+  /@types/deep-equal/1.0.1:
+    resolution: {integrity: sha512-mMUu4nWHLBlHtxXY17Fg6+ucS/MnndyOWyOe7MmwkoMYxvfQU2ajtRaEvqSUv+aVkMqH/C0NCI8UoVfRNQ10yg==}
     dev: true
 
   /@types/es-aggregate-error/1.0.2:
