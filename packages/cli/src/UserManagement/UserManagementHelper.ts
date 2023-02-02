@@ -53,7 +53,8 @@ export function isSharingEnabled(): boolean {
 
 export function isUserManagementDisabled(): boolean {
 	return (
-		config.getEnv('userManagement.disabled') &&
+		(config.getEnv('userManagement.disabled') ||
+			config.getEnv('deployment.type').startsWith('desktop_')) &&
 		!config.getEnv('userManagement.isInstanceOwnerSetUp')
 	);
 }
