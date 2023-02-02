@@ -467,7 +467,7 @@ export class WorkflowsService {
 			.set({
 				triggerCount,
 				updatedAt: () => {
-					if (config.getEnv('database.type') === 'mysqldb') {
+					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
 						return 'updatedAt';
 					}
 					return '"updatedAt"';
