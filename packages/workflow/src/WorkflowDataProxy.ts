@@ -126,7 +126,7 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 1) {
+		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 0) {
 			return {}; // incoming connection has pinned data, so stub context object
 		}
 
@@ -158,6 +158,7 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					// eslint-disable-next-line no-param-reassign
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
@@ -179,6 +180,7 @@ export class WorkflowDataProxy {
 				},
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					name = name.toString();
 					return that.selfData[name];
 				},
@@ -207,6 +209,7 @@ export class WorkflowDataProxy {
 				};
 			},
 			get(target, name, receiver) {
+				if (name === 'isProxy') return true;
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -379,6 +382,7 @@ export class WorkflowDataProxy {
 			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					name = name.toString();
 
 					if (!node) {
@@ -455,6 +459,8 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (
 						typeof process === 'undefined' || // env vars are inaccessible to frontend
 						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
@@ -490,6 +496,8 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (!that.executeData?.source) {
 						// Means the previous node did not get executed yet
 						return undefined;
@@ -535,6 +543,8 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (allowedValues.includes(name.toString())) {
 						const value = that.workflow[name as keyof typeof target];
 
@@ -567,6 +577,8 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					const nodeName = name.toString();
 
 					if (that.workflow.getNode(nodeName) === null) {
@@ -607,6 +619,14 @@ export class WorkflowDataProxy {
 
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
+			if (typeof data !== 'object' || typeof query !== 'string') {
+				throw new ExpressionError('expected two arguments (Object, string) for this function', {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+					clientOnly: true,
+				});
+			}
+
 			if (!Array.isArray(data) && typeof data === 'object') {
 				return jmespath.search({ ...data }, query);
 			}
@@ -939,6 +959,8 @@ export class WorkflowDataProxy {
 							];
 						},
 						get(target, property, receiver) {
+							if (property === 'isProxy') return true;
+
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
@@ -1059,6 +1081,8 @@ export class WorkflowDataProxy {
 						};
 					},
 					get(target, property, receiver) {
+						if (property === 'isProxy') return true;
+
 						if (property === 'item') {
 							return that.connectionInputData[that.itemIndex];
 						}
@@ -1214,6 +1238,8 @@ export class WorkflowDataProxy {
 
 		return new Proxy(base, {
 			get(target, name, receiver) {
+				if (name === 'isProxy') return true;
+
 				if (['$data', '$json'].includes(name as string)) {
 					return that.nodeDataGetter(that.activeNodeName, true)?.json;
 				}
