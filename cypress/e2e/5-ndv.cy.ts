@@ -87,4 +87,16 @@ describe('NDV', () => {
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
 	});
+
+	it('should show http node hint if node has custom api option', () => {
+		workflowPage.actions.addNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addNodeToCanvas('Slack', true, true);
+		ndv.getters.httpRequestNotice().should('not.exist');
+		ndv.getters.parameterInput('operation').click();
+		ndv.getters.parameterInput('operation').contains('Custom API').click();
+		ndv.getters.httpRequestNotice().should('be.visible');
+		ndv.getters.parameterInput('operation').click();
+		ndv.getters.parameterInput('operation').contains('Post').click();
+		ndv.getters.httpRequestNotice().should('not.exist');
+	});
 });
