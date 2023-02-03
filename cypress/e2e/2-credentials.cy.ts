@@ -1,4 +1,7 @@
-import { HTTP_REQUEST_NODE_TYPE } from './../../packages/editor-ui/src/constants';
+import CustomNodeFixture from '../fixtures/Custom_node_n8n_credential.json';
+import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
+import CustomCredential from '../fixtures/Custom_credential.json';
+
 import {
 	NEW_NOTION_ACCOUNT_NAME,
 	NOTION_NODE_NAME,
@@ -6,7 +9,6 @@ import {
 	HTTP_REQUEST_NODE_NAME,
 	NEW_QUERY_AUTH_ACCOUNT_NAME,
 } from './../constants';
-import { visit } from 'recast';
 import {
 	DEFAULT_USER_EMAIL,
 	DEFAULT_USER_PASSWORD,
@@ -34,6 +36,23 @@ describe('Credentials', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
+
+		cy.intercept('GET', '/types/nodes.json', (req) => {
+			req.continue((res) => {
+				const nodes = res.body;
+
+				nodes.push(CustomNodeFixture, CustomNodeWithCustomCredentialFixture);
+				res.send(nodes);
+			});
+		})
+		cy.intercept('GET', '/types/credentials.json', (req) => {
+			req.continue((res) => {
+				const credentials = res.body;
+
+				credentials.push(CustomCredential);
+				res.send(credentials);
+			});
+		})
 	});
 
 	beforeEach(() => {
@@ -252,4 +271,24 @@ describe('Credentials', () => {
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_QUERY_AUTH_ACCOUNT_NAME);
 	});
+
+	it('should render custom node with n8n credential', () => {
+		workflowPage.actions.visit();
+		workflowPage.actions.addNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addNodeToCanvas('E2E Node with native n8n credential', true, true);
+		workflowPage.getters.nodeCredentialsLabel().click();
+		cy.contains('Create New Credential').click();
+		credentialsModal.getters.editCredentialModal().should('be.visible');
+		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
+	})
+
+	it('should render custom node with custom credential', () => {
+		workflowPage.actions.visit();
+		workflowPage.actions.addNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addNodeToCanvas('E2E Node with custom credential', true, true);
+		workflowPage.getters.nodeCredentialsLabel().click();
+		cy.contains('Create New Credential').click();
+		credentialsModal.getters.editCredentialModal().should('be.visible');
+		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
+	})
 });

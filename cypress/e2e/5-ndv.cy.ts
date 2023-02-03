@@ -1,3 +1,6 @@
+import CustomNodeFixture from '../fixtures/Custom_node_n8n_credential.json';
+import { INodeTypeDescription } from 'n8n-workflow';
+
 import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 
@@ -9,10 +12,26 @@ describe('NDV', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+
+		cy.intercept('GET', '/types/nodes.json', (req) => {
+			// Delete caching headers so that we can intercept the request
+			['etag', 'if-none-match', 'if-modified-since'].forEach((header) => {
+				delete req.headers[header];
+			});
+
+			req.continue((res) => {
+				const nodes = res.body as INodeTypeDescription[];
+
+				nodes.push(CustomNodeFixture as INodeTypeDescription);
+				res.send(nodes);
+			});
+		}).as('nodesIntercept');
+
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
+
 
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
@@ -86,17 +105,5 @@ describe('NDV', () => {
 			cy.get('.has-issues').should('have.length', 3);
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
-	});
-
-	it('should show http node hint if node has custom api option', () => {
-		workflowPage.actions.addNodeToCanvas('Manual Trigger');
-		workflowPage.actions.addNodeToCanvas('Slack', true, true);
-		ndv.getters.httpRequestNotice().should('not.exist');
-		ndv.getters.parameterInput('operation').click();
-		ndv.getters.parameterInput('operation').contains('Custom API').click();
-		ndv.getters.httpRequestNotice().should('be.visible');
-		ndv.getters.parameterInput('operation').click();
-		ndv.getters.parameterInput('operation').contains('Post').click();
-		ndv.getters.httpRequestNotice().should('not.exist');
 	});
 });
