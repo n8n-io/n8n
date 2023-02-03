@@ -1,13 +1,7 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">
-				{{
-					`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${
-						finishedExecutionsCountEstimated === true ? '~' : ''
-					}${combinedExecutionsCount}`
-				}}
-			</n8n-heading>
+			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 			<div :class="$style.filters">
 				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
 				<n8n-select
@@ -276,6 +270,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { setPageTitle } from '@/utils';
 
 type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
 
@@ -310,6 +305,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				stoppingExecutions: [] as string[],
 				workflows: [] as IWorkflowShortResponse[],
 			};
+		},
+		mounted() {
+			setPageTitle(`n8n - ${this.pageTitle}`);
 		},
 		async created() {
 			await this.loadWorkflows();
@@ -403,6 +401,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					filter.finished = this.filter.status === 'success';
 				}
 				return filter;
+			},
+			pageTitle() {
+				return this.$locale.baseText('executionsList.workflowExecutions');
 			},
 		},
 		methods: {
@@ -935,7 +936,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-3xl) var(--spacing-xl);
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .selectionOptions {

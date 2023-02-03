@@ -484,7 +484,7 @@
 	"executionsList.unknown": "Unknown",
 	"executionsList.unsavedWorkflow": "[UNSAVED WORKFLOW]",
 	"executionsList.waiting": "Waiting",
-	"executionsList.workflowExecutions": "Workflow Executions",
+	"executionsList.workflowExecutions": "All Executions",
 	"executionsList.view": "View",
 	"executionsList.stop": "Stop",
 	"executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely": "The workflow is waiting indefinitely for an incoming webhook call.",
