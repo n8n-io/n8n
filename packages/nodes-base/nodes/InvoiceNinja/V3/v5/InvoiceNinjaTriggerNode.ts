@@ -22,6 +22,7 @@ const eventID: { [key: string]: string } = {
 
 	create_invoice: '2',
 	update_invoice: '8',
+	sent_invoice: '60',
 	delay_invoice: '22',
 	remind_invoice: '24',
 	archive_invoice: '33',
@@ -29,6 +30,7 @@ const eventID: { [key: string]: string } = {
 
 	create_quote: '3',
 	update_quote: '6',
+	sent_quote: '61',
 	accept_quote: '21',
 	expire_quote: '23',
 	archive_quote: '34',
@@ -60,9 +62,17 @@ const eventID: { [key: string]: string } = {
 
 	create_credit: '27',
 	update_credit: '28',
+	sent_credit: '62',
 	archive_credit: '35',
 	restore_credit: '43',
 	delete_credit: '29',
+
+	create_purchase_order: '55',
+	update_purchase_order: '56',
+	sent_purchase_order: '63',
+	archive_purchase_order: '57',
+	restore_purchase_order: '58',
+	delete_purchase_order: '59',
 };
 
 const headProperties: INodeProperties[] = [{
@@ -133,6 +143,10 @@ const headProperties: INodeProperties[] = [{
 			value: 'remind_invoice',
 		},
 		{
+			name: 'Invoice Sent',
+			value: 'sent_invoice',
+		},
+		{
 			name: 'Invoice Archived',
 			value: 'archive_invoice',
 		},
@@ -155,6 +169,10 @@ const headProperties: INodeProperties[] = [{
 		{
 			name: 'Quote Accepted',
 			value: 'accept_quote',
+		},
+		{
+			name: 'Quote Sent',
+			value: 'sent_quote',
 		},
 		{
 			name: 'Quote Expired',
@@ -261,6 +279,10 @@ const headProperties: INodeProperties[] = [{
 			value: 'update_credit',
 		},
 		{
+			name: 'Credit Sent',
+			value: 'sent_credit',
+		},
+		{
 			name: 'Credit Archived',
 			value: 'archive_credit',
 		},
@@ -271,6 +293,30 @@ const headProperties: INodeProperties[] = [{
 		{
 			name: 'Credit Deleted',
 			value: 'delete_credit',
+		},
+		{
+			name: 'Purchase Order Created',
+			value: 'create_purchase_order',
+		},
+		{
+			name: 'Purchase Order Updated',
+			value: 'update_purchase_order',
+		},
+		{
+			name: 'Purchase Order Sent',
+			value: 'sent_purchase_order',
+		},
+		{
+			name: 'Purchase Order Archived',
+			value: 'archive_purchase_order',
+		},
+		{
+			name: 'Purchase Order Restored',
+			value: 'restore_purchase_order',
+		},
+		{
+			name: 'Purchase Order Deleted',
+			value: 'delete_purchase_order',
 		},
 	],
 	default: '',
