@@ -25,6 +25,12 @@ export const creditOperations: INodeProperties[] = [
                 description: 'Get data of many credits',
                 action: 'Get many credits',
             },
+			{
+				name: 'Download',
+				value: 'download',
+				description: 'Get PDF from credit',
+				action: 'Download credit',
+			},
             {
                 name: 'Create',
                 value: 'create',
@@ -200,6 +206,24 @@ export const creditFields: INodeProperties[] = [
         default: 50,
         description: 'Max number of results to return',
     },
+	/* -------------------------------------------------------------------------- */
+	/*                                  credit:download                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invitation Key OR Credit ID',
+		name: 'inputKey',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['download'],
+			},
+		},
+		description: 'Value \'key\' from entry of property \'invitations\' of an credit or the credit id.',
+	},
     /* -------------------------------------------------------------------------- */
     /*                                 credit:create                              */
     /* -------------------------------------------------------------------------- */

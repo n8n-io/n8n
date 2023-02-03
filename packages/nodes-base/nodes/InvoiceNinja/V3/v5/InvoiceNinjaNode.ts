@@ -903,6 +903,49 @@ export const InvoiceNinjaV5 = {
 						responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/credits/${creditId}`);
 						responseData = responseData.data;
 					}
+					if (operation === 'download') {
+						const inputKey = that.getNodeParameter('inputKey', i) as string;
+						try {
+							responseData = await invoiceNinjaApiDownloadFile.call(
+								that,
+								'GET',
+								`/credit/${inputKey}/download`,
+							).catch(err => {
+								if (err.description == 'no record found') return null; // handle not found
+								throw err;
+							});
+						} catch (er) {
+							// fetch invoice by id first to get invitationKey
+							let tmpData = await invoiceNinjaApiRequest.call(
+								that,
+								'GET',
+								`/credit/${inputKey}`,
+							).catch(err => {
+								if (err.description.includes('query results')) return null; // handle not found
+								throw err;
+							});
+							if (!tmpData) throw new Error('Element not found');
+							if (!tmpData.data.invitations[0].key) throw new Error('a Bank TransactionNo invitation key present');
+							// download it with the fetched key
+							responseData = await invoiceNinjaApiDownloadFile.call(
+								that,
+								'GET',
+								`/credit/${tmpData.data.invitations[0].key}/download`,
+							);
+						}
+						returnData.push({
+							json: {},
+							binary: {
+								data: await that.helpers.prepareBinaryData(
+									responseData,
+									'credit.pdf',
+									'application/pdf'
+								),
+							},
+
+						});
+						continue;
+					}
 				}
 				if (resource === 'expense') {
 					if (operation === 'create') {
@@ -1566,8 +1609,8 @@ export const InvoiceNinjaV5 = {
 								if (err.description.includes('query results')) return null; // handle not found
 								throw err;
 							});
-							if (!tmpData) throw new Error('No invoice found for this key');
-							if (!tmpData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							if (!tmpData) throw new Error('Element not found');
+							if (!tmpData.data.invitations[0].key) throw new Error('a Bank TransactionNo invitation key present');
 							// download it with the fetched key
 							responseData = await invoiceNinjaApiDownloadFile.call(
 								that,
@@ -2344,8 +2387,8 @@ export const InvoiceNinjaV5 = {
 								if (err.description.includes('query results')) return null; // handle not found
 								throw err;
 							});
-							if (!tmpData) throw new Error('No invoice found for this key');
-							if (!tmpData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							if (!tmpData) throw new Error('Element not found');
+							if (!tmpData.data.invitations[0].key) throw new Error('a Bank TransactionNo invitation key present');
 							// download it with the fetched key
 							responseData = await invoiceNinjaApiDownloadFile.call(
 								that,
@@ -3059,8 +3102,8 @@ export const InvoiceNinjaV5 = {
 								if (err.description.includes('query results')) return null; // handle not found
 								throw err;
 							});
-							if (!tmpData) throw new Error('No invoice found for this key');
-							if (!tmpData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							if (!tmpData) throw new Error('Element not found');
+							if (!tmpData.data.invitations[0].key) throw new Error('a Bank TransactionNo invitation key present');
 							// download it with the fetched key
 							responseData = await invoiceNinjaApiDownloadFile.call(
 								that,
