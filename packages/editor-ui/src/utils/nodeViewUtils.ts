@@ -538,6 +538,13 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
 			const sourceOutputIndex = i;
 
+			// executionData that was recovered by recoverEvents in the CLI will have an isArtificalRecoveredEventItem property
+			// to indicate that it was not part of the original executionData
+			// we do not want to count these items in the summary
+			if (output?.[0]?.json?.isArtificalRecoveredEventItem) {
+				return;
+			}
+
 			if (!outputMap[sourceOutputIndex]) {
 				outputMap[sourceOutputIndex] = {};
 			}

@@ -80,6 +80,17 @@
 			</n8n-text>
 		</template>
 
+		<template #recovered-artifical-output-data>
+			<div :class="$style.noOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('ndv.output.noOutputData.title')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
+		</template>
+
 		<template #run-info v-if="!hasPinData && runsCount > 1">
 			<RunInfo :taskData="runTaskData" />
 		</template>
@@ -283,5 +294,15 @@ export default mixins(pinData).extend({
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
+}
+
+.noOutputData {
+	margin: auto;
+	max-width: 250px;
+	text-align: center;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
 }
 </style>

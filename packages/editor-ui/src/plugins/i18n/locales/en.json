@@ -400,6 +400,7 @@
 	"executionDetails.confirmMessage.message": "Are you sure that you want to delete the current execution?",
 	"executionDetails.deleteExecution": "Delete this execution",
 	"executionDetails.executionFailed": "Execution failed",
+	"executionDetails.executionFailed.recoveredNodeMessage": "The execution was interrupted, so the data was not saved. Try fixing the workflow and re-executing.",
 	"executionDetails.executionId": "Execution ID",
 	"executionDetails.executionWaiting": "Execution waiting",
 	"executionDetails.executionWasSuccessful": "Execution was successful",

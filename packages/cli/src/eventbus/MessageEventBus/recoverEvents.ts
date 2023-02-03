@@ -107,8 +107,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 							[
 								{
 									json: {
-										message:
-											'The execution was interrupted, so the data was not saved. Try fixing the workflow and re-executing.',
+										isArtificalRecoveredEventItem: true,
 									},
 									pairedItem: undefined,
 								},
