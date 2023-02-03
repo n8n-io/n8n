@@ -57,8 +57,8 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add('waitForLoad', () => {
-	cy.getByTestId('node-view-loader').should('not.exist', { timeout: 10000 });
-	cy.get('.el-loading-mask').should('not.exist', { timeout: 10000 });
+	cy.getByTestId('node-view-loader', { timeout: 10000 }).should('not.exist');
+	cy.get('.el-loading-mask', { timeout: 10000 }).should('not.exist');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {

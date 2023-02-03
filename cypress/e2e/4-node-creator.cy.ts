@@ -1,6 +1,5 @@
 import { NodeCreator } from '../pages/features/node-creator';
 import { INodeTypeDescription } from 'n8n-workflow';
-import CustomNodeFixture from '../fixtures/Custom_node.json';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
 
@@ -18,20 +17,6 @@ describe('Node Creator', () => {
 
 	beforeEach(() => {
 		cy.signin({ email, password });
-
-		cy.intercept('GET', '/types/nodes.json', (req) => {
-			// Delete caching headers so that we can intercept the request
-			['etag', 'if-none-match', 'if-modified-since'].forEach((header) => {
-				delete req.headers[header];
-			});
-
-			req.continue((res) => {
-				const nodes = res.body as INodeTypeDescription[];
-
-				nodes.push(CustomNodeFixture as INodeTypeDescription);
-				res.send(nodes);
-			});
-		}).as('nodesIntercept');
 
 		cy.visit(nodeCreatorFeature.url);
 		cy.waitForLoad();
@@ -153,6 +138,7 @@ describe('Node Creator', () => {
 	});
 
 	it('should render and select community node', () => {
+		cy.intercept('GET', '/types/nodes.json').as('nodesIntercept');
 		cy.wait('@nodesIntercept').then(() => {
 			const customCategory = 'Custom Category';
 			const customNode = 'E2E Node';
