@@ -115,7 +115,7 @@ import {
 	PasswordResetController,
 	UsersController,
 } from '@/controllers';
-import { resolveJwt } from '@/auth/jwt';
+import { issueCookie, resolveJwt } from '@/auth/jwt';
 
 import { executionsController } from '@/executions/executions.controller';
 import { nodeTypesController } from '@/api/nodeTypes.api';
@@ -610,7 +610,6 @@ class Server extends AbstractServer {
 
 		setSchemaValidator({
 			validate: async (response: string) => {
-				console.log(response);
 				/* implment your own or always returns a resolved promise to skip */
 				return Promise.resolve('skipped');
 			},
@@ -629,11 +628,22 @@ class Server extends AbstractServer {
 			res.redirect(context);
 		});
 
-		this.app.post(`/${this.restEndpoint}/sso/acs`, (req, res) => {
-			sp.parseLoginResponse(idp, 'post', req)
-				.then((parseResult) => {
-					console.log(parseResult);
-					res.send(parseResult.extract.attributes);
+		this.app.post(`/${this.restEndpoint}/sso/acs`, async (req, res) => {
+			await sp
+				.parseLoginResponse(idp, 'post', req)
+				.then(async (parseResult) => {
+					console.log('Returned payload from IpP: ', parseResult.extract.attributes);
+					const user = await Db.collections.User.findOne({
+						where: { email: parseResult.extract.attributes.email },
+						relations: ['globalRole', 'authIdentities'],
+					});
+					if (user) {
+						await issueCookie(res, user);
+						return res.redirect('/');
+					} else {
+						// Provision user
+						return res.send('Must provision user');
+					}
 				})
 				.catch((err) => {
 					console.log(err);
