@@ -1,7 +1,3 @@
-import CustomNodeFixture from '../fixtures/Custom_node_n8n_credential.json';
-import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
-import CustomCredential from '../fixtures/Custom_credential.json';
-
 import {
 	NEW_NOTION_ACCOUNT_NAME,
 	NOTION_NODE_NAME,
@@ -36,23 +32,6 @@ describe('Credentials', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
-
-		cy.intercept('GET', '/types/nodes.json', (req) => {
-			req.continue((res) => {
-				const nodes = res.body;
-
-				nodes.push(CustomNodeFixture, CustomNodeWithCustomCredentialFixture);
-				res.send(nodes);
-			});
-		})
-		cy.intercept('GET', '/types/credentials.json', (req) => {
-			req.continue((res) => {
-				const credentials = res.body;
-
-				credentials.push(CustomCredential);
-				res.send(credentials);
-			});
-		})
 	});
 
 	beforeEach(() => {

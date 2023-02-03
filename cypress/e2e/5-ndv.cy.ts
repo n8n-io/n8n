@@ -1,6 +1,3 @@
-import CustomNodeFixture from '../fixtures/Custom_node_n8n_credential.json';
-import { INodeTypeDescription } from 'n8n-workflow';
-
 import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 
@@ -12,20 +9,6 @@ describe('NDV', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-
-		cy.intercept('GET', '/types/nodes.json', (req) => {
-			// Delete caching headers so that we can intercept the request
-			['etag', 'if-none-match', 'if-modified-since'].forEach((header) => {
-				delete req.headers[header];
-			});
-
-			req.continue((res) => {
-				const nodes = res.body as INodeTypeDescription[];
-
-				nodes.push(CustomNodeFixture as INodeTypeDescription);
-				res.send(nodes);
-			});
-		}).as('nodesIntercept');
 
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
