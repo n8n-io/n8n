@@ -96,7 +96,7 @@ function endOfMonth(date: Date | DateTime): Date {
 }
 
 function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
-	let [part] = extraArgs;
+	let [part = 'week'] = extraArgs;
 	let date = inputDate;
 	if (isDateTime(date)) {
 		date = date.toJSDate();
