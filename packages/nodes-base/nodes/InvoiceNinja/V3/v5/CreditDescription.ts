@@ -381,6 +381,18 @@ export const creditFields: INodeProperties[] = [
                 displayName: 'Terms',
                 name: 'terms',
                 type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+                default: '',
+            },
+            {
+                displayName: 'Footer',
+                name: 'footer',
+                type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
                 default: '',
             },
             {
@@ -436,12 +448,6 @@ export const creditFields: INodeProperties[] = [
                 name: 'taxRate3',
                 type: 'number',
                 default: 0,
-            },
-            {
-                displayName: 'Footer',
-                name: 'footer',
-                type: 'string',
-                default: '',
             },
             {
                 displayName: 'Partial',
@@ -670,6 +676,18 @@ export const creditFields: INodeProperties[] = [
                 displayName: 'Terms',
                 name: 'terms',
                 type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+                default: '',
+            },
+            {
+                displayName: 'Footer',
+                name: 'footer',
+                type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
                 default: '',
             },
             {
@@ -725,12 +743,6 @@ export const creditFields: INodeProperties[] = [
                 name: 'taxRate3',
                 type: 'number',
                 default: 0,
-            },
-            {
-                displayName: 'Footer',
-                name: 'footer',
-                type: 'string',
-                default: '',
             },
             {
                 displayName: 'Partial',

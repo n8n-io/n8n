@@ -337,12 +337,18 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Terms',
 				name: 'terms',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 			},
 			{
 				displayName: 'Footer',
 				name: 'footer',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 			},
 			{
@@ -709,12 +715,18 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Terms',
 				name: 'terms',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 			},
 			{
 				displayName: 'Footer',
 				name: 'footer',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 			},
 			{

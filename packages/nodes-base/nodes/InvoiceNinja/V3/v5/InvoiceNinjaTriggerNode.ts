@@ -60,6 +60,12 @@ const eventID: { [key: string]: string } = {
 	restore_task: '44',
 	delete_task: '20',
 
+	create_product: '50',
+	update_product: '51',
+	archive_product: '53',
+	restore_product: '54',
+	delete_product: '52',
+
 	create_credit: '27',
 	update_credit: '28',
 	sent_credit: '62',
@@ -86,6 +92,9 @@ const headProperties: INodeProperties[] = [{
 	},
 	description: 'You are using InvoiceNinja V5: <br />Check Swagger documentation for additional fields: <a href="https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/" target="_blank">https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/</a><br /><br />Change your Version at the Node-Settings.',
 	options: [
+		/* -------------------------------------------------------------------------- */
+		/*                                  client                                    */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Client Created',
 			value: 'create_client',
@@ -106,6 +115,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Client Deleted',
 			value: 'delete_client',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  vendor                                    */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Vendor Created',
 			value: 'create_vendor',
@@ -126,6 +138,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Vendor Deleted',
 			value: 'delete_vendor',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  invoice                                   */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Invoice Created',
 			value: 'create_invoice',
@@ -135,16 +150,16 @@ const headProperties: INodeProperties[] = [{
 			value: 'update_invoice',
 		},
 		{
+			name: 'Invoice Sent',
+			value: 'sent_invoice',
+		},
+		{
 			name: 'Invoice Delayed',
 			value: 'delay_invoice',
 		},
 		{
 			name: 'Invoice Reminded',
 			value: 'remind_invoice',
-		},
-		{
-			name: 'Invoice Sent',
-			value: 'sent_invoice',
 		},
 		{
 			name: 'Invoice Archived',
@@ -158,6 +173,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Invoice Deleted',
 			value: 'delete_invoice',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  quote                                     */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Quote Created',
 			value: 'create_quote',
@@ -167,12 +185,12 @@ const headProperties: INodeProperties[] = [{
 			value: 'update_quote',
 		},
 		{
-			name: 'Quote Accepted',
-			value: 'accept_quote',
-		},
-		{
 			name: 'Quote Sent',
 			value: 'sent_quote',
+		},
+		{
+			name: 'Quote Accepted',
+			value: 'accept_quote',
 		},
 		{
 			name: 'Quote Expired',
@@ -190,6 +208,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Quote Deleted',
 			value: 'delete_quote',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  payment                                   */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Payment Created',
 			value: 'create_payment',
@@ -210,6 +231,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Payment Deleted',
 			value: 'delete_payment',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  expense                                   */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Expense Created',
 			value: 'create_expense',
@@ -230,6 +254,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Expense Deleted',
 			value: 'delete_expense',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  project                                   */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Project Created',
 			value: 'create_project',
@@ -250,6 +277,9 @@ const headProperties: INodeProperties[] = [{
 			name: 'Project Deleted',
 			value: 'delete_project',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  task                                      */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Task Created',
 			value: 'create_task',
@@ -270,30 +300,32 @@ const headProperties: INodeProperties[] = [{
 			name: 'Task Deleted',
 			value: 'delete_task',
 		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  product                                   */
+		/* -------------------------------------------------------------------------- */
 		{
-			name: 'Credit Created',
-			value: 'create_credit',
+			name: 'Product Created',
+			value: 'create_product',
 		},
 		{
-			name: 'Credit Updated',
-			value: 'update_credit',
+			name: 'Product Updated',
+			value: 'update_product',
 		},
 		{
-			name: 'Credit Sent',
-			value: 'sent_credit',
+			name: 'Product Archived',
+			value: 'archive_product',
 		},
 		{
-			name: 'Credit Archived',
-			value: 'archive_credit',
+			name: 'Product Restored',
+			value: 'restore_product',
 		},
 		{
-			name: 'Credit Restored',
-			value: 'restore_credit',
+			name: 'Product Deleted',
+			value: 'delete_product',
 		},
-		{
-			name: 'Credit Deleted',
-			value: 'delete_credit',
-		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  purchase_order                            */
+		/* -------------------------------------------------------------------------- */
 		{
 			name: 'Purchase Order Created',
 			value: 'create_purchase_order',
@@ -317,6 +349,33 @@ const headProperties: INodeProperties[] = [{
 		{
 			name: 'Purchase Order Deleted',
 			value: 'delete_purchase_order',
+		},
+		/* -------------------------------------------------------------------------- */
+		/*                                  credit                                    */
+		/* -------------------------------------------------------------------------- */
+		{
+			name: 'Credit Created',
+			value: 'create_credit',
+		},
+		{
+			name: 'Credit Updated',
+			value: 'update_credit',
+		},
+		{
+			name: 'Credit Sent',
+			value: 'sent_credit',
+		},
+		{
+			name: 'Credit Archived',
+			value: 'archive_credit',
+		},
+		{
+			name: 'Credit Restored',
+			value: 'restore_credit',
+		},
+		{
+			name: 'Credit Deleted',
+			value: 'delete_credit',
 		},
 	],
 	default: '',

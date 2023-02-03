@@ -276,8 +276,8 @@ export const paymentFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Date',
-				name: 'dateTime',
-				type: 'string',
+				name: 'date',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -628,8 +628,8 @@ export const paymentFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Date',
-				name: 'dateTime',
-				type: 'string',
+				name: 'date',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -905,7 +905,7 @@ export const paymentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['invoice'],
+				resource: ['payment'],
 				operation: ['action'],
 			},
 		},

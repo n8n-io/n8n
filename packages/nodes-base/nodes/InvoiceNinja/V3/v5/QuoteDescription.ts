@@ -348,6 +348,15 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Footer',
+				name: 'footer',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
 				displayName: 'Uses Inclusive Taxes',
 				name: 'usesInclusiveTaxes',
 				type: 'boolean',
@@ -370,12 +379,6 @@ export const quoteFields: INodeProperties[] = [
 				name: 'isAmountDiscount',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Footer',
-				name: 'footer',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -700,6 +703,15 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Footer',
+				name: 'footer',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
 				displayName: 'Uses Inclusive Taxes',
 				name: 'usesInclusiveTaxes',
 				type: 'boolean',
@@ -722,12 +734,6 @@ export const quoteFields: INodeProperties[] = [
 				name: 'isAmountDiscount',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Footer',
-				name: 'footer',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Private Notes',

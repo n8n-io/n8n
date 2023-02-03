@@ -311,7 +311,7 @@ export const bankTransactionFields: INodeProperties[] = [
 			{
 				displayName: 'Date',
 				name: 'date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -466,7 +466,7 @@ export const bankTransactionFields: INodeProperties[] = [
 			{
 				displayName: 'Date',
 				name: 'date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
