@@ -56,9 +56,12 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterSinglePlaceholderAction(actions: INodeActionTypeDescription[]) {
+function filterActions(actions: INodeActionTypeDescription[]) {
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
+			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
+			if (isApiCall) return false;
+
 			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
 			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
 		},
@@ -339,7 +342,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 			const filteredNodes = Object.values(mergedNodes).map((node) => ({
 				...node,
-				actions: filterSinglePlaceholderAction(node.actions || []),
+				actions: filterActions(node.actions || []),
 			}));
 
 			return filteredNodes;
