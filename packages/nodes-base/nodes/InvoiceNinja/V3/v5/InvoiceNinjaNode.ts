@@ -52,6 +52,8 @@ import { IRecurringExpense } from './RecurringExpenseInterface';
 import { IVendor, IVendorContact } from './VendorInterface';
 import { creditFields, creditOperations } from './CreditDescription';
 import { ICredit } from './CreditInterface';
+import { IBankTransaction } from './BankTransactionInterface';
+import { transactionFields, transactionOperations } from '../../../QuickBooks/descriptions';
 
 const headProperties: INodeProperties[] = [{
 	displayName: 'Resource (V5)',
@@ -145,6 +147,8 @@ export const InvoiceNinjaV5 = {
 			...quoteFields,
 			...creditOperations,
 			...creditFields,
+			...transactionOperations,
+			...transactionFields,
 		],
 	},
 
@@ -1554,7 +1558,7 @@ export const InvoiceNinjaV5 = {
 							});
 						} catch (er) {
 							// fetch invoice by id first to get invitationKey
-							let tmpInvoiceData = await invoiceNinjaApiRequest.call(
+							let tmpData = await invoiceNinjaApiRequest.call(
 								that,
 								'GET',
 								`/invoices/${inputKey}`,
@@ -1562,13 +1566,13 @@ export const InvoiceNinjaV5 = {
 								if (err.description.includes('query results')) return null; // handle not found
 								throw err;
 							});
-							if (!tmpInvoiceData) throw new Error('No invoice found for this key');
-							if (!tmpInvoiceData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							if (!tmpData) throw new Error('No invoice found for this key');
+							if (!tmpData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
 							// download it with the fetched key
 							responseData = await invoiceNinjaApiDownloadFile.call(
 								that,
 								'GET',
-								`/invoice/${tmpInvoiceData.data.invitations[0].key}/download`,
+								`/invoice/${tmpData.data.invitations[0].key}/download`,
 							);
 						}
 						returnData.push({
@@ -1597,11 +1601,6 @@ export const InvoiceNinjaV5 = {
 				if (resource === 'payment') {
 					if (operation === 'create') {
 						const additionalFields = that.getNodeParameter('additionalFields', i);
-						const invoice = that.getNodeParameter('invoice', i) as string;
-						const client = (
-							await invoiceNinjaApiRequest.call(that, 'GET', `/invoices/${invoice}`, {}, qs)
-						).data?.client_id as string;
-						const amount = that.getNodeParameter('amount', i) as number;
 						const body: IPayment = {};
 						if (additionalFields.userId) {
 							body.user_id = additionalFields.userId as string;
@@ -1689,11 +1688,6 @@ export const InvoiceNinjaV5 = {
 					if (operation === 'update') {
 						const paymentId = that.getNodeParameter('paymentId', i) as string;
 						const additionalFields = that.getNodeParameter('additionalFields', i);
-						const invoice = that.getNodeParameter('invoice', i) as string;
-						const client = (
-							await invoiceNinjaApiRequest.call(that, 'GET', `/invoices/${invoice}`, {}, qs)
-						).data?.client_id as string;
-						const amount = that.getNodeParameter('amount', i) as number;
 						const body: IPayment = {};
 						if (additionalFields.userId) {
 							body.user_id = additionalFields.userId as string;
@@ -2328,6 +2322,49 @@ export const InvoiceNinjaV5 = {
 							`/quote/${quoteId}`,
 						);
 						responseData = responseData.data;
+					}
+					if (operation === 'download') {
+						const inputKey = that.getNodeParameter('inputKey', i) as string;
+						try {
+							responseData = await invoiceNinjaApiDownloadFile.call(
+								that,
+								'GET',
+								`/quote/${inputKey}/download`,
+							).catch(err => {
+								if (err.description == 'no record found') return null; // handle not found
+								throw err;
+							});
+						} catch (er) {
+							// fetch invoice by id first to get invitationKey
+							let tmpData = await invoiceNinjaApiRequest.call(
+								that,
+								'GET',
+								`/quote/${inputKey}`,
+							).catch(err => {
+								if (err.description.includes('query results')) return null; // handle not found
+								throw err;
+							});
+							if (!tmpData) throw new Error('No invoice found for this key');
+							if (!tmpData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							// download it with the fetched key
+							responseData = await invoiceNinjaApiDownloadFile.call(
+								that,
+								'GET',
+								`/quote/${tmpData.data.invitations[0].key}/download`,
+							);
+						}
+						returnData.push({
+							json: {},
+							binary: {
+								data: await that.helpers.prepareBinaryData(
+									responseData,
+									'quote.pdf',
+									'application/pdf'
+								),
+							},
+
+						});
+						continue;
 					}
 					if (operation === 'action') {
 						const quoteId = that.getNodeParameter('quoteId', i) as string;
@@ -3007,28 +3044,28 @@ export const InvoiceNinjaV5 = {
 							responseData = await invoiceNinjaApiDownloadFile.call(
 								that,
 								'GET',
-								`/recurring_invoices/${inputKey}/download`,
+								`/recurring_invoice/${inputKey}/download`,
 							).catch(err => {
 								if (err.description == 'no record found') return null; // handle not found
 								throw err;
 							});
 						} catch (er) {
-							// fetch recurringInvoice by id first to get invitationKey
-							let tmpInvoiceData = await invoiceNinjaApiRequest.call(
+							// fetch invoice by id first to get invitationKey
+							let tmpData = await invoiceNinjaApiRequest.call(
 								that,
 								'GET',
-								`/recurring_invoices/${inputKey}`,
+								`/recurring_invoice/${inputKey}`,
 							).catch(err => {
 								if (err.description.includes('query results')) return null; // handle not found
 								throw err;
 							});
-							if (!tmpInvoiceData) throw new Error('No invoice found for this key');
-							if (!tmpInvoiceData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
+							if (!tmpData) throw new Error('No invoice found for this key');
+							if (!tmpData.data.invitations[0].key) throw new Error('No invitation key present at invoice');
 							// download it with the fetched key
 							responseData = await invoiceNinjaApiDownloadFile.call(
 								that,
 								'GET',
-								`/recurring_invoices/${tmpInvoiceData.data.invitations[0].key}/download`,
+								`/recurring_invoice/${tmpData.data.invitations[0].key}/download`,
 							);
 						}
 						returnData.push({
@@ -3207,6 +3244,189 @@ export const InvoiceNinjaV5 = {
 					if (operation === 'delete') {
 						const taskId = that.getNodeParameter('taskId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/tasks/${taskId}`);
+						responseData = responseData.data;
+					}
+				}
+				if (resource === 'bankTransaction') {
+					if (operation === 'create') {
+						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const body: IBankTransaction = {};
+						if (additionalFields.accountType) {
+							body.account_type = additionalFields.accountType as string;
+						}
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.bankIntegrationId) {
+							body.bank_integration_id = additionalFields.bankIntegrationId as string;
+						}
+						if (additionalFields.bankTransactionRuleId) {
+							body.bank_transaction_rule_id = additionalFields.bankTransactionRuleId as string;
+						}
+						if (additionalFields.baseType) {
+							body.base_type = additionalFields.baseType as string;
+						}
+						if (additionalFields.categoryId) {
+							body.category_id = additionalFields.categoryId as number;
+						}
+						if (additionalFields.categoryType) {
+							body.category_type = additionalFields.categoryType as string;
+						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.description) {
+							body.description = additionalFields.description as string;
+						}
+						if (additionalFields.expenseId) {
+							body.expense_id = additionalFields.expenseId as string;
+						}
+						if (additionalFields.invoiceIds) {
+							body.invoice_ids = additionalFields.invoiceIds as string;
+						}
+						if (additionalFields.ninjaCategoryId) {
+							body.ninja_category_id = additionalFields.ninjaCategoryId as string;
+						}
+						if (additionalFields.paymentId) {
+							body.payment_id = additionalFields.paymentId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.transactionId) {
+							body.transaction_id = additionalFields.transactionId as number;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'POST',
+							'/bank_transactions',
+							body as IDataObject,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'update') {
+						const bankTransactionId = that.getNodeParameter('bankTransactionId', i) as string;
+						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const body: IBankTransaction = {};
+						if (additionalFields.accountType) {
+							body.account_type = additionalFields.accountType as string;
+						}
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.bankIntegrationId) {
+							body.bank_integration_id = additionalFields.bankIntegrationId as string;
+						}
+						if (additionalFields.bankTransactionRuleId) {
+							body.bank_transaction_rule_id = additionalFields.bankTransactionRuleId as string;
+						}
+						if (additionalFields.baseType) {
+							body.base_type = additionalFields.baseType as string;
+						}
+						if (additionalFields.categoryId) {
+							body.category_id = additionalFields.categoryId as number;
+						}
+						if (additionalFields.categoryType) {
+							body.category_type = additionalFields.categoryType as string;
+						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as string;
+						}
+						if (additionalFields.date) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.description) {
+							body.description = additionalFields.description as string;
+						}
+						if (additionalFields.expenseId) {
+							body.expense_id = additionalFields.expenseId as string;
+						}
+						if (additionalFields.invoiceIds) {
+							body.invoice_ids = additionalFields.invoiceIds as string;
+						}
+						if (additionalFields.ninjaCategoryId) {
+							body.ninja_category_id = additionalFields.ninjaCategoryId as string;
+						}
+						if (additionalFields.paymentId) {
+							body.payment_id = additionalFields.paymentId as string;
+						}
+						if (additionalFields.statusId) {
+							body.status_id = additionalFields.statusId as string;
+						}
+						if (additionalFields.transactionId) {
+							body.transaction_id = additionalFields.transactionId as number;
+						}
+						if (additionalFields.vendorId) {
+							body.vendor_id = additionalFields.vendorId as string;
+						}
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'PUT',
+							`/bank_transactions/${bankTransactionId}`,
+							body as IDataObject,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'get') {
+						const bankTransactionId = that.getNodeParameter('bankTransactionId', i) as string;
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
+						}
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'GET',
+							`/bank_transactions/${bankTransactionId}`,
+							{},
+							qs,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'getAll') {
+						const filters = that.getNodeParameter('filters', i);
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.name) {
+							qs.name = filters.name as string;
+						}
+						if (filters.client_status) {
+							qs.client_status = filters.client_status.toString() as string;
+						}
+						const include = that.getNodeParameter('include', i) as Array<string>;
+						if (include.length) {
+							qs.include = include.toString() as string;
+						}
+						const returnAll = that.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								that,
+								'data',
+								'GET',
+								'/bank_transactions',
+								{},
+								qs,
+							);
+						} else {
+							const perPage = that.getNodeParameter('perPage', i) as boolean;
+							if (perPage) qs.per_page = perPage;
+							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/transactions', {}, qs);
+							responseData = responseData.data;
+						}
+					}
+					if (operation === 'delete') {
+						const bankTransactionId = that.getNodeParameter('bankTransactionId', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(
+							that,
+							'DELETE',
+							`/bank_transactions/${bankTransactionId}`,
+						);
 						responseData = responseData.data;
 					}
 				}
