@@ -990,7 +990,7 @@ export const schema = {
 		},
 		loginLabel: {
 			format: String,
-			default: false,
+			default: '',
 		},
 	},
 
