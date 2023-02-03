@@ -922,6 +922,7 @@ export class SlackV2 implements INodeType {
 						} else {
 							qs.count = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(this, 'POST', '/search.messages', {}, qs);
+							responseData = responseData.messages.matches;
 						}
 					}
 				}

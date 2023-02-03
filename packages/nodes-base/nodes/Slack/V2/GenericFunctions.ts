@@ -107,14 +107,20 @@ export async function slackApiRequestAllItems(
 		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
 		query.cursor = _.get(responseData, 'response_metadata.next_cursor');
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(
+			returnData,
+			responseData[propertyName].matches ?? responseData[propertyName],
+		);
 	} while (
 		(responseData.response_metadata?.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&
 			responseData.response_metadata.next_cursor !== null) ||
 		(responseData.paging?.pages !== undefined &&
 			responseData.paging.page !== undefined &&
-			responseData.paging.page < responseData.paging.pages)
+			responseData.paging.page < responseData.paging.pages) ||
+		(responseData[propertyName].paging?.pages !== undefined &&
+			responseData[propertyName].paging.page !== undefined &&
+			responseData[propertyName].paging.page < responseData[propertyName].paging.pages)
 	);
 	return returnData;
 }
