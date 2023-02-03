@@ -51,13 +51,27 @@ main()
 
 		pyodide.registerJsModule('js_context', context);
 
-		const executionResult = await pyodide.runPythonAsync(runCode);
+		let executionResult;
+		try {
+			executionResult = await pyodide.runPythonAsync(runCode);
+		} catch (error) {
+			throw this.getPrettyError(error);
+		}
 
 		if (executionResult.toJs) {
 			return executionResult.toJs({ dict_converter: Object.fromEntries, create_proxies: false });
 		}
 
 		return executionResult;
+	}
+
+	private getPrettyError(error: Error & { type: string }): Error {
+		const errorTypeIndex = error.message.indexOf(error.type);
+		if (errorTypeIndex !== -1) {
+			return new Error(error.message.slice(errorTypeIndex));
+		}
+
+		return error;
 	}
 
 	private async runCodeAllItems(context: ReturnType<typeof getSandboxContextPython>) {
