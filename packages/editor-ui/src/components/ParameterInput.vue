@@ -38,6 +38,7 @@
 				:value="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
+				:path="path"
 				@valueChanged="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -80,9 +81,11 @@
 				/>
 
 				<html-editor
-					v-else-if="getArgument('editor') === 'htmlEditor' && isHtmlNode(node)"
+					v-else-if="getArgument('editor') === 'htmlEditor'"
 					:html="node.parameters.html"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
+					:disableExpressionColoring="!isHtmlNode(node)"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -352,8 +355,8 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { CODE_NODE_TYPE, HTML_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
