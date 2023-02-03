@@ -21,9 +21,9 @@ n8n has 200+ different nodes to automate workflows. The list can be found on:
 
 ## Documentation
 
-The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
+The official n8n documentation can be found on our [documentation website](https://docs.n8n.io)
 
-Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
+Additional information and example workflows on the [n8n.io website](https://n8n.io)
 
 The release notes can be found [here](https://docs.n8n.io/reference/release-notes/) and the list of breaking
 changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
@@ -36,14 +36,18 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
   [how to run n8n in **Docker**](https://docs.n8n.io/hosting/installation/docker/)
 
 ## Start
+You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed. 
+From the terminal, run:
 
-Execute: `npx n8n`
+`npx n8n`
+
+This command will download everything that is needed to start n8n. You can then access n8n and start building workflows by opening [http://localhost:5678](http://localhost:5678).
 
 ## n8n cloud
 
-Sign-up for an [n8n cloud](https://www.n8n.io/cloud/) account.
+Sign-up for a [n8n cloud](https://www.n8n.io/cloud/) account.
 
-While n8n cloud and n8n are the same in terms of features, n8 cloud provides certain conveniences such as:
+While n8n cloud and n8n are the same in terms of features, n8n cloud provides certain conveniences such as:
 
 - Not having to set up and maintain your n8n instance
 - Managed OAuth for authentication
@@ -70,7 +74,7 @@ quickly that all the good ones I could think of were already taken. So, in the e
 'node-' in the sense that it uses a Node-View and that it uses Node.js and '-mation' for 'automation' which is
 what the project is supposed to help with. However, I did not like how long the name was and I could not
 imagine writing something that long every time in the CLI. That is when I then ended up on 'n8n'." - **Jan
-Oberhauser, Founder and CEO, n8n.io**
+Oberhauser, Founder and CEO of n8n.io**
 
 ## Development setup
 
