@@ -24,6 +24,9 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 		throw new ExpressionError('arguments must be passed to pluck');
 	}
 	const fieldsToPluck = extraArgs;
+	if (!fieldsToPluck || fieldsToPluck.length === 0) {
+		return value;
+	}
 	const plucked = value.reduce<unknown[]>((pluckedFromObject, current) => {
 		if (current && typeof current === 'object') {
 			const p: unknown[] = [];
