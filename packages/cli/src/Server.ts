@@ -46,6 +46,10 @@ import clientOAuth1 from 'oauth-1.0a';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 
+import { IdentityProvider, ServiceProvider, setSchemaValidator } from 'samlify';
+import { readFileSync } from 'fs';
+import * as validator from '@authenio/samlify-xsd-schema-validator';
+
 import {
 	BinaryDataManager,
 	Credentials,
@@ -601,6 +605,41 @@ class Server extends AbstractServer {
 				],
 			}),
 		);
+
+		// setSchemaValidator(validator);
+
+		setSchemaValidator({
+			validate: async (response: string) => {
+				console.log(response);
+				/* implment your own or always returns a resolved promise to skip */
+				return Promise.resolve('skipped');
+			},
+		});
+
+		// Configure your endpoint for IdP-initiated / SP-initiated SSO
+		const sp = ServiceProvider({
+			metadata: readFileSync(UserSettings.getUserN8nFolderPath() + '/metadata.xml'),
+		});
+		const idp = IdentityProvider({
+			metadata: readFileSync(UserSettings.getUserN8nFolderPath() + '/idp_metadata.xml'),
+		});
+
+		this.app.get(`/${this.restEndpoint}/sso/start`, (req, res) => {
+			const { context } = sp.createLoginRequest(idp, 'redirect');
+			res.redirect(context);
+		});
+
+		this.app.post(`/${this.restEndpoint}/sso/acs`, (req, res) => {
+			sp.parseLoginResponse(idp, 'post', req)
+				.then((parseResult) => {
+					console.log(parseResult);
+					res.send(parseResult.extract.attributes);
+				})
+				.catch((err) => {
+					console.log(err);
+					res.status(400).send('Error');
+				});
+		});
 
 		// ----------------------------------------
 		// User Management

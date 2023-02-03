@@ -109,6 +109,7 @@
     "tsconfig-paths": "^3.14.1"
   },
   "dependencies": {
+    "@authenio/samlify-xsd-schema-validator": "^1.0.3",
     "@n8n_io/license-sdk": "^1.8.0",
     "@oclif/command": "^1.8.16",
     "@oclif/core": "^1.16.4",
@@ -184,6 +185,7 @@
     "prom-client": "^13.1.0",
     "psl": "^1.8.0",
     "replacestream": "^4.0.3",
+    "samlify": "^2.8.8",
     "semver": "^7.3.8",
     "shelljs": "^0.8.5",
     "source-map-support": "^0.5.21",
