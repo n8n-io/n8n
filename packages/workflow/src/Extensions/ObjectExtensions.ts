@@ -3,9 +3,15 @@ import type { ExtensionMap } from './Extensions';
 
 export function merge(value: object, extraArgs: unknown[]): unknown {
 	const [other] = extraArgs;
-	if (typeof other !== 'object' || !other) {
+
+	if (!other) {
+		return value;
+	}
+
+	if (typeof other !== 'object') {
 		throw new ExpressionExtensionError('merge(): expected object arg');
 	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const newObject: any = { ...value };
 	for (const [key, val] of Object.entries(other)) {
@@ -65,7 +71,7 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
-		if (typeof val === 'string' && !val.includes(match)) {
+		if (typeof val !== 'string' || (typeof val === 'string' && !val.includes(match))) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
 			delete (newObject as any)[key];
 		}
