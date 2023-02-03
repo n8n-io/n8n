@@ -184,6 +184,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
+			console.log(`render ${usePostHog().getVariant(ASSUMPTION_EXPERIMENT.name)}`);
 			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {

@@ -18,6 +18,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const reloadFeatureFlags = () => {
 		try {
+			console.log('reload');
 			window.posthog?.reloadFeatureFlags();
 		} catch (e) {}
 	};
@@ -43,6 +44,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 			// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 			const id = user ? `${instanceId}#${user.id}` : instanceId;
+			console.log('identify', id, traits);
 			window.posthog?.identify(id, traits);
 		} catch (e) {}
 	};
@@ -67,6 +69,7 @@ export const usePostHog = defineStore('posthog', () => {
 		const isDemo = variant === ASSUMPTION_EXPERIMENT.demo;
 		const isVideo = variant === ASSUMPTION_EXPERIMENT.video;
 
+		console.log(`track ${variant}`);
 		telemetry.value?.track('User is part of experiment', {
 			name: 'edu_001',
 			variant: isDemo ? 'demo' : isVideo ? 'video' : 'control',
