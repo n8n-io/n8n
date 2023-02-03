@@ -18,6 +18,7 @@ import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	mapPairedItemsFrom,
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
@@ -121,7 +122,7 @@ export class Supabase implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
@@ -155,14 +156,28 @@ export class Supabase implements INodeType {
 					records.push(record);
 				}
 				const endpoint = `/${tableId}`;
-				let createdRow;
 
 				try {
-					createdRow = await supabaseApiRequest.call(this, 'POST', endpoint, records);
-					returnData.push(...createdRow);
+					const createdRows: IDataObject[] = await supabaseApiRequest.call(
+						this,
+						'POST',
+						endpoint,
+						records,
+					);
+					createdRows.forEach((row, i) => {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(row),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					});
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.description });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.description }),
+							{ itemData: mapPairedItemsFrom(records) },
+						);
+						returnData.push(...executionData);
 					} else {
 						throw error;
 					}
@@ -207,11 +222,21 @@ export class Supabase implements INodeType {
 						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -237,11 +262,21 @@ export class Supabase implements INodeType {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -280,13 +315,23 @@ export class Supabase implements INodeType {
 
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
 				}
 			}
 
@@ -346,16 +391,25 @@ export class Supabase implements INodeType {
 
 					try {
 						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
-						returnData.push(...updatedRow);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(updatedRow),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
+						throw error;
 					}
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
