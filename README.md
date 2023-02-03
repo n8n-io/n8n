@@ -74,7 +74,7 @@ quickly that all the good ones I could think of were already taken. So, in the e
 'node-' in the sense that it uses a Node-View and that it uses Node.js and '-mation' for 'automation' which is
 what the project is supposed to help with. However, I did not like how long the name was and I could not
 imagine writing something that long every time in the CLI. That is when I then ended up on 'n8n'." - **Jan
-Oberhauser, Founder and CEO of n8n.io**
+Oberhauser, Founder and CEO, n8n.io**
 
 ## Development setup
 
