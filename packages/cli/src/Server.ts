@@ -382,7 +382,7 @@ class Server extends AbstractServer {
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = uuid();
+		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -1360,7 +1360,9 @@ class Server extends AbstractServer {
 						req.headers.sessionid as string,
 					);
 
-					return this.getSettingsForFrontend();
+					const settings = await this.getSettingsForFrontend();
+					settings.instanceId = uuid();
+					return settings;
 				},
 			),
 		);
