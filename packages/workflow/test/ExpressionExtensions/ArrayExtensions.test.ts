@@ -54,6 +54,30 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.pluck() should work return everything with no args', () => {
+			expect(
+				evaluate(`={{ [
+				{ value: 1, string: '1' },
+				{ value: 2, string: '2' },
+				{ value: 3, string: '3' },
+				{ value: 4, string: '4' },
+				{ value: 5, string: '5' },
+				{ value: 6, string: '6' },
+				{ value: { something: 'else' } }
+			].pluck() }}`),
+			).toEqual(
+				expect.arrayContaining([
+					{ value: 1, string: '1' },
+					{ value: 2, string: '2' },
+					{ value: 3, string: '3' },
+					{ value: 4, string: '4' },
+					{ value: 5, string: '5' },
+					{ value: 6, string: '6' },
+					{ value: { something: 'else' } }
+				]),
+			);
+		});
+
 		test('.unique() should work correctly on an array', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].unique() }}')).toEqual(
 				expect.arrayContaining(['repeat', 'repeat', 'a', 'b', 'c']),

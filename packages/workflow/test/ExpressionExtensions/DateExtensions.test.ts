@@ -57,6 +57,11 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 20).extract("day") }}')).toEqual(20);
 		});
 
+		test('.extract() should extract week for no args', () => {
+			expect(evaluate('={{ DateTime.local(2023, 1, 20).extract() }}')).toEqual(3);
+		});
+
+
 		test('.format("yyyy LLL dd") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 16).format("yyyy LLL dd") }}')).toEqual(
 				'2023 Jan 16',

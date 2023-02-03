@@ -15,6 +15,13 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
+		test('.merge should return whole object for no args', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: 2 }).merge() }}')).toEqual({
+				test1: 1,
+				test2: 2,
+			});
+		});
+
 		test('.hasField should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1 }).hasField("test1") }}')).toEqual(true);
 			expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toEqual(false);
@@ -56,6 +63,16 @@ describe('Data Transformation Functions', () => {
 			expect(
 				evaluate(
 					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("exist") }}',
+				),
+			).toEqual({
+				test1: 'i exist',
+			});
+		});
+
+		test('.keepFieldsContaining should work on a nested object', () => {
+			expect(
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: { test4: "me too" } }).keepFieldsContaining("exist") }}',
 				),
 			).toEqual({
 				test1: 'i exist',
