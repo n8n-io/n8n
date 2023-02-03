@@ -44,15 +44,18 @@ ${this.code
 	.join('\n')}
 main()
 `;
-		// const pyodide = await loadPyodide();
 		const pyodide = await LoadPyodide();
-		for (const key of Object.keys(context)) {
-			pyodide.globals.set(key, context[key]);
-		}
 
 		let executionResult;
 		try {
-			executionResult = await pyodide.runPythonAsync(runCode);
+			const dict = pyodide.globals.get('dict');
+			const globalsDict = dict();
+			for (const key of Object.keys(context)) {
+				globalsDict.set(key, context[key]);
+			}
+
+			executionResult = await pyodide.runPythonAsync(runCode, { globals: globalsDict });
+			globalsDict.destroy();
 		} catch (error) {
 			throw this.getPrettyError(error);
 		}
