@@ -131,7 +131,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					'Type <code>_</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>print()</code> statements and viewing their output in the browser console.',
+					'Debug by using <code>print()</code> statements and viewing their output in the browser console.',
 				name: 'notice',
 				type: 'notice',
 				displayOptions: {
