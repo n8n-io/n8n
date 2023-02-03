@@ -435,6 +435,14 @@ export class RoutingNode {
 			},
 		];
 
+		if (Array.isArray(responseData.body)) {
+			returnData = responseData.body.map((json) => {
+				return {
+					json,
+				} as INodeExecutionData;
+			});
+		}
+
 		if (requestData.postReceive.length) {
 			// If postReceive functionality got defined execute all of them
 			for (const postReceiveMethod of requestData.postReceive) {
@@ -449,18 +457,6 @@ export class RoutingNode {
 						runIndex,
 					);
 				}
-			}
-		} else {
-			// No postReceive functionality got defined so simply add data as it is
-			// eslint-disable-next-line no-lonely-if
-			if (Array.isArray(responseData.body)) {
-				returnData = responseData.body.map((json) => {
-					return {
-						json,
-					} as INodeExecutionData;
-				});
-			} else {
-				returnData[0].json = responseData.body as IDataObject;
 			}
 		}
 
