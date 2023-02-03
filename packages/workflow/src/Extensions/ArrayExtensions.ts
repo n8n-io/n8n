@@ -24,17 +24,21 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 		throw new ExpressionError('arguments must be passed to pluck');
 	}
 	const fieldsToPluck = extraArgs;
-	const plucked = value.reduce<unknown[]>((result, current) => {
-		if (typeof current !== 'object') {
-			result.push(current);
-		} else if (current) {
+	const plucked = value.reduce<unknown[]>((pluckedFromObject, current) => {
+		if (current && typeof current === 'object') {
+			const p: unknown[] = [];
 			Object.keys(current).forEach((k) => {
-				if (current && fieldsToPluck.includes(k)) {
-					result.push((current as { [key: string]: unknown })[k]);
-				}
+				fieldsToPluck.forEach((field: string) => {
+					if (current && field === k) {
+						p.push((current as { [key: string]: unknown })[k]);
+					}
+				});
 			});
+			if (p.length > 0) {
+				pluckedFromObject.push(p.length === 1 ? p[0] : p);
+			}
 		}
-		return result;
+		return pluckedFromObject;
 	}, new Array<unknown>());
 	return plucked;
 }
@@ -204,21 +208,18 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 	});
 }
 
-function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
+function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	const [others] = extraArgs;
 
 	if (others === undefined) {
 		// If there are no arguments passed, merge all objects within the array
-		const result: unknown[] = [];
 		const merged = value.reduce((combined, current) => {
 			if (current !== null && typeof current === 'object' && !Array.isArray(current)) {
 				combined = oMerge(combined as object, [current]);
-			} else {
-				result.push(current);
 			}
 			return combined;
 		}, {});
-		return [merged, ...result];
+		return merged;
 	}
 
 	if (!Array.isArray(others)) {
@@ -227,20 +228,15 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
 		);
 	}
 	const listLength = value.length > others.length ? value.length : others.length;
-	const newList = new Array(listLength);
+	let merged = {};
 	for (let i = 0; i < listLength; i++) {
 		if (value[i] !== undefined) {
 			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				newList[i] = oMerge(value[i] as object, [others[i]]);
-			} else {
-				newList[i] = value[i];
+				merged = Object.assign(merged, oMerge(value[i] as object, [others[i]]));
 			}
-		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			newList[i] = others[i];
 		}
 	}
-	return newList;
+	return merged;
 }
 
 function union(value: unknown[], extraArgs: unknown[][]): unknown[] {

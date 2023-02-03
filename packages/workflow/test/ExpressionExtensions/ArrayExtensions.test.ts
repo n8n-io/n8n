@@ -30,6 +30,30 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.pluck() should work correctly for multiple values', () => {
+			expect(
+				evaluate(`={{ [
+					{
+						firstName: 'John',
+						lastName: 'Doe',
+						phone: {
+							home: '111-222',
+							office: '333-444'
+						}
+					},
+					{
+						firstName: 'Jane',
+						lastName: 'Doe',
+						phone: {
+							office: '555-666'
+						}
+					}
+			].pluck("firstName", "lastName") }}`),
+			).toEqual(
+				expect.arrayContaining([["John", "Doe"],["Jane", "Doe"]]),
+			);
+		});
+
 		test('.unique() should work correctly on an array', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].unique() }}')).toEqual(
 				expect.arrayContaining(['repeat', 'repeat', 'a', 'b', 'c']),
@@ -65,10 +89,7 @@ describe('Data Transformation Functions', () => {
 				evaluate(
 					'={{ [{ test1: 1, test2: 2 }, { test1: 1, test3: 3 }].merge([{ test1: 2, test3: 3 }, { test4: 4 }]) }}',
 				),
-			).toEqual([
-				{ test1: 1, test2: 2, test3: 3 },
-				{ test1: 1, test3: 3, test4: 4 },
-			]);
+			).toEqual({"test1": 1, "test2": 2, "test3": 3, "test4": 4});
 		});
 
 		test('.merge() should work correctly without arguments', () => {
@@ -76,10 +97,7 @@ describe('Data Transformation Functions', () => {
 				evaluate(
 					'={{ [{ a: 1, some: null }, { a: 2, c: "something" }, 2, "asds", { b: 23 }, null, [1, 2]].merge() }}',
 				),
-			).toEqual([
-				{"a": 1, "some": null, "c": "something", "b": 23},
-				2, "asds", null, [1, 2]
-			]);
+			).toEqual({"a": 1, "some": null, "c": "something", "b": 23});
 		});
 
 		test('.smartJoin() should work correctly on an array of objects', () => {
