@@ -27,8 +27,15 @@ export class SandboxPython {
 	}
 
 	private async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
+		// Below workaround from here:
+		// https://github.com/pyodide/pyodide/discussions/3537#discussioncomment-4864345
 		const runCode = `
+# Make sure data can be accessed easily, also keys that contain spaces
 from js_context import printOverwrite, _, _getNodeParameter, _getWorkflowStaticData, helpers, _execution, _input, _item, _itemIndex, _jmesPath,_mode, _now, _parameter, _prevNode, _runIndex, _self, _today, _workflow, DateTime, Duration, Interval
+from _pyodide_core import jsproxy_typedict, js_flags
+from js import Object
+Object.new().as_object_map()
+jsproxy_typedict[0] = jsproxy_typedict[js_flags['IS_OBJECT_MAP']]
 
 if printOverwrite:
   print = printOverwrite
