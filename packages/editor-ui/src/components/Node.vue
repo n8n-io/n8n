@@ -15,8 +15,6 @@
 				'is-touch-device': isTouchDevice,
 			}"
 		>
-			<font-awesome-icon icon="bolt" size="lg" v-if="isTriggerNode" class="trigger-icon" />
-
 			<div
 				:class="nodeClass"
 				:style="nodeStyle"
@@ -24,6 +22,9 @@
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
 			>
+				<i class="trigger-icon">
+					<font-awesome-icon icon="bolt" size="lg" v-if="isTriggerNode" />
+				</i>
 				<div
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
@@ -773,8 +774,12 @@ export default mixins(
 		top: 0;
 		bottom: 0;
 		margin: auto;
-		margin-right: var(--spacing-2xs);
 		color: var(--color-primary);
+		align-items: center;
+		justify-content: center;
+		height: fit-content;
+		// Increase click radius of the bolt icon
+		padding: var(--spacing-2xs);
 	}
 }
 

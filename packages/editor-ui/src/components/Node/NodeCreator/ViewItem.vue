@@ -39,7 +39,7 @@ defineProps<Props>();
 }
 .withTopBorder {
 	border-top: 1px solid var(--color-foreground-base);
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing-xs);
 	padding-top: var(--spacing-l);
 }
 </style>
