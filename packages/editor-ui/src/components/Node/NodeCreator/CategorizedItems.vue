@@ -18,7 +18,7 @@
 				<button
 					:class="$style.backButton"
 					@click="onBackButton"
-					v-if="nodeCreatorStore.rootViewHistory.length > 1 || activeSubcategory"
+					v-if="isViewNavigated || activeSubcategory"
 				>
 					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
 				</button>
@@ -157,7 +157,6 @@ const state = reactive({
 		activeIndex: number;
 		filter: string;
 	}>,
-	activeViewHistory: [] as string[],
 	activeIndex: 0,
 	activeSubcategoryIndex: 0,
 	mainPanelContainer: null as HTMLElement | null,
@@ -218,6 +217,8 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 	}
 	return returnItems;
 });
+
+const isViewNavigated = computed(() => nodeCreatorStore.rootViewHistory.length > 1);
 
 const globalFilteredNodeTypes = computed<INodeCreateElement[]>(() => {
 	const result = getFilteredNodes(props.allItems).reduce((acc, item) => {
@@ -359,10 +360,6 @@ function onNodeFilterChange(filter: string) {
 	nodeCreatorStore.setFilter(filter);
 }
 
-function selectWebhook() {
-	emit('nodeTypeSelected', [WEBHOOK_NODE_TYPE]);
-}
-
 function nodeFilterKeyDown(e: KeyboardEvent) {
 	// We only want to propagate 'Escape' as it closes the node-creator and
 	// 'Tab' which toggles it
@@ -419,6 +416,8 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 		selected(activeNodeType);
 	} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'subcategory') {
 		selected(activeNodeType);
+	} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'view') {
+		selected(activeNodeType);
 	} else if (
 		e.key === 'ArrowRight' &&
 		activeNodeType?.type === 'category' &&
@@ -431,6 +430,8 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 		(activeNodeType.properties as ICategoryItemProps).expanded
 	) {
 		selected(activeNodeType);
+	} else if (e.key === 'ArrowLeft' && isViewNavigated.value) {
+		onBackButton();
 	} else if (e.key === 'ArrowRight' && ['node', 'action'].includes(activeNodeType?.type)) {
 		selected(activeNodeType);
 	}
@@ -448,6 +449,7 @@ function selected(element: INodeCreateElement) {
 }
 function onViewSelected(view: Record<string, any>) {
 	state.transitionDirection = 'in';
+	state.activeIndex = 0;
 	nodeCreatorStore.setSelectedView(view.key);
 	nodeCreatorStore.setFilter('');
 }
@@ -504,7 +506,7 @@ function onSubcategorySelected(selected: INodeCreateElement, track = true) {
 async function onBackButton() {
 	state.transitionDirection = 'out';
 	// Switching views
-	if (isRootView.value && nodeCreatorStore.rootViewHistory.length > 1) {
+	if (isRootView.value && isViewNavigated.value) {
 		nodeCreatorStore.closeCurrentView();
 		return;
 	}

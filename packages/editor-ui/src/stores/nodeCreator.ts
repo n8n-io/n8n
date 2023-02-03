@@ -325,9 +325,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					const normalizedName = node.name.toLowerCase().replace('trigger', '');
 					const existingNode = acc[normalizedName];
 
-					if (node.name.includes('.n8n')) {
-						console.log('n8n baby');
-					}
 					if (existingNode) existingNode.actions?.push(...actions);
 					else acc[normalizedName] = clonedNode;
 
