@@ -324,7 +324,12 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 		return description.credentials.some(({ name }) => {
 			const credType = this.types.credentials.find((t) => t.name === name);
-			if (!credType) return false;
+			if (!credType) {
+				LoggerProxy.warn(
+					`Failed to load Custom API options for the node "${description.name}": Unknown credential name "${name}"`,
+				);
+				return false;
+			}
 			if (credType.authenticate !== undefined) return true;
 
 			return (
