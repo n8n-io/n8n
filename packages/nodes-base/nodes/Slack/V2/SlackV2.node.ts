@@ -821,13 +821,14 @@ export class SlackV2 implements INodeType {
 						delete otherOptions.botProfile;
 						Object.assign(body, otherOptions);
 						if (
-							select === 'user' && //@ts-ignore
-							this.getNodeParameter('user', i)?.mode === 'username' &&
-							action === 'postEphemeral'
+							select === 'user' &&
+							action === 'postEphemeral' &&
+							(this.getNodeParameter('user', i) as INodeParameterResourceLocator)?.mode ===
+								'username'
 						) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'You can not send ephemeral messages using the type By username, please use By List, or By Id.',
+								'You cannot send ephemeral messages using User type "By username". Please use "From List" or "By ID".',
 							);
 						} else {
 							responseData = await slackApiRequest.call(this, 'POST', `/chat.${action}`, body, qs);
