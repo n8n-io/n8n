@@ -64,8 +64,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 1,
-						description:
-							"Index is relative to the set 'Range', first row index is 1",
+						description: "Index is relative to the set 'Range', first row index is 1",
 						hint: 'Index of the row which contains the column names',
 						displayOptions: {
 							show: {
@@ -81,8 +80,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 2,
-						description:
-							"Index is relative to the set 'Range', first row index is 1",
+						description: "Index is relative to the set 'Range', first row index is 1",
 						hint: 'Index of first row which contains the actual data',
 						displayOptions: {
 							show: {
@@ -131,8 +129,7 @@ export const locationDefine: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 1,
-						description:
-							"Index is relative to the set 'Range', first row index is 1",
+						description: "Index is relative to the set 'Range', first row index is 1",
 						hint: 'Index of the row which contains the column names',
 					},
 					{
@@ -143,8 +140,7 @@ export const locationDefine: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 2,
-						description:
-							"Index is relative to the set 'Range', first row index is 1",
+						description: "Index is relative to the set 'Range', first row index is 1",
 						hint: 'Index of first row which contains the actual data',
 					},
 				],
