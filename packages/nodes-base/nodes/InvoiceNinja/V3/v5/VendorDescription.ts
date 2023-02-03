@@ -499,158 +499,124 @@ export const vendorFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		options: [{
-			displayName: 'Address',
-			name: 'addressUi',
-			placeholder: 'Add Address',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: false,
-			},
-			displayOptions: {
-				show: {
-					apiVersion: ['v5'],
-					resource: ['vendor'],
-					operation: ['create'],
+		options: [
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
 				},
+				default: '',
 			},
-			default: {},
-			options: [
-				{
-					name: 'AddressValue',
-					displayName: 'Address',
-					values: [
-						{
-							displayName: 'Address Line 1',
-							name: 'address1',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'Address Line 2',
-							name: 'address2',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'City',
-							name: 'city',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'State',
-							name: 'state',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'Postal Code',
-							name: 'postalCode',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'Country Code',
-							name: 'countryId',
-							type: 'options',
-							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-							typeOptions: {
-								loadOptionsMethod: 'getCountryCodesV5',
-							},
-							default: '',
-						},
-					],
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
 				},
-			],
-		},
-		{
-			displayName: 'Contacts',
-			name: 'contactsUi',
-			placeholder: 'Add Contact',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: true,
+				default: '',
 			},
-			displayOptions: {
-				show: {
-					apiVersion: ['v5'],
-					resource: ['vendor'],
-					operation: ['create'],
-				},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
 			},
-			default: {},
-			options: [
-				{
-					name: 'contactValues',
-					displayName: 'Contact',
-					values: [
-						{
-							displayName: 'First Name',
-							name: 'firstName',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'Last Name',
-							name: 'lastName',
-							type: 'string',
-							default: '',
-						},
-						{
-							displayName: 'Email',
-							name: 'email',
-							type: 'string',
-							placeholder: 'name@email.com',
-							default: '',
-						},
-						{
-							displayName: 'Phone',
-							name: 'phone',
-							type: 'string',
-							required: false,
-							default: '',
-						},
-						{
-							displayName: 'Custom Value 1',
-							name: 'customValue1',
-							type: 'string',
-							required: false,
-							default: '',
-						},
-						{
-							displayName: 'Custom Value 2',
-							name: 'customValue2',
-							type: 'string',
-							required: false,
-							default: '',
-						},
-						{
-							displayName: 'Custom Value 3',
-							name: 'customValue3',
-							type: 'string',
-							required: false,
-							default: '',
-						},
-						{
-							displayName: 'Custom Value 4',
-							name: 'customValue4',
-							type: 'string',
-							required: false,
-							default: '',
-						},
-						{
-							displayName: 'Send E-Mails',
-							name: 'sendEmail',
-							type: 'boolean',
-							required: false,
-							default: true,
-						},
-					],
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Currency ID',
+				name: 'currencyId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'VAT Number',
+				name: 'vatNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'ID Number',
+				name: 'idNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
 				},
-			],
-		},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Auto Bill Enabled',
+				name: 'autoBillEnabled',
+				type: 'boolean',
+				typeOptions: {},
+				default: false,
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
 		],
 	},
 	{

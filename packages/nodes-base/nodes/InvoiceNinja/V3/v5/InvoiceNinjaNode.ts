@@ -24,6 +24,7 @@ import { purchaseOrderFields, purchaseOrderOperations } from './PurchaseOrderDes
 import { quoteFields, quoteOperations } from './QuoteDescription';
 import { recurringExpenseFields, recurringExpenseOperations } from './RecurringExpenseDescription';
 import { recurringInvoiceFields, recurringInvoiceOperations } from './RecurringInvoiceDescription';
+import { subscriptionFields, subscriptionOperations } from './SubscriptionDescription';
 import { taskFields, taskOperations } from './TaskDescription';
 import { vendorFields, vendorOperations } from './VendorDescription';
 
@@ -40,6 +41,7 @@ import * as PurchaseOrderExecution from './PurchaseOrderExecution';
 import * as QuoteExecution from './QuoteExecution';
 import * as RecurringExpenseExecution from './RecurringExpenseExecution';
 import * as RecurringInvoiceExecution from './RecurringInvoiceExecution';
+import * as SubscriptionExecution from './SubscriptionExecution';
 import * as TaskExecution from './TaskExecution';
 import * as VendorExecution from './VendorExecution';
 
@@ -100,6 +102,10 @@ const headProperties: INodeProperties[] = [{
 			value: 'product',
 		},
 		{
+			name: 'Subscription',
+			value: 'subscription',
+		},
+		{
 			name: 'Purchase Order',
 			value: 'purchaseOrder',
 		},
@@ -143,6 +149,8 @@ export const InvoiceNinjaV5 = {
 			...recurringExpenseFields,
 			...recurringInvoiceOperations,
 			...recurringInvoiceFields,
+			...subscriptionOperations,
+			...subscriptionFields,
 			...taskOperations,
 			...taskFields,
 			...vendorOperations,
@@ -353,6 +361,7 @@ export const InvoiceNinjaV5 = {
 		else if (resource === 'quote') return QuoteExecution.execute(that);
 		else if (resource === 'recurringExpense') return RecurringExpenseExecution.execute(that);
 		else if (resource === 'recurringInvoice') return RecurringInvoiceExecution.execute(that);
+		else if (resource === 'subscription') return SubscriptionExecution.execute(that);
 		else if (resource === 'task') return TaskExecution.execute(that);
 		else if (resource === 'vendor') return VendorExecution.execute(that);
 		throw new Error('No Execution Handler');
