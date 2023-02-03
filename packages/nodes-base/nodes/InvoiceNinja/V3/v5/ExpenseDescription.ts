@@ -83,6 +83,10 @@ export const expenseFields: INodeProperties[] = [
 				name: 'Client',
 				value: 'client',
 			},
+			{
+				name: 'Vendor',
+				value: 'vendor',
+			},
 		],
 		default: [],
 	},
@@ -139,6 +143,10 @@ export const expenseFields: INodeProperties[] = [
 			{
 				name: 'Client',
 				value: 'client',
+			},
+			{
+				name: 'Vendor',
+				value: 'vendor',
 			},
 		],
 		default: [],

@@ -235,10 +235,11 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
                 if (filters.email) {
                     qs.email = filters.email as string;
                 }
-                const include = that.getNodeParameter('include', i) as Array<string>;
-                if (include.length) {
-                    qs.include = include.toString() as string;
-                }
+                // no includes available
+                // const include = that.getNodeParameter('include', i) as Array<string>;
+                // if (include.length) {
+                //     qs.include = include.toString() as string;
+                // }
                 const returnAll = that.getNodeParameter('returnAll', i) as boolean;
                 if (returnAll) {
                     responseData = await invoiceNinjaApiRequestAllItems.call(

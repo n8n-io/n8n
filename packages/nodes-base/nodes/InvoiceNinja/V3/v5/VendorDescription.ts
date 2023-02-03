@@ -66,35 +66,27 @@ export const vendorFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				operation: ['get'],
-				resource: ['vendor'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'multiOptions',
-				description: 'Additional resources to fetch related to this resource.',
-				options: [
-					{
-						name: 'Invoices',
-						value: 'invoices',
-					},
-				],
-				default: [],
-			},
-		],
-	},
+	// no include available
+	// {
+	// 	displayName: 'Include',
+	// 	name: 'include',
+	// 	type: 'multiOptions',
+	// 	description: 'Additional resources to fetch related to this resource.',
+	// 	displayOptions: {
+	// 		show: {
+	// 			apiVersion: ['v5'],
+	// 			resource: ['vendor'],
+	// 			operation: ['get'],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			name: 'Invoices',
+	// 			value: 'invoices',
+	// 		},
+	// 	],
+	// 	default: [],
+	// },
 	/* -------------------------------------------------------------------------- */
 	/*                                  vendor:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -126,26 +118,27 @@ export const vendorFields: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Include',
-		name: 'include',
-		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['vendor'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
-			{
-				name: 'Invoices',
-				value: 'invoices',
-			},
-		],
-		default: [],
-	},
+	// no include available
+	// {
+	// 	displayName: 'Include',
+	// 	name: 'include',
+	// 	type: 'multiOptions',
+	// 	description: 'Additional resources to fetch related to this resource.',
+	// 	displayOptions: {
+	// 		show: {
+	// 			apiVersion: ['v5'],
+	// 			resource: ['vendor'],
+	// 			operation: ['getAll'],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			name: 'Invoices',
+	// 			value: 'invoices',
+	// 		},
+	// 	],
+	// 	default: [],
+	// },
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

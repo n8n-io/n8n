@@ -66,30 +66,31 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Include',
-		name: 'include',
-		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['project'],
-				operation: ['get'],
-			},
-		},
-		options: [
-			{
-				name: 'Invoices',
-				value: 'invoices',
-			},
-			{
-				name: 'Clients',
-				value: 'clients',
-			},
-		],
-		default: [],
-	},
+	// no include found in result
+	// {
+	// 	displayName: 'Include',
+	// 	name: 'include',
+	// 	type: 'multiOptions',
+	// 	description: 'Additional resources to fetch related to this resource.',
+	// 	displayOptions: {
+	// 		show: {
+	// 			apiVersion: ['v5'],
+	// 			resource: ['project'],
+	// 			operation: ['get'],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			name: 'Invoices',
+	// 			value: 'invoices',
+	// 		},
+	// 		{
+	// 			name: 'Clients',
+	// 			value: 'clients',
+	// 		},
+	// 	],
+	// 	default: [],
+	// },
 	/* -------------------------------------------------------------------------- */
 	/*                                  project:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -121,30 +122,31 @@ export const projectFields: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Include',
-		name: 'include',
-		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				operation: ['getAll'],
-				resource: ['project'],
-			},
-		},
-		options: [
-			{
-				name: 'Invoices',
-				value: 'invoices',
-			},
-			{
-				name: 'Clients',
-				value: 'clients',
-			},
-		],
-		default: [],
-	},
+	// no include found in result
+	// {
+	// 	displayName: 'Include',
+	// 	name: 'include',
+	// 	type: 'multiOptions',
+	// 	description: 'Additional resources to fetch related to this resource.',
+	// 	displayOptions: {
+	// 		show: {
+	// 			apiVersion: ['v5'],
+	// 			operation: ['getAll'],
+	// 			resource: ['project'],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			name: 'Invoices',
+	// 			value: 'invoices',
+	// 		},
+	// 		{
+	// 			name: 'Clients',
+	// 			value: 'clients',
+	// 		},
+	// 	],
+	// 	default: [],
+	// },
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

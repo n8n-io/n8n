@@ -127,10 +127,11 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
             }
             if (operation === 'get') {
                 const projectId = that.getNodeParameter('projectId', i) as string;
-                const include = that.getNodeParameter('include', i) as Array<string>;
-                if (include.length) {
-                    qs.include = include.toString() as string;
-                }
+                // no include found in result
+                // const include = that.getNodeParameter('include', i) as Array<string>;
+                // if (include.length) {
+                //     qs.include = include.toString() as string;
+                // }
                 responseData = await invoiceNinjaApiRequest.call(
                     that,
                     'GET',
@@ -148,10 +149,11 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
                 if (filters.number) {
                     qs.number = filters.number as string;
                 }
-                const include = that.getNodeParameter('include', i) as Array<string>;
-                if (include.length) {
-                    qs.include = include.toString() as string;
-                }
+                // no include found in result
+                // const include = that.getNodeParameter('include', i) as Array<string>;
+                // if (include.length) {
+                //     qs.include = include.toString() as string;
+                // }
                 const returnAll = that.getNodeParameter('returnAll', i) as boolean;
                 if (returnAll) {
                     responseData = await invoiceNinjaApiRequestAllItems.call(

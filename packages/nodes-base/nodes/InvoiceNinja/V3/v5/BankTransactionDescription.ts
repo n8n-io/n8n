@@ -72,31 +72,30 @@ export const bankTransactionFields: INodeProperties[] = [
 			},
 		},
 	},
-	// no includes available
-	// {
-	// 	displayName: 'Include',
-	// 	name: 'include',
-	// 	type: 'multiOptions',
-	// 	description: 'Additional resources to fetch related to this resource.',
-	// 	displayOptions: {
-	// 		show: {
-	// 			apiVersion: ['v5'],
-	// 			resource: ['bankTransaction'],
-	// 			operation: ['get'],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			name: 'Client',
-	// 			value: 'client',
-	// 		},
-	// 		{
-	// 			name: 'Invoices',
-	// 			value: 'invoices',
-	// 		},
-	// 	],
-	// 	default: [],
-	// },
+	{
+		displayName: 'Include',
+		name: 'include',
+		type: 'multiOptions',
+		description: 'Additional resources to fetch related to this resource.',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['get'],
+			},
+		},
+		options: [
+			{
+				name: 'Vendor',
+				value: 'vendor',
+			},
+			{
+				name: 'Expense',
+				value: 'expense',
+			},
+		],
+		default: [],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  bankTransaction:getAll                    */
 	/* -------------------------------------------------------------------------- */
@@ -160,31 +159,30 @@ export const bankTransactionFields: INodeProperties[] = [
 			},
 		],
 	},
-	// no includes available
-	// {
-	// 	displayName: 'Include',
-	// 	name: 'include',
-	// 	type: 'multiOptions',
-	// 	description: 'Additional resources to fetch related to this resource.',
-	// 	displayOptions: {
-	// 		show: {
-	// 			apiVersion: ['v5'],
-	// 			resource: ['bankTransaction'],
-	// 			operation: ['getAll'],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			name: 'Client',
-	// 			value: 'client',
-	// 		},
-	// 		{
-	// 			name: 'Invoices',
-	// 			value: 'invoices',
-	// 		},
-	// 	],
-	// 	default: [],
-	// },
+	{
+		displayName: 'Include',
+		name: 'include',
+		type: 'multiOptions',
+		description: 'Additional resources to fetch related to this resource.',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				name: 'Vendor',
+				value: 'vendor',
+			},
+			{
+				name: 'Expense',
+				value: 'expense',
+			},
+		],
+		default: [],
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

@@ -90,6 +90,10 @@ export const paymentFields: INodeProperties[] = [
 				value: 'client',
 			},
 			{
+				name: 'Vendor',
+				value: 'vendor',
+			},
+			{
 				name: 'Invoices',
 				value: 'invoices',
 			},
@@ -143,6 +147,10 @@ export const paymentFields: INodeProperties[] = [
 			{
 				name: 'Client',
 				value: 'client',
+			},
+			{
+				name: 'Vendor',
+				value: 'vendor',
 			},
 			{
 				name: 'Invoices',

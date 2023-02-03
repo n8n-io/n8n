@@ -89,6 +89,10 @@ export const creditFields: INodeProperties[] = [
                 name: 'Client',
                 value: 'client',
             },
+            {
+                name: 'Vendor',
+                value: 'vendor',
+            },
         ],
         default: [],
     },
@@ -167,6 +171,10 @@ export const creditFields: INodeProperties[] = [
             {
                 name: 'Client',
                 value: 'client',
+            },
+            {
+                name: 'Vendor',
+                value: 'vendor',
             },
         ],
         default: [],

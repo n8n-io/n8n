@@ -12,7 +12,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 
     const resource = that.getNodeParameter('resource', 0);
     const operation = that.getNodeParameter('operation', 0);
-    if (resource !== 'client') throw new Error('Invalid Resource Execution Handler');
+    if (resource !== 'quote') throw new Error('Invalid Resource Execution Handler');
 
     for (let i = 0; i < length; i++) {
         //Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation

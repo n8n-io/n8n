@@ -79,7 +79,6 @@ export async function invoiceNinjaApiRequest(
 		throw new Error('Could not parse Parameter: jsonBody')
 	}
 	
-
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
