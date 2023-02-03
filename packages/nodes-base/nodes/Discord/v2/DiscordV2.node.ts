@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { discordApiRequest } from './GenericFunctions';
 
 import type { DiscordWebhook } from './Interfaces';
 
@@ -30,13 +31,19 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		// {
+		// 	displayName: 'Webhook URL',
+		// 	name: 'webhookUri',
+		// 	type: 'string',
+		// 	required: true,
+		// 	default: '',
+		// 	placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
+		// },
 		{
-			displayName: 'Webhook URL',
-			name: 'webhookUri',
+			displayName: 'Avatar URL',
+			name: 'avatarUrl',
 			type: 'string',
-			required: true,
 			default: '',
-			placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
 		},
 		{
 			displayName: 'Content',
@@ -133,6 +140,8 @@ export class DiscordV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: INodeExecutionData[] = [];
+
+		console.log(await discordApiRequest.call(this, 'GET', '/guilds/470937502325407746/channels'));
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 

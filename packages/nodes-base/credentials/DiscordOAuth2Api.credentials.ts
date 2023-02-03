@@ -11,6 +11,15 @@ export class DiscordOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Bot Token',
+			name: 'botToken',
+			type: 'string',
+			default: '',
+			typeOptions: {
+				password: true,
+			},
+		},
+		{
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'hidden',
@@ -34,14 +43,14 @@ export class DiscordOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'identify connections',
+			default: 'identify guilds bot',
 			required: true,
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: '',
+			default: 'permissions=1494917068848',
 		},
 		{
 			displayName: 'Authentication',
