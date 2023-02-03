@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const purchaseOrderOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,24 @@ export const purchaseOrderOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an Purchase Order',
+				action: 'Action to an purchaseOrder',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new Purchase Order',
+				action: 'Create a Purchase Order',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a Purchase Order',
+				action: 'Delete a Purchase Order',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a Purchase Order',
@@ -26,31 +44,13 @@ export const purchaseOrderOperations: INodeProperties[] = [
 				action: 'Get many Purchase Orders',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new Purchase Order',
-				action: 'Create a Purchase Order',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing Purchase Order',
 				action: 'Update a Purchase Order',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a Purchase Order',
-				action: 'Delete a Purchase Order',
-			},
-			{
-				name: 'Action',
-				value: 'action',
-				description: 'Performs an action to an Purchase Order',
-				action: 'Action to an purchaseOrder',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -76,7 +76,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -135,27 +135,27 @@ export const purchaseOrderFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'All',
-						value: 'all'
-					},
-					{
-						name: 'Draft',
-						value: 'draft'
-					},
-					{
-						name: 'Sent',
-						value: 'sent'
-					},
-					{
 						name: 'Accepted',
-						value: 'accepted'
+						value: 'accepted',
+					},
+					{
+						name: 'All',
+						value: 'all',
 					},
 					{
 						name: 'Canceled',
-						value: 'canceled'
+						value: 'canceled',
+					},
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Sent',
+						value: 'sent',
 					},
 				],
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -163,7 +163,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -199,7 +199,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -240,7 +240,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -251,7 +251,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -262,7 +262,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -273,7 +273,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Origin)',
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -284,7 +284,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -329,7 +329,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -337,7 +337,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Number',
@@ -642,7 +642,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -653,7 +653,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -664,7 +664,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -675,7 +675,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Origin)',
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -686,7 +686,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -731,7 +731,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -739,7 +739,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Number',
@@ -1061,32 +1061,39 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Mark Sent',
-				value: 'mark_sent',
-			},
-			{
-				name: 'Send Email',
-				value: 'email',
-			},
-			{
 				name: 'Add to Inventory',
 				value: 'add_to_inventory',
-			},
-			{
-				name: 'Expense',
-				value: 'expense',
-			},
-			{
-				name: 'Cancel',
-				value: 'cancel',
+				action: 'Add to Inventory a purchase order',
 			},
 			{
 				name: 'Archive',
 				value: 'archive',
+				action: 'Archive a purchase order',
+			},
+			{
+				name: 'Cancel',
+				value: 'cancel',
+				action: 'Cancel a purchase order',
+			},
+			{
+				name: 'Expense',
+				value: 'expense',
+				action: 'Expense a purchase order',
+			},
+			{
+				name: 'Mark Sent',
+				value: 'mark_sent',
+				action: 'Mark Sent a purchase order',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
+				action: 'Restore a purchase order',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send Email a purchase order',
 			},
 		],
 	},

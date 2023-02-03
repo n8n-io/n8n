@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const expenseOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const expenseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new expense',
+				action: 'Create an expense',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an expense',
+				action: 'Delete an expense',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an expense',
@@ -26,25 +38,13 @@ export const expenseOperations: INodeProperties[] = [
 				action: 'Get many expenses',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new expense',
-				action: 'Create an expense',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing expense',
 				action: 'Update an expense',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an expense',
-				action: 'Delete an expense',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -70,7 +70,7 @@ export const expenseFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -131,7 +131,7 @@ export const expenseFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -163,7 +163,7 @@ export const expenseFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -228,7 +228,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -239,7 +239,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -250,7 +250,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Bank Account',
+				displayName: 'Bank Account Name or ID',
 				name: 'bankId',
 				type: 'options',
 				description:
@@ -267,7 +267,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -278,13 +278,13 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Should be invoiced',
+				displayName: 'Should Be Invoiced',
 				name: 'should_be_invoiced',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'User (Origin)',
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -295,7 +295,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -306,7 +306,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Project ID or Name',
+				displayName: 'Connected Project ID or Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -317,7 +317,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Invoice ID or Name',
+				displayName: 'Connected Invoice ID or Name or ID',
 				name: 'invoiceId',
 				type: 'options',
 				description:
@@ -328,7 +328,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Recuring Expense ID or Name',
+				displayName: 'Connected Recuring Expense ID or Name or ID',
 				name: 'recurringExpenseId',
 				type: 'options',
 				description:
@@ -517,7 +517,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Transaction Id',
+				displayName: 'Transaction ID',
 				name: 'transactionId',
 				type: 'string',
 				default: '',
@@ -628,7 +628,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -639,7 +639,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -650,7 +650,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Bank Account',
+				displayName: 'Bank Account Name or ID',
 				name: 'bankId',
 				type: 'options',
 				description:
@@ -667,7 +667,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -678,13 +678,13 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Should be invoiced',
+				displayName: 'Should Be Invoiced',
 				name: 'should_be_invoiced',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'User (Origin)',
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -695,7 +695,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -706,7 +706,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Project ID or Name',
+				displayName: 'Connected Project ID or Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -717,7 +717,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Invoice ID or Name',
+				displayName: 'Connected Invoice ID or Name or ID',
 				name: 'invoiceId',
 				type: 'options',
 				description:
@@ -728,7 +728,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Recuring Expense ID or Name',
+				displayName: 'Connected Recuring Expense ID or Name or ID',
 				name: 'recurringExpenseId',
 				type: 'options',
 				description:

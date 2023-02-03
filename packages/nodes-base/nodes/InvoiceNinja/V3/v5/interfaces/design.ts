@@ -9,13 +9,13 @@
  */
 
 export interface Design {
-  id: string;
-  is_custom: boolean;
-  name: string;
-  design: Record<string, any>;
-  created_at: number;
-  is_active: boolean;
-  is_deleted: boolean;
-  is_free: boolean;
-  updated_at: number;
+	id: string;
+	is_custom: boolean;
+	name: string;
+	design: Record<string, any>;
+	created_at: number;
+	is_active: boolean;
+	is_deleted: boolean;
+	is_free: boolean;
+	updated_at: number;
 }

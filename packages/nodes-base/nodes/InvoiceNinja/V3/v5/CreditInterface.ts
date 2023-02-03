@@ -1,5 +1,3 @@
-import { Credit } from "./interfaces/credit";
+import type { Credit } from './interfaces/credit';
 
-export interface ICredit extends Partial<Omit<Credit, 'id'>> {
-	
-}
+export type ICredit = Partial<Omit<Credit, 'id'>>;

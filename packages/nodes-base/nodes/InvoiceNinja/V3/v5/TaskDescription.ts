@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const taskOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new task',
+				action: 'Create a task',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a task',
+				action: 'Delete a task',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a task',
@@ -26,25 +38,13 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Get many tasks',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new task',
-				action: 'Create a task',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing task',
 				action: 'Update a task',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a task',
-				action: 'Delete a task',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -70,7 +70,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -121,7 +121,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -149,7 +149,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -190,7 +190,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -210,7 +210,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -324,7 +324,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -344,7 +344,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:

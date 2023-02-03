@@ -1,5 +1,3 @@
-import { RecurringExpense } from "./interfaces/recurring-expense";
+import type { RecurringExpense } from './interfaces/recurring-expense';
 
-export interface IRecurringExpense extends Partial<Omit<RecurringExpense, 'id'>> {
-	
-}
+export type IRecurringExpense = Partial<Omit<RecurringExpense, 'id'>>;

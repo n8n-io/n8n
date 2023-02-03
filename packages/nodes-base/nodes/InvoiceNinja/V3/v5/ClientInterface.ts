@@ -1,9 +1,8 @@
-import { Client } from "./interfaces/client";
-import { ClientContact } from "./interfaces/client-contact";
+import type { Client } from './interfaces/client';
+import type { ClientContact } from './interfaces/client-contact';
 
-export interface IClientContact extends Partial<Omit<ClientContact, 'id'>>  {
-}
+export type IClientContact = Partial<Omit<ClientContact, 'id'>>;
 
 export interface IClient extends Partial<Omit<Client, 'id' | 'contacts'>> {
-	contacts?: IClientContact[];	
+	contacts?: IClientContact[];
 }

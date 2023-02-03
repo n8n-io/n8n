@@ -1,5 +1,3 @@
-import { Project } from "./interfaces/project";
+import type { Project } from './interfaces/project';
 
-export interface IProject extends Partial<Omit<Project, 'id'>> {
-    
-}
+export type IProject = Partial<Omit<Project, 'id'>>;

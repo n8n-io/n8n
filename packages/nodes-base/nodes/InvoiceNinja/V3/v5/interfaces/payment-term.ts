@@ -9,11 +9,11 @@
  */
 
 export interface PaymentTerm {
-  id: string;
-  num_days: number;
-  name: string;
-  is_deleted: boolean;
-  created_at: number;
-  updated_at: number;
-  archived_at: number;
+	id: string;
+	num_days: number;
+	name: string;
+	is_deleted: boolean;
+	created_at: number;
+	updated_at: number;
+	archived_at: number;
 }

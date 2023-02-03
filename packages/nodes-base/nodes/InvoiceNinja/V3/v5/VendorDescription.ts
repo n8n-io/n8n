@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const vendorOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const vendorOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new vendor',
+				action: 'Create a vendor',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a vendor',
+				action: 'Delete a vendor',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a vendor',
@@ -26,25 +38,13 @@ export const vendorOperations: INodeProperties[] = [
 				action: 'Get many vendors',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new vendor',
-				action: 'Create a vendor',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing vendor',
 				action: 'Update a vendor',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a vendor',
-				action: 'Delete a vendor',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -151,7 +151,7 @@ export const vendorFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -191,8 +191,8 @@ export const vendorFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -202,8 +202,8 @@ export const vendorFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -362,7 +362,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -420,42 +420,36 @@ export const vendorFields: INodeProperties[] = [
 						displayName: 'Phone',
 						name: 'phone',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 1',
 						name: 'customValue1',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 2',
 						name: 'customValue2',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 3',
 						name: 'customValue3',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 4',
 						name: 'customValue4',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Send E-Mails',
 						name: 'sendEmail',
 						type: 'boolean',
-						required: false,
 						default: true,
 					},
 				],
@@ -493,8 +487,8 @@ export const vendorFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -504,8 +498,8 @@ export const vendorFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -664,7 +658,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -722,42 +716,36 @@ export const vendorFields: INodeProperties[] = [
 						displayName: 'Phone',
 						name: 'phone',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 1',
 						name: 'customValue1',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 2',
 						name: 'customValue2',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 3',
 						name: 'customValue3',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 4',
 						name: 'customValue4',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Send E-Mails',
 						name: 'sendEmail',
 						type: 'boolean',
-						required: false,
 						default: true,
 					},
 				],

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const recurringExpenseOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const recurringExpenseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new recurring expense',
+				action: 'Create an recurring expense',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an recurring expense',
+				action: 'Delete an recurring expense',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an recurring expense',
@@ -26,25 +38,13 @@ export const recurringExpenseOperations: INodeProperties[] = [
 				action: 'Get many recurring expenses',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new recurring expense',
-				action: 'Create an recurring expense',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing recurring expense',
 				action: 'Update an recurring expense',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an recurring expense',
-				action: 'Delete an recurring expense',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -70,7 +70,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -131,7 +131,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -163,7 +163,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -227,8 +227,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 			},
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -238,8 +238,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Vendor',
+			{
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -249,8 +249,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Bank Account',
+			{
+				displayName: 'Bank Account Name or ID',
 				name: 'bankId',
 				type: 'options',
 				description:
@@ -260,14 +260,14 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -277,14 +277,14 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Should be invoiced',
+			{
+				displayName: 'Should Be Invoiced',
 				name: 'should_be_invoiced',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'User (Origin)',
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -294,8 +294,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -305,8 +305,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Connected Project ID or Name',
+			{
+				displayName: 'Connected Project ID or Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -451,7 +451,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 					},
 				],
 				default: 1,
-			},		
+			},
 			{
 				displayName: 'Tax Name 1',
 				name: 'taxName1',
@@ -493,76 +493,76 @@ export const recurringExpenseFields: INodeProperties[] = [
 				name: 'transactionReference',
 				type: 'string',
 				default: '',
-			},	
+			},
 			{
-				displayName: 'Transaction Id',
+				displayName: 'Transaction ID',
 				name: 'transactionId',
 				type: 'string',
 				default: '',
-			},	
-            {
-                displayName: 'Remaining Cyles',
-                description: 'use -1 to set to infinite',
-                name: 'remainingCycles',
-                type: 'number',
-                default: -1,
-            },
-            {
-                displayName: 'Frequency',
-                name: 'frequencyId',
-                type: 'options',
-                options: [
-                    {
-                        name: 'Daily',
-                        value: 1,
-                    },
-                    {
-                        name: 'Weekly',
-                        value: 2,
-                    },
-                    {
-                        name: 'Every 2 Weeks',
-                        value: 3,
-                    },
-                    {
-                        name: 'Every 4 Weeks',
-                        value: 4,
-                    },
-                    {
-                        name: 'Monthly',
-                        value: 5,
-                    },
-                    {
-                        name: 'Every 2 Months',
-                        value: 6,
-                    },
-                    {
-                        name: 'Every 3 Months',
-                        value: 7,
-                    },
-                    {
-                        name: 'Every 4 Months',
-                        value: 8,
-                    },
-                    {
-                        name: 'Every 6 Months',
-                        value: 9,
-                    },
-                    {
-                        name: 'Yearly',
-                        value: 10,
-                    },
-                    {
-                        name: 'Every 2 Years',
-                        value: 11,
-                    },
-                    {
-                        name: 'Every 3 Years',
-                        value: 12,
-                    },
-                ],
-                default: 5,
-            },
+			},
+			{
+				displayName: 'Remaining Cyles',
+				description: 'Use -1 to set to infinite',
+				name: 'remainingCycles',
+				type: 'number',
+				default: -1,
+			},
+			{
+				displayName: 'Frequency',
+				name: 'frequencyId',
+				type: 'options',
+				options: [
+					{
+						name: 'Daily',
+						value: 1,
+					},
+					{
+						name: 'Weekly',
+						value: 2,
+					},
+					{
+						name: 'Every 2 Weeks',
+						value: 3,
+					},
+					{
+						name: 'Every 4 Weeks',
+						value: 4,
+					},
+					{
+						name: 'Monthly',
+						value: 5,
+					},
+					{
+						name: 'Every 2 Months',
+						value: 6,
+					},
+					{
+						name: 'Every 3 Months',
+						value: 7,
+					},
+					{
+						name: 'Every 4 Months',
+						value: 8,
+					},
+					{
+						name: 'Every 6 Months',
+						value: 9,
+					},
+					{
+						name: 'Yearly',
+						value: 10,
+					},
+					{
+						name: 'Every 2 Years',
+						value: 11,
+					},
+					{
+						name: 'Every 3 Years',
+						value: 12,
+					},
+				],
+				default: 5,
+			},
 			{
 				displayName: 'Next Send Date',
 				name: 'nextSendDate',
@@ -674,8 +674,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 			},
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -685,8 +685,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Vendor',
+			{
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -696,8 +696,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Bank Account',
+			{
+				displayName: 'Bank Account Name or ID',
 				name: 'bankId',
 				type: 'options',
 				description:
@@ -707,14 +707,14 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
+			{
 				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -724,14 +724,14 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Should be invoiced',
+			{
+				displayName: 'Should Be Invoiced',
 				name: 'should_be_invoiced',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'User (Origin)',
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -741,8 +741,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -752,8 +752,8 @@ export const recurringExpenseFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Connected Project ID or Name',
+			{
+				displayName: 'Connected Project ID or Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -898,7 +898,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 					},
 				],
 				default: 1,
-			},		
+			},
 			{
 				displayName: 'Tax Name 1',
 				name: 'taxName1',
@@ -940,76 +940,76 @@ export const recurringExpenseFields: INodeProperties[] = [
 				name: 'transactionReference',
 				type: 'string',
 				default: '',
-			},	
+			},
 			{
 				displayName: 'Transaction ID',
 				name: 'transactionId',
 				type: 'string',
 				default: '',
-			},	
-            {
-                displayName: 'Remaining Cyles',
-                description: 'use -1 to set to infinite',
-                name: 'remainingCycles',
-                type: 'number',
-                default: -1,
-            },
-            {
-                displayName: 'Frequency',
-                name: 'frequencyId',
-                type: 'options',
-                options: [
-                    {
-                        name: 'Daily',
-                        value: 1,
-                    },
-                    {
-                        name: 'Weekly',
-                        value: 2,
-                    },
-                    {
-                        name: 'Every 2 Weeks',
-                        value: 3,
-                    },
-                    {
-                        name: 'Every 4 Weeks',
-                        value: 4,
-                    },
-                    {
-                        name: 'Monthly',
-                        value: 5,
-                    },
-                    {
-                        name: 'Every 2 Months',
-                        value: 6,
-                    },
-                    {
-                        name: 'Every 3 Months',
-                        value: 7,
-                    },
-                    {
-                        name: 'Every 4 Months',
-                        value: 8,
-                    },
-                    {
-                        name: 'Every 6 Months',
-                        value: 9,
-                    },
-                    {
-                        name: 'Yearly',
-                        value: 10,
-                    },
-                    {
-                        name: 'Every 2 Years',
-                        value: 11,
-                    },
-                    {
-                        name: 'Every 3 Years',
-                        value: 12,
-                    },
-                ],
-                default: 5,
-            },
+			},
+			{
+				displayName: 'Remaining Cyles',
+				description: 'Use -1 to set to infinite',
+				name: 'remainingCycles',
+				type: 'number',
+				default: -1,
+			},
+			{
+				displayName: 'Frequency',
+				name: 'frequencyId',
+				type: 'options',
+				options: [
+					{
+						name: 'Daily',
+						value: 1,
+					},
+					{
+						name: 'Weekly',
+						value: 2,
+					},
+					{
+						name: 'Every 2 Weeks',
+						value: 3,
+					},
+					{
+						name: 'Every 4 Weeks',
+						value: 4,
+					},
+					{
+						name: 'Monthly',
+						value: 5,
+					},
+					{
+						name: 'Every 2 Months',
+						value: 6,
+					},
+					{
+						name: 'Every 3 Months',
+						value: 7,
+					},
+					{
+						name: 'Every 4 Months',
+						value: 8,
+					},
+					{
+						name: 'Every 6 Months',
+						value: 9,
+					},
+					{
+						name: 'Yearly',
+						value: 10,
+					},
+					{
+						name: 'Every 2 Years',
+						value: 11,
+					},
+					{
+						name: 'Every 3 Years',
+						value: 12,
+					},
+				],
+				default: 5,
+			},
 			{
 				displayName: 'Next Send Date',
 				name: 'nextSendDate',

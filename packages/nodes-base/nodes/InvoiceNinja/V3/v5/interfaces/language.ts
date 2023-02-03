@@ -9,7 +9,7 @@
  */
 
 export interface Language {
-  id: string;
-  locale: string;
-  name: string;
+	id: string;
+	locale: string;
+	name: string;
 }

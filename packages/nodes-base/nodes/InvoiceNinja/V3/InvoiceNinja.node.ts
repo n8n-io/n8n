@@ -1,15 +1,15 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { InvoiceNinjaV4 } from "./v4/InvoiceNinjaNode"
+import { InvoiceNinjaV4 } from './v4/InvoiceNinjaNode';
 
-import { InvoiceNinjaV5 } from "./v5/InvoiceNinjaNode"
+import { InvoiceNinjaV5 } from './v5/InvoiceNinjaNode';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription;
@@ -36,7 +36,8 @@ export class InvoiceNinja implements INodeType {
 					name: 'apiVersion',
 					type: 'options',
 					isNodeSetting: true,
-					description: 'Invoice Ninja supports 2 Product Versions. Please read the docs to decide, which version is needed.',
+					description:
+						'Invoice Ninja supports 2 Product Versions. Please read the docs to decide, which version is needed.',
 					options: [
 						{
 							name: 'Version 4',
@@ -56,17 +57,18 @@ export class InvoiceNinja implements INodeType {
 				// JSON
 				{
 					displayName: 'Additional JSON Body',
-					description: 'You can provide additional properties in a JSON form. These parameters will be merged with the parameters above.<br /> <strong>Note:</strong> Do not provide an top level array.',
+					description:
+						'You can provide additional properties in a JSON form. These parameters will be merged with the parameters above. &lt;strong&gt;Note:&lt;/strong&gt; Do not provide an top level array.',
 					name: 'jsonBody',
 					type: 'json',
 					default: '{}',
-					required: false,
+
 					displayOptions: {
 						show: {
 							apiVersion: ['v5'],
 							operation: ['create', 'update'],
 						},
-					}
+					},
 				},
 			],
 		};
@@ -79,7 +81,6 @@ export class InvoiceNinja implements INodeType {
 		},
 	};
 
-	
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 

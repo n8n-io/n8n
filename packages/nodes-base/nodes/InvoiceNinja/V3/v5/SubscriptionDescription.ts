@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const subscriptionOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const subscriptionOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new subscription',
+				action: 'Create a subscription',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a subscription',
+				action: 'Delete a subscription',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a subscription',
@@ -26,25 +38,13 @@ export const subscriptionOperations: INodeProperties[] = [
 				action: 'Get many subscriptions',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new subscription',
-				action: 'Create a subscription',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing subscription',
 				action: 'Update a subscription',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a subscription',
-				action: 'Delete a subscription',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -145,7 +145,7 @@ export const subscriptionFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -191,8 +191,8 @@ export const subscriptionFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -202,8 +202,8 @@ export const subscriptionFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -217,19 +217,19 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Allow Cancelation',
 				name: 'allowCancellation',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Allow Plan Changes',
 				name: 'allowPlanChanges',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Allow Query Overrides',
 				name: 'allowQueryOverrides',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Auto Bill',
@@ -268,13 +268,13 @@ export const subscriptionFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Optional Product Ids',
+				displayName: 'Optional Product IDs',
 				name: 'optionalProductIds',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Optional Recurring Product Ids',
+				displayName: 'Optional Recurring Product IDs',
 				name: 'optionalRecurringProductIds',
 				type: 'string',
 				default: '',
@@ -283,7 +283,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Per Seat Enabled',
 				name: 'perSeatEnabled',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Plan Map',
@@ -298,7 +298,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Product Ids',
+				displayName: 'Product IDs',
 				name: 'productIds',
 				type: 'string',
 				default: '',
@@ -328,7 +328,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Recurring Product Ids',
+				displayName: 'Recurring Product IDs',
 				name: 'recurringProductIds',
 				type: 'string',
 				default: '',
@@ -367,7 +367,8 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Webhook Configuration',
 				name: 'webhookConfiguration',
 				type: 'json',
-				default: `{ "post_purchase_body: string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }`,
+				default:
+					'{ "post_purchase_body: string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }',
 			},
 		],
 	},
@@ -408,8 +409,8 @@ export const subscriptionFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -419,8 +420,8 @@ export const subscriptionFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -434,19 +435,19 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Allow Cancelation',
 				name: 'allowCancellation',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Allow Plan Changes',
 				name: 'allowPlanChanges',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Allow Query Overrides',
 				name: 'allowQueryOverrides',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Auto Bill',
@@ -485,13 +486,13 @@ export const subscriptionFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Optional Product Ids',
+				displayName: 'Optional Product IDs',
 				name: 'optionalProductIds',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Optional Recurring Product Ids',
+				displayName: 'Optional Recurring Product IDs',
 				name: 'optionalRecurringProductIds',
 				type: 'string',
 				default: '',
@@ -500,7 +501,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Per Seat Enabled',
 				name: 'perSeatEnabled',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Plan Map',
@@ -515,7 +516,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Product Ids',
+				displayName: 'Product IDs',
 				name: 'productIds',
 				type: 'string',
 				default: '',
@@ -545,7 +546,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Recurring Product Ids',
+				displayName: 'Recurring Product IDs',
 				name: 'recurringProductIds',
 				type: 'string',
 				default: '',
@@ -584,7 +585,8 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Webhook Configuration',
 				name: 'webhookConfiguration',
 				type: 'json',
-				default: `{ "post_purchase_body: string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }`,
+				default:
+					'{ "post_purchase_body: string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }',
 			},
 		],
 	},

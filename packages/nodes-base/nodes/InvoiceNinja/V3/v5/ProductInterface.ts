@@ -1,5 +1,3 @@
-import { Product } from "./interfaces/product";
+import type { Product } from './interfaces/product';
 
-export interface IProduct extends Partial<Omit<Product, 'id'>> {
-	
-}
+export type IProduct = Partial<Omit<Product, 'id'>>;

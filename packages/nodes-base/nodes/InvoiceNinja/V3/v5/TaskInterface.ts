@@ -1,5 +1,3 @@
-import { Task } from "./interfaces/task";
+import type { Task } from './interfaces/task';
 
-export interface ITask extends Partial<Omit<Task, 'id'>> {
-	
-}
+export type ITask = Partial<Omit<Task, 'id'>>;

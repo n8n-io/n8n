@@ -7,12 +7,12 @@ import { InvoiceNinja as InvoiceNinjaV3 } from './V3/InvoiceNinja.node';
 export class InvoiceNinja extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-            displayName: 'Invoice Ninja',
-            name: 'invoiceNinja',
-            icon: 'file:invoiceNinja.svg',
-            group: ['output'],
-            subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-            description: 'Consume Invoice Ninja API',
+			displayName: 'Invoice Ninja',
+			name: 'invoiceNinja',
+			icon: 'file:invoiceNinja.svg',
+			group: ['output'],
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Consume Invoice Ninja API',
 			defaultVersion: 3,
 		};
 

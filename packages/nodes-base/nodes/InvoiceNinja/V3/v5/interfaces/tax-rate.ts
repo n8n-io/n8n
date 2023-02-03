@@ -9,11 +9,11 @@
  */
 
 export interface TaxRate {
-  id: string;
-  name: string;
-  rate: number;
-  is_deleted: boolean;
-  archived_at: number;
-  created_at: number;
-  updated_at: number;
+	id: string;
+	name: string;
+	rate: number;
+	is_deleted: boolean;
+	archived_at: number;
+	created_at: number;
+	updated_at: number;
 }

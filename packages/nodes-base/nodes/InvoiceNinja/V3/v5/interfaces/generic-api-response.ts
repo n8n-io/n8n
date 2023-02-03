@@ -8,11 +8,10 @@
  * @license https://www.elastic.co/licensing/elastic-license
  */
 
-import { AxiosResponse } from 'axios';
+import type { AxiosResponse } from 'axios';
 
-export interface GenericSingleResourceResponse<T = unknown>
-  extends AxiosResponse {
-  data: {
-    data: T;
-  };
+export interface GenericSingleResourceResponse<T = unknown> extends AxiosResponse {
+	data: {
+		data: T;
+	};
 }

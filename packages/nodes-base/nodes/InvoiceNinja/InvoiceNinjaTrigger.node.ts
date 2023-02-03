@@ -9,10 +9,10 @@ export class InvoiceNinjaTrigger extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Invoice Ninja Trigger',
 			name: 'invoiceNinjaTrigger',
-            icon: 'file:invoiceNinja.svg',
+			icon: 'file:invoiceNinja.svg',
 			group: ['trigger'],
-            subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-            description: 'Consume Invoice Ninja API',
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Consume Invoice Ninja API',
 			defaultVersion: 3,
 		};
 

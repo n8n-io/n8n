@@ -1,11 +1,8 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { INodeProperties, IWebhookResponseData } from 'n8n-workflow';
+import type { INodeProperties, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	invoiceNinjaApiRequest,
-	invoiceNinjaApiRequestAllItems,
-} from '../GenericFunctions';
+import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
 const eventID: { [key: string]: string } = {
 	create_client: '1',
@@ -81,311 +78,279 @@ const eventID: { [key: string]: string } = {
 	delete_purchase_order: '59',
 };
 
-const headProperties: INodeProperties[] = [{
-	displayName: 'Event',
-	name: 'event',
-	type: 'options',
-	displayOptions: {
-		show: {
-			apiVersion: ['v5'],
+const headProperties: INodeProperties[] = [
+	{
+		displayName: 'Event',
+		name: 'event',
+		type: 'options',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+			},
 		},
+		description:
+			'You are using InvoiceNinja V5: Check Swagger documentation for additional fields: <a href="https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/" target="_blank">https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/</a>Change your Version at the Node-Settings',
+		options: [
+			{
+				name: 'Client Archived',
+				value: 'archive_client',
+			},
+			{
+				name: 'Client Created',
+				value: 'create_client',
+			},
+			{
+				name: 'Client Deleted',
+				value: 'delete_client',
+			},
+			{
+				name: 'Client Restored',
+				value: 'restore_client',
+			},
+			{
+				name: 'Client Updated',
+				value: 'update_client',
+			},
+			{
+				name: 'Credit Archived',
+				value: 'archive_credit',
+			},
+			{
+				name: 'Credit Created',
+				value: 'create_credit',
+			},
+			{
+				name: 'Credit Deleted',
+				value: 'delete_credit',
+			},
+			{
+				name: 'Credit Restored',
+				value: 'restore_credit',
+			},
+			{
+				name: 'Credit Sent',
+				value: 'sent_credit',
+			},
+			{
+				name: 'Credit Updated',
+				value: 'update_credit',
+			},
+			{
+				name: 'Expense Archived',
+				value: 'archive_expense',
+			},
+			{
+				name: 'Expense Created',
+				value: 'create_expense',
+			},
+			{
+				name: 'Expense Deleted',
+				value: 'delete_expense',
+			},
+			{
+				name: 'Expense Restored',
+				value: 'restore_expense',
+			},
+			{
+				name: 'Expense Updated',
+				value: 'update_expense',
+			},
+			{
+				name: 'Invoice Archived',
+				value: 'archive_invoice',
+			},
+			{
+				name: 'Invoice Created',
+				value: 'create_invoice',
+			},
+			{
+				name: 'Invoice Delayed',
+				value: 'delay_invoice',
+			},
+			{
+				name: 'Invoice Deleted',
+				value: 'delete_invoice',
+			},
+			{
+				name: 'Invoice Reminded',
+				value: 'remind_invoice',
+			},
+			{
+				name: 'Invoice Restored',
+				value: 'restore_invoice',
+			},
+			{
+				name: 'Invoice Sent',
+				value: 'sent_invoice',
+			},
+			{
+				name: 'Invoice Updated',
+				value: 'update_invoice',
+			},
+			{
+				name: 'Payment Archived',
+				value: 'archive_payment',
+			},
+			{
+				name: 'Payment Created',
+				value: 'create_payment',
+			},
+			{
+				name: 'Payment Deleted',
+				value: 'delete_payment',
+			},
+			{
+				name: 'Payment Restore',
+				value: 'restore_payment',
+			},
+			{
+				name: 'Payment Updated',
+				value: 'update_payment',
+			},
+			{
+				name: 'Product Archived',
+				value: 'archive_product',
+			},
+			{
+				name: 'Product Created',
+				value: 'create_product',
+			},
+			{
+				name: 'Product Deleted',
+				value: 'delete_product',
+			},
+			{
+				name: 'Product Restored',
+				value: 'restore_product',
+			},
+			{
+				name: 'Product Updated',
+				value: 'update_product',
+			},
+			{
+				name: 'Project Archived',
+				value: 'archive_project',
+			},
+			{
+				name: 'Project Created',
+				value: 'create_project',
+			},
+			{
+				name: 'Project Deleted',
+				value: 'delete_project',
+			},
+			{
+				name: 'Project Restored',
+				value: 'restore_project',
+			},
+			{
+				name: 'Project Updated',
+				value: 'update_project',
+			},
+			{
+				name: 'Purchase Order Archived',
+				value: 'archive_purchase_order',
+			},
+			{
+				name: 'Purchase Order Created',
+				value: 'create_purchase_order',
+			},
+			{
+				name: 'Purchase Order Deleted',
+				value: 'delete_purchase_order',
+			},
+			{
+				name: 'Purchase Order Restored',
+				value: 'restore_purchase_order',
+			},
+			{
+				name: 'Purchase Order Sent',
+				value: 'sent_purchase_order',
+			},
+			{
+				name: 'Purchase Order Updated',
+				value: 'update_purchase_order',
+			},
+			{
+				name: 'Quote Accepted',
+				value: 'accept_quote',
+			},
+			{
+				name: 'Quote Archived',
+				value: 'archive_quote',
+			},
+			{
+				name: 'Quote Created',
+				value: 'create_quote',
+			},
+			{
+				name: 'Quote Deleted',
+				value: 'delete_quote',
+			},
+			{
+				name: 'Quote Expired',
+				value: 'expire_quote',
+			},
+			{
+				name: 'Quote Restored',
+				value: 'restore_quote',
+			},
+			{
+				name: 'Quote Sent',
+				value: 'sent_quote',
+			},
+			{
+				name: 'Quote Updated',
+				value: 'update_quote',
+			},
+			{
+				name: 'Task Archived',
+				value: 'archive_task',
+			},
+			{
+				name: 'Task Created',
+				value: 'create_task',
+			},
+			{
+				name: 'Task Deleted',
+				value: 'delete_task',
+			},
+			{
+				name: 'Task Restored',
+				value: 'restore_task',
+			},
+			{
+				name: 'Task Updated',
+				value: 'update_task',
+			},
+			{
+				name: 'Vendor Archived',
+				value: 'archive_vendor',
+			},
+			{
+				name: 'Vendor Created',
+				value: 'create_vendor',
+			},
+			{
+				name: 'Vendor Deleted',
+				value: 'delete_vendor',
+			},
+			{
+				name: 'Vendor Restored',
+				value: 'restore_vendor',
+			},
+			{
+				name: 'Vendor Updated',
+				value: 'update_vendor',
+			},
+		],
+		default: '',
+		required: true,
 	},
-	description: 'You are using InvoiceNinja V5: <br />Check Swagger documentation for additional fields: <a href="https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/" target="_blank">https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/</a><br /><br />Change your Version at the Node-Settings.',
-	options: [
-		/* -------------------------------------------------------------------------- */
-		/*                                  client                                    */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Client Created',
-			value: 'create_client',
-		},
-		{
-			name: 'Client Updated',
-			value: 'update_client',
-		},
-		{
-			name: 'Client Archived',
-			value: 'archive_client',
-		},
-		{
-			name: 'Client Restored',
-			value: 'restore_client',
-		},
-		{
-			name: 'Client Deleted',
-			value: 'delete_client',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  vendor                                    */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Vendor Created',
-			value: 'create_vendor',
-		},
-		{
-			name: 'Vendor Updated',
-			value: 'update_vendor',
-		},
-		{
-			name: 'Vendor Archived',
-			value: 'archive_vendor',
-		},
-		{
-			name: 'Vendor Restored',
-			value: 'restore_vendor',
-		},
-		{
-			name: 'Vendor Deleted',
-			value: 'delete_vendor',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  invoice                                   */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Invoice Created',
-			value: 'create_invoice',
-		},
-		{
-			name: 'Invoice Updated',
-			value: 'update_invoice',
-		},
-		{
-			name: 'Invoice Sent',
-			value: 'sent_invoice',
-		},
-		{
-			name: 'Invoice Delayed',
-			value: 'delay_invoice',
-		},
-		{
-			name: 'Invoice Reminded',
-			value: 'remind_invoice',
-		},
-		{
-			name: 'Invoice Archived',
-			value: 'archive_invoice',
-		},
-		{
-			name: 'Invoice Restored',
-			value: 'restore_invoice',
-		},
-		{
-			name: 'Invoice Deleted',
-			value: 'delete_invoice',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  quote                                     */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Quote Created',
-			value: 'create_quote',
-		},
-		{
-			name: 'Quote Updated',
-			value: 'update_quote',
-		},
-		{
-			name: 'Quote Sent',
-			value: 'sent_quote',
-		},
-		{
-			name: 'Quote Accepted',
-			value: 'accept_quote',
-		},
-		{
-			name: 'Quote Expired',
-			value: 'expire_quote',
-		},
-		{
-			name: 'Quote Archived',
-			value: 'archive_quote',
-		},
-		{
-			name: 'Quote Restored',
-			value: 'restore_quote',
-		},
-		{
-			name: 'Quote Deleted',
-			value: 'delete_quote',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  payment                                   */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Payment Created',
-			value: 'create_payment',
-		},
-		{
-			name: 'Payment Updated',
-			value: 'update_payment',
-		},
-		{
-			name: 'Payment Archived',
-			value: 'archive_payment',
-		},
-		{
-			name: 'Payment Restore',
-			value: 'restore_payment',
-		},
-		{
-			name: 'Payment Deleted',
-			value: 'delete_payment',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  expense                                   */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Expense Created',
-			value: 'create_expense',
-		},
-		{
-			name: 'Expense Updated',
-			value: 'update_expense',
-		},
-		{
-			name: 'Expense Archived',
-			value: 'archive_expense',
-		},
-		{
-			name: 'Expense Restored',
-			value: 'restore_expense',
-		},
-		{
-			name: 'Expense Deleted',
-			value: 'delete_expense',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  project                                   */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Project Created',
-			value: 'create_project',
-		},
-		{
-			name: 'Project Updated',
-			value: 'update_project',
-		},
-		{
-			name: 'Project Archived',
-			value: 'archive_project',
-		},
-		{
-			name: 'Project Restored',
-			value: 'restore_project',
-		},
-		{
-			name: 'Project Deleted',
-			value: 'delete_project',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  task                                      */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Task Created',
-			value: 'create_task',
-		},
-		{
-			name: 'Task Updated',
-			value: 'update_task',
-		},
-		{
-			name: 'Task Archived',
-			value: 'archive_task',
-		},
-		{
-			name: 'Task Restored',
-			value: 'restore_task',
-		},
-		{
-			name: 'Task Deleted',
-			value: 'delete_task',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  product                                   */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Product Created',
-			value: 'create_product',
-		},
-		{
-			name: 'Product Updated',
-			value: 'update_product',
-		},
-		{
-			name: 'Product Archived',
-			value: 'archive_product',
-		},
-		{
-			name: 'Product Restored',
-			value: 'restore_product',
-		},
-		{
-			name: 'Product Deleted',
-			value: 'delete_product',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  purchase_order                            */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Purchase Order Created',
-			value: 'create_purchase_order',
-		},
-		{
-			name: 'Purchase Order Updated',
-			value: 'update_purchase_order',
-		},
-		{
-			name: 'Purchase Order Sent',
-			value: 'sent_purchase_order',
-		},
-		{
-			name: 'Purchase Order Archived',
-			value: 'archive_purchase_order',
-		},
-		{
-			name: 'Purchase Order Restored',
-			value: 'restore_purchase_order',
-		},
-		{
-			name: 'Purchase Order Deleted',
-			value: 'delete_purchase_order',
-		},
-		/* -------------------------------------------------------------------------- */
-		/*                                  credit                                    */
-		/* -------------------------------------------------------------------------- */
-		{
-			name: 'Credit Created',
-			value: 'create_credit',
-		},
-		{
-			name: 'Credit Updated',
-			value: 'update_credit',
-		},
-		{
-			name: 'Credit Sent',
-			value: 'sent_credit',
-		},
-		{
-			name: 'Credit Archived',
-			value: 'archive_credit',
-		},
-		{
-			name: 'Credit Restored',
-			value: 'restore_credit',
-		},
-		{
-			name: 'Credit Deleted',
-			value: 'delete_credit',
-		},
-	],
-	default: '',
-	required: true,
-}];
+];
 export const InvoiceNinjaTriggerV5 = {
 	description: {
-		properties: [
-			...headProperties
-		],
+		properties: [...headProperties],
 	},
 
 	// @ts-ignore (because of request)
@@ -430,7 +395,7 @@ export const InvoiceNinjaTriggerV5 = {
 					event_id: eventID[event],
 				};
 
-				let responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/webhooks', body);
+				const responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/webhooks', body);
 				webhookData.webhookId = responseData.data.id as string;
 
 				if (webhookData.webhookId === undefined) {
@@ -444,7 +409,6 @@ export const InvoiceNinjaTriggerV5 = {
 				const webhookData = that.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-
 					try {
 						await invoiceNinjaApiRequest.call(that, 'DELETE', `/webhooks/${webhookData.webhookId}`);
 					} catch (error) {
@@ -466,5 +430,5 @@ export const InvoiceNinjaTriggerV5 = {
 		return {
 			workflowData: [that.helpers.returnJsonArray(bodyData)],
 		};
-	}
-}
+	},
+};

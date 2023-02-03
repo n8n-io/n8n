@@ -1,5 +1,3 @@
-import { Transaction } from "./interfaces/transactions";
+import type { Transaction } from './interfaces/transactions';
 
-export interface IBankTransaction extends Partial<Omit<Transaction, 'id'>> {
-
-}
+export type IBankTransaction = Partial<Omit<Transaction, 'id'>>;

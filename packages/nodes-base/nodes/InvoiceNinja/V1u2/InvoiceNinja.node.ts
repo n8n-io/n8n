@@ -59,7 +59,8 @@ export class InvoiceNinja implements INodeType {
 			],
 			properties: [
 				{
-					displayName: '<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
+					displayName:
+						'<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
 					name: 'notice',
 					type: 'notice',
 					displayOptions: {
@@ -68,7 +69,8 @@ export class InvoiceNinja implements INodeType {
 						},
 					},
 					default: '',
-				}, {
+				},
+				{
 					displayName: 'API Version',
 					name: 'apiVersion',
 					type: 'options',

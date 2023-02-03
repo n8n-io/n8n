@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const quoteOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,30 @@ export const quoteOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an quote',
+				action: 'Action to an quote',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new quote',
+				action: 'Create a quote',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a quote',
+				action: 'Delete a quote',
+			},
+			{
+				name: 'Download',
+				value: 'download',
+				description: 'Get PDF from quote',
+				action: 'Download quote',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a quote',
@@ -26,37 +50,13 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Get many quotes',
 			},
 			{
-				name: 'Download',
-				value: 'download',
-				description: 'Get PDF from quote',
-				action: 'Download quote',
-			},
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new quote',
-				action: 'Create a quote',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing quote',
 				action: 'Update a quote',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a quote',
-				action: 'Delete a quote',
-			},
-			{
-				name: 'Action',
-				value: 'action',
-				description: 'Performs an action to an quote',
-				action: 'Action to an quote',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -82,7 +82,7 @@ export const quoteFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -133,7 +133,7 @@ export const quoteFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -161,7 +161,7 @@ export const quoteFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -200,7 +200,7 @@ export const quoteFields: INodeProperties[] = [
 				operation: ['download'],
 			},
 		},
-		description: 'Value \'key\' from entry of property \'invitations\' of an quote or the quote id.',
+		description: "Value 'key' from entry of property 'invitations' of an quote or the quote ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 quote:create                               */
@@ -220,7 +220,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -228,10 +228,10 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getClientsV5',
 				},
-				default: '', 
+				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -239,10 +239,10 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getVendorsV5',
 				},
-				default: '', 
+				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -252,8 +252,8 @@ export const quoteFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -292,7 +292,7 @@ export const quoteFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -300,7 +300,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Recurring ID',
@@ -575,7 +575,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -583,10 +583,10 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getClientsV5',
 				},
-				default: '', 
+				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -594,10 +594,10 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getVendorsV5',
 				},
-				default: '', 
+				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -607,8 +607,8 @@ export const quoteFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -647,7 +647,7 @@ export const quoteFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -655,7 +655,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Recurring ID',
@@ -947,32 +947,39 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Clone To Quote',
-				value: 'clone_to_quote',
-			},
-			{
-				name: 'Convert to Invoice',
-				value: 'convert_to_quote',
-			},
-			{
-				name: 'Send Email',
-				value: 'email',
-			},
-			{
-				name: 'Mark Send',
-				value: 'mark_sent',
-			},
-			{
 				name: 'Approve',
 				value: 'approve',
+				action: 'Approve a quote',
 			},
 			{
 				name: 'Archive',
 				value: 'archive',
+				action: 'Archive a quote',
+			},
+			{
+				name: 'Clone To Quote',
+				value: 'clone_to_quote',
+				action: 'Clone To Quote a quote',
+			},
+			{
+				name: 'Convert to Invoice',
+				value: 'convert_to_quote',
+				action: 'Convert to Invoice a quote',
+			},
+			{
+				name: 'Mark Send',
+				value: 'mark_sent',
+				action: 'Mark Send a quote',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
+				action: 'Restore a quote',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send Email a quote',
 			},
 		],
 	},

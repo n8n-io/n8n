@@ -9,8 +9,8 @@
  */
 
 export interface DateFormat {
-  id: string;
-  format: string;
-  format_dart: string;
-  format_moment: string;
+	id: string;
+	format: string;
+	format_dart: string;
+	format_moment: string;
 }

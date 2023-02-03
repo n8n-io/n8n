@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const bankTransactionOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,24 @@ export const bankTransactionOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a Bank Transaction',
+				action: 'Action to a Bank Transaction',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new bankTransaction',
+				action: 'Create a Bank Transaction',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a Bank Transaction',
+				action: 'Delete a Bank Transaction',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a Bank Transaction',
@@ -26,31 +44,13 @@ export const bankTransactionOperations: INodeProperties[] = [
 				action: 'Get many bankTransactions',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new bankTransaction',
-				action: 'Create a Bank Transaction',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing bankTransaction',
 				action: 'Update a Bank Transaction',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a Bank Transaction',
-				action: 'Delete a Bank Transaction',
-			},
-			{
-				name: 'Action',
-				value: 'action',
-				description: 'Performs an action to a Bank Transaction',
-				action: 'Action to a Bank Transaction',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -76,7 +76,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -132,30 +132,30 @@ export const bankTransactionFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'All',
-						value: 'all'
-					},
-					{
-						name: 'Unmatched',
-						value: 'unmatched'
-					},
-					{
-						name: 'Matched',
-						value: 'matched'
+						value: 'all',
 					},
 					{
 						name: 'Converted',
-						value: 'converted'
+						value: 'converted',
 					},
 					{
 						name: 'Credit',
-						value: 'credit'
+						value: 'credit',
 					},
 					{
 						name: 'Debit',
-						value: 'debit'
+						value: 'debit',
+					},
+					{
+						name: 'Matched',
+						value: 'matched',
+					},
+					{
+						name: 'Unmatched',
+						value: 'unmatched',
 					},
 				],
-				default: '',
+				default: [],
 			},
 		],
 	},
@@ -163,7 +163,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -195,7 +195,7 @@ export const bankTransactionFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -236,7 +236,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -265,19 +265,19 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Bank Account Id',
+				displayName: 'Bank Account ID',
 				name: 'bankAccountId',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Bank Integration Id',
+				displayName: 'Bank Integration ID',
 				name: 'bankIntegrationId',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Bank Transaction Rule Id',
+				displayName: 'Bank Transaction Rule ID',
 				name: 'bankTransactionRuleId',
 				type: 'string',
 				default: '',
@@ -289,10 +289,10 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Id',
+				displayName: 'Category ID',
 				name: 'categoryId',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Category Type',
@@ -301,7 +301,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Id',
+				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
 				default: '',
@@ -322,37 +322,37 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expense Id',
+				displayName: 'Expense ID',
 				name: 'expenseId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Invoice Ids',
+				displayName: 'Invoice IDs',
 				name: 'invoiceIds',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Ninja Category Id',
+				displayName: 'Ninja Category ID',
 				name: 'ninjaCategoryId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Payment Id',
+				displayName: 'Payment ID',
 				name: 'paymentId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Status Id',
+				displayName: 'Status ID',
 				name: 'statusId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Transaction Id',
+				displayName: 'Transaction ID',
 				name: 'transactionId',
 				type: 'string',
 				default: '',
@@ -391,7 +391,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -420,19 +420,19 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Bank Account Id',
+				displayName: 'Bank Account ID',
 				name: 'bankAccountId',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Bank Integration Id',
+				displayName: 'Bank Integration ID',
 				name: 'bankIntegrationId',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Bank Transaction Rule Id',
+				displayName: 'Bank Transaction Rule ID',
 				name: 'bankTransactionRuleId',
 				type: 'string',
 				default: '',
@@ -444,10 +444,10 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category Id',
+				displayName: 'Category ID',
 				name: 'categoryId',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Category Type',
@@ -456,7 +456,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Id',
+				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
 				default: '',
@@ -477,37 +477,37 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expense Id',
+				displayName: 'Expense ID',
 				name: 'expenseId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Invoice Ids',
+				displayName: 'Invoice IDs',
 				name: 'invoiceIds',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Ninja Category Id',
+				displayName: 'Ninja Category ID',
 				name: 'ninjaCategoryId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Payment Id',
+				displayName: 'Payment ID',
 				name: 'paymentId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Status Id',
+				displayName: 'Status ID',
 				name: 'statusId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Transaction Id',
+				displayName: 'Transaction ID',
 				name: 'transactionId',
 				type: 'string',
 				default: '',

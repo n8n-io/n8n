@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,31 +14,32 @@ import { clientFields, clientOperations } from './ClientDescription';
 
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import { IClient, IContact } from './ClientInterface';
+import type { IClient, IContact } from './ClientInterface';
 
 import { countryCodes } from './ISOCountryCodes';
 
-import { IInvoice, IItem } from './invoiceInterface';
+import type { IInvoice, IItem } from './invoiceInterface';
 
 import { taskFields, taskOperations } from './TaskDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
 import { paymentFields, paymentOperations } from './PaymentDescription';
 
-import { IPayment } from './PaymentInterface';
+import type { IPayment } from './PaymentInterface';
 
 import { expenseFields, expenseOperations } from './ExpenseDescription';
 
-import { IExpense } from './ExpenseInterface';
+import type { IExpense } from './ExpenseInterface';
 
 import { quoteFields, quoteOperations } from './QuoteDescription';
 
-import { IQuote } from './QuoteInterface';
+import type { IQuote } from './QuoteInterface';
 
 const headProperties: INodeProperties[] = [
 	{
-		displayName: '<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
+		displayName:
+			'<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {
@@ -47,7 +48,8 @@ const headProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
-	}, {
+	},
+	{
 		displayName: 'Resource (V4)',
 		name: 'resource',
 		type: 'options',
@@ -57,7 +59,8 @@ const headProperties: INodeProperties[] = [
 				apiVersion: ['v4'],
 			},
 		},
-		description: 'You are using InvoiceNinja V4: <br />Check documentation for additional fields: <a href="https://invoice-ninja.readthedocs.io/en/latest/" target="_blank">https://invoice-ninja.readthedocs.io/en/latest/</a><br /><br />Change your Version at the Node-Settings.',
+		description:
+			'You are using InvoiceNinja V4: Check documentation for additional fields: <a href="https://invoice-ninja.readthedocs.io/en/latest/" target="_blank">https://invoice-ninja.readthedocs.io/en/latest/</a>Change your Version at the Node-Settings',
 		options: [
 			{
 				name: 'Client',
@@ -85,7 +88,8 @@ const headProperties: INodeProperties[] = [
 			},
 		],
 		default: 'client',
-	}];
+	},
+];
 
 export const InvoiceNinjaV4 = {
 	description: {
@@ -450,7 +454,6 @@ export const InvoiceNinjaV4 = {
 						responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/email_invoice', {
 							id: invoiceId,
 						});
-
 					}
 					if (operation === 'get') {
 						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
@@ -942,5 +945,5 @@ export const InvoiceNinjaV4 = {
 		}
 
 		return that.prepareOutputData(returnData);
-	}
-}
+	},
+};

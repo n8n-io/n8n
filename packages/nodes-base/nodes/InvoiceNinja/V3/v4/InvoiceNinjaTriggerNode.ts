@@ -1,15 +1,13 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { INodeProperties, IWebhookResponseData } from 'n8n-workflow';
+import type { INodeProperties, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	invoiceNinjaApiRequest,
-	invoiceNinjaApiRequestAllItems,
-} from './GenericFunctions';
+import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
 
 const headProperties: INodeProperties[] = [
 	{
-		displayName: '<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
+		displayName:
+			'<strong>You are using V4 of InvoiceNinja</strong><br />Considder migrating to V5 to have even more resources and operations supported for this node.<br /><br /><a href="https://invoiceninja.com/migrate-to-invoice-ninja-v5/">https://invoiceninja.com/migrate-to-invoice-ninja-v5/</a>',
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {
@@ -18,7 +16,8 @@ const headProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
-	}, {
+	},
+	{
 		displayName: 'Event (V4)',
 		name: 'event',
 		type: 'options',
@@ -27,7 +26,8 @@ const headProperties: INodeProperties[] = [
 				apiVersion: ['v4'],
 			},
 		},
-		description: 'You are using InvoiceNinja V4: <br />Check documentation for additional fields: <a href="https://invoice-ninja.readthedocs.io/en/latest/" target="_blank">https://invoice-ninja.readthedocs.io/en/latest/</a><br /><br />Change your Version at the Node-Settings.',
+		description:
+			'You are using InvoiceNinja V4: Check documentation for additional fields: <a href="https://invoice-ninja.readthedocs.io/en/latest/" target="_blank">https://invoice-ninja.readthedocs.io/en/latest/</a>Change your Version at the Node-Settings',
 		options: [
 			{
 				name: 'Client Created',
@@ -52,13 +52,12 @@ const headProperties: INodeProperties[] = [
 		],
 		default: '',
 		required: true,
-	}];
+	},
+];
 
 export const InvoiceNinjaTriggerV4 = {
 	description: {
-		properties: [
-			...headProperties,
-		],
+		properties: [...headProperties],
 	},
 
 	// @ts-ignore (because of request)
@@ -83,7 +82,7 @@ export const InvoiceNinjaTriggerV4 = {
 					event,
 				};
 
-				let responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/hooks', body);
+				const responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/hooks', body);
 				webhookData.webhookId = responseData.id as string;
 
 				if (webhookData.webhookId === undefined) {
@@ -97,7 +96,6 @@ export const InvoiceNinjaTriggerV4 = {
 				const webhookData = that.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-
 					try {
 						await invoiceNinjaApiRequest.call(that, 'DELETE', `/hooks/${webhookData.webhookId}`);
 					} catch (error) {
@@ -119,5 +117,5 @@ export const InvoiceNinjaTriggerV4 = {
 		return {
 			workflowData: [that.helpers.returnJsonArray(bodyData)],
 		};
-	}
-}
+	},
+};

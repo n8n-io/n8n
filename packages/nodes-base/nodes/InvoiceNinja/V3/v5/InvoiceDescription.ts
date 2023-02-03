@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,30 @@ export const invoiceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an invoice',
+				action: 'Action to an invoice',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new invoice',
+				action: 'Create an invoice',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a invoice',
+				action: 'Delete an invoice',
+			},
+			{
+				name: 'Download',
+				value: 'download',
+				description: 'Get PDF from invoice',
+				action: 'Download invoice',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a invoice',
@@ -26,37 +50,13 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get many invoices',
 			},
 			{
-				name: 'Download',
-				value: 'download',
-				description: 'Get PDF from invoice',
-				action: 'Download invoice',
-			},
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new invoice',
-				action: 'Create an invoice',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing invoice',
 				action: 'Update an invoice',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a invoice',
-				action: 'Delete an invoice',
-			},
-			{
-				name: 'Action',
-				value: 'action',
-				description: 'Performs an action to an invoice',
-				action: 'Action to an invoice',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -82,7 +82,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -129,19 +129,19 @@ export const invoiceFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Without Deleted Clients',
-				name: ' withoutDeletedClients',
+				name: 'withoutDeletedClients',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Upcomming',
-				name: ' upcomming',
+				name: 'upcomming',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Overdue',
-				name: ' overdue',
+				name: 'overdue',
 				type: 'boolean',
 				default: false,
 			},
@@ -151,7 +151,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -179,7 +179,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -218,7 +218,7 @@ export const invoiceFields: INodeProperties[] = [
 				operation: ['download'],
 			},
 		},
-		description: 'Value \'key\' from entry of property \'invitations\' of an invoice or the invoice id.',
+		description: "Value 'key' from entry of property 'invitations' of an invoice or the invoice ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 invoice:create                             */
@@ -237,8 +237,8 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -248,8 +248,8 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Vendor',
+			{
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -260,7 +260,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -287,7 +287,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -295,13 +295,13 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
-				displayName: 'Recurring Id',
+				displayName: 'Recurring ID',
 				name: 'recurringId',
 				type: 'string',
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Number',
@@ -417,7 +417,7 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 			},
-            {
+			{
 				displayName: 'Exchange Rate',
 				name: 'exchangeRate',
 				type: 'number',
@@ -615,8 +615,8 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -626,8 +626,8 @@ export const invoiceFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'Vendor',
+			{
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -638,7 +638,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -665,7 +665,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -673,13 +673,13 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
-				displayName: 'Recurring Id',
+				displayName: 'Recurring ID',
 				name: 'recurringId',
 				type: 'string',
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Number',
@@ -795,7 +795,7 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 			},
-            {
+			{
 				displayName: 'Exchange Rate',
 				name: 'exchangeRate',
 				type: 'number',
@@ -1011,36 +1011,44 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Auto Bill',
-				value: 'auto_bill',
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an invoice',
 			},
 			{
-				name: 'Clone To Quote',
-				value: 'clone_to_quote',
+				name: 'Auto Bill',
+				value: 'auto_bill',
+				action: 'Auto Bill an invoice',
 			},
 			{
 				name: 'Clone to Invoice',
 				value: 'clone_to_invoice',
+				action: 'Clone to Invoice an invoice',
 			},
 			{
-				name: 'Send Email',
-				value: 'email',
-			},
-			{
-				name: 'Mark Send',
-				value: 'mark_sent',
+				name: 'Clone To Quote',
+				value: 'clone_to_quote',
+				action: 'Clone To Quote an invoice',
 			},
 			{
 				name: 'Mark Paid',
 				value: 'mark_paid',
+				action: 'Mark Paid an invoice',
 			},
 			{
-				name: 'Archive',
-				value: 'archive',
+				name: 'Mark Send',
+				value: 'mark_sent',
+				action: 'Mark Send an invoice',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
+				action: 'Restore an invoice',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send Email an invoice',
 			},
 		],
 	},

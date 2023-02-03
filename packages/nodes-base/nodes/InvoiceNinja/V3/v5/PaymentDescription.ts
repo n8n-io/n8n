@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const paymentOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,24 @@ export const paymentOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an payment',
+				action: 'Action to an payment',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new payment',
+				action: 'Create a payment',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a payment',
+				action: 'Delete a payment',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a payment',
@@ -26,31 +44,13 @@ export const paymentOperations: INodeProperties[] = [
 				action: 'Get many payments',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new payment',
-				action: 'Create a payment',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing payment',
 				action: 'Update a payment',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a payment',
-				action: 'Delete a payment',
-			},
-			{
-				name: 'Action',
-				value: 'action',
-				description: 'Performs an action to an payment',
-				action: 'Action to an payment',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -76,7 +76,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -135,7 +135,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -171,7 +171,7 @@ export const paymentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -211,8 +211,8 @@ export const paymentFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -223,7 +223,7 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -233,8 +233,8 @@ export const paymentFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -244,8 +244,8 @@ export const paymentFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -292,7 +292,7 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Is Manual',
 				name: 'isManual',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Payment Type',
@@ -470,19 +470,19 @@ export const paymentFields: INodeProperties[] = [
 				],
 				default: 1,
 			},
-            {
+			{
 				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
 				default: '',
 			},
-            {
+			{
 				displayName: 'Exchange Rate',
 				name: 'exchangeRate',
 				type: 'number',
 				default: 1,
 			},
-            {
+			{
 				displayName: 'Exchange Currency ID',
 				name: 'exchangeCurrencyId',
 				type: 'string',
@@ -563,8 +563,8 @@ export const paymentFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -575,7 +575,7 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -585,8 +585,8 @@ export const paymentFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -596,8 +596,8 @@ export const paymentFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -644,7 +644,7 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Is Manual',
 				name: 'isManual',
 				type: 'boolean',
-				default: '',
+				default: false,
 			},
 			{
 				displayName: 'Payment Type',
@@ -822,19 +822,19 @@ export const paymentFields: INodeProperties[] = [
 				],
 				default: 1,
 			},
-            {
+			{
 				displayName: 'Currency ID',
 				name: 'currencyId',
 				type: 'string',
 				default: '',
 			},
-            {
+			{
 				displayName: 'Exchange Rate',
 				name: 'exchangeRate',
 				type: 'number',
 				default: 1,
 			},
-            {
+			{
 				displayName: 'Exchange Currency ID',
 				name: 'exchangeCurrencyId',
 				type: 'string',
@@ -935,14 +935,17 @@ export const paymentFields: INodeProperties[] = [
 			{
 				name: 'Send Email',
 				value: 'email',
+				action: 'Send Email a payment',
 			},
 			{
 				name: 'Archive',
 				value: 'archive',
+				action: 'Archive a payment',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
+				action: 'Restore a payment',
 			},
 		],
 	},

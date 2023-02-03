@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const productOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const productOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new product',
+				action: 'Create a product',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a product',
+				action: 'Delete a product',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a product',
@@ -26,25 +38,13 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get many products',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new product',
-				action: 'Create a product',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing product',
 				action: 'Update a product',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a product',
-				action: 'Delete a product',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -70,7 +70,7 @@ export const productFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -121,7 +121,7 @@ export const productFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -149,7 +149,7 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -189,8 +189,8 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -200,8 +200,8 @@ export const productFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -337,8 +337,8 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		options: [
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -348,8 +348,8 @@ export const productFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:

@@ -9,13 +9,13 @@
  */
 
 export interface TaskStatus {
-  id: string;
-  name: string;
-  color: string;
-  sort_order: number;
-  status_order: number;
-  is_deleted: boolean;
-  archived_at: number;
-  created_at: number;
-  updated_at: number;
+	id: string;
+	name: string;
+	color: string;
+	sort_order: number;
+	status_order: number;
+	is_deleted: boolean;
+	archived_at: number;
+	created_at: number;
+	updated_at: number;
 }

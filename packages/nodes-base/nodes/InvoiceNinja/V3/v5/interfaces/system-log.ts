@@ -9,13 +9,13 @@
  */
 
 export interface SystemLogRecord {
-  id?: string;
-  user_id?: string;
-  company_id?: string;
-  client_id?: string;
-  event_id?: number;
-  category_id?: number;
-  type_id?: number;
-  log: string;
-  created_at: number;
+	id?: string;
+	user_id?: string;
+	company_id?: string;
+	client_id?: string;
+	event_id?: number;
+	category_id?: number;
+	type_id?: number;
+	log: string;
+	created_at: number;
 }

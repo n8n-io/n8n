@@ -9,8 +9,8 @@
  */
 
 export interface Timezone {
-  id: string;
-  location: string;
-  name: string;
-  utc_offset: number;
+	id: string;
+	location: string;
+	name: string;
+	utc_offset: number;
 }

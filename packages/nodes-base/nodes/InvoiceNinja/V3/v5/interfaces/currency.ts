@@ -9,13 +9,13 @@
  */
 
 export interface Currency {
-  id: string;
-  code: string;
-  decimal_separator: string;
-  exchange_rate: number;
-  name: string;
-  precision: number;
-  swap_currency_symbol: boolean;
-  symbol: string;
-  thousand_separator: string;
+	id: string;
+	code: string;
+	decimal_separator: string;
+	exchange_rate: number;
+	name: string;
+	precision: number;
+	swap_currency_symbol: boolean;
+	symbol: string;
+	thousand_separator: string;
 }

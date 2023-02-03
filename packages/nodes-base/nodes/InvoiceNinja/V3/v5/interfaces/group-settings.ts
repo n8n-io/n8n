@@ -9,12 +9,12 @@
  */
 
 export interface GroupSettings {
-  id: string;
-  name: string;
-  settings: Record<string, any>;
-  created_at: number;
-  updated_at: number;
-  archived_at: number;
-  is_deleted: boolean;
-  documents: any[];
+	id: string;
+	name: string;
+	settings: Record<string, any>;
+	created_at: number;
+	updated_at: number;
+	archived_at: number;
+	is_deleted: boolean;
+	documents: any[];
 }

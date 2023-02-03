@@ -9,7 +9,7 @@
  */
 
 export interface Timestamps {
-  created_at: number;
-  archived_at: number;
-  updated_at: number;
+	created_at: number;
+	archived_at: number;
+	updated_at: number;
 }

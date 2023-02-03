@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const clientOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const clientOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new client',
+				action: 'Create a client',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a client',
+				action: 'Delete a client',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
@@ -26,25 +38,13 @@ export const clientOperations: INodeProperties[] = [
 				action: 'Get many clients',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new client',
-				action: 'Create a client',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing client',
 				action: 'Update a client',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a client',
-				action: 'Delete a client',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -70,7 +70,7 @@ export const clientFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -131,6 +131,7 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Client Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 		],
@@ -139,7 +140,7 @@ export const clientFields: INodeProperties[] = [
 		displayName: 'Include',
 		name: 'include',
 		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource.',
+		description: 'Additional resources to fetch related to this resource',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -167,7 +168,7 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -225,8 +226,8 @@ export const clientFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -236,8 +237,8 @@ export const clientFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -371,7 +372,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -429,42 +430,36 @@ export const clientFields: INodeProperties[] = [
 						displayName: 'Phone',
 						name: 'phone',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 1',
 						name: 'customValue1',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 2',
 						name: 'customValue2',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 3',
 						name: 'customValue3',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Custom Value 4',
 						name: 'customValue4',
 						type: 'string',
-						required: false,
 						default: '',
 					},
 					{
 						displayName: 'Send E-Mails',
 						name: 'sendEmail',
 						type: 'boolean',
-						required: false,
 						default: true,
 					},
 				],
@@ -523,7 +518,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -586,8 +581,8 @@ export const clientFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -597,8 +592,8 @@ export const clientFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -732,7 +727,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -878,7 +873,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:

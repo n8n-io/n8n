@@ -9,13 +9,13 @@
  */
 
 export interface ApiToken {
-  id: string;
-  name: string;
-  token: string;
-  user_id: string;
-  is_system: boolean;
-  archived_at: number;
-  created_at: number;
-  is_deleted: boolean;
-  updated_at: number;
+	id: string;
+	name: string;
+	token: string;
+	user_id: string;
+	is_system: boolean;
+	archived_at: number;
+	created_at: number;
+	is_deleted: boolean;
+	updated_at: number;
 }

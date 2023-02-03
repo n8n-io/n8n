@@ -8,7 +8,7 @@
  * @license https://www.elastic.co/licensing/elastic-license
  */
 // import { ChangeEvent } from 'react';
-import { Vendor } from './vendor';
+import type { Vendor } from './vendor';
 
 /**
  * Invoice Ninja (https://invoiceninja.com).
@@ -20,8 +20,8 @@ import { Vendor } from './vendor';
  * @license https://www.elastic.co/licensing/elastic-license
  */
 export interface VendorProps {
-  data: Vendor;
-  // handleChange: (e: ChangeEvent) => void;
-  // setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void;
-  errors?: any;
+	data: Vendor;
+	// handleChange: (e: ChangeEvent) => void;
+	// setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void;
+	errors?: any;
 }

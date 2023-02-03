@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const projectOperations: INodeProperties[] = [
 	{
@@ -14,6 +14,18 @@ export const projectOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new project',
+				action: 'Create a project',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a project',
+				action: 'Delete a project',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a project',
@@ -26,25 +38,13 @@ export const projectOperations: INodeProperties[] = [
 				action: 'Get many projects',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new project',
-				action: 'Create a project',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an existing project',
 				action: 'Update a project',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a project',
-				action: 'Delete a project',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -159,7 +159,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given perPage',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -211,8 +211,8 @@ export const projectFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -222,8 +222,8 @@ export const projectFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -233,8 +233,8 @@ export const projectFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -337,7 +337,6 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			
 			{
 				displayName: 'Project Name',
 				name: 'name',
@@ -350,8 +349,8 @@ export const projectFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-            {
-				displayName: 'Client',
+			{
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -361,8 +360,8 @@ export const projectFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Origin)',
+			{
+				displayName: 'User (Origin) Name or ID',
 				name: 'userId',
 				type: 'options',
 				description:
@@ -372,8 +371,8 @@ export const projectFields: INodeProperties[] = [
 				},
 				default: '',
 			},
-            {
-				displayName: 'User (Assigned)',
+			{
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:

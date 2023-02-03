@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
@@ -45,81 +45,84 @@ import * as SubscriptionExecution from './SubscriptionExecution';
 import * as TaskExecution from './TaskExecution';
 import * as VendorExecution from './VendorExecution';
 
-const headProperties: INodeProperties[] = [{
-	displayName: 'Resource (V5)',
-	name: 'resource',
-	type: 'options',
-	noDataExpression: true,
-	displayOptions: {
-		show: {
-			apiVersion: ['v5'],
+const headProperties: INodeProperties[] = [
+	{
+		displayName: 'Resource (V5)',
+		name: 'resource',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+			},
 		},
+		description:
+			'You are using InvoiceNinja V5: Check Swagger documentation for additional fields: <a href="https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/" target="_blank">https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/</a>Change your Version at the Node-Settings',
+		options: [
+			{
+				name: 'Bank Transaction',
+				value: 'bankTransaction',
+			},
+			{
+				name: 'Client',
+				value: 'client',
+			},
+			{
+				name: 'Credit',
+				value: 'credit',
+			},
+			{
+				name: 'Expense',
+				value: 'expense',
+			},
+			{
+				name: 'Invoice',
+				value: 'invoice',
+			},
+			{
+				name: 'Payment',
+				value: 'payment',
+			},
+			{
+				name: 'Product',
+				value: 'product',
+			},
+			{
+				name: 'Project',
+				value: 'project',
+			},
+			{
+				name: 'Purchase Order',
+				value: 'purchaseOrder',
+			},
+			{
+				name: 'Quote',
+				value: 'quote',
+			},
+			{
+				name: 'Recurring Expense',
+				value: 'recurringExpense',
+			},
+			{
+				name: 'Recurring Invoice',
+				value: 'recurringInvoice',
+			},
+			{
+				name: 'Subscription',
+				value: 'subscription',
+			},
+			{
+				name: 'Task',
+				value: 'task',
+			},
+			{
+				name: 'Vendor',
+				value: 'vendor',
+			},
+		],
+		default: 'client',
 	},
-	description: 'You are using InvoiceNinja V5: <br />Check Swagger documentation for additional fields: <a href="https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/" target="_blank">https://app.swaggerhub.com/apis/invoiceninja/invoiceninja/</a><br /><br />Change your Version at the Node-Settings.',
-	options: [
-		{
-			name: 'Client',
-			value: 'client',
-		},
-		{
-			name: 'Vendor',
-			value: 'vendor',
-		},
-		{
-			name: 'Invoice',
-			value: 'invoice',
-		},
-		{
-			name: 'Recurring Invoice',
-			value: 'recurringInvoice',
-		},
-		{
-			name: 'Quote',
-			value: 'quote',
-		},
-		{
-			name: 'Payment',
-			value: 'payment',
-		},
-		{
-			name: 'Expense',
-			value: 'expense',
-		},
-		{
-			name: 'Recurring Expense',
-			value: 'recurringExpense',
-		},
-		{
-			name: 'Project',
-			value: 'project',
-		},
-		{
-			name: 'Task',
-			value: 'task',
-		},
-		{
-			name: 'Product',
-			value: 'product',
-		},
-		{
-			name: 'Subscription',
-			value: 'subscription',
-		},
-		{
-			name: 'Purchase Order',
-			value: 'purchaseOrder',
-		},
-		{
-			name: 'Bank Transaction',
-			value: 'bankTransaction',
-		},
-		{
-			name: 'Credit',
-			value: 'credit',
-		},
-	],
-	default: 'client',
-}];
+];
 
 export const InvoiceNinjaV5 = {
 	description: {
@@ -170,13 +173,16 @@ export const InvoiceNinjaV5 = {
 					'GET',
 					'/bank_integrations',
 				);
-				banks = banks.filter(e => !e.is_deleted);
+				banks = banks.filter((e) => !e.is_deleted);
 				for (const bank of banks) {
 					const providerName = bank.provider_name as string;
 					const accountName = bank.bank_account_name as string;
 					const bankId = bank.id as string;
 					returnData.push({
-						name: providerName != accountName ? `${providerName} - ${accountName}` : (accountName || providerName),
+						name:
+							providerName != accountName
+								? `${providerName} - ${accountName}`
+								: accountName || providerName,
 						value: bankId,
 					});
 				}
@@ -215,13 +221,8 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getDesignsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let designs = await invoiceNinjaApiRequestAllItems.call(
-					this,
-					'data',
-					'GET',
-					'/designs',
-				);
-				designs = designs.filter(e => !e.is_deleted);
+				let designs = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/designs');
+				designs = designs.filter((e) => !e.is_deleted);
 				for (const design of designs) {
 					const designName = design.name as string;
 					const designId = design.id as string;
@@ -242,7 +243,7 @@ export const InvoiceNinjaV5 = {
 					'GET',
 					'/expense_categories',
 				);
-				categories = categories.filter(e => !e.is_deleted);
+				categories = categories.filter((e) => !e.is_deleted);
 				for (const category of categories) {
 					const categoryName = category.name as string;
 					const categoryId = category.id as string;
@@ -308,7 +309,8 @@ export const InvoiceNinjaV5 = {
 					const recurringExpenseAmount = recurringExpense.amount as string;
 					const recurringExpenseId = recurringExpense.id as string;
 					returnData.push({
-						name: recurringExpenseName + recurringExpenseAmount ? ` (${recurringExpenseAmount})` : '',
+						name:
+							recurringExpenseName + recurringExpenseAmount ? ` (${recurringExpenseAmount})` : '',
 						value: recurringExpenseId,
 					});
 				}
@@ -320,7 +322,9 @@ export const InvoiceNinjaV5 = {
 				const returnData: INodePropertyOptions[] = [];
 				const users = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/users');
 				for (const user of users) {
-					const userName = [[user.first_name, user.last_name].join(' '), user.email].filter(e => e).join(' - ') as string;
+					const userName = [[user.first_name, user.last_name].join(' '), user.email]
+						.filter((e) => e)
+						.join(' - ');
 					const userId = user.id as string;
 					returnData.push({
 						name: userName,
@@ -365,5 +369,5 @@ export const InvoiceNinjaV5 = {
 		else if (resource === 'task') return TaskExecution.execute(that);
 		else if (resource === 'vendor') return VendorExecution.execute(that);
 		throw new Error('No Execution Handler');
-	}
-}
+	},
+};
