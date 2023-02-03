@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { getSandboxContext, Sandbox } from './Sandbox';
+import { getSandboxContext, Sandbox } from './SandboxJavaScript';
 import { getSandboxContextPython, SandboxPython } from './SandboxPython';
 import { standardizeOutput } from './utils';
 import type { CodeNodeMode } from './utils';
