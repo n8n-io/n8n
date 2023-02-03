@@ -45,6 +45,7 @@ import clientOAuth1 from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
+import { v4 as uuid } from 'uuid';
 
 import {
 	BinaryDataManager,
@@ -381,7 +382,7 @@ class Server extends AbstractServer {
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = uuid();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
