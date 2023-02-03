@@ -1430,7 +1430,7 @@ class Server extends AbstractServer {
 		if (!config.getEnv('endpoints.disableUi')) {
 			this.app.use(
 				'/',
-				express.static(GENERATED_STATIC_DIR, staticOptions),
+				express.static(GENERATED_STATIC_DIR),
 				express.static(EDITOR_UI_DIST_DIR, staticOptions),
 			);
 
@@ -1440,7 +1440,7 @@ class Server extends AbstractServer {
 				next();
 			});
 		} else {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR, staticOptions));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
 }
