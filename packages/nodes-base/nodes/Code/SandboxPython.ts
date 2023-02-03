@@ -2,7 +2,7 @@ import { normalizeItems } from 'n8n-core';
 import { ValidationError } from './ValidationError';
 import type { CodeNodeMode } from './utils';
 import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
-import { loadPyodide } from 'pyodide';
+import { LoadPyodide } from './Pyodide';
 
 import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
@@ -30,9 +30,6 @@ export class SandboxPython {
 		// Below workaround from here:
 		// https://github.com/pyodide/pyodide/discussions/3537#discussioncomment-4864345
 		const runCode = `
-# Make sure data can be accessed easily, also keys that contain spaces
-from js_context import printOverwrite, _, _getNodeParameter, _getWorkflowStaticData, helpers, _execution, _input, _item, _itemIndex, _jmesPath,_mode, _now, _parameter, _prevNode, _runIndex, _self, _today, _workflow, DateTime, Duration, Interval
-
 from _pyodide_core import jsproxy_typedict
 from js import Object
 jsproxy_typedict[0] = type(Object.new().as_object_map())
@@ -47,9 +44,11 @@ ${this.code
 	.join('\n')}
 main()
 `;
-		const pyodide = await loadPyodide();
-
-		pyodide.registerJsModule('js_context', context);
+		// const pyodide = await loadPyodide();
+		const pyodide = await LoadPyodide();
+		for (const key of Object.keys(context)) {
+			pyodide.globals.set(key, context[key]);
+		}
 
 		let executionResult;
 		try {
