@@ -44,7 +44,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 			// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 			let id = user ? `${instanceId}#${user.id}` : instanceId;
-			const cachedId = localStorage.getItem('posthog-test-id');
+
+			const urlSearchParams = new URLSearchParams(window.location.search);
+			const params = Object.fromEntries(urlSearchParams.entries());
+
+			const cachedId = params['posthog-id'];
 			if (cachedId) {
 				id = cachedId;
 			}
