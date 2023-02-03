@@ -45,7 +45,6 @@ import clientOAuth1 from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
-import { v4 as uuid } from 'uuid';
 
 import {
 	BinaryDataManager,
@@ -1360,9 +1359,7 @@ class Server extends AbstractServer {
 						req.headers.sessionid as string,
 					);
 
-					const settings = await this.getSettingsForFrontend();
-					settings.instanceId = uuid();
-					return settings;
+					return this.getSettingsForFrontend();
 				},
 			),
 		);
