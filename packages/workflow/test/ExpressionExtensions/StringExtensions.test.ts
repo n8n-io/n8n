@@ -8,47 +8,25 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
-		test('.isBlank() should work correctly on a string that is not empty', () => {
-			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(false);
+		test('.isEmpty() should work correctly on a string that is not empty', () => {
+			expect(evaluate('={{"NotBlank".isEmpty()}}')).toEqual(false);
 		});
 
-		test('.isBlank() should work correctly on a string that is empty', () => {
-			expect(evaluate('={{"".isBlank()}}')).toEqual(true);
+		test('.isEmpty() should work correctly on a string that is empty', () => {
+			expect(evaluate('={{"".isEmpty()}}')).toEqual(true);
 		});
 
-		test('.getOnlyFirstCharacters() should work correctly on a string', () => {
-			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(5)}}')).toEqual('myNew');
-
-			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(10)}}')).toEqual('myNewField');
-
-			expect(
-				evaluate('={{"myNewField".getOnlyFirstCharacters(5).length >= "myNewField".length}}'),
-			).toEqual(false);
-
-			expect(evaluate('={{DateTime.now().toLocaleString().getOnlyFirstCharacters(2)}}')).toEqual(
-				stringExtensions.functions.getOnlyFirstCharacters(
-					// @ts-ignore
-					dateExtensions.functions.toLocaleString(new Date(), []),
-					[2],
-				),
-			);
-		});
-
-		test('.sayHi() should work correctly on a string', () => {
-			expect(evaluate('={{ "abc".sayHi() }}')).toEqual('hi abc');
-		});
-
-		test('.encrypt() should work correctly on a string', () => {
-			expect(evaluate('={{ "12345".encrypt("sha256") }}')).toEqual(
-				stringExtensions.functions.encrypt('12345', ['sha256']),
+		test('.hash() should work correctly on a string', () => {
+			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
+				stringExtensions.functions.hash('12345', ['sha256']),
 			);
 
-			expect(evaluate('={{ "12345".encrypt("sha256") }}')).not.toEqual(
-				stringExtensions.functions.encrypt('12345', ['MD5']),
+			expect(evaluate('={{ "12345".hash("sha256") }}')).not.toEqual(
+				stringExtensions.functions.hash('12345', ['MD5']),
 			);
 
-			expect(evaluate('={{ "12345".encrypt("MD5") }}')).toEqual(
-				stringExtensions.functions.encrypt('12345', ['MD5']),
+			expect(evaluate('={{ "12345".hash("MD5") }}')).toEqual(
+				stringExtensions.functions.hash('12345', ['MD5']),
 			);
 
 			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
@@ -74,8 +52,8 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.stripTags should work correctly on a string', () => {
-			expect(evaluate('={{ "<html><head>test</head></html>".stripTags() }}')).toEqual('test');
+		test('.removeTags should work correctly on a string', () => {
+			expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
 		});
 
 		test('.removeMarkdown should work correctly on a string', () => {
@@ -90,48 +68,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "2022-09-01T19:42:28.164Z".toDate() }}')).toEqual(
 				new Date('2022-09-01T19:42:28.164Z'),
 			);
-		});
-
-		test('.toBoolean should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".toBoolean() }}`)).toEqual(true);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".toBoolean() }}`)).toEqual(false);
-			}
-
-			expect(evaluate('={{ "maybe".toBoolean() }}')).toEqual(false);
-		});
-
-		test('.isTrue should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".isTrue() }}`)).toEqual(true);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".isTrue() }}`)).toEqual(false);
-			}
-
-			expect(evaluate('={{ "maybe".isTrue() }}')).toEqual(false);
-		});
-
-		test('.isFalse should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".isFalse() }}`)).toEqual(false);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".isFalse() }}`)).toEqual(true);
-			}
-
-			expect(evaluate('={{ "maybe".isFalse() }}')).toEqual(false);
 		});
 
 		test('.toFloat should work correctly on a string', () => {
@@ -183,16 +119,6 @@ describe('Data Transformation Functions', () => {
 			).toEqual('I am a test! I have multiple types of punctuation. Or do i?');
 			expect(evaluate('={{ "i am a test!".toSentenceCase() }}')).toEqual('I am a test!');
 			expect(evaluate('={{ "i am a test".toSentenceCase() }}')).toEqual('I am a test');
-		});
-
-		test('.toTitleCase should work on a string', () => {
-			expect(
-				evaluate(
-					'={{ "i am a test! i have multiple types of Punctuation. or do i?".toTitleCase() }}',
-				),
-			).toEqual('I Am A Test! I Have Multiple Types Of Punctuation. Or Do I?');
-			expect(evaluate('={{ "i am a test!".toTitleCase() }}')).toEqual('I Am A Test!');
-			expect(evaluate('={{ "i am a test".toTitleCase() }}')).toEqual('I Am A Test');
 		});
 
 		test('.extractUrl should work on a string', () => {

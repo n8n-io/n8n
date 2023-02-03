@@ -85,6 +85,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				typeOptions: {
 					rows: 5,
+					editor: 'htmlEditor',
 				},
 				default: '',
 				description: 'HTML text message of email',

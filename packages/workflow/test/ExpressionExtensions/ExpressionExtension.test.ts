@@ -8,19 +8,19 @@ import { evaluate } from './Helpers';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
-		test('Basic transform with .isBlank', () => {
-			expect(extendTransform('"".isBlank()')!.code).toEqual('extend("", "isBlank", [])');
+		test('Basic transform with .isEmpty', () => {
+			expect(extendTransform('"".isEmpty()')!.code).toEqual('extend("", "isEmpty", [])');
 		});
 
-		test('Chained transform with .sayHi.getOnlyFirstCharacters', () => {
-			expect(extendTransform('"".sayHi().getOnlyFirstCharacters(2)')!.code).toEqual(
-				'extend(extend("", "sayHi", []), "getOnlyFirstCharacters", [2])',
+		test('Chained transform with .toSnakeCase.toSentenceCase', () => {
+			expect(extendTransform('"".toSnakeCase().toSentenceCase(2)')!.code).toEqual(
+				'extend(extend("", "toSnakeCase", []), "toSentenceCase", [2])',
 			);
 		});
 
-		test('Chained transform with native functions .sayHi.trim.getOnlyFirstCharacters', () => {
-			expect(extendTransform('"aaa ".sayHi().trim().getOnlyFirstCharacters(2)')!.code).toEqual(
-				'extend(extend("aaa ", "sayHi", []).trim(), "getOnlyFirstCharacters", [2])',
+		test('Chained transform with native functions .toSnakeCase.trim.toSentenceCase', () => {
+			expect(extendTransform('"aaa ".toSnakeCase().trim().toSentenceCase(2)')!.code).toEqual(
+				'extend(extend("aaa ", "toSnakeCase", []).trim(), "toSentenceCase", [2])',
 			);
 		});
 	});
@@ -36,19 +36,21 @@ describe('tmpl Expression Parser', () => {
 		});
 
 		test('Multiple expression', () => {
-			expect(splitExpression('{{ "test".sayHi() }} you have ${{ (100).format() }}.')).toEqual([
-				{ type: 'text', text: '' },
-				{ type: 'code', text: ' "test".sayHi() ', hasClosingBrackets: true },
-				{ type: 'text', text: ' you have $' },
-				{ type: 'code', text: ' (100).format() ', hasClosingBrackets: true },
-				{ type: 'text', text: '.' },
-			]);
+			expect(splitExpression('{{ "test".toSnakeCase() }} you have ${{ (100).format() }}.')).toEqual(
+				[
+					{ type: 'text', text: '' },
+					{ type: 'code', text: ' "test".toSnakeCase() ', hasClosingBrackets: true },
+					{ type: 'text', text: ' you have $' },
+					{ type: 'code', text: ' (100).format() ', hasClosingBrackets: true },
+					{ type: 'text', text: '.' },
+				],
+			);
 		});
 
 		test('Unclosed expression', () => {
-			expect(splitExpression('{{ "test".sayHi() }} you have ${{ (100).format()')).toEqual([
+			expect(splitExpression('{{ "test".toSnakeCase() }} you have ${{ (100).format()')).toEqual([
 				{ type: 'text', text: '' },
-				{ type: 'code', text: ' "test".sayHi() ', hasClosingBrackets: true },
+				{ type: 'code', text: ' "test".toSnakeCase() ', hasClosingBrackets: true },
 				{ type: 'text', text: ' you have $' },
 				{ type: 'code', text: ' (100).format()', hasClosingBrackets: false },
 			]);
@@ -75,14 +77,16 @@ describe('tmpl Expression Parser', () => {
 
 		test('Multiple expression', () => {
 			expect(
-				joinExpression(splitExpression('{{ "test".sayHi() }} you have ${{ (100).format() }}.')),
-			).toEqual('{{ "test".sayHi() }} you have ${{ (100).format() }}.');
+				joinExpression(
+					splitExpression('{{ "test".toSnakeCase() }} you have ${{ (100).format() }}.'),
+				),
+			).toEqual('{{ "test".toSnakeCase() }} you have ${{ (100).format() }}.');
 		});
 
 		test('Unclosed expression', () => {
 			expect(
-				joinExpression(splitExpression('{{ "test".sayHi() }} you have ${{ (100).format()')),
-			).toEqual('{{ "test".sayHi() }} you have ${{ (100).format()');
+				joinExpression(splitExpression('{{ "test".toSnakeCase() }} you have ${{ (100).format()')),
+			).toEqual('{{ "test".toSnakeCase() }} you have ${{ (100).format()');
 		});
 
 		test('Escaped opening bracket', () => {
