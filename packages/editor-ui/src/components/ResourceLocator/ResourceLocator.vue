@@ -81,6 +81,7 @@
 								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
+									:path="path"
 									isForRecordLocator
 									@valueChanged="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"

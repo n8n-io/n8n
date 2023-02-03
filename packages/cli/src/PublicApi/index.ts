@@ -49,6 +49,10 @@ async function createApiRouter(
 		);
 	}
 
+	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (req, res) => {
+		res.sendFile(openApiSpecPath);
+	});
+
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),

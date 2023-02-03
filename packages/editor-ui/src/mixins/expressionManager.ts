@@ -1,4 +1,5 @@
 import mixins from 'vue-typed-mixins';
+import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 
@@ -19,8 +20,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 	},
 	data() {
 		return {
-			editor: null as EditorView | null,
-			errorsInSuccession: 0,
+			editor: {} as EditorView,
 		};
 	},
 	watch: {
@@ -56,13 +56,19 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
 		},
 
+		expressionExtensionNames(): Set<string> {
+			return new Set(
+				ExpressionExtensions.reduce<string[]>((acc, cur) => {
+					return [...acc, ...Object.keys(cur.functions)];
+				}, []),
+			);
+		},
+
 		htmlSegments(): Html[] {
 			return this.segments.filter((s): s is Html => s.kind !== 'resolvable');
 		},
 
 		segments(): Segment[] {
-			if (!this.editor) return [];
-
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(
@@ -76,76 +82,49 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			}
 
 			fullTree.cursor().iterate((node) => {
-				if (!this.editor || node.type.name === 'Program') return;
+				if (node.type.name === 'Program') return;
 
 				rawSegments.push({
 					from: node.from,
 					to: node.to,
 					text: this.editor.state.sliceDoc(node.from, node.to),
-					type: node.type.name,
+					token: node.type.name,
 				});
 			});
 
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
-				const { from, to, text, type } = segment;
+				const { from, to, text, token } = segment;
 
-				if (type === 'Resolvable') {
-					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+				if (token === 'Plaintext') {
+					acc.push({ kind: 'plaintext', from, to, plaintext: text });
 
 					return acc;
 				}
 
-				acc.push({ kind: 'plaintext', from, to, plaintext: text });
+				const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
+
+				acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
 
 				return acc;
 			}, []);
 		},
 
-		evaluationDelay() {
-			const DEFAULT_EVALUATION_DELAY = 300; // ms
-
-			const prevErrorsInSuccession = this.errorsInSuccession;
-
-			if (this.resolvableSegments.filter((s) => s.error).length > 0) {
-				this.errorsInSuccession += 1;
-			} else {
-				this.errorsInSuccession = 0;
-			}
-
-			const addsNewError = this.errorsInSuccession > prevErrorsInSuccession;
-
-			let delay = DEFAULT_EVALUATION_DELAY;
-
-			if (addsNewError && this.errorsInSuccession > 1 && this.errorsInSuccession < 5) {
-				delay = DEFAULT_EVALUATION_DELAY * this.errorsInSuccession;
-			} else if (addsNewError && this.errorsInSuccession >= 5) {
-				delay = 0;
-			}
-
-			return delay;
-		},
-
 		/**
-		 * Some segments are conditionally displayed, i.e. not displayed when they are
-		 * _part_ of the result, but displayed when they are the _entire_ result.
+		 * Segments to display in the output of an expression editor.
 		 *
-		 * Example:
-		 * - Expression `This is a {{ [] }} test` is displayed as `This is a test`.
-		 * - Expression `{{ [] }}` is displayed as `[Array: []]`.
+		 * Some segments are not displayed when they are _part_ of the result,
+		 * but displayed when they are the _entire_ result:
 		 *
-		 * Conditionally displayed segments:
-		 * - `[Array: []]`
-		 * - `[empty]` (from `''`, not from `undefined`)
+		 * - `This is a {{ [] }} test` displays as `This is a test`.
+		 * - `{{ [] }}` displays as `[Array: []]`.
 		 *
-		 * Exceptionally, for two segments, display differs based on context:
-		 * - Date is displayed as
-		 *   - `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
-		 *   - `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result
-		 * - Non-empty array is displayed as
-		 *   - `1,2,3` when part of the result
-		 *   - `[Array: [1, 2, 3]]` when the entire result
+		 * Some segments display differently based on context:
+		 *
+		 * Date displays as
+		 * - `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
+		 * - `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result
+		 *
+		 * Only needed in order to mimic behavior of `ParameterInputHint`.
 		 */
 		displayableSegments(): Segment[] {
 			return this.segments
@@ -191,12 +170,17 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			};
 
 			try {
-				result.resolved = this.resolveExpression('=' + resolvable, undefined, {
-					targetItem: targetItem ?? undefined,
-					inputNodeName: this.ndvStore.ndvInputNodeName,
-					inputRunIndex: this.ndvStore.ndvInputRunIndex,
-					inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-				});
+				if (!useNDVStore().activeNode) {
+					// e.g. credential modal
+					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
+				} else {
+					result.resolved = this.resolveExpression('=' + resolvable, undefined, {
+						targetItem: targetItem ?? undefined,
+						inputNodeName: this.ndvStore.ndvInputNodeName,
+						inputRunIndex: this.ndvStore.ndvInputRunIndex,
+						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+					});
+				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
 				result.error = true;
@@ -212,7 +196,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			}
 
 			if (result.resolved === undefined) {
-				result.resolved = this.$locale.baseText('expressionModalInput.undefined');
+				result.resolved = this.isUncalledExpressionExtension(resolvable)
+					? this.$locale.baseText('expressionEditor.uncalledFunction')
+					: this.$locale.baseText('expressionModalInput.undefined');
+
 				result.error = true;
 			}
 
@@ -221,6 +208,16 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			}
 
 			return result;
+		},
+
+		isUncalledExpressionExtension(resolvable: string) {
+			const end = resolvable
+				.replace(/^{{|}}$/g, '')
+				.trim()
+				.split('.')
+				.pop();
+
+			return end !== undefined && this.expressionExtensionNames.has(end);
 		},
 	},
 });

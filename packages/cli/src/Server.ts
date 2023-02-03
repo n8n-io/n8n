@@ -35,6 +35,7 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions } from 'typeorm';
 import { In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
@@ -409,23 +410,17 @@ class Server extends AbstractServer {
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.getEnv('security.basicAuth.active');
 		if (basicAuthActive) {
-			const basicAuthUser = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.user',
-			)) as string;
+			const basicAuthUser = config.getEnv('security.basicAuth.user');
 			if (basicAuthUser === '') {
 				throw new Error('Basic auth is activated but no user got defined. Please set one!');
 			}
 
-			const basicAuthPassword = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.password',
-			)) as string;
+			const basicAuthPassword = config.getEnv('security.basicAuth.password');
 			if (basicAuthPassword === '') {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
-			const basicAuthHashEnabled = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.hash',
-			)) as boolean;
+			const basicAuthHashEnabled = config.getEnv('security.basicAuth.hash') as boolean;
 
 			let validPassword: null | string = null;
 
@@ -483,31 +478,19 @@ class Server extends AbstractServer {
 		// Check for and validate JWT if configured
 		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
 		if (jwtAuthActive) {
-			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtHeader',
-			)) as string;
+			const jwtAuthHeader = config.getEnv('security.jwtAuth.jwtHeader');
 			if (jwtAuthHeader === '') {
 				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
 			}
-			const jwksUri = (await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri')) as string;
+			const jwksUri = config.getEnv('security.jwtAuth.jwksUri');
 			if (jwksUri === '') {
 				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
 			}
-			const jwtHeaderValuePrefix = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtHeaderValuePrefix',
-			)) as string;
-			const jwtIssuer = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtIssuer',
-			)) as string;
-			const jwtNamespace = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtNamespace',
-			)) as string;
-			const jwtAllowedTenantKey = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtAllowedTenantKey',
-			)) as string;
-			const jwtAllowedTenant = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtAllowedTenant',
-			)) as string;
+			const jwtHeaderValuePrefix = config.getEnv('security.jwtAuth.jwtHeaderValuePrefix');
+			const jwtIssuer = config.getEnv('security.jwtAuth.jwtIssuer');
+			const jwtNamespace = config.getEnv('security.jwtAuth.jwtNamespace');
+			const jwtAllowedTenantKey = config.getEnv('security.jwtAuth.jwtAllowedTenantKey');
+			const jwtAllowedTenant = config.getEnv('security.jwtAuth.jwtAllowedTenant');
 
 			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
@@ -1434,8 +1417,22 @@ class Server extends AbstractServer {
 			);
 		}
 
+		const staticOptions: ServeStaticOptions = {
+			cacheControl: false,
+			setHeaders: (res: express.Response, path: string) => {
+				const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+				const cacheControl = isIndex
+					? 'no-cache, no-store, must-revalidate'
+					: 'max-age=86400, immutable';
+				res.header('Cache-Control', cacheControl);
+			},
+		};
 		if (!config.getEnv('endpoints.disableUi')) {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(EDITOR_UI_DIST_DIR));
+			this.app.use(
+				'/',
+				express.static(GENERATED_STATIC_DIR),
+				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+			);
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
@@ -1456,7 +1453,7 @@ export async function start(): Promise<void> {
 	const binaryDataConfig = config.getEnv('binaryDataManager');
 	const diagnosticInfo: IDiagnosticInfo = {
 		basicAuthActive: config.getEnv('security.basicAuth.active'),
-		databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
+		databaseType: config.getEnv('database.type'),
 		disableProductionWebhooksOnMainProcess: config.getEnv(
 			'endpoints.disableProductionWebhooksOnMainProcess',
 		),
