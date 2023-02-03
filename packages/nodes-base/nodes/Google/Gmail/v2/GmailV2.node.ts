@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,14 +9,14 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IEmail } from '../GenericFunctions';
 import {
 	encodeEmail,
 	googleApiRequest,
 	googleApiRequestAllItems,
-	IEmail,
 	parseRawEmail,
 	prepareEmailAttachments,
 	prepareEmailBody,
@@ -678,7 +678,7 @@ export class GmailV2 implements INodeType {
 						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
 						const options = this.getNodeParameter('options', i);
-						const onlyMessages = options.returnOnlyMessages ?? false;
+						const onlyMessages = options.returnOnlyMessages || false;
 						const qs: IDataObject = {};
 
 						const simple = this.getNodeParameter('simple', i) as boolean;

@@ -1,19 +1,21 @@
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
 import { get } from 'lodash';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
@@ -57,8 +59,8 @@ export async function s3ApiRequest(
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
-		headers: headers ?? {},
-		region: region ?? credentials.region,
+		headers: headers || {},
+		region: region || credentials.region,
 		host: endpoint.host,
 		method,
 		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,

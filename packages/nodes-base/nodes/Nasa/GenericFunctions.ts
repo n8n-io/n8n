@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function nasaApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -19,7 +20,7 @@ export async function nasaApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs,
-		uri: uri ?? `https://api.nasa.gov${endpoint}`,
+		uri: uri || `https://api.nasa.gov${endpoint}`,
 		json: true,
 	};
 

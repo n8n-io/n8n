@@ -1,12 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	ISheetUpdateData,
 	SheetProperties,
 	ValueInputOption,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
@@ -171,7 +172,7 @@ export async function execute(
 
 	const options = this.getNodeParameter('options', 0, {});
 
-	const valueRenderMode = (options.valueRenderMode ?? 'UNFORMATTED_VALUE') as ValueRenderOption;
+	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 

@@ -178,7 +178,6 @@ import mixins from 'vue-typed-mixins';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
 import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
-import { restApi } from '../../mixins/restApi';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
@@ -200,7 +199,7 @@ import Modal from '@/components/Modal.vue';
 import { showMessage } from '@/mixins/showMessage';
 import { useUIStore } from '../../stores/ui';
 import { useUsersStore } from '../../stores/users';
-import { destinationToFakeINodeUi, saveDestinationToDb, sendTestMessage } from './Helpers.ee';
+import { destinationToFakeINodeUi } from './Helpers.ee';
 import {
 	webhookModalDescription,
 	sentryModalDescription,
@@ -212,7 +211,7 @@ import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { Checkbox } from 'element-ui';
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	name: 'event-destination-settings-modal',
 	props: {
 		modalName: String,
@@ -427,12 +426,14 @@ export default mixins(showMessage, restApi).extend({
 			this.nodeParameters = deepCopy(nodeParameters);
 			this.workflowsStore.updateNodeProperties({
 				name: this.node.name,
-				properties: { parameters: this.nodeParameters as unknown as IDataObject },
+				properties: { parameters: this.nodeParameters as unknown as IDataObject, position: [0, 0] },
 			});
-			this.logStreamingStore.updateDestination(this.nodeParameters);
+			if (this.hasOnceBeenSaved) {
+				this.logStreamingStore.updateDestination(this.nodeParameters);
+			}
 		},
 		async sendTestEvent() {
-			this.testMessageResult = await sendTestMessage(this.restApi(), this.nodeParameters);
+			this.testMessageResult = await this.logStreamingStore.sendTestMessage(this.nodeParameters);
 			this.testMessageSent = true;
 		},
 		async removeThis() {
@@ -467,12 +468,14 @@ export default mixins(showMessage, restApi).extend({
 			if (this.unchanged || !this.destination.id) {
 				return;
 			}
-			await saveDestinationToDb(this.restApi(), this.nodeParameters);
-			this.hasOnceBeenSaved = true;
-			this.testMessageSent = false;
-			this.unchanged = true;
-			this.$props.eventBus.$emit('destinationWasSaved', this.destination.id);
-			this.uiStore.stateIsDirty = false;
+			const saveResult = await this.logStreamingStore.saveDestination(this.nodeParameters);
+			if (saveResult === true) {
+				this.hasOnceBeenSaved = true;
+				this.testMessageSent = false;
+				this.unchanged = true;
+				this.$props.eventBus.$emit('destinationWasSaved', this.destination.id);
+				this.uiStore.stateIsDirty = false;
+			}
 		},
 	},
 });

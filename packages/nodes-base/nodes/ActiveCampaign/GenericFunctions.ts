@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodeProperties } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface IProduct {
 	fields: {

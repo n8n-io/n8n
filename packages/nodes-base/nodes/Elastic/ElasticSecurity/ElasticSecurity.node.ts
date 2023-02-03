@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,8 +10,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	elasticSecurityApiRequest,
@@ -33,14 +33,14 @@ import {
 	connectorOperations,
 } from './descriptions';
 
-import {
+import type {
 	Connector,
 	ConnectorCreatePayload,
 	ConnectorType,
 	ElasticSecurityApiCredentials,
 } from './types';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -447,7 +447,7 @@ export class ElasticSecurity implements INodeType {
 						const body = {
 							comment: this.getNodeParameter('comment', i),
 							type: 'user',
-							owner: additionalFields.owner ?? 'securitySolution',
+							owner: additionalFields.owner || 'securitySolution',
 						} as IDataObject;
 
 						const caseId = this.getNodeParameter('caseId', i);

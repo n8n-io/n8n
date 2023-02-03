@@ -13,13 +13,12 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
-import express from 'express';
+import type express from 'express';
 import get from 'lodash.get';
 
 import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
-import {
-	createDeferredPromise,
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -32,14 +31,17 @@ import {
 	IWebhookResponseData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
-	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
 import {
+	createDeferredPromise,
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy as Logger,
+	NodeHelpers,
+} from 'n8n-workflow';
+
+import type {
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
@@ -51,8 +53,8 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as ActiveExecutions from '@/ActiveExecutions';
-import { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];

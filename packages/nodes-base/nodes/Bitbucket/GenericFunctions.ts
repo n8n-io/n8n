@@ -1,11 +1,12 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function bitbucketApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -26,7 +27,7 @@ export async function bitbucketApiRequest(
 		},
 		qs,
 		body,
-		uri: uri ?? `https://api.bitbucket.org/2.0${resource}`,
+		uri: uri || `https://api.bitbucket.org/2.0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

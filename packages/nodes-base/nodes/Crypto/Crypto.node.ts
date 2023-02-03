@@ -1,9 +1,8 @@
 import { set } from 'lodash';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -11,15 +10,10 @@ import {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import {
-	BinaryToTextEncoding,
-	createHash,
-	createHmac,
-	createSign,
-	getHashes,
-	randomBytes,
-} from 'crypto';
+import type { BinaryToTextEncoding } from 'crypto';
+import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
 
 import { v4 as uuid } from 'uuid';
 

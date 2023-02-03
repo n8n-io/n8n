@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteData,
@@ -24,21 +24,23 @@ import {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
-	NodeHelpers,
 	WebhookHttpMethod,
-	Workflow,
 	WorkflowActivateMode,
-	WorkflowActivationError,
 	WorkflowExecuteMode,
-	LoggerProxy as Logger,
-	ErrorReporterProxy as ErrorReporter,
 	INodeType,
 } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	Workflow,
+	WorkflowActivationError,
+	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
+} from 'n8n-workflow';
 
-import express from 'express';
+import type express from 'express';
 
 import * as Db from '@/Db';
-import {
+import type {
 	IActivationError,
 	IQueuedWorkflowActivations,
 	IResponseCallbackData,
@@ -51,7 +53,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import config from '@/config';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import * as ActiveExecutions from '@/ActiveExecutions';
@@ -61,6 +63,7 @@ import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
+import { WorkflowsService } from './workflows/workflows.services';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -865,7 +868,7 @@ export class ActiveWorkflowRunner {
 					workflowInstance.getPollNodes().length +
 					WebhookHelpers.getWorkflowWebhooks(workflowInstance, additionalData, undefined, true)
 						.length;
-				await Db.collections.Workflow.update(workflowInstance.id, { triggerCount });
+				await WorkflowsService.updateWorkflowTriggerCount(workflowInstance.id, triggerCount);
 			}
 		} catch (error) {
 			// There was a problem activating the workflow

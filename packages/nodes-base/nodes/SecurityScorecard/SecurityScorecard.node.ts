@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 
@@ -267,7 +272,7 @@ export class SecurityScorecard implements INodeType {
 						body.date = this.getNodeParameter('date', i);
 					}
 					if (['issues', 'portfolio'].indexOf(reportType) > -1) {
-						body.format = this.getNodeParameter('options.format', i) ?? 'pdf';
+						body.format = this.getNodeParameter('options.format', i) || 'pdf';
 					}
 					if (['detailed', 'summary'].indexOf(reportType) > -1) {
 						body.branding = this.getNodeParameter('branding', i);

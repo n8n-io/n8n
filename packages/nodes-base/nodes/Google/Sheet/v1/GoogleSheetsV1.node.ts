@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -11,24 +11,20 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	GoogleSheet,
+import type {
 	ILookupValues,
 	ISheetUpdateData,
 	IToDelete,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheet';
+import { GoogleSheet } from './GoogleSheet';
 
-import {
-	getAccessToken,
-	googleApiRequest,
-	hexToRgb,
-	IGoogleAuthCredentials,
-} from './GenericFunctions';
+import type { IGoogleAuthCredentials } from './GenericFunctions';
+import { getAccessToken, googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
 
@@ -117,8 +113,8 @@ export class GoogleSheetsV1 implements INodeType {
 
 			const options = this.getNodeParameter('options', 0, {});
 
-			const valueInputMode = (options.valueInputMode ?? 'RAW') as ValueInputOption;
-			const valueRenderMode = (options.valueRenderMode ?? 'UNFORMATTED_VALUE') as ValueRenderOption;
+			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
+			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 			if (operation === 'append') {
 				// ----------------------------------
@@ -134,7 +130,7 @@ export class GoogleSheetsV1 implements INodeType {
 						setData.push(item.json);
 					});
 
-					const usePathForKeyRow = (options.usePathForKeyRow ?? false) as boolean;
+					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
 					const _data = await sheet.appendSheetData(

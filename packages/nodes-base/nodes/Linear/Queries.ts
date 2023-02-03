@@ -93,43 +93,39 @@ export const query = {
 				}`;
 	},
 	getIssue() {
-		return `query Issue ($issueId: ID){
-			issues(filter: { 
-				id: { eq: $issueId }
-			}) {
-				nodes {
+		return `query Issue($issueId: String!) {
+			issue(id: $issueId) {
+				id,
+				title,
+				priority,
+				archivedAt,
+				assignee {
 					id,
-					title,
-					priority
-					archivedAt
-					assignee {
-						id
-						displayName
-					}
-					state {
-						id
-						name
-					}
-					createdAt
-					creator {
-						id
-						displayName
-					}
-					description
-					dueDate
-					cycle {
-						id
-						name
-					}
+					displayName
+				}
+				state {
+					id
+					name
+				}
+				createdAt
+				creator {
+					id
+					displayName
+				}
+				description
+				dueDate
+				cycle {
+					id
+					name
 				}
 			}
 		}`;
 	},
 	getIssues() {
-		return `query Issue ($first: Int){
-					issues (first: $first){
+		return `query Issue ($first: Int, $after: String){
+					issues (first: $first, after: $after){
 						nodes {
-						id, 
+						id,
 						title,
 						priority
 						archivedAt
@@ -152,6 +148,10 @@ export const query = {
 							id
 							name
 						}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
 					}
 				}
 			}`;

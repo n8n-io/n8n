@@ -1,14 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeProperties,
 	IWebhookFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { upperFirst } from 'lodash';
 
@@ -28,7 +28,7 @@ export async function webexApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://webexapis.com/v1${resource}`,
+		uri: uri || `https://webexapis.com/v1${resource}`,
 		json: true,
 	};
 	try {

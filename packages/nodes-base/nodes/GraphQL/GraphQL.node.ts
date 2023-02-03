@@ -1,16 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { RequestPromiseOptions } from 'request-promise-native';
+import type { OptionsWithUri } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -335,7 +334,7 @@ export class GraphQL implements INodeType {
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 				const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
 					this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
-				const headerParameters = (parameter ?? []).reduce(
+				const headerParameters = (parameter || []).reduce(
 					(result, item) => ({
 						...result,
 						[item.name]: item.value,

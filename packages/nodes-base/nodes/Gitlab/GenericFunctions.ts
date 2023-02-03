@@ -1,7 +1,8 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Gitlab

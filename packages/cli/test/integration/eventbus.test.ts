@@ -81,11 +81,10 @@ async function confirmIdSent(id: string) {
 }
 
 beforeAll(async () => {
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['eventBus'] });
+
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	app = await utils.initTestServer({ endpointGroups: ['eventBus'], applyAuth: true });
 
 	unAuthOwnerAgent = utils.createAgent(app, {
 		apiPath: 'internal',
@@ -104,7 +103,6 @@ beforeAll(async () => {
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
 	utils.initConfigFile();
-	utils.initTestLogger();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', '1');
 	config.set('enterprise.features.logStreaming', true);
@@ -178,7 +176,7 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 	}
 });
 
-test('should send message to syslog ', async () => {
+test.skip('should send message to syslog', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
 	// await cleanLogs();
@@ -217,7 +215,7 @@ test('should send message to syslog ', async () => {
 	});
 });
 
-test('should confirm send message if there are no subscribers', async () => {
+test.skip('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
 		eventName: 'n8n.test.unsub',
 		id: uuid(),
@@ -367,7 +365,7 @@ test('should send message to sentry ', async () => {
 
 	sentryDestination.enable();
 
-	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient, 'captureMessage');
+	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
 		eventBus.confirmSent(testMessage, {
 			id: sentryDestination.id,

@@ -1,4 +1,4 @@
-import {
+import type {
 	DeclarativeRestApiSettings,
 	IDataObject,
 	IExecuteFunctions,
@@ -12,12 +12,13 @@ import {
 	INodePropertyOptions,
 	IPollFunctions,
 	IWebhookFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { DateTime, ToISOTimeOptions } from 'luxon';
+import type { ToISOTimeOptions } from 'luxon';
+import { DateTime } from 'luxon';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -64,7 +65,7 @@ export async function dueDatePreSendAction(
 		);
 	}
 	const dueDate = dateToIsoSupressMillis(dueDateParam);
-	requestOptions.body = (requestOptions.body ?? {}) as object;
+	requestOptions.body = (requestOptions.body || {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
 	return requestOptions;
 }
@@ -73,7 +74,7 @@ export async function contactIdentifierPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	requestOptions.body = (requestOptions.body ?? {}) as object;
+	requestOptions.body = (requestOptions.body || {}) as object;
 	let identifier = this.getNodeParameter('contactIdentifier', null) as string;
 	if (!identifier) {
 		const fields = this.getNodeParameter('updateFields') as { contactIdentifier: string };
@@ -93,7 +94,7 @@ export async function validEmailAndPhonePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body ?? {}) as { email?: string; phone?: string };
+	const body = (requestOptions.body || {}) as { email?: string; phone?: string };
 
 	if (body.email && !isEmailValid(body.email)) {
 		const message = `email "${body.email}" has invalid format`;
@@ -112,7 +113,7 @@ export async function dateTimeToEpochPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const qs = (requestOptions.qs ?? {}) as {
+	const qs = (requestOptions.qs || {}) as {
 		startDate?: string | number;
 		endDate?: string | number;
 	};
@@ -141,7 +142,7 @@ export async function highLevelApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://rest.gohighlevel.com/v1${resource}`,
+		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -158,14 +159,14 @@ export async function opportunityUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body ?? {}) as { title?: string; status?: string };
+	const body = (requestOptions.body || {}) as { title?: string; status?: string };
 	if (!body.status || !body.title) {
 		const pipelineId = this.getNodeParameter('pipelineId');
 		const opportunityId = this.getNodeParameter('opportunityId');
 		const resource = `/pipelines/${pipelineId}/opportunities/${opportunityId}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
-		body.status = body.status ?? responseData.status;
-		body.title = body.title ?? responseData.name;
+		body.status = body.status || responseData.status;
+		body.title = body.title || responseData.name;
 		requestOptions.body = body;
 	}
 	return requestOptions;
@@ -175,15 +176,15 @@ export async function taskUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body ?? {}) as { title?: string; dueDate?: string };
+	const body = (requestOptions.body || {}) as { title?: string; dueDate?: string };
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
 		const resource = `/contacts/${contactId}/tasks/${taskId}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
-		body.title = body.title ?? responseData.title;
+		body.title = body.title || responseData.title;
 		// the api response dueDate has to be formatted or it will error on update
-		body.dueDate = body.dueDate ?? dateToIsoSupressMillis(responseData.dueDate);
+		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate);
 		requestOptions.body = body;
 	}
 	return requestOptions;
@@ -193,7 +194,7 @@ export async function splitTagsPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body ?? {}) as IDataObject;
+	const body = (requestOptions.body || {}) as IDataObject;
 	if (body.tags) {
 		if (Array.isArray(body.tags)) return requestOptions;
 		body.tags = (body.tags as string).split(',').map((tag) => tag.trim());
@@ -215,7 +216,7 @@ export async function highLevelApiPagination(
 	};
 	const rootProperty = resourceMapping[resource];
 
-	requestData.options.qs = requestData.options.qs ?? {};
+	requestData.options.qs = requestData.options.qs || {};
 	if (returnAll) requestData.options.qs.limit = 100;
 
 	let responseTotal = 0;

@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -22,7 +23,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
 	};
 	try {
 		Object.assign(options, option);

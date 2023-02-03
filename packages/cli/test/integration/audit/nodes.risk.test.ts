@@ -67,9 +67,9 @@ test('should not report non-risky official nodes', async () => {
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await audit(['nodes']);
+	if (Array.isArray(testAudit)) return;
 
-	const report = testAudit?.[toReportTitle('nodes')];
-
+	const report = testAudit[toReportTitle('nodes')];
 	if (!report) return;
 
 	for (const section of report.sections) {

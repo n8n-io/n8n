@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 /**
  * Make an API request to Trello
@@ -15,7 +15,7 @@ export async function apiRequest(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	query = query ?? {};
+	query = query || {};
 
 	const options: OptionsWithUri = {
 		method,

@@ -1,12 +1,13 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function jotformApiRequest(
 	this:
@@ -32,7 +33,7 @@ export async function jotformApiRequest(
 		method,
 		qs,
 		form: body,
-		uri: uri ?? `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
+		uri: uri || `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
