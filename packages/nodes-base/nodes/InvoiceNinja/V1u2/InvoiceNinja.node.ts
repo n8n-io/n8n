@@ -483,15 +483,25 @@ export class InvoiceNinja implements INodeType {
 									cost: itemValue.cost as number,
 									notes: itemValue.description as string,
 									product_key: itemValue.service as string,
-									qty: itemValue.hours as number,
 									tax_rate1: itemValue.taxRate1 as number,
 									tax_rate2: itemValue.taxRate2 as number,
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
 								};
+								if (apiVersion === 'v4') {
+									item.qty = itemValue.hours as number;
+								}
+								if (apiVersion === 'v5') {
+									item.quantity = itemValue.hours as number;
+								}
 								invoiceItems.push(item);
 							}
-							body.invoice_items = invoiceItems;
+							if (apiVersion === 'v4') {
+								body.invoice_items = invoiceItems;
+							}
+							if (apiVersion === 'v5') {
+								body.line_items = invoiceItems;
+							}
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
@@ -913,15 +923,25 @@ export class InvoiceNinja implements INodeType {
 									cost: itemValue.cost as number,
 									notes: itemValue.description as string,
 									product_key: itemValue.service as string,
-									qty: itemValue.hours as number,
 									tax_rate1: itemValue.taxRate1 as number,
 									tax_rate2: itemValue.taxRate2 as number,
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
 								};
+								if (apiVersion === 'v4') {
+									item.qty = itemValue.hours as number;
+								}
+								if (apiVersion === 'v5') {
+									item.quantity = itemValue.hours as number;
+								}
 								invoiceItems.push(item);
 							}
-							body.invoice_items = invoiceItems;
+							if (apiVersion === 'v4') {
+								body.invoice_items = invoiceItems;
+							}
+							if (apiVersion === 'v5') {
+								body.line_items = invoiceItems;
+							}
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
