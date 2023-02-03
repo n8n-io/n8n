@@ -45,7 +45,7 @@ This command will download everything that is needed to start n8n. You can then 
 
 ## n8n cloud
 
-Sign-up for a [n8n cloud](https://www.n8n.io/cloud/) account.
+Sign-up for an [n8n cloud](https://www.n8n.io/cloud/) account.
 
 While n8n cloud and n8n are the same in terms of features, n8n cloud provides certain conveniences such as:
 
