@@ -935,7 +935,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-3xl) var(--spacing-xl);
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .selectionOptions {
