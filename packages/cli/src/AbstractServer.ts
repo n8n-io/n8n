@@ -194,7 +194,20 @@ export abstract class AbstractServer {
 		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
+		let sentinelConfig = {};
+		const sentinelEnabled = config.getEnv('queue.bull.sentinel.enabled');
+		if (sentinelEnabled) {
+			const sentinelHosts: string = config.getEnv('queue.bull.sentinel.sentinels');
+			const { name, sentinelPassword }: RedisOptions = config.getEnv('queue.bull.sentinel');
+			const sentinels = sentinelHosts.split(',').map((x) => ({
+				host: x.split(':')[0],
+				port: x.split(':')[1],
+			}));
+			sentinelConfig = { name, sentinels, sentinelPassword };
+		}
+
 		const redis = new Redis({
+			...sentinelConfig,
 			host,
 			port,
 			db,

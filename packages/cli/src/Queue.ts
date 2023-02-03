@@ -29,7 +29,21 @@ export class Queue {
 
 	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+		let redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+
+		const sentinelEnabled = config.getEnv('queue.bull.sentinel.enabled');
+		let sentinelConfig = {};
+		if (sentinelEnabled) {
+			const sentinelHosts: string = config.getEnv('queue.bull.sentinel.sentinels');
+			const { name, sentinelPassword }: RedisOptions = config.getEnv('queue.bull.sentinel');
+			const sentinels = sentinelHosts.split(',').map((x) => ({
+				host: x.split(':')[0],
+				port: x.split(':')[1],
+			}));
+			sentinelConfig = { name, sentinels, sentinelPassword };
+		}
+
+		redisOptions = { ...redisOptions, ...sentinelConfig };
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');

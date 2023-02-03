@@ -387,6 +387,32 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_USERNAME',
 				},
 			},
+			sentinel: {
+				enabled: {
+					doc: 'Enable Redis Sentinel',
+					format: Boolean,
+					default: false,
+					env: 'QUEUE_BULL_SENTINEL_ENABLED',
+				},
+				name: {
+					doc: 'Master group name of the Sentinel',
+					format: String,
+					default: 'mymaster',
+					env: 'QUEUE_BULL_SENTINEL_NAME',
+				},
+				sentinels: {
+					doc: 'Contains a comma separated list of Redis Sentinel hosts in <host>:<port> format.',
+					format: String,
+					default: 'localhost:26379',
+					env: 'QUEUE_BULL_SENTINEL_SENTINELS',
+				},
+				sentinelPassword: {
+					doc: 'Contains a comma separated list of Redis Sentinel hosts in <host>:<port> format.',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_SENTINEL_PASSWORD',
+				},
+			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
 				format: Number,
