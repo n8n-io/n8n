@@ -1,4 +1,5 @@
 import Vue, { VNode } from 'vue';
+import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';
@@ -17,6 +18,11 @@ declare global {
 
 	interface Window {
 		BASE_PATH: string;
+		analytics: {
+			track: (eventName: string, properties: ITelemetryTrackProperties) => void;
+			identify: (userId: string | null) => void;
+			page: (category: string, name: string, properties: ITelemetryTrackProperties) => void;
+		};
 	}
 
 	namespace JSX {
