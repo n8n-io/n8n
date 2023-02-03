@@ -223,9 +223,6 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 				select: ['user'],
 			},
-			hide: {
-				'/otherOptions.ephemeral': [true],
-			},
 		},
 		modes: [
 			{
@@ -258,51 +255,6 @@ export const messageFields: INodeProperties[] = [
 				name: 'username',
 				type: 'string',
 				placeholder: '@username',
-			},
-		],
-	},
-	{
-		displayName: 'User',
-		name: 'user',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		placeholder: 'Select a user...',
-		displayOptions: {
-			show: {
-				operation: ['post'],
-				resource: ['message'],
-				select: ['user'],
-				'/otherOptions.ephemeral': [true],
-			},
-			hide: {
-				'/otherOptions.ephemeral': [false],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a user...',
-				typeOptions: {
-					searchListMethod: 'getUsers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack User ID',
-						},
-					},
-				],
-				placeholder: 'U123AB45JGM',
 			},
 		],
 	},
