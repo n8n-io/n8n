@@ -71,7 +71,7 @@ export class Airtable implements INodeType {
 			},
 
 			// ----------------------------------
-			//         All
+			//         All record actions
 			// ----------------------------------
 
 			{
@@ -81,6 +81,9 @@ export class Airtable implements INodeType {
 				default: { mode: 'url', value: '' },
 				required: true,
 				description: 'The Airtable Base in which to operate on',
+				displayOptions: {
+					show: { operation: ['append', 'delete', 'list', 'read', 'update'] },
+				},
 				modes: [
 					{
 						displayName: 'By URL',
@@ -125,6 +128,9 @@ export class Airtable implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'url', value: '' },
 				required: true,
+				displayOptions: {
+					show: { operation: ['append', 'delete', 'list', 'read', 'update'] },
+				},
 				modes: [
 					{
 						displayName: 'By URL',
@@ -216,7 +222,7 @@ export class Airtable implements INodeType {
 			},
 
 			// ----------------------------------
-			//         list
+			//         list records
 			// ----------------------------------
 			{
 				displayName: 'Return All',
@@ -622,7 +628,7 @@ export class Airtable implements INodeType {
 			}
 		} else if (operation === 'list') {
 			// ----------------------------------
-			//         list
+			//         list records
 			// ----------------------------------
 			try {
 				requestMethod = 'GET';
