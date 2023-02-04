@@ -36,11 +36,6 @@ export async function apiRequest(
 ): Promise<any> {
 	query = query || {};
 
-	// For some reason for some endpoints the bearer auth does not work
-	// and it returns 404 like for the /meta request. So we always send
-	// it as query string.
-	// query.api_key = credentials.apiKey;
-
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
