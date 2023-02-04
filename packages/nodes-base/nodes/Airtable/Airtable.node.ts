@@ -51,8 +51,15 @@ export class Airtable implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List data from a table',
-						action: 'List data from a table',
+						description: 'List data from a table (requires data.records:read scope)',
+						action: 'List data from a table (requires data.records:read scope)',
+					},
+					{
+						name: 'List Bases',
+						value: 'listBases',
+						description:
+							'List bases the credentials have access to (requires schema.bases:read scope)',
+						action: 'List bases the credentials have access to (requires schema.bases:read scope)',
 					},
 					{
 						name: 'Read',
@@ -501,15 +508,18 @@ export class Airtable implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0);
 
-		const application = this.getNodeParameter('application', 0, undefined, {
-			extractValue: true,
-		}) as string;
-
-		const table = encodeURI(
-			this.getNodeParameter('table', 0, undefined, {
+		let application, table;
+		if (!['listBases'].includes(operation)) {
+			application = this.getNodeParameter('application', 0, undefined, {
 				extractValue: true,
-			}) as string,
-		);
+			}) as string;
+
+			table = encodeURI(
+				this.getNodeParameter('table', 0, undefined, {
+					extractValue: true,
+				}) as string,
+			);
+		}
 
 		let returnAll = false;
 		let endpoint = '';
@@ -676,6 +686,29 @@ export class Airtable implements INodeType {
 					);
 					return [data];
 				}
+
+				// We can return from here
+				return [
+					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
+						itemData: { item: 0 },
+					}),
+				];
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+				} else {
+					throw error;
+				}
+			}
+		} else if (operation === 'listBases') {
+			// ----------------------------------
+			//         list bases
+			// ----------------------------------
+			try {
+				requestMethod = 'GET';
+				endpoint = 'meta/bases';
+				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, 'bases');
+				returnData.push.apply(returnData, responseData.bases);
 
 				// We can return from here
 				return [
