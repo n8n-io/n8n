@@ -73,12 +73,12 @@ export async function apiRequestAllItems(
 	method: string,
 	endpoint: string,
 	body: IDataObject,
+	responseBodyItemsKey: string,
 	query?: IDataObject,
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
-	query.pageSize = 100;
 
 	const returnData: IDataObject[] = [];
 
@@ -86,13 +86,13 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.records);
+		returnData.push.apply(returnData, responseData[responseBodyItemsKey]);
 
 		query.offset = responseData.offset;
 	} while (responseData.offset !== undefined);
 
 	return {
-		records: returnData,
+		[responseBodyItemsKey]: returnData,
 	};
 }
 
