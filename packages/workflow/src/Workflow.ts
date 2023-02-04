@@ -14,7 +14,7 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 
-import {
+import type {
 	IConnections,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
@@ -49,7 +49,7 @@ import {
 	IRunNodeResponse,
 	NodeParameterValueType,
 } from './Interfaces';
-import { IDeferredPromise } from './DeferredPromise';
+import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';

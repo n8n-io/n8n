@@ -1,7 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { INodeType, INodeTypeDescription, IWebhookResponseData, NodeApiError } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
 

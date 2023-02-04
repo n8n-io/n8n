@@ -1,13 +1,13 @@
 import { UserSettings, Credentials } from 'n8n-core';
-import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { ExternalHooks } from '@/ExternalHooks';
-import { IDependency, IJsonSchema } from '../../../types';
-import { CredentialRequest } from '@/requests';
+import type { IDependency, IJsonSchema } from '../../../types';
+import type { CredentialRequest } from '@/requests';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });

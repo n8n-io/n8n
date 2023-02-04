@@ -5,18 +5,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-	createDeferredPromise,
-	IDeferredPromise,
-	IExecuteResponsePromiseData,
-	IRun,
-} from 'n8n-workflow';
+import type { IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
-import PCancelable from 'p-cancelable';
+import type PCancelable from 'p-cancelable';
 import * as Db from '@/Db';
-import {
+import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionFlattedDb,

@@ -1,10 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { get } from 'lodash';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	GenericValue,
 	INodeExecutionData,
 	INodeType,
@@ -12,6 +11,7 @@ import {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',

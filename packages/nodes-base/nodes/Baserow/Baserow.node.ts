@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -6,7 +6,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import {
 	baserowApiRequest,
@@ -18,7 +18,7 @@ import {
 
 import { operationFields } from './OperationDescription';
 
-import {
+import type {
 	BaserowCredentials,
 	FieldsUiValues,
 	GetAllAdditionalOptions,

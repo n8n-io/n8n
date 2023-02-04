@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getTableColumns,
@@ -24,9 +24,9 @@ import {
 
 import { rowFields, rowOperations } from './RowDescription';
 
-import { TColumnsUiValues, TColumnValue } from './types';
+import type { TColumnsUiValues, TColumnValue } from './types';
 
-import { ICtx, IRow, IRowObject } from './Interfaces';
+import type { ICtx, IRow, IRowObject } from './Interfaces';
 
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {

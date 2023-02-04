@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -13,6 +13,7 @@ import type {
 	INodeTypeData,
 	INodeTypeNameVersion,
 	IVersionedNodeType,
+	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
@@ -98,10 +99,10 @@ export abstract class DirectoryLoader {
 			}
 		} else {
 			// Short renaming to avoid type issues
-			const tmpNode = tempNode;
-			nodeVersion = Array.isArray(tmpNode.description.version)
-				? tmpNode.description.version.slice(-1)[0]
-				: tmpNode.description.version;
+
+			nodeVersion = Array.isArray(tempNode.description.version)
+				? tempNode.description.version.slice(-1)[0]
+				: tempNode.description.version;
 		}
 
 		this.known.nodes[fullNodeName] = {

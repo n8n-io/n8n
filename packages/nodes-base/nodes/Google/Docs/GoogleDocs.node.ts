@@ -1,13 +1,13 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	extractID,
@@ -19,7 +19,7 @@ import {
 
 import { documentFields, documentOperations } from './DocumentDescription';
 
-import { IUpdateBody, IUpdateFields } from './interfaces';
+import type { IUpdateBody, IUpdateFields } from './interfaces';
 
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
