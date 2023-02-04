@@ -219,6 +219,7 @@ export async function parseRawEmail(
 
 	messageData: any,
 	dataPropertyNameDownload: string,
+	downloadAttachments: boolean
 ): Promise<INodeExecutionData> {
 	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
 	const responseData = await simpleParser(messageEncoded);
@@ -230,11 +231,6 @@ export async function parseRawEmail(
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
-		const downloadAttachments = this.getNodeParameter(
-			'options.downloadAttachments',
-			0,
-			false,
-		) as boolean;
 		if (downloadAttachments) {
 			for (let i = 0; i < responseData.attachments.length; i++) {
 				const attachment = responseData.attachments[i];

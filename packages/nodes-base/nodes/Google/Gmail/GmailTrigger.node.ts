@@ -187,7 +187,7 @@ export class GmailTrigger implements INodeType {
 						name: 'downloadAttachments',
 						type: 'boolean',
 						default: false,
-						description: "Whether the emaail's attachments will be downloaded",
+						description: "Whether the email's attachments will be downloaded",
 					},
 				],
 			},
@@ -284,11 +284,14 @@ export class GmailTrigger implements INodeType {
 				if (!simple) {
 					const dataPropertyNameDownload =
 						(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+					const downloadAttachments =
+						(options.downloadAttachments as boolean) || false;
 
 					responseData[i] = await parseRawEmail.call(
 						this,
 						responseData[i],
 						dataPropertyNameDownload,
+						downloadAttachments,
 					);
 				}
 			}

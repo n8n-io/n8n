@@ -363,6 +363,13 @@ export const messageFields: INodeProperties[] = [
 					'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
+				description: "Whether the email's attachments will be downloaded",
+			},
+			{
 				displayName: 'Format',
 				name: 'format',
 				type: 'options',

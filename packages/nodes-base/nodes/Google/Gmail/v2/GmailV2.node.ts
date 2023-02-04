@@ -365,11 +365,14 @@ export class GmailV2 implements INodeType {
 						if (!simple) {
 							const dataPropertyNameDownload =
 								(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+							const downloadAttachments =
+								(options.downloadAttachments as boolean) || false;
 
 							nodeExecutionData = await parseRawEmail.call(
 								this,
 								responseData,
 								dataPropertyNameDownload,
+								downloadAttachments,
 							);
 						} else {
 							const [json, _] = await simplifyOutput.call(this, [responseData]);
@@ -431,11 +434,14 @@ export class GmailV2 implements INodeType {
 							if (!simple) {
 								const dataPropertyNameDownload =
 									(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+								const downloadAttachments =
+									(options.downloadAttachments as boolean) || false;
 
 								responseData[index] = await parseRawEmail.call(
 									this,
 									responseData[index],
 									dataPropertyNameDownload,
+									downloadAttachments,
 								);
 							}
 						}
@@ -580,11 +586,14 @@ export class GmailV2 implements INodeType {
 
 						const dataPropertyNameDownload =
 							(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+						const downloadAttachments =
+							(options.downloadAttachments as boolean) || false;
 
 						const nodeExecutionData = await parseRawEmail.call(
 							this,
 							responseData.message,
 							dataPropertyNameDownload,
+							downloadAttachments,
 						);
 
 						// Add the draft-id
@@ -646,11 +655,14 @@ export class GmailV2 implements INodeType {
 
 							const dataPropertyNameDownload =
 								(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+							const downloadAttachments =
+								(options.downloadAttachments as boolean) || false;
 							const id = responseData[index].id;
 							responseData[index] = await parseRawEmail.call(
 								this,
 								responseData[index].message,
 								dataPropertyNameDownload,
+								downloadAttachments,
 							);
 
 							// Add the draft-id

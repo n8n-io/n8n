@@ -505,11 +505,14 @@ export class GmailV1 implements INodeType {
 						if (format === 'resolved') {
 							const dataPropertyNameDownload =
 								(additionalFields.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+							const downloadAttachments =
+								(additionalFields.downloadAttachments as boolean) || false;
 
 							nodeExecutionData = await parseRawEmail.call(
 								this,
 								responseData,
 								dataPropertyNameDownload,
+								downloadAttachments,
 							);
 						} else {
 							nodeExecutionData = {
@@ -578,11 +581,14 @@ export class GmailV1 implements INodeType {
 								if (format === 'resolved') {
 									const dataPropertyNameDownload =
 										(additionalFields.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+									const downloadAttachments =
+										(additionalFields.downloadAttachments as boolean) || false;
 
 									responseData[index] = await parseRawEmail.call(
 										this,
 										responseData[index],
 										dataPropertyNameDownload,
+										downloadAttachments,
 									);
 								}
 							}
@@ -725,11 +731,14 @@ export class GmailV1 implements INodeType {
 						if (format === 'resolved') {
 							const dataPropertyNameDownload =
 								(additionalFields.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+							const downloadAttachments =
+								(additionalFields.downloadAttachments as boolean) || false;
 
 							nodeExecutionData = await parseRawEmail.call(
 								this,
 								responseData.message,
 								dataPropertyNameDownload,
+								downloadAttachments,
 							);
 
 							// Add the draft-id
@@ -806,11 +815,14 @@ export class GmailV1 implements INodeType {
 								if (format === 'resolved') {
 									const dataPropertyNameDownload =
 										(additionalFields.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+									const downloadAttachments =
+										(additionalFields.downloadAttachments as boolean) || false;
 									const id = responseData[index].id;
 									responseData[index] = await parseRawEmail.call(
 										this,
 										responseData[index].message,
 										dataPropertyNameDownload,
+										downloadAttachments,
 									);
 
 									// Add the draft-id
