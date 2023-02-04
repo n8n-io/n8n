@@ -27,6 +27,7 @@ export class NDV extends BasePage {
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
+		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
 	};
 
 	actions = {

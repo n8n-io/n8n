@@ -6,16 +6,12 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
-		test('.random() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2,3].random() }}')).not.toBeUndefined();
-		});
-
-		test('.randomItem() alias should work correctly on an array', () => {
+		test('.randomItem() should work correctly on an array', () => {
 			expect(evaluate('={{ [1,2,3].randomItem() }}')).not.toBeUndefined();
 		});
 
-		test('.isPresent() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2,3, "imhere"].isPresent() }}')).toEqual(true);
+		test('.isNotEmpty() should work correctly on an array', () => {
+			expect(evaluate('={{ [1,2,3, "imhere"].isNotEmpty() }}')).toEqual(true);
 		});
 
 		test('.pluck() should work correctly on an array', () => {
@@ -46,24 +42,12 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.isBlank() should work correctly on an array', () => {
-			expect(evaluate('={{ [].isBlank() }}')).toEqual(true);
+		test('.isEmpty() should work correctly on an array', () => {
+			expect(evaluate('={{ [].isEmpty() }}')).toEqual(true);
 		});
 
-		test('.isBlank() should work correctly on an array', () => {
-			expect(evaluate('={{ [1].isBlank() }}')).toEqual(false);
-		});
-
-		test('.length() should work correctly on an array', () => {
-			expect(evaluate('={{ [].length() }}')).toEqual(0);
-		});
-
-		test('.count() should work correctly on an array', () => {
-			expect(evaluate('={{ [1].count() }}')).toEqual(1);
-		});
-
-		test('.size() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2].size() }}')).toEqual(2);
+		test('.isEmpty() should work correctly on an array', () => {
+			expect(evaluate('={{ [1].isEmpty() }}')).toEqual(false);
 		});
 
 		test('.last() should work correctly on an array', () => {
@@ -72,12 +56,6 @@ describe('Data Transformation Functions', () => {
 
 		test('.first() should work correctly on an array', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].first() }}')).toEqual('repeat');
-		});
-
-		test('.filter() should work correctly on an array', () => {
-			expect(evaluate('={{ ["repeat","repeat","a","b","c"].filter("repeat") }}')).toEqual(
-				expect.arrayContaining(['repeat', 'repeat']),
-			);
 		});
 
 		test('.merge() should work correctly on an array', () => {
@@ -115,26 +93,22 @@ describe('Data Transformation Functions', () => {
 
 		test('.sum() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].sum() }}')).toEqual(21);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].sum() }}')).toEqual(21);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].sum() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].sum() }}')).toThrow();
 		});
 
 		test('.average() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].average() }}')).toEqual(3.5);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].average() }}')).toEqual(3.5);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].average() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].average() }}')).toThrow();
 		});
 
 		test('.min() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].min() }}')).toEqual(1);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].min() }}')).toEqual(1);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].min() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].min() }}')).toThrow();
 		});
 
 		test('.max() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].max() }}')).toEqual(6);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].max() }}')).toEqual(6);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].max() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].max() }}')).toThrow();
 		});
 
 		test('.union() should work on an array of objects', () => {
@@ -180,19 +154,6 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
-		});
-
-		test('.filter() should work on a list of strings', () => {
-			expect(
-				evaluate(
-					'={{ ["i am a test string", "i should be kept", "i should be removed test"].filter("test", "remove") }}',
-				),
-			).toEqual(['i should be kept']);
-			expect(
-				evaluate(
-					'={{ ["i am a test string", "i should be kept test", "i should be removed"].filter("test") }}',
-				),
-			).toEqual(['i am a test string', 'i should be kept test']);
 		});
 	});
 });

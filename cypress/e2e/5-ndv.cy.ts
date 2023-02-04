@@ -9,10 +9,12 @@ describe('NDV', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
+
 
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');

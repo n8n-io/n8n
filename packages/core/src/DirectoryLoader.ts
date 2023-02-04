@@ -99,10 +99,10 @@ export abstract class DirectoryLoader {
 			}
 		} else {
 			// Short renaming to avoid type issues
-			const tmpNode = tempNode;
-			nodeVersion = Array.isArray(tmpNode.description.version)
-				? tmpNode.description.version.slice(-1)[0]
-				: tmpNode.description.version;
+
+			nodeVersion = Array.isArray(tempNode.description.version)
+				? tempNode.description.version.slice(-1)[0]
+				: tempNode.description.version;
 		}
 
 		this.known.nodes[fullNodeName] = {
