@@ -231,7 +231,8 @@ export class AirtableTrigger implements INodeType {
 			qs.maxRecords = 1;
 		}
 
-		const { records } = await apiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+		qs.pageSize = 100;
+		const { records } = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'records', qs);
 
 		webhookData.lastTimeChecked = endDate;
 

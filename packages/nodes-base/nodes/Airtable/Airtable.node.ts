@@ -643,7 +643,15 @@ export class Airtable implements INodeType {
 				}
 
 				if (returnAll) {
-					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+					qs.pageSize = 100;
+					responseData = await apiRequestAllItems.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						'records',
+						qs,
+					);
 				} else {
 					qs.maxRecords = this.getNodeParameter('limit', 0);
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
