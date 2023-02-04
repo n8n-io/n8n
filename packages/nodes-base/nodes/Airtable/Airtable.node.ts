@@ -39,14 +39,14 @@ export class Airtable implements INodeType {
 					{
 						name: 'Append',
 						value: 'append',
-						description: 'Append the data to a table',
-						action: 'Append data to a table',
+						description: 'Append the data to a table (requires data.records:write scope)',
+						action: 'Append data to a table (requires data.records:write scope)',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete data from a table',
-						action: 'Delete data from a table',
+						description: 'Delete data from a table (requires data.records:write scope)',
+						action: 'Delete data from a table (requires data.records:write scope)',
 					},
 					{
 						name: 'List',
@@ -57,14 +57,14 @@ export class Airtable implements INodeType {
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Read data from a table',
-						action: 'Read data from a table',
+						description: 'Read data from a table (requires data.records:read scope)',
+						action: 'Read data from a table (requires data.records:read scope)',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update data in a table',
-						action: 'Update data in a table',
+						description: 'Update data in a table (requires data.records:write scope)',
+						action: 'Update data in a table (requires data.records:write scope)',
 					},
 				],
 				default: 'read',

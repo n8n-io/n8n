@@ -9,7 +9,9 @@ export class AirtableApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
+			displayName: 'Personal Access Token (or User API Key)',
+			description:
+				'Personal Access Tokens start with "pat" and User API keys start with "key". User API keys will stop working in early 2024.',
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
@@ -20,8 +22,8 @@ export class AirtableApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			qs: {
-				api_key: '={{$credentials.apiKey}}',
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
 		},
 	};
