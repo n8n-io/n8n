@@ -54,7 +54,7 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterActions(actions: INodeActionTypeDescription[], isTriggerRoot: boolean) {
+function filterActions(actions: INodeActionTypeDescription[]) {
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
 			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
@@ -333,10 +333,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					return acc;
 				}, {});
 
-			const isTriggerRoot = this.selectedView === TRIGGER_NODE_FILTER;
 			const filteredNodes = Object.values(mergedNodes).map((node) => ({
 				...node,
-				actions: filterActions(node.actions || [], isTriggerRoot),
+				actions: filterActions(node.actions || []),
 			}));
 
 			return filteredNodes;

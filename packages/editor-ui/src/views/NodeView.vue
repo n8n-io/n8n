@@ -4057,7 +4057,8 @@ export default mixins(
 	position: relative;
 	display: flex;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
+	width: 100%;
 }
 
 .shake {

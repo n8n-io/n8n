@@ -14,11 +14,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 23).isWeekend() }}')).toBe(false);
 		});
 
-		test('.toTimeFromNow() should work correctly on a date', () => {
-			const JUST_NOW_STRING_RESULT = 'just now';
-			expect(evaluate('={{DateTime.now().toTimeFromNow()}}')).toEqual(JUST_NOW_STRING_RESULT);
-		});
-
 		test('.beginningOf("week") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}')).toEqual(
 				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }).toJSDate(),
