@@ -405,6 +405,44 @@ export class Airtable implements INodeType {
 						],
 						default: [],
 					},
+					{
+						displayName: 'Cell Format',
+						name: 'cellFormat',
+						description: 'The format that should be used for cell values',
+						type: 'options',
+						options: [
+							{
+								name: 'JSON',
+								value: 'json',
+								description: 'Cells will be formatted as JSON, depending on the field type',
+							},
+							{
+								name: 'String',
+								value: 'string',
+								description:
+									'Cells will be formatted as user-facing strings, regardless of the field type. The timeZone and userLocale parameters are required when using string as the cellFormat. Note: You should not rely on the format of these strings, as it is subject to change.',
+							},
+						],
+						default: 'json',
+					},
+					{
+						displayName: 'Time Zone',
+						name: 'timeZone',
+						type: 'string',
+						default: 'America/Los_Angeles',
+						placeholder: 'America/Los_Angeles',
+						description:
+							'The time zone that should be used to format dates when using string as the cellFormat. This parameter is required when using string as the cellFormat. Visit https://airtable.com/developers/web/api/list-records for details valid values.',
+					},
+					{
+						displayName: 'User Locale',
+						name: 'userLocale',
+						type: 'string',
+						default: 'en',
+						placeholder: 'en',
+						description:
+							'The user locale that should be used to format dates when using string as the cellFormat. This parameter is required when using string as the cellFormat. Visit https://airtable.com/developers/web/api/list-records for details valid values.',
+					},
 				],
 			},
 
