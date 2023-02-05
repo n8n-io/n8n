@@ -37,7 +37,9 @@ export async function apiRequest(
 	query = query || {};
 
 	const options: OptionsWithUri = {
-		headers: {},
+		headers: {
+			'user-agent': 'n8n',
+		},
 		method,
 		body,
 		qs: query,
