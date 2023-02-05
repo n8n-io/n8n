@@ -747,4 +747,47 @@ export const vendorFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  vendor:action                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Vendor ID',
+		name: 'vendorId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['vendor'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['vendor'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an vendor',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an vendor',
+			},
+		],
+	}
 ];

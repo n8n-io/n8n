@@ -881,5 +881,48 @@ export const clientFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
+	},	
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:action                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an client',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an client',
+			},
+		],
 	},
 ];
