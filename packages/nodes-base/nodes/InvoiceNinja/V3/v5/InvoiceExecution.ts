@@ -24,9 +24,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'create') {
 				const additionalFields = that.getNodeParameter('additionalFields', i);
 				const body: IInvoice = {};
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
-				}
 				if (additionalFields.projectId) {
 					body.project_id = additionalFields.projectId as string;
 				}
@@ -164,9 +161,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				const invoiceId = that.getNodeParameter('invoiceId', i) as string;
 				const additionalFields = that.getNodeParameter('additionalFields', i);
 				const body: IInvoice = {};
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
-				}
 				if (additionalFields.projectId) {
 					body.project_id = additionalFields.projectId as string;
 				}

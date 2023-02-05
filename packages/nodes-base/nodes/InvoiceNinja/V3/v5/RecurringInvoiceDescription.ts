@@ -221,7 +221,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -232,7 +232,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor Name or ID',
+				displayName: 'Vendor',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -259,7 +259,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design Name or ID',
+				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -645,7 +645,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -656,7 +656,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor Name or ID',
+				displayName: 'Vendor',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -683,7 +683,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Design Name or ID',
+				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
 				description:

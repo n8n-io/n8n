@@ -32,9 +32,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
-				}
 				if (additionalFields.taskRate) {
 					body.task_rate = additionalFields.taskRate as number;
 				}
@@ -85,9 +82,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
-				}
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
 				}
 				if (additionalFields.taskRate) {
 					body.task_rate = additionalFields.taskRate as number;

@@ -26,9 +26,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.name) {
 					body.name = additionalFields.name as string;
 				}
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
-				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
@@ -117,9 +114,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.name) {
 					body.name = additionalFields.name as string;
 				}
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
-				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
@@ -190,6 +184,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					}
 					body.contacts = contacts;
 				}
+				console.log(body)
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
 					'PUT',

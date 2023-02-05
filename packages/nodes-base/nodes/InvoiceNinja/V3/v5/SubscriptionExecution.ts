@@ -102,9 +102,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.useInventoryManagement) {
 					body.use_inventory_management = additionalFields.useInventoryManagement as boolean;
 				}
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
-				}
 				if (additionalFields.webhookConfiguration) {
 					body.webhook_configuration =
 						typeof additionalFields.webhookConfiguration == 'string'
@@ -204,9 +201,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.useInventoryManagement) {
 					body.use_inventory_management = additionalFields.useInventoryManagement as boolean;
-				}
-				if (additionalFields.userId) {
-					body.user_id = additionalFields.userId as string;
 				}
 				if (additionalFields.webhookConfiguration) {
 					body.webhook_configuration =

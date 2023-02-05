@@ -3,6 +3,6 @@ import type { PurchaseOrder } from './interfaces/purchase-order';
 
 export type IPurchaseOrderItem = Partial<Omit<InvoiceItem, '_id'>>;
 
-export interface IPurchaseOrder extends Partial<Omit<PurchaseOrder, 'id' | 'line_items'>> {
+export interface IPurchaseOrder extends Partial<Omit<PurchaseOrder, 'id' | 'line_items' | 'user_id'>> {
 	line_items?: IPurchaseOrderItem[];
 }

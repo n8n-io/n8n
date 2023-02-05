@@ -192,18 +192,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Origin) Name or ID',
-				name: 'userId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsersV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'User (Assigned) Name or ID',
+				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -410,18 +399,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Origin) Name or ID',
-				name: 'userId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsersV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'User (Assigned) Name or ID',
+				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
 				description:

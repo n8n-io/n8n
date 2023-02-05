@@ -190,7 +190,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -210,7 +210,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -324,7 +324,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -344,7 +344,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
