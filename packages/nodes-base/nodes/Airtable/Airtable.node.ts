@@ -428,7 +428,7 @@ export class Airtable implements INodeType {
 								name: 'Visible Field IDs',
 								value: 'visibleFieldIds',
 								description:
-									'Allows optionally including an array of visibleFieldIds (for views of type grid only)',
+									'Includes a list of the visible (non-hidden) field IDs in the `commentCount` attribute (for grid views only)',
 							},
 						],
 						default: [],
