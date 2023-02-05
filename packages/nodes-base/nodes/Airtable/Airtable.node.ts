@@ -382,6 +382,29 @@ export class Airtable implements INodeType {
 						description:
 							'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
 					},
+					{
+						displayName: 'Return Fields by Field ID',
+						name: 'returnFieldsByFieldId',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to return field IDs (fldXXXX) instead of the default human-readable/defined field names',
+					},
+					{
+						displayName: 'Record Metadata',
+						name: 'recordMetadata',
+						description: 'Additional record metadata to include',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Record Comment Count',
+								value: 'commentCount',
+								description:
+									'Includes the number of comments on a record in the `commentCount` attribute',
+							},
+						],
+						default: [],
+					},
 				],
 			},
 
@@ -698,6 +721,8 @@ export class Airtable implements INodeType {
 				for (const key of Object.keys(additionalOptions)) {
 					if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
 						qs[key] = (additionalOptions[key] as IDataObject).property;
+					} else if (key === 'returnFieldsByFieldId' && additionalOptions[key] === false) {
+						// do nothing (exclude the query parameter): Airtable will return fields by Field ID if "false" is provided
 					} else {
 						qs[key] = additionalOptions[key];
 					}
