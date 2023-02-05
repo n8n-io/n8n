@@ -68,6 +68,12 @@ export class Airtable implements INodeType {
 						action: 'Read data from a table (requires data.records:read scope)',
 					},
 					{
+						name: 'Read Base Schema',
+						value: 'readBaseSchema',
+						description: 'Read schema of a base (requires schema.bases:read scope)',
+						action: 'Read schema of a base (requires schema.bases:read scope)',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update data in a table (requires data.records:write scope)',
@@ -89,7 +95,7 @@ export class Airtable implements INodeType {
 				required: true,
 				description: 'The Airtable Base in which to operate on',
 				displayOptions: {
-					show: { operation: ['append', 'delete', 'list', 'read', 'update'] },
+					show: { operation: ['append', 'delete', 'list', 'read', 'readBaseSchema', 'update'] },
 				},
 				modes: [
 					{
@@ -288,8 +294,8 @@ export class Airtable implements INodeType {
 					"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.",
 			},
 			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
+				displayName: 'Additional Options (for List Records)',
+				name: 'additionalListRecordsOptions',
 				type: 'collection',
 				displayOptions: {
 					show: {
@@ -394,6 +400,40 @@ export class Airtable implements INodeType {
 				default: '',
 				required: true,
 				description: 'ID of the record to return',
+			},
+
+			// ----------------------------------
+			//         read base schema
+			// ----------------------------------
+			{
+				displayName: 'Additional Options (for Read Base Schema)',
+				name: 'additionalReadBaseSchemaOptions',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['readBaseSchema'],
+					},
+				},
+				default: {},
+				description: 'Additional options which decide what should be returned',
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Include',
+						name: 'include',
+						description: 'Additional metadata to include',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Visible Field IDs',
+								value: 'visibleFieldIds',
+								description:
+									'Allows optionally including an array of visibleFieldIds (for views of type grid only)',
+							},
+						],
+						default: [],
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -509,11 +549,12 @@ export class Airtable implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let application, table;
-		if (!['listBases'].includes(operation)) {
+		if (['append', 'delete', 'list', 'read', 'readBaseSchema', 'update'].includes(operation)) {
 			application = this.getNodeParameter('application', 0, undefined, {
 				extractValue: true,
 			}) as string;
-
+		}
+		if (['append', 'delete', 'list', 'read', 'update'].includes(operation)) {
 			table = encodeURI(
 				this.getNodeParameter('table', 0, undefined, {
 					extractValue: true,
@@ -648,7 +689,11 @@ export class Airtable implements INodeType {
 
 				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0);
 
-				const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
+				const additionalOptions = this.getNodeParameter(
+					'additionalListRecordsOptions',
+					0,
+					{},
+				) as IDataObject;
 
 				for (const key of Object.keys(additionalOptions)) {
 					if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
@@ -756,6 +801,41 @@ export class Airtable implements INodeType {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
+					throw error;
+				}
+			}
+		} else if (operation === 'readBaseSchema') {
+			// ----------------------------------
+			//         read base schema
+			// ----------------------------------
+
+			try {
+				requestMethod = 'GET';
+				endpoint = `meta/bases/${application}/tables`;
+
+				const additionalOptions = this.getNodeParameter(
+					'additionalReadBaseSchemaOptions',
+					0,
+					{},
+				) as IDataObject;
+
+				for (const key of Object.keys(additionalOptions)) {
+					qs[key] = additionalOptions[key];
+				}
+
+				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				returnData.push.apply(returnData, responseData.tables);
+
+				// We can return from here
+				return [
+					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
+						itemData: { item: 0 },
+					}),
+				];
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+				} else {
 					throw error;
 				}
 			}
