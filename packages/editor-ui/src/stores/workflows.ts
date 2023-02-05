@@ -532,11 +532,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
-		addConnection(data: { connection: IConnection[] }): void {
+		addConnection(data: { connection: IConnection[]; setStateDirty: boolean }): void {
 			if (data.connection.length !== 2) {
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
+			}
+			const uiStore = useUIStore();
+			if (data.setStateDirty === true) {
+				uiStore.stateIsDirty = true;
 			}
 
 			const sourceData: IConnection = data.connection[0];

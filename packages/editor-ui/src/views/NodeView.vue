@@ -2159,6 +2159,10 @@ export default mixins(
 						},
 					];
 
+					this.workflowsStore.addConnection({
+						connection: connectionData,
+						setStateDirty: true,
+					});
 					this.dropPrevented = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
