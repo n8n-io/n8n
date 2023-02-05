@@ -317,7 +317,7 @@ export class Airtable implements INodeType {
 						default: [],
 						placeholder: 'Name',
 						description:
-							'Only data for fields whose names are in this list will be included in the records',
+							'Only data for fields whose names or IDs are in this list will be included in the records',
 					},
 					{
 						displayName: 'Filter By Formula',
