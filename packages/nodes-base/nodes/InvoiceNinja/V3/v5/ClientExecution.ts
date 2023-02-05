@@ -23,8 +23,14 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
 				}
+				if (additionalFields.idNumber) {
+					body.id_number = additionalFields.idNumber as string;
+				}
 				if (additionalFields.name) {
 					body.name = additionalFields.name as string;
+				}
+				if (additionalFields.sizeId) {
+					body.size_id = additionalFields.sizeId as string;
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -64,7 +70,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.city = AddressValue.city as string;
 					body.state = AddressValue.state as string;
 					body.postal_code = AddressValue.postalCode as string;
-					body.country_id = AddressValue.countryCode as string;
+					body.country_id = AddressValue.countryId as string;
 				}
 				const shippingAddressValue = (that.getNodeParameter('shippingAddressUi', i) as IDataObject)
 					.shippingAddressValue as IDataObject;
@@ -74,10 +80,10 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.shipping_city = shippingAddressValue.city as string;
 					body.shipping_state = shippingAddressValue.state as string;
 					body.shipping_postal_code = shippingAddressValue.postalCode as string;
-					body.shipping_country_id = shippingAddressValue.countryCode as string;
+					body.shipping_country_id = shippingAddressValue.countryId as string;
 				}
 				const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
-					.contacstValues as IDataObject[];
+					.contactValues as IDataObject[];
 				if (contactsValues) {
 					const contacts: IClientContact[] = [];
 					for (const contactValue of contactsValues) {
@@ -111,8 +117,14 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
 				}
+				if (additionalFields.idNumber) {
+					body.id_number = additionalFields.idNumber as string;
+				}
 				if (additionalFields.name) {
 					body.name = additionalFields.name as string;
+				}
+				if (additionalFields.sizeId) {
+					body.size_id = additionalFields.sizeId as string;
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -152,7 +164,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.city = AddressValue.city as string;
 					body.state = AddressValue.state as string;
 					body.postal_code = AddressValue.postalCode as string;
-					body.country_id = AddressValue.countryCode as string;
+					body.country_id = AddressValue.countryId as string;
 				}
 				const shippingAddressValue = (that.getNodeParameter('shippingAddressUi', i) as IDataObject)
 					.shippingAddressValue as IDataObject;
@@ -162,10 +174,10 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.shipping_city = shippingAddressValue.city as string;
 					body.shipping_state = shippingAddressValue.state as string;
 					body.shipping_postal_code = shippingAddressValue.postalCode as string;
-					body.shipping_country_id = shippingAddressValue.countryCode as string;
+					body.shipping_country_id = shippingAddressValue.countryId as string;
 				}
 				const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
-					.contacstValues as IDataObject[];
+					.contactValues as IDataObject[];
 				if (contactsValues) {
 					const contacts: IClientContact[] = [];
 					for (const contactValue of contactsValues) {

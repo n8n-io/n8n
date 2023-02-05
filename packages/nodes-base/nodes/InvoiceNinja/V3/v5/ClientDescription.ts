@@ -221,6 +221,12 @@ export const clientFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Size ID',
+				name: 'sizeId',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
@@ -555,6 +561,12 @@ export const clientFields: INodeProperties[] = [
 			{
 				displayName: 'Name',
 				name: 'name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Size ID',
+				name: 'sizeId',
 				type: 'string',
 				default: '',
 			},
