@@ -15,6 +15,7 @@ import { countryCodes, paymentTypes } from './Entities';
 import { bankTransactionFields, bankTransactionOperations } from './BankTransactionDescription';
 import { clientFields, clientOperations } from './ClientDescription';
 import { creditFields, creditOperations } from './CreditDescription';
+import { documentFields, documentOperations } from './DocumentDescription';
 import { expenseFields, expenseOperations } from './ExpenseDescription';
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 import { paymentFields, paymentOperations } from './PaymentDescription';
@@ -32,6 +33,7 @@ import { vendorFields, vendorOperations } from './VendorDescription';
 import * as BankTransactionExecution from './BankTransactionExecution';
 import * as ClientExecution from './ClientExecution';
 import * as CreditExecution from './CreditExecution';
+import * as DocumentExecution from './DocumentExecution';
 import * as ExpenseExecution from './ExpenseExecution';
 import * as InvoiceExecution from './InvoiceExecution';
 import * as PaymentExecution from './PaymentExecution';
@@ -119,6 +121,10 @@ const headProperties: INodeProperties[] = [
 				name: 'Vendor',
 				value: 'vendor',
 			},
+			{
+				name: 'Document',
+				value: 'document',
+			},
 		],
 		default: 'client',
 	},
@@ -134,6 +140,8 @@ export const InvoiceNinjaV5 = {
 			...clientFields,
 			...creditOperations,
 			...creditFields,
+			...documentOperations,
+			...documentFields,
 			...expenseOperations,
 			...expenseFields,
 			...invoiceOperations,
@@ -368,23 +376,24 @@ export const InvoiceNinjaV5 = {
 		},
 	},
 
-	async execute(that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resource = that.getNodeParameter('resource', 0);
-		if (resource === 'bankTransaction') return BankTransactionExecution.execute(that);
-		else if (resource === 'client') return ClientExecution.execute(that);
-		else if (resource === 'credit') return CreditExecution.execute(that);
-		else if (resource === 'expense') return ExpenseExecution.execute(that);
-		else if (resource === 'invoice') return InvoiceExecution.execute(that);
-		else if (resource === 'payment') return PaymentExecution.execute(that);
-		else if (resource === 'purchaseOrder') return PurchaseOrderExecution.execute(that);
-		else if (resource === 'product') return ProductExecution.execute(that);
-		else if (resource === 'project') return ProjectExecution.execute(that);
-		else if (resource === 'quote') return QuoteExecution.execute(that);
-		else if (resource === 'recurringExpense') return RecurringExpenseExecution.execute(that);
-		else if (resource === 'recurringInvoice') return RecurringInvoiceExecution.execute(that);
-		else if (resource === 'subscription') return SubscriptionExecution.execute(that);
-		else if (resource === 'task') return TaskExecution.execute(that);
-		else if (resource === 'vendor') return VendorExecution.execute(that);
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const resource = this.getNodeParameter('resource', 0);
+		if (resource === 'bankTransaction') return BankTransactionExecution.execute.call(this);
+		else if (resource === 'client') return ClientExecution.execute.call(this);
+		else if (resource === 'credit') return CreditExecution.execute.call(this);
+		else if (resource === 'document') return DocumentExecution.execute.call(this);
+		else if (resource === 'expense') return ExpenseExecution.execute.call(this);
+		else if (resource === 'invoice') return InvoiceExecution.execute.call(this);
+		else if (resource === 'payment') return PaymentExecution.execute.call(this);
+		else if (resource === 'purchaseOrder') return PurchaseOrderExecution.execute.call(this);
+		else if (resource === 'product') return ProductExecution.execute.call(this);
+		else if (resource === 'project') return ProjectExecution.execute.call(this);
+		else if (resource === 'quote') return QuoteExecution.execute.call(this);
+		else if (resource === 'recurringExpense') return RecurringExpenseExecution.execute.call(this);
+		else if (resource === 'recurringInvoice') return RecurringInvoiceExecution.execute.call(this);
+		else if (resource === 'subscription') return SubscriptionExecution.execute.call(this);
+		else if (resource === 'task') return TaskExecution.execute.call(this);
+		else if (resource === 'vendor') return VendorExecution.execute.call(this);
 		throw new Error('No Execution Handler');
 	},
 };

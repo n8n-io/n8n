@@ -63,8 +63,8 @@ export const InvoiceNinjaTriggerV4 = {
 	// @ts-ignore (because of request)
 	webhookMethods: {
 		default: {
-			async checkExists(that: IHookFunctions): Promise<boolean> {
-				const webhookData = that.getWorkflowStaticData('node');
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId === undefined) {
 					return false;
@@ -72,17 +72,17 @@ export const InvoiceNinjaTriggerV4 = {
 
 				return false;
 			},
-			async create(that: IHookFunctions): Promise<boolean> {
-				const webhookUrl = that.getNodeWebhookUrl('default');
-				const webhookData = that.getWorkflowStaticData('node');
-				const event = that.getNodeParameter('event') as string;
+			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+				const event = this.getNodeParameter('event') as string;
 
 				const body = {
 					target_url: webhookUrl,
 					event,
 				};
 
-				const responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/hooks', body);
+				const responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/hooks', body);
 				webhookData.webhookId = responseData.id as string;
 
 				if (webhookData.webhookId === undefined) {
@@ -92,18 +92,18 @@ export const InvoiceNinjaTriggerV4 = {
 
 				return true;
 			},
-			async delete(that: IHookFunctions): Promise<boolean> {
-				const webhookData = that.getWorkflowStaticData('node');
+			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
 					try {
-						await invoiceNinjaApiRequest.call(that, 'DELETE', `/hooks/${webhookData.webhookId}`);
+						await invoiceNinjaApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
 					} catch (error) {
 						return false;
 					}
 
-					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// Remove from the static workflow data so this it is clear
+					// this no webhooks are registred anymore
 					delete webhookData.webhookId;
 				}
 
@@ -112,10 +112,10 @@ export const InvoiceNinjaTriggerV4 = {
 		},
 	},
 
-	async webhook(that: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = that.getBodyData();
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const bodyData = this.getBodyData();
 		return {
-			workflowData: [that.helpers.returnJsonArray(bodyData)],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	},
 };

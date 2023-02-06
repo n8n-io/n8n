@@ -16,35 +16,6 @@ export async function invoiceNinjaApiDownloadFile(
 	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
-) {
-	const credentials = await this.getCredentials('invoiceNinjaApi');
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
-	const version = this.getNodeParameter('apiVersion', 0) as string;
-
-	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
-	const baseUrl = credentials.url || defaultUrl;
-
-	return this.helpers.request({
-		uri: `${baseUrl}/api/v1${endpoint}`,
-		method,
-		json: false,
-		encoding: null,
-		headers: {
-			'X-API-Token': credentials.apiToken,
-			'X-API-Secret': credentials.secret,
-			Accept: 'application/pdf',
-		},
-	});
-}
-
-export async function invoiceNinjaApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
-	endpoint: string,
 	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
@@ -59,6 +30,86 @@ export async function invoiceNinjaApiRequest(
 
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
 	const baseUrl = credentials.url || defaultUrl;
+
+	const options = {
+		method,
+		qs: query,
+		uri: uri || `${baseUrl}/api/v1${endpoint}`,
+		body,
+		json: false,
+		encoding: null,
+	};
+
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, 'invoiceNinjaApi', options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function invoiceNinjaApiRequestUploadFile(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	formData: FormData,
+	query?: IDataObject,
+	uri?: string,
+) {
+	const credentials = await this.getCredentials('invoiceNinjaApi');
+
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
+	const version = this.getNodeParameter('apiVersion', 0) as string;
+
+	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
+	const baseUrl = credentials.url || defaultUrl;
+
+	const options: OptionsWithUri = {
+		method,
+		qs: query,
+		uri: uri || `${baseUrl}/api/v1${endpoint}`,
+		formData,
+		json: true,
+		headers: {
+			'content-type': 'multipart/form-data',
+			'content-length': 1000,
+		},
+	};
+
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, 'invoiceNinjaApi', options);
+	} catch (error) {
+		console.log(error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function invoiceNinjaApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject | FormData = {},
+	query?: IDataObject,
+	uri?: string,
+) {
+	const credentials = await this.getCredentials('invoiceNinjaApi');
+
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
+	const version = this.getNodeParameter('apiVersion', 0) as string;
+
+	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
+	const baseUrl = credentials.url || defaultUrl;
+
+	let formData;
+	if (body instanceof FormData) {
+		formData = body;
+		body = {};
+	}
 
 	// CREATE / UPDATE - Parameter: jsonBody - for more parameters to send via the api
 	let jsonBody;
@@ -82,6 +133,7 @@ export async function invoiceNinjaApiRequest(
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
+		formData,
 		json: true,
 	};
 

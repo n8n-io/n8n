@@ -77,27 +77,27 @@ export class InvoiceNinjaTrigger implements INodeType {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
 				if (apiVersion == 'v4')
-					return InvoiceNinjaTriggerV4.webhookMethods.default.checkExists(this);
+					return InvoiceNinjaTriggerV4.webhookMethods.default.checkExists.call(this);
 				else if (apiVersion == 'v5')
-					return InvoiceNinjaTriggerV5.webhookMethods.default.checkExists(this);
+					return InvoiceNinjaTriggerV5.webhookMethods.default.checkExists.call(this);
 
 				throw new Error('Invalid API Version');
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
-				if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhookMethods.default.create(this);
+				if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhookMethods.default.create.call(this);
 				else if (apiVersion == 'v5')
-					return InvoiceNinjaTriggerV5.webhookMethods.default.create(this);
+					return InvoiceNinjaTriggerV5.webhookMethods.default.create.call(this);
 
 				throw new Error('Invalid API Version');
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
-				if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhookMethods.default.delete(this);
+				if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhookMethods.default.delete.call(this);
 				else if (apiVersion == 'v5')
-					return InvoiceNinjaTriggerV5.webhookMethods.default.delete(this);
+					return InvoiceNinjaTriggerV5.webhookMethods.default.delete.call(this);
 
 				throw new Error('Invalid API Version');
 			},
@@ -107,8 +107,8 @@ export class InvoiceNinjaTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
-		if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhook(this);
-		else if (apiVersion == 'v5') return InvoiceNinjaTriggerV5.webhook(this);
+		if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhook.call(this);
+		else if (apiVersion == 'v5') return InvoiceNinjaTriggerV5.webhook.call(this);
 
 		throw new Error('Invalid API Version');
 	}

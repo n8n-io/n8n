@@ -58,15 +58,14 @@ export class InvoiceNinja implements INodeType {
 				{
 					displayName: 'Additional JSON Body',
 					description:
-						'You can provide additional properties in a JSON form. These parameters will be merged with the parameters above. &lt;strong&gt;Note:&lt;/strong&gt; Do not provide an top level array.',
+						'You can provide additional properties in a JSON form. These parameters will be merged with the parameters above. <b>Note:</b> Do not provide an top level array.',
 					name: 'jsonBody',
 					type: 'json',
 					default: '{}',
 
 					displayOptions: {
 						show: {
-							apiVersion: ['v5'],
-							operation: ['create', 'update'],
+							operation: ['create', 'update', 'action'],
 						},
 					},
 				},
@@ -84,8 +83,8 @@ export class InvoiceNinja implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
-		if (apiVersion == 'v4') return InvoiceNinjaV4.execute(this);
-		else if (apiVersion == 'v5') return InvoiceNinjaV5.execute(this);
+		if (apiVersion == 'v4') return InvoiceNinjaV4.execute.call(this);
+		else if (apiVersion == 'v5') return InvoiceNinjaV5.execute.call(this);
 		else throw new Error('Invalid Version Parameter');
 	}
 }

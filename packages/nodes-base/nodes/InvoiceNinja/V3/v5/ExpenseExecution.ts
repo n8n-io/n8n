@@ -2,23 +2,23 @@ import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-wor
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IExpense } from './ExpenseInterface';
 
-export const execute = async function (that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const items = that.getInputData();
+export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const length = items.length;
 	const qs: IDataObject = {};
 
 	let responseData;
 
-	const resource = that.getNodeParameter('resource', 0);
-	const operation = that.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
 	if (resource !== 'expense') throw new Error('Invalid Resource Execution Handler');
 
 	for (let i = 0; i < length; i++) {
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IExpense = {};
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -126,7 +126,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.calculate_tax_by_amount = additionalFields.calculateTaxByAmount as boolean;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					'/expenses',
 					body as IDataObject,
@@ -134,8 +134,8 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'update') {
-				const expenseId = that.getNodeParameter('expenseId', i) as string;
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const expenseId = this.getNodeParameter('expenseId', i) as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IExpense = {};
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -243,7 +243,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.calculate_tax_by_amount = additionalFields.calculateTaxByAmount as boolean;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'PUT',
 					`/expenses/${expenseId}`,
 					body as IDataObject,
@@ -251,13 +251,13 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'get') {
-				const expenseId = that.getNodeParameter('expenseId', i) as string;
-				const include = that.getNodeParameter('include', i) as string[];
+				const expenseId = this.getNodeParameter('expenseId', i) as string;
+				const include = this.getNodeParameter('include', i) as string[];
 				if (include.length) {
 					qs.include = include.toString();
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'GET',
 					`/expenses/${expenseId}`,
 					{},
@@ -266,7 +266,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'getAll') {
-				const filters = that.getNodeParameter('filters', i);
+				const filters = this.getNodeParameter('filters', i);
 				if (filters.filter) {
 					qs.filter = filters.filter as string;
 				}
@@ -276,14 +276,14 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (filters.clientId) {
 					qs.client_id = filters.clientId as string;
 				}
-				const include = that.getNodeParameter('include', i) as string[];
+				const include = this.getNodeParameter('include', i) as string[];
 				if (include.length) {
 					qs.include = include.toString();
 				}
-				const returnAll = that.getNodeParameter('returnAll', i);
+				const returnAll = this.getNodeParameter('returnAll', i);
 				if (returnAll) {
 					responseData = await invoiceNinjaApiRequestAllItems.call(
-						that,
+						this,
 						'data',
 						'GET',
 						'/expenses',
@@ -291,22 +291,22 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = that.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as boolean;
 					if (perPage) qs.per_page = perPage;
-					responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/expenses', {}, qs);
+					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/expenses', {}, qs);
 					responseData = responseData.data;
 				}
 			}
 			if (operation === 'delete') {
-				const expenseId = that.getNodeParameter('expenseId', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/expenses/${expenseId}`);
+				const expenseId = this.getNodeParameter('expenseId', i) as string;
+				responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/expenses/${expenseId}`);
 				responseData = responseData.data;
 			}
 			if (operation === 'action') {
-				const expenseId = that.getNodeParameter('expenseId', i) as string;
-				const action = that.getNodeParameter('action', i) as string;				
+				const expenseId = this.getNodeParameter('expenseId', i) as string;
+				const action = this.getNodeParameter('action', i) as string;				
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					`/expenses/bulk`,
 					{
@@ -317,16 +317,16 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data[0];
 			}
 
-			const executionData = that.helpers.constructExecutionMetaData(
-				that.helpers.returnJsonArray(responseData),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		} catch (error) {
-			if (that.continueOnFail()) {
-				const executionErrorData = that.helpers.constructExecutionMetaData(
-					that.helpers.returnJsonArray({ error: error.message }),
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionErrorData);
@@ -336,5 +336,5 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 		}
 	}
 
-	return that.prepareOutputData(returnData);
+	return this.prepareOutputData(returnData);
 };

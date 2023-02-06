@@ -2,23 +2,23 @@ import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-wor
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IRecurringExpense } from './RecurringExpenseInterface';
 
-export const execute = async function (that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const items = that.getInputData();
+export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const length = items.length;
 	const qs: IDataObject = {};
 
 	let responseData;
 
-	const resource = that.getNodeParameter('resource', 0);
-	const operation = that.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
 	if (resource !== 'recurringExpense') throw new Error('Invalid Resource Execution Handler');
 
 	for (let i = 0; i < length; i++) {
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IRecurringExpense = {};
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -138,7 +138,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.entity_type = additionalFields.entityType as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					'/recurring_expenses',
 					body as IDataObject,
@@ -146,8 +146,8 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'update') {
-				const recurringExpenseId = that.getNodeParameter('recurringExpenseId', i) as string;
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const recurringExpenseId = this.getNodeParameter('recurringExpenseId', i) as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IRecurringExpense = {};
 
 				if (additionalFields.assignedUserId) {
@@ -265,7 +265,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.entity_type = additionalFields.entityType as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'PUT',
 					`/recurring_expenses/${recurringExpenseId}`,
 					body as IDataObject,
@@ -273,9 +273,9 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'get') {
-				const recurringExpenseId = that.getNodeParameter('recurringExpenseId', i) as string;
+				const recurringExpenseId = this.getNodeParameter('recurringExpenseId', i) as string;
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'GET',
 					`/recurring_expenses/${recurringExpenseId}`,
 					{},
@@ -284,7 +284,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'getAll') {
-				const filters = that.getNodeParameter('filters', i);
+				const filters = this.getNodeParameter('filters', i);
 				if (filters.filter) {
 					qs.filter = filters.filter as string;
 				}
@@ -294,14 +294,14 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (filters.clientId) {
 					qs.client_id = filters.clientId as string;
 				}
-				const include = that.getNodeParameter('include', i) as string[];
+				const include = this.getNodeParameter('include', i) as string[];
 				if (include.length) {
 					qs.include = include.toString();
 				}
-				const returnAll = that.getNodeParameter('returnAll', i);
+				const returnAll = this.getNodeParameter('returnAll', i);
 				if (returnAll) {
 					responseData = await invoiceNinjaApiRequestAllItems.call(
-						that,
+						this,
 						'data',
 						'GET',
 						'/recurring_expenses',
@@ -309,10 +309,10 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = that.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as boolean;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(
-						that,
+						this,
 						'GET',
 						'/recurringExpenses',
 						{},
@@ -322,19 +322,19 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				}
 			}
 			if (operation === 'delete') {
-				const recurringExpenseId = that.getNodeParameter('recurringExpenseId', i) as string;
+				const recurringExpenseId = this.getNodeParameter('recurringExpenseId', i) as string;
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'DELETE',
 					`/recurring_expenses/${recurringExpenseId}`,
 				);
 				responseData = responseData.data;
 			}
 			if (operation === 'action') {
-				const recurringExpenseId = that.getNodeParameter('recurringExpenseId', i) as string;
-				const action = that.getNodeParameter('action', i) as string;				
+				const recurringExpenseId = this.getNodeParameter('recurringExpenseId', i) as string;
+				const action = this.getNodeParameter('action', i) as string;				
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					`/recurring_expense/bulk`,
 					{
@@ -345,16 +345,16 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data[0];
 			}
 
-			const executionData = that.helpers.constructExecutionMetaData(
-				that.helpers.returnJsonArray(responseData),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		} catch (error) {
-			if (that.continueOnFail()) {
-				const executionErrorData = that.helpers.constructExecutionMetaData(
-					that.helpers.returnJsonArray({ error: error.message }),
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionErrorData);
@@ -364,5 +364,5 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 		}
 	}
 
-	return that.prepareOutputData(returnData);
+	return this.prepareOutputData(returnData);
 };

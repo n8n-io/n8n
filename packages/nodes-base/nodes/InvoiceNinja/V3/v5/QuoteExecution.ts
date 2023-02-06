@@ -6,23 +6,23 @@ import {
 } from '../GenericFunctions';
 import type { IQuote, IQuoteItem } from './QuoteInterface';
 
-export const execute = async function (that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const items = that.getInputData();
+export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const length = items.length;
 	const qs: IDataObject = {};
 
 	let responseData;
 
-	const resource = that.getNodeParameter('resource', 0);
-	const operation = that.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
 	if (resource !== 'quote') throw new Error('Invalid Resource Execution Handler');
 
 	for (let i = 0; i < length; i++) {
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IQuote = {};
 				if (additionalFields.projectId) {
 					body.project_id = additionalFields.projectId as string;
@@ -120,7 +120,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.autoBillEnabled) {
 					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 				}
-				const lineItemsValues = (that.getNodeParameter('invoiceItemsUi', i) as IDataObject)
+				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 					.invoiceItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IQuoteItem[] = [];
@@ -147,7 +147,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.line_items = lineItems;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					'/quotes',
 					body as IDataObject,
@@ -155,8 +155,8 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'update') {
-				const quoteId = that.getNodeParameter('quoteId', i) as string;
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const quoteId = this.getNodeParameter('quoteId', i) as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IQuote = {};
 				if (additionalFields.projectId) {
 					body.project_id = additionalFields.projectId as string;
@@ -254,7 +254,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.autoBillEnabled) {
 					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 				}
-				const lineItemsValues = (that.getNodeParameter('invoiceItemsUi', i) as IDataObject)
+				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 					.invoiceItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IQuoteItem[] = [];
@@ -281,7 +281,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.line_items = lineItems;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'PUT',
 					'/quotes' + `/${quoteId}`,
 					body as IDataObject,
@@ -289,19 +289,19 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'get') {
-				const quoteId = that.getNodeParameter('quoteId', i) as string;
-				const include = that.getNodeParameter('include', i) as string[];
+				const quoteId = this.getNodeParameter('quoteId', i) as string;
+				const include = this.getNodeParameter('include', i) as string[];
 				if (include.length) {
 					qs.include = include.toString();
 				}
 				responseData = await invoiceNinjaApiRequest
-					.call(that, 'GET', `/quotes/${quoteId}`, {}, qs)
+					.call(this, 'GET', `/quotes/${quoteId}`, {}, qs)
 					.catch((err) => {
 						if (err.description.includes('query results')) throw new Error('Quote was not found.'); // handle not found
 						throw err;
 					});
 				responseData = responseData.data;
-				const download = that.getNodeParameter('download', i) as boolean;
+				const download = this.getNodeParameter('download', i) as boolean;
 				if (download) {
 					if (!responseData.invitations[0].key)
 						throw new Error('Download failed - No invitation key present');
@@ -309,9 +309,9 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					returnData.push({
 						json: responseData,
 						binary: {
-							data: await that.helpers.prepareBinaryData(
+							data: await this.helpers.prepareBinaryData(
 								(await invoiceNinjaApiDownloadFile.call(
-									that,
+									this,
 									'GET',
 									`/quote/${responseData.invitations[0].key}/download`,
 								)),
@@ -324,21 +324,21 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				}
 			}
 			if (operation === 'getAll') {
-				const filters = that.getNodeParameter('filters', i);
+				const filters = this.getNodeParameter('filters', i);
 				if (filters.filter) {
 					qs.filter = filters.filter as string;
 				}
 				if (filters.number) {
 					qs.number = filters.number as string;
 				}
-				const include = that.getNodeParameter('include', i) as string[];
+				const include = this.getNodeParameter('include', i) as string[];
 				if (include.length) {
 					qs.include = include.toString();
 				}
-				const returnAll = that.getNodeParameter('returnAll', i);
+				const returnAll = this.getNodeParameter('returnAll', i);
 				if (returnAll) {
 					responseData = await invoiceNinjaApiRequestAllItems.call(
-						that,
+						this,
 						'data',
 						'GET',
 						'/quotes',
@@ -346,26 +346,26 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = that.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as boolean;
 					if (perPage) qs.per_page = perPage;
-					responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/invoices', {}, qs);
+					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/invoices', {}, qs);
 					responseData = responseData.data;
 				}
 			}
 			if (operation === 'delete') {
-				const quoteId = that.getNodeParameter('quoteId', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/quote/${quoteId}`);
+				const quoteId = this.getNodeParameter('quoteId', i) as string;
+				responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/quote/${quoteId}`);
 				responseData = responseData.data;
 			}
 			if (operation === 'action') {
-				const quoteId = that.getNodeParameter('quoteId', i) as string;
-				const action = that.getNodeParameter('action', i) as string;
+				const quoteId = this.getNodeParameter('quoteId', i) as string;
+				const action = this.getNodeParameter('action', i) as string;
 				if (action === 'custom_email') {
-					const customEmailBody = that.getNodeParameter('customEmailBody', i) as string;
-					const customEmailSubject = that.getNodeParameter('customEmailSubject', i) as string;
-					const customEmailTemplate = that.getNodeParameter('customEmailTemplate', i) as string;
+					const customEmailBody = this.getNodeParameter('customEmailBody', i) as string;
+					const customEmailSubject = this.getNodeParameter('customEmailSubject', i) as string;
+					const customEmailTemplate = this.getNodeParameter('customEmailTemplate', i) as string;
 					responseData = await invoiceNinjaApiRequest.call(
-						that,
+						this,
 						'POST',
 						`/emails`,
 						{
@@ -379,7 +379,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					responseData = responseData.data;
 				} else {
 					responseData = await invoiceNinjaApiRequest.call(
-						that,
+						this,
 						'POST',
 						`/quotes/bulk`,
 						{
@@ -391,16 +391,16 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				}
 			}
 
-			const executionData = that.helpers.constructExecutionMetaData(
-				that.helpers.returnJsonArray(responseData),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		} catch (error) {
-			if (that.continueOnFail()) {
-				const executionErrorData = that.helpers.constructExecutionMetaData(
-					that.helpers.returnJsonArray({ error: error.message }),
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionErrorData);
@@ -410,5 +410,5 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 		}
 	}
 
-	return that.prepareOutputData(returnData);
+	return this.prepareOutputData(returnData);
 };

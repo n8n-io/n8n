@@ -112,7 +112,7 @@ export const InvoiceNinjaV4 = {
 
 	methods: {
 		loadOptions: {
-			// Get all the available clients to display them to user so that he can
+			// Get all the available clients to display them to user so this he can
 			// select them easily
 			async getClientsV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -127,7 +127,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so this he can
 			// select them easily
 			async getProjectsV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -147,7 +147,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available invoices to display them to user so that he can
+			// Get all the available invoices to display them to user so this he can
 			// select them easily
 			async getInvoicesV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -167,7 +167,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so that he can
+			// Get all the available country codes to display them to user so this he can
 			// select them easily
 			async getCountryCodesV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -181,7 +181,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available vendors to display them to user so that he can
+			// Get all the available vendors to display them to user so this he can
 			// select them easily
 			async getVendorsV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -196,7 +196,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available expense categories to display them to user so that he can
+			// Get all the available expense categories to display them to user so this he can
 			// select them easily
 			async getExpenseCategoriesV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -219,23 +219,23 @@ export const InvoiceNinjaV4 = {
 		},
 	},
 
-	async execute(that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = that.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 
 		let responseData;
 
-		const resource = that.getNodeParameter('resource', 0);
-		const operation = that.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			//Routes: https://github.com/invoiceninja/invoiceninja/blob/ff455c8ed9fd0c0326956175ecd509efa8bad263/routes/api.php
 			try {
 				if (resource === 'client') {
 					if (operation === 'create') {
-						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IClient = {};
 						if (additionalFields.clientName) {
 							body.name = additionalFields.clientName as string;
@@ -261,7 +261,7 @@ export const InvoiceNinjaV4 = {
 						if (additionalFields.website) {
 							body.website = additionalFields.website as string;
 						}
-						const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
+						const contactsValues = (this.getNodeParameter('contactsUi', i) as IDataObject)
 							.contacstValues as IDataObject[];
 						if (contactsValues) {
 							const contacts: IContact[] = [];
@@ -277,7 +277,7 @@ export const InvoiceNinjaV4 = {
 							body.contacts = contacts;
 						}
 						const shippingAddressValue = (
-							that.getNodeParameter('shippingAddressUi', i) as IDataObject
+							this.getNodeParameter('shippingAddressUi', i) as IDataObject
 						).shippingAddressValue as IDataObject;
 						if (shippingAddressValue) {
 							body.shipping_address1 = shippingAddressValue.streetAddress as string;
@@ -288,7 +288,7 @@ export const InvoiceNinjaV4 = {
 							body.shipping_country_id = parseInt(shippingAddressValue.countryCode as string, 10);
 						}
 						const billingAddressValue = (
-							that.getNodeParameter('billingAddressUi', i) as IDataObject
+							this.getNodeParameter('billingAddressUi', i) as IDataObject
 						).billingAddressValue as IDataObject;
 						if (billingAddressValue) {
 							body.address1 = billingAddressValue.streetAddress as string;
@@ -299,7 +299,7 @@ export const InvoiceNinjaV4 = {
 							body.country_id = parseInt(billingAddressValue.countryCode as string, 10);
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'POST',
 							'/clients',
 							body as IDataObject,
@@ -307,13 +307,13 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'get') {
-						const clientId = that.getNodeParameter('clientId', i) as string;
-						const options = that.getNodeParameter('options', i);
+						const clientId = this.getNodeParameter('clientId', i) as string;
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'GET',
 							`/clients/${clientId}`,
 							{},
@@ -322,14 +322,14 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = that.getNodeParameter('returnAll', 0);
-						const options = that.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
-								that,
+								this,
 								'data',
 								'GET',
 								'/clients',
@@ -337,15 +337,15 @@ export const InvoiceNinjaV4 = {
 								qs,
 							);
 						} else {
-							qs.per_page = that.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/clients', {}, qs);
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/clients', {}, qs);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
-						const clientId = that.getNodeParameter('clientId', i) as string;
+						const clientId = this.getNodeParameter('clientId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'DELETE',
 							`/clients/${clientId}`,
 						);
@@ -354,7 +354,7 @@ export const InvoiceNinjaV4 = {
 				}
 				if (resource === 'invoice') {
 					if (operation === 'create') {
-						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IInvoice = {};
 						if (additionalFields.email) {
 							body.email = additionalFields.email as string;
@@ -422,7 +422,7 @@ export const InvoiceNinjaV4 = {
 						if (additionalFields.emailInvoice) {
 							body.email_invoice = additionalFields.emailInvoice as boolean;
 						}
-						const invoceItemsValues = (that.getNodeParameter('invoiceItemsUi', i) as IDataObject)
+						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
 						if (invoceItemsValues) {
 							const invoiceItems: IItem[] = [];
@@ -442,7 +442,7 @@ export const InvoiceNinjaV4 = {
 							body.invoice_items = invoiceItems;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'POST',
 							'/invoices',
 							body as IDataObject,
@@ -450,19 +450,19 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'email') {
-						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/email_invoice', {
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', {
 							id: invoiceId,
 						});
 					}
 					if (operation === 'get') {
-						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
-						const options = that.getNodeParameter('options', i);
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'GET',
 							`/invoices/${invoiceId}`,
 							{},
@@ -471,8 +471,8 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = that.getNodeParameter('returnAll', 0);
-						const options = that.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
@@ -481,7 +481,7 @@ export const InvoiceNinjaV4 = {
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
-								that,
+								this,
 								'data',
 								'GET',
 								'/invoices',
@@ -489,15 +489,15 @@ export const InvoiceNinjaV4 = {
 								qs,
 							);
 						} else {
-							qs.per_page = that.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/invoices', {}, qs);
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/invoices', {}, qs);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
-						const invoiceId = that.getNodeParameter('invoiceId', i) as string;
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'DELETE',
 							`/invoices/${invoiceId}`,
 						);
@@ -506,7 +506,7 @@ export const InvoiceNinjaV4 = {
 				}
 				if (resource === 'task') {
 					if (operation === 'create') {
-						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITask = {};
 						if (additionalFields.client) {
 							body.client_id = additionalFields.client as number;
@@ -523,7 +523,7 @@ export const InvoiceNinjaV4 = {
 						if (additionalFields.description) {
 							body.description = additionalFields.description as string;
 						}
-						const timeLogsValues = (that.getNodeParameter('timeLogsUi', i) as IDataObject)
+						const timeLogsValues = (this.getNodeParameter('timeLogsUi', i) as IDataObject)
 							.timeLogsValues as IDataObject[];
 						if (timeLogsValues) {
 							const logs: number[][] = [];
@@ -544,7 +544,7 @@ export const InvoiceNinjaV4 = {
 							body.time_log = JSON.stringify(logs);
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'POST',
 							'/tasks',
 							body as IDataObject,
@@ -552,13 +552,13 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'get') {
-						const taskId = that.getNodeParameter('taskId', i) as string;
-						const options = that.getNodeParameter('options', i);
+						const taskId = this.getNodeParameter('taskId', i) as string;
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'GET',
 							`/tasks/${taskId}`,
 							{},
@@ -567,14 +567,14 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = that.getNodeParameter('returnAll', 0);
-						const options = that.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
-								that,
+								this,
 								'data',
 								'GET',
 								'/tasks',
@@ -582,25 +582,25 @@ export const InvoiceNinjaV4 = {
 								qs,
 							);
 						} else {
-							qs.per_page = that.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/tasks', {}, qs);
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
-						const taskId = that.getNodeParameter('taskId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/tasks/${taskId}`);
+						const taskId = this.getNodeParameter('taskId', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/tasks/${taskId}`);
 						responseData = responseData.data;
 					}
 				}
 				if (resource === 'payment') {
 					if (operation === 'create') {
-						const additionalFields = that.getNodeParameter('additionalFields', i);
-						const invoice = that.getNodeParameter('invoice', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const invoice = this.getNodeParameter('invoice', i) as number;
 						const client = (
-							await invoiceNinjaApiRequest.call(that, 'GET', `/invoices/${invoice}`, {}, qs)
+							await invoiceNinjaApiRequest.call(this, 'GET', `/invoices/${invoice}`, {}, qs)
 						).data?.client_id as string;
-						const amount = that.getNodeParameter('amount', i) as number;
+						const amount = this.getNodeParameter('amount', i) as number;
 						const body: IPayment = {
 							invoice_id: invoice,
 							amount,
@@ -616,7 +616,7 @@ export const InvoiceNinjaV4 = {
 							body.private_notes = additionalFields.privateNotes as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'POST',
 							'/payments',
 							body as IDataObject,
@@ -624,13 +624,13 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'get') {
-						const paymentId = that.getNodeParameter('paymentId', i) as string;
-						const options = that.getNodeParameter('options', i);
+						const paymentId = this.getNodeParameter('paymentId', i) as string;
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'GET',
 							`/payments/${paymentId}`,
 							{},
@@ -639,14 +639,14 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = that.getNodeParameter('returnAll', 0);
-						const options = that.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
-								that,
+								this,
 								'data',
 								'GET',
 								'/payments',
@@ -654,15 +654,15 @@ export const InvoiceNinjaV4 = {
 								qs,
 							);
 						} else {
-							qs.per_page = that.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/payments', {}, qs);
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/payments', {}, qs);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
-						const paymentId = that.getNodeParameter('paymentId', i) as string;
+						const paymentId = this.getNodeParameter('paymentId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'DELETE',
 							`/payments/${paymentId}`,
 						);
@@ -671,7 +671,7 @@ export const InvoiceNinjaV4 = {
 				}
 				if (resource === 'expense') {
 					if (operation === 'create') {
-						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IExpense = {};
 						if (additionalFields.amount) {
 							body.amount = additionalFields.amount as number;
@@ -725,7 +725,7 @@ export const InvoiceNinjaV4 = {
 							body.vendor_id = additionalFields.vendor as number;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'POST',
 							'/expenses',
 							body as IDataObject,
@@ -733,9 +733,9 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'get') {
-						const expenseId = that.getNodeParameter('expenseId', i) as string;
+						const expenseId = this.getNodeParameter('expenseId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'GET',
 							`/expenses/${expenseId}`,
 							{},
@@ -744,10 +744,10 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = that.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
-								that,
+								this,
 								'data',
 								'GET',
 								'/expenses',
@@ -755,15 +755,15 @@ export const InvoiceNinjaV4 = {
 								qs,
 							);
 						} else {
-							qs.per_page = that.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/expenses', {}, qs);
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/expenses', {}, qs);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
-						const expenseId = that.getNodeParameter('expenseId', i) as string;
+						const expenseId = this.getNodeParameter('expenseId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'DELETE',
 							`/expenses/${expenseId}`,
 						);
@@ -772,7 +772,7 @@ export const InvoiceNinjaV4 = {
 				}
 				if (resource === 'quote') {
 					if (operation === 'create') {
-						const additionalFields = that.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IQuote = {
 							is_quote: true,
 						};
@@ -842,7 +842,7 @@ export const InvoiceNinjaV4 = {
 						if (additionalFields.emailQuote) {
 							body.email_invoice = additionalFields.emailQuote as boolean;
 						}
-						const invoceItemsValues = (that.getNodeParameter('invoiceItemsUi', i) as IDataObject)
+						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
 						if (invoceItemsValues) {
 							const invoiceItems: IItem[] = [];
@@ -862,7 +862,7 @@ export const InvoiceNinjaV4 = {
 							body.invoice_items = invoiceItems;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'POST',
 							'/invoices',
 							body as IDataObject,
@@ -870,19 +870,19 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'email') {
-						const quoteId = that.getNodeParameter('quoteId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(that, 'POST', '/email_invoice', {
+						const quoteId = this.getNodeParameter('quoteId', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', {
 							id: quoteId,
 						});
 					}
 					if (operation === 'get') {
-						const quoteId = that.getNodeParameter('quoteId', i) as string;
-						const options = that.getNodeParameter('options', i);
+						const quoteId = this.getNodeParameter('quoteId', i) as string;
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'GET',
 							`${'/invoices'}/${quoteId}`,
 							{},
@@ -891,8 +891,8 @@ export const InvoiceNinjaV4 = {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = that.getNodeParameter('returnAll', 0);
-						const options = that.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
 						}
@@ -901,7 +901,7 @@ export const InvoiceNinjaV4 = {
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
-								that,
+								this,
 								'data',
 								'GET',
 								'/quotes',
@@ -909,15 +909,15 @@ export const InvoiceNinjaV4 = {
 								qs,
 							);
 						} else {
-							qs.per_page = that.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/quotes', {}, qs);
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/quotes', {}, qs);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
-						const quoteId = that.getNodeParameter('quoteId', i) as string;
+						const quoteId = this.getNodeParameter('quoteId', i) as string;
 						responseData = await invoiceNinjaApiRequest.call(
-							that,
+							this,
 							'DELETE',
 							`${'/invoices'}/${quoteId}`,
 						);
@@ -925,16 +925,16 @@ export const InvoiceNinjaV4 = {
 					}
 				}
 
-				const executionData = that.helpers.constructExecutionMetaData(
-					that.helpers.returnJsonArray(responseData),
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (that.continueOnFail()) {
-					const executionErrorData = that.helpers.constructExecutionMetaData(
-						that.helpers.returnJsonArray({ error: error.message }),
+				if (this.continueOnFail()) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);
@@ -944,6 +944,6 @@ export const InvoiceNinjaV4 = {
 			}
 		}
 
-		return that.prepareOutputData(returnData);
+		return this.prepareOutputData(returnData);
 	},
 };

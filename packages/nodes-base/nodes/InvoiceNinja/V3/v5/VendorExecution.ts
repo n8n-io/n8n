@@ -2,23 +2,23 @@ import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-wor
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IVendor, IVendorContact } from './VendorInterface';
 
-export const execute = async function (that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const items = that.getInputData();
+export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const length = items.length;
 	const qs: IDataObject = {};
 
 	let responseData;
 
-	const resource = that.getNodeParameter('resource', 0);
-	const operation = that.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
 	if (resource !== 'vendor') throw new Error('Invalid Resource Execution Handler');
 
 	for (let i = 0; i < length; i++) {
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IVendor = {};
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -62,7 +62,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				const AddressValue = (that.getNodeParameter('addressUi', i) as IDataObject)
+				const AddressValue = (this.getNodeParameter('addressUi', i) as IDataObject)
 					.AddressValue as IDataObject;
 				if (AddressValue) {
 					body.address1 = AddressValue.address1 as string;
@@ -72,7 +72,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.postal_code = AddressValue.postalCode as string;
 					body.country_id = AddressValue.countryId as string;
 				}
-				const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
+				const contactsValues = (this.getNodeParameter('contactsUi', i) as IDataObject)
 					.contactValues as IDataObject[];
 				if (contactsValues) {
 					const contacts: IVendorContact[] = [];
@@ -93,7 +93,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.contacts = contacts;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					'/vendors',
 					body as IDataObject,
@@ -101,8 +101,8 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'update') {
-				const vendorId = that.getNodeParameter('vendorId', i) as string;
-				const additionalFields = that.getNodeParameter('additionalFields', i);
+				const vendorId = this.getNodeParameter('vendorId', i) as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IVendor = {};
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
@@ -146,7 +146,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				const AddressValue = (that.getNodeParameter('addressUi', i) as IDataObject)
+				const AddressValue = (this.getNodeParameter('addressUi', i) as IDataObject)
 					.AddressValue as IDataObject;
 				if (AddressValue) {
 					body.address1 = AddressValue.address1 as string;
@@ -156,7 +156,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.postal_code = AddressValue.postalCode as string;
 					body.country_id = AddressValue.countryId as string;
 				}
-				const contactsValues = (that.getNodeParameter('contactsUi', i) as IDataObject)
+				const contactsValues = (this.getNodeParameter('contactsUi', i) as IDataObject)
 					.contactValues as IDataObject[];
 				if (contactsValues) {
 					const contacts: IVendorContact[] = [];
@@ -177,7 +177,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					body.contacts = contacts;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'PUT',
 					`/vendors/${vendorId}`,
 					body as IDataObject,
@@ -185,13 +185,13 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'get') {
-				const vendorId = that.getNodeParameter('vendorId', i) as string;
-				const include = that.getNodeParameter('include', i) as string[];
+				const vendorId = this.getNodeParameter('vendorId', i) as string;
+				const include = this.getNodeParameter('include', i) as string[];
 				if (include.length) {
 					qs.include = include.toString();
 				}
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'GET',
 					`/vendors/${vendorId}`,
 					{},
@@ -200,7 +200,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data;
 			}
 			if (operation === 'getAll') {
-				const filters = that.getNodeParameter('filters', i);
+				const filters = this.getNodeParameter('filters', i);
 				if (filters.filter) {
 					qs.filter = filters.filter as string;
 				}
@@ -208,14 +208,14 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					qs.number = filters.number as string;
 				}
 				// no include available
-				// const include = that.getNodeParameter('include', i) as Array<string>;
+				// const include = this.getNodeParameter('include', i) as Array<string>;
 				// if (include.length) {
 				//     qs.include = include.toString() as string;
 				// }
-				const returnAll = that.getNodeParameter('returnAll', i);
+				const returnAll = this.getNodeParameter('returnAll', i);
 				if (returnAll) {
 					responseData = await invoiceNinjaApiRequestAllItems.call(
-						that,
+						this,
 						'data',
 						'GET',
 						'/vendors',
@@ -223,22 +223,22 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = that.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as boolean;
 					if (perPage) qs.per_page = perPage;
-					responseData = await invoiceNinjaApiRequest.call(that, 'GET', '/vendors', {}, qs);
+					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/vendors', {}, qs);
 					responseData = responseData.data;
 				}
 			}
 			if (operation === 'delete') {
-				const vendorId = that.getNodeParameter('vendorId', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/vendors/${vendorId}`);
+				const vendorId = this.getNodeParameter('vendorId', i) as string;
+				responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/vendors/${vendorId}`);
 				responseData = responseData.data;
 			}
 			if (operation === 'action') {
-				const vendorId = that.getNodeParameter('vendorId', i) as string;
-				const action = that.getNodeParameter('action', i) as string;
+				const vendorId = this.getNodeParameter('vendorId', i) as string;
+				const action = this.getNodeParameter('action', i) as string;
 				responseData = await invoiceNinjaApiRequest.call(
-					that,
+					this,
 					'POST',
 					`/vendors/bulk`,
 					{
@@ -249,16 +249,16 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = responseData.data[0];
 			}
 
-			const executionData = that.helpers.constructExecutionMetaData(
-				that.helpers.returnJsonArray(responseData),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		} catch (error) {
-			if (that.continueOnFail()) {
-				const executionErrorData = that.helpers.constructExecutionMetaData(
-					that.helpers.returnJsonArray({ error: error.message }),
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionErrorData);
@@ -268,5 +268,5 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 		}
 	}
 
-	return that.prepareOutputData(returnData);
+	return this.prepareOutputData(returnData);
 };
