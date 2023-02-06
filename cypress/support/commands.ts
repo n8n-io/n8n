@@ -173,30 +173,26 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, target) => {
+Cypress.Commands.add('drag', (selector, targetSelectorOrPosition) => {
 	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
 	let pageX, pageY: number;
-	if (typeof target === 'string') {
-		cy.get(target).should('exist');
-		const droppable = Cypress.$(target)[0];
+	if (typeof targetSelectorOrPosition === 'string') {
+		cy.get(targetSelectorOrPosition).should('exist');
+		const droppable = Cypress.$(targetSelectorOrPosition)[0];
 		const coords = droppable.getBoundingClientRect();
 
 		pageX = coords.left + coords.width / 2;
-		pageY = coords.top + 30;
+		pageY = coords.top + coords.height / 2;
 	} else {
-		pageX = originalLocation.right + target[0];
-		pageY = originalLocation.top + target[1];
+		pageX = originalLocation.right + targetSelectorOrPosition[0];
+		pageY = originalLocation.top + targetSelectorOrPosition[1];
 	}
 	const element = cy.get(selector);
 	element.should('exist');
+	const target = typeof targetSelectorOrPosition === 'string'? cy.get(targetSelectorOrPosition): null;
 
-
-	element.trigger('mousedown');
-	element.trigger('mousemove', {
-		which: 1,
-		pageX,
-		pageY,
-		force: true,
-	});
-	element.trigger('mouseup');
+	element.realMouseDown();
+	(target || element).realMouseMove(pageX, pageY);
+	(target || element).realHover();
+	(target || element).realMouseUp();
 });
