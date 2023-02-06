@@ -22,6 +22,7 @@ import {
 	NodeHelpers,
 	WorkflowHooks,
 } from 'n8n-workflow';
+import { executeWorkflow } from './ExecuteWorkflow';
 import { WorkflowTestData } from './types';
 
 export class CredentialsHelper extends ICredentialsHelper {
@@ -181,3 +182,17 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 export function readJsonFileSync(path: string) {
 	return JSON.parse(readFileSync(path, 'utf-8'));
 }
+
+export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes) => {
+	// execute workflow
+	const { result } = await executeWorkflow(testData, types);
+
+	// check if result node data matches expected test data
+	const resultNodeData = getResultNodeData(result, testData);
+
+	resultNodeData.forEach(({ nodeName, resultData }) => {
+		return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+	});
+
+	expect(result.finished).toEqual(true);
+};
