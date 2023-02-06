@@ -1,7 +1,5 @@
 {
-	"meta": {
-		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
-	},
+	"name": "itemLists test",
 	"nodes": [
 		{
 			"parameters": {},
@@ -72,6 +70,68 @@
 			"position": [1320, 120]
 		}
 	],
+	"pinData": {
+		"Item Lists remove duplicates selected": [
+			{
+				"json": {
+					"char": "a"
+				}
+			}
+		],
+		"Item Lists remove duplicates exclude": [
+			{
+				"json": {
+					"entry": 1,
+					"data": "a",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 4,
+					"data": "d",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 5,
+					"data": "e",
+					"char": "a"
+				}
+			}
+		],
+		"Item Lists remove duplicates": [
+			{
+				"json": {
+					"entry": 1,
+					"data": "a",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 1,
+					"data": "b",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 4,
+					"data": "d",
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"entry": 5,
+					"data": "e",
+					"char": "a"
+				}
+			}
+		]
+	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
 			"main": [
@@ -105,5 +165,13 @@
 				]
 			]
 		}
-	}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9b7b1482-ceaa-4878-8091-d6fbfbe58a79",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
 }

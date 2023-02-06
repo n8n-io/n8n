@@ -3,6 +3,7 @@ import { Credentials, loadClassInIsolation } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
 	IHttpRequestHelper,
@@ -228,4 +229,41 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	});
 
 	expect(result.finished).toEqual(true);
+};
+
+export const workflowToTests = (workflowFiles: string[]) => {
+	const testCases: WorkflowTestData[] = [];
+	for (const filePath of workflowFiles) {
+		const description = filePath.replace('.json', '');
+		const workflowData = readJsonFileSync(filePath);
+		if (workflowData.pinData === undefined) {
+			throw new Error('Workflow data does not contain pinData');
+		}
+		const nodeData = Object.keys(workflowData.pinData).reduce(
+			(acc, key) => {
+				const data = (workflowData.pinData[key] as IDataObject[]).map((item) => item.json);
+				acc[key] = [data as IDataObject[]];
+				return acc;
+			},
+			{} as {
+				[key: string]: IDataObject[][];
+			},
+		);
+
+		const input = { workflowData };
+		const output = { nodeData };
+
+		testCases.push({ description, input, output });
+	}
+	return testCases;
+};
+
+export const testWorkflows = (workflows: string[]) => {
+	const tests = workflowToTests(workflows);
+
+	const nodeTypes = setup(tests);
+
+	for (const testData of tests) {
+		test(testData.description, async () => equalityTest(testData, nodeTypes));
+	}
 };
