@@ -6,10 +6,10 @@ import { executeWorkflow } from '../ExecuteWorkflow';
 import { ExecuteCommand } from '../../../nodes/ExecuteCommand/ExecuteCommand.node';
 import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
 
-describe('Run EC Node', () => {
+describe('Execute Execute Command Node', () => {
 	const tests: Array<WorkflowTestData> = [
 		{
-			description: 'should execute Execute Command Node',
+			description: 'should execute Execute Command node',
 			input: {
 				workflowData: Helpers.readJsonFileSync('test/nodes/ExecuteCommand/workflow.json'),
 			},
