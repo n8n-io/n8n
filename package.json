@@ -40,7 +40,6 @@
     "@n8n_io/eslint-config": "*",
     "@ngneat/falso": "^6.1.0",
     "@types/jest": "^29.2.2",
-    "@types/node": "^16.11.22",
     "@types/supertest": "^2.0.12",
     "cross-env": "^7.0.3",
     "cypress": "^10.0.3",
@@ -66,6 +65,7 @@
       "vue-demi"
     ],
     "overrides": {
+      "@types/node": "^16.18.12",
       "browserslist": "^4.21.4",
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
