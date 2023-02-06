@@ -1,18 +1,18 @@
 import type { INodeType } from 'n8n-workflow';
+
 import type { WorkflowTestData } from '../../../../test/nodes/types';
 
 import * as Helpers from '../../../../test/nodes/Helpers';
 import { executeWorkflow } from '../../../../test/nodes/ExecuteWorkflow';
+
 import { ManualTrigger } from '../../../ManualTrigger/ManualTrigger.node';
 import { Code } from '../../../Code/Code.node';
-import { Set } from '../../../Set/Set.node';
-import { If } from '../../../If/If.node';
-import { NoOp } from '../../../NoOp/NoOp.node';
+import { ItemLists } from '../../ItemLists.node';
 
 describe('Execute ItemLists Node', () => {
 	const tests: WorkflowTestData[] = [
 		{
-			description: 'should execute IF node true/false boolean',
+			description: 'should execute ItemLists limit operation',
 			input: {
 				workflowData: Helpers.readJsonFileSync(
 					'nodes/ItemLists/test/node/ItemLists.limit.workflow.json',
@@ -20,17 +20,17 @@ describe('Execute ItemLists Node', () => {
 			},
 			output: {
 				nodeData: {
-					'On True': [
+					'Item Lists limit first': [
 						[
 							{
-								value: true,
+								entry: 1,
 							},
 						],
 					],
-					'On False': [
+					'Item Lists limit last': [
 						[
 							{
-								value: false,
+								entry: 5,
 							},
 						],
 					],
@@ -39,7 +39,7 @@ describe('Execute ItemLists Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new Code(), new Set(), new If(), new NoOp()];
+	const nodes: INodeType[] = [new ManualTrigger(), new Code(), new ItemLists()];
 	const nodeTypes = Helpers.setup(nodes);
 
 	const executeTest = async (testData: WorkflowTestData) => {

@@ -1,77 +1,50 @@
 {
 	"meta": {
-		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
 	},
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "47003824-c11f-4ae3-80a5-0e1a6d840b21",
-			"name": "On clicking 'execute'",
+			"id": "c36aef04-b8ee-4f50-938b-ec64c4f78c97",
+			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				720,
-				460
-			]
+			"position": [860, 340]
 		},
 		{
 			"parameters": {
-				"conditions": {
-					"boolean": [
-						{
-							"value1": "={{ $json[\"value\"] }}",
-							"value2": true
-						}
-					]
-				}
+				"jsCode": "return [\n  {entry: 1},\n  {entry: 2},\n  {entry: 3},\n  {entry: 4},\n  {entry: 5},\n];"
 			},
-			"id": "5420fe7d-a216-44e0-b91f-188ba5b6a340",
-			"name": "IF",
-			"type": "n8n-nodes-base.if",
-			"typeVersion": 1,
-			"position": [
-				1160,
-				460
-			]
-		},
-		{
-			"parameters": {},
-			"id": "52d58f32-7faf-4874-afff-e6842bd02430",
-			"name": "On False",
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [
-				1400,
-				580
-			]
-		},
-		{
-			"parameters": {},
-			"id": "9be683ac-cd3f-4ba1-8fa4-052102c3d891",
-			"name": "On True",
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [
-				1400,
-				340
-			]
-		},
-		{
-			"parameters": {
-				"jsCode": "return [\n  { value: true },\n  { value: false }\n];"
-			},
-			"id": "5b3207e7-37e3-43c8-a4da-1ffebb0de134",
+			"id": "79f44614-aaf8-421a-9cad-2d92445a5dd5",
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				940,
-				460
-			]
+			"position": [1120, 340]
+		},
+		{
+			"parameters": {
+				"operation": "limit"
+			},
+			"id": "9762644f-34cb-48ca-b8a3-e0aa0ca05d4a",
+			"name": "Item Lists limit first",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1340, 240]
+		},
+		{
+			"parameters": {
+				"operation": "limit",
+				"keep": "lastItems"
+			},
+			"id": "15e2dc35-41e6-4209-9487-4bbc836d68cd",
+			"name": "Item Lists limit last",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1340, 460]
 		}
 	],
 	"connections": {
-		"On clicking 'execute'": {
+		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
 					{
@@ -82,29 +55,16 @@
 				]
 			]
 		},
-		"IF": {
-			"main": [
-				[
-					{
-						"node": "On True",
-						"type": "main",
-						"index": 0
-					}
-				],
-				[
-					{
-						"node": "On False",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
 		"Code": {
 			"main": [
 				[
 					{
-						"node": "IF",
+						"node": "Item Lists limit first",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists limit last",
 						"type": "main",
 						"index": 0
 					}
