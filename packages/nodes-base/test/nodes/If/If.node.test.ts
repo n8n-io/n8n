@@ -1,13 +1,5 @@
-import { INodeType } from 'n8n-workflow';
 import * as Helpers from '../Helpers';
 import { WorkflowTestData } from '../types';
-
-import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
-import { Set } from '../../../nodes/Set/Set.node';
-import { If } from '../../../nodes/If/If.node';
-import { NoOp } from '../../../nodes/NoOp/NoOp.node';
-import { Code } from '../../../nodes/Code/Code.node';
-
 import { executeWorkflow } from '../ExecuteWorkflow';
 
 describe('Execute If Node', () => {
@@ -38,8 +30,7 @@ describe('Execute If Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new Code(), new Set(), new If(), new NoOp()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {
