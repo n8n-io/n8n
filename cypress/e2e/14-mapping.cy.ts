@@ -29,5 +29,9 @@ describe('Data mapping', () => {
 		ndv.getters.parameterInput('value').should('have.length', 1).find('input').should('have.value', '');
 
 		ndv.actions.mapDataFromHeader(1, 'value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }}');
+
+		ndv.actions.mapDataFromHeader(2, 'value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }} {{ $json["Readable date"] }}');
 	});
 });
