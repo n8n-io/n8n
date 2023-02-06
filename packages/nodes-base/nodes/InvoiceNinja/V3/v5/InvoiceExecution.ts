@@ -22,16 +22,15 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const clientId = that.getNodeParameter('clientId', i);
 				const additionalFields = that.getNodeParameter('additionalFields', i);
 				const body: IInvoice = {};
+				body.client_id = clientId as string;
 				if (additionalFields.projectId) {
 					body.project_id = additionalFields.projectId as string;
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
-				}
-				if (additionalFields.clientId) {
-					body.client_id = additionalFields.clientId as string;
 				}
 				if (additionalFields.vendorId) {
 					body.vendor_id = additionalFields.vendorId as string;
@@ -41,9 +40,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.designId) {
 					body.design_id = additionalFields.designId as string;
-				}
-				if (additionalFields.recurringId) {
-					body.recurring_id = additionalFields.recurringId as string;
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
@@ -131,8 +127,8 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						const item: IInvoiceItem = {
 							quantity: itemValue.quantity as number,
 							cost: itemValue.cost as number,
-							product_key: itemValue.service as string,
-							notes: itemValue.description as string,
+							product_key: itemValue.productKey as string,
+							notes: itemValue.notes as string,
 							discount: itemValue.discount as number,
 							tax_rate1: itemValue.taxRate1 as number,
 							tax_rate2: itemValue.taxRate2 as number,
@@ -179,9 +175,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.designId) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.recurringId) {
-					body.recurring_id = additionalFields.recurringId as string;
-				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
 				}
@@ -268,8 +261,8 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						const item: IInvoiceItem = {
 							quantity: itemValue.quantity as number,
 							cost: itemValue.cost as number,
-							product_key: itemValue.service as string,
-							notes: itemValue.description as string,
+							product_key: itemValue.productKey as string,
+							notes: itemValue.notes as string,
 							discount: itemValue.discount as number,
 							tax_rate1: itemValue.taxRate1 as number,
 							tax_rate2: itemValue.taxRate2 as number,

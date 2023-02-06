@@ -213,6 +213,149 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                 invoice:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Client Name or ID',
+		name: 'clientId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['create'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getClientsV5',
+		},
+		required: true,
+		default: '',
+	},
+	{
+		displayName: 'Invoice Items',
+		name: 'invoiceItemsUi',
+		placeholder: 'Add Invoice Item',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'invoiceItemsValues',
+				displayName: 'Invoice Item',
+				values: [
+					{
+						displayName: 'Cost',
+						name: 'cost',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anzahl',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1,
+					},
+					{
+						displayName: 'Product Key / Article Name',
+						description: 'Name of the Article / Product to invoice',
+						name: 'productKey',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Notes / Description',
+						description: 'an extended Description for the invoice line',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -226,17 +369,6 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Client Name or ID',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
-				default: '',
-			},
 			{
 				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
@@ -284,12 +416,6 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: '',
-			},
-			{
-				displayName: 'Recurring ID',
-				name: 'recurringId',
-				type: 'string',
 				default: '',
 			},
 			{
@@ -457,119 +583,6 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'string',
 				typeOptions: {},
 				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
-		placeholder: 'Add Invoice Item',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['invoice'],
-				operation: ['create'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'invoiceItemsValues',
-				displayName: 'Invoice Item',
-				values: [
-					{
-						displayName: 'Cost',
-						name: 'cost',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Anzahl',
-						name: 'quantity',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 1,
-					},
-					{
-						displayName: 'Notes',
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 1',
-						name: 'taxName1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 2',
-						name: 'taxName2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 3',
-						name: 'taxName3',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Rate 1',
-						name: 'taxRate1',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 2',
-						name: 'taxRate2',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 3',
-						name: 'taxRate3',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Custom Value 1',
-						name: 'customValue1',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 2',
-						name: 'customValue2',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 3',
-						name: 'customValue3',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 4',
-						name: 'customValue4',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-				],
 			},
 		],
 	},
@@ -591,6 +604,130 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Invoice Items',
+		name: 'invoiceItemsUi',
+		placeholder: 'Add Invoice Item',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'invoiceItemsValues',
+				displayName: 'Invoice Item',
+				values: [
+					{
+						displayName: 'Cost',
+						name: 'cost',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anzahl',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1,
+					},
+					{
+						displayName: 'Product Key / Article Name',
+						description: 'Name of the Article / Product to invoice',
+						name: 'productKey',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Notes / Description',
+						description: 'an extended Description for the invoice line',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -662,12 +799,6 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDesignsV5',
 				},
-				default: '',
-			},
-			{
-				displayName: 'Recurring ID',
-				name: 'recurringId',
-				type: 'string',
 				default: '',
 			},
 			{
@@ -835,119 +966,6 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'string',
 				typeOptions: {},
 				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
-		placeholder: 'Add Invoice Item',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['invoice'],
-				operation: ['update'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'invoiceItemsValues',
-				displayName: 'Invoice Item',
-				values: [
-					{
-						displayName: 'Cost',
-						name: 'cost',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Anzahl',
-						name: 'quantity',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 1,
-					},
-					{
-						displayName: 'Notes',
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 1',
-						name: 'taxName1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 2',
-						name: 'taxName2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 3',
-						name: 'taxName3',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Rate 1',
-						name: 'taxRate1',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 2',
-						name: 'taxRate2',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 3',
-						name: 'taxRate3',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Custom Value 1',
-						name: 'customValue1',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 2',
-						name: 'customValue2',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 3',
-						name: 'customValue3',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 4',
-						name: 'customValue4',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-				],
 			},
 		],
 	},
@@ -1000,11 +1018,6 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive an invoice',
-			},
-			{
 				name: 'Auto Bill',
 				value: 'auto_bill',
 				action: 'Auto Bill an invoice',
@@ -1038,6 +1051,11 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Mark Paid',
 				value: 'mark_paid',
 				action: 'Mark Paid an invoice',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an invoice',
 			},
 			{
 				name: 'Restore',
