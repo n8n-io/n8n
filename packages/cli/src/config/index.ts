@@ -12,6 +12,7 @@ if (inE2ETests) {
 		E2E_TESTS: 'true',
 		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
 		N8N_DIAGNOSTICS_ENABLED: 'false',
+		EXECUTIONS_PROCESS: 'main',
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
