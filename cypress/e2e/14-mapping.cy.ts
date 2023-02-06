@@ -20,6 +20,7 @@ describe('Data mapping', () => {
 		});
 		canvasNode.actions.openNode('Set');
 		ndv.actions.executePrevious();
+		ndv.actions.switchInputMode('Table');
 		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
 
 		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();

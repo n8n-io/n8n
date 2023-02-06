@@ -85,5 +85,11 @@ export class NDV extends BasePage {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"] input`;
 			cy.drag(draggable, droppable);
 		},
+		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
+			this.getters.inputDisplayMode().find('label').contains(type).click();
+		},
+		switchOutputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
+			this.getters.outputDisplayMode().find('label').contains(type).click();
+		},
 	};
 }
