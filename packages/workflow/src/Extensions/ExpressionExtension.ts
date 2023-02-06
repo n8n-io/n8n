@@ -108,7 +108,7 @@ function parseWithEsprimaNext(source: string, options?: any): any {
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
  *
- * This is function also polyfills optional chaining if using extended functions.
+ * This function also polyfills optional chaining if using extended functions.
  *
  * ```ts
  * 'a'.method('x') // becomes

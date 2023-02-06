@@ -113,20 +113,59 @@ describe('tmpl Expression Parser', () => {
 	});
 
 	describe('Test newer ES syntax', () => {
-		test('Optional chaining parses', () => {
-			expect(extendTransform('$json.something?.test')?.code).toBe('$json.something?.test');
-			expect(extendTransform('$json.something?.test.isBlank()')?.code.slice(0, -1)).toBe(
-				'$json.something?.test === undefined ? undefined : extend($json.something?.test, "isBlank", [])',
+		test('Optional chaining transforms', () => {
+			expect(extendTransform('$json.something?.test.funcCall()')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test.funcCall();',
 			);
-			expect(extendTransform('$json.something?.test.isBlank()?.somethingElse')?.code).toBe(
-				'($json.something?.test === undefined ? undefined : extend($json.something?.test, "isBlank", []))?.somethingElse',
+
+			expect(extendTransform('$json.something?.test.funcCall()?.somethingElse')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.test.funcCall()) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.somethingElse;',
 			);
+
+			expect(extendTransform('$json.something?.test.funcCall().somethingElse')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test.funcCall().somethingElse;',
+			);
+
 			expect(
-				extendTransform('$json.something?.test.isBlank()?.somethingElse.isBlank()')?.code,
+				extendTransform('$json.something?.test.funcCall()?.somethingElse.otherCall()')?.code,
 			).toBe(
-				'(($json.something?.test === undefined ? : undefined extend($json.something?.test, "isBlank", []))?.somethingElse === undefined ? undefined : extend(($json.something?.test !== undefined ? extend($json.something?.test, "isBlank", []))?.somethingElse, "isBlank", []))',
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.test.funcCall()) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.somethingElse.otherCall();',
 			);
+
+			expect(evaluate('={{ [1, 2, 3, 4]?.sum() }}')).toBe(10);
 		});
+
+		test('Optional chaining transforms on calls', () => {
+			expect(extendTransform('Math.min?.(1)')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = extendOptional(Math, "min")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1(1);',
+			);
+			expect(extendTransform('Math?.min?.(1)')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = Math) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = extendOptional(window.chainValue1, "min")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1(1);',
+			);
+
+			expect(extendTransform('$json.test.test2?.sum()')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.test.test2) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : extend(window.chainValue1, "sum", []);',
+			);
+			expect(extendTransform('$json.test.test2?.sum?.()')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.test.test2) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = extendOptional(window.chainValue1, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1();',
+			);
+
+			expect(evaluate('={{ [1, 2, 3, 4].sum?.() }}')).toBe(10);
+		});
+
+		test('Multiple optional chains in an expression', () => {
+			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code)
+				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+  (window.chainCancelToken1 = ((window.chainValue1 = $json.test) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test2)
+);`);
+
+			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code)
+				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+  (window.chainCancelToken1 = ((window.chainValue1 = extendOptional($json.test, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1())
+);`);
+		});
+
+		expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
 	});
 
 	describe('Non dot extensions', () => {
