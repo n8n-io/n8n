@@ -10,7 +10,7 @@ describe('Expression editor modal', () => {
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openExpressionEditorModal();

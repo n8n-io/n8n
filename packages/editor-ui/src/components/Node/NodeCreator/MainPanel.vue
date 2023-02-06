@@ -122,7 +122,6 @@ const state = reactive({
 	isRoot: true,
 	selectedSubcategory: '',
 	activeNodeActions: null as INodeTypeDescription | null,
-	latestNodeData: null as INodeTypeDescription | null,
 });
 const { baseUrl } = useRootStore();
 const { $externalHooks } = new externalHooks();
@@ -137,7 +136,7 @@ const telemetry = instance?.proxy.$telemetry;
 const { isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(
 	() =>
-		state.latestNodeData?.properties.some((p) =>
+		state.activeNodeActions?.properties.some((p) =>
 			p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
 		) === true,
 );
@@ -292,26 +291,9 @@ function getCustomAPICallHintLocale(key: string) {
 		interpolate: { nodeNameTitle },
 	});
 }
-// The nodes.json doesn't contain API CALL option so we need to fetch the node detail
-// to determine if need to render the API CALL hint
-async function fetchNodeDetails() {
-	if (!state.activeNodeActions) return;
-
-	const { getNodesInformation } = useNodeTypesStore();
-	const { version, name } = state.activeNodeActions;
-	const payload = {
-		name,
-		version: Array.isArray(version) ? version?.slice(-1)[0] : version,
-	} as INodeTypeNameVersion;
-
-	const nodesInfo = await getNodesInformation([payload], false);
-
-	state.latestNodeData = nodesInfo[0];
-}
 
 function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
 	state.activeNodeActions = nodeType;
-	fetchNodeDetails();
 
 	if (nodeType) trackActionsView();
 }
