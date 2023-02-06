@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { Credentials } from 'n8n-core';
+import { Credentials, loadClassInIsolation } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -18,11 +18,13 @@ import {
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	LoadingDetails,
 	LoggerProxy,
 	NodeHelpers,
 	WorkflowHooks,
 } from 'n8n-workflow';
 import { WorkflowTestData } from './types';
+import path from 'path';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -143,11 +145,42 @@ export function NodeTypes(): NodeTypesClass {
 	return nodeTypesInstance;
 }
 
-export function setup(nodes: INodeType[]) {
-	const nodeTypes = NodeTypes();
-	for (const node of nodes) {
-		nodeTypes.addNode('n8n-nodes-base.' + node.description.name, node);
+let knownNodes: Record<string, LoadingDetails> | null = null;
+
+const loadKnownNodes = (): Record<string, LoadingDetails> => {
+	if (knownNodes === null) {
+		knownNodes = JSON.parse(readFileSync('dist/known/nodes.json').toString());
 	}
+	return knownNodes!;
+};
+
+export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
+	if (!Array.isArray(testData)) {
+		testData = [testData];
+	}
+
+	const knownNodes = loadKnownNodes();
+
+	const nodeTypes = NodeTypes();
+	const nodeNames = Array.from(
+		new Set(testData.flatMap((data) => data.input.workflowData.nodes.map((n) => n.type))),
+	);
+
+	for (const nodeName of nodeNames) {
+		if (!nodeName.startsWith('n8n-nodes-base.')) {
+			throw new Error(`Unknown node type: ${nodeName}`);
+		}
+		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
+		if (!loadInfo) {
+			throw new Error(`Unknown node type: ${nodeName}`);
+		}
+		const node = loadClassInIsolation(
+			path.join(process.cwd(), loadInfo.sourcePath),
+			loadInfo.className,
+		) as INodeType;
+		nodeTypes.addNode(nodeName, node);
+	}
+
 	const fakeLogger = {
 		log: () => {},
 		debug: () => {},
