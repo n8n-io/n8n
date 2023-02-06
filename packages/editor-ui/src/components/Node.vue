@@ -892,6 +892,7 @@ export default mixins(
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
 	--stalk-success-size: 87px;
+	--stalk-success-size-without-label: 40px;
 	--stalk-long-size: 127px;
 	--plus-endpoint-box-size: 24px;
 	--plus-endpoint-box-size-small: 17px;
@@ -1037,7 +1038,7 @@ export default mixins(
 }
 
 .node-output-endpoint-label {
-	margin-left: calc(var(--endpoint-size-small) + var(--spacing-3xs));
+	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
 }
 .node-input-endpoint-label {
 	text-align: right;
@@ -1071,10 +1072,13 @@ export default mixins(
 		opacity: 1;
 	}
 }
+.long-stalk {
+	--stalk-size: var(--stalk-long-size);
+}
 .ep-success {
 	--stalk-size: var(--stalk-success-size);
 }
-.long-stalk {
-	--stalk-size: var(--stalk-long-size);
+.ep-success--without-label {
+	--stalk-size: var(--stalk-success-size-without-label);
 }
 </style>
