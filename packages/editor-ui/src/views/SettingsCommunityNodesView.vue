@@ -199,11 +199,9 @@ export default mixins(showMessage).extend({
 			this.openInstallModal();
 		},
 		goToUpgrade(): void {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
 			const linkUrl = `${this.$locale.baseText(
-				linkUrlTranslationKey,
-			)}&utm_campaign=upgrade-workflow-sharing`;
+				'contextual.upgradeLinkUrl.desktop',
+			)}&utm_campaign=upgrade-community-nodes&selfHosted=true`;
 
 			window.open(linkUrl, '_blank');
 		},
