@@ -7,6 +7,7 @@
 					:label="$locale.baseText('settings.users.invite')"
 					@click="onInvite"
 					size="large"
+					data-test-id="settings-users-invite-button"
 				/>
 			</div>
 		</div>

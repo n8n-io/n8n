@@ -22,6 +22,7 @@
 							<n8n-icon-button
 								icon="link"
 								type="tertiary"
+								data-test-id="copy-invite-link-button"
 								@click="onCopyInviteLink(user)"
 							></n8n-icon-button>
 						</n8n-tooltip>

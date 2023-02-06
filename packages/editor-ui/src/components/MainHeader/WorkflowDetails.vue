@@ -62,7 +62,12 @@
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-button type="secondary" class="mr-2xs" @click="onShareButtonClick">
+					<n8n-button
+						type="secondary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+						data-test-id="workflow-share-button"
+					>
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
 					<template #fallback>
