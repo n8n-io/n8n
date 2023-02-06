@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 // import { createHash } from 'crypto';
+import { titleCase } from 'title-case';
 import * as ExpressionError from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 import CryptoJS from 'crypto-js';
@@ -34,20 +35,17 @@ const URL_REGEXP =
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
 
-const TRUE_VALUES = ['true', '1', 't', 'yes', 'y'];
-const FALSE_VALUES = ['false', '0', 'f', 'no', 'n'];
-
-function encrypt(value: string, extraArgs?: unknown): string {
-	const [format = 'MD5'] = extraArgs as string[];
-	if (format.toLowerCase() === 'base64') {
+function hash(value: string, extraArgs?: unknown): string {
+	const [algorithm = 'MD5'] = extraArgs as string[];
+	if (algorithm.toLowerCase() === 'base64') {
 		// We're using a library instead of btoa because btoa only
 		// works on ASCII
 		return encode(value);
 	}
-	const hashFunction = hashFunctions[format.toLowerCase()];
+	const hashFunction = hashFunctions[algorithm.toLowerCase()];
 	if (!hashFunction) {
 		throw new ExpressionError.ExpressionExtensionError(
-			`Unknown encrypt type ${format}. Available types are: ${Object.keys(hashFunctions)
+			`Unknown algorithm ${algorithm}. Available algorithms are: ${Object.keys(hashFunctions)
 				.map((s) => s.toUpperCase())
 				.join(', ')}, and Base64.`,
 		);
@@ -56,24 +54,12 @@ function encrypt(value: string, extraArgs?: unknown): string {
 	// return createHash(format).update(value.toString()).digest('hex');
 }
 
-function getOnlyFirstCharacters(value: string, extraArgs: number[]): string {
-	const [end] = extraArgs;
-
-	if (typeof end !== 'number') {
-		throw new ExpressionError.ExpressionExtensionError(
-			'getOnlyFirstCharacters() requires a argument',
-		);
-	}
-
-	return value.slice(0, end);
-}
-
-function isBlank(value: string): boolean {
+function isEmpty(value: string): boolean {
 	return value === '';
 }
 
-function isPresent(value: string): boolean {
-	return !isBlank(value);
+function isNotEmpty(value: string): boolean {
+	return !isEmpty(value);
 }
 
 function length(value: string): number {
@@ -122,16 +108,18 @@ function removeMarkdown(value: string): string {
 	return output;
 }
 
-function sayHi(value: string) {
-	return `hi ${value}`;
-}
-
-function stripTags(value: string): string {
+function removeTags(value: string): string {
 	return value.replace(/<[^>]*>?/gm, '');
 }
 
 function toDate(value: string): Date {
-	return new Date(value.toString());
+	const date = new Date(value.toString());
+
+	if (date.toString() === 'Invalid Date') {
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
+	}
+
+	return date;
 }
 
 function urlDecode(value: string, extraArgs: boolean[]): string {
@@ -152,11 +140,29 @@ function urlEncode(value: string, extraArgs: boolean[]): string {
 
 function toInt(value: string, extraArgs: Array<number | undefined>) {
 	const [radix] = extraArgs;
-	return parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
+	const int = parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
+
+	if (isNaN(int)) {
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to integer');
+	}
+
+	return int;
 }
 
 function toFloat(value: string) {
-	return parseFloat(value.replace(CURRENCY_REGEXP, ''));
+	if (value.includes(',')) {
+		throw new ExpressionError.ExpressionExtensionError(
+			'cannot convert to float, expected . as decimal separator',
+		);
+	}
+
+	const float = parseFloat(value.replace(CURRENCY_REGEXP, ''));
+
+	if (isNaN(float)) {
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to float');
+	}
+
+	return float;
 }
 
 function quote(value: string, extraArgs: string[]) {
@@ -166,15 +172,9 @@ function quote(value: string, extraArgs: string[]) {
 		.replace(new RegExp(`\\${quoteChar}`, 'g'), `\\${quoteChar}`)}${quoteChar}`;
 }
 
-function isTrue(value: string) {
-	return TRUE_VALUES.includes(value.toLowerCase());
-}
-
-function isFalse(value: string) {
-	return FALSE_VALUES.includes(value.toLowerCase());
-}
-
 function isNumeric(value: string) {
+	if (value.includes(' ')) return false;
+
 	return !isNaN(value as unknown as number) && !isNaN(parseFloat(value));
 }
 
@@ -185,7 +185,18 @@ function isUrl(value: string) {
 	} catch (_error) {
 		return false;
 	}
-	return url.protocol === 'http:' || url.protocol === 'https:';
+
+	// URL constructor tolerates missing `//` after protocol so check manually
+	for (const scheme of ['http:', 'https:']) {
+		if (
+			url.protocol === scheme &&
+			value.slice(scheme.length, scheme.length + '//'.length) === '//'
+		) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 function isDomain(value: string) {
@@ -193,15 +204,22 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	return EMAIL_REGEXP.test(value);
-}
+	const result = EMAIL_REGEXP.test(value);
 
-function stripSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	// email regex is loose so check manually for now
+	if (result && value.includes(' ')) {
+		return false;
+	}
+
+	return result;
 }
 
 function toTitleCase(value: string) {
-	return value.replace(/\w\S*/g, (v) => v.charAt(0).toLocaleUpperCase() + v.slice(1));
+	return titleCase(value);
+}
+
+function replaceSpecialChars(value: string) {
+	return transliterate(value, { unknown: '?' });
 }
 
 function toSentenceCase(value: string) {
@@ -265,16 +283,153 @@ function extractUrl(value: string) {
 	return matched[0];
 }
 
+removeMarkdown.doc = {
+	name: 'removeMarkdown',
+	description: 'Removes Markdown formatting from a string',
+	returnType: 'string',
+};
+
+removeTags.doc = {
+	name: 'removeTags',
+	description: 'Removes tags, such as HTML or XML, from a string',
+	returnType: 'string',
+};
+
+toDate.doc = {
+	name: 'toDate',
+	description: 'Converts a string to a date',
+	returnType: 'Date',
+};
+
+toFloat.doc = {
+	name: 'toFloat',
+	description: 'Converts a string to a decimal number',
+	returnType: 'number',
+	aliases: ['toDecimalNumber'],
+};
+
+toInt.doc = {
+	name: 'toInt',
+	description: 'Converts a string to an integer',
+	returnType: 'number',
+	aliases: ['toWholeNumber'],
+};
+
+toSentenceCase.doc = {
+	name: 'toSentenceCase',
+	description: 'Formats a string to sentence case. Example: "This is a sentence"',
+	returnType: 'string',
+};
+
+toSnakeCase.doc = {
+	name: 'toSnakeCase',
+	description: 'Formats a string to snake case. Example: "this_is_snake_case"',
+	returnType: 'string',
+};
+
+toTitleCase.doc = {
+	name: 'toTitleCase',
+	description: 'Formats a string to title case. Example: "This Is a Title"',
+	returnType: 'string',
+};
+
+urlDecode.doc = {
+	name: 'urlDecode',
+	description:
+		'Decodes a URL-encoded string. It decodes any percent-encoded characters in the input string, and replaces them with their original characters.',
+	returnType: 'string',
+};
+
+replaceSpecialChars.doc = {
+	name: 'replaceSpecialChars',
+	description: 'Replaces non-ASCII characters in a string with an ASCII representation',
+	returnType: 'string',
+};
+
+length.doc = {
+	name: 'length',
+	description: 'Returns the character count of a string',
+	returnType: 'number',
+};
+
+isDomain.doc = {
+	name: 'isDomain',
+	description: 'Checks if a string is a domain',
+	returnType: 'boolean',
+};
+
+isEmail.doc = {
+	name: 'isEmail',
+	description: 'Checks if a string is an email',
+	returnType: 'boolean',
+};
+
+isNumeric.doc = {
+	name: 'isEmail',
+	description: 'Checks if a string only contains digits',
+	returnType: 'boolean',
+};
+
+isUrl.doc = {
+	name: 'isUrl',
+	description: 'Checks if a string is a valid URL',
+	returnType: 'boolean',
+};
+
+isEmpty.doc = {
+	name: 'isEmpty',
+	description: 'Checks if a string is empty',
+	returnType: 'boolean',
+};
+
+isNotEmpty.doc = {
+	name: 'isNotEmpty',
+	description: 'Checks if a string has content',
+	returnType: 'boolean',
+};
+
+extractEmail.doc = {
+	name: 'extractEmail',
+	description: 'Extracts an email from a string. Returns undefined if none is found.',
+	returnType: 'string',
+};
+
+extractDomain.doc = {
+	name: 'extractDomain',
+	description:
+		'Extracts a domain from a string containing a valid URL. Returns undefined if none is found.',
+	returnType: 'string',
+};
+
+extractUrl.doc = {
+	name: 'extractUrl',
+	description: 'Extracts a URL from a string. Returns undefined if none is found.',
+	returnType: 'string',
+};
+
+// @TODO_NEXT_PHASE: Surface extensions below which take args
+
+hash.doc = {
+	name: 'hash',
+	returnType: 'string',
+};
+
+urlEncode.doc = {
+	name: 'urlEncode',
+	returnType: 'string',
+};
+
+quote.doc = {
+	name: 'quote',
+	returnType: 'string',
+};
+
 export const stringExtensions: ExtensionMap = {
 	typeName: 'String',
 	functions: {
-		encrypt,
-		hash: encrypt,
-		getOnlyFirstCharacters,
+		hash,
 		removeMarkdown,
-		sayHi,
-		stripTags,
-		toBoolean: isTrue,
+		removeTags,
 		toDate,
 		toDecimalNumber: toFloat,
 		toFloat,
@@ -286,18 +441,14 @@ export const stringExtensions: ExtensionMap = {
 		urlDecode,
 		urlEncode,
 		quote,
-		stripSpecialChars,
+		replaceSpecialChars,
 		length,
 		isDomain,
 		isEmail,
-		isTrue,
-		isFalse,
-		isNotTrue: isFalse,
 		isNumeric,
 		isUrl,
-		isURL: isUrl,
-		isBlank,
-		isPresent,
+		isEmpty,
+		isNotEmpty,
 		extractEmail,
 		extractDomain,
 		extractUrl,

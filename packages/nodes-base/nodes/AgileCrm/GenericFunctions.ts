@@ -1,17 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IContactUpdate } from './ContactInterface';
+import type { IContactUpdate } from './ContactInterface';
 
-import { IFilterRules, ISearchConditions } from './FilterInterface';
+import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -33,7 +34,7 @@ export async function agileCrmApiRequest(
 			password: credentials.apiKey as string,
 		},
 		qs: query,
-		uri: uri ?? `https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
+		uri: uri || `https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,
 	};
 
@@ -113,7 +114,7 @@ export async function agileCrmApiRequestUpdate(
 			username: credentials.email as string,
 			password: credentials.apiKey as string,
 		},
-		uri: uri ?? baseUri,
+		uri: uri || baseUri,
 		json: true,
 	};
 

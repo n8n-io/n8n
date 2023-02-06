@@ -1,3 +1,4 @@
+import { INodeUi } from './../Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -71,6 +72,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				},
 				{},
 			);
+		},
+		allUsableCredentialsForNode() {
+			return (node: INodeUi): ICredentialsResponse[] => {
+				let credentials: ICredentialsResponse[] = [];
+				const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+				if (nodeType && nodeType.credentials) {
+					nodeType.credentials.forEach((cred) => {
+						credentials = credentials.concat(this.allUsableCredentialsByType[cred.name]);
+					});
+				}
+				return credentials.sort((a, b) => {
+					const aDate = new Date(a.updatedAt);
+					const bDate = new Date(b.updatedAt);
+					return aDate.getTime() - bDate.getTime();
+				});
+			};
 		},
 		allUsableCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
 			const credentials = this.allCredentials;

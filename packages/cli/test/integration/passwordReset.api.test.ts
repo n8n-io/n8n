@@ -21,14 +21,10 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['passwordReset'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
-
-	utils.initTestTelemetry();
-	utils.initTestLogger();
 });
 
 beforeEach(async () => {

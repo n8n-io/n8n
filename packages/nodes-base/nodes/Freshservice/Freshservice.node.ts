@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -56,7 +56,7 @@ import {
 	ticketOperations,
 } from './descriptions';
 
-import { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
+import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
 
 import { tz } from 'moment-timezone';
 

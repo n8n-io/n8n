@@ -1,18 +1,17 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { simpleParser } from 'mailparser';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -116,7 +115,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://www.googleapis.com${endpoint}`,
+		uri: uri || `https://www.googleapis.com${endpoint}`,
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
@@ -528,7 +527,7 @@ export async function prepareEmailAttachments(
 				}
 
 				attachmentsList.push({
-					name: binaryData.fileName ?? 'unknown',
+					name: binaryData.fileName || 'unknown',
 					content: binaryDataBuffer,
 					type: binaryData.mimeType,
 				});

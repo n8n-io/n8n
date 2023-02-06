@@ -1,8 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { IData } from './Interface';
+import type { IData } from './Interface';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -262,8 +262,8 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				if (operation === 'analyzeSentiment') {
 					const source = this.getNodeParameter('source', i) as string;
 					const options = this.getNodeParameter('options', i);
-					const encodingType = (options.encodingType as string | undefined) ?? 'UTF16';
-					const documentType = (options.documentType as string | undefined) ?? 'PLAIN_TEXT';
+					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
+					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
 
 					const body: IData = {
 						document: {

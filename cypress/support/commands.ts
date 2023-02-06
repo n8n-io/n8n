@@ -23,7 +23,7 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-
+import "cypress-real-events";
 import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
@@ -57,8 +57,8 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add('waitForLoad', () => {
-	cy.getByTestId('node-view-loader').should('not.exist', { timeout: 10000 });
-	cy.get('.el-loading-mask').should('not.exist', { timeout: 10000 });
+	cy.getByTestId('node-view-loader', { timeout: 10000 }).should('not.exist');
+	cy.get('.el-loading-mask', { timeout: 10000 }).should('not.exist');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {

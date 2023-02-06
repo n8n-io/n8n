@@ -4,11 +4,8 @@ import type { SuperAgentTest } from 'supertest';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
-import { MAPPING_TABLES } from './constants';
 
 export type CollectionName = keyof IDatabaseCollections;
-
-export type MappingName = keyof typeof MAPPING_TABLES;
 
 export type ApiPath = 'internal' | 'public';
 
@@ -24,6 +21,7 @@ type EndpointGroup =
 	| 'workflows'
 	| 'publicApi'
 	| 'nodes'
+	| 'ldap'
 	| 'eventBus'
 	| 'license';
 

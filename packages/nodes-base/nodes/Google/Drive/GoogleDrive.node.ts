@@ -1,12 +1,13 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -2297,7 +2298,7 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						const mimeType = file.mimeType ?? response.headers['content-type'] ?? undefined;
+						const mimeType = response.headers['content-type'] ?? file.mimeType ?? undefined;
 						const fileName = downloadOptions.fileName ?? file.name ?? undefined;
 
 						const newItem: INodeExecutionData = {
@@ -2652,7 +2653,7 @@ export class GoogleDrive implements INodeType {
 						const body = {
 							name,
 							mimeType: 'application/vnd.google-apps.folder',
-							parents: options.parents ?? [],
+							parents: options.parents || [],
 						};
 
 						const qs = {

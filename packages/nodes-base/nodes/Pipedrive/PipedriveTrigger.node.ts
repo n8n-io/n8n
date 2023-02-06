@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	INodeType,
 	INodeTypeDescription,
@@ -11,7 +11,7 @@ import { pipedriveApiRequest } from './GenericFunctions';
 
 import basicAuth from 'basic-auth';
 
-import { Response } from 'express';
+import type { Response } from 'express';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {

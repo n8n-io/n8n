@@ -74,6 +74,14 @@ export default mixins(userHelpers, pushConnection).extend({
 					available: this.canAccessApiSettings(),
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
+				{
+					id: 'settings-ldap',
+					icon: 'network-wired',
+					label: this.$locale.baseText('settings.ldap'),
+					position: 'top',
+					available: this.canAccessLdapSettings(),
+					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -126,6 +134,9 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
+		canAccessLdapSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
+		},
 		canAccessLogStreamingSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
 		},
@@ -153,6 +164,11 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-api':
 					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
 						this.$router.push({ name: VIEWS.API_SETTINGS });
+					}
+					break;
+				case 'settings-ldap':
+					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
+						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
 					}
 					break;
 				case 'settings-log-streaming':

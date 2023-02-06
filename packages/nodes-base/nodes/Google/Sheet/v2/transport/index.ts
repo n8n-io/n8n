@@ -1,6 +1,7 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { ICredentialTestFunctions, IDataObject, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { ICredentialTestFunctions, IDataObject, IPollFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
 
@@ -36,7 +37,7 @@ export async function getAccessToken(
 	const signature = jwt.sign(
 		{
 			iss: credentials.email,
-			sub: credentials.delegatedEmail ?? credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
@@ -91,7 +92,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://sheets.googleapis.com${resource}`,
+		uri: uri || `https://sheets.googleapis.com${resource}`,
 		json: true,
 		...option,
 	};

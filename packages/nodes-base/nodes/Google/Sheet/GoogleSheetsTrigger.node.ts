@@ -1,17 +1,17 @@
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IPollFunctions,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
-import { ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import type { ValueRenderOption } from './v2/helpers/GoogleSheets.types';
 
 import {
 	arrayOfArraysToJson,
@@ -490,8 +490,8 @@ export class GoogleSheetsTrigger implements INodeType {
 				}
 
 				const [rangeFrom, rangeTo] = range.split(':');
-				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) ?? [];
-				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) ?? [];
+				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 
 				if (rangeDefinition === 'specifyRangeA1' && cellDataFrom[2] !== undefined) {
 					keyRange = `${cellDataFrom[1]}${+cellDataFrom[2]}:${cellDataTo[1]}${+cellDataFrom[2]}`;
@@ -544,7 +544,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						return null;
 					}
 
-					const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) ?? [];
+					const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
 					const returnData = arrayOfArraysToJson(addedRows, columns);
 
 					workflowStaticData.lastIndexChecked = sheetData.length;

@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -6,10 +6,10 @@ import {
 	INodePropertyOptions,
 	IWebhookFunctions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment-timezone';
 
@@ -37,7 +37,7 @@ export async function onfleetApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://onfleet.com/api/v2/${resource}`,
+		uri: uri || `https://onfleet.com/api/v2/${resource}`,
 		json: true,
 	};
 	try {

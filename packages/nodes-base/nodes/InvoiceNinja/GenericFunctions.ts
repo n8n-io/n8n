@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -41,7 +42,7 @@ export async function invoiceNinjaApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
-		uri: uri ?? `${baseUrl}/api/v1${endpoint}`,
+		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
 		json: true,
 	};

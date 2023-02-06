@@ -1,14 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	// ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -41,7 +41,7 @@ export async function getAccessToken(
 	const signature = jwt.sign(
 		{
 			iss: credentials.email,
-			sub: credentials.delegatedEmail ?? credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
@@ -92,7 +92,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://chat.googleapis.com${resource}`,
+		uri: uri || `https://chat.googleapis.com${resource}`,
 		json: true,
 	};
 

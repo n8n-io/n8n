@@ -1,13 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options } from 'n8n-workflow';
+import type { IDataObject, IOAuth2Options } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -39,7 +39,7 @@ export async function shopifyApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
-		uri: uri ?? `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
+		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
 		json: true,
 	};

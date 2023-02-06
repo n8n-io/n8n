@@ -50,10 +50,10 @@ export class NDV extends BasePage {
 		setPinnedData: (data: object) => {
 			this.getters.editPinnedDataButton().click();
 
-			const editor = this.getters.pinnedDataEditor()
+			const editor = this.getters.pinnedDataEditor();
 			editor.click();
 			editor.type(`{selectall}{backspace}`);
-			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'),'{{}'));
+			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
 
 			this.getters.savePinnedDataButton().click();
 		},

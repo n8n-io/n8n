@@ -1,12 +1,13 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function salesmateApiRequest(
 	this:
@@ -34,7 +35,7 @@ export async function salesmateApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://apis.salesmate.io${resource}`,
+		uri: uri || `https://apis.salesmate.io${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

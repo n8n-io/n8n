@@ -1,24 +1,25 @@
-import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
-import { EventMessageTypes } from '../EventMessageClasses/';
+import type { EventMessageTypes } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'events';
 import config from '@/config';
 import * as Db from '@/Db';
-import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers.ee';
+import {
+	messageEventBusDestinationFromDb,
+	incrementPrometheusMetric,
+} from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
-import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
-import {
-	EventMessageAuditOptions,
-	EventMessageAudit,
-} from '../EventMessageClasses/EventMessageAudit';
-import {
-	EventMessageWorkflowOptions,
-	EventMessageWorkflow,
-} from '../EventMessageClasses/EventMessageWorkflow';
+import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
+import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
+import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
 import { isLogStreamingEnabled } from './MessageEventBusHelper';
-import { EventMessageNode, EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
@@ -205,6 +206,10 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
+		if (config.getEnv('endpoints.metrics.enable')) {
+			await incrementPrometheusMetric(msg);
+		}
+
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
 		this.emit('message', msg);

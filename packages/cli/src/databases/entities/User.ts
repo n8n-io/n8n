@@ -12,13 +12,14 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser } from 'n8n-workflow';
-import type { Role } from './Role';
+import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
+import type { AuthIdentity } from './AuthIdentity';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -80,11 +81,17 @@ export class User extends AbstractEntity implements IUser {
 	@Column()
 	globalRoleId: string;
 
+	@OneToMany('AuthIdentity', 'user')
+	authIdentities: AuthIdentity[];
+
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];
 
 	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
+
+	@Column({ type: Boolean, default: false })
+	disabled: boolean;
 
 	@BeforeInsert()
 	@BeforeUpdate()

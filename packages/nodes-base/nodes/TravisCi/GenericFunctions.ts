@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -32,7 +33,7 @@ export async function travisciApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.travis-ci.com${resource}`,
+		uri: uri || `https://api.travis-ci.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

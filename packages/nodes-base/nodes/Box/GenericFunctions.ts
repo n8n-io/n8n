@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IOAuth2Options } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function boxApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -26,7 +27,7 @@ export async function boxApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.box.com/2.0${resource}`,
+		uri: uri || `https://api.box.com/2.0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

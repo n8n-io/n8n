@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -49,7 +50,7 @@ export async function apiRequest(
 		json: true,
 	};
 
-	query = query ?? {};
+	query = query || {};
 
 	try {
 		if (authenticationMethod === 'accessToken') {

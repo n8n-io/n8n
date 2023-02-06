@@ -1,13 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -149,7 +150,7 @@ export async function apiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 
-	query = query ?? {};
+	query = query || {};
 
 	const options: OptionsWithUri = {
 		headers: {},

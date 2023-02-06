@@ -1,6 +1,6 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
@@ -28,7 +28,7 @@ export async function asanaApiRequest(
 		method,
 		body: { data: body },
 		qs: query,
-		url: uri ?? `https://app.asana.com/api/1.0${endpoint}`,
+		url: uri || `https://app.asana.com/api/1.0${endpoint}`,
 		json: true,
 	};
 

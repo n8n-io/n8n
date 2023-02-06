@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -10,11 +10,12 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { flow, omit } from 'lodash';
 
-import {
+import type {
 	AddressFixedCollection,
 	EmailFixedCollection,
 	EmailsFixedCollection,

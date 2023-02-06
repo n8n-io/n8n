@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -26,7 +27,7 @@ export async function bannerbearApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `https://api.bannerbear.com/v2${resource}`,
+		uri: uri || `https://api.bannerbear.com/v2${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

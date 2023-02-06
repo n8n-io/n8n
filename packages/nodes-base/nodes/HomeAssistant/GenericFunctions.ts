@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function homeAssistantApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -79,7 +80,7 @@ export async function getHomeAssistantServices(
 		for (const domainService of domainServices) {
 			for (const [serviceID, value] of Object.entries(domainService.services)) {
 				const serviceProperties = value as IDataObject;
-				const serviceName = serviceProperties.description ?? serviceID;
+				const serviceName = serviceProperties.description || serviceID;
 				returnData.push({
 					name: serviceName as string,
 					value: serviceID,

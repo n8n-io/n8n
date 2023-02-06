@@ -1,12 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { flow, sortBy } from 'lodash';
 
-import {
+import type {
 	AllFields,
 	CamelCaseResource,
 	DateType,
@@ -49,7 +50,7 @@ export async function zohoApiRequest(
 		},
 		method,
 		qs,
-		uri: uri ?? `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
+		uri: uri || `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 

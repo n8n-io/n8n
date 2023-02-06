@@ -1,6 +1,7 @@
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -122,7 +123,7 @@ export const regions = [
 	},
 ] as const;
 
-export type AWSRegion = typeof regions[number]['name'];
+export type AWSRegion = (typeof regions)[number]['name'];
 
 export class Aws implements ICredentialType {
 	name = 'aws';

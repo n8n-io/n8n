@@ -27,15 +27,18 @@ describe('Data pinning', () => {
 		ndv.getters.outputTableHeaders().first().should('include.text', 'timestamp');
 		ndv.getters.outputTableHeaders().eq(1).should('include.text', 'Readable date');
 
-		ndv.getters.outputTbodyCell(1, 0).invoke('text').then((prevValue) => {
-			ndv.actions.pinData();
-			ndv.actions.close();
+		ndv.getters
+			.outputTbodyCell(1, 0)
+			.invoke('text')
+			.then((prevValue) => {
+				ndv.actions.pinData();
+				ndv.actions.close();
 
-			workflowPage.actions.executeWorkflow();
-			workflowPage.actions.openNode('Schedule Trigger');
+				workflowPage.actions.executeWorkflow();
+				workflowPage.actions.openNode('Schedule Trigger');
 
-			ndv.getters.outputTbodyCell(1, 0).invoke('text').should('eq', prevValue);
-		});
+				ndv.getters.outputTbodyCell(1, 0).invoke('text').should('eq', prevValue);
+			});
 	});
 
 	it('Should be be able to set pinned data', () => {

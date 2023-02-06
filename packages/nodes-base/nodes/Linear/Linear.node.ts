@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -202,7 +202,7 @@ export class Linear implements INodeType {
 						};
 
 						responseData = await linearApiRequest.call(this, body);
-						responseData = responseData.data?.issues?.nodes[0];
+						responseData = responseData.data.issue;
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);

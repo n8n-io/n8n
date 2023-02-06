@@ -75,6 +75,11 @@ export class WorkflowPage extends BasePage {
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
 		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
+		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
+		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
+		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
+		ndvParameters: () => cy.getByTestId('parameter-item'),
+		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 	};
 	actions = {
 		visit: () => {
@@ -87,8 +92,11 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			cy.get('body').type('{esc}');
 		},
-		addNodeToCanvas: (nodeDisplayName: string, preventNdvClose?: boolean) => {
-			this.getters.nodeCreatorPlusButton().click();
+		addNodeToCanvas: (nodeDisplayName: string, plusButtonClick = true, preventNdvClose?: boolean) => {
+			if (plusButtonClick) {
+				this.getters.nodeCreatorPlusButton().click();
+			}
+
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 

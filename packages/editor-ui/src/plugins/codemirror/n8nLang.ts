@@ -4,10 +4,11 @@ import { parseMixed } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { ifIn } from '@codemirror/autocomplete';
 
-import { proxyCompletions } from './completions/proxy.completions';
-import { rootCompletions } from './completions/root.completions';
-import { luxonCompletions } from './completions/luxon.completions';
-import { alphaCompletions } from './completions/alpha.completions';
+import { blankCompletions } from './completions/blank.completions';
+import { bracketAccessCompletions } from './completions/bracketAccess.completions';
+import { datatypeCompletions } from './completions/datatype.completions';
+import { dollarCompletions } from './completions/dollar.completions';
+import { nonDollarCompletions } from './completions/nonDollar.completions';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
@@ -22,12 +23,16 @@ const n8nParserWithNestedJsParser = n8nParser.configure({
 const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 
 export function n8nLang() {
-	const options = [alphaCompletions, rootCompletions, proxyCompletions, luxonCompletions].map(
-		(group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }),
-	);
+	const options = [
+		blankCompletions,
+		bracketAccessCompletions,
+		datatypeCompletions,
+		dollarCompletions,
+		nonDollarCompletions,
+	].map((group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }));
 
 	return new LanguageSupport(n8nLanguage, [
-		n8nLanguage.data.of({ closeBrackets: { brackets: ['{'] } }),
+		n8nLanguage.data.of({ closeBrackets: { brackets: ['{', '('] } }),
 		...options,
 	]);
 }

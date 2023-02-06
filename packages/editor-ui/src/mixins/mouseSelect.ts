@@ -203,12 +203,12 @@ export const mouseSelect = mixins(deviceSupportHelpers).extend({
 		nodeDeselected(node: INodeUi) {
 			this.uiStore.removeNodeFromSelection(node);
 			// @ts-ignore
-			this.instance.removeFromDragSelection(node.id);
+			this.instance.removeFromDragSelection(this.instance.getManagedElement(node?.id));
 		},
 		nodeSelected(node: INodeUi) {
 			this.uiStore.addSelectedNode(node);
 			// @ts-ignore
-			this.instance.addToDragSelection(node.id);
+			this.instance.addToDragSelection(this.instance.getManagedElement(node?.id));
 		},
 		deselectAllNodes() {
 			// @ts-ignore
