@@ -1,0 +1,68 @@
+{
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "75df6d55-d4e8-417c-b01d-4603055abdbd",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				680,
+				640
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return[\n  { name: \"foo\" },\n  { name: \"bar\" },\n]"
+			},
+			"id": "61698354-69d5-43cc-89e4-2c766775fdc1",
+			"name": "Sample Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				920,
+				640
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			},
+			"id": "bc676cda-4894-472c-ba5c-b8d3512af330",
+			"name": "Apply New Field",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				1140,
+				640
+			]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Sample Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sample Data": {
+			"main": [
+				[
+					{
+						"node": "Apply New Field",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
