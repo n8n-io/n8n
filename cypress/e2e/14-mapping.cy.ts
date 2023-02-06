@@ -14,7 +14,7 @@ describe('Data mapping', () => {
 		workflowPage.actions.visit();
 	});
 
-	it('Should be able to map expressions', () => {
+	it('Should be able to map expressions from table header', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
