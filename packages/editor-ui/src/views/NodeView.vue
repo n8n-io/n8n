@@ -2088,6 +2088,7 @@ export default mixins(
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 							this.pullConnActiveNodeName = null;
+							this.dropPrevented = true;
 						}
 						return;
 					}
@@ -2160,6 +2161,8 @@ export default mixins(
 					];
 
 					this.dropPrevented = true;
+					this.workflowsStore.addConnection({ connection: connectionData });
+					this.uiStore.stateIsDirty = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
