@@ -26,6 +26,7 @@ importers:
       '@ngneat/falso': ^6.1.0
       '@types/jest': ^29.2.2
       '@types/node': ^16.11.22
+      '@types/supertest': ^2.0.12
       cross-env: ^7.0.3
       cypress: ^10.0.3
       cypress-real-events: ^1.7.6
@@ -39,7 +40,7 @@ importers:
       rimraf: ^3.0.2
       run-script-os: ^1.0.7
       start-server-and-test: ^1.14.0
-      supertest: ^6.2.2
+      supertest: ^6.3.3
       ts-jest: ^29.0.3
       tsc-watch: ^5.0.3
       turbo: 1.6.3
@@ -51,6 +52,7 @@ importers:
       '@ngneat/falso': 6.1.0
       '@types/jest': 29.2.2
       '@types/node': 16.11.65
+      '@types/supertest': 2.0.12
       cross-env: 7.0.3
       cypress: 10.11.0
       cypress-real-events: 1.7.6_cypress@10.11.0
@@ -63,7 +65,7 @@ importers:
       rimraf: 3.0.2
       run-script-os: 1.1.6
       start-server-and-test: 1.14.0
-      supertest: 6.3.0
+      supertest: 6.3.3
       ts-jest: 29.0.3_s73gpqhbuwbfokcbq32jn3f4zi
       tsc-watch: 5.0.3_typescript@4.8.4
       turbo: 1.6.3
@@ -141,7 +143,6 @@ importers:
       '@types/send': ^0.17.1
       '@types/shelljs': ^0.8.11
       '@types/superagent': 4.1.13
-      '@types/supertest': ^2.0.11
       '@types/swagger-ui-express': ^4.1.3
       '@types/syslog-client': ^1.1.2
       '@types/uuid': ^8.3.2
@@ -223,7 +224,6 @@ importers:
       source-map-support: ^0.5.21
       sqlite3: ^5.1.4
       sse-channel: ^4.0.0
-      supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
       ts-node: ^9.1.1
@@ -358,7 +358,6 @@ importers:
       '@types/send': 0.17.1
       '@types/shelljs': 0.8.11
       '@types/superagent': 4.1.13
-      '@types/supertest': 2.0.12
       '@types/swagger-ui-express': 4.1.3
       '@types/syslog-client': 1.1.2
       '@types/uuid': 8.3.4
@@ -367,7 +366,6 @@ importers:
       concurrently: 5.3.0
       nodemon: 2.0.20
       run-script-os: 1.1.6
-      supertest: 6.3.0
       ts-node: 9.1.1_typescript@4.9.4
       tsc-alias: 1.7.1
       tsconfig-paths: 3.14.1
@@ -9931,8 +9929,8 @@ packages:
     resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
     engines: {node: '>= 0.6'}
 
-  /cookiejar/2.1.3:
-    resolution: {integrity: sha512-JxbCBUdrfr6AQjOXrxoTvAMJO4HBTUIlBzslcJPAz+/KT8yk53fXun51u+RenNYvad/+Vc2DIz5o9UxlCDymFQ==}
+  /cookiejar/2.1.4:
+    resolution: {integrity: sha512-LDx6oHrK+PhzLKJU9j5S7/Y3jM/mUHvD/DeI1WQmJn652iPC5Y4TBzC9l+5OMOXlyTTA+SmVUPm0HQUwpD5Jqw==}
     dev: true
 
   /copy-concurrently/1.0.5:
@@ -10700,8 +10698,8 @@ packages:
       - supports-color
     dev: true
 
-  /dezalgo/1.0.3:
-    resolution: {integrity: sha512-K7i4zNfT2kgQz3GylDw40ot9GAE47sFZ9EXHFSPP6zONLgH6kWXE0KWJchkbQJLBkRazq4APwZ4OwiFFlT95OQ==}
+  /dezalgo/1.0.4:
+    resolution: {integrity: sha512-rXSP0bf+5n0Qonsb+SVVfNfIsimO4HEtmnIpPHY8Q1UCzKlQrDMfdobr8nJOOsRgWCyMRqeSBQzmWUMq7zvVig==}
     dependencies:
       asap: 2.0.6
       wrappy: 1.0.2
@@ -11116,7 +11114,7 @@ packages:
       is-shared-array-buffer: 1.0.2
       is-string: 1.0.7
       is-weakref: 1.0.2
-      object-inspect: 1.12.2
+      object-inspect: 1.12.3
       object-keys: 1.1.1
       object.assign: 4.1.4
       regexp.prototype.flags: 1.4.3
@@ -12443,13 +12441,13 @@ packages:
     deprecated: 'Please upgrade to latest, formidable@v2 or formidable@v3! Check these notes: https://bit.ly/2ZEqIau'
     dev: false
 
-  /formidable/2.0.1:
-    resolution: {integrity: sha512-rjTMNbp2BpfQShhFbR3Ruk3qk2y9jKpvMW78nJgx8QKtxjDVrwbZG+wvDOmVbifHyOUOQJXxqEy6r0faRrPzTQ==}
+  /formidable/2.1.2:
+    resolution: {integrity: sha512-CM3GuJ57US06mlpQ47YcunuUZ9jpm8Vx+P2CGt2j7HpgkKZO/DJYQ0Bobim8G6PFQmK5lOqOOdUXboU+h73A4g==}
     dependencies:
-      dezalgo: 1.0.3
+      dezalgo: 1.0.4
       hexoid: 1.0.0
       once: 1.4.0
-      qs: 6.9.3
+      qs: 6.11.0
     dev: true
 
   /formstream/1.1.1:
@@ -16935,9 +16933,6 @@ packages:
       kind-of: 3.2.2
     dev: true
 
-  /object-inspect/1.12.2:
-    resolution: {integrity: sha512-z+cPxW0QGUp0mcqcsgQyLVRDoXFQbXOwBaqyF7VIgI4TWNQsDHrBpUQslRmIfAoYWdYzs6UlKJtB2XJpTaNSpQ==}
-
   /object-inspect/1.12.3:
     resolution: {integrity: sha512-geUvdk7c+eizMNUDkRpW1wJwgfOiOeHbxBR/hLXK1aT6zmVSO0jsQcs7fj6MGw89jC/cjGfLcNOrtMYtGqm81g==}
 
@@ -18478,11 +18473,6 @@ packages:
   /qs/6.5.3:
     resolution: {integrity: sha512-qxXIEh4pCGfHICj1mAJQ2/2XVZkjCDTcEgfoSQxc/fYivUZxTkk7L3bDBJSoNrEzXI17oUO5Dp07ktqE5KzczA==}
     engines: {node: '>=0.6'}
-
-  /qs/6.9.3:
-    resolution: {integrity: sha512-EbZYNarm6138UKKq46tdx08Yo/q9ZhFoAXAI1meAFd2GtbRDhbZY2WQSICskT0c5q99aFzLG1D4nvTk9tqfXIw==}
-    engines: {node: '>=0.6'}
-    dev: true
 
   /query-string/7.1.1:
     resolution: {integrity: sha512-MplouLRDHBZSG9z7fpuAAcI7aAYjDLhtsiVZsevsfaHWDS2IDdORKbSd1kWUA+V4zyva/HZoSfpwnYMMQDhb0w==}
@@ -20557,17 +20547,16 @@ packages:
       inline-style-parser: 0.1.1
     dev: true
 
-  /superagent/8.0.2:
-    resolution: {integrity: sha512-QtYZ9uaNAMexI7XWl2vAXAh0j4q9H7T0WVEI/y5qaUB3QLwxo+voUgCQ217AokJzUTIVOp0RTo7fhZrwhD7A2Q==}
+  /superagent/8.0.9:
+    resolution: {integrity: sha512-4C7Bh5pyHTvU33KpZgwrNKh/VQnvgtCSqPRfJAUdmrtSYePVzVg4E4OzsrbkhJj9O7SO6Bnv75K/F8XVZT8YHA==}
     engines: {node: '>=6.4.0 <13 || >=14'}
-    deprecated: Please use v8.0.0 until https://github.com/visionmedia/superagent/issues/1743 is resolved
     dependencies:
       component-emitter: 1.3.0
-      cookiejar: 2.1.3
+      cookiejar: 2.1.4
       debug: 4.3.4
       fast-safe-stringify: 2.1.1
       form-data: 4.0.0
-      formidable: 2.0.1
+      formidable: 2.1.2
       methods: 1.1.2
       mime: 2.6.0
       qs: 6.11.0
@@ -20576,12 +20565,12 @@ packages:
       - supports-color
     dev: true
 
-  /supertest/6.3.0:
-    resolution: {integrity: sha512-QgWju1cNoacP81Rv88NKkQ4oXTzGg0eNZtOoxp1ROpbS4OHY/eK5b8meShuFtdni161o5X0VQvgo7ErVyKK+Ow==}
+  /supertest/6.3.3:
+    resolution: {integrity: sha512-EMCG6G8gDu5qEqRQ3JjjPs6+FYT1a7Hv5ApHvtSghmOFJYtsU5S+pSb6Y2EUeCEY3CmEL3mmQ8YWlPOzQomabA==}
     engines: {node: '>=6.4.0'}
     dependencies:
       methods: 1.1.2
-      superagent: 8.0.2
+      superagent: 8.0.9
     transitivePeerDependencies:
       - supports-color
     dev: true
