@@ -47,11 +47,11 @@ export async function invoiceNinjaApiDownloadFile(
 	}
 }
 
-export async function invoiceNinjaApiRequestUploadFile(
+export async function invoiceNinjaApiRequestFormData(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	formData: FormData,
+	formData: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
 ) {
@@ -71,11 +71,8 @@ export async function invoiceNinjaApiRequestUploadFile(
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		formData,
+		body: {},
 		json: true,
-		headers: {
-			'content-type': 'multipart/form-data',
-			'content-length': 1000,
-		},
 	};
 
 	try {

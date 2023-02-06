@@ -1,5 +1,5 @@
 import { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems, invoiceNinjaApiRequestUploadFile } from '../GenericFunctions';
+import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems, invoiceNinjaApiRequestFormData } from '../GenericFunctions';
 
 export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
@@ -20,17 +20,29 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
                 const uploadRessource = this.getNodeParameter('uploadRessource', i);
                 const uploadRessourceId = this.getNodeParameter('uploadRessourceId', i);
                 const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-                const binaryData: IBinaryData = items[i].binary![binaryPropertyName];
-                if (!binaryData) throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-                    itemIndex: i,
-                });
-                const formData = new FormData();
-                formData.append('documents[]', new Blob([binaryData.data], { type: binaryData.mimeType }), binaryData.fileName);
-                responseData = await invoiceNinjaApiRequestUploadFile.call(
+                const customFileName = this.getNodeParameter('customFileName', i);
+                if (items[i].binary! === undefined) throw new NodeOperationError(
+                    this.getNode(),
+                    `binary data not exists on this item.`,
+                );
+                const binaryData: IBinaryData = items[i].binary![binaryPropertyName]!;
+                if (binaryData === undefined) throw new NodeOperationError(
+                    this.getNode(),
+                    `binary data property "${binaryPropertyName}" does not exists on item.${items[i].binary && Object.keys(items[i].binary || {}).length ? ` Did you mean "${Object.keys(items[i].binary!)[0]}"?` : ''}`,
+                );
+                const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+                responseData = await invoiceNinjaApiRequestFormData.call(
                     this,
                     'POST',
                     `/${uploadRessource}/${uploadRessourceId}/upload?_method=put`,
-                    formData,
+                    {
+                        "documents[]": {
+                            value: dataBuffer,
+                            options: {
+                                filename: customFileName || binaryData.fileName,
+                            },
+                        },
+                    },
                 );
                 responseData = responseData.data;
             }

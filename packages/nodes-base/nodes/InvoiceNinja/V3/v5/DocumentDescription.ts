@@ -177,9 +177,26 @@ export const documentFields: INodeProperties[] = [
 	{
 		displayName: 'Binary Property Name',
 		name: 'binaryPropertyName',
+		description:
+			'Name of the binary property which containsthe data for the file to be uploaded',
 		type: 'string',
 		default: 'data',
 		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['document'],
+				operation: ['upload'],
+			},
+		},
+	},
+	{
+		displayName: 'File Name',
+		name: 'customFileName',
+		description:
+			'Name of the file to be uploaded. If empty, the filename of the binary-property is used.',
+		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
