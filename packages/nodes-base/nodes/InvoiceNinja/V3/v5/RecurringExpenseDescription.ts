@@ -305,7 +305,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
@@ -315,136 +315,9 @@ export const recurringExpenseFields: INodeProperties[] = [
 				displayName: 'Payment Type',
 				name: 'entity_type',
 				type: 'options',
-				options: [
-					{
-						name: 'ACH',
-						value: 5,
-					},
-					{
-						name: 'Alipay',
-						value: 28,
-					},
-					{
-						name: 'American Express',
-						value: 8,
-					},
-					{
-						name: 'Apply Credit',
-						value: 1,
-					},
-					{
-						name: 'Bank Transfer',
-						value: 2,
-					},
-					{
-						name: 'Bitcoin',
-						value: 32,
-					},
-					{
-						name: 'Carte Blanche',
-						value: 17,
-					},
-					{
-						name: 'Cash',
-						value: 3,
-					},
-					{
-						name: 'Check',
-						value: 16,
-					},
-					{
-						name: 'Credit Card Other',
-						value: 13,
-					},
-					{
-						name: 'Debit',
-						value: 4,
-					},
-					{
-						name: 'Diners Card',
-						value: 10,
-					},
-					{
-						name: 'Discover Card',
-						value: 9,
-					},
-					{
-						name: 'EuroCard',
-						value: 11,
-					},
-					{
-						name: 'GoCardless',
-						value: 31,
-					},
-					{
-						name: 'Google Wallet',
-						value: 15,
-					},
-					{
-						name: 'iZettle',
-						value: 24,
-					},
-					{
-						name: 'JCB',
-						value: 19,
-					},
-					{
-						name: 'Laser',
-						value: 20,
-					},
-					{
-						name: 'Maestro',
-						value: 21,
-					},
-					{
-						name: 'MasterCard',
-						value: 7,
-					},
-					{
-						name: 'Money Order',
-						value: 27,
-					},
-					{
-						name: 'Nova',
-						value: 12,
-					},
-					{
-						name: 'Paypal',
-						value: 14,
-					},
-					{
-						name: 'SEPA',
-						value: 30,
-					},
-					{
-						name: 'Sofort',
-						value: 29,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'Swish',
-						value: 25,
-					},
-					{
-						name: 'UnionPay',
-						value: 18,
-					},
-					{
-						name: 'Venmo',
-						value: 26,
-					},
-					{
-						name: 'Visa Card',
-						value: 6,
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getPaymentTypesV5',
+				},
 				default: 1,
 			},
 			{
@@ -741,7 +614,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
@@ -751,136 +624,9 @@ export const recurringExpenseFields: INodeProperties[] = [
 				displayName: 'Payment Type',
 				name: 'entity_type',
 				type: 'options',
-				options: [
-					{
-						name: 'ACH',
-						value: 5,
-					},
-					{
-						name: 'Alipay',
-						value: 28,
-					},
-					{
-						name: 'American Express',
-						value: 8,
-					},
-					{
-						name: 'Apply Credit',
-						value: 1,
-					},
-					{
-						name: 'Bank Transfer',
-						value: 2,
-					},
-					{
-						name: 'Bitcoin',
-						value: 32,
-					},
-					{
-						name: 'Carte Blanche',
-						value: 17,
-					},
-					{
-						name: 'Cash',
-						value: 3,
-					},
-					{
-						name: 'Check',
-						value: 16,
-					},
-					{
-						name: 'Credit Card Other',
-						value: 13,
-					},
-					{
-						name: 'Debit',
-						value: 4,
-					},
-					{
-						name: 'Diners Card',
-						value: 10,
-					},
-					{
-						name: 'Discover Card',
-						value: 9,
-					},
-					{
-						name: 'EuroCard',
-						value: 11,
-					},
-					{
-						name: 'GoCardless',
-						value: 31,
-					},
-					{
-						name: 'Google Wallet',
-						value: 15,
-					},
-					{
-						name: 'iZettle',
-						value: 24,
-					},
-					{
-						name: 'JCB',
-						value: 19,
-					},
-					{
-						name: 'Laser',
-						value: 20,
-					},
-					{
-						name: 'Maestro',
-						value: 21,
-					},
-					{
-						name: 'MasterCard',
-						value: 7,
-					},
-					{
-						name: 'Money Order',
-						value: 27,
-					},
-					{
-						name: 'Nova',
-						value: 12,
-					},
-					{
-						name: 'Paypal',
-						value: 14,
-					},
-					{
-						name: 'SEPA',
-						value: 30,
-					},
-					{
-						name: 'Sofort',
-						value: 29,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'Swish',
-						value: 25,
-					},
-					{
-						name: 'UnionPay',
-						value: 18,
-					},
-					{
-						name: 'Venmo',
-						value: 26,
-					},
-					{
-						name: 'Visa Card',
-						value: 6,
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getPaymentTypesV5',
+				},
 				default: 1,
 			},
 			{

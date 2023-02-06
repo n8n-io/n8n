@@ -72,26 +72,27 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Include',
-		name: 'include',
-		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['client'],
-				operation: ['get'],
-			},
-		},
-		options: [
-			{
-				name: 'Invoices',
-				value: 'invoices',
-			},
-		],
-		default: [],
-	},
+	// TODO: should be checked, if it will be implemented
+	// {
+	// 	displayName: 'Include',
+	// 	name: 'include',
+	// 	type: 'multiOptions',
+	// 	description: 'Additional resources to fetch related to this resource',
+	// 	displayOptions: {
+	// 		show: {
+	// 			apiVersion: ['v5'],
+	// 			resource: ['client'],
+	// 			operation: ['get'],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			name: 'Invoices',
+	// 			value: 'invoices',
+	// 		},
+	// 	],
+	// 	default: [],
+	// },
 	/* -------------------------------------------------------------------------- */
 	/*                                  client:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -142,26 +143,27 @@ export const clientFields: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Include',
-		name: 'include',
-		type: 'multiOptions',
-		description: 'Additional resources to fetch related to this resource',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['client'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
-			{
-				name: 'Invoices',
-				value: 'invoices',
-			},
-		],
-		default: [],
-	},
+	// TODO: should be checked, if it will be implemented
+	// {
+	// 	displayName: 'Include',
+	// 	name: 'include',
+	// 	type: 'multiOptions',
+	// 	description: 'Additional resources to fetch related to this resource',
+	// 	displayOptions: {
+	// 		show: {
+	// 			apiVersion: ['v5'],
+	// 			resource: ['client'],
+	// 			operation: ['getAll'],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			name: 'Invoices',
+	// 			value: 'invoices',
+	// 		},
+	// 	],
+	// 	default: [],
+	// },
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

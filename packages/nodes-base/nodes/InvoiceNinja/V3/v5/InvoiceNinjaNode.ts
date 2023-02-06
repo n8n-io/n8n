@@ -7,9 +7,9 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
+import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
-import { countryCodes } from './ISOCountryCodes';
+import { countryCodes, paymentTypes } from './Entities';
 
 // import Descriptions
 import { bankTransactionFields, bankTransactionOperations } from './BankTransactionDescription';
@@ -254,15 +254,30 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
+			// Get all the available country codes to display them to user so that he can
+			// select them easily
+			async getPaymentTypesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (let i = 0; i < paymentTypes.length; i++) {
+					const paymentName = paymentTypes[i].name as string;
+					const paymentTypeId = paymentTypes[i].value as string;
+					returnData.push({
+						name: paymentName,
+						value: paymentTypeId,
+					});
+				}
+				return returnData;
+			},
 			// Get all the available projects to display them to user so that he can
 			// select them easily
 			async getProjectsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const projects = await invoiceNinjaApiRequestAllItems.call(
+				const projects = await invoiceNinjaApiRequest.call(
 					this,
-					'data',
 					'GET',
 					'/projects',
+					{},
+					{ per_page: 100 }
 				);
 				for (const project of projects) {
 					const projectName = project.name as string;
@@ -278,11 +293,12 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getInvoicesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const invoices = await invoiceNinjaApiRequestAllItems.call(
+				const invoices = await invoiceNinjaApiRequest.call(
 					this,
-					'data',
 					'GET',
 					'/invoices',
+					{},
+					{ per_page: 100 }
 				);
 				for (const invoice of invoices) {
 					const invoiceName = invoice.number as string;
@@ -298,11 +314,12 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getRecuringExpensesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const recurringExpenses = await invoiceNinjaApiRequestAllItems.call(
+				const recurringExpenses = await invoiceNinjaApiRequest.call(
 					this,
-					'data',
 					'GET',
 					'/recurring_expenses',
+					{},
+					{ per_page: 100 }
 				);
 				for (const recurringExpense of recurringExpenses) {
 					const recurringExpenseName = recurringExpense.number as string;

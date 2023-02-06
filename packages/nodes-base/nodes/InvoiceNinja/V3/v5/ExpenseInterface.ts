@@ -1,3 +1,3 @@
 import type { Expense } from './interfaces/expense';
 
-export type IExpense = Partial<Omit<Expense, 'id' | 'user_id'>>;
+export type IExpense = Partial<Omit<Expense, 'id' | 'user_id' | 'entity_type'>>;

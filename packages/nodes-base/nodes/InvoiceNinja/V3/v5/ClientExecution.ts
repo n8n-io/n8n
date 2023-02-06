@@ -207,10 +207,11 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'get') {
 				const clientId = that.getNodeParameter('clientId', i) as string;
-				const include = that.getNodeParameter('include', i) as string[];
-				if (include.length) {
-					qs.include = include.toString();
-				}
+				// no includes available
+				// const include = that.getNodeParameter('include', i) as string[];
+				// if (include.length) {
+				// 	qs.include = include.toString();
+				// }
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
 					'GET',

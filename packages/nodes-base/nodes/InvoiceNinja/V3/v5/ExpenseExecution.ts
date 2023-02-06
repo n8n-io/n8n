@@ -125,9 +125,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.calculateTaxByAmount) {
 					body.calculate_tax_by_amount = additionalFields.calculateTaxByAmount as boolean;
 				}
-				if (additionalFields.entityType) {
-					body.entity_type = additionalFields.entityType as string;
-				}
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
 					'POST',
@@ -245,9 +242,6 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.calculateTaxByAmount) {
 					body.calculate_tax_by_amount = additionalFields.calculateTaxByAmount as boolean;
 				}
-				if (additionalFields.entityType) {
-					body.entity_type = additionalFields.entityType as string;
-				}
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
 					'PUT',
@@ -258,6 +252,10 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'get') {
 				const expenseId = that.getNodeParameter('expenseId', i) as string;
+				const include = that.getNodeParameter('include', i) as string[];
+				if (include.length) {
+					qs.include = include.toString();
+				}
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
 					'GET',

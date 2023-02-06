@@ -268,7 +268,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
@@ -659,7 +659,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
