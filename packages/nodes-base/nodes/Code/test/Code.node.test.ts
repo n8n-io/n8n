@@ -1,10 +1,6 @@
-import type { INodeType } from 'n8n-workflow';
 import * as Helpers from '../../../test/nodes/Helpers';
 import type { WorkflowTestData } from '../../../test/nodes/types';
 import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
-
-import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
-import { Code } from '../../../nodes/Code/Code.node';
 
 describe('Execute Code Node', () => {
 	const tests: WorkflowTestData[] = [
@@ -39,8 +35,7 @@ describe('Execute Code Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new Code()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		// eslint-disable-next-line @typescript-eslint/no-loop-func
