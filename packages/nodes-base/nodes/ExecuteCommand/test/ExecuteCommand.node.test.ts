@@ -1,19 +1,19 @@
-import { INodeType } from 'n8n-workflow';
-import * as Helpers from '../Helpers';
-import { WorkflowTestData } from '../types';
-import { executeWorkflow } from '../ExecuteWorkflow';
+import type { INodeType } from 'n8n-workflow';
+import * as Helpers from '../../../test/nodes/Helpers';
+import type { WorkflowTestData } from '../../../test/nodes/types';
+import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
 
-import { ExecuteCommand } from '../../../nodes/ExecuteCommand/ExecuteCommand.node';
-import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
-import { Set } from '../../../nodes/Set/Set.node';
-import { ItemLists } from '../../../nodes/ItemLists/ItemLists.node';
+import { ExecuteCommand } from '../ExecuteCommand.node';
+import { ManualTrigger } from '../../ManualTrigger/ManualTrigger.node';
+import { Set } from '../../Set/Set.node';
+import { ItemLists } from '../../ItemLists/ItemLists.node';
 
 describe('Execute Execute Command Node', () => {
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'should execute Execute Command node',
 			input: {
-				workflowData: Helpers.readJsonFileSync('test/nodes/ExecuteCommand/workflow.json'),
+				workflowData: Helpers.readJsonFileSync('nodes/ExecuteCommand/test/workflow.json'),
 			},
 			output: {
 				nodeData: {
@@ -54,6 +54,7 @@ describe('Execute Execute Command Node', () => {
 	const nodeTypes = Helpers.setup(nodes);
 
 	for (const testData of tests) {
+		// eslint-disable-next-line @typescript-eslint/no-loop-func
 		test(testData.description, async () => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
