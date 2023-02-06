@@ -8,7 +8,7 @@ describe('Execute SplitinBatches Node', () => {
 			description: 'should execute SplitinBatches node',
 			input: {
 				workflowData: Helpers.readJsonFileSync(
-					'packages/nodes-base/nodes/SplitinBatches/test/SplitinBatches.workflow.json',
+					'nodes/SplitInBatches/test/SplitInBatches.workflow.json',
 				),
 			},
 			output: {
