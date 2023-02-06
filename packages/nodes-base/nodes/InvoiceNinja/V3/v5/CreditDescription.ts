@@ -14,6 +14,12 @@ export const creditOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a credit',
+				action: 'Action to a credit',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new credit',
@@ -24,12 +30,6 @@ export const creditOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete a credit',
 				action: 'Delete a credit',
-			},
-			{
-				name: 'Download',
-				value: 'download',
-				description: 'Get PDF from credit',
-				action: 'Download credit',
 			},
 			{
 				name: 'Get',
@@ -95,6 +95,19 @@ export const creditFields: INodeProperties[] = [
 			},
 		],
 		default: [],
+	},
+	{
+		displayName: 'Download PDF',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['get'],
+			},
+		},
+		default: false,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  credit:getAll                             */
@@ -213,24 +226,6 @@ export const creditFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  credit:download                          */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Invitation Key OR Credit ID',
-		name: 'inputKey',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['credit'],
-				operation: ['download'],
-			},
-		},
-		description: "Value 'key' from entry of property 'invitations' of an credit or the credit ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 credit:create                              */
@@ -802,5 +797,121 @@ export const creditFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:action                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'creditId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send an email',
+			},
+			{
+				name: 'Send Email (custom)',
+				value: 'custom_email',
+				action: 'Send a custom email',
+			},
+			{
+				name: 'Mark Sent',
+				value: 'mark_sent',
+				action: 'Mark as sent',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a credit',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a credit',
+			},
+		],
+	},
+	{
+		displayName: 'Subject',
+		name: 'customEmailSubject',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Body',
+		name: 'customEmailBody',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Template',
+		name: 'customEmailTemplate',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'options',
+		default: 'email_template_credit',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+		options: [
+			{
+				name: 'Initial',
+				value: 'email_template_credit',
+			},
+			{
+				name: 'Custom 1',
+				value: 'email_template_custom1',
+			},
+		]
 	},
 ];

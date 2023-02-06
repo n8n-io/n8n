@@ -32,12 +32,6 @@ export const recurringInvoiceOperations: INodeProperties[] = [
 				action: 'Delete an recurringInvoice',
 			},
 			{
-				name: 'Download',
-				value: 'download',
-				description: 'Get PDF from recurringInvoice',
-				action: 'Download recurringInvoice',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a recurringInvoice',
@@ -97,6 +91,19 @@ export const recurringInvoiceFields: INodeProperties[] = [
 			},
 		],
 		default: [],
+	},
+	{
+		displayName: 'Download PDF',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['recurringInvoice'],
+				operation: ['get'],
+			},
+		},
+		default: false,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  recurringInvoice:getAll                   */
@@ -183,25 +190,6 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  recurringInvoice:download                 */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Invitation Key OR Recurring Invoice ID',
-		name: 'inputKey',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['recurringInvoice'],
-				operation: ['download'],
-			},
-		},
-		description:
-			"Value 'key' from entry of property 'invitations' of an recurringInvoice or the recurringInvoice ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 recurringInvoice:create                    */
@@ -1086,26 +1074,6 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive a recurring invoice',
-			},
-			{
-				name: 'Restore',
-				value: 'restore',
-				action: 'Restore a recurring invoice',
-			},
-			{
-				name: 'Send Email',
-				value: 'email',
-				action: 'Send Email a recurring invoice',
-			},
-			{
-				name: 'Send Recurring Invoice Now',
-				value: 'send_now',
-				action: 'Send Recurring Invoice Now a recurring invoice',
-			},
-			{
 				name: 'Start',
 				value: 'start',
 				action: 'Start a recurring invoice',
@@ -1114,6 +1082,21 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				name: 'Stop',
 				value: 'stop',
 				action: 'Stop a recurring invoice',
+			},
+			{
+				name: 'Send Email',
+				value: 'send_now',
+				action: 'Send an email',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a recurring invoice',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a recurring invoice',
 			},
 		],
 	},

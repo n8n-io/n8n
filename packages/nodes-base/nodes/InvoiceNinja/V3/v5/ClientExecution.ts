@@ -266,16 +266,27 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'action') {
 				const clientId = that.getNodeParameter('clientId', i) as string;
-				const action = that.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					that,
-					'POST',
-					`/clients/bulk`,
-					{
-						action,
-						ids: [clientId]
-					}
-				);
+				const action = that.getNodeParameter('action', i) as string;			
+				if (action === 'merge') {
+					const mergeClientId = that.getNodeParameter('mergeClientId', i) as string;
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/clients/${clientId}/${mergeClientId}/merge`
+					);
+					responseData = responseData.data;
+				} else {
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/clients/bulk`,
+						{
+							action,
+							ids: [clientId]
+						}
+					);
+					responseData = responseData.data[0];
+				}
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

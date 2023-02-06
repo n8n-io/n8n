@@ -267,6 +267,20 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				);
 				responseData = responseData.data;
 			}
+			if (operation === 'action') {
+				const subscriptionId = that.getNodeParameter('subscriptionId', i) as string;
+				const action = that.getNodeParameter('action', i) as string;
+				responseData = await invoiceNinjaApiRequest.call(
+					that,
+					'POST',
+					`/subscriptions/bulk`,
+					{
+						action,
+						ids: [subscriptionId]
+					}
+				);
+				responseData = responseData.data[0];
+			}
 
 			const executionData = that.helpers.constructExecutionMetaData(
 				that.helpers.returnJsonArray(responseData),

@@ -198,6 +198,44 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				);
 				responseData = responseData.data;
 			}
+			if (operation === 'action') {
+				const bankTransactionId = that.getNodeParameter('bankTransactionId', i) as string;
+				const action = that.getNodeParameter('action', i) as string;
+				if (action == 'convert_matched') {
+					const convertMatchedVendorId = that.getNodeParameter('convertMatchedVendorId', i) as string;
+					const convertMatchedExpenseIds = that.getNodeParameter('convertMatchedExpenseIds', i) as string;
+					const convertMatchedInvoiceIds = that.getNodeParameter('convertMatchedInvoiceIds', i) as string;
+					const convertMatchedPaymentId = that.getNodeParameter('convertMatchedPaymentId', i) as string;
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/bank_transactions/match`,
+						{
+							transactions: [
+								{
+									id: bankTransactionId,
+									vendor_id: convertMatchedVendorId ? convertMatchedVendorId : undefined,
+									expense_id: convertMatchedExpenseIds ? convertMatchedExpenseIds : undefined,
+									invoice_ids: convertMatchedInvoiceIds ? convertMatchedInvoiceIds : undefined,
+									payment_id: convertMatchedPaymentId ? convertMatchedPaymentId : undefined,
+								}
+							]
+						}
+					);
+					responseData = responseData.data[0];
+				} else {
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/bank_transactions/bulk`,
+						{
+							action,
+							ids: [bankTransactionId]
+						}
+					);
+					responseData = responseData.data[0];
+				}
+			}
 
 			const executionData = that.helpers.constructExecutionMetaData(
 				that.helpers.returnJsonArray(responseData),

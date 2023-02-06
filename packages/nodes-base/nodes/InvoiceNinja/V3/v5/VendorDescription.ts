@@ -14,6 +14,12 @@ export const vendorOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a vendor',
+				action: 'Action to a vendor',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new vendor',
@@ -759,8 +765,8 @@ export const vendorFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['client'],
-				operation: ['vendor'],
+				resource: ['vendor'],
+				operation: ['action'],
 			},
 		},
 	},

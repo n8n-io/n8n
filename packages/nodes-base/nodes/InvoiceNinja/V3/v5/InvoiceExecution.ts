@@ -308,6 +308,27 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					qs,
 				);
 				responseData = responseData.data;
+				const download = that.getNodeParameter('download', i) as boolean;
+				if (download) {
+					if (!responseData.invitations[0].key)
+						throw new Error('Download failed - No invitation key present');
+					// download it with the fetched key
+					returnData.push({
+						json: responseData,
+						binary: {
+							data: await that.helpers.prepareBinaryData(
+								(await invoiceNinjaApiDownloadFile.call(
+									that,
+									'GET',
+									`/invoice/${responseData.invitations[0].key}/download`,
+								)),
+								'invoice.pdf',
+								'application/pdf',
+							),
+						},
+					});
+					continue;
+				}
 			}
 			if (operation === 'getAll') {
 				const filters = that.getNodeParameter('filters', i);
@@ -352,53 +373,54 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/invoices/${invoiceId}`);
 				responseData = responseData.data;
 			}
-			if (operation === 'download') {
-				const inputKey = that.getNodeParameter('inputKey', i) as string;
-				try {
-					responseData = await invoiceNinjaApiDownloadFile
-						.call(that, 'GET', `/invoice/${inputKey}/download`)
-						.catch((err) => {
-							if (err.description == 'no record found') return null; // handle not found
-							throw err;
-						});
-				} catch (er) {
-					// fetch invoice by id first to get invitationKey
-					const tmpData = await invoiceNinjaApiRequest
-						.call(that, 'GET', `/invoices/${inputKey}`)
-						.catch((err) => {
-							if (err.description.includes('query results')) return null; // handle not found
-							throw err;
-						});
-					if (!tmpData) throw new Error('Element not found');
-					if (!tmpData.data.invitations[0].key)
-						throw new Error('a Bank TransactionNo invitation key present');
-					// download it with the fetched key
-					responseData = await invoiceNinjaApiDownloadFile.call(
-						that,
-						'GET',
-						`/invoice/${tmpData.data.invitations[0].key}/download`,
-					);
-				}
-				returnData.push({
-					json: {},
-					binary: {
-						data: await that.helpers.prepareBinaryData(
-							responseData,
-							'invoice.pdf',
-							'application/pdf',
-						),
-					},
-				});
-				continue;
-			}
 			if (operation === 'action') {
 				const invoiceId = that.getNodeParameter('invoiceId', i) as string;
 				const action = that.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					that,
-					'GET',
-					`/invoices/${invoiceId}/${action}`,
-				);
+				if (action === 'custom_email') {
+					const customEmailBody = that.getNodeParameter('customEmailBody', i) as string;
+					const customEmailSubject = that.getNodeParameter('customEmailSubject', i) as string;
+					const customEmailTemplate = that.getNodeParameter('customEmailTemplate', i) as string;
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/emails`,
+						{
+							body: customEmailBody,
+							entity: "invoice",
+							entity_id: invoiceId,
+							subject: customEmailSubject,
+							template: customEmailTemplate,
+						}
+					);
+					responseData = responseData.data;
+				} else if (action ==='email') {
+					const emailEmailType = that.getNodeParameter('emailEmailType', i) as string;
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/invoices/bulk`,
+						{
+							action,
+							ids: [invoiceId],
+							email_type: emailEmailType,
+						},
+						{
+							email_type: emailEmailType,
+						}
+					);
+					responseData = responseData.data[0];
+				} else {
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/invoices/bulk`,
+						{
+							action,
+							ids: [invoiceId],
+						}
+					);
+					responseData = responseData.data[0];
+				}
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

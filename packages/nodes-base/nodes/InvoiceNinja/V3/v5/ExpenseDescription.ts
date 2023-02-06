@@ -14,6 +14,12 @@ export const expenseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an expense',
+				action: 'Action to an expense',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new expense',
@@ -966,5 +972,48 @@ export const expenseFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:action                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Expense ID',
+		name: 'expenseId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['expense'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['expense'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an expense',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an expense',
+			},
+		],
 	},
 ];

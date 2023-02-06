@@ -14,6 +14,12 @@ export const recurringExpenseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to an recurring expense',
+				action: 'Action to an recurring expense',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new recurring expense',
@@ -1060,5 +1066,58 @@ export const recurringExpenseFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  quote:action                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Recurring Expense ID',
+		name: 'recurringExpenseId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['recurringExpense'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['recurringExpense'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Start',
+				value: 'start',
+				action: 'Start the recurring expense',
+			},
+			{
+				name: 'Stop',
+				value: 'stop',
+				action: 'Stop the recurring expense',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a quote',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a quote',
+			},
+		],
 	},
 ];

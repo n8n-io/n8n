@@ -32,12 +32,6 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Delete a quote',
 			},
 			{
-				name: 'Download',
-				value: 'download',
-				description: 'Get PDF from quote',
-				action: 'Download quote',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a quote',
@@ -97,6 +91,19 @@ export const quoteFields: INodeProperties[] = [
 			},
 		],
 		default: [],
+	},
+	{
+		displayName: 'Download PDF',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['quote'],
+				operation: ['get'],
+			},
+		},
+		default: false,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  quote:getAll                              */
@@ -183,24 +190,6 @@ export const quoteFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  quote:download                          */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Invitation Key OR Quote ID',
-		name: 'inputKey',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['quote'],
-				operation: ['download'],
-			},
-		},
-		description: "Value 'key' from entry of property 'invitations' of an quote or the quote ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 quote:create                               */
@@ -957,8 +946,71 @@ export const quoteFields: INodeProperties[] = [
 			{
 				name: 'Send Email',
 				value: 'email',
-				action: 'Send Email a quote',
+				action: 'Send an email',
+			},
+			{
+				name: 'Send custom Email',
+				value: 'custom_email',
+				action: 'Send a custom email',
 			},
 		],
+	},
+	{
+		displayName: 'Subject',
+		name: 'customEmailSubject',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['quote'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Body',
+		name: 'customEmailBody',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['quote'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Template',
+		name: 'customEmailTemplate',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'options',
+		default: 'email_template_quote',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['quote'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+		options: [
+			{
+				name: 'Initial',
+				value: 'email_template_quote',
+			},
+			{
+				name: 'Custom 1',
+				value: 'email_template_custom1',
+			},
+		]
 	},
 ];

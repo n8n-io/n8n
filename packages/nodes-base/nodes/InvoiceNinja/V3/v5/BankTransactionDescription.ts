@@ -531,4 +531,127 @@ export const bankTransactionFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  bankTransaction:action                    */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Bank Transaction ID',
+		name: 'bankTransactionId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Convert Matched',
+				value: 'convert_matched',
+				action: 'Convert the match to a payment / expense',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a client',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a client',
+			},
+		],
+	},
+	{
+		displayName: 'Vendor ID',
+		name: 'convertMatchedVendorId',
+		description: 'Bei Angabe des Parameters wird eine Ausgabe erstellt',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+				action: ['convert_matched'],
+			},
+		},
+	},
+	{
+		displayName: 'Invoice IDs',
+		name: 'convertMatchedInvoiceIds',
+		description: 'Bei Angabe des Parameters wird eine / mehrere Rechnungen verknüpft. Durch Komma getrennte Werte.',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+				action: ['convert_matched'],
+			},
+		},
+	},
+	{
+		displayName: 'Expense IDs',
+		name: 'convertMatchedExpenseIds',
+		description: 'Bei Angabe des Parameters wird eine / mehrere Ausgaben verknüpft. Durch Komma getrennte Werte.',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+				action: ['convert_matched'],
+			},
+		},
+	},
+	{
+		displayName: 'Invoice IDs',
+		name: 'convertMatchedInvoiceIds',
+		description: 'Bei Angabe des Parameters wird eine / mehrere Rechnungen verknüpft. Durch Komma getrennte Werte.',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+				action: ['convert_matched'],
+			},
+		},
+	},
+	{
+		displayName: 'Payment IDs',
+		name: 'convertMatchedPaymentId',
+		description: 'Bei Angabe des Parameters wird eine Zahlung verknüpft.',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+				action: ['convert_matched'],
+			},
+		},
+	},
 ];

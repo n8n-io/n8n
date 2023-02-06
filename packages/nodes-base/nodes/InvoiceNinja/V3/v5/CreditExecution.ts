@@ -274,6 +274,27 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					qs,
 				);
 				responseData = responseData.data;
+				const download = that.getNodeParameter('download', i) as boolean;
+				if (download) {
+					if (!responseData.invitations[0].key)
+						throw new Error('Download failed - No invitation key present');
+					// download it with the fetched key
+					returnData.push({
+						json: responseData,
+						binary: {
+							data: await that.helpers.prepareBinaryData(
+								(await invoiceNinjaApiDownloadFile.call(
+									that,
+									'GET',
+									`/credit/${responseData.invitations[0].key}/download`,
+								)),
+								'credit.pdf',
+								'application/pdf',
+							),
+						},
+					});
+					continue;
+				}
 			}
 			if (operation === 'getAll') {
 				const filters = that.getNodeParameter('filters', i);
@@ -312,44 +333,38 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/credits/${creditId}`);
 				responseData = responseData.data;
 			}
-			if (operation === 'download') {
-				const inputKey = that.getNodeParameter('inputKey', i) as string;
-				try {
-					responseData = await invoiceNinjaApiDownloadFile
-						.call(that, 'GET', `/credit/${inputKey}/download`)
-						.catch((err) => {
-							if (err.description == 'no record found') return null; // handle not found
-							throw err;
-						});
-				} catch (er) {
-					// fetch invoice by id first to get invitationKey
-					const tmpData = await invoiceNinjaApiRequest
-						.call(that, 'GET', `/credit/${inputKey}`)
-						.catch((err) => {
-							if (err.description.includes('query results')) return null; // handle not found
-							throw err;
-						});
-					if (!tmpData) throw new Error('Element not found');
-					if (!tmpData.data.invitations[0].key)
-						throw new Error('a Bank TransactionNo invitation key present');
-					// download it with the fetched key
-					responseData = await invoiceNinjaApiDownloadFile.call(
+			if (operation === 'action') {
+				const creditId = that.getNodeParameter('creditId', i) as string;
+				const action = that.getNodeParameter('action', i) as string;
+				if (action === 'custom_email') {
+					const customEmailBody = that.getNodeParameter('customEmailBody', i) as string;
+					const customEmailSubject = that.getNodeParameter('customEmailSubject', i) as string;
+					const customEmailTemplate = that.getNodeParameter('customEmailTemplate', i) as string;
+					responseData = await invoiceNinjaApiRequest.call(
 						that,
-						'GET',
-						`/credit/${tmpData.data.invitations[0].key}/download`,
+						'POST',
+						`/emails`,
+						{
+							body: customEmailBody,
+							entity: "credit",
+							entity_id: creditId,
+							subject: customEmailSubject,
+							template: customEmailTemplate,
+						}
 					);
+					responseData = responseData.data;
+				} else {
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/credits/bulk`,
+						{
+							action,
+							ids: [creditId]
+						}
+					);
+					responseData = responseData.data[0];
 				}
-				returnData.push({
-					json: {},
-					binary: {
-						data: await that.helpers.prepareBinaryData(
-							responseData,
-							'credit.pdf',
-							'application/pdf',
-						),
-					},
-				});
-				continue;
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

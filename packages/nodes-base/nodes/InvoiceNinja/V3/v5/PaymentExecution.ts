@@ -238,9 +238,14 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				const action = that.getNodeParameter('action', i) as string;
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
-					'GET',
-					`/payments/${paymentId}/${action}`,
+					'POST',
+					`/payments/bulk`,
+					{
+						action,
+						ids: [paymentId]
+					}
 				);
+				responseData = responseData.data[0];
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

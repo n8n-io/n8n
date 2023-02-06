@@ -14,6 +14,12 @@ export const taskOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a task',
+				action: 'Action to a task',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new task',
@@ -443,4 +449,47 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:action                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'taskId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['task'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['task'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an task',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an task',
+			},
+		],
+	}
 ];

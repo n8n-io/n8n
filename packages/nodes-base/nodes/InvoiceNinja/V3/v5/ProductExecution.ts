@@ -185,6 +185,20 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				responseData = await invoiceNinjaApiRequest.call(that, 'DELETE', `/products/${productId}`);
 				responseData = responseData.data;
 			}
+			if (operation === 'action') {
+				const productId = that.getNodeParameter('productId', i) as string;
+				const action = that.getNodeParameter('action', i) as string;				
+				responseData = await invoiceNinjaApiRequest.call(
+					that,
+					'POST',
+					`/products/bulk`,
+					{
+						action,
+						ids: [productId]
+					}
+				);
+				responseData = responseData.data[0];
+			}
 
 			const executionData = that.helpers.constructExecutionMetaData(
 				that.helpers.returnJsonArray(responseData),

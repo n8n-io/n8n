@@ -14,6 +14,12 @@ export const clientOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a client',
+				action: 'Action to a client',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new client',
@@ -916,13 +922,34 @@ export const clientFields: INodeProperties[] = [
 			{
 				name: 'Archive',
 				value: 'archive',
-				action: 'Archive an client',
+				action: 'Archive a client',
+			},
+			{
+				name: 'Merge',
+				value: 'merge',
+				action: 'Merge with another client',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
-				action: 'Restore an client',
+				action: 'Restore a client',
 			},
 		],
+	},
+	{
+		displayName: 'Merge Client ID',
+		name: 'mergeClientId',
+		description: 'this client will get merged into the selected client above and is deleted afterwards',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['merge'],
+			},
+		},
 	},
 ];

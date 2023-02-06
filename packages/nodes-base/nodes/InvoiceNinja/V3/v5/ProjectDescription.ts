@@ -14,6 +14,12 @@ export const projectOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a project',
+				action: 'Action to a project',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new project',
@@ -439,4 +445,47 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  project:action                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['project'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['project'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an project',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an project',
+			},
+		],
+	}
 ];

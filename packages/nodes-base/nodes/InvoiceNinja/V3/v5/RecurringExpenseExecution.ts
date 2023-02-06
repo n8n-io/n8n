@@ -330,6 +330,20 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				);
 				responseData = responseData.data;
 			}
+			if (operation === 'action') {
+				const recurringExpenseId = that.getNodeParameter('recurringExpenseId', i) as string;
+				const action = that.getNodeParameter('action', i) as string;				
+				responseData = await invoiceNinjaApiRequest.call(
+					that,
+					'POST',
+					`/recurring_expense/bulk`,
+					{
+						action,
+						ids: [recurringExpenseId]
+					}
+				);
+				responseData = responseData.data[0];
+			}
 
 			const executionData = that.helpers.constructExecutionMetaData(
 				that.helpers.returnJsonArray(responseData),

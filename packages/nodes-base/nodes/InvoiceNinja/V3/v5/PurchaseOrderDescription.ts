@@ -100,6 +100,19 @@ export const purchaseOrderFields: INodeProperties[] = [
 		],
 		default: [],
 	},
+	{
+		displayName: 'Download PDF',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchaseOrder'],
+				operation: ['get'],
+			},
+		},
+		default: false,
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  purchaseOrder:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -1071,8 +1084,71 @@ export const purchaseOrderFields: INodeProperties[] = [
 			{
 				name: 'Send Email',
 				value: 'email',
-				action: 'Send Email a purchase order',
+				action: 'Send an email',
+			},
+			{
+				name: 'Send Email',
+				value: 'custom_email',
+				action: 'Send a custom email',
 			},
 		],
+	},
+	{
+		displayName: 'Subject',
+		name: 'customEmailSubject',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchase_order'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Body',
+		name: 'customEmailBody',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchase_order'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Template',
+		name: 'customEmailTemplate',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'options',
+		default: 'email_template_purchase_order',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchase_order'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+		options: [
+			{
+				name: 'Initial',
+				value: 'email_template_purchase_order',
+			},
+			{
+				name: 'Custom 1',
+				value: 'email_template_custom1',
+			},
+		]
 	},
 ];

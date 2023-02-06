@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
+import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IPurchaseOrder, IPurchaseOrderItem } from './PurchaseOrderInterface';
 
 export const execute = async function (that: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -316,6 +316,27 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					qs,
 				);
 				responseData = responseData.data;
+				const download = that.getNodeParameter('download', i) as boolean;
+				if (download) {
+					if (!responseData.invitations[0].key)
+						throw new Error('Download failed - No invitation key present');
+					// download it with the fetched key
+					returnData.push({
+						json: responseData,
+						binary: {
+							data: await that.helpers.prepareBinaryData(
+								(await invoiceNinjaApiDownloadFile.call(
+									that,
+									'GET',
+									`/purchase_order/${responseData.invitations[0].key}/download`,
+								)),
+								'purchase_order.pdf',
+								'application/pdf',
+							),
+						},
+					});
+					continue;
+				}
 			}
 			if (operation === 'getAll') {
 				const filters = that.getNodeParameter('filters', i);
@@ -361,11 +382,35 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'action') {
 				const purchaseOrderId = that.getNodeParameter('purchaseOrderId', i) as string;
 				const action = that.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					that,
-					'GET',
-					`/purchase_orders/${purchaseOrderId}/${action}`,
-				);
+				if (action === 'custom_email') {
+					const customEmailBody = that.getNodeParameter('customEmailBody', i) as string;
+					const customEmailSubject = that.getNodeParameter('customEmailSubject', i) as string;
+					const customEmailTemplate = that.getNodeParameter('customEmailTemplate', i) as string;
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/emails`,
+						{
+							body: customEmailBody,
+							entity: "purchase_order",
+							entity_id: purchaseOrderId,
+							subject: customEmailSubject,
+							template: customEmailTemplate,
+						}
+					);
+					responseData = responseData.data;
+				} else {
+					responseData = await invoiceNinjaApiRequest.call(
+						that,
+						'POST',
+						`/purchase_orders/bulk`,
+						{
+							action,
+							ids: [purchaseOrderId]
+						}
+					);
+					responseData = responseData.data[0];
+				}
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

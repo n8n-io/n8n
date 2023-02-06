@@ -313,6 +313,27 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 					qs,
 				);
 				responseData = responseData.data;
+				const download = that.getNodeParameter('download', i) as boolean;
+				if (download) {
+					if (!responseData.invitations[0].key)
+						throw new Error('Download failed - No invitation key present');
+					// download it with the fetched key
+					returnData.push({
+						json: responseData,
+						binary: {
+							data: await that.helpers.prepareBinaryData(
+								(await invoiceNinjaApiDownloadFile.call(
+									that,
+									'GET',
+									`/recurring_invoice/${responseData.invitations[0].key}/download`,
+								)),
+								'recurring_invoice.pdf',
+								'application/pdf',
+							),
+						},
+					});
+					continue;
+				}
 			}
 			if (operation === 'getAll') {
 				const filters = that.getNodeParameter('filters', i);
@@ -367,53 +388,19 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 				);
 				responseData = responseData.data;
 			}
-			if (operation === 'download') {
-				const inputKey = that.getNodeParameter('inputKey', i) as string;
-				try {
-					responseData = await invoiceNinjaApiDownloadFile
-						.call(that, 'GET', `/recurring_invoice/${inputKey}/download`)
-						.catch((err) => {
-							if (err.description == 'no record found') return null; // handle not found
-							throw err;
-						});
-				} catch (er) {
-					// fetch invoice by id first to get invitationKey
-					const tmpData = await invoiceNinjaApiRequest
-						.call(that, 'GET', `/recurring_invoice/${inputKey}`)
-						.catch((err) => {
-							if (err.description.includes('query results')) return null; // handle not found
-							throw err;
-						});
-					if (!tmpData) throw new Error('Element not found');
-					if (!tmpData.data.invitations[0].key)
-						throw new Error('a Bank TransactionNo invitation key present');
-					// download it with the fetched key
-					responseData = await invoiceNinjaApiDownloadFile.call(
-						that,
-						'GET',
-						`/recurring_invoice/${tmpData.data.invitations[0].key}/download`,
-					);
-				}
-				returnData.push({
-					json: {},
-					binary: {
-						data: await that.helpers.prepareBinaryData(
-							responseData,
-							'recurring_invoice.pdf',
-							'application/pdf',
-						),
-					},
-				});
-				continue;
-			}
 			if (operation === 'action') {
 				const recurringInvoiceId = that.getNodeParameter('recurringInvoiceId', i) as string;
 				const action = that.getNodeParameter('action', i) as string;
 				responseData = await invoiceNinjaApiRequest.call(
 					that,
-					'GET',
-					`/recurring_invoices/${recurringInvoiceId}/${action}`,
+					'POST',
+					`/recurring_invoices/bulk`,
+					{
+						action,
+						ids: [recurringInvoiceId]
+					}
 				);
+				responseData = responseData.data[0];
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

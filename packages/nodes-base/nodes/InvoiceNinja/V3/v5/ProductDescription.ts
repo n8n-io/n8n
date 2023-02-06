@@ -14,6 +14,12 @@ export const productOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a product',
+				action: 'Action to a product',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new product',
@@ -449,4 +455,47 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  product:action                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Product ID',
+		name: 'productId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['product'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['product'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an product',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an product',
+			},
+		],
+	}
 ];

@@ -246,6 +246,7 @@ export const execute = async function (that: IExecuteFunctions): Promise<INodeEx
 						ids: [vendorId]
 					}
 				);
+				responseData = responseData.data[0];
 			}
 
 			const executionData = that.helpers.constructExecutionMetaData(

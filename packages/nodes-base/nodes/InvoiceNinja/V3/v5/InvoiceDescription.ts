@@ -32,12 +32,6 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Delete an invoice',
 			},
 			{
-				name: 'Download',
-				value: 'download',
-				description: 'Get PDF from invoice',
-				action: 'Download invoice',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a invoice',
@@ -97,6 +91,19 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		],
 		default: [],
+	},
+	{
+		displayName: 'Download PDF',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['get'],
+			},
+		},
+		default: false,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  invoice:getAll                            */
@@ -201,24 +208,6 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  invoice:download                          */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Invitation Key OR Invoice ID',
-		name: 'inputKey',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['invoice'],
-				operation: ['download'],
-			},
-		},
-		description: "Value 'key' from entry of property 'invitations' of an invoice or the invoice ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 invoice:create                             */
@@ -1031,25 +1020,127 @@ export const invoiceFields: INodeProperties[] = [
 				action: 'Clone To Quote an invoice',
 			},
 			{
+				name: 'Mark Send',
+				value: 'mark_sent',
+				action: 'Mark as Sent',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send an email',
+			},
+			{
+				name: 'Send Email (custom)',
+				value: 'custom_email',
+				action: 'Send a custom email',
+			},
+			{
 				name: 'Mark Paid',
 				value: 'mark_paid',
 				action: 'Mark Paid an invoice',
-			},
-			{
-				name: 'Mark Send',
-				value: 'mark_sent',
-				action: 'Mark Send an invoice',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
 				action: 'Restore an invoice',
 			},
-			{
-				name: 'Send Email',
-				value: 'email',
-				action: 'Send Email an invoice',
-			},
 		],
+	},
+	{
+		displayName: 'Email Type',
+		name: 'emailEmailType',
+		description: 'an email type, which is not default, like: \'reminder1\', \'reminder2\', \'reminder3\', \'reminder_endless\', \'custom1\', \'custom2\', \'custom3\'',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['action'],
+				action: ['email'],
+			},
+		},
+	},
+	{
+		displayName: 'Subject',
+		name: 'customEmailSubject',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Body',
+		name: 'customEmailBody',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Template',
+		name: 'customEmailTemplate',
+		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		type: 'options',
+		default: 'email_template_invoice',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['invoice'],
+				operation: ['action'],
+				action: ['custom_email'],
+			},
+		},
+		options: [
+			{
+				name: 'Initial',
+				value: 'email_template_invoice',
+			},
+			{
+				name: 'Reminder 1',
+				value: 'email_template_reminder1',
+			},
+			{
+				name: 'Reminder 2',
+				value: 'email_template_reminder2',
+			},
+			{
+				name: 'Reminder 3',
+				value: 'email_template_reminder3',
+			},
+			{
+				name: 'Reminder Endless',
+				value: 'email_template_reminder_endless',
+			},
+			{
+				name: 'Custom 1',
+				value: 'email_template_custom1',
+			},
+			{
+				name: 'Custom 2',
+				value: 'email_template_custom2',
+			},
+			{
+				name: 'Custom 3',
+				value: 'email_template_custom3',
+			},
+		]
 	},
 ];

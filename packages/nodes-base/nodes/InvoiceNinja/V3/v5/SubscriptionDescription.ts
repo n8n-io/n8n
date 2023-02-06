@@ -14,6 +14,12 @@ export const subscriptionOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Action',
+				value: 'action',
+				description: 'Performs an action to a subscription',
+				action: 'Action to a subscription',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new subscription',
@@ -585,4 +591,47 @@ export const subscriptionFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  subscription:action                       */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Subscription ID',
+		name: 'subscriptionId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['subscription'],
+				operation: ['action'],
+			},
+		},
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['subscription'],
+				operation: ['action'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an subscription',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an subscription',
+			},
+		],
+	}
 ];
