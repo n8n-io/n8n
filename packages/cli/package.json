@@ -100,6 +100,7 @@
     "@types/validator": "^13.7.0",
     "@types/yamljs": "^0.2.31",
     "concurrently": "^5.1.0",
+    "mock-jwks": "^1.0.9",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",
     "ts-node": "^9.1.1",
