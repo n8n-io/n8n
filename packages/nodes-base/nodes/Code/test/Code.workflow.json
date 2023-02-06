@@ -10,34 +10,48 @@
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [
-				680,
-				640
+				400,
+				560
 			]
 		},
 		{
 			"parameters": {
-				"jsCode": "return[\n  { name: \"foo\" },\n  { name: \"bar\" },\n]"
+				"jsCode": "return[\n  { value: 1 },\n  { value: 2 },\n]"
 			},
 			"id": "61698354-69d5-43cc-89e4-2c766775fdc1",
 			"name": "Sample Data",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
 			"position": [
-				920,
-				640
+				640,
+				560
 			]
 		},
 		{
 			"parameters": {
-				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nlet sum = 0;\nfor (const item of $input.all()) {\n  sum += item.json.value;\n}\n\nreturn [ {sum} ];"
 			},
 			"id": "bc676cda-4894-472c-ba5c-b8d3512af330",
-			"name": "Apply New Field",
+			"name": "Run Once for All Items",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
 			"position": [
-				1140,
-				640
+				900,
+				440
+			]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the\n// JSON of the item\n$input.item.json.myNewField = $input.item.json.value;\n\nreturn $input.item;"
+			},
+			"id": "f823300a-70e5-4d53-9e24-19468caa8157",
+			"name": "Run Once for Each Item",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				900,
+				680
 			]
 		}
 	],
@@ -57,7 +71,12 @@
 			"main": [
 				[
 					{
-						"node": "Apply New Field",
+						"node": "Run Once for All Items",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Run Once for Each Item",
 						"type": "main",
 						"index": 0
 					}

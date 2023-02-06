@@ -9,21 +9,28 @@ import { Code } from '../../../nodes/Code/Code.node';
 describe('Execute Code Node', () => {
 	const tests: WorkflowTestData[] = [
 		{
-			description: 'should execute IF node true/false boolean',
+			description: 'run once for All and Each items',
 			input: {
 				workflowData: Helpers.readJsonFileSync('nodes/Code/test/Code.workflow.json'),
 			},
 			output: {
 				nodeData: {
-					'Apply New Field': [
+					'Run Once for All Items': [
 						[
 							{
+								sum: 3,
+							},
+						],
+					],
+					'Run Once for Each Item': [
+						[
+							{
+								value: 1,
 								myNewField: 1,
-								name: 'foo',
 							},
 							{
-								myNewField: 1,
-								name: 'bar',
+								value: 2,
+								myNewField: 2,
 							},
 						],
 					],
