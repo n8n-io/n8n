@@ -38,17 +38,14 @@ describe('Undo/Redo', () => {
 	it('should undo/redo adding node in the middle', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().realHover();
-		cy.get('.connection-actions .add').filter(':visible').click();
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME, false);
+		WorkflowPage.actions.addNodeBetweenFirstTwoNodes(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
-		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 4);
-		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 	});
 
 	it('should undo/redo deleting node using delete button', () => {
