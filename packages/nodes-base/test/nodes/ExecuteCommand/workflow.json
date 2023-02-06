@@ -1,6 +1,6 @@
 {
 	"meta": {
-		"instanceId": "REMOVED"
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
 	},
 	"nodes": [
 		{
@@ -9,17 +9,61 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [660, 420]
+			"position": [320, 420]
 		},
 		{
 			"parameters": {
-				"command": "echo \"test\""
+				"values": {
+					"string": [
+						{
+							"name": "data[0]",
+							"value": "n8n"
+						},
+						{
+							"name": "data[1]",
+							"value": "test"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "38ef44c5-2a86-496a-b744-e812bd654d13",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [480, 420]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"options": {}
+			},
+			"id": "52baa886-6b57-4476-b5d1-f284e9beba2c",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [640, 420]
+		},
+		{
+			"parameters": {
+				"command": "=echo \"{{ $json.data }}\""
 			},
 			"id": "eb0ac3fe-6456-4c1e-a8c1-acf9705390f8",
-			"name": "Execute Command",
+			"name": "EC Once",
 			"type": "n8n-nodes-base.executeCommand",
 			"typeVersion": 1,
-			"position": [820, 420]
+			"position": [820, 300]
+		},
+		{
+			"parameters": {
+				"executeOnce": false,
+				"command": "=echo \"{{ $json.data }}\""
+			},
+			"id": "62c3b637-fd7c-49da-945f-a8df2997d54a",
+			"name": "EC All",
+			"type": "n8n-nodes-base.executeCommand",
+			"typeVersion": 1,
+			"position": [820, 540]
 		}
 	],
 	"connections": {
@@ -27,7 +71,34 @@
 			"main": [
 				[
 					{
-						"node": "Execute Command",
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists": {
+			"main": [
+				[
+					{
+						"node": "EC Once",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "EC All",
 						"type": "main",
 						"index": 0
 					}

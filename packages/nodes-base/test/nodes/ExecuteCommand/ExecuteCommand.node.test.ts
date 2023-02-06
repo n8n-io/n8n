@@ -5,6 +5,8 @@ import { executeWorkflow } from '../ExecuteWorkflow';
 
 import { ExecuteCommand } from '../../../nodes/ExecuteCommand/ExecuteCommand.node';
 import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
+import { Set } from '../../../nodes/Set/Set.node';
+import { ItemLists } from '../../../nodes/ItemLists/ItemLists.node';
 
 describe('Execute Execute Command Node', () => {
 	const tests: Array<WorkflowTestData> = [
@@ -15,8 +17,22 @@ describe('Execute Execute Command Node', () => {
 			},
 			output: {
 				nodeData: {
-					'Execute Command': [
+					'EC Once': [
 						[
+							{
+								exitCode: 0,
+								stderr: '',
+								stdout: 'n8n',
+							},
+						],
+					],
+					'EC All': [
+						[
+							{
+								exitCode: 0,
+								stderr: '',
+								stdout: 'n8n',
+							},
 							{
 								exitCode: 0,
 								stderr: '',
@@ -29,7 +45,12 @@ describe('Execute Execute Command Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new ExecuteCommand()];
+	const nodes: INodeType[] = [
+		new ManualTrigger(),
+		new Set(),
+		new ItemLists(),
+		new ExecuteCommand(),
+	];
 	const nodeTypes = Helpers.setup(nodes);
 
 	for (const testData of tests) {
