@@ -1,0 +1,134 @@
+{
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c36aef04-b8ee-4f50-938b-ec64c4f78c97",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [860, 340]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n];"
+			},
+			"id": "79f44614-aaf8-421a-9cad-2d92445a5dd5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1120, 340]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "id",
+							"renameField": true,
+							"outputFieldName": "data"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "9762644f-34cb-48ca-b8a3-e0aa0ca05d4a",
+			"name": "fields aggregate and rename",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1380, 80]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"aggregate": "aggregateAllItemData"
+			},
+			"id": "d4f89f23-53da-4ec4-bdb0-552b82161fbc",
+			"name": "aggregate all fields into list",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1380, 400]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"aggregate": "aggregateAllItemData",
+				"include": "specifiedFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "id"
+						}
+					]
+				}
+			},
+			"id": "074b3c86-46e4-4509-8c9a-a156bc185cbd",
+			"name": "aggregate selected fields into list",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1380, 580]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "output",
+				"include": "allFieldsExcept",
+				"fieldsToExclude": {
+					"fields": [
+						{
+							"fieldName": "char"
+						}
+					]
+				}
+			},
+			"id": "286c8e98-b348-4f4b-98f3-53601bd32c93",
+			"name": "aggregate all fields except selected into list",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [1380, 780]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "fields aggregate and rename",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "aggregate all fields into list",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "aggregate selected fields into list",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "aggregate all fields except selected into list",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
