@@ -1,0 +1,85 @@
+{
+	"meta": {
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4595e0aa-66ef-4f06-985b-febcf2b3c234",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [660, 420]
+		},
+		{
+			"parameters": {
+				"mode": "expression"
+			},
+			"id": "9734f702-0953-48b2-a4e3-1e1ef2a114a2",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 1,
+			"position": [1020, 420]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"value": "test"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "e35fae38-73a2-4021-a18e-da9a2a8f2c32",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [840, 420]
+		},
+		{
+			"parameters": {},
+			"id": "898659b9-2b1a-4c27-b2d9-3da83ab4a8e2",
+			"name": "Output 0",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1240, 380]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Output 0",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"instanceId": "REMOVED"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d04690bf-36ae-45d8-87d1-df7a6f3f4501",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [600, 380]
+		},
+		{
+			"parameters": {
+				"dataType": "string",
+				"value1": "={{ $json.propertyName }}",
+				"rules": {
+					"rules": [
+						{
+							"value2": "test"
+						}
+					]
+				}
+			},
+			"id": "fca6d31a-65d1-4595-884a-f0c5c437658f",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 1,
+			"position": [960, 380]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"value": "test"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "247f13e6-afe8-4502-a7c1-01ee9c701f6e",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [780, 380]
+		},
+		{
+			"parameters": {},
+			"id": "41528848-2192-4d36-9e87-20c1eddabb49",
+			"name": "Output 0",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1200, 340]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Output 0",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
