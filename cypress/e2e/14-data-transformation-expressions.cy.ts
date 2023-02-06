@@ -13,7 +13,9 @@ describe('Data transformation expressions', () => {
 	it('$json + native string methods', () => {
 		wf.actions.visit();
 
-		addWithPinData('Schedule Trigger', [{ myStr: 'Monday' }]);
+		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+		ndv.actions.setPinnedData([{ myStr: 'Monday' }]);
+		ndv.actions.close();
 		addSet();
 
 		const input = '{{$json.myStr.toLowerCase() + " is " + "today".toUpperCase()';
@@ -27,7 +29,9 @@ describe('Data transformation expressions', () => {
 	it('$json + n8n string methods', () => {
 		wf.actions.visit();
 
-		addWithPinData('Schedule Trigger', [{ myStr: 'hello@n8n.io is an email' }]);
+		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+		ndv.actions.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
+		ndv.actions.close();
 		addSet();
 
 		const input = '{{$json.myStr.extractEmail() + " " + $json.myStr.isEmpty()';
@@ -41,7 +45,9 @@ describe('Data transformation expressions', () => {
 	it('$json + native numeric methods', () => {
 		wf.actions.visit();
 
-		addWithPinData('Schedule Trigger', [{ myNum: 9.123 }]);
+		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+		ndv.actions.setPinnedData([{ myNum: 9.123 }]);
+		ndv.actions.close();
 		addSet();
 
 		const input = '{{$json.myNum.toPrecision(3)';
@@ -55,7 +61,9 @@ describe('Data transformation expressions', () => {
 	it('$json + n8n numeric methods', () => {
 		wf.actions.visit();
 
-		addWithPinData('Schedule Trigger', [{ myStr: 'hello@n8n.io is an email' }]);
+		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+		ndv.actions.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
+		ndv.actions.close();
 		addSet();
 
 		const input = '{{$json.myStr.extractEmail() + " " + $json.myStr.isEmpty()';
@@ -69,7 +77,9 @@ describe('Data transformation expressions', () => {
 	it('$json + native array methods', () => {
 		wf.actions.visit();
 
-		addWithPinData('Schedule Trigger', [{ myArr: [1, 2, 3] }]);
+		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
+		ndv.actions.close();
 		addSet();
 
 		const input = '{{$json.myArr.includes(1) + " " + $json.myArr.at(2)';
@@ -83,7 +93,9 @@ describe('Data transformation expressions', () => {
 	it('$json + n8n array methods', () => {
 		wf.actions.visit();
 
-		addWithPinData('Schedule Trigger', [{ myArr: [1, 2, 3] }]);
+		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
+		ndv.actions.close();
 		addSet();
 
 		const input = '{{$json.myArr.first() + " " + $json.myArr.last()';
@@ -98,12 +110,6 @@ describe('Data transformation expressions', () => {
 // ----------------------------------
 //             utils
 // ----------------------------------
-
-const addWithPinData = (nodeTypeName: string, pinData: object[]) => {
-	wf.actions.addInitialNodeToCanvas(nodeTypeName, { preventNdvClose: true });
-	ndv.actions.setPinnedData(pinData);
-	ndv.actions.close();
-};
 
 const addSet = () => {
 	wf.actions.addNodeToCanvas('Set', true, true);
