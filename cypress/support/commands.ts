@@ -198,6 +198,5 @@ Cypress.Commands.add('drag', (selector, target) => {
 		pageY,
 		force: true,
 	});
-	cy.wait(400);
 	element.trigger('mouseup');
 });
