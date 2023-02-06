@@ -191,11 +191,8 @@ Cypress.Commands.add('drag', (selector, pos) => {
 });
 
 Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
-	const draggable = cy.get(draggableSelector);
-	const droppable = cy.get(droppableSelector);
-
-	draggable.should('exist');
-	droppable.should('exist');
+	cy.get(draggableSelector).should('exist');
+	cy.get(droppableSelector).should('exist');
 
 	const droppableEl = Cypress.$(droppableSelector)[0];
 	const coords = droppableEl.getBoundingClientRect();
@@ -203,10 +200,10 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 	const pageX = coords.left + coords.width / 2;
 	const pageY = coords.top + coords.height / 2;
 
-	draggable.realMouseDown();
-	droppable.realMouseMove(pageX, pageY);
-	droppable.realHover();
-	droppable.realMouseUp();
+	cy.get(draggableSelector).realMouseDown();
+	cy.get(droppableSelector).realMouseMove(pageX, pageY)
+		.realHover()
+		.realMouseUp();
 });
 
 
