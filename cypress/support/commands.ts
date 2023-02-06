@@ -173,26 +173,40 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, targetSelectorOrPosition) => {
-	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
-	let pageX, pageY: number;
-	if (typeof targetSelectorOrPosition === 'string') {
-		cy.get(targetSelectorOrPosition).should('exist');
-		const droppable = Cypress.$(targetSelectorOrPosition)[0];
-		const coords = droppable.getBoundingClientRect();
-
-		pageX = coords.left + coords.width / 2;
-		pageY = coords.top + coords.height / 2;
-	} else {
-		pageX = originalLocation.right + targetSelectorOrPosition[0];
-		pageY = originalLocation.top + targetSelectorOrPosition[1];
-	}
+Cypress.Commands.add('drag', (selector, pos) => {
+	const [xDiff, yDiff] = pos;
 	const element = cy.get(selector);
 	element.should('exist');
-	const target = typeof targetSelectorOrPosition === 'string'? cy.get(targetSelectorOrPosition): null;
 
-	element.realMouseDown();
-	(target || element).realMouseMove(pageX, pageY);
-	(target || element).realHover();
-	(target || element).realMouseUp();
+	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+
+	element.trigger('mousedown');
+	element.trigger('mousemove', {
+		which: 1,
+		pageX: originalLocation.right + xDiff,
+		pageY: originalLocation.top + yDiff,
+		force: true,
+	});
+	element.trigger('mouseup');
 });
+
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+	const draggable = cy.get(draggableSelector);
+	const droppable = cy.get(droppableSelector);
+
+	draggable.should('exist');
+	droppable.should('exist');
+
+	const droppableEl = Cypress.$(droppableSelector)[0];
+	const coords = droppableEl.getBoundingClientRect();
+
+	const pageX = coords.left + coords.width / 2;
+	const pageY = coords.top + coords.height / 2;
+
+	draggable.realMouseDown();
+	droppable.realMouseMove(pageX, pageY);
+	droppable.realHover();
+	droppable.realMouseUp();
+});
+
+

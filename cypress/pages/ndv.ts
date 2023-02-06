@@ -83,7 +83,7 @@ export class NDV extends BasePage {
 		mapDataFromHeader: (col: number, parameterName: string) => {
 			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;
 			const droppable = `[data-test-id="parameter-input-${parameterName}"] input`;
-			cy.drag(draggable, droppable);
+			cy.draganddrop(draggable, droppable);
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
 			this.getters.inputDisplayMode().find('label').contains(type).click();
