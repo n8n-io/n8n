@@ -28,7 +28,7 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-
+import pick from 'lodash.pick';
 import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
@@ -54,6 +54,8 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+
+const workflowRunnerFile = pathJoin(__dirname, 'WorkflowRunnerProcess.js');
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -602,7 +604,9 @@ export class WorkflowRunner {
 	): Promise<string> {
 		const workflowId = data.workflowData.id;
 		let startedAt = new Date();
-		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
+		const subprocess = fork(workflowRunnerFile, {
+			env: pick(process.env, 'E2E_TESTS', 'N8N_USER_FOLDER'),
+		});
 
 		if (loadStaticData === true && workflowId) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
