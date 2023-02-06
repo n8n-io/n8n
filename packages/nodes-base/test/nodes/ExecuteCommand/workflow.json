@@ -1,15 +1,18 @@
 {
 	"meta": {
-		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
 	},
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "841929fc-e596-40df-82e9-71777102a802",
+			"id": "6789f5f4-7340-4aa1-a250-c530c71f4b00",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [320, 420]
+			"position": [
+				-600,
+				380
+			]
 		},
 		{
 			"parameters": {
@@ -27,43 +30,55 @@
 				},
 				"options": {}
 			},
-			"id": "38ef44c5-2a86-496a-b744-e812bd654d13",
+			"id": "8eba9387-3ccf-4836-9b25-fd0e80e29b77",
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [480, 420]
+			"position": [
+				-440,
+				380
+			]
 		},
 		{
 			"parameters": {
 				"fieldToSplitOut": "data",
 				"options": {}
 			},
-			"id": "52baa886-6b57-4476-b5d1-f284e9beba2c",
+			"id": "c11539a3-ad95-4efe-a14e-32b363d73bbe",
 			"name": "Item Lists",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 1,
-			"position": [640, 420]
+			"position": [
+				-280,
+				380
+			]
 		},
 		{
 			"parameters": {
-				"command": "=echo \"{{ $json.data }}\""
+				"command": "=echo {{ $json.data }}"
 			},
-			"id": "eb0ac3fe-6456-4c1e-a8c1-acf9705390f8",
+			"id": "e35c7537-22b7-41a0-8d0a-3c9dc24a982f",
 			"name": "EC Once",
 			"type": "n8n-nodes-base.executeCommand",
 			"typeVersion": 1,
-			"position": [820, 300]
+			"position": [
+				-100,
+				260
+			]
 		},
 		{
 			"parameters": {
 				"executeOnce": false,
-				"command": "=echo \"{{ $json.data }}\""
+				"command": "=echo {{ $json.data }}"
 			},
-			"id": "62c3b637-fd7c-49da-945f-a8df2997d54a",
+			"id": "6c5519ee-b915-43c0-9b22-57e43092d655",
 			"name": "EC All",
 			"type": "n8n-nodes-base.executeCommand",
 			"typeVersion": 1,
-			"position": [820, 540]
+			"position": [
+				-100,
+				500
+			]
 		}
 	],
 	"connections": {
