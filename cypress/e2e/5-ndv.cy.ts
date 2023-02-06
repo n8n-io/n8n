@@ -39,10 +39,10 @@ describe('NDV', () => {
 				url,
 			}).then((resp) => {
 				expect(resp.status).to.eq(200);
-
-				ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 			});
 		});
+
+		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
 	it('should change input', () => {
