@@ -119,7 +119,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
