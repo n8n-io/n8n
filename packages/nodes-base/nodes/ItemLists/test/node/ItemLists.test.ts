@@ -128,6 +128,68 @@ describe('Execute ItemLists Node', () => {
 				},
 			},
 		},
+		{
+			description: 'should execute ItemLists removeDuplicates operation',
+			input: {
+				workflowData: Helpers.readJsonFileSync(
+					'nodes/ItemLists/test/node/workflow.removeDuplicates.json',
+				),
+			},
+			output: {
+				nodeData: {
+					'Item Lists remove duplicates': [
+						[
+							{
+								entry: 1,
+								data: 'a',
+								char: 'a',
+							},
+							{
+								entry: 1,
+								data: 'b',
+								char: 'a',
+							},
+							{
+								entry: 4,
+								data: 'd',
+								char: 'a',
+							},
+							{
+								entry: 5,
+								data: 'e',
+								char: 'a',
+							},
+						],
+					],
+					'Item Lists remove duplicates exclude': [
+						[
+							{
+								entry: 1,
+								data: 'a',
+								char: 'a',
+							},
+							{
+								entry: 4,
+								data: 'd',
+								char: 'a',
+							},
+							{
+								entry: 5,
+								data: 'e',
+								char: 'a',
+							},
+						],
+					],
+					'Item Lists remove duplicates selected': [
+						[
+							{
+								char: 'a',
+							},
+						],
+					],
+				},
+			},
+		},
 	];
 
 	const nodes: INodeType[] = [new ManualTrigger(), new Code(), new ItemLists()];
