@@ -189,8 +189,38 @@ export const projectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 project:create                              */
+	/*                                 project:create                             */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client',
+		name: 'clientId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['project'],
+				operation: ['create'],
+			},
+		}, typeOptions: {
+			loadOptionsMethod: 'getClientsV5',
+		},
+		default: '',
+	},
+	{
+		displayName: 'Project Name',
+		name: 'name',
+		type: 'string',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['project'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -206,26 +236,9 @@ export const projectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Project Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Project Number',
 				name: 'number',
 				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Client',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
 				default: '',
 			},
 			{
@@ -339,12 +352,6 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Number',
-				name: 'number',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
@@ -353,6 +360,12 @@ export const projectFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getClientsV5',
 				},
+				default: '',
+			},
+			{
+				displayName: 'Project Number',
+				name: 'number',
+				type: 'string',
 				default: '',
 			},
 			{
@@ -369,6 +382,12 @@ export const projectFields: INodeProperties[] = [
 			{
 				displayName: 'Task Rate',
 				name: 'taskRate',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Budgeted Hours',
+				name: 'budgetedHours',
 				type: 'number',
 				default: 0,
 			},

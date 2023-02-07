@@ -18,22 +18,23 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const name = this.getNodeParameter('name', i);
+				const clientId = this.getNodeParameter('clientId', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IProject = {};
-				if (additionalFields.name) {
-					body.name = additionalFields.name as string;
-				}
+				body.name = name as string;
+				body.client_id = clientId as string;
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
-				}
-				if (additionalFields.client) {
-					body.client_id = additionalFields.clientId as string;
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
 				if (additionalFields.taskRate) {
 					body.task_rate = additionalFields.taskRate as number;
+				}
+				if (additionalFields.budgetedHours) {
+					body.budgeted_hours = additionalFields.budgetedHours as number;
 				}
 				if (additionalFields.dueDate) {
 					body.due_date = additionalFields.dueDate as string;
@@ -74,17 +75,20 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.name) {
 					body.name = additionalFields.name as string;
 				}
+				if (additionalFields.clientId) {
+					body.client_id = additionalFields.clientId as string;
+				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
-				}
-				if (additionalFields.client) {
-					body.client_id = additionalFields.clientId as string;
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
 				if (additionalFields.taskRate) {
 					body.task_rate = additionalFields.taskRate as number;
+				}
+				if (additionalFields.budgetedHours) {
+					body.budgeted_hours = additionalFields.budgetedHours as number;
 				}
 				if (additionalFields.dueDate) {
 					body.due_date = additionalFields.dueDate as string;
