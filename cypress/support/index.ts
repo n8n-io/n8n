@@ -33,7 +33,7 @@ declare global {
 			readClipboard(): Chainable<string>;
 			paste(pastePayload: string): void;
 			drag(selector: string, target: [number, number]): void;
-			draganddrop(selector: string, target: string): void;
+			dropOn(droppableSelector: string): void;
 		}
 	}
 }

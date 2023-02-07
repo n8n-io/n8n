@@ -24,10 +24,10 @@ export class NDV extends BasePage {
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
 		outputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
-		inputTableRows: () => this.getters.outputDataContainer().find('table tr'),
-		inputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
-		inputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
-		inputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
+		inputTableRows: () => this.getters.inputDataContainer().find('table tr'),
+		inputTableHeaders: () => this.getters.inputDataContainer().find('table thead th'),
+		inputTableRow: (row: number) => this.getters.inputTableRows().eq(row),
+		inputTbodyCell: (row: number, col: number) => this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
@@ -83,8 +83,14 @@ export class NDV extends BasePage {
 		},
 		mapDataFromHeader: (col: number, parameterName: string) => {
 			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;
+			cy.get(draggable).realMouseDown();
+
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
-			cy.draganddrop(draggable, droppable);
+			cy.dropOn(droppable);
+		},
+		mapToParameter: (parameterName: string) => {
+			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
+			cy.dropOn(droppable);
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
 			this.getters.inputDisplayMode().find('label').contains(type).click();
