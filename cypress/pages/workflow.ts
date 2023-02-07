@@ -174,11 +174,6 @@ export class WorkflowPage extends BasePage {
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
 		},
-		addNodeBetweenFirstTwoNodes: (nodeName: string) => {
-			this.getters.nodeConnections().first().realHover();
-			cy.get('.connection-actions .add').first().click({ force: true });
-			this.actions.addNodeToCanvas(nodeName, false);
-		},
 		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.add').first().click({ force: true });
