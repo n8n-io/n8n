@@ -1,26 +1,24 @@
 {
-	"meta": {
-		"instanceId": "REMOVED"
-	},
+	"name": "Split in Batches Test",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "3f5cd3a7-8c28-4a54-bbe2-3115dc1b5d40",
+			"id": "86b8149f-b0a0-489c-bb62-e59142988996",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [660, 420]
+			"position": [400, 220]
 		},
 		{
 			"parameters": {
 				"batchSize": 1,
 				"options": {}
 			},
-			"id": "270a4642-27ea-420c-a4f5-0590704dca57",
+			"id": "30c5546e-bdcc-44ff-bfca-89c5fb97b678",
 			"name": "Split In Batches",
 			"type": "n8n-nodes-base.splitInBatches",
 			"typeVersion": 1,
-			"position": [1360, 420]
+			"position": [1100, 220]
 		},
 		{
 			"parameters": {
@@ -38,22 +36,22 @@
 				},
 				"options": {}
 			},
-			"id": "d11aa85a-0e52-4ec9-b6af-3c531f1e727a",
+			"id": "92d386b8-60be-4f8b-801c-b6459ec206f7",
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [900, 420]
+			"position": [640, 220]
 		},
 		{
 			"parameters": {
 				"fieldToSplitOut": "data",
 				"options": {}
 			},
-			"id": "cee07a16-5abc-4586-88aa-5595e1c051ed",
+			"id": "74b7e63e-a9f8-4a82-9e1f-7b2429d9118d",
 			"name": "Item Lists",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 1,
-			"position": [1120, 420]
+			"position": [860, 220]
 		},
 		{
 			"parameters": {
@@ -66,11 +64,11 @@
 					]
 				}
 			},
-			"id": "3a39c362-6beb-4cda-9bf9-5b4b3042ad97",
+			"id": "a5f68369-4e70-4f16-b260-3c8b74517993",
 			"name": "IF",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [1540, 420]
+			"position": [1280, 220]
 		},
 		{
 			"parameters": {
@@ -87,13 +85,24 @@
 				},
 				"options": {}
 			},
-			"id": "9cf11241-6330-47bb-9460-8811ae3c6afe",
+			"id": "1f44eb0a-5fb7-43a7-8281-84a8a7ec8464",
 			"name": "Output",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [1740, 400]
+			"position": [1480, 200]
 		}
 	],
+	"pinData": {
+		"Output": [
+			{
+				"json": {
+					"data": "test",
+					"maxRunIndex": 2,
+					"propertyName": 1
+				}
+			}
+		]
+	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
 			"main": [
@@ -157,5 +166,13 @@
 				]
 			]
 		}
-	}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "de1a454e-43e9-4c2d-b786-18da5d97940f",
+	"id": "389",
+	"meta": {
+		"instanceId": "REMOVED"
+	},
+	"tags": []
 }
