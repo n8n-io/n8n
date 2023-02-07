@@ -173,7 +173,8 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
+Cypress.Commands.add('drag', (selector, pos) => {
+	const [xDiff, yDiff] = pos;
 	const element = cy.get(selector);
 	element.should('exist');
 
@@ -188,3 +189,21 @@ Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
 	});
 	element.trigger('mouseup');
 });
+
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+	cy.get(draggableSelector).should('exist');
+	cy.get(droppableSelector).should('exist');
+
+	const droppableEl = Cypress.$(droppableSelector)[0];
+	const coords = droppableEl.getBoundingClientRect();
+
+	const pageX = coords.left + coords.width / 2;
+	const pageY = coords.top + coords.height / 2;
+
+	cy.get(draggableSelector).realMouseDown();
+	cy.get(droppableSelector).realMouseMove(pageX, pageY)
+		.realHover()
+		.realMouseUp();
+});
+
+

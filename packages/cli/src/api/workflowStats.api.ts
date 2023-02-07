@@ -38,7 +38,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 }
 
 /**
- * Initialise Logger if needed
+ * Initialize Logger if needed
  */
 workflowStatsController.use((req, res, next) => {
 	try {
