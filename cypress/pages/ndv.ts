@@ -90,14 +90,18 @@ export class NDV extends BasePage {
 			cy.dropOn(droppable);
 		},
 		mapToParameter: (parameterName: string) => {
-			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
+			const droppable = `[data-test-id="parameter-input-${parameterName}"] input`;
 			cy.dropOn(droppable);
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
-			this.getters.inputDisplayMode().find('label').contains(type).click();
+			this.getters.inputDisplayMode().find('label').contains(type).click({force: true});
 		},
 		switchOutputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
-			this.getters.outputDisplayMode().find('label').contains(type).click();
+			this.getters.outputDisplayMode().find('label').contains(type).click({force: true});
+		},
+		selectInputNode: (nodeName: string) => {
+			this.getters.inputSelect().find('.el-select').click();
+			this.getters.inputOption().contains(nodeName).click();
 		},
 	};
 }

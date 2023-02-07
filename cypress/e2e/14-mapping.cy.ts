@@ -102,4 +102,153 @@ describe('Data mapping', () => {
 				.invoke('css', 'color')
 				.should('equal', 'rgb(125, 125, 135)');
 	});
+
+	it('maps expressions from json view', () => {
+		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		canvasNode.actions.openNode('Schedule Trigger');
+		ndv.actions.setPinnedData([
+			{
+				input: [
+					{
+						"hello world": {
+							count: 0,
+						},
+					}
+				]
+			},
+			{
+				input: [
+					{
+						"hello world": {
+							count: 1,
+						}
+					}
+				]
+			},
+		]);
+		ndv.actions.close();
+
+		canvasNode.actions.openNode('Set');
+		ndv.actions.switchInputMode('JSON');
+		ndv.getters.inputDataContainer().should('exist');
+
+		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
+		ndv.getters.nodeParameters().find('.el-select-dropdown__list li:nth-child(3)').should('have.text', 'String').click();
+		ndv.getters.parameterInput('name').should('have.length', 1).find('input').should('have.value', 'propertyName');
+		ndv.getters.parameterInput('value').should('have.length', 1).find('input').should('have.value', '');
+
+		ndv.getters.inputDataContainer().find('.json-data')
+			.should('have.text', '[{"input":[{"hello world":{"count":0}}]},{"input":[{"hello world":{"count":1}}]}]')
+			.find('span').contains('"count"')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0]["hello world"].count }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0');
+
+		ndv.getters.inputDataContainer().find('.json-data')
+			.find('span').contains('"input"')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0]["hello world"].count }} {{ $json.input }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0 [object Object]');
+	});
+
+	it('maps expressions from schema view', () => {
+		workflowPage.actions.visit();
+		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		canvasNode.actions.openNode('Schedule Trigger');
+		ndv.actions.setPinnedData([
+			{
+				input: [
+					{
+						"hello world": {
+							count: 0,
+						},
+					}
+				]
+			},
+			{
+				input: [
+					{
+						"hello world": {
+							count: 1,
+						}
+					}
+				]
+			},
+		]);
+		ndv.actions.close();
+
+		canvasNode.actions.openNode('Set');
+		ndv.getters.inputDataContainer().should('exist');
+
+		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
+		ndv.getters.nodeParameters().find('.el-select-dropdown__list li:nth-child(3)').should('have.text', 'String').click();
+		ndv.getters.parameterInput('name').should('have.length', 1).find('input').should('have.value', 'propertyName');
+		ndv.getters.parameterInput('value').should('have.length', 1).find('input').should('have.value', '');
+
+		ndv.getters.inputDataContainer()
+			.find('span').contains('count')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0]["hello world"].count }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0');
+
+		ndv.getters.inputDataContainer()
+			.find('span').contains('input')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0]["hello world"].count }} {{ $json.input }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0 [object Object]');
+	});
+
+	// it('maps expressions from previous nodes', () => {
+	// 	workflowPage.actions.visit();
+
+	// 	cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+
+	// 	canvasNode.actions.openNode('Set1');
+
+	// 	ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
+	// 	ndv.getters.nodeParameters().find('.el-select-dropdown__list li:nth-child(3)').should('have.text', 'String').click();
+
+	// 	ndv.actions.selectInputNode('Schedule Trigger');
+
+	// 	ndv.getters.inputDataContainer()
+	// 		.find('span').contains('code')
+	// 		.realMouseDown();
+
+	// 	ndv.actions.mapToParameter('value');
+	// 	ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.code }}');
+	// 	ndv.getters.parameterExpressionPreview('value')
+	// 		.should('not.exist');
+
+	// 	ndv.actions.switchInputMode('Table');
+	// 	ndv.actions.mapDataFromHeader(1, 'value');
+	// 	ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.code }} {{ $node["Schedule Trigger"].json.name }}');
+	// 	ndv.getters.parameterExpressionPreview('value')
+	// 		.should('not.exist');
+
+	// 	ndv.actions.selectInputNode('Set');
+	// 	ndv.getters.parameterExpressionPreview('value')
+	// 		.should('include.text', '[empty]');
+
+	// 	ndv.actions.executePrevious();
+	// 	ndv.getters.inputDataContainer().should('exist');
+	// 	ndv.getters.parameterExpressionPreview('value')
+	// 		.should('include.text', '1 First item');
+	// });
+
 });
