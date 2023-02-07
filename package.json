@@ -40,7 +40,7 @@
     "@n8n_io/eslint-config": "*",
     "@ngneat/falso": "^6.1.0",
     "@types/jest": "^29.2.2",
-    "@types/node": "^16.11.22",
+    "@types/supertest": "^2.0.12",
     "cross-env": "^7.0.3",
     "cypress": "^10.0.3",
     "cypress-real-events": "^1.7.6",
@@ -53,7 +53,7 @@
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^1.14.0",
-    "supertest": "^6.2.2",
+    "supertest": "^6.3.3",
     "ts-jest": "^29.0.3",
     "tsc-watch": "^5.0.3",
     "turbo": "1.6.3",
@@ -65,6 +65,7 @@
       "vue-demi"
     ],
     "overrides": {
+      "@types/node": "^16.18.12",
       "browserslist": "^4.21.4",
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
