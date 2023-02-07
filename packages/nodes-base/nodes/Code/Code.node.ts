@@ -141,6 +141,21 @@ export class Code implements INodeType {
 				},
 				default: '',
 			},
+			{
+				displayName: 'Python Modules',
+				name: 'modules',
+				displayOptions: {
+					show: {
+						language: ['python'],
+					},
+				},
+				type: 'string',
+				default: '',
+				placeholder: 'opencv-python',
+				description:
+					'Comma-separated list of Python modules to load. They have to be installed to be able to be loaded and imported.',
+				noDataExpression: true,
+			},
 		],
 	};
 
@@ -159,6 +174,10 @@ export class Code implements INodeType {
 
 			if (nodeMode === 'runOnceForAllItems') {
 				const pythonCode = this.getNodeParameter('pythonCode', 0) as string;
+				const modules = this.getNodeParameter('modules', 0) as string;
+				const moduleImports = modules
+					? modules.split(',').map((importModule) => importModule.trim())
+					: [];
 
 				const context = getSandboxContextPython.call(this);
 
@@ -171,7 +190,11 @@ export class Code implements INodeType {
 				const sandbox = new SandboxPython(workflowMode, nodeMode);
 
 				try {
-					items = (await sandbox.runCode(context, pythonCode)) as INodeExecutionData[];
+					items = (await sandbox.runCode(
+						context,
+						pythonCode,
+						moduleImports,
+					)) as INodeExecutionData[];
 				} catch (error) {
 					if (!this.continueOnFail()) {
 						return Promise.reject(error);
@@ -198,6 +221,10 @@ export class Code implements INodeType {
 
 			for (let index = 0; index < items.length; index++) {
 				const pythonCode = this.getNodeParameter('pythonCode', index) as string;
+				const modules = this.getNodeParameter('modules', index) as string;
+				const moduleImports = modules
+					? modules.split(',').map((importModule) => importModule.trim())
+					: [];
 
 				const context = getSandboxContextPython.call(this, index);
 
@@ -208,7 +235,12 @@ export class Code implements INodeType {
 				}
 
 				try {
-					item = (await sandbox.runCode(context, pythonCode, index)) as INodeExecutionData;
+					item = (await sandbox.runCode(
+						context,
+						pythonCode,
+						moduleImports,
+						index,
+					)) as INodeExecutionData;
 				} catch (error) {
 					if (!this.continueOnFail()) {
 						return Promise.reject(error);

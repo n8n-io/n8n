@@ -16,17 +16,21 @@ export class SandboxPython {
 	async runCode(
 		context: ReturnType<typeof getSandboxContextPython>,
 		code: string,
+		moduleImports: string[],
 		itemIndex?: number,
 	) {
 		this.code = code;
 		this.itemIndex = itemIndex;
 
 		return this.nodeMode === 'runOnceForAllItems'
-			? this.runCodeAllItems(context)
-			: this.runCodeEachItem(context);
+			? this.runCodeAllItems(context, moduleImports)
+			: this.runCodeEachItem(context, moduleImports);
 	}
 
-	private async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
+	private async runCodeInPython(
+		context: ReturnType<typeof getSandboxContextPython>,
+		moduleImports: string[],
+	) {
 		// Below workaround from here:
 		// https://github.com/pyodide/pyodide/discussions/3537#discussioncomment-4864345
 		const runCode = `
@@ -45,6 +49,20 @@ ${this.code
 await __main()
 `;
 		const pyodide = await LoadPyodide();
+
+		const moduleImportsFiltered = moduleImports.filter(
+			(importModule) => !['asyncio', 'pyodide', 'math'].includes(importModule),
+		);
+
+		if (moduleImportsFiltered.length) {
+			await pyodide.loadPackage('micropip');
+			const micropip = pyodide.pyimport('micropip');
+			const pythonImports: Array<Promise<unknown>> = [];
+			moduleImportsFiltered.forEach((importModule) => {
+				pythonImports.push(micropip.install(importModule));
+			});
+			await Promise.all(pythonImports);
+		}
 
 		let executionResult;
 		try {
@@ -76,8 +94,11 @@ await __main()
 		return error;
 	}
 
-	private async runCodeAllItems(context: ReturnType<typeof getSandboxContextPython>) {
-		const executionResult = await this.runCodeInPython(context);
+	private async runCodeAllItems(
+		context: ReturnType<typeof getSandboxContextPython>,
+		moduleImports: string[],
+	) {
+		const executionResult = await this.runCodeInPython(context, moduleImports);
 
 		if (
 			executionResult === undefined ||
@@ -152,8 +173,11 @@ await __main()
 		return normalizeItems(executionResult as INodeExecutionData[]);
 	}
 
-	private async runCodeEachItem(context: ReturnType<typeof getSandboxContextPython>) {
-		let executionResult = await this.runCodeInPython(context);
+	private async runCodeEachItem(
+		context: ReturnType<typeof getSandboxContextPython>,
+		moduleImports: string[],
+	) {
+		let executionResult = await this.runCodeInPython(context, moduleImports);
 		if (
 			executionResult === undefined ||
 			executionResult === null ||
