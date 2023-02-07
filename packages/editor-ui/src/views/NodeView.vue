@@ -2182,8 +2182,6 @@ export default mixins(
 								});
 							},
 						);
-						console.log('ENV:');
-						console.log(import.meta.env);
 						setTimeout(() => {
 							NodeViewUtils.addConnectionTestData(info);
 						}, 0);
