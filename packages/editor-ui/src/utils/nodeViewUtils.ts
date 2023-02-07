@@ -3,7 +3,7 @@ import { isNumber } from '@/utils';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
 import { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import { Endpoint, Connection } from '@jsplumb/core';
+import { Endpoint, Connection, ConnectionEstablishedParams } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
 import {
@@ -738,6 +738,19 @@ export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 	const inputNameOverlay = getOverlay(targetEndpoint, OVERLAY_INPUT_NAME_LABEL);
 	if (inputNameOverlay) {
 		targetEndpoint.instance.addOverlayClass(inputNameOverlay, OVERLAY_INPUT_NAME_MOVED_CLASS);
+	}
+};
+
+export const addConnectionTestData = (connectionInfo: ConnectionEstablishedParams) => {
+	const source: HTMLElement = connectionInfo.source;
+	const sourceNodeName = source.getAttribute('data-name')?.toString();
+	const target: HTMLElement = connectionInfo.target;
+	const targetNodeName = target.getAttribute('data-name')?.toString();
+	const connector = connectionInfo.connection.connector as N8nConnector;
+	if ('canvas' in connector && sourceNodeName && targetNodeName) {
+		const connectorEl = connector.canvas as HTMLElement;
+		connectorEl.setAttribute('data-source-node', sourceNodeName);
+		connectorEl.setAttribute('data-target-node', targetNodeName);
 	}
 };
 

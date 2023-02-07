@@ -2182,6 +2182,9 @@ export default mixins(
 								});
 							},
 						);
+						setTimeout(() => {
+							NodeViewUtils.addConnectionTestData(info);
+						}, 0);
 					}
 				} catch (e) {
 					console.error(e); // eslint-disable-line no-console
