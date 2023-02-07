@@ -34,6 +34,7 @@ beforeEach(() => {
 	cy.intercept('GET', '/types/credentials.json', (req) => {
 		req.continue((res) => {
 			const credentials = res.body;
+			console.log('resp', credentials);
 
 			res.headers['cache-control'] = 'no-cache, no-store';
 			credentials.push(CustomCredential);
