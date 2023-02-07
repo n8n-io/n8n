@@ -1238,7 +1238,7 @@ export class Workflow {
 					mode,
 				);
 
-				returnPromises.push(nodeType.executeSingle.call(thisArgs));
+				returnPromises.push(nodeType.executeSingle.call(thisArgs, thisArgs));
 			}
 
 			if (returnPromises.length === 0) {
@@ -1267,7 +1267,7 @@ export class Workflow {
 				executionData,
 				mode,
 			);
-			return { data: await nodeType.execute.call(thisArgs) };
+			return { data: await nodeType.execute.call(thisArgs, thisArgs) };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1278,7 +1278,7 @@ export class Workflow {
 					mode,
 					'manual',
 				);
-				return { data: await nodeType.poll.call(thisArgs) };
+				return { data: await nodeType.poll.call(thisArgs, thisArgs) };
 			}
 			// In any other mode pass data through as it already contains the result of the poll
 			return { data: inputData.main as INodeExecutionData[][] };
