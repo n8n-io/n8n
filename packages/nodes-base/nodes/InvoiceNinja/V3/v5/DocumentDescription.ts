@@ -20,10 +20,10 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Delete a Document',
 			},
 			{
-				name: 'Download',
-				value: 'download',
-				description: 'Download a document',
-				action: 'Download a document from a ressource',
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a document',
+				action: 'Get a document',
 			},
 			{
 				name: 'Get Many',
@@ -38,7 +38,7 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Upload a document to a ressource',
 			},
 		],
-		default: 'download',
+		default: 'get',
 	},
 ];
 
@@ -206,7 +206,7 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 document:download                          */
+	/*                                 document:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Document ID',
@@ -218,9 +218,22 @@ export const documentFields: INodeProperties[] = [
 			show: {
 				apiVersion: ['v5'],
 				resource: ['document'],
-				operation: ['download'],
+				operation: ['get'],
 			},
 		},
+	},
+	{
+		displayName: 'Download File',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['document'],
+				operation: ['get'],
+			},
+		},
+		default: false,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 document:delete                            */
@@ -238,5 +251,20 @@ export const documentFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
+	},
+	{
+		displayName:
+			'<strong>Warning</strong><br />You will physical delete this file. This cannot be restored.',
+		name: 'notice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['purge'],
+			},
+		},
+		default: '',
 	},
 ];

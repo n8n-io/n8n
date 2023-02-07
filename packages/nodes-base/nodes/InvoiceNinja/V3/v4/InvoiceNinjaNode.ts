@@ -8,7 +8,7 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
+import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
 import { clientFields, clientOperations } from './ClientDescription';
 

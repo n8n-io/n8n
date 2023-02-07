@@ -286,7 +286,7 @@ export const InvoiceNinjaV5 = {
 					'/projects',
 					{},
 					{ per_page: 100 }
-				);
+				).then(res => res.data);
 				for (const project of projects) {
 					const projectName = project.name as string;
 					const projectId = project.id as string;
@@ -307,7 +307,7 @@ export const InvoiceNinjaV5 = {
 					'/invoices',
 					{},
 					{ per_page: 100 }
-				);
+				).then(res => res.data);
 				for (const invoice of invoices) {
 					const invoiceName = invoice.number as string;
 					const invoiceId = invoice.id as string;
@@ -328,7 +328,7 @@ export const InvoiceNinjaV5 = {
 					'/recurring_expenses',
 					{},
 					{ per_page: 100 }
-				);
+				).then(res => res.data);
 				for (const recurringExpense of recurringExpenses) {
 					const recurringExpenseName = recurringExpense.number as string;
 					const recurringExpenseAmount = recurringExpense.amount as string;

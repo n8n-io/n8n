@@ -276,6 +276,18 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						`/clients/${clientId}/${mergeClientId}/merge`
 					);
 					responseData = responseData.data;
+				} else if (action === 'purge') {
+					responseData = await invoiceNinjaApiRequest.call(
+						this,
+						'POST',
+						`/clients/${clientId}/purge`,
+						{},
+						{},
+						{
+							usePassword: true
+						}
+					);
+					responseData = responseData.data;
 				} else {
 					responseData = await invoiceNinjaApiRequest.call(
 						this,

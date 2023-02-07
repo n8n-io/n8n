@@ -198,6 +198,84 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Client',
+		name: 'clientId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getClientsV5',
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Amount',
+		name: 'amount',
+		type: 'number',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['create'],
+			},
+		},
+		typeOptions: {
+			minValue: 0,
+		},
+		required: true,
+		default: 0,
+	},
+	{
+		displayName: 'Assign Invoices',
+		name: 'assignInvoicesUi',
+		placeholder: 'Add Invoice to Assign',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'assignInvoicesValues',
+				displayName: 'Invoice',
+				values: [
+					{
+						displayName: 'Invoice',
+						name: 'invoiceId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br/>This invoice will be addes as paymentables with the full amount of the payment.',
+						typeOptions: {
+							loadOptionsMethod: 'getInvoicesV5',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Amount',
+						name: 'amount',
+						type: 'number',
+						default: 0,
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -212,28 +290,6 @@ export const paymentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Project',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
-				typeOptions: {
-					loadOptionsMethod: 'getProjectsV5',
-				},
-				default: '',
-			},
-			{
 				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
@@ -243,27 +299,6 @@ export const paymentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsersV5',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Refunded',
-				name: 'refunded',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Applied',
-				name: 'applied',
-				type: 'number',
-				default: 0,
 			},
 			{
 				displayName: 'Transaction Reference',
@@ -278,12 +313,6 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Manual',
-				name: 'isManual',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Payment Type',
 				name: 'typeId',
 				type: 'options',
@@ -293,48 +322,8 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Invitation ID',
-				name: 'invitationId',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Number',
 				name: 'number',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Client Contact ID',
-				name: 'clientContactId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Company Gateway ID',
-				name: 'companyGatewayId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Payment Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
-				displayName: 'Currency ID',
-				name: 'currencyId',
 				type: 'string',
 				default: '',
 			},
@@ -412,6 +401,48 @@ export const paymentFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Assign Additional Invoices',
+		name: 'assignInvoicesUi',
+		placeholder: 'Add Invoice to Assign',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'assignInvoicesValues',
+				displayName: 'Invoice',
+				values: [
+					{
+						displayName: 'Invoice',
+						name: 'invoiceId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br/>This invoice will be addes as paymentables with the full amount of the payment.',
+						typeOptions: {
+							loadOptionsMethod: 'getInvoicesV5',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Amount',
+						name: 'amount',
+						type: 'number',
+						default: 0,
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -426,28 +457,6 @@ export const paymentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Project',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
-				typeOptions: {
-					loadOptionsMethod: 'getProjectsV5',
-				},
-				default: '',
-			},
-			{
 				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
@@ -457,27 +466,6 @@ export const paymentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsersV5',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Refunded',
-				name: 'refunded',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Applied',
-				name: 'applied',
-				type: 'number',
-				default: 0,
 			},
 			{
 				displayName: 'Transaction Reference',
@@ -492,12 +480,6 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Is Manual',
-				name: 'isManual',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Payment Type',
 				name: 'typeId',
 				type: 'options',
@@ -507,48 +489,8 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Invitation ID',
-				name: 'invitationId',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Number',
 				name: 'number',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Client Contact ID',
-				name: 'clientContactId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Company Gateway ID',
-				name: 'companyGatewayId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Payment Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
-				displayName: 'Currency ID',
-				name: 'currencyId',
 				type: 'string',
 				default: '',
 			},
@@ -662,6 +604,11 @@ export const paymentFields: INodeProperties[] = [
 				action: 'Send Email a payment',
 			},
 			{
+				name: 'Refund',
+				value: 'refund',
+				action: 'Refund a payment',
+			},
+			{
 				name: 'Archive',
 				value: 'archive',
 				action: 'Archive a payment',
@@ -672,5 +619,80 @@ export const paymentFields: INodeProperties[] = [
 				action: 'Restore a payment',
 			},
 		],
+	},
+	{
+		displayName: 'Amount',
+		name: 'amount',
+		type: 'number',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['action'],
+				action: ['refund'],
+			},
+		},
+		typeOptions: {
+			minValue: 0,
+		},
+		required: true,
+		default: 0,
+	},
+	{
+		displayName: 'Refund Invoices',
+		name: 'refundInvoicesUi',
+		placeholder: 'Add Invoice to Refund',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['action'],
+				action: ['refund'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'refundInvoicesValues',
+				displayName: 'Invoice',
+				values: [
+					{
+						displayName: 'Invoice',
+						name: 'invoiceId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br/>This invoice will be addes as paymentables with the full amount of the payment.',
+						typeOptions: {
+							loadOptionsMethod: 'getInvoicesV5',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Amount',
+						name: 'amount',
+						type: 'number',
+						default: 0,
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Send E-Mail',
+		name: 'emailReceipt',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['payment'],
+				operation: ['action'],
+				action: ['refund'],
+			},
+		},
+		default: false,
 	},
 ];

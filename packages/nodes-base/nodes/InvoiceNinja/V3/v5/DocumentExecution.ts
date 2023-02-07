@@ -1,5 +1,5 @@
 import { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems, invoiceNinjaApiRequestFormData } from '../GenericFunctions';
+import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
 export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
@@ -31,22 +31,26 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
                     `binary data property "${binaryPropertyName}" does not exists on item.${items[i].binary && Object.keys(items[i].binary || {}).length ? ` Did you mean "${Object.keys(items[i].binary!)[0]}"?` : ''}`,
                 );
                 const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-                responseData = await invoiceNinjaApiRequestFormData.call(
+                responseData = await invoiceNinjaApiRequest.call(
                     this,
                     'POST',
                     `/${uploadRessource}/${uploadRessourceId}/upload?_method=put`,
+                    {},
+                    {},
                     {
-                        "documents[]": {
-                            value: dataBuffer,
-                            options: {
-                                filename: customFileName || binaryData.fileName,
+                        formData: {
+                            "documents[]": {
+                                value: dataBuffer,
+                                options: {
+                                    filename: customFileName || binaryData.fileName,
+                                },
                             },
                         },
-                    },
+                    }
                 );
                 responseData = responseData.data;
             }
-            if (operation === 'download') {
+            if (operation === 'get') {
                 const documentId = this.getNodeParameter('documentId', i);
                 responseData = await invoiceNinjaApiRequest.call(
                     this,
@@ -57,20 +61,26 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
                 );
                 responseData = responseData.data;
                 // TODO: awaiting fix from https://github.com/invoiceninja/invoiceninja/issues/8198 - or it have to be downloaded through the following url: https:/subdomain.domain.de/documents/{hash}.{type}
-                returnData.push({
-                    json: responseData,
-                    binary: {
-                        data: await this.helpers.prepareBinaryData(
-                            (await invoiceNinjaApiDownloadFile.call(
-                                this,
-                                'GET',
-                                `/documents/${responseData.id}/download`,
-                            )),
-                            responseData.hash,
-                        ),
-                    },
-                });
-                continue;
+                const download = this.getNodeParameter('download', i) as boolean;
+                if (download) {
+                    returnData.push({
+                        json: responseData,
+                        binary: {
+                            data: await this.helpers.prepareBinaryData(
+                                (await invoiceNinjaApiDownloadFile.call(
+                                    this,
+                                    'GET',
+                                    '', // `/documents/${responseData.id}/download`,
+                                    {},
+                                    {},
+                                    { uri: (new URL(responseData.url)).origin + `/documents/${responseData.hash}` } // workarount to avoid endpoint with timeout, should be tested if working in the future
+                                )),
+                                responseData.name,
+                            ),
+                        },
+                    });
+                    continue;
+                }
             }
             if (operation === 'getAll') {
                 const returnAll = this.getNodeParameter('returnAll', i);
@@ -96,6 +106,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
                     this,
                     'DELETE',
                     `/documents/${documentId}`,
+                    {},
+                    {},
+                    {
+                        usePassword: true
+                    }
                 );
                 responseData = responseData.data;
             }

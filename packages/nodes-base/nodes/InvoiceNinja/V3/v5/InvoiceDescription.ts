@@ -1053,6 +1053,11 @@ export const invoiceFields: INodeProperties[] = [
 				action: 'Mark Paid an invoice',
 			},
 			{
+				name: 'Cancel',
+				value: 'cancel',
+				action: 'Cancel an invoice',
+			},
+			{
 				name: 'Archive',
 				value: 'archive',
 				action: 'Archive an invoice',

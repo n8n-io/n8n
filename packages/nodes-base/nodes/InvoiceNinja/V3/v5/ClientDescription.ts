@@ -922,19 +922,24 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive a client',
-			},
-			{
 				name: 'Merge',
 				value: 'merge',
 				action: 'Merge with another client',
 			},
 			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a client',
+			},
+			{
 				name: 'Restore',
 				value: 'restore',
 				action: 'Restore a client',
+			},
+			{
+				name: 'Purge',
+				value: 'purge',
+				action: 'Purge a client',
 			},
 		],
 	},
@@ -953,5 +958,20 @@ export const clientFields: INodeProperties[] = [
 				action: ['merge'],
 			},
 		},
+	},
+	{
+		displayName:
+			'<strong>Warning</strong><br />You will physical delete data of this client and all related data. This cannot be restored. If you only want to historize the client use action:archive or the delete method.',
+		name: 'notice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['purge'],
+			},
+		},
+		default: '',
 	},
 ];

@@ -2,7 +2,7 @@ import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type { INodeProperties, IWebhookResponseData } from 'n8n-workflow';
 
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
+import { invoiceNinjaApiRequest } from '../GenericFunctions';
 
 const headProperties: INodeProperties[] = [
 	{

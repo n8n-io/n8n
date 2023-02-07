@@ -1,6 +1,6 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
-import type { IPayment } from './PaymentInterface';
+import type { IPayment, IPaymentAssignInvoice } from './PaymentInterface';
 
 export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -18,19 +18,17 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const clientId = this.getNodeParameter('clientId', i);
+				const amount = this.getNodeParameter('amount', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IPayment = {};
+				body.client_id = clientId as string;
+				body.amount = amount as number;
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
 				if (additionalFields.amount) {
 					body.amount = additionalFields.amount as number;
-				}
-				if (additionalFields.refunded) {
-					body.refunded = additionalFields.refunded as number;
-				}
-				if (additionalFields.applied) {
-					body.applied = additionalFields.applied as number;
 				}
 				if (additionalFields.transactionReference) {
 					body.transaction_reference = additionalFields.transactionReference as string;
@@ -38,38 +36,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.date) {
 					body.date = additionalFields.date as string;
 				}
-				if (additionalFields.isManual) {
-					body.is_manual = additionalFields.isManual as boolean;
-				}
 				if (additionalFields.typeId) {
 					body.type_id = additionalFields.typeId as string;
 				}
-				if (additionalFields.invitationId) {
-					body.invitation_id = additionalFields.invitationId as string;
-				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
-				}
-				if (additionalFields.clientId) {
-					body.client_id = additionalFields.clientId as string;
-				}
-				if (additionalFields.clientContactId) {
-					body.client_contact_id = additionalFields.clientContactId as string;
-				}
-				if (additionalFields.companyGatewayId) {
-					body.company_gateway_id = additionalFields.companyGatewayId as string;
-				}
-				if (additionalFields.statusId) {
-					body.status_id = additionalFields.statusId as string;
-				}
-				if (additionalFields.projectId) {
-					body.project_id = additionalFields.projectId as string;
-				}
-				if (additionalFields.vendorId) {
-					body.vendor_id = additionalFields.vendorId as string;
-				}
-				if (additionalFields.currencyId) {
-					body.currency_id = additionalFields.currencyId as string;
 				}
 				if (additionalFields.exchangeRate) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
@@ -91,6 +62,19 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.customValue4) {
 					body.custom_value4 = additionalFields.customValue4 as string;
+				}
+				const assignInvoicesValues = (this.getNodeParameter('assignInvoicesUi', i) as IDataObject)
+					.assignInvoicesValues as IDataObject[];
+				if (assignInvoicesValues) {
+					const assignInvoicesItems: IPaymentAssignInvoice[] = [];
+					for (const itemValue of assignInvoicesValues) {
+						const item: IPaymentAssignInvoice = {
+							invoice_id: itemValue.invoiceId as string,
+							amount: itemValue.amount as number,
+						};
+						assignInvoicesItems.push(item);
+					}
+					body.invoices = assignInvoicesItems;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
@@ -107,53 +91,17 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.amount) {
-					body.amount = additionalFields.amount as number;
-				}
-				if (additionalFields.refunded) {
-					body.refunded = additionalFields.refunded as number;
-				}
-				if (additionalFields.applied) {
-					body.applied = additionalFields.applied as number;
-				}
 				if (additionalFields.transactionReference) {
 					body.transaction_reference = additionalFields.transactionReference as string;
 				}
 				if (additionalFields.date) {
 					body.date = additionalFields.date as string;
 				}
-				if (additionalFields.isManual) {
-					body.is_manual = additionalFields.isManual as boolean;
-				}
 				if (additionalFields.typeId) {
 					body.type_id = additionalFields.typeId as string;
 				}
-				if (additionalFields.invitationId) {
-					body.invitation_id = additionalFields.invitationId as string;
-				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
-				}
-				if (additionalFields.clientId) {
-					body.client_id = additionalFields.clientId as string;
-				}
-				if (additionalFields.clientContactId) {
-					body.client_contact_id = additionalFields.clientContactId as string;
-				}
-				if (additionalFields.companyGatewayId) {
-					body.company_gateway_id = additionalFields.companyGatewayId as string;
-				}
-				if (additionalFields.statusId) {
-					body.status_id = additionalFields.statusId as string;
-				}
-				if (additionalFields.projectId) {
-					body.project_id = additionalFields.projectId as string;
-				}
-				if (additionalFields.vendorId) {
-					body.vendor_id = additionalFields.vendorId as string;
-				}
-				if (additionalFields.currencyId) {
-					body.currency_id = additionalFields.currencyId as string;
 				}
 				if (additionalFields.exchangeRate) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
@@ -175,6 +123,19 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.customValue4) {
 					body.custom_value4 = additionalFields.customValue4 as string;
+				}
+				const assignInvoicesValues = (this.getNodeParameter('assignInvoicesUi', i) as IDataObject)
+					.assignInvoicesValues as IDataObject[];
+				if (assignInvoicesValues) {
+					const assignInvoicesItems: IPaymentAssignInvoice[] = [];
+					for (const itemValue of assignInvoicesValues) {
+						const item: IPaymentAssignInvoice = {
+							invoice_id: itemValue.invoiceId as string,
+							amount: itemValue.amount as number,
+						};
+						assignInvoicesItems.push(item);
+					}
+					body.invoices = assignInvoicesItems;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
@@ -236,16 +197,63 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'action') {
 				const paymentId = this.getNodeParameter('paymentId', i) as string;
 				const action = this.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					this,
-					'POST',
-					`/payments/bulk`,
-					{
-						action,
-						ids: [paymentId]
+				if (action === 'refund') {
+					const amount = this.getNodeParameter('amount', i) as number;
+					const body: {
+						id: string;
+						amount: number;
+						invoices?: IPaymentAssignInvoice[];
+					} = {
+						id: paymentId,
+						amount,
+					};
+					const refundInvoicesValues = (this.getNodeParameter('refundInvoicesUi', i) as IDataObject)
+						.refundInvoicesValues as IDataObject[];
+					if (refundInvoicesValues) {
+						const refundInvoicesItems: IPaymentAssignInvoice[] = [];
+						for (const itemValue of refundInvoicesValues) {
+							const item: IPaymentAssignInvoice = {
+								invoice_id: itemValue.invoiceId as string,
+								amount: itemValue.amount as number,
+							};
+							refundInvoicesItems.push(item);
+						}
+						body.invoices = refundInvoicesItems;
 					}
-				);
-				responseData = responseData.data[0];
+					const emailReceipt = this.getNodeParameter('emailReceipt', i) as boolean;
+					responseData = await invoiceNinjaApiRequest.call(
+						this,
+						'GET',
+						`/payments/${paymentId}`,
+						{},
+						qs,
+					);
+					responseData = responseData.data;
+					responseData = await invoiceNinjaApiRequest.call(
+						this,
+						'POST',
+						`/payments/refund`,
+						{
+							...responseData,
+							...body
+						},
+						{
+							emailReceipt,
+						}
+					);
+					responseData = responseData.data;
+				} else {
+					responseData = await invoiceNinjaApiRequest.call(
+						this,
+						'POST',
+						`/payments/bulk`,
+						{
+							action,
+							ids: [paymentId]
+						}
+					);
+					responseData = responseData.data[0];
+				}
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
