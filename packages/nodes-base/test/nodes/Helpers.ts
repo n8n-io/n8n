@@ -1,8 +1,9 @@
-import { mkdtempSync, readFileSync } from 'fs';
+import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import { BinaryDataManager, Credentials, loadClassInIsolation } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
 	IHttpRequestHelper,
@@ -23,6 +24,7 @@ import {
 	NodeHelpers,
 	WorkflowHooks,
 } from 'n8n-workflow';
+import { executeWorkflow } from './ExecuteWorkflow';
 import { WorkflowTestData } from './types';
 import path from 'path';
 import { tmpdir } from 'os';
@@ -226,3 +228,70 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 export function readJsonFileSync(path: string) {
 	return JSON.parse(readFileSync(path, 'utf-8'));
 }
+
+export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes) => {
+	// execute workflow
+	const { result } = await executeWorkflow(testData, types);
+
+	// check if result node data matches expected test data
+	const resultNodeData = getResultNodeData(result, testData);
+
+	resultNodeData.forEach(({ nodeName, resultData }) => {
+		return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+	});
+
+	expect(result.finished).toEqual(true);
+};
+
+export const workflowToTests = (workflowFiles: string[]) => {
+	const testCases: WorkflowTestData[] = [];
+	for (const filePath of workflowFiles) {
+		const description = filePath.replace('.json', '');
+		const workflowData = readJsonFileSync(filePath);
+		if (workflowData.pinData === undefined) {
+			throw new Error('Workflow data does not contain pinData');
+		}
+		const nodeData = Object.keys(workflowData.pinData).reduce(
+			(acc, key) => {
+				const data = (workflowData.pinData[key] as IDataObject[]).map((item) => item.json);
+				acc[key] = [data as IDataObject[]];
+				return acc;
+			},
+			{} as {
+				[key: string]: IDataObject[][];
+			},
+		);
+
+		delete workflowData.pinData;
+
+		const input = { workflowData };
+		const output = { nodeData };
+
+		testCases.push({ description, input, output });
+	}
+	return testCases;
+};
+
+export const testWorkflows = (workflows: string[]) => {
+	const tests = workflowToTests(workflows);
+
+	const nodeTypes = setup(tests);
+
+	for (const testData of tests) {
+		test(testData.description, async () => equalityTest(testData, nodeTypes));
+	}
+};
+
+export const getWorkflowFilenames = (dirname: string) => {
+	const workflows: string[] = [];
+
+	const filenames = readdirSync(dirname);
+	const testFolder = dirname.split(`${path.sep}nodes-base${path.sep}`)[1];
+	filenames.forEach((file) => {
+		if (file.includes('.json')) {
+			workflows.push(path.join(testFolder, file));
+		}
+	});
+
+	return workflows;
+};
