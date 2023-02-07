@@ -16,8 +16,6 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
-		N8N_VERSION_NOTIFICATIONS_ENABLED: 'false',
-		N8N_TEMPLATES_ENABLED: 'false',
 	};
 } else if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
