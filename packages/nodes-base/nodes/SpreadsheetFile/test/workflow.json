@@ -5,106 +5,59 @@
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "47003824-c11f-4ae3-80a5-0e1a6d840b21",
-			"name": "On clicking 'execute'",
+			"id": "087277cc-297d-4912-bd11-86626eff2d71",
+			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [
-				720,
-				460
+				880,
+				640
 			]
 		},
 		{
 			"parameters": {
-				"conditions": {
-					"boolean": [
-						{
-							"value1": "={{ $json[\"value\"] }}",
-							"value2": true
-						}
-					]
-				}
+				"options": {}
 			},
-			"id": "5420fe7d-a216-44e0-b91f-188ba5b6a340",
-			"name": "IF",
-			"type": "n8n-nodes-base.if",
+			"id": "f55bc21c-c9a8-43af-bbc8-e4bdd30f0ce9",
+			"name": "Read From File",
+			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
 			"position": [
-				1160,
-				460
-			]
-		},
-		{
-			"parameters": {},
-			"id": "52d58f32-7faf-4874-afff-e6842bd02430",
-			"name": "On False",
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [
-				1400,
-				580
-			]
-		},
-		{
-			"parameters": {},
-			"id": "9be683ac-cd3f-4ba1-8fa4-052102c3d891",
-			"name": "On True",
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [
-				1400,
-				340
+				1320,
+				640
 			]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  { value: true },\n  { value: false }\n];"
+				"filePath": "C:\\Users\\spech\\Documents\\GitHub\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\test\\test.csv"
 			},
-			"id": "5b3207e7-37e3-43c8-a4da-1ffebb0de134",
-			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"id": "d7620053-eb3d-43dd-b2cd-d60d9a08a9cc",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
 			"typeVersion": 1,
 			"position": [
-				940,
-				460
+				1100,
+				640
 			]
 		}
 	],
 	"connections": {
-		"On clicking 'execute'": {
+		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
 					{
-						"node": "Code",
+						"node": "Read Binary File",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"IF": {
+		"Read Binary File": {
 			"main": [
 				[
 					{
-						"node": "On True",
-						"type": "main",
-						"index": 0
-					}
-				],
-				[
-					{
-						"node": "On False",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Code": {
-			"main": [
-				[
-					{
-						"node": "IF",
+						"node": "Read From File",
 						"type": "main",
 						"index": 0
 					}

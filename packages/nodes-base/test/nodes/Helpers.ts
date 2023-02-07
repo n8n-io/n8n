@@ -1,5 +1,5 @@
-import { readFileSync } from 'fs';
-import { Credentials, loadClassInIsolation } from 'n8n-core';
+import { mkdtempSync, readFileSync } from 'fs';
+import { BinaryDataManager, Credentials, loadClassInIsolation } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -25,6 +25,7 @@ import {
 } from 'n8n-workflow';
 import { WorkflowTestData } from './types';
 import path from 'path';
+import { tmpdir } from 'os';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -153,6 +154,17 @@ const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	}
 	return knownNodes!;
 };
+
+export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
+	const temporaryDir = mkdtempSync(path.join(tmpdir(), 'n8n'));
+	await BinaryDataManager.init({
+		mode,
+		availableModes: mode,
+		localStoragePath: temporaryDir,
+		binaryDataTTL: 1,
+		persistedBinaryDataTTL: 1,
+	});
+}
 
 export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 	if (!Array.isArray(testData)) {

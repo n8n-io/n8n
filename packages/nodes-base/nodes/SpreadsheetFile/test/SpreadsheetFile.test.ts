@@ -2,31 +2,28 @@ import * as Helpers from '../../../test/nodes/Helpers';
 import type { WorkflowTestData } from '../../../test/nodes/types';
 
 import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
+import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {
+	beforeEach(async () => {
+		await Helpers.initBinaryDataManager();
+	});
+
+	const workflow = Helpers.readJsonFileSync('nodes/SpreadsheetFile/test/workflow.json');
+	const readBinaryFile = workflow.nodes.find((n: any) => n.name === 'Read Binary File');
+	const testCsvPath = path.join(__dirname, 'test.csv');
+	readBinaryFile.parameters.filePath = testCsvPath;
+
+	// console.log(JSON.stringify(workflow, null, 2));
+
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'should execute IF node true/false boolean',
 			input: {
-				workflowData: Helpers.readJsonFileSync('nodes/SpreadsheetFile/test/workflow.json'),
+				workflowData: workflow,
 			},
 			output: {
-				nodeData: {
-					'On True': [
-						[
-							{
-								value: true,
-							},
-						],
-					],
-					'On False': [
-						[
-							{
-								value: false,
-							},
-						],
-					],
-				},
+				nodeData: {},
 			},
 		},
 	];
@@ -45,6 +42,7 @@ describe('Execute Spreadsheet File Node', () => {
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
 
+			// console.log('result', JSON.stringify(result, null, 2));
 			expect(result.finished).toEqual(true);
 		});
 	}
