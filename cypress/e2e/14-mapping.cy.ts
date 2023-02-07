@@ -8,6 +8,8 @@ describe('Data mapping', () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+		cy.window()
+			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload))
 	});
 
 	beforeEach(() => {

@@ -2527,7 +2527,9 @@ export default mixins(
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
-			window.addEventListener('beforeunload', (e) => {
+
+			// allow to be overriden in e2e tests
+			window.onBeforeUnload = () => {
 				if (this.isDemo) {
 					return;
 				} else if (this.uiStore.stateIsDirty) {
@@ -2540,7 +2542,8 @@ export default mixins(
 					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
 					return;
 				}
-			});
+			};
+			window.addEventListener('beforeunload', window.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
