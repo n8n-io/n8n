@@ -37,12 +37,12 @@ jsproxy_typedict[0] = type(Object.new().as_object_map())
 if printOverwrite:
   print = printOverwrite
 
-def main():
+async def __main():
 ${this.code
 	.split('\n')
 	.map((line) => '  ' + line)
 	.join('\n')}
-main()
+await __main()
 `;
 		const pyodide = await LoadPyodide();
 
@@ -60,7 +60,7 @@ main()
 			throw this.getPrettyError(error);
 		}
 
-		if (executionResult.toJs) {
+		if (executionResult?.toJs) {
 			return executionResult.toJs({ dict_converter: Object.fromEntries, create_proxies: false });
 		}
 
