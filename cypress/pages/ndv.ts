@@ -32,7 +32,7 @@ export class NDV extends BasePage {
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
-		parameterExpressionPreview: (parameterName: string) => this.getters.parameterInput(parameterName).findChildByTestId('parameter-expression-preview'),
+		parameterExpressionPreview: (parameterName: string) => this.getters.nodeParameters().find(`[data-test-id="parameter-input-${parameterName}"] + [data-test-id="parameter-expression-preview"]`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
@@ -94,7 +94,7 @@ export class NDV extends BasePage {
 			cy.dropOn(droppable);
 		},
 		mapToParameter: (parameterName: string) => {
-			const droppable = `[data-test-id="parameter-input-${parameterName}"] input`;
+			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
 			cy.dropOn(droppable);
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {

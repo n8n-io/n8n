@@ -1,5 +1,5 @@
 <template>
-	<div :data-test-id="`parameter-input-${parameter.name}`">
+	<div>
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
@@ -16,6 +16,7 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
