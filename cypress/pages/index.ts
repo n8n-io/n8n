@@ -8,3 +8,4 @@ export * from './modals';
 export * from './settings-users';
 export * from './settings-log-streaming';
 export * from './ndv';
+export * from './canvas-node';
