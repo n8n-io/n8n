@@ -12,8 +12,7 @@ describe('Execute Spreadsheet File Node', () => {
 	// replace workflow json 'Read Binary File' node's filePath to local file
 	const workflow = Helpers.readJsonFileSync('nodes/SpreadsheetFile/test/workflow.json');
 	const node = workflow.nodes.find((n: any) => n.name === 'Read Binary File');
-	const [fileName] = (node.parameters.filePath as string).split(path.sep).slice(-1);
-	node.parameters.filePath = path.join(__dirname, fileName);
+	node.parameters.filePath = path.join(__dirname, 'spreadsheet.csv');
 
 	const tests: WorkflowTestData[] = [
 		{
