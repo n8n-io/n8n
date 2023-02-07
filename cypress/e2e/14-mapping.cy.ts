@@ -47,7 +47,6 @@ describe('Data mapping', () => {
 						"hello world": {
 							count: 0,
 						},
-						'test_empty': 'test',
 					}
 				]
 			},
@@ -75,5 +74,32 @@ describe('Data mapping', () => {
 		ndv.getters.inputTbodyCell(1, 0).find('span').contains('count').realMouseDown();
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0]["hello world"].count }}');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '0')
+
+		ndv.getters.inputTbodyCell(1, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0')
+			.invoke('css', 'color')
+			.should('equal', 'rgb(125, 125, 135)');
+
+		ndv.getters.inputTbodyCell(2, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+				.should('include.text', '1')
+				.invoke('css', 'color')
+				.should('equal', 'rgb(125, 125, 135)');
+
+		ndv.actions.execute();
+
+		ndv.getters.outputTbodyCell(1, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0')
+			.invoke('css', 'color')
+			.should('equal', 'rgb(125, 125, 135)');
+
+		ndv.getters.outputTbodyCell(2, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+				.should('include.text', '1')
+				.invoke('css', 'color')
+				.should('equal', 'rgb(125, 125, 135)');
 	});
 });

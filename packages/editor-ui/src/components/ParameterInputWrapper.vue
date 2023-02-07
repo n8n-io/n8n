@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div :data-test-id="`parameter-input-${parameter.name}`">
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
@@ -21,11 +21,11 @@
 			@drop="onDrop"
 			@textInput="onTextInput"
 			@valueChanged="onValueChanged"
-			:data-test-id="`parameter-input-${parameter.name}`"
 		/>
 		<input-hint
 			v-if="expressionOutput"
 			:class="$style.hint"
+			data-test-id="parameter-expression-preview"
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
 		/>
