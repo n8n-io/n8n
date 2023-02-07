@@ -197,13 +197,15 @@ export const projectFields: INodeProperties[] = [
 		type: 'options',
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
 				resource: ['project'],
 				operation: ['create'],
 			},
-		}, typeOptions: {
+		}, 
+		typeOptions: {
 			loadOptionsMethod: 'getClientsV5',
 		},
 		default: '',
@@ -212,6 +214,7 @@ export const projectFields: INodeProperties[] = [
 		displayName: 'Project Name',
 		name: 'name',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],

@@ -1,3 +1,4 @@
+import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IRecurringExpense } from './RecurringExpenseInterface';
@@ -90,7 +91,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
 				if (additionalFields.nextSendDate) {
-					body.next_send_date = additionalFields.nextSendDate as string;
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.taxAmount3) {
 					body.tax_amount3 = additionalFields.taxAmount3 as number;
@@ -108,7 +109,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_id = additionalFields.transactionId as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
@@ -220,7 +221,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
 				if (additionalFields.nextSendDate) {
-					body.next_send_date = additionalFields.nextSendDate as string;
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.publicNotes) {
 					body.public_notes = additionalFields.publicNotes as string;
@@ -235,7 +236,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_id = additionalFields.transactionId as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;

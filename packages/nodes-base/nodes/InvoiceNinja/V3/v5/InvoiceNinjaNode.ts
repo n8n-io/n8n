@@ -26,6 +26,7 @@ import { quoteFields, quoteOperations } from './QuoteDescription';
 import { recurringExpenseFields, recurringExpenseOperations } from './RecurringExpenseDescription';
 import { recurringInvoiceFields, recurringInvoiceOperations } from './RecurringInvoiceDescription';
 import { subscriptionFields, subscriptionOperations } from './SubscriptionDescription';
+import { systemFields, systemOperations } from './SystemDescription';
 import { taskFields, taskOperations } from './TaskDescription';
 import { vendorFields, vendorOperations } from './VendorDescription';
 
@@ -44,6 +45,7 @@ import * as QuoteExecution from './QuoteExecution';
 import * as RecurringExpenseExecution from './RecurringExpenseExecution';
 import * as RecurringInvoiceExecution from './RecurringInvoiceExecution';
 import * as SubscriptionExecution from './SubscriptionExecution';
+import * as SystemExecution from './SystemExecution';
 import * as TaskExecution from './TaskExecution';
 import * as VendorExecution from './VendorExecution';
 
@@ -125,6 +127,10 @@ const headProperties: INodeProperties[] = [
 				name: 'Document',
 				value: 'document',
 			},
+			{
+				name: 'System',
+				value: 'system',
+			},
 		],
 		default: 'client',
 	},
@@ -162,6 +168,8 @@ export const InvoiceNinjaV5 = {
 			...recurringInvoiceFields,
 			...subscriptionOperations,
 			...subscriptionFields,
+			...systemOperations,
+			...systemFields,
 			...taskOperations,
 			...taskFields,
 			...vendorOperations,
@@ -392,6 +400,7 @@ export const InvoiceNinjaV5 = {
 		else if (resource === 'recurringExpense') return RecurringExpenseExecution.execute.call(this);
 		else if (resource === 'recurringInvoice') return RecurringInvoiceExecution.execute.call(this);
 		else if (resource === 'subscription') return SubscriptionExecution.execute.call(this);
+		else if (resource === 'system') return SystemExecution.execute.call(this);
 		else if (resource === 'task') return TaskExecution.execute.call(this);
 		else if (resource === 'vendor') return VendorExecution.execute.call(this);
 		throw new Error('No Execution Handler');

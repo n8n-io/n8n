@@ -1,3 +1,4 @@
+import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import {
 	invoiceNinjaApiDownloadFile,
@@ -52,10 +53,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.dueDate) {
-					body.due_date = additionalFields.dueDate as string;
+					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.terms) {
 					body.terms = additionalFields.terms as string;
@@ -70,7 +71,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate) {
-					body.partial_due_date = additionalFields.partialDueDate as string;
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.poNumber) {
 					body.po_number = additionalFields.poNumber as string;
@@ -109,7 +110,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
 				if (additionalFields.nextSendDate) {
-					body.next_send_date = additionalFields.nextSendDate as string;
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.customValue1) {
 					body.custom_value1 = additionalFields.customValue1 as string;
@@ -192,10 +193,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.dueDate) {
-					body.due_date = additionalFields.dueDate as string;
+					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.terms) {
 					body.terms = additionalFields.terms as string;
@@ -210,7 +211,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate) {
-					body.partial_due_date = additionalFields.partialDueDate as string;
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.poNumber) {
 					body.po_number = additionalFields.poNumber as string;
@@ -249,7 +250,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
 				if (additionalFields.nextSendDate) {
-					body.next_send_date = additionalFields.nextSendDate as string;
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.customValue1) {
 					body.custom_value1 = additionalFields.customValue1 as string;

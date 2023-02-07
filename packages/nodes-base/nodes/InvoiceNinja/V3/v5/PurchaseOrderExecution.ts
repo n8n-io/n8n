@@ -1,3 +1,4 @@
+import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IPurchaseOrder, IPurchaseOrderItem } from './PurchaseOrderInterface';
@@ -51,10 +52,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.dueDate) {
-					body.due_date = additionalFields.dueDate as string;
+					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.terms) {
 					body.terms = additionalFields.terms as string;
@@ -90,7 +91,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate) {
-					body.partial_due_date = additionalFields.partialDueDate as string;
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.entityType) {
 					body.entity_type = additionalFields.entityType as string;
@@ -194,10 +195,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.dueDate) {
-					body.due_date = additionalFields.dueDate as string;
+					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.terms) {
 					body.terms = additionalFields.terms as string;
@@ -233,7 +234,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate) {
-					body.partial_due_date = additionalFields.partialDueDate as string;
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.entityType) {
 					body.entity_type = additionalFields.entityType as string;

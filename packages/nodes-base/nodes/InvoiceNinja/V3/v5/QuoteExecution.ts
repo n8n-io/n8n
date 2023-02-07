@@ -1,3 +1,4 @@
+import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import {
 	invoiceNinjaApiDownloadFile,
@@ -22,22 +23,15 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const clientId = this.getNodeParameter('clientId', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IQuote = {};
+				body.client_id = clientId as string;
 				if (additionalFields.projectId) {
 					body.project_id = additionalFields.projectId as string;
 				}
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
-				}
-				if (additionalFields.amount) {
-					body.amount = additionalFields.amount as number;
-				}
-				if (additionalFields.balance) {
-					body.balance = additionalFields.balance as number;
-				}
-				if (additionalFields.clientId) {
-					body.client_id = additionalFields.clientId as string;
 				}
 				if (additionalFields.vendorId) {
 					body.vendor_id = additionalFields.vendorId as string;
@@ -48,8 +42,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.designId) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.recurringId) {
-					body.recurring_id = additionalFields.recurringId as string;
+				if (additionalFields.statusId) {
+					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
@@ -61,10 +55,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.dueDate) {
-					body.due_date = additionalFields.dueDate as string;
+					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.terms) {
 					body.terms = additionalFields.terms as string;
@@ -97,7 +91,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate) {
-					body.partial_due_date = additionalFields.partialDueDate as string;
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.privateNotes) {
 					body.private_notes = additionalFields.privateNotes as string;
@@ -117,9 +111,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				if (additionalFields.autoBillEnabled) {
-					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
-				}
 				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 					.invoiceItemsValues as IDataObject[];
 				if (lineItemsValues) {
@@ -128,8 +119,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						const item: IQuoteItem = {
 							quantity: itemValue.quantity as number,
 							cost: itemValue.cost as number,
-							product_key: itemValue.service as string,
-							notes: itemValue.description as string,
+							product_key: itemValue.productKey as string,
+							notes: itemValue.notes as string,
 							discount: itemValue.discount as number,
 							tax_rate1: itemValue.taxRate1 as number,
 							tax_rate2: itemValue.taxRate2 as number,
@@ -164,12 +155,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.assignedUserId) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.amount) {
-					body.amount = additionalFields.amount as number;
-				}
-				if (additionalFields.balance) {
-					body.balance = additionalFields.balance as number;
-				}
 				if (additionalFields.clientId) {
 					body.client_id = additionalFields.clientId as string;
 				}
@@ -182,8 +167,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.designId) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.recurringId) {
-					body.recurring_id = additionalFields.recurringId as string;
+				if (additionalFields.statusId) {
+					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
@@ -195,10 +180,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.dueDate) {
-					body.due_date = additionalFields.dueDate as string;
+					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.terms) {
 					body.terms = additionalFields.terms as string;
@@ -231,7 +216,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate) {
-					body.partial_due_date = additionalFields.partialDueDate as string;
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.privateNotes) {
 					body.private_notes = additionalFields.privateNotes as string;
@@ -251,9 +236,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				if (additionalFields.autoBillEnabled) {
-					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
-				}
 				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 					.invoiceItemsValues as IDataObject[];
 				if (lineItemsValues) {
@@ -262,8 +244,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						const item: IQuoteItem = {
 							quantity: itemValue.quantity as number,
 							cost: itemValue.cost as number,
-							product_key: itemValue.service as string,
-							notes: itemValue.description as string,
+							product_key: itemValue.productKey as string,
+							notes: itemValue.notes as string,
 							discount: itemValue.discount as number,
 							tax_rate1: itemValue.taxRate1 as number,
 							tax_rate2: itemValue.taxRate2 as number,
@@ -354,7 +336,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'delete') {
 				const quoteId = this.getNodeParameter('quoteId', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/quote/${quoteId}`);
+				responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/quotes/${quoteId}`);
 				responseData = responseData.data;
 			}
 			if (operation === 'action') {

@@ -1,3 +1,4 @@
+import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IExpense } from './ExpenseInterface';
@@ -99,7 +100,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_id = additionalFields.transactionId as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
@@ -216,7 +217,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_id = additionalFields.transactionId as string;
 				}
 				if (additionalFields.date) {
-					body.date = additionalFields.date as string;
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.number) {
 					body.number = additionalFields.number as string;
