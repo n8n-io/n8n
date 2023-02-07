@@ -1,11 +1,10 @@
-import { WorkflowPage, WorkflowsPage, NDV, CredentialsPage, CredentialsModal } from '../pages';
+import { WorkflowPage, WorkflowsPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { cowBase64 } from '../support/binaryTestFiles';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
-const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 const webhookWorkflowName = 'Webhook Workflow';
@@ -97,7 +96,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 	}
 };
 
-describe('Schedule Trigger node', async () => {
+describe('Webhook Trigger node', async () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
@@ -108,28 +107,28 @@ describe('Schedule Trigger node', async () => {
 		workflowsPage.actions.deleteWorkFlow(webhookWorkflowName);
 	});
 
-	it('should listen for a GET request', ()=>{
+	it('should listen for a GET request', () => {
 		simpleWebhookCall({method: 'GET', webhookPath: uuid(), executeNow: true});
 	});
 
-	it('should listen for a POST request', ()=>{
+	it('should listen for a POST request', () => {
 		simpleWebhookCall({method: 'POST', webhookPath: uuid(), executeNow: true});
 	});
 
-	it('should listen for a DELETE request', ()=>{
+	it('should listen for a DELETE request', () => {
 		simpleWebhookCall({method: 'DELETE', webhookPath: uuid(), executeNow: true});
 	});
-	it('should listen for a HEAD request', ()=>{
+	it('should listen for a HEAD request', () => {
 		simpleWebhookCall({method: 'HEAD', webhookPath: uuid(), executeNow: true});
 	});
-	it('should listen for a PATCH request', ()=>{
+	it('should listen for a PATCH request', () => {
 		simpleWebhookCall({method: 'PATCH', webhookPath: uuid(), executeNow: true});
 	});
-	it('should listen for a PUT request', ()=>{
+	it('should listen for a PUT request', () => {
 		simpleWebhookCall({method: 'PUT', webhookPath: uuid(), executeNow: true});
 	});
 
-	it('should listen for a GET request and respond with Respond to Webhook node', ()=>{
+	it('should listen for a GET request and respond with Respond to Webhook node', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
@@ -159,7 +158,7 @@ describe('Schedule Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request and respond custom status code 201', ()=>{
+	it('should listen for a GET request and respond custom status code 201', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
@@ -176,7 +175,7 @@ describe('Schedule Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request and respond with last node', ()=>{
+	it('should listen for a GET request and respond with last node', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
@@ -203,7 +202,7 @@ describe('Schedule Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request and respond with last node binary data', ()=>{
+	it('should listen for a GET request and respond with last node binary data', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
@@ -244,7 +243,7 @@ describe('Schedule Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request and respond with an empty body', ()=>{
+	it('should listen for a GET request and respond with an empty body', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
@@ -261,7 +260,7 @@ describe('Schedule Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request with Basic Authentication', ()=>{
+	it('should listen for a GET request with Basic Authentication', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
@@ -303,7 +302,7 @@ describe('Schedule Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request with Header Authentication', ()=>{
+	it('should listen for a GET request with Header Authentication', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
