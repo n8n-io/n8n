@@ -1,25 +1,23 @@
 {
-	"meta": {
-		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
-	},
+	"name": "Switch with Expression",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "4595e0aa-66ef-4f06-985b-febcf2b3c234",
+			"id": "214cc494-5842-4866-bc26-768a232e3145",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [660, 420]
+			"position": [620, 340]
 		},
 		{
 			"parameters": {
 				"mode": "expression"
 			},
-			"id": "9734f702-0953-48b2-a4e3-1e1ef2a114a2",
+			"id": "7415ffff-ef38-4b96-98ba-bb48bf1da05c",
 			"name": "Switch",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 1,
-			"position": [1020, 420]
+			"position": [980, 340]
 		},
 		{
 			"parameters": {
@@ -32,21 +30,30 @@
 				},
 				"options": {}
 			},
-			"id": "e35fae38-73a2-4021-a18e-da9a2a8f2c32",
+			"id": "0826934a-5df2-4f6f-a7c5-06a1af0df131",
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [840, 420]
+			"position": [800, 340]
 		},
 		{
 			"parameters": {},
-			"id": "898659b9-2b1a-4c27-b2d9-3da83ab4a8e2",
+			"id": "20819d6a-0a73-4f71-91c8-4bb74909fa6f",
 			"name": "Output 0",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [1240, 380]
+			"position": [1200, 300]
 		}
 	],
+	"pinData": {
+		"Output 0": [
+			{
+				"json": {
+					"propertyName": "test"
+				}
+			}
+		]
+	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
 			"main": [
@@ -81,5 +88,13 @@
 				]
 			]
 		}
-	}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "de1a454e-43e9-4c2d-b786-18da5d97940f",
+	"id": "389",
+	"meta": {
+		"instanceId": "REMOVED"
+	},
+	"tags": []
 }
