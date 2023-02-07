@@ -214,41 +214,40 @@ describe('Data mapping', () => {
 			.should('include.text', '0 [object Object]');
 	});
 
-	// it('maps expressions from previous nodes', () => {
-	// 	workflowPage.actions.visit();
+	it('maps expressions from previous nodes', () => {
+		workflowPage.actions.visit();
 
-	// 	cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
 
-	// 	canvasNode.actions.openNode('Set1');
+		canvasNode.actions.openNode('Set1');
 
-	// 	ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
-	// 	ndv.getters.nodeParameters().find('.el-select-dropdown__list li:nth-child(3)').should('have.text', 'String').click();
+		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
+		ndv.getters.nodeParameters().find('.el-select-dropdown__list li:nth-child(3)').should('have.text', 'String').click();
 
-	// 	ndv.actions.selectInputNode('Schedule Trigger');
+		ndv.actions.selectInputNode('Schedule Trigger');
 
-	// 	ndv.getters.inputDataContainer()
-	// 		.find('span').contains('code')
-	// 		.realMouseDown();
+		ndv.getters.inputDataContainer()
+			.find('span').contains('code')
+			.realMouseDown();
 
-	// 	ndv.actions.mapToParameter('value');
-	// 	ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.code }}');
-	// 	ndv.getters.parameterExpressionPreview('value')
-	// 		.should('not.exist');
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.code }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('not.exist');
 
-	// 	ndv.actions.switchInputMode('Table');
-	// 	ndv.actions.mapDataFromHeader(1, 'value');
-	// 	ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.code }} {{ $node["Schedule Trigger"].json.name }}');
-	// 	ndv.getters.parameterExpressionPreview('value')
-	// 		.should('not.exist');
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.mapDataFromHeader(1, 'value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.code }} {{ $node["Schedule Trigger"].json.name }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('not.exist');
 
-	// 	ndv.actions.selectInputNode('Set');
-	// 	ndv.getters.parameterExpressionPreview('value')
-	// 		.should('include.text', '[empty]');
+		ndv.actions.selectInputNode('Set');
 
-	// 	ndv.actions.executePrevious();
-	// 	ndv.getters.inputDataContainer().should('exist');
-	// 	ndv.getters.parameterExpressionPreview('value')
-	// 		.should('include.text', '1 First item');
-	// });
+		ndv.actions.executePrevious();
+		ndv.getters.executingLoader().should('not.exist');
+		ndv.getters.inputDataContainer().should('exist');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '1 First item');
+	});
 
 });

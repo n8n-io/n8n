@@ -10,6 +10,7 @@ export class NDV extends BasePage {
 		inputOption: () => cy.getByTestId('ndv-input-option'),
 		inputPanel: () => cy.getByTestId('ndv-input-panel'),
 		outputPanel: () => cy.getByTestId('output-panel'),
+		executingLoader: () => cy.getByTestId('ndv-executing'),
 		inputDataContainer: () => this.getters.inputPanel().findChildByTestId('ndv-data-container'),
 		inputDisplayMode: () => this.getters.inputPanel().getByTestId('ndv-run-data-display-mode'),
 		outputDataContainer: () => this.getters.outputPanel().findChildByTestId('ndv-data-container'),
