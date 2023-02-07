@@ -408,9 +408,13 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				type.iconUrl = iconUrl;
 				const source = path.join(dir, icon);
 				const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
-				return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
-					copyFile(source, destination),
-				);
+				return mkdir(path.dirname(destination), { recursive: true }).then(async () => {
+					try {
+						await copyFile(source, destination);
+					} catch (error) {
+						LoggerProxy.warn(`Failed to copy file: "${source}" -> "${destination}"`);
+					}
+				});
 			}),
 		);
 
