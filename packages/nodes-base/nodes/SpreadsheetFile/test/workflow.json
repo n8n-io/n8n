@@ -29,7 +29,7 @@
 		},
 		{
 			"parameters": {
-				"filePath": "C:\\Users\\spech\\Documents\\GitHub\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\test\\test.csv"
+				"filePath": "C:\\Users\\spech\\Documents\\GitHub\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\test\\spreadsheet.csv"
 			},
 			"id": "d7620053-eb3d-43dd-b2cd-d60d9a08a9cc",
 			"name": "Read Binary File",

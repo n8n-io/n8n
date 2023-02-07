@@ -9,16 +9,15 @@ describe('Execute Spreadsheet File Node', () => {
 		await Helpers.initBinaryDataManager();
 	});
 
+	// replace workflow json 'Read Binary File' node's filePath to local file
 	const workflow = Helpers.readJsonFileSync('nodes/SpreadsheetFile/test/workflow.json');
-	const readBinaryFile = workflow.nodes.find((n: any) => n.name === 'Read Binary File');
-	const testCsvPath = path.join(__dirname, 'test.csv');
-	readBinaryFile.parameters.filePath = testCsvPath;
-
-	// console.log(JSON.stringify(workflow, null, 2));
+	const node = workflow.nodes.find((n: any) => n.name === 'Read Binary File');
+	const fileName = (node.parameters.filePath as string).split(path.sep).at(-1);
+	node.parameters.filePath = path.join(__dirname, fileName!);
 
 	const tests: WorkflowTestData[] = [
 		{
-			description: 'should execute IF node true/false boolean',
+			description: 'execute workflow.json',
 			input: {
 				workflowData: workflow,
 			},
@@ -162,7 +161,7 @@ describe('Execute Spreadsheet File Node', () => {
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
 
-			console.log('result', JSON.stringify(result, null, 2));
+			// console.log('result', JSON.stringify(result, null, 2));
 			expect(result.finished).toEqual(true);
 		});
 	}
