@@ -80,6 +80,10 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
 		ndvParameters: () => cy.getByTestId('parameter-item'),
 		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
+		getConnectionBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
+			cy.get(`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
+		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
+			cy.get(`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
 	};
 	actions = {
 		visit: () => {
@@ -174,6 +178,15 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeConnections().first().realHover();
 			cy.get('.connection-actions .add').first().click({ force: true });
 			this.actions.addNodeToCanvas(nodeName, false);
+		},
+		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
+			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.add').first().click({ force: true });
+			this.actions.addNodeToCanvas(newNodeName, false);
+		},
+		deleteNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
+			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.delete').first().click({ force: true });
 		},
 	};
 }

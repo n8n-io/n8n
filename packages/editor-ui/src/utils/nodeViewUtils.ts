@@ -768,6 +768,15 @@ export const addConnectionActionsOverlay = (
 				const addButton = document.createElement('button');
 				const deleteButton = document.createElement('button');
 
+				const source: HTMLElement = component.source;
+				const sourceNodeName = source.getAttribute('data-name')?.toString();
+				const target: HTMLElement = component.target;
+				const targetNodeName = target.getAttribute('data-name')?.toString();
+				if (sourceNodeName && targetNodeName) {
+					div.setAttribute('data-source-node', sourceNodeName);
+					div.setAttribute('data-target-node', targetNodeName);
+				}
+
 				div.classList.add(OVERLAY_CONNECTION_ACTIONS_ID);
 				addButton.classList.add('add');
 				deleteButton.classList.add('delete');
