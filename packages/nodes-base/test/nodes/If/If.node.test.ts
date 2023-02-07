@@ -38,8 +38,7 @@ describe('Execute If Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new Code(), new Set(), new If(), new NoOp()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {

@@ -44,8 +44,7 @@ describe('Execute Airtable Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new Airtable()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {
