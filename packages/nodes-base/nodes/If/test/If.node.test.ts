@@ -1,21 +1,14 @@
-import { INodeType } from 'n8n-workflow';
-import * as Helpers from '../Helpers';
-import { WorkflowTestData } from '../types';
+import * as Helpers from '../../../test/nodes/Helpers';
+import type { WorkflowTestData } from '../../../test/nodes/types';
 
-import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
-import { Set } from '../../../nodes/Set/Set.node';
-import { If } from '../../../nodes/If/If.node';
-import { NoOp } from '../../../nodes/NoOp/NoOp.node';
-import { Code } from '../../../nodes/Code/Code.node';
-
-import { executeWorkflow } from '../ExecuteWorkflow';
+import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
 
 describe('Execute If Node', () => {
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'should execute IF node true/false boolean',
 			input: {
-				workflowData: Helpers.readJsonFileSync('test/nodes/If/workflow.json'),
+				workflowData: Helpers.readJsonFileSync('nodes/If/test/workflow.json'),
 			},
 			output: {
 				nodeData: {
@@ -41,6 +34,7 @@ describe('Execute If Node', () => {
 	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
+		// eslint-disable-next-line @typescript-eslint/no-loop-func
 		test(testData.description, async () => {
 			// execute workflow
 			const { result } = await executeWorkflow(testData, nodeTypes);
