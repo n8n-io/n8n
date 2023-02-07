@@ -741,16 +741,18 @@ export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 	}
 };
 
-export const addConnectionTestData = (connectionInfo: ConnectionEstablishedParams) => {
-	const source: HTMLElement = connectionInfo.source;
+export const addConnectionTestData = (
+	source: HTMLElement,
+	target: HTMLElement,
+	el: HTMLElement | undefined,
+) => {
+	// TODO: Only do this if running in test mode
 	const sourceNodeName = source.getAttribute('data-name')?.toString();
-	const target: HTMLElement = connectionInfo.target;
 	const targetNodeName = target.getAttribute('data-name')?.toString();
-	const connector = connectionInfo.connection.connector as N8nConnector;
-	if ('canvas' in connector && sourceNodeName && targetNodeName) {
-		const connectorEl = connector.canvas as HTMLElement;
-		connectorEl.setAttribute('data-source-node', sourceNodeName);
-		connectorEl.setAttribute('data-target-node', targetNodeName);
+
+	if (el && sourceNodeName && targetNodeName) {
+		el.setAttribute('data-source-node', sourceNodeName);
+		el.setAttribute('data-target-node', targetNodeName);
 	}
 };
 
@@ -768,25 +770,14 @@ export const addConnectionActionsOverlay = (
 				const addButton = document.createElement('button');
 				const deleteButton = document.createElement('button');
 
-				const source: HTMLElement = component.source;
-				const sourceNodeName = source.getAttribute('data-name')?.toString();
-				const target: HTMLElement = component.target;
-				const targetNodeName = target.getAttribute('data-name')?.toString();
-				if (sourceNodeName && targetNodeName) {
-					div.setAttribute('data-source-node', sourceNodeName);
-					div.setAttribute('data-target-node', targetNodeName);
-				}
-
 				div.classList.add(OVERLAY_CONNECTION_ACTIONS_ID);
+				addConnectionTestData(component.source, component.target, div);
 				addButton.classList.add('add');
 				deleteButton.classList.add('delete');
-
 				addButton.innerHTML = getIcon('plus');
 				deleteButton.innerHTML = getIcon('trash');
-
 				addButton.addEventListener('click', () => onAdd());
 				deleteButton.addEventListener('click', () => onDelete());
-
 				// We have to manually trigger connection mouse events because the overlay
 				// is not part of the connection element
 				div.addEventListener('mouseout', () =>
@@ -795,7 +786,6 @@ export const addConnectionActionsOverlay = (
 				div.addEventListener('mouseover', () =>
 					connection.instance.fire(EVENT_CONNECTION_MOUSEOVER, component),
 				);
-
 				div.appendChild(addButton);
 				div.appendChild(deleteButton);
 				return div;
