@@ -1,5 +1,5 @@
 import type { DateTime } from 'luxon';
-import { EventMessageTypeNames } from 'n8n-workflow';
+import type { EventMessageTypeNames } from 'n8n-workflow';
 import type { AbstractEventPayload } from './AbstractEventPayload';
 
 export interface AbstractEventMessageOptions {

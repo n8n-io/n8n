@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -302,8 +302,8 @@ export class AwsSns implements INodeType {
 
 					const params = [
 						'TopicArn=' + topic,
-						'Subject=' + this.getNodeParameter('subject', i),
-						'Message=' + this.getNodeParameter('message', i),
+						'Subject=' + (this.getNodeParameter('subject', i) as string),
+						'Message=' + (this.getNodeParameter('message', i) as string),
 					];
 
 					const responseData = await awsApiRequestSOAP.call(

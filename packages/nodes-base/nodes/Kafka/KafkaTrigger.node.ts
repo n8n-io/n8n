@@ -1,16 +1,12 @@
-import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions } from 'kafkajs';
+import type { KafkaConfig, SASLOptions } from 'kafkajs';
+import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { ITriggerFunctions } from 'n8n-core';
+import type { ITriggerFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -219,8 +215,6 @@ export class KafkaTrigger implements INodeType {
 
 		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-		const self = this;
-
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
@@ -264,7 +258,7 @@ export class KafkaTrigger implements INodeType {
 						data = value;
 					}
 
-					self.emit([self.helpers.returnJsonArray([data])]);
+					this.emit([this.helpers.returnJsonArray([data])]);
 				},
 			});
 		};

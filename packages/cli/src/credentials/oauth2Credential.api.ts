@@ -7,18 +7,18 @@ import set from 'lodash.set';
 import split from 'lodash.split';
 import unset from 'lodash.unset';
 import { Credentials, UserSettings } from 'n8n-core';
-import {
-	LoggerProxy,
+import type {
 	WorkflowExecuteMode,
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
 	IDataObject,
 } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { RESPONSE_ERROR_MESSAGES, TEMPLATES_DIR } from '@/constants';
 import {
 	CredentialsHelper,
@@ -26,7 +26,7 @@ import {
 	getCredentialWithoutUser,
 } from '@/CredentialsHelper';
 import { getLogger } from '@/Logger';
-import { OAuthRequest } from '@/requests';
+import type { OAuthRequest } from '@/requests';
 import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';

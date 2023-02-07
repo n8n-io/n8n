@@ -1,5 +1,6 @@
 import * as fs from 'fs';
-import { replaceInFile, ReplaceInFileConfig } from 'replace-in-file';
+import type { ReplaceInFileConfig } from 'replace-in-file';
+import { replaceInFile } from 'replace-in-file';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { promisify } = require('util');

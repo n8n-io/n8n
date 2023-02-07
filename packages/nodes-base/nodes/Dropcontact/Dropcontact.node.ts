@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { dropcontactApiRequest } from './GenericFunction';
+import { dropcontactApiRequest, mapPairedItemsFrom } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
 	description: INodeTypeDescription = {
@@ -246,7 +246,7 @@ export class Dropcontact implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData: any;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
@@ -278,7 +278,13 @@ export class Dropcontact implements INodeType {
 
 				if (!responseData.success) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: responseData.reason || 'invalid request' });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
+							{
+								itemData: mapPairedItemsFrom(entryData),
+							},
+						);
+						returnData.push(...executionData);
 					} else {
 						throw new NodeApiError(this.getNode(), {
 							error: responseData.reason || 'invalid request',
@@ -300,7 +306,13 @@ export class Dropcontact implements INodeType {
 					);
 					if (!responseData.success) {
 						if (this.continueOnFail()) {
-							responseData.push({ error: responseData.reason });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: responseData.reason }),
+								{
+									itemData: mapPairedItemsFrom(entryData),
+								},
+							);
+							returnData.push(...executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason,
@@ -308,10 +320,22 @@ export class Dropcontact implements INodeType {
 							});
 						}
 					} else {
-						returnData.push(...responseData.data);
+						responseData.data.forEach((d: IDataObject, index: number) => {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(d),
+								{ itemData: { item: index } },
+							);
+							returnData.push(...executionData);
+						});
 					}
 				} else {
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{
+							itemData: mapPairedItemsFrom(entryData),
+						},
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -327,18 +351,26 @@ export class Dropcontact implements INodeType {
 					)) as { request_id: string; error: string; success: boolean };
 					if (!responseData.success) {
 						if (this.continueOnFail()) {
-							responseData.push({ error: responseData.reason || 'invalid request' });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason || 'invalid request',
 							});
 						}
 					}
-					returnData.push(...responseData.data);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData.data),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

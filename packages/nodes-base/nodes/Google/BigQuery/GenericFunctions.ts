@@ -1,93 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
-
-export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
-	resource: string,
-
-	body: any = {},
-	qs: IDataObject = {},
-	uri?: string,
-	headers: IDataObject = {},
-): Promise<any> {
-	const authenticationMethod = this.getNodeParameter(
-		'authentication',
-		0,
-		'serviceAccount',
-	) as string;
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		method,
-		body,
-		qs,
-		uri: uri || `https://bigquery.googleapis.com/bigquery${resource}`,
-		json: true,
-	};
-	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
-		if (Object.keys(body).length === 0) {
-			delete options.body;
-		}
-
-		if (authenticationMethod === 'serviceAccount') {
-			const credentials = await this.getCredentials('googleApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
-
-			options.headers!.Authorization = `Bearer ${access_token}`;
-			return await this.helpers.request(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
-		}
-	} catch (error) {
-		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
-			error.statusCode = '401';
-		}
-
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
-}
-
-export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
-	method: string,
-	endpoint: string,
-
-	body: any = {},
-	query: IDataObject = {},
-): Promise<any> {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.maxResults = 100;
-
-	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData.pageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
-
-	return returnData;
-}
 
 async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -135,6 +55,86 @@ async function getAccessToken(
 	};
 
 	return this.helpers.request(options);
+}
+
+export async function googleApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+): Promise<any> {
+	const authenticationMethod = this.getNodeParameter(
+		'authentication',
+		0,
+		'serviceAccount',
+	) as string;
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		method,
+		body,
+		qs,
+		uri: uri || `https://bigquery.googleapis.com/bigquery${resource}`,
+		json: true,
+	};
+	try {
+		if (Object.keys(headers).length !== 0) {
+			options.headers = Object.assign({}, options.headers, headers);
+		}
+		if (Object.keys(body).length === 0) {
+			delete options.body;
+		}
+
+		if (authenticationMethod === 'serviceAccount') {
+			const credentials = await this.getCredentials('googleApi');
+
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+
+			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+
+			options.headers!.Authorization = `Bearer ${access_token}`;
+			return await this.helpers.request(options);
+		} else {
+			return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
+		}
+	} catch (error) {
+		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
+			error.statusCode = '401';
+		}
+
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function googleApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.maxResults = 100;
+
+	do {
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+		query.pageToken = responseData.pageToken;
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
+
+	return returnData;
 }
 
 export function simplify(rows: IDataObject[], fields: string[]) {

@@ -3,21 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import {
-	deepCopy,
-	IDataObject,
-	IWorkflowBase,
-	LoggerProxy,
-	JsonObject,
-	jsonParse,
-	Workflow,
-} from 'n8n-workflow';
-import { FindConditions, FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import type { IDataObject, IWorkflowBase, JsonObject } from 'n8n-workflow';
+import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
+import type { FindOperator, FindOptionsWhere } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import {
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -29,7 +23,6 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import type { DatabaseType } from '@/Interfaces';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 
@@ -76,7 +69,7 @@ export class ExecutionsService {
 		countFilter: IDataObject,
 		user: User,
 	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
@@ -200,7 +193,7 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const findWhere: FindConditions<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -230,8 +223,19 @@ export class ExecutionsService {
 			});
 		}
 
-		let query = Db.collections.Execution.createQueryBuilder()
-			.select()
+		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		let query = Db.collections.Execution.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.waitTill',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowData',
+			])
 			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);
@@ -370,7 +374,9 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = fullExecutionData.workflowData.id as string;
-			const workflowData = (await Db.collections.Workflow.findOne(workflowId)) as IWorkflowBase;
+			const workflowData = (await Db.collections.Workflow.findOneBy({
+				id: workflowId,
+			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
 				throw new Error(
@@ -453,7 +459,7 @@ export class ExecutionsService {
 			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 		}
 
-		const where: FindConditions<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const where: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		if (deleteBefore) {
 			// delete executions by date, if user may access the underlying workflows

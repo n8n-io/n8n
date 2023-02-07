@@ -1,13 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
 
 export async function jenkinsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -39,8 +44,4 @@ export async function jenkinsApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }

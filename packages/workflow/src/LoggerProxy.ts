@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { ILogger, LogTypes } from './Interfaces';
+import type { ILogger, LogTypes } from './Interfaces';
 
 let logger: ILogger | undefined;
 

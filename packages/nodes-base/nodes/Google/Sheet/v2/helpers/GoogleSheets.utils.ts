@@ -1,20 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodePropertyOptions,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from './GoogleSheet';
-import {
+import type {
 	RangeDetectionOptions,
 	ResourceLocator,
-	ResourceLocatorUiNames,
-	ROW_NUMBER,
 	SheetRangeData,
 	ValueInputOption,
 } from './GoogleSheets.types';
+import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
 
 export const untilSheetSelected = { sheetName: [''] };
 
@@ -67,6 +66,7 @@ export function hexToRgb(hex: string) {
 	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
 	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
+		// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 		return r + r + g + g + b + b;
 	});
 

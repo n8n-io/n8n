@@ -1,11 +1,16 @@
-import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME, META_KEY, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import {
+	CODE_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	META_KEY,
+	SCHEDULE_TRIGGER_NODE_NAME,
+} from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const TEST_WF_TAGS = ['Tag 1', 'Tag 2', 'Tag 3'];
 const IMPORT_WORKFLOW_URL = 'https://www.jsonkeeper.com/b/FNB0#.json';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
-const DUPLICATE_WORKFLOW_TAG = 'Duplicate'
+const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
 const WorkflowPage = new WorkflowPageClass();
 
@@ -201,8 +206,7 @@ describe('Workflow Actions', () => {
 	it('should not be able to delete unsaved workflow', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
-		WorkflowPage.getters.workflowMenuItemDelete().closest('li')
-			.should('have.class', 'is-disabled');
+		WorkflowPage.getters.workflowMenuItemDelete().closest('li').should('have.class', 'is-disabled');
 	});
 
 	it('should delete workflow', () => {
@@ -218,9 +222,9 @@ describe('Workflow Actions', () => {
 
 	it('should duplicate workflow', () => {
 		// Stub window.open so new tab is not getting opened
-		cy.window().then(win => {
-			cy.stub(win, 'open').as('open')
-		})
+		cy.window().then((win) => {
+			cy.stub(win, 'open').as('open');
+		});
 
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
@@ -230,13 +234,23 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.duplicateWorkflowModal().should('be.visible');
 		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().should('be.visible');
 		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().type('{selectall}');
-		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().type(DUPLICATE_WORKFLOW_NAME);
-		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type(DUPLICATE_WORKFLOW_TAG);
+		WorkflowPage.getters
+			.duplicateWorkflowModal()
+			.find('input')
+			.first()
+			.type(DUPLICATE_WORKFLOW_NAME);
+		WorkflowPage.getters
+			.duplicateWorkflowModal()
+			.find('.el-select__tags input')
+			.type(DUPLICATE_WORKFLOW_TAG);
 		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
 		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
-		WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').should('be.visible');
+		WorkflowPage.getters
+			.duplicateWorkflowModal()
+			.find('button')
+			.contains('Duplicate')
+			.should('be.visible');
 		WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').click();
 		WorkflowPage.getters.errorToast().should('not.exist');
 	});
-
 });

@@ -1,4 +1,9 @@
-import { closeBrackets, completionStatus, insertBracket } from '@codemirror/autocomplete';
+import {
+	closeBrackets,
+	completionStatus,
+	insertBracket,
+	startCompletion,
+} from '@codemirror/autocomplete';
 import { codePointAt, codePointSize, Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
@@ -29,7 +34,19 @@ const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 
 	const transaction = insertBracket(view.state, insert);
 
-	if (!transaction) return false;
+	if (!transaction) {
+		// customization: brace setup when surrounded by HTML tags: <div></div> -> <div>{| }</div>
+		if (insert === '{') {
+			const cursor = view.state.selection.main.head;
+			view.dispatch({
+				changes: { from: cursor, insert: '{ }' },
+				selection: { anchor: cursor + 1 },
+			});
+			return true;
+		}
+
+		return false;
+	}
 
 	view.dispatch(transaction);
 
@@ -47,6 +64,8 @@ const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 			selection: { anchor: cursor + 1 },
 		});
 
+		startCompletion(view);
+
 		return true;
 	}
 
@@ -56,7 +75,13 @@ const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isBraceSetup) {
+	const { head } = view.state.selection.main;
+
+	const isInsideResolvable =
+		view.state.sliceDoc(0, head).includes('{{') &&
+		view.state.sliceDoc(head, view.state.doc.length).includes('}}');
+
+	if (isBraceSetup && !isInsideResolvable) {
 		view.dispatch({ changes: { from: cursor, insert: ' ' } });
 
 		return true;
@@ -90,6 +115,7 @@ const [_, bracketState] = closeBrackets() as readonly Extension[];
  * - prevent token autoclosing during autocompletion (exception: `{`),
  * - prevent square bracket autoclosing prior to `.json`
  * - inject whitespace and braces for resolvables
+ * - set up braces when surrounded by HTML tags
  *
  * Other than segments marked `customization`, this is a copy of the [original](https://github.com/codemirror/closebrackets/blob/0a56edfaf2c6d97bc5e88f272de0985b4f41e37a/src/closebrackets.ts#L79).
  */
