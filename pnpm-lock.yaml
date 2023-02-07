@@ -198,8 +198,8 @@ importers:
       luxon: ^3.1.0
       mysql2: ~2.3.3
       n8n-core: ~0.153.0
-      n8n-editor-ui: ~0.180.0
-      n8n-nodes-base: ~0.212.0
+      n8n-editor-ui: ~0.180.2
+      n8n-nodes-base: ~0.212.2
       n8n-workflow: ~0.135.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
@@ -6908,7 +6908,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.57.1
+      vite: 4.0.4_sass@1.55.0+terser@5.16.1
       vue: 2.7.14
     dev: true
 

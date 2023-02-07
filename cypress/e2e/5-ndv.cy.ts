@@ -42,7 +42,7 @@ describe('NDV', () => {
 			});
 		});
 
-		ndv.getters.runDataDisplayMode().should('have.length.at.least', 1).and('be.visible');
+		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
 	it('should change input', () => {

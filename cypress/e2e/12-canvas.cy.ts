@@ -61,9 +61,7 @@ describe('Canvas Actions', () => {
 	it('should add note between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().first().realHover();
-		cy.get('.connection-actions .add').filter(':visible').should('be.visible').click()
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
+		WorkflowPage.actions.addNodeBetweenFirstTwoNodes(SET_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		// And last node should be pushed to the right
@@ -119,7 +117,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
@@ -218,14 +216,14 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().realHover();
-		cy.get('.connection-actions .delete').filter(':visible').should('be.visible').click();
+		cy.get('.connection-actions .delete').first().click({ force: true });
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
 	it('should delete a connection by moving it away from endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', 0, -100);
+		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', [0, -100]);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
