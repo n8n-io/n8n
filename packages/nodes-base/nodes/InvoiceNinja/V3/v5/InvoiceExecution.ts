@@ -36,9 +36,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.vendorId) {
 					body.vendor_id = additionalFields.vendorId as string;
 				}
-				if (additionalFields.statusId) {
-					body.status_id = additionalFields.statusId as string;
-				}
 				if (additionalFields.designId) {
 					body.design_id = additionalFields.designId as string;
 				}
@@ -169,9 +166,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.vendorId) {
 					body.vendor_id = additionalFields.vendorId as string;
-				}
-				if (additionalFields.statusId) {
-					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.designId) {
 					body.design_id = additionalFields.designId as string;

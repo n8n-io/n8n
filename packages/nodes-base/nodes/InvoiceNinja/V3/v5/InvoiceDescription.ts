@@ -392,22 +392,6 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
 				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
@@ -773,22 +757,6 @@ export const invoiceFields: INodeProperties[] = [
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Invoice Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
 			},
 			{
 				displayName: 'Design Name or ID',

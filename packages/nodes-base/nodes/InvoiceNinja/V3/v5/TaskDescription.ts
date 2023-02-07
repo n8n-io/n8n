@@ -182,77 +182,6 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['task'],
-				operation: ['create'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Client',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Project',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
-				typeOptions: {
-					loadOptionsMethod: 'getProjectsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 3',
-				name: 'customValue3',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 4',
-				name: 'customValue4',
-				type: 'string',
-				default: '',
-			},
-		],
-	},
-	{
 		displayName: 'Time Logs',
 		name: 'timeLogsUi',
 		placeholder: 'Add Time Log',
@@ -283,6 +212,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
+						description: 'eighter provide End Date or Duration',
 						default: '',
 					},
 					{
@@ -292,9 +222,115 @@ export const taskFields: INodeProperties[] = [
 						typeOptions: {
 							minValue: 0,
 						},
+						description: 'eighter provide End Date or Duration',
 						default: 0,
 					},
 				],
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['task'],
+				operation: ['create'],
+			},
+		},
+		options: [		
+			{
+				displayName: 'Client',
+				name: 'clientId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClientsV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectsV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Rate',
+				name: 'rate',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskStatusesV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
@@ -316,77 +352,6 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['task'],
-				operation: ['update'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Client',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Project',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
-				typeOptions: {
-					loadOptionsMethod: 'getProjectsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 3',
-				name: 'customValue3',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 4',
-				name: 'customValue4',
-				type: 'string',
-				default: '',
-			},
-		],
-	},
-	{
 		displayName: 'Time Logs',
 		name: 'timeLogsUi',
 		placeholder: 'Add Time Log',
@@ -417,6 +382,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
+						description: 'eighter provide End Date or Duration',
 						default: '',
 					},
 					{
@@ -426,9 +392,115 @@ export const taskFields: INodeProperties[] = [
 						typeOptions: {
 							minValue: 0,
 						},
+						description: 'eighter provide End Date or Duration',
 						default: 0,
 					},
 				],
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['task'],
+				operation: ['update'],
+			},
+		},
+		options: [			
+			{
+				displayName: 'Client',
+				name: 'clientId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClientsV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectsV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Rate',
+				name: 'rate',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Status',
+				name: 'statusId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskStatusesV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				default: '',
 			},
 		],
 	},

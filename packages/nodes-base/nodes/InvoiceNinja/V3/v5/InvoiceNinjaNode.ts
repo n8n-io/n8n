@@ -326,6 +326,27 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
+			// Get all the available task_statuses to display them to user so that he can
+			// select them easily
+			async getTaskStatusesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const statuses = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					'/task_statuses',
+				);
+				console.log(statuses)
+				for (const status of statuses) {
+					const statusName = status.name as string;
+					const statusId = status.id as string;
+					returnData.push({
+						name: statusName,
+						value: statusId,
+					});
+				}
+				return returnData;
+			},
 			// Get all the available recuring expenses to display them to user so that he can
 			// select them easily
 			async getRecuringExpensesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

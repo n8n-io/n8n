@@ -20,14 +20,26 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'create') {
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ITask = {};
-				if (additionalFields.client) {
-					body.client_id = additionalFields.client as string;
+				if (additionalFields.clientId) {
+					body.client_id = additionalFields.clientId as string;
 				}
-				if (additionalFields.project) {
-					body.project_id = additionalFields.project as string;
+				if (additionalFields.projectId) {
+					body.project_id = additionalFields.projectId as string;
+				}
+				if (additionalFields.assignedUserId) {
+					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
 				if (additionalFields.description) {
 					body.description = additionalFields.description as string;
+				}
+				if (additionalFields.number) {
+					body.number = additionalFields.number as string;
+				}
+				if (additionalFields.rate) {
+					body.rate = additionalFields.rate as number;
+				}
+				if (additionalFields.statusId) {
+					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.customValue1) {
 					body.custom_value1 = additionalFields.customValue1 as string;
@@ -73,14 +85,26 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const taskId = this.getNodeParameter('taskId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ITask = {};
-				if (additionalFields.client) {
-					body.client_id = additionalFields.client as string;
+				if (additionalFields.clientId) {
+					body.client_id = additionalFields.clientId as string;
 				}
-				if (additionalFields.project) {
-					body.project_id = additionalFields.project as string;
+				if (additionalFields.projectId) {
+					body.project_id = additionalFields.projectId as string;
+				}
+				if (additionalFields.assignedUserId) {
+					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
 				if (additionalFields.description) {
 					body.description = additionalFields.description as string;
+				}
+				if (additionalFields.number) {
+					body.number = additionalFields.number as string;
+				}
+				if (additionalFields.rate) {
+					body.rate = additionalFields.rate as number;
+				}
+				if (additionalFields.statusId) {
+					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.customValue1) {
 					body.custom_value1 = additionalFields.customValue1 as string;
