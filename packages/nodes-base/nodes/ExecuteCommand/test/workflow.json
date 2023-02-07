@@ -1,18 +1,13 @@
 {
-	"meta": {
-		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
-	},
+	"name": "Execute Command Test",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "6789f5f4-7340-4aa1-a250-c530c71f4b00",
+			"id": "9f813425-3fe0-49b6-9fc6-a1779bdb71e3",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-600,
-				380
-			]
+			"position": [200, 420]
 		},
 		{
 			"parameters": {
@@ -30,57 +25,72 @@
 				},
 				"options": {}
 			},
-			"id": "8eba9387-3ccf-4836-9b25-fd0e80e29b77",
+			"id": "cf02f88c-e64d-4831-9d5b-954ad21ca3ae",
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				-440,
-				380
-			]
+			"position": [360, 420]
 		},
 		{
 			"parameters": {
 				"fieldToSplitOut": "data",
 				"options": {}
 			},
-			"id": "c11539a3-ad95-4efe-a14e-32b363d73bbe",
+			"id": "364b8576-cb5d-4ca5-b497-e3437b45831a",
 			"name": "Item Lists",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 1,
-			"position": [
-				-280,
-				380
-			]
+			"position": [520, 420]
 		},
 		{
 			"parameters": {
 				"command": "=echo {{ $json.data }}"
 			},
-			"id": "e35c7537-22b7-41a0-8d0a-3c9dc24a982f",
+			"id": "73854e53-324d-46f8-a222-9a9897807307",
 			"name": "EC Once",
 			"type": "n8n-nodes-base.executeCommand",
 			"typeVersion": 1,
-			"position": [
-				-100,
-				260
-			]
+			"position": [700, 300]
 		},
 		{
 			"parameters": {
 				"executeOnce": false,
 				"command": "=echo {{ $json.data }}"
 			},
-			"id": "6c5519ee-b915-43c0-9b22-57e43092d655",
+			"id": "b47ec541-6e85-489f-b925-2f9a77681f18",
 			"name": "EC All",
 			"type": "n8n-nodes-base.executeCommand",
 			"typeVersion": 1,
-			"position": [
-				-100,
-				500
-			]
+			"position": [700, 540]
 		}
 	],
+	"pinData": {
+		"EC Once": [
+			{
+				"json": {
+					"exitCode": 0,
+					"stderr": "",
+					"stdout": "n8n"
+				}
+			}
+		],
+		"EC All": [
+			{
+				"json": {
+					"exitCode": 0,
+					"stderr": "",
+					"stdout": "n8n"
+				}
+			},
+			{
+				"json": {
+					"exitCode": 0,
+					"stderr": "",
+					"stdout": "test"
+				}
+			}
+		]
+	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
 			"main": [
@@ -120,5 +130,13 @@
 				]
 			]
 		}
-	}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "de1a454e-43e9-4c2d-b786-18da5d97940f",
+	"id": "389",
+	"meta": {
+		"instanceId": "REMOVED"
+	},
+	"tags": []
 }
