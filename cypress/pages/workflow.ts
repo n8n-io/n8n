@@ -24,6 +24,18 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
+		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
+			return `[data-endpoint-name=${nodeName}][data-endpoint-type=${type}][data-input-index='${index}']`
+		},
+		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
+			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
+		},
+		canvasNodeOutputEndpointByName: (nodeName: string, index = 0) => {
+			return cy.get(this.getters.getEndpointSelector('output', nodeName, index));
+		},
+		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
+			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
+		},
 		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
 		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),

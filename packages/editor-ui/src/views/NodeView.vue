@@ -1797,6 +1797,7 @@ export default mixins(
 			showDetail = true,
 			trackHistory = false,
 		) {
+			console.log('Inject node');
 			const nodeTypeData: INodeTypeDescription | null =
 				this.nodeTypesStore.getNodeType(nodeTypeName);
 
@@ -2003,6 +2004,7 @@ export default mixins(
 			showDetail = true,
 			trackHistory = false,
 		) {
+			console.log('Add node');
 			if (!this.editAllowedCheck()) {
 				return;
 			}
@@ -3158,6 +3160,7 @@ export default mixins(
 			);
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
+			console.log('Add nodes');
 			if (!nodes || !nodes.length) {
 				return;
 			}
@@ -3681,6 +3684,7 @@ export default mixins(
 			nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>,
 			dragAndDrop: boolean,
 		) {
+			console.log('On add node');
 			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
 				this.addNode(
 					nodeTypeName,

@@ -22,6 +22,7 @@ importers:
 
   .:
     specifiers:
+      '@4tw/cypress-drag-drop': ^2.2.3
       '@n8n_io/eslint-config': '*'
       '@ngneat/falso': ^6.1.0
       '@types/jest': ^29.2.2
@@ -47,6 +48,7 @@ importers:
     dependencies:
       n8n: link:packages/cli
     devDependencies:
+      '@4tw/cypress-drag-drop': 2.2.3_cypress@10.11.0
       '@n8n_io/eslint-config': link:packages/@n8n_io/eslint-config
       '@ngneat/falso': 6.1.0
       '@types/jest': 29.2.2
@@ -967,6 +969,14 @@ importers:
       '@types/xml2js': 0.4.11
 
 packages:
+
+  /@4tw/cypress-drag-drop/2.2.3_cypress@10.11.0:
+    resolution: {integrity: sha512-ADMNoELeQdcGLPjfTJ5jWupBKU3rmQAnTqaRhuEa3hQGZ6suR49Ya5SReUrwvJnfAR4pgMcnSkqLqi1F4EPuwA==}
+    peerDependencies:
+      cypress: ^2.1.0 || ^3.1.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0 || ^12.0.0
+    dependencies:
+      cypress: 10.11.0
+    dev: true
 
   /@acuminous/bitsyntax/0.1.2:
     resolution: {integrity: sha512-29lUK80d1muEQqiUsSo+3A0yP6CdspgC95EnKBMi22Xlwt79i/En4Vr67+cXhU+cZjbti3TgGGC5wy1stIywVQ==}

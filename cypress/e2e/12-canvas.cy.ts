@@ -3,6 +3,8 @@ import {
 	CODE_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	SET_NODE_NAME,
+	IF_NODE_NAME,
+	MERGE_NODE_NAME,
 } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
@@ -36,6 +38,79 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
+	});
+
+	it('should add a node via plus endpoint drag', () => {
+		WorkflowPage.getters.canvasPlusButton().should('be.visible');
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, true);
+
+		// WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+		cy.get('.plus-draggable-endpoint').move({ deltaY: 100, deltaX: 100, force: true });
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+		WorkflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
+	});
+
+	it.only('should add merge node and test connections', () => {
+		WorkflowPage.getters.canvasPlusButton().should('be.visible');
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, true);
+		WorkflowPage.actions.addNodeToCanvas(MERGE_NODE_NAME, true);
+
+		cy.get('.jtk-endpoint-connected').should('have.length', 2);
+		WorkflowPage.getters.saveButton().should('contain', 'Save');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.saveButton().should('contain', 'Saved');
+
+		WorkflowPage.getters.canvasNodeByName(MERGE_NODE_NAME).invoke('attr', 'id').then((mergeNodeId) => {
+			WorkflowPage.getters.canvasNodeByName(SCHEDULE_TRIGGER_NODE_NAME).invoke('attr', 'id').then((scheduleNodeId) => {
+				WorkflowPage.getters.canvasNodeInputEndpointById(mergeNodeId).move({ deltaY: 100, deltaX: 100, force: true });
+
+				cy.get('.jtk-endpoint-connected').should('have.length', 0);
+
+				WorkflowPage.getters.canvasNodePlusEndpointById(scheduleNodeId)
+					.drag(WorkflowPage.getters.getEndpointClass('input', mergeNodeId), { force: true });
+
+				WorkflowPage.actions.addNodeToCanvas(IF_NODE_NAME, true);
+
+				WorkflowPage.getters.canvasNodeByName(IF_NODE_NAME).invoke('attr', 'id').then((ifNodeId) => {
+					WorkflowPage.getters.canvasNodeOutputEndpointById(scheduleNodeId)
+						.drag(WorkflowPage.getters.getEndpointClass('input', ifNodeId), { force: true });
+
+					cy.get('.jtk-endpoint-connected').should('have.length', 4);
+				})
+			})
+		})
+
+		// WorkflowPage.actions.saveWorkflowOnButtonClick();
+		// cy.reload();
+
+		// cy.get('.jtk-endpoint').last().then((el) => {
+		// 	console.log('Endpoint', el);
+		// })
+		// cy.get('.dot-output-endpoint').drag('.rect-input-endpoint:nth-child(9)', { force: true,  });
+
+		// WorkflowPage.actions.saveWorkflowOnButtonClick();
+		// cy.reload();
+		// cy.get('.jtk-endpoint-connected').should('have.length', 2);
+
+		// cy.get('.dot-output-endpoint').dragTo(cy.get('.jtk-endpoint').eq(1), { force: true,  });
+	});
+
+	it('should add two independent nodes as connect them', () => {
+		const dataTransfer = new DataTransfer();
+
+		WorkflowPage.getters.canvasPlusButton().should('be.visible');
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, true);
+		// cy.get("body").realClick({ x: 600, y: 800 });
+		WorkflowPage.actions.addNodeToCanvas(IF_NODE_NAME, true);
+		WorkflowPage.getters.canvasNodeByName(IF_NODE_NAME).siblings('.jtk-endpoint-connected:not(.plus-endpoint)')
+			.eq(0).drag('.jtk-endpoint-connected:not(.plus-endpoint)', { force: true});
+
+		cy.wait(1000)
+		WorkflowPage.getters.canvasNodeByName(SCHEDULE_TRIGGER_NODE_NAME).siblings('.dot-output-endpoint')
+			.eq(0).drag('.jtk-floating-endpoint', { force: true});
+			// .wait(1000)
+			// .realMouseDown()
+		// WorkflowPage.getters.canvasNodes().should('have.length', 1);
 	});
 
 	it('should add a connected node using plus endpoint', () => {
