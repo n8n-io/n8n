@@ -14,7 +14,7 @@ describe('Data mapping', () => {
 		workflowPage.actions.visit();
 	});
 
-	it('Should be able to map expressions from table header', () => {
+	it('maps expressions from table header', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -35,7 +35,7 @@ describe('Data mapping', () => {
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }} {{ $json["Readable date"] }}');
 	});
 
-	it('Should be able to map expressions from table json, and resolve value based on row', () => {
+	it('maps expressions from table json, and resolves value based on hover', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
