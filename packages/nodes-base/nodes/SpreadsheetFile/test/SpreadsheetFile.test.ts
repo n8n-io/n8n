@@ -23,7 +23,36 @@ describe('Execute Spreadsheet File Node', () => {
 				workflowData: workflow,
 			},
 			output: {
-				nodeData: {},
+				nodeData: {
+					'Read From File': [
+						[
+							{
+								A: 1,
+								B: 2,
+								C: 3,
+							},
+							{
+								A: 4,
+								B: 5,
+								C: 6,
+							},
+						],
+					],
+					'Write To File': [
+						[
+							{
+								data: {
+									mimeType: 'text/csv',
+									fileType: 'text',
+									fileExtension: 'csv',
+									data: '77u/QSxCLEMKMSwyLDMKNCw1LDYK',
+									fileName: 'spreadsheet.csv',
+									fileSize: '21 B',
+								},
+							},
+						],
+					],
+				},
 			},
 		},
 	];

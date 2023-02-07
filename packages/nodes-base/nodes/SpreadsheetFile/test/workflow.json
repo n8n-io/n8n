@@ -39,6 +39,21 @@
 				1100,
 				640
 			]
+		},
+		{
+			"parameters": {
+				"operation": "toFile",
+				"fileFormat": "csv",
+				"options": {}
+			},
+			"id": "21bc49fe-1e6b-46d6-a04d-cb474d138e02",
+			"name": "Write To File",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1540,
+				640
+			]
 		}
 	],
 	"connections": {
@@ -47,6 +62,17 @@
 				[
 					{
 						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read From File": {
+			"main": [
+				[
+					{
+						"node": "Write To File",
 						"type": "main",
 						"index": 0
 					}

@@ -216,7 +216,10 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 			if (nodeData.data === undefined) {
 				return null;
 			}
-			return nodeData.data.main[0]!.map((entry) => entry.json);
+			return nodeData.data.main[0]!.map((entry) => {
+				if (entry.binary) return entry.binary;
+				return entry.json;
+			});
 		});
 		return {
 			nodeName,
