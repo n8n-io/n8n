@@ -1494,10 +1494,11 @@ export async function start(): Promise<void> {
 	// Set up event handling
 	initEvents();
 
-	const workflow = await Db.collections.Workflow.findOne({
+	void Db.collections.Workflow.findOne({
 		select: ['createdAt'],
 		order: { createdAt: 'ASC' },
 		where: {},
-	});
-	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
+	}).then(async (workflow) =>
+		InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+	);
 }
