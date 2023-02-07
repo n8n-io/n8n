@@ -78,7 +78,9 @@ jest.mock('@/Db', () => {
 		collections: {
 			Workflow: {
 				find: jest.fn(async () => {
-					return Promise.resolve(generateWorkflows(databaseActiveWorkflowsCount));
+					const generatedWorkflows = generateWorkflows(databaseActiveWorkflowsCount);
+					console.log(generatedWorkflows);
+					return Promise.resolve(generatedWorkflows);
 				}),
 				findOne: jest.fn(async (searchParams) => {
 					const foundWorkflow = databaseActiveWorkflowsList.find(
@@ -87,6 +89,15 @@ jest.mock('@/Db', () => {
 					return Promise.resolve(foundWorkflow);
 				}),
 				update: jest.fn(),
+				createQueryBuilder: jest.fn(() => {
+					const fakeQueryBuilder = {
+						update: () => fakeQueryBuilder,
+						set: () => fakeQueryBuilder,
+						where: () => fakeQueryBuilder,
+						execute: () => Promise.resolve(),
+					};
+					return fakeQueryBuilder;
+				}),
 			},
 			Webhook: {
 				clear: jest.fn(),
@@ -107,6 +118,12 @@ jest.mock('@/ExternalHooks', () => {
 		},
 	};
 });
+
+const workflowCheckIfCanBeActivated = jest.fn(() => true);
+
+jest
+	.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated')
+	.mockImplementation(workflowCheckIfCanBeActivated);
 
 describe('ActiveWorkflowRunner', () => {
 	let activeWorkflowRunner: ActiveWorkflowRunner;
@@ -157,4 +174,12 @@ describe('ActiveWorkflowRunner', () => {
 		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
 		expect(externalHooksRunFunction).toHaveBeenCalled();
 	});
+
+	test('Should make sure function checkIfWorkflowCanBeActivated was called for every workflow', async () => {
+		databaseActiveWorkflowsCount = 2;
+		void (await activeWorkflowRunner.init());
+		expect(workflowCheckIfCanBeActivated).toHaveBeenCalledTimes(2);
+	});
+
+	test('Call to removeAll should remove every workflow', async () => {});
 });

@@ -92,7 +92,7 @@ export class ActiveWorkflowRunner {
 		// so instead of pulling all the active webhooks just pull the actives that have a trigger
 		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		})) as IWorkflowDb[];
 
 		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
@@ -782,7 +782,7 @@ export class ActiveWorkflowRunner {
 			if (workflowData === undefined) {
 				workflowData = (await Db.collections.Workflow.findOne({
 					where: { id: workflowId },
-					relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+					relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 				})) as IWorkflowDb;
 			}
 
