@@ -10,7 +10,7 @@
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [
-				880,
+				820,
 				640
 			]
 		},
@@ -23,7 +23,7 @@
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
 			"position": [
-				1320,
+				1260,
 				640
 			]
 		},
@@ -36,7 +36,7 @@
 			"type": "n8n-nodes-base.readBinaryFile",
 			"typeVersion": 1,
 			"position": [
-				1100,
+				1040,
 				640
 			]
 		},
@@ -47,12 +47,71 @@
 				"options": {}
 			},
 			"id": "21bc49fe-1e6b-46d6-a04d-cb474d138e02",
-			"name": "Write To File",
+			"name": "Write To File CSV",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
 			"position": [
-				1540,
+				1580,
+				280
+			]
+		},
+		{
+			"parameters": {
+				"operation": "toFile",
+				"fileFormat": "html",
+				"options": {}
+			},
+			"id": "a4c2c717-5a9d-4fd6-8450-6bb78e233c05",
+			"name": "Write To File HTML",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1580,
+				460
+			]
+		},
+		{
+			"parameters": {
+				"operation": "toFile",
+				"fileFormat": "ods",
+				"options": {}
+			},
+			"id": "58e5a423-0477-44df-a505-6b8a40dbf275",
+			"name": "Write To File ODS",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1580,
 				640
+			]
+		},
+		{
+			"parameters": {
+				"operation": "toFile",
+				"fileFormat": "rtf",
+				"options": {}
+			},
+			"id": "3ae6e9c5-bc0a-44e4-959e-cfc572f4179f",
+			"name": "Write To File RTF",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1580,
+				820
+			]
+		},
+		{
+			"parameters": {
+				"operation": "toFile",
+				"options": {}
+			},
+			"id": "7e6db847-d24c-4094-907d-92ffec626f68",
+			"name": "Write To File XLS",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1580,
+				1020
 			]
 		}
 	],
@@ -72,7 +131,27 @@
 			"main": [
 				[
 					{
-						"node": "Write To File",
+						"node": "Write To File CSV",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Write To File HTML",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Write To File ODS",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Write To File RTF",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Write To File XLS",
 						"type": "main",
 						"index": 0
 					}
