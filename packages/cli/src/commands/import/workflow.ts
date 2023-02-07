@@ -175,13 +175,11 @@ export class ImportWorkflowsCommand extends Command {
 								node.id = uuid();
 							}
 							if (!node.credentials?.id) {
-								console.log('Old credential format detected');
 								oldCredentialFormat = true;
 							}
 						});
 					}
 					if (oldCredentialFormat) {
-						console.info('Old credential format detected');
 						try {
 							await replaceInvalidCredentials(workflow as unknown as WorkflowEntity);
 						} catch (error) {
