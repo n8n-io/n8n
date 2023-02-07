@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { Credentials, loadClassInIsolation } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -250,6 +250,8 @@ export const workflowToTests = (workflowFiles: string[]) => {
 			},
 		);
 
+		delete workflowData.pinData;
+
 		const input = { workflowData };
 		const output = { nodeData };
 
@@ -266,4 +268,19 @@ export const testWorkflows = (workflows: string[]) => {
 	for (const testData of tests) {
 		test(testData.description, async () => equalityTest(testData, nodeTypes));
 	}
+};
+
+export const getWorkflowFilenames = (dirname: string) => {
+	const workflows: string[] = [];
+
+	const filenames = readdirSync(dirname);
+	const testFolder = dirname.split(`/nodes-base/`)[1];
+
+	filenames.forEach((file) => {
+		if (file.includes('.json')) {
+			workflows.push(path.join(testFolder, file));
+		}
+	});
+
+	return workflows;
 };

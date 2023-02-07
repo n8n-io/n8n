@@ -1,9 +1,5 @@
-import { testWorkflows } from '../../../../test/nodes/Helpers';
+import { testWorkflows, getWorkflowFilenames } from '../../../../test/nodes/Helpers';
 
-const workflows = [
-	'nodes/ItemLists/test/node/workflow.limit.json',
-	'nodes/ItemLists/test/node/workflow.aggregateItems.json',
-	'nodes/ItemLists/test/node/workflow.removeDuplicates.json',
-];
+const workflows = getWorkflowFilenames(__dirname);
 
 describe('Test ItemLists Node', () => testWorkflows(workflows));
