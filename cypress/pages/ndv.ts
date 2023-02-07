@@ -63,7 +63,7 @@ export class NDV extends BasePage {
 			editor.type(`{selectall}{backspace}`);
 			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
 
-			this.getters.savePinnedDataButton().click();
+			this.actions.savePinnedData();
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.parameterInput(parameterName).type(content);

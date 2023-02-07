@@ -13,11 +13,9 @@ describe('Data mapping', () => {
 			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload))
 	});
 
-	beforeEach(() => {
-		workflowPage.actions.visit();
-	});
-
 	it('maps expressions from table header', () => {
+		workflowPage.actions.visit();
+
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -39,6 +37,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from table json, and resolves value based on hover', () => {
+		workflowPage.actions.visit();
+
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -107,6 +107,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from json view', () => {
+		workflowPage.actions.visit();
+
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -163,6 +165,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from schema view', () => {
+		workflowPage.actions.visit();
+
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -217,6 +221,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from previous nodes', () => {
+		workflowPage.actions.visit();
+
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
 
 		canvasNode.actions.openNode('Set1');
@@ -251,6 +257,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps keys to path', () => {
+		workflowPage.actions.visit();
+
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger', false);
 
 		ndv.actions.setPinnedData([
