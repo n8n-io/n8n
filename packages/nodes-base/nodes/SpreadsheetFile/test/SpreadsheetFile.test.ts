@@ -38,6 +38,55 @@ describe('Execute Spreadsheet File Node', () => {
 							},
 						],
 					],
+					'Read From File Range': [
+						[
+							{
+								'1': 4,
+								'2': 5,
+							},
+						],
+					],
+					'Read From File no Header Row': [
+						[
+							{
+								row: ['A', 'B', 'C'],
+							},
+							{
+								row: [1, 2, 3],
+							},
+							{
+								row: [4, 5, 6],
+							},
+						],
+					],
+					'Read From File Raw Data': [
+						[
+							{
+								A: '1',
+								B: '2',
+								C: '3',
+							},
+							{
+								A: '4',
+								B: '5',
+								C: '6',
+							},
+						],
+					],
+					'Read From File Read as String': [
+						[
+							{
+								A: 1,
+								B: 2,
+								C: 3,
+							},
+							{
+								A: 4,
+								B: 5,
+								C: 6,
+							},
+						],
+					],
 					'Write To File CSV': [
 						[
 							{
@@ -113,7 +162,7 @@ describe('Execute Spreadsheet File Node', () => {
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
 
-			// console.log('result', JSON.stringify(result, null, 2));
+			console.log('result', JSON.stringify(result, null, 2));
 			expect(result.finished).toEqual(true);
 		});
 	}

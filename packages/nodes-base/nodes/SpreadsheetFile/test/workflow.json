@@ -10,7 +10,7 @@
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [
-				820,
+				620,
 				640
 			]
 		},
@@ -36,7 +36,7 @@
 			"type": "n8n-nodes-base.readBinaryFile",
 			"typeVersion": 1,
 			"position": [
-				1040,
+				840,
 				640
 			]
 		},
@@ -113,6 +113,66 @@
 				1580,
 				1020
 			]
+		},
+		{
+			"parameters": {
+				"options": {
+					"range": "A2:B3"
+				}
+			},
+			"id": "48934f0d-ac10-4862-ae0c-2ea591b111e3",
+			"name": "Read From File Range",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1060,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"options": {
+					"headerRow": false
+				}
+			},
+			"id": "dea6f3f6-f2fb-472e-97b2-8a0c0a36bc4d",
+			"name": "Read From File no Header Row",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1060,
+				320
+			]
+		},
+		{
+			"parameters": {
+				"options": {
+					"rawData": true
+				}
+			},
+			"id": "38ed33fc-6906-4b09-8376-937ef3ca99be",
+			"name": "Read From File Raw Data",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1060,
+				740
+			]
+		},
+		{
+			"parameters": {
+				"options": {
+					"readAsString": true
+				}
+			},
+			"id": "ffe09dc8-9b7a-4baf-bd03-bd65bbce2590",
+			"name": "Read From File Read as String",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 1,
+			"position": [
+				1060,
+				940
+			]
 		}
 	],
 	"connections": {
@@ -163,6 +223,26 @@
 				[
 					{
 						"node": "Read From File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read From File Range",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read From File no Header Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read From File Raw Data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read From File Read as String",
 						"type": "main",
 						"index": 0
 					}
