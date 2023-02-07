@@ -46,6 +46,9 @@ export class NDV extends BasePage {
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
 		},
+		savePinnedData: () => {
+			this.getters.savePinnedDataButton().click();
+		},
 		execute: () => {
 			this.getters.nodeExecuteButton().first().click();
 		},
@@ -103,6 +106,10 @@ export class NDV extends BasePage {
 		selectInputNode: (nodeName: string) => {
 			this.getters.inputSelect().find('.el-select').click();
 			this.getters.inputOption().contains(nodeName).click();
+		},
+		addDefaultPinnedData: () => {
+			this.actions.editPinnedData();
+			this.actions.savePinnedData();
 		},
 	};
 }

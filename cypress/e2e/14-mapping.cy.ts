@@ -9,6 +9,7 @@ describe('Data mapping', () => {
 		cy.resetAll();
 		cy.skipSetup();
 		cy.window()
+			// @ts-ignore
 			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload))
 	});
 
@@ -162,7 +163,6 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from schema view', () => {
-		workflowPage.actions.visit();
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -217,8 +217,6 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from previous nodes', () => {
-		workflowPage.actions.visit();
-
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
 
 		canvasNode.actions.openNode('Set1');
@@ -252,4 +250,50 @@ describe('Data mapping', () => {
 			.should('include.text', '1 First item');
 	});
 
+	it('maps keys to path', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger', false);
+
+		ndv.actions.setPinnedData([
+			{
+				input: [
+					{
+						"hello.world": {
+							"my count": 0,
+						},
+					}
+				]
+			},
+			{
+				input: [
+					{
+						"hello.world": {
+							"my count": 1,
+						}
+					}
+				]
+			},
+		]);
+
+		ndv.actions.close();
+
+		workflowPage.actions.addNodeToCanvas('Item Lists');
+		canvasNode.actions.openNode('Item Lists');
+
+		ndv.getters.parameterInput('operation')
+			.click()
+			.find('li').contains('Sort')
+			.click();
+
+		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
+
+		ndv.getters.inputDataContainer()
+			.find('span').contains('my count')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('fieldName');
+
+		ndv.getters.inlineExpressionEditorInput().should('have.length', 0);
+		ndv.getters.parameterInput('fieldName')
+			.find('input').should('have.value', 'input[0]["hello.world"]["my count"]');
+	});
 });
