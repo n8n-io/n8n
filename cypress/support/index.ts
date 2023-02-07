@@ -27,6 +27,7 @@ declare global {
 			setupOwner(payload: SetupPayload): void;
 			skipSetup(): void;
 			resetAll(): void;
+			resetSome(payload: {tables: string[]}): void;
 			enableFeature(feature: string): void;
 			waitForLoad(): void;
 			grantBrowserPermissions(...permissions: string[]): void;

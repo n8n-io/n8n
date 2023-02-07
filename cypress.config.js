@@ -18,6 +18,11 @@ module.exports = defineConfig({
 		setupNodeEvents(on, config) {
 			on('task', {
 				reset: () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
+				resetSome: (payload) => fetch(BASE_URL + '/e2e/db/reset', {
+					method: 'POST',
+					body: JSON.stringify(payload),
+					headers: { 'Content-Type': 'application/json' },
+				}),
 				'setup-owner': (payload) =>
 					fetch(BASE_URL + '/e2e/db/setup-owner', {
 						method: 'POST',

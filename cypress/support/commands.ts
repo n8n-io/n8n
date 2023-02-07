@@ -136,6 +136,10 @@ Cypress.Commands.add('resetAll', () => {
 	Cypress.session.clearAllSavedSessions();
 });
 
+Cypress.Commands.add('resetSome', (payload) => {
+	cy.task('resetSome', payload);
+});
+
 Cypress.Commands.add('setupOwner', (payload) => {
 	cy.task('setup-owner', payload);
 });

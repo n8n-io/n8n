@@ -38,9 +38,9 @@ const tablesToTruncate = [
 	'role',
 ];
 
-const truncateAll = async () => {
+const truncateAll = async (tableNames: string[] = tablesToTruncate) => {
 	const { connection } = Db;
-	for (const table of tablesToTruncate) {
+	for (const table of tableNames) {
 		await connection.query(
 			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 		);
@@ -86,9 +86,13 @@ const resetLogStreaming = async () => {
 
 export const e2eController = Router();
 
-e2eController.post('/db/reset', async (req, res) => {
+e2eController.post('/db/reset', bodyParser.json(), async (req, res) => {
 	await resetLogStreaming();
-	await truncateAll();
+	if (!req.body.tables) {
+		await truncateAll();
+	} else {
+		await truncateAll(req.body.tables);
+	}
 	await setupUserManagement();
 
 	res.writeHead(204).end();
