@@ -89,6 +89,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.exchangeRate !== undefined) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
 				}
+				if (additionalFields.currencyId !== undefined) {
+					body.currency_id = additionalFields.currencyId as string;
+				}
 				if (additionalFields.paidToDate !== undefined) {
 					body.paid_to_date = additionalFields.paidToDate as number;
 				}
@@ -136,7 +139,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					}
 					body.line_items = lineItems;
 				}
-				console.log(additionalFields, body)
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'POST',
@@ -214,6 +216,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.exchangeRate !== undefined) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
+				}
+				if (additionalFields.currencyId !== undefined) {
+					body.currency_id = additionalFields.currencyId as string;
 				}
 				if (additionalFields.paidToDate !== undefined) {
 					body.paid_to_date = additionalFields.paidToDate as number;
