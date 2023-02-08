@@ -48,6 +48,8 @@ jobs:
           # Disable running of tests within install job
           runTests: false
           build: pnpm build
+        env:
+          CYPRESS_CACHE_FOLDER: node_modules/.bin
 
       - name: Save build folder
         uses: actions/upload-artifact@v3
