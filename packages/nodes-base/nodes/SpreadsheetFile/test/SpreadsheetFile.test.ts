@@ -155,7 +155,7 @@ describe('Execute Spreadsheet File Node', () => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
 
 			// check if result node data matches expected test data
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
+			const resultNodeData = Helpers.getResultNodeData(result, testData, true);
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);

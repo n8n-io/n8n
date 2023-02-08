@@ -208,7 +208,11 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 	return nodeTypes;
 }
 
-export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
+export function getResultNodeData(
+	result: IRun,
+	testData: WorkflowTestData,
+	testBinaryData = false,
+) {
 	return Object.keys(testData.output.nodeData).map((nodeName) => {
 		if (result.data.resultData.runData[nodeName] === undefined) {
 			throw new Error(`Data for node "${nodeName}" is missing!`);
@@ -218,7 +222,7 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 				return null;
 			}
 			return nodeData.data.main[0]!.map((entry) => {
-				if (entry.binary && !isEmpty(entry.binary)) return entry.binary;
+				if (testBinaryData && entry.binary && !isEmpty(entry.binary)) return entry.binary;
 				return entry.json;
 			});
 		});
