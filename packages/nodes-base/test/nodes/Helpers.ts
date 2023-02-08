@@ -28,6 +28,7 @@ import { executeWorkflow } from './ExecuteWorkflow';
 import { WorkflowTestData } from './types';
 import path from 'path';
 import { tmpdir } from 'os';
+import { isEmpty } from 'lodash';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -217,7 +218,7 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 				return null;
 			}
 			return nodeData.data.main[0]!.map((entry) => {
-				if (entry.binary) return entry.binary;
+				if (entry.binary && !isEmpty(entry.binary)) return entry.binary;
 				return entry.json;
 			});
 		});
