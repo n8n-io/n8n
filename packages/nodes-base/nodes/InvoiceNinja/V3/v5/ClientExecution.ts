@@ -1,5 +1,6 @@
+import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
+import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 import type { IClient, IClientContact } from './ClientInterface';
 
 export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -267,7 +268,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'action') {
 				const clientId = this.getNodeParameter('clientId', i) as string;
-				const action = this.getNodeParameter('action', i) as string;			
+				const action = this.getNodeParameter('action', i) as string;
 				if (action === 'merge') {
 					const mergeClientId = this.getNodeParameter('mergeClientId', i) as string;
 					responseData = await invoiceNinjaApiRequest.call(
@@ -288,6 +289,51 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						}
 					);
 					responseData = responseData.data;
+				} else if (action === 'client_statement') {
+					const startDate = this.getNodeParameter('startDate', i) as string;
+					const endDate = this.getNodeParameter('endDate', i) as string;
+					const showPaymentsTable = this.getNodeParameter('showPaymentsTable', i) as string;
+					const showAgingTable = this.getNodeParameter('showAgingTable', i) as string;
+					const sendEmail = this.getNodeParameter('sendEmail', i) as string;
+					const body: IDataObject = {
+						start_date: moment(startDate).format("YYYY-MM-DD"),
+						end_date: moment(endDate).format("YYYY-MM-DD"),
+						client_id: clientId,
+						show_payments_table: showPaymentsTable,
+						show_aging_table: showAgingTable,
+					};
+					if (sendEmail) {
+						returnData.push({
+							json: body,
+							binary: {
+								data: await this.helpers.prepareBinaryData(
+									(await invoiceNinjaApiDownloadFile.call(
+										this,
+										'POST',
+										`/client_statement`,
+										body,
+										{
+											send_email: sendEmail
+										},
+									)),
+									'client_statement.pdf',
+									'application/pdf',
+								),
+							},
+						});
+						continue;
+					} else {
+						responseData = await invoiceNinjaApiDownloadFile.call(
+							this,
+							'POST',
+							`/client_statement`,
+							body,
+							{
+								send_email: sendEmail
+							},
+						);
+						responseData = responseData.data;
+					}
 				} else {
 					responseData = await invoiceNinjaApiRequest.call(
 						this,

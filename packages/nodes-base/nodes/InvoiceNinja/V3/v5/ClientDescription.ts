@@ -889,7 +889,7 @@ export const clientFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-	},	
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  client:action                             */
 	/* -------------------------------------------------------------------------- */
@@ -941,6 +941,11 @@ export const clientFields: INodeProperties[] = [
 				value: 'purge',
 				action: 'Purge a client',
 			},
+			{
+				name: 'Client Statement',
+				value: 'client_statement',
+				action: 'Generate or queue the client statement',
+			},
 		],
 	},
 	{
@@ -973,5 +978,85 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+	},
+	{
+		displayName: 'Start Date',
+		name: 'startDate',
+		description: 'The start date of the statement period',
+		type: 'dateTime',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['client_statement'],
+			},
+		},
+	},
+	{
+		displayName: 'End Date',
+		name: 'endDate',
+		description: 'The end date of the statement period',
+		type: 'dateTime',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['client_statement'],
+			},
+		},
+	},
+	{
+		displayName: 'Show Payments Table',
+		name: 'showPaymentsTable',
+		description: 'Flag which determines if the payments table is shown',
+		type: 'boolean',
+		default: false,
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['client_statement'],
+			},
+		},
+	},
+	{
+		displayName: 'Show Aging Table',
+		name: 'showAgingTable',
+		description: 'Flag which determines if the aging table is shown',
+		type: 'boolean',
+		default: false,
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['client_statement'],
+			},
+		},
+	},
+	{
+		displayName: 'Queue Generation',
+		name: 'sendEmail',
+		description: 'queue the generation and send email with link afterwards',
+		type: 'boolean',
+		default: false,
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['action'],
+				action: ['client_statement'],
+			},
+		},
 	},
 ];
