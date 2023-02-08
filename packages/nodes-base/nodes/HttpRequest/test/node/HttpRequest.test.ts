@@ -1,17 +1,12 @@
-import {
-	setup,
-	equalityTest,
-	getWorkflowFilenames,
-	workflowToTests,
-} from '../../../../test/nodes/Helpers';
+import { setup, equalityTest, workflowToTests } from '../../../../test/nodes/Helpers';
 
 import nock from 'nock';
 
-describe('Test HTTP Request Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
+describe('Test HTTP Request Node, GET', () => {
+	const workflows = ['nodes/HttpRequest/test/node/workflow.get.json'];
 	const tests = workflowToTests(workflows);
 
-	beforeEach(() => {
+	beforeAll(() => {
 		nock.disableNetConnect();
 
 		nock('https://dummyjson.com').get('/todos/1').reply(200, {
@@ -54,7 +49,39 @@ describe('Test HTTP Request Node', () => {
 			});
 	});
 
-	afterEach(() => {
+	afterAll(() => {
+		nock.restore();
+	});
+
+	const nodeTypes = setup(tests);
+
+	for (const testData of tests) {
+		test(testData.description, async () => equalityTest(testData, nodeTypes));
+	}
+});
+
+describe('Test HTTP Request Node, POST', () => {
+	const workflows = ['nodes/HttpRequest/test/node/workflow.post.json'];
+	const tests = workflowToTests(workflows);
+
+	beforeAll(() => {
+		nock.disableNetConnect();
+
+		nock('https://dummyjson.com')
+			.post('/todos/add', {
+				todo: 'Use DummyJSON in the project',
+				completed: false,
+				userId: 5,
+			})
+			.reply(200, {
+				id: 151,
+				todo: 'Use DummyJSON in the project',
+				completed: false,
+				userId: '5',
+			});
+	});
+
+	afterAll(() => {
 		nock.restore();
 	});
 
