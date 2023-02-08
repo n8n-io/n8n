@@ -239,19 +239,27 @@ Cypress.Commands.add('drag', (selector, pos) => {
 		pageY: originalLocation.top + yDiff,
 		force: true,
 	});
-	element.trigger('mouseup');
+	element.trigger('mouseup', { force: true });
 });
 
 Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 	cy.get(draggableSelector).should('exist');
 	cy.get(droppableSelector).should('exist');
 
-	const droppableEl = Cypress.$(droppableSelector)[0];
-	const coords = droppableEl.getBoundingClientRect();
+	cy.get(droppableSelector)
+		.first()
+		.then(([$el]) => {
+			const coords = $el.getBoundingClientRect();
 
-	const pageX = coords.left + coords.width / 2;
-	const pageY = coords.top + coords.height / 2;
+			const pageX = coords.left + coords.width / 2;
+			const pageY = coords.top + coords.height / 2;
 
-	cy.get(draggableSelector).realMouseDown();
-	cy.get(droppableSelector).realMouseMove(pageX, pageY).realHover().realMouseUp();
+			// We can't use realMouseDown here because it hangs headless run
+			cy.get(draggableSelector).trigger('mousedown');
+			// We don't chain these commands to make sure cy.get is re-trying correctly
+			cy.get(droppableSelector).realMouseMove(pageX, pageY);
+			cy.get(droppableSelector).realHover();
+			cy.get(droppableSelector).realMouseUp();
+			cy.get(draggableSelector).realMouseUp();
+		});
 });
