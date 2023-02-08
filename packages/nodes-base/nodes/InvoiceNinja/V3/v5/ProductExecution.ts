@@ -38,6 +38,15 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.quantity) {
 					body.quantity = additionalFields.quantity as number;
 				}
+				if (additionalFields.inStockQuantity) {
+					body.in_stock_quantity = additionalFields.inStockQuantity as number;
+				}
+				if (additionalFields.stockNotifications) {
+					body.stock_notification = additionalFields.stockNotifications as boolean;
+				}
+				if (additionalFields.stockNotificationsThreshold) {
+					body.stock_notification_threshold = additionalFields.stockNotificationsThreshold as number;
+				}
 				if (additionalFields.taxName1) {
 					body.tax_name1 = additionalFields.taxName1 as string;
 				}
@@ -97,6 +106,15 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.quantity) {
 					body.quantity = additionalFields.quantity as number;
+				}
+				if (additionalFields.inStockQuantity) {
+					body.in_stock_quantity = additionalFields.inStockQuantity as number;
+				}
+				if (additionalFields.stockNotifications) {
+					body.stock_notification = additionalFields.stockNotifications as boolean;
+				}
+				if (additionalFields.stockNotificationsThreshold) {
+					body.stock_notification_threshold = additionalFields.stockNotificationsThreshold as number;
 				}
 				if (additionalFields.taxName1) {
 					body.tax_name1 = additionalFields.taxName1 as string;

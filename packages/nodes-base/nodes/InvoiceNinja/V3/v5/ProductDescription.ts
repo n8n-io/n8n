@@ -240,6 +240,24 @@ export const productFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
+				displayName: 'Stock Quantity',
+				name: 'inStockQuantity',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Stock Notifications',
+				name: 'stockNotifications',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Stock Notifications Threshold',
+				name: 'stockNotificationsThreshold',
+				type: 'number',
+				default: 0,
+			},
+			{
 				displayName: 'Tax Name 1',
 				name: 'taxName1',
 				type: 'string',
@@ -373,6 +391,24 @@ export const productFields: INodeProperties[] = [
 			{
 				displayName: 'Quantity',
 				name: 'quantity',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Stock Quantity',
+				name: 'inStockQuantity',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Stock Notifications',
+				name: 'stockNotifications',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Stock Notifications Threshold',
+				name: 'stockNotificationsThreshold',
 				type: 'number',
 				default: 0,
 			},
