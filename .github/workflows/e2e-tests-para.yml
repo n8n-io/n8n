@@ -58,16 +58,14 @@ jobs:
           CYPRESS_CACHE_FOLDER: node_modules/.bin
 
       - name: Zip packages dist folders
-        uses: montudor/action-zip@v1
-        with:
-          args: zip -r packages_build.zip /__w/n8n/n8n/packages/*/dist
+        run: zip -r -q packages_build.zip packages/*/dist
 
       - name: Save build folder
         uses: actions/upload-artifact@v3
         with:
           name: build
           if-no-files-found: error
-          path: packages/*/dist
+          path:  packages_build.zip
 
   testing:
     runs-on: ubuntu-latest
@@ -103,9 +101,7 @@ jobs:
           path: packages
 
       - name: Unzip packages dist folders
-        uses: montudor/action-zip@v1
-        with:
-          args: unzip -o packages_build.zip -d /__w/n8n/n8n/
+        run: unzip -o packages_build.zip -d ./
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
