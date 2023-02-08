@@ -37,6 +37,8 @@ export class NDV extends BasePage {
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
+		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 	};
 
 	actions = {
@@ -54,6 +56,10 @@ export class NDV extends BasePage {
 		},
 		close: () => {
 			this.getters.backToCanvas().click();
+		},
+		openInlineExpressionEditor: () => {
+			cy.contains('Expression').invoke('show').click();
+			this.getters.inlineExpressionEditorInput().click();
 		},
 		setPinnedData: (data: object) => {
 			this.getters.editPinnedDataButton().click();

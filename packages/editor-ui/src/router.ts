@@ -35,6 +35,7 @@ import { EnterpriseEditionFeature, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
+import { useUsersStore } from '@/stores/users';
 
 Vue.use(Router);
 
@@ -507,7 +508,11 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.isUserManagementEnabled === false;
+
+									return (
+										settingsStore.isUserManagementEnabled === false &&
+										!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
+									);
 								},
 							},
 						},

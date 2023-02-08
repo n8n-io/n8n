@@ -252,7 +252,7 @@ describe('Data mapping', () => {
 	});
 
 	it('maps keys to path', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger', false);
+		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger', {keepNdvOpen: true});
 
 		ndv.actions.setPinnedData([
 			{

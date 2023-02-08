@@ -2182,6 +2182,15 @@ export default mixins(
 								});
 							},
 						);
+						setTimeout(() => {
+							NodeViewUtils.addConnectionTestData(
+								info.source,
+								info.target,
+								'canvas' in info.connection.connector
+									? (info.connection.connector.canvas as HTMLElement)
+									: undefined,
+							);
+						}, 0);
 					}
 				} catch (e) {
 					console.error(e); // eslint-disable-line no-console

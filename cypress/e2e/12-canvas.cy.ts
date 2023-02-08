@@ -3,6 +3,7 @@ import {
 	CODE_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	SET_NODE_NAME,
+	HTTP_REQUEST_NODE_NAME,
 } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
@@ -61,14 +62,16 @@ describe('Canvas Actions', () => {
 	it('should add note between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeBetweenFirstTwoNodes(SET_NODE_NAME);
-		WorkflowPage.getters.canvasNodes().should('have.length', 3);
-		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.actions.addNodeBetweenNodes(CODE_NODE_NAME, SET_NODE_NAME, HTTP_REQUEST_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().should('have.length', 4);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 		// And last node should be pushed to the right
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 640px; top: 260px;');
+			.should('have.attr', 'style', 'left: 860px; top: 260px;');
 	});
 
 	it('should delete node using node action button', () => {
