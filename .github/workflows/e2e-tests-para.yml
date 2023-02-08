@@ -40,7 +40,7 @@ jobs:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-
+            ${{ runner.os }}--modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -56,6 +56,11 @@ jobs:
           build: pnpm build
         env:
           CYPRESS_CACHE_FOLDER: node_modules/.bin
+
+      - name: Zip packages dist folders
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -r packages_build.zip packages/*/dist
 
       - name: Save build folder
         uses: actions/upload-artifact@v3
@@ -86,9 +91,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-
+          key: ${{ runner.os }}-modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -98,6 +101,11 @@ jobs:
         with:
           name: build
           path: packages
+
+      - name: Unzip packages dist folders
+        uses: montudor/action-zip@v1
+        with:
+          args: unzip -o packages_build.zip -d ./
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
