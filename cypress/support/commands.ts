@@ -112,6 +112,8 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	const signupPage = new SignupPage();
 
+	cy.visit(signupPage.url);
+
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
 			if (url.includes(signupPage.url)) {
@@ -251,9 +253,5 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 	const pageY = coords.top + coords.height / 2;
 
 	cy.get(draggableSelector).realMouseDown();
-	cy.get(droppableSelector).realMouseMove(pageX, pageY)
-		.realHover()
-		.realMouseUp();
+	cy.get(droppableSelector).realMouseMove(pageX, pageY).realHover().realMouseUp();
 });
-
-
