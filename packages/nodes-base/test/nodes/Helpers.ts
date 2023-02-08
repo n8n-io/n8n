@@ -231,6 +231,20 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	expect(result.finished).toEqual(true);
 };
 
+const preparePinData = (pinData: IDataObject) => {
+	const returnData = Object.keys(pinData).reduce(
+		(acc, key) => {
+			const data = (pinData[key] as IDataObject[]).map((item) => item.json);
+			acc[key] = [data as IDataObject[]];
+			return acc;
+		},
+		{} as {
+			[key: string]: IDataObject[][];
+		},
+	);
+	return returnData;
+};
+
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
@@ -239,16 +253,8 @@ export const workflowToTests = (workflowFiles: string[]) => {
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
-		const nodeData = Object.keys(workflowData.pinData).reduce(
-			(acc, key) => {
-				const data = (workflowData.pinData[key] as IDataObject[]).map((item) => item.json);
-				acc[key] = [data as IDataObject[]];
-				return acc;
-			},
-			{} as {
-				[key: string]: IDataObject[][];
-			},
-		);
+
+		const nodeData = preparePinData(workflowData.pinData);
 
 		delete workflowData.pinData;
 
