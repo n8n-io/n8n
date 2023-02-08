@@ -18,13 +18,7 @@ import type {
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { createWriteStream } from 'fs';
-import {
-	access as fsAccess,
-	copyFile,
-	mkdir,
-	readdir as fsReaddir,
-	stat as fsStat,
-} from 'fs/promises';
+import { access as fsAccess, mkdir, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -406,24 +400,6 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 			const { types } = loader;
 			this.types.nodes = this.types.nodes.concat(types.nodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
-
-			// Copy over all icons and set `iconUrl` for the frontend
-			const iconPromises = Object.entries(types).flatMap(([typeName, typesArr]) =>
-				typesArr.map((type) => {
-					if (!type.icon?.startsWith('file:')) return;
-					const icon = type.icon.substring(5);
-					const iconUrl = `icons/${typeName}/${type.name}${path.extname(icon)}`;
-					delete type.icon;
-					type.iconUrl = iconUrl;
-					const source = path.join(dir, icon);
-					const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
-					return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
-						copyFile(source, destination),
-					);
-				}),
-			);
-
-			await Promise.all(iconPromises);
 
 			// Nodes and credentials that have been loaded immediately
 			for (const nodeTypeName in loader.nodeTypes) {

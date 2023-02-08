@@ -1291,6 +1291,19 @@ class Server extends AbstractServer {
 				},
 			};
 
+			for (const [dir, loader] of Object.entries(this.loadNodesAndCredentials.loaders)) {
+				const pathPrefix = `/icons/${loader.packageName}`;
+				this.app.use(`${pathPrefix}/*/*.(svg|png)`, async (req, res) => {
+					const filePath = pathResolve(dir, req.originalUrl.substring(pathPrefix.length + 1));
+					try {
+						await fsAccess(filePath);
+						res.sendFile(filePath);
+					} catch {
+						res.sendStatus(404);
+					}
+				});
+			}
+
 			this.app.use(
 				'/',
 				express.static(GENERATED_STATIC_DIR),
