@@ -2088,6 +2088,7 @@ export default mixins(
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 							this.pullConnActiveNodeName = null;
+							this.dropPrevented = true;
 						}
 						return;
 					}
@@ -2160,6 +2161,8 @@ export default mixins(
 					];
 
 					this.dropPrevented = true;
+					this.workflowsStore.addConnection({ connection: connectionData });
+					this.uiStore.stateIsDirty = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
@@ -2179,6 +2182,15 @@ export default mixins(
 								});
 							},
 						);
+						setTimeout(() => {
+							NodeViewUtils.addConnectionTestData(
+								info.source,
+								info.target,
+								'canvas' in info.connection.connector
+									? (info.connection.connector.canvas as HTMLElement)
+									: undefined,
+							);
+						}, 0);
 					}
 				} catch (e) {
 					console.error(e); // eslint-disable-line no-console

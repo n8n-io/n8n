@@ -57,8 +57,8 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add('waitForLoad', () => {
-	cy.getByTestId('node-view-loader').should('not.exist', { timeout: 10000 });
-	cy.get('.el-loading-mask').should('not.exist', { timeout: 10000 });
+	cy.getByTestId('node-view-loader', { timeout: 10000 }).should('not.exist');
+	cy.get('.el-loading-mask', { timeout: 10000 }).should('not.exist');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
@@ -173,7 +173,8 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
+Cypress.Commands.add('drag', (selector, pos) => {
+	const [xDiff, yDiff] = pos;
 	const element = cy.get(selector);
 	element.should('exist');
 
@@ -186,5 +187,27 @@ Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
 		pageY: originalLocation.top + yDiff,
 		force: true,
 	});
-	element.trigger('mouseup');
+	element.trigger('mouseup', { force: true });
 });
+
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+	cy.get(draggableSelector).should('exist');
+	cy.get(droppableSelector).should('exist');
+
+	cy.get(droppableSelector).first().then(([$el]) => {
+		const coords = $el.getBoundingClientRect();
+
+		const pageX = coords.left + coords.width / 2;
+		const pageY = coords.top + coords.height / 2;
+
+		// We can't use realMouseDown here because it hangs headless run
+		cy.get(draggableSelector).trigger('mousedown');
+		// We don't chain these commands to make sure cy.get is re-trying correctly
+		cy.get(droppableSelector).realMouseMove(pageX, pageY)
+		cy.get(droppableSelector).realHover()
+		cy.get(droppableSelector).realMouseUp();
+		cy.get(draggableSelector).realMouseUp();
+	})
+});
+
+

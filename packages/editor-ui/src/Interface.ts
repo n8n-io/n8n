@@ -509,6 +509,7 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSm?: string[] | null;
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
+	email?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
