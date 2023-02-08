@@ -42,10 +42,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-
 
-
       - uses: pnpm/action-setup@v2.2.4
         with:
-          version: 6.0.2
           run_install: true
 
       - name: Cypress install
