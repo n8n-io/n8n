@@ -154,6 +154,7 @@ import { useTagsStore } from '@/stores/tags';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 import { useUsageStore } from '@/stores/usage';
+import { BaseTextKey } from '@/plugins/i18n';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -522,9 +523,14 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
-			if (linkUrl.includes('subscription')) {
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
 				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-workflow-sharing`;
 			}
 
 			window.open(linkUrl, '_blank');

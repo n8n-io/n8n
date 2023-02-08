@@ -37,10 +37,20 @@ export function isEmailSetUp(): boolean {
 }
 
 export function isUserManagementEnabled(): boolean {
-	return (
-		!config.getEnv('userManagement.disabled') ||
-		config.getEnv('userManagement.isInstanceOwnerSetUp')
-	);
+	// This can be simplified but readability is more important here
+
+	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		// Short circuit - if owner is set up, UM cannot be disabled.
+		// Users must reset their instance in order to do so.
+		return true;
+	}
+
+	// UM is disabled for desktop by default
+	if (config.getEnv('deployment.type').startsWith('desktop_')) {
+		return false;
+	}
+
+	return config.getEnv('userManagement.disabled') ? false : true;
 }
 
 export function isSharingEnabled(): boolean {
@@ -48,13 +58,6 @@ export function isSharingEnabled(): boolean {
 	return (
 		isUserManagementEnabled() &&
 		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
-	);
-}
-
-export function isUserManagementDisabled(): boolean {
-	return (
-		config.getEnv('userManagement.disabled') &&
-		!config.getEnv('userManagement.isInstanceOwnerSetUp')
 	);
 }
 

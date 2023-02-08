@@ -176,6 +176,7 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
+export const EMAIL_KEY = 'email';
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
