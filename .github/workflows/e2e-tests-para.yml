@@ -37,13 +37,11 @@ jobs:
       - uses: pnpm/action-setup@v2.2.4
 
       - name: Cypress install
-        uses: cypress-io/github-action@v4
+        uses: cypress-io/github-action@v5
         with:
           # Disable running of tests within install job
           runTests: false
-          install-command: pnpm install --frozen-lockfile
           build: pnpm build
-
 
       - name: Save build folder
         uses: actions/upload-artifact@v3
@@ -78,17 +76,14 @@ jobs:
           name: build
           path: packages
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Cypress run
-        uses: cypress-io/github-action@v4
+        uses: cypress-io/github-action@v5
         with:
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678' # Waits for above
           wait-on-timeout: 120 #
-          browser: electron
+          browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
           spec: cypress/e2e/*
