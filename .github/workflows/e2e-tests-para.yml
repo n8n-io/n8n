@@ -42,7 +42,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-
 
-      - uses: pnpm/action-setup@v2.2.4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
         with:
           run_install: true
 
@@ -81,7 +82,16 @@ jobs:
       #   run: |
       #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
       #   shell: bash
-      - uses: pnpm/action-setup@v2.2.4
+      - name: Cache pnpm modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
 
       - name: Download the build folders
         uses: actions/download-artifact@v3
