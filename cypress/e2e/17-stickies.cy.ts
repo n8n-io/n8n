@@ -16,24 +16,24 @@ describe('Canvas Actions', () => {
 
 		workflowPage.getters.stickies().should('have.length', 1)
 			.and(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '400px');
 				expect($el).to.have.css('height', '160px');
 				expect($el).to.have.css('width', '240px');
 			})
 			.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
-			.and(($el) => {
-				expect($el).to.have.css('top', '340px');
-				expect($el).to.have.css('left', '400px');
-			})
 			.find('a').contains('Guide').should('have.attr', 'href');
 	});
 
-	it('drags sticky around and position is saved correctly', () => {
+	it('drags sticky around and position/size are saved correctly', () => {
 		workflowPage.actions.addSticky();
 
 		workflowPage.getters.stickies().should('have.length', 1)
 			.should(($el) => {
 				expect($el).to.have.css('top', '340px');
 				expect($el).to.have.css('left', '400px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
 			});
 
 		cy.drag('[data-test-id="sticky"]', [100, 100]);
@@ -41,6 +41,8 @@ describe('Canvas Actions', () => {
 			.should(($el) => {
 				expect($el).to.have.css('top', '360px');
 				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
 			});
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
@@ -52,6 +54,8 @@ describe('Canvas Actions', () => {
 			.should(($el) => {
 				expect($el).to.have.css('top', '360px');
 				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
 			});
 	});
 
@@ -77,9 +81,124 @@ describe('Canvas Actions', () => {
 
 	});
 
-	// it('expands sticky from all sides and size is saved correctly', () => {
+	it('expands/shrinks sticky from the right edge', () => {
+		workflowPage.actions.addSticky();
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '400px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
+			});
 
-	// });
+		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [100, 100]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '400px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '346px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '400px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '302px');
+			});
+	});
+
+	it('expands/shrinks sticky from the left edge', () => {
+		workflowPage.actions.addSticky();
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '400px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="left"]', [100, 100]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '490px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '150px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="left"]', [-50, -50]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '340px');
+				expect($el).to.have.css('left', '446px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '194px');
+			});
+	});
+
+	it('expands/shrinks sticky from the top edge', () => {
+		workflowPage.actions.addSticky();
+		cy.drag('[data-test-id="sticky"]', [100, 100]); // move away from canvas button
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '360px');
+				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="top"]', [100, 100]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '440px');
+				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '80px');
+				expect($el).to.have.css('width', '240px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="top"]', [-50, -50]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '384px');
+				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '136px');
+				expect($el).to.have.css('width', '240px');
+			});
+	});
+
+	it('expands/shrinks sticky from the bottom edge', () => {
+		workflowPage.actions.addSticky();
+		cy.drag('[data-test-id="sticky"]', [100, 100]); // move away from canvas button
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '360px');
+				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '160px');
+				expect($el).to.have.css('width', '240px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="bottom"]', [100, 100]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '360px');
+				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '254px');
+				expect($el).to.have.css('width', '240px');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="bottom"]', [-50, -50]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '360px');
+				expect($el).to.have.css('left', '620px');
+				expect($el).to.have.css('height', '198px');
+				expect($el).to.have.css('width', '240px');
+			});
+	});
+
 
 	// it('is positioned behind nodes and above when editing', () => {
 
