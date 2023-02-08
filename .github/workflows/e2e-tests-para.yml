@@ -34,19 +34,26 @@ jobs:
           repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
           ref: ${{ github.event.inputs.branch || 'master' }}
 
-      - uses: pnpm/action-setup@v2.2.4
-
-      - name: Use Node.js 16.16.0
-        uses: actions/setup-node@v3
+      - name: Cache pnpm modules
+        uses: actions/cache@v2
         with:
-          node-version: 16.16.0
-          cache: 'pnpm'
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-
+
+
+      - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 6.0.2
+          run_install: true
 
       - name: Cypress install
         uses: cypress-io/github-action@v5
         with:
           # Disable running of tests within install job
           runTests: false
+          install: false
           build: pnpm build
         env:
           CYPRESS_CACHE_FOLDER: node_modules/.bin
