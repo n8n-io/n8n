@@ -115,18 +115,6 @@
 				>
 					{{ $locale.baseText('workflows.shareModal.save') }}
 				</n8n-button>
-
-				<template #fallback>
-					<n8n-link :to="uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl">
-						<n8n-button :loading="loading" size="medium">
-							{{
-								$locale.baseText(
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
-								)
-							}}
-						</n8n-button>
-					</n8n-link>
-				</template>
 			</enterprise-edition>
 		</template>
 	</Modal>
@@ -197,6 +185,11 @@ export default mixins(showMessage).extend({
 		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		fallbackLinkUrl(): string {
+			return `${this.$locale.baseText(
+				this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey,
+			)}${true ? '&utm_campaign=upgrade-workflow-sharing' : ''}`;
 		},
 		modalTitle(): string {
 			return this.$locale.baseText(
@@ -444,11 +437,14 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(
-				this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey,
-			);
-			if (linkUrl.includes('subscription')) {
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
 				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-workflow-sharing`;
 			}
 
 			window.open(linkUrl, '_blank');
