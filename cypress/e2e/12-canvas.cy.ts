@@ -53,23 +53,6 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
 		WorkflowPage.getters.nodeViewBackground().click({ force: true });
 	});
-	it('should add switch node and test connections', () => {
-		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true)
-		// Switch has 4 output endpoints
-		for (let i = 0; i < 4; i++) {
-			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click()
-			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
-			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
-			WorkflowPage.actions.zoomToFit();
-		}
-		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		cy.reload()
-
-		for (let i = 0; i < 4; i++) {
-			const setName = `${SET_NODE_NAME}${i > 0 ? i : ''}`;
-			WorkflowPage.getters.canvasNodeInputEndpointByName(setName).should('have.class', 'jtk-endpoint-connected');
-		}
-	});
 
 	it('should add switch node and test connections', () => {
 		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true);
@@ -157,9 +140,8 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
 		cy.get('.jtk-connector').should('have.length', 1);
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-
 		// Wait for endpoints to get attached otherwise Cypress will get wrong reference
-		cy.wait(500)
+		cy.wait(1000)
 		// Change connection from Set to Set1
 		cy.draganddrop(
 			WorkflowPage.getters.getEndpointSelector('input', SET_NODE_NAME),

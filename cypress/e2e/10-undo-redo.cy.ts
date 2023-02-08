@@ -116,7 +116,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.get('[data-test-id="canvas-node"].jtk-drag-selected').move({ deltaX: 100, deltaY: 110})
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
@@ -148,7 +148,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo deleting a connection by moving it away', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.get('.rect-input-endpoint.jtk-endpoint-connected').move({ deltaX: 0, deltaY: -100})
+		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', [0, -100]);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -266,7 +266,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		// Move first one
 		WorkflowPage.getters.canvasNodes().first().click();
-		cy.get('[data-test-id="canvas-node"].jtk-drag-selected').move({ deltaX: 90, deltaY: 110})
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150])
 		// Delete the set node
 		WorkflowPage.getters.canvasNodeByName(SET_NODE_NAME).click().click();
 		cy.get('body').type('{backspace}');
