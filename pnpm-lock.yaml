@@ -7,6 +7,7 @@ onlyBuiltDependencies:
 overrides:
   '@types/node': ^16.18.12
   browserslist: ^4.21.4
+  chokidar: 3.5.2
   ejs: ^3.1.8
   fork-ts-checker-webpack-plugin: ^6.0.4
   jsonwebtoken: 9.0.0
@@ -122,6 +123,7 @@ importers:
       '@types/json-diff': ^0.5.1
       '@types/jsonwebtoken': ^9.0.1
       '@types/localtunnel': ^1.9.0
+      '@types/lodash.debounce': ^4.0.7
       '@types/lodash.get': ^4.4.6
       '@types/lodash.intersection': ^4.4.7
       '@types/lodash.iteratee': ^4.7.7
@@ -155,6 +157,7 @@ importers:
       bull: ^4.10.2
       callsites: ^3.1.0
       change-case: ^4.1.1
+      chokidar: 3.5.2
       class-validator: ^0.14.0
       client-oauth2: ^4.2.5
       compression: ^1.7.4
@@ -182,6 +185,7 @@ importers:
       jwks-rsa: ^3.0.1
       ldapts: ^4.2.2
       localtunnel: ^2.0.0
+      lodash.debounce: ^4.0.8
       lodash.get: ^4.4.2
       lodash.intersection: ^4.4.0
       lodash.iteratee: ^4.7.0
@@ -229,7 +233,6 @@ importers:
       ts-node: ^9.1.1
       tsc-alias: ^1.7.0
       tsconfig-paths: ^3.14.1
-      tslib: 1.14.1
       typeorm: 0.3.11
       uuid: ^8.3.2
       validator: 13.7.0
@@ -259,7 +262,7 @@ importers:
       cookie-parser: 1.4.6
       crypto-js: 4.1.1
       csrf: 3.1.0
-      curlconverter: 3.21.0
+      curlconverter: 3.21.0_chokidar@3.5.2
       dotenv: 8.6.0
       express: 4.18.2
       express-async-errors: 3.1.1_express@4.18.2
@@ -318,7 +321,6 @@ importers:
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
-      tslib: 1.14.1
       typeorm: 0.3.11_a77gzgdqnod3rkvxniiwirlqsi
       uuid: 8.3.2
       validator: 13.7.0
@@ -338,6 +340,7 @@ importers:
       '@types/json-diff': 0.5.2
       '@types/jsonwebtoken': 9.0.1
       '@types/localtunnel': 1.9.0
+      '@types/lodash.debounce': 4.0.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.intersection': 4.4.7
       '@types/lodash.iteratee': 4.7.7
@@ -363,7 +366,9 @@ importers:
       '@types/uuid': 8.3.4
       '@types/validator': 13.7.7
       '@types/yamljs': 0.2.31
+      chokidar: 3.5.2
       concurrently: 5.3.0
+      lodash.debounce: 4.0.8
       mock-jwks: 1.0.9_nock@13.2.9
       nodemon: 2.0.20
       run-script-os: 1.1.6
@@ -2866,7 +2871,6 @@ packages:
     engines: {node: '>=6.9.0'}
     dependencies:
       regenerator-runtime: 0.13.11
-    dev: true
 
   /@babel/standalone/7.20.12:
     resolution: {integrity: sha512-hK/X+m1il3w1tYS4H8LDaGCEdiT47SVqEXY8RiEAgou26BystipSU8ZL6EvBR6t5l7lTv0ilBiChXWblKJ5iUA==}
@@ -4032,7 +4036,7 @@ packages:
       debug: 4.3.4
       globby: 11.1.0
       is-wsl: 2.2.0
-      tslib: 2.4.0
+      tslib: 2.4.1
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -6200,6 +6204,12 @@ packages:
       '@types/lodash': 4.14.186
     dev: true
 
+  /@types/lodash.debounce/4.0.7:
+    resolution: {integrity: sha512-X1T4wMZ+gT000M2/91SYj0d/7JfeNZ9PeeOldSNoE/lunLeQXKvkmIumI29IaKMotU/ln/McOIvgzZcQ/3TrSA==}
+    dependencies:
+      '@types/lodash': 4.14.191
+    dev: true
+
   /@types/lodash.get/4.4.7:
     resolution: {integrity: sha512-af34Mj+KdDeuzsJBxc/XeTtOx0SZHZNLd+hdrn+PcKGQs0EG2TJTzQAOTCZTgDJCArahlCzLWSy8c2w59JRz7Q==}
     dependencies:
@@ -6286,10 +6296,10 @@ packages:
 
   /@types/lodash/4.14.186:
     resolution: {integrity: sha512-eHcVlLXP0c2FlMPm56ITode2AgLMSa6aJ05JTTbYbI+7EMkCEE5qk2E41d5g2lCVTqRe0GnnRFurmlCsDODrPw==}
+    dev: true
 
   /@types/lodash/4.14.191:
     resolution: {integrity: sha512-BdZ5BCCvho3EIXw6wUCXHe7rS53AIDPLE+JzwgT+OsJk53oBfbSmZZ7CX4VaRoN78N+TJpFi9QPlfIVNmJYWxQ==}
-    dev: true
 
   /@types/lossless-json/1.0.1:
     resolution: {integrity: sha512-zPE8kmpeL5/6L5gtTQHSOkAW/OSYYNTDRt6/2oEgLO1Zd3Rj5WVDoMloTtLJxQJhZGLGbL4pktKSh3NbzdaWdw==}
@@ -6882,7 +6892,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.55.0+terser@5.16.1
+      vite: 4.0.4_sass@1.57.1
       vue: 2.7.14
     dev: true
 
@@ -7632,20 +7642,12 @@ packages:
       - supports-color
     dev: true
 
-  /anymatch/3.1.2:
-    resolution: {integrity: sha512-P43ePfOAIupkguHUycrc4qJ9kz8ZiuOUijaETwX7THt0Y/GNK7v0aa8rY816xWjZ7rJdA5XdMcpVFTKMq+RvWg==}
-    engines: {node: '>= 8'}
-    dependencies:
-      normalize-path: 3.0.0
-      picomatch: 2.3.1
-
   /anymatch/3.1.3:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
     dependencies:
       normalize-path: 3.0.0
       picomatch: 2.3.1
-    dev: true
 
   /app-root-dir/1.0.2:
     resolution: {integrity: sha512-jlpIfsOoNoafl92Sz//64uQHGSyMrD2vYG5d8o2a4qGvyNCvXur7bzIsWtAC/6flI2RYAp3kv8rsfBtaLm7w0g==}
@@ -8006,10 +8008,6 @@ packages:
       stream-exhaust: 1.0.2
     dev: true
 
-  /async-each/1.0.3:
-    resolution: {integrity: sha512-z/WhQ5FPySLdvREByI2vZiTWwCnF0moMJ1hK9YQwDTHKh6I7/uSckMetoRGb5UBZPC1z0jlw+n/XCgjeH7y1AQ==}
-    dev: true
-
   /async-settle/1.0.0:
     resolution: {integrity: sha512-VPXfB4Vk49z1LHHodrEQ6Xf7W4gg1w0dAPROHngx7qgDjqmIQ+fXmwgGXTW/ITLai0YLSvWepJOP9EVpMnEAcw==}
     engines: {node: '>= 0.10'}
@@ -8102,7 +8100,7 @@ packages:
   /axios-retry/3.3.1:
     resolution: {integrity: sha512-RohAUQTDxBSWLFEnoIG/6bvmy8l3TfpkclgStjl5MDCMBDgapAWCmr1r/9harQfWC8bzLC8job6UcL1A1Yc+/Q==}
     dependencies:
-      '@babel/runtime': 7.19.4
+      '@babel/runtime': 7.20.7
       is-retry-allowed: 2.2.0
     dev: false
 
@@ -8413,11 +8411,6 @@ packages:
     resolution: {integrity: sha512-uw4ra6Cv483Op/ebM0GBKKfxZlSmn6NgFRby5L3yGTlunLj53KQgndDlqy2WVFOwgvurocApYkSud0aO+mvrpQ==}
     dev: false
 
-  /binary-extensions/1.13.1:
-    resolution: {integrity: sha512-Un7MIEDdUC5gNpcGDV97op1Ywk748MpHcFTHoYs6qnj1Z3j7I53VG3nwZhKzoBZmbdRNnb6WRdFlwl7tSDuZGw==}
-    engines: {node: '>=0.10.0'}
-    dev: true
-
   /binary-extensions/2.2.0:
     resolution: {integrity: sha512-jDctJ/IVQbZoJykoeHbhXpOlNBqGNcwXJKJog42E5HDPUwQTSdjCHdihjj0DlnheQ7blbT6dHOafNAiS8ooQKA==}
     engines: {node: '>=8'}
@@ -8425,13 +8418,6 @@ packages:
   /binascii/0.0.2:
     resolution: {integrity: sha512-rA2CrUl1+6yKrn+XgLs8Hdy18OER1UW146nM+ixzhQXDY+Bd3ySkyIJGwF2a4I45JwbvF1mDL/nWkqBwpOcdBA==}
     dev: false
-
-  /bindings/1.5.0:
-    resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
-    dependencies:
-      file-uri-to-path: 1.0.0
-    dev: true
-    optional: true
 
   /bintrees/1.0.2:
     resolution: {integrity: sha512-VOMgTMwjAaUG580SXn3LacVgjurrbMme7ZZNYGSSV7mmtY6QQRh0Eg3pwIcntQ77DErK1L0NxkbetjcoXzVwKw==}
@@ -9075,44 +9061,8 @@ packages:
       parse5-htmlparser2-tree-adapter: 6.0.1
     dev: false
 
-  /chokidar/2.1.8:
-    resolution: {integrity: sha512-ZmZUazfOzf0Nve7duiCKD23PFSCs4JPoYyccjUFF3aQkQadqBhfzhjkwBH2mNOG9cTBwhamM37EIsIkZw3nRgg==}
-    deprecated: Chokidar 2 does not receive security updates since 2019. Upgrade to chokidar 3 with 15x fewer dependencies
-    dependencies:
-      anymatch: 2.0.0
-      async-each: 1.0.3
-      braces: 2.3.2
-      glob-parent: 3.1.0
-      inherits: 2.0.4
-      is-binary-path: 1.0.1
-      is-glob: 4.0.3
-      normalize-path: 3.0.0
-      path-is-absolute: 1.0.1
-      readdirp: 2.2.1
-      upath: 1.2.0
-    optionalDependencies:
-      fsevents: 1.2.13
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
   /chokidar/3.5.2:
     resolution: {integrity: sha512-ekGhOnNVPgT77r4K/U3GDhu+FQ2S8TnK/s2KbIGXi0SZWuwkZ2QNyfWdZW+TVfn84DpEP7rLeCt2UI6bJ8GwbQ==}
-    engines: {node: '>= 8.10.0'}
-    dependencies:
-      anymatch: 3.1.2
-      braces: 3.0.2
-      glob-parent: 5.1.2
-      is-binary-path: 2.1.0
-      is-glob: 4.0.3
-      normalize-path: 3.0.0
-      readdirp: 3.6.0
-    optionalDependencies:
-      fsevents: 2.3.2
-    dev: false
-
-  /chokidar/3.5.3:
-    resolution: {integrity: sha512-Dr3sfKRP6oTcjf2JmUmFJfeVMvXBdegxB0iVQ5eb2V10uFJUCAS8OByZdVAyVb8xXNz3GjjTgj9kLWsZTqE6kw==}
     engines: {node: '>= 8.10.0'}
     dependencies:
       anymatch: 3.1.3
@@ -9124,7 +9074,6 @@ packages:
       readdirp: 3.6.0
     optionalDependencies:
       fsevents: 2.3.2
-    dev: true
 
   /chownr/1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
@@ -10229,14 +10178,14 @@ packages:
   /csstype/3.1.1:
     resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
 
-  /curlconverter/3.21.0:
+  /curlconverter/3.21.0_chokidar@3.5.2:
     resolution: {integrity: sha512-DXCnp1A/Xa69FujksUfdvWQFAnIn/C+4Wuv8t+UVdZkF/lY5bzj98GGKOGme7V/ckSHDLxE29Xp76sJ5Cpsp5A==}
     hasBin: true
     dependencies:
       '@curlconverter/yargs': 0.0.2
       cookie: 0.4.2
       jsesc: 3.0.2
-      nunjucks: 3.2.3
+      nunjucks: 3.2.3_chokidar@3.5.2
       query-string: 7.1.1
       string.prototype.startswith: 1.0.0
       yamljs: 0.3.0
@@ -12092,11 +12041,6 @@ packages:
       token-types: 4.2.1
     dev: false
 
-  /file-uri-to-path/1.0.0:
-    resolution: {integrity: sha512-0Zt+s3L7Vf1biwWZ29aARiVYLx7iMGnEUl9x33fbB/j3jR81u/O2LbqK+Bm1CDSNDKVtJ/YjwY7TUd5SkeLQLw==}
-    dev: true
-    optional: true
-
   /file-uri-to-path/2.0.0:
     resolution: {integrity: sha512-hjPFI8oE/2iQPVe4gbrJ73Pp+Xfub2+WI2LlXDbsaJBwT5wuMh35WNWVYYTpnz895shtwfyutMFLFywpQAFdLg==}
     engines: {node: '>= 6'}
@@ -12105,7 +12049,7 @@ packages:
   /filelist/1.0.4:
     resolution: {integrity: sha512-w1cEuf3S+DrLCQL7ET6kz+gmlJdbq9J7yXCSjK/OZCPA+qEN1WyF4ZAf0YYJa4/shHJra2t/d/r8SV4Ji+x+8Q==}
     dependencies:
-      minimatch: 5.1.0
+      minimatch: 5.1.5
     dev: false
 
   /fill-range/4.0.0:
@@ -12347,7 +12291,7 @@ packages:
       '@babel/code-frame': 7.18.6
       '@types/json-schema': 7.0.11
       chalk: 4.1.2
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       cosmiconfig: 6.0.0
       deepmerge: 4.2.2
       fs-extra: 9.1.0
@@ -12515,17 +12459,6 @@ packages:
 
   /fs.realpath/1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
-
-  /fsevents/1.2.13:
-    resolution: {integrity: sha512-oWb1Z6mkHIskLzEJ/XWX0srkpkTQ7vaopMQkyaEIoq0fmtFVxOthb8cCxeT+p3ynTdkk/RZwbgG4brR5BeWECw==}
-    engines: {node: '>= 4.0'}
-    os: [darwin]
-    deprecated: fsevents 1 will break on node v14+ and could be using insecure binaries. Upgrade to fsevents 2.
-    dependencies:
-      bindings: 1.5.0
-      nan: 2.17.0
-    dev: true
-    optional: true
 
   /fsevents/2.3.2:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
@@ -12766,7 +12699,7 @@ packages:
     dependencies:
       anymatch: 2.0.0
       async-done: 1.3.2
-      chokidar: 2.1.8
+      chokidar: 3.5.2
       is-negated-glob: 1.0.0
       just-debounce: 1.1.0
       normalize-path: 3.0.0
@@ -13730,13 +13663,6 @@ packages:
     dependencies:
       has-bigints: 1.0.2
 
-  /is-binary-path/1.0.1:
-    resolution: {integrity: sha512-9fRVlXc0uCxEDj1nQzaWONSpbTfx0FmJfzHF7pwlI8DkWGoHBBea4Pg5Ky0ojwwxQmnSifgbKkI06Qv0Ljgj+Q==}
-    engines: {node: '>=0.10.0'}
-    dependencies:
-      binary-extensions: 1.13.1
-    dev: true
-
   /is-binary-path/2.1.0:
     resolution: {integrity: sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==}
     engines: {node: '>=8'}
@@ -14508,7 +14434,7 @@ packages:
       '@jest/types': 29.3.1
       '@types/graceful-fs': 4.1.5
       '@types/node': 16.18.12
-      anymatch: 3.1.2
+      anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.10
       jest-regex-util: 29.2.0
@@ -16154,19 +16080,11 @@ packages:
     dependencies:
       brace-expansion: 1.1.11
 
-  /minimatch/5.1.0:
-    resolution: {integrity: sha512-9TPBGGak4nHfGZsPBohm9AWg6NoT7QTCehS3BIJABslyZbzxfV78QM2Y6+i741OPZIafFAaiiEMh5OyIrJPgtg==}
-    engines: {node: '>=10'}
-    dependencies:
-      brace-expansion: 2.0.1
-    dev: false
-
   /minimatch/5.1.5:
     resolution: {integrity: sha512-CI8wwdrll4ehjPAqs8TL8lBPyNnpZlQI02Wn8C1weNz/QbUbjh3OMxgMKSnvqfKFdLlks3EzHB9tO0BqGc3phQ==}
     engines: {node: '>=10'}
     dependencies:
       brace-expansion: 2.0.1
-    dev: true
 
   /minimist/1.2.7:
     resolution: {integrity: sha512-bzfL1YUZsP41gmu/qjrEk0Q6i2ix/cVeAhbCbqH9u3zYutS1cLg00qhrD0M2MVdCcx4Sc0UpP2eBWo9rotpq6g==}
@@ -16495,6 +16413,7 @@ packages:
 
   /nan/2.17.0:
     resolution: {integrity: sha512-2ZTgtl0nJsO0KQCjEpxcIr5D+Yv90plTitZt9JBfQvVJDS5seMl3FOvsh3+9CoYWXf/1l5OaZzzF6nDm4cagaQ==}
+    dev: false
     optional: true
 
   /nanoclone/0.2.1:
@@ -16773,7 +16692,7 @@ packages:
     engines: {node: '>=8.10.0'}
     hasBin: true
     dependencies:
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       debug: 3.2.7_supports-color@5.5.0
       ignore-by-default: 1.0.1
       minimatch: 3.1.2
@@ -16904,7 +16823,7 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /nunjucks/3.2.3:
+  /nunjucks/3.2.3_chokidar@3.5.2:
     resolution: {integrity: sha512-psb6xjLj47+fE76JdZwskvwG4MYsQKXUtMsPh6U0YMvmyjRtKRFcxnlXGWglNybtNTNVmGdp94K62/+NjF5FDQ==}
     engines: {node: '>= 6.9.0'}
     hasBin: true
@@ -16916,6 +16835,7 @@ packages:
     dependencies:
       a-sync-waterfall: 1.0.1
       asap: 2.0.6
+      chokidar: 3.5.2
       commander: 5.1.0
     dev: false
 
@@ -18726,17 +18646,6 @@ packages:
       readable-stream: 3.6.0
     dev: false
 
-  /readdirp/2.2.1:
-    resolution: {integrity: sha512-1JU/8q+VgFZyxwrJ+SVIOsh+KywWGpds3NTqikiKpDMZWScmAYyKIgqkO+ARvNWJfXeXR1zxz7aHF4u4CyH6vQ==}
-    engines: {node: '>=0.10'}
-    dependencies:
-      graceful-fs: 4.2.10
-      micromatch: 3.1.10
-      readable-stream: 2.3.7
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
   /readdirp/3.6.0:
     resolution: {integrity: sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==}
     engines: {node: '>=8.10.0'}
@@ -18849,7 +18758,6 @@ packages:
 
   /regenerator-runtime/0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
-    dev: true
 
   /regenerator-runtime/0.13.9:
     resolution: {integrity: sha512-p3VT+cOEgxFsRRA9X4lkI1E+k2/CtnKtU4gcxyaCUreilL/vqI6CdZ3wxVUx3UOUg+gnUOQQcRI7BmSI656MYA==}
@@ -19425,7 +19333,7 @@ packages:
     engines: {node: '>=12.0.0'}
     hasBin: true
     dependencies:
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       immutable: 4.1.0
       source-map-js: 1.0.2
     dev: true
@@ -19435,7 +19343,7 @@ packages:
     engines: {node: '>=12.0.0'}
     hasBin: true
     dependencies:
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       immutable: 4.2.2
       source-map-js: 1.0.2
     dev: true
@@ -21257,7 +21165,7 @@ packages:
     resolution: {integrity: sha512-P4+0i+OB0hX17Ca+U6EJ4WZZ+OSupqW32VJ34N7g7+Ch+bwSx1AqYOvDdIVYEKymBh3dfG0t1qxbxPlBbtB1lQ==}
     hasBin: true
     dependencies:
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       commander: 9.4.1
       globby: 11.1.0
       mylas: 2.1.13
@@ -21774,11 +21682,6 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  /upath/1.2.0:
-    resolution: {integrity: sha512-aZwGpamFO61g3OlfT7OQCHqhGnW43ieH9WZeP7QxN/G/jS4jfqUkZxoryvJgVPEcrl5NL/ggHsSmLMHuH64Lhg==}
-    engines: {node: '>=4'}
-    dev: true
-
   /update-browserslist-db/1.0.10_browserslist@4.21.4:
     resolution: {integrity: sha512-OztqDenkfFkbSG+tRxBeAnCVPckDBcvibKd35yDONx6OU8N7sqgwc7rCbkJ/WcYtVRZ4ba68d6byhC21GFh7sQ==}
     hasBin: true
@@ -21793,12 +21696,12 @@ packages:
   /upper-case-first/2.0.2:
     resolution: {integrity: sha512-514ppYHBaKwfJRK/pNC6c/OxfGa0obSnAl106u97Ed0I625Nin96KAjttZF6ZL3e1XLtphxnqrOi9iWgm+u+bg==}
     dependencies:
-      tslib: 2.4.0
+      tslib: 2.4.1
 
   /upper-case/2.0.2:
     resolution: {integrity: sha512-KgdgDGJt2TpuwBUIjgG6lzw2GWFRCW9Qkfkiv0DxqHHLYJHmtmdUIKcZd8rHgFSjopVTlw6ggzCm1b8MFQwikg==}
     dependencies:
-      tslib: 2.4.0
+      tslib: 2.4.1
     dev: false
 
   /uri-js/4.4.1:
@@ -22767,9 +22670,7 @@ packages:
   /watchpack-chokidar2/2.0.1:
     resolution: {integrity: sha512-nCFfBIPKr5Sh61s4LPpy1Wtfi0HE8isJ3d2Yb5/Ppw2P2B/3eVSEBjKfN0fmHJSK14+31KwMKmcrzs2GM4P0Ww==}
     dependencies:
-      chokidar: 2.1.8
-    transitivePeerDependencies:
-      - supports-color
+      chokidar: 3.5.2
     dev: true
     optional: true
 
@@ -22779,10 +22680,8 @@ packages:
       graceful-fs: 4.2.10
       neo-async: 2.6.2
     optionalDependencies:
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       watchpack-chokidar2: 2.0.1
-    transitivePeerDependencies:
-      - supports-color
     dev: true
 
   /watchpack/2.4.0:
@@ -23472,7 +23371,7 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       '@babel/runtime': 7.19.4
-      '@types/lodash': 4.14.186
+      '@types/lodash': 4.14.191
       lodash: 4.17.21
       lodash-es: 4.17.21
       nanoclone: 0.2.1
