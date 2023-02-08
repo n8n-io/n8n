@@ -84,6 +84,8 @@ export class WorkflowPage extends BasePage {
 			cy.get(`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
 			cy.get(`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
+		addStickyButton: () => cy.getByTestId('add-sticky-button'),
+		stickies: () => cy.getByTestId('sticky'),
 	};
 	actions = {
 		visit: () => {
@@ -182,6 +184,10 @@ export class WorkflowPage extends BasePage {
 		deleteNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.delete').first().click({ force: true });
+		},
+		addSticky: () => {
+			this.getters.nodeCreatorPlusButton().realHover();
+			this.getters.addStickyButton().click();
 		},
 	};
 }

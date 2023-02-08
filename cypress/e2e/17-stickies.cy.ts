@@ -1,40 +1,52 @@
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
-const WorkflowPage = new WorkflowPageClass();
+const workflowPage = new WorkflowPageClass();
 
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		WorkflowPage.actions.visit();
+		workflowPage.actions.visit();
 		cy.waitForLoad();
 	});
 
 	it('adds sticky to canvas with default text and position', () => {
+		workflowPage.getters.addStickyButton().should('not.be.visible');
+		workflowPage.actions.addSticky();
+		cy.wait(100);
 
+		workflowPage.getters.stickies().should('have.length', 1)
+			.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
+			.find('a').contains('Guide').should('have.attr', 'href');
+
+			// , 'left: 400px; top: 340px;'
 	});
 
-	it('drags sticky around and position is saved correctly', () => {
+	// it('always adds stickies in the middle of the canvas', () => {
 
-	});
+	// });
 
-	it('deletes sticky', () => {
+	// it('drags sticky around and position is saved correctly', () => {
 
-	});
+	// });
 
-	it('edits sticky and updates content', () => {
+	// it('deletes sticky', () => {
 
-	});
+	// });
 
-	it('expands sticky from all sides and size is saved correctly', () => {
+	// it('edits sticky and updates content', () => {
 
-	});
+	// });
 
-	it('is positioned behind nodes and above when editing', () => {
+	// it('expands sticky from all sides and size is saved correctly', () => {
 
-	});
+	// });
 
-	it('is positioned based on size', () => {
+	// it('is positioned behind nodes and above when editing', () => {
 
-	});
+	// });
+
+	// it('is positioned based on size', () => {
+
+	// });
 });
