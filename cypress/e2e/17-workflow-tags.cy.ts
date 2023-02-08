@@ -46,6 +46,7 @@ describe('Workflow tags', () => {
 		cy.contains('Create a tag').click();
 		cy.getByTestId('tags-table').find('input').type(first).type('{enter}');
 		cy.getByTestId('delete-tag-button').click({ force: true });
+		cy.wait(300);
 		cy.contains('Delete tag').click();
 		cy.contains('Done').click();
 		wf.getters.createTagButton().click();
