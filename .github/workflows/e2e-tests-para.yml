@@ -36,12 +36,6 @@ jobs:
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js 16.16.0
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16.16.0
-          cache: 'pnpm'
-
       - name: Cypress install
         uses: cypress-io/github-action@v4
         with:
@@ -77,12 +71,6 @@ jobs:
       #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
       #   shell: bash
       - uses: pnpm/action-setup@v2.2.4
-
-      - name: Use Node.js 16.16.0
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16.16.0
-          cache: 'pnpm'
 
       - name: Download the build folders
         uses: actions/download-artifact@v3
