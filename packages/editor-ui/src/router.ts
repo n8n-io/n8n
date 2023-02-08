@@ -35,6 +35,7 @@ import { EnterpriseEditionFeature, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
+import SignoutView from '@/views/SignoutView.vue';
 
 Vue.use(Router);
 
@@ -363,6 +364,23 @@ const router = new Router({
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
+			},
+		},
+		{
+			path: '/signout',
+			name: VIEWS.SIGNOUT,
+			components: {
+				default: SignoutView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 				},
 			},
