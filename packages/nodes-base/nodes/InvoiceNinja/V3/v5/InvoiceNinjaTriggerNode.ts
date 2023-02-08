@@ -393,6 +393,7 @@ export const InvoiceNinjaTriggerV5 = {
 				const body = {
 					target_url: webhookUrl,
 					event_id: eventID[event],
+					rest_method: "post",
 				};
 
 				const responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/webhooks', body);
