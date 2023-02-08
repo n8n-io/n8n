@@ -48,19 +48,21 @@ export abstract class DirectoryLoader {
 		protected readonly includeNodes: string[] = [],
 	) {}
 
+	abstract packageName: string;
 	abstract loadAll(): Promise<void>;
 
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
 	}
 
-	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
+	protected loadNodeFromFile(nodeName: string, filePath: string) {
 		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
+		const isCustom = this.packageName === 'CUSTOM';
 
 		try {
 			tempNode = loadClassInIsolation(filePath, nodeName);
-			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.addCodex({ node: tempNode, filePath, isCustom });
 		} catch (error) {
 			Logger.error(
 				`Error loading node "${nodeName}" from: "${filePath}" - ${(error as Error).message}`,
@@ -68,7 +70,7 @@ export abstract class DirectoryLoader {
 			throw error;
 		}
 
-		const fullNodeName = `${packageName}.${tempNode.description.name}`;
+		const fullNodeName = `${this.packageName}.${tempNode.description.name}`;
 
 		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeName)) {
 			return;
@@ -88,12 +90,12 @@ export abstract class DirectoryLoader {
 			}
 
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
-			this.addCodex({ node: currentVersionNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				Logger.warn(
-					`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
+					`"executeSingle" will get deprecated soon. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
 					{ filePath },
 				);
 			}
@@ -236,7 +238,8 @@ export abstract class DirectoryLoader {
 		if (obj.icon?.startsWith('file:')) {
 			const iconPath = path.join(path.dirname(filePath), obj.icon.substring(5));
 			const relativePath = path.relative(this.directory, iconPath);
-			obj.icon = `file:${relativePath}`;
+			obj.iconUrl = `icons/${this.packageName}/${relativePath}`;
+			delete obj.icon;
 		}
 	}
 }
@@ -246,6 +249,8 @@ export abstract class DirectoryLoader {
  * e.g. `~/.n8n/custom`
  */
 export class CustomDirectoryLoader extends DirectoryLoader {
+	packageName = 'CUSTOM';
+
 	override async loadAll() {
 		const filePaths = await glob('**/*.@(node|credentials).js', {
 			cwd: this.directory,
@@ -256,7 +261,7 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 			const [fileName, type] = path.parse(filePath).name.split('.');
 
 			if (type === 'node') {
-				this.loadNodeFromFile('CUSTOM', fileName, filePath);
+				this.loadNodeFromFile(fileName, filePath);
 			} else if (type === 'credentials') {
 				this.loadCredentialFromFile(fileName, filePath);
 			}
@@ -300,7 +305,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 
-				this.loadNodeFromFile(this.packageName, nodeName, filePath);
+				this.loadNodeFromFile(nodeName, filePath);
 			}
 		}
 

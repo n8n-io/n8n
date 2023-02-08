@@ -122,7 +122,6 @@ import {
 import { getInstance as getMailerInstance } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
-	DatabaseType,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
@@ -139,10 +138,10 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WaitTrackerClass } from '@/WaitTracker';
 import { WaitTracker } from '@/WaitTracker';
@@ -176,6 +175,8 @@ class Server extends AbstractServer {
 
 	presetCredentialsLoaded: boolean;
 
+	loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+
 	nodeTypes: INodeTypes;
 
 	credentialTypes: ICredentialTypes;
@@ -185,6 +186,7 @@ class Server extends AbstractServer {
 
 		this.nodeTypes = NodeTypes();
 		this.credentialTypes = CredentialTypes();
+		this.loadNodesAndCredentials = LoadNodesAndCredentials();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
@@ -1265,7 +1267,7 @@ class Server extends AbstractServer {
 
 						CredentialsOverwrites().setData(body);
 
-						await LoadNodesAndCredentials().generateTypesForFrontend();
+						await this.loadNodesAndCredentials.generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1277,17 +1279,31 @@ class Server extends AbstractServer {
 			);
 		}
 
-		const staticOptions: ServeStaticOptions = {
-			cacheControl: false,
-			setHeaders: (res: express.Response, path: string) => {
-				const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
-				const cacheControl = isIndex
-					? 'no-cache, no-store, must-revalidate'
-					: 'max-age=86400, immutable';
-				res.header('Cache-Control', cacheControl);
-			},
-		};
 		if (!config.getEnv('endpoints.disableUi')) {
+			const staticOptions: ServeStaticOptions = {
+				cacheControl: false,
+				setHeaders: (res: express.Response, path: string) => {
+					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const cacheControl = isIndex
+						? 'no-cache, no-store, must-revalidate'
+						: 'max-age=86400, immutable';
+					res.header('Cache-Control', cacheControl);
+				},
+			};
+
+			for (const [dir, loader] of Object.entries(this.loadNodesAndCredentials.loaders)) {
+				const pathPrefix = `/icons/${loader.packageName}`;
+				this.app.use(`${pathPrefix}/*/*.(svg|png)`, async (req, res) => {
+					const filePath = pathResolve(dir, req.originalUrl.substring(pathPrefix.length + 1));
+					try {
+						await fsAccess(filePath);
+						res.sendFile(filePath);
+					} catch {
+						res.sendStatus(404);
+					}
+				});
+			}
+
 			this.app.use(
 				'/',
 				express.static(GENERATED_STATIC_DIR),
