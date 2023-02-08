@@ -35,12 +35,12 @@ jobs:
           ref: ${{ github.event.inputs.branch || 'master' }}
 
       - name: Cache pnpm modules
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}--modules
+          path: |
+            ~/.pnpm-store
+            ./node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}--modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -85,11 +85,13 @@ jobs:
       #   run: |
       #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
       #   shell: bash
-      - name: Cache pnpm modules
-        uses: actions/cache@v2
+      - name: Restore cached pnpm modules
+        uses: actions/cache@v3
         with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-modules
+          path: |
+            ~/.pnpm-store
+            ./node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}--modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -98,7 +100,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: build
-          path: packages_build.tar.gz
 
       - name: Debugging - list files
         run: ls -la ./
