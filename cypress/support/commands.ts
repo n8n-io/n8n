@@ -24,8 +24,6 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import "cypress-real-events";
-import './modules/drag-and-drop';
-
 import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
@@ -174,3 +172,38 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 		$destination[0].dispatchEvent(pasteEvent);
 	});
 });
+
+Cypress.Commands.add('drag', (selector, pos) => {
+	const [xDiff, yDiff] = pos;
+	const element = cy.get(selector);
+	element.should('exist');
+
+	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+
+	element.trigger('mousedown');
+	element.trigger('mousemove', {
+		which: 1,
+		pageX: originalLocation.right + xDiff,
+		pageY: originalLocation.top + yDiff,
+		force: true,
+	});
+	element.trigger('mouseup', { force: true });
+});
+
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+	cy.get(draggableSelector).should('exist');
+	cy.get(droppableSelector).should('exist');
+
+	const droppableEl = Cypress.$(droppableSelector)[0];
+	const coords = droppableEl.getBoundingClientRect();
+
+	const pageX = coords.left + coords.width / 2;
+	const pageY = coords.top + coords.height / 2;
+
+	cy.get(draggableSelector).realMouseDown();
+	cy.get(droppableSelector).realMouseMove(pageX, pageY)
+		.realHover()
+		.realMouseUp();
+});
+
+
