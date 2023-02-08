@@ -17,7 +17,7 @@ class NodeTypesClass implements INodeTypes {
 		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeData of Object.values(this.loadedNodes)) {
 			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
-			this.applySpecialNodeParameters(nodeType);
+			NodeHelpers.applySpecialNodeParameters(nodeType);
 		}
 	}
 
@@ -57,18 +57,11 @@ class NodeTypesClass implements INodeTypes {
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
 			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
-			this.applySpecialNodeParameters(loaded);
+			NodeHelpers.applySpecialNodeParameters(loaded);
 			loadedNodes[type] = { sourcePath, type: loaded };
 			return loadedNodes[type];
 		}
 		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
-	}
-
-	private applySpecialNodeParameters(nodeType: INodeType) {
-		const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
-		if (applyParameters.length) {
-			nodeType.description.properties.unshift(...applyParameters);
-		}
 	}
 
 	private get loadedNodes() {
