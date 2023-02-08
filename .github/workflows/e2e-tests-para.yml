@@ -58,15 +58,6 @@ jobs:
           install: false
           build: pnpm build
 
-      - name: Debugging - list home cache files
-        run: ls -la /github/home/.cache
-
-      - name: Debugging - search Cypress exec in home
-        run: find /github/home -name "*cypress" -type f
-
-      - name: Debugging - search Cypress exec in project node modules
-        run: find ./node_modules -name "*cypress" -type f
-
       - name: Zip packages dist folders
         run: tar -czvf ./packages_build.tar.gz ./packages/*
 
@@ -123,8 +114,8 @@ jobs:
       - name: Debugging - list node modules files
         run: ls -la ./node_modules
 
-      - name: Debugging - search Cypress exec in home
-        run: find /github/home -name "*cypress" -type f
+      - name: Print current path
+        run: pwd
 
       - name: Debugging - search Cypress exec in project node modules
         run: find ./node_modules -name "*cypress" -type f
@@ -146,7 +137,7 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          # CYPRESS_RUN_BINARY: ${{ github.workspace }}/node_modules/.bin/cypress
+          CYPRESS_RUN_BINARY: ./node_modules/.bin/cypress
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
