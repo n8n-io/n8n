@@ -259,7 +259,6 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 			});
 		},
 		__addNode(node: INodeUi) {
-			console.log('Yoo', import.meta.env);
 			const nodeTypeData = (this.nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
 				this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE)) as INodeTypeDescription;
 

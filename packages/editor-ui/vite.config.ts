@@ -55,7 +55,6 @@ export default mergeConfig(
 			// This causes test to fail but is required for actually running it
 			...(process.env.NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
 			BASE_PATH: `'${publicPath}'`,
-			E2E_TEST: process.env.E2E_TEST,
 		},
 		plugins: [
 			legacy({
