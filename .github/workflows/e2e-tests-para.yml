@@ -60,7 +60,7 @@ jobs:
       - name: Zip packages dist folders
         uses: montudor/action-zip@v1
         with:
-          args: zip -r packages_build.zip packages/*/dist
+          args: zip -r packages_build.zip /__w/n8n/n8n/packages/*/dist
 
       - name: Save build folder
         uses: actions/upload-artifact@v3
@@ -105,7 +105,7 @@ jobs:
       - name: Unzip packages dist folders
         uses: montudor/action-zip@v1
         with:
-          args: unzip -o packages_build.zip -d ./
+          args: unzip -o packages_build.zip -d /__w/n8n/n8n/
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
