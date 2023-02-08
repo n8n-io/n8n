@@ -1,0 +1,143 @@
+{
+	"name": "[Unit Test] Wait Node",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d24d60c0-fe08-4c95-afc2-51b92890667b",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [500, 400]
+		},
+		{
+			"parameters": {
+				"amount": 2,
+				"unit": "seconds"
+			},
+			"id": "244f011e-bf10-4745-9dac-1ef0a1ac8167",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1,
+			"position": [900, 400],
+			"webhookId": "35edc971-c3e4-48cf-835d-4d73a4fd1fd8"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $now.toFormat('ss') }}",
+							"value2": "={{ $json.start }}"
+						}
+					]
+				}
+			},
+			"id": "d5977620-7f73-4cbe-a354-03658462167f",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1120, 400]
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "start",
+							"value": "={{ $now.plus({seconds: 2}).toFormat('ss') }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "7f88ca0b-b743-414e-ae03-d85c0efcbece",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [700, 400]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"boolean": [
+						{
+							"name": "success",
+							"value": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "d55dc8cf-7e5e-4282-854b-9047e179a06b",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 380]
+		}
+	],
+	"pinData": {
+		"Set1": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "1bd65d2e-3a90-478d-89ae-319ceed2dbf8",
+	"id": "391",
+	"meta": {
+		"instanceId": "REMOVED"
+	},
+	"tags": []
+}
