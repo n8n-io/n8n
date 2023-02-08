@@ -42,11 +42,14 @@ jobs:
           node-version: 16.16.0
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Cypress install
+        uses: cypress-io/github-action
+        with:
+          # Disable running of tests within install job
+          runTests: false
+          install-command: pnpm install --frozen-lockfile
+          build: pnpm build
 
-      - name: Build
-        run: pnpm build
 
       - name: Save build folder
         uses: actions/upload-artifact@v3
@@ -87,9 +90,8 @@ jobs:
           name: build
           path: packages
 
-      - name: Display structure of downloaded files
-        run: ls -R
-        working-directory: ./
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Cypress run
         uses: cypress-io/github-action@v4
