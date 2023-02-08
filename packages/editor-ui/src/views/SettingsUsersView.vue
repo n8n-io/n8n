@@ -10,7 +10,23 @@
 				/>
 			</div>
 		</div>
-		<div v-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
+		<div v-if="!settingsStore.isUserManagementEnabled" :class="$style.setupInfoContainer">
+			<n8n-action-box
+				:heading="
+					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
+				"
+				:description="
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.users.settings.unavailable.description,
+					)
+				"
+				:buttonText="
+					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
+				"
+				@click="goToUpgrade"
+			/>
+		</div>
+		<div v-else-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
 				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
@@ -53,6 +69,8 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { BaseTextKey } from '@/plugins/i18n';
+import { useUsageStore } from '@/stores/usage';
 
 export default mixins(showMessage, copyPaste).extend({
 	name: 'SettingsUsersView',
@@ -66,7 +84,7 @@ export default mixins(showMessage, copyPaste).extend({
 		}
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
@@ -134,6 +152,19 @@ export default mixins(showMessage, copyPaste).extend({
 					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
 				});
 			}
+		},
+		goToUpgrade() {
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=users`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-users`;
+			}
+
+			window.open(linkUrl, '_blank');
 		},
 	},
 });
