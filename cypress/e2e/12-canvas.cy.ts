@@ -42,11 +42,10 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 	});
 
-	it.only('should add a node via plus endpoint drag', () => {
+	it('should add a node via plus endpoint drag', () => {
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, true);
 
-		// WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.canvasNodePlusEndpointByName(SCHEDULE_TRIGGER_NODE_NAME)
 			.move({ deltaY: 100, deltaX: 100, force: true });
 
@@ -138,7 +137,7 @@ describe('Canvas Actions', () => {
 		cy.get('.jtk-connector.success').should('have.length', 3);
 		cy.get('.data-count').should('have.length', 4);
 		cy.get('.plus-draggable-endpoint').should('have.class', 'ep-success');
-		cy.get('.plus-draggable-endpoint').filter(':visible').move({ x: 10, y: 0 });
+		cy.get('.plus-draggable-endpoint').filter(':visible').move({ deltaX: 10, deltaY: 0 });
 
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
 		WorkflowPage.actions.zoomToFit();
@@ -162,7 +161,7 @@ describe('Canvas Actions', () => {
 
 		cy.get('.jtk-connector').should('have.length', 1);
 		// Disconnect Set1
-		WorkflowPage.getters.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`).move({ x: -200, y: 100 })
+		WorkflowPage.getters.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`).move({ deltaX: -200, deltaY: 100 })
 		cy.get('.jtk-connector').should('have.length', 0);
 	});
 
@@ -245,7 +244,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		cy.get('[data-test-id="canvas-node"].jtk-drag-selected').move({ x: 110, y: 110 });
+		cy.get('[data-test-id="canvas-node"].jtk-drag-selected').move({ deltaX: 110, deltaY: 110 });
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
@@ -351,7 +350,7 @@ describe('Canvas Actions', () => {
 	it('should delete a connection by moving it away from endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.canvasNodeInputEndpointByName(CODE_NODE_NAME).move({ x: 0, y: -100});
+		WorkflowPage.getters.canvasNodeInputEndpointByName(CODE_NODE_NAME).move({ deltaX: 0, deltaY: -100});
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
