@@ -56,7 +56,7 @@ describe('Execute Set Node', () => {
 					Set: [
 						[
 							{
-								value1: 1,
+								json: { value1: 1 },
 							},
 						],
 					],
@@ -156,16 +156,14 @@ describe('Execute Set Node', () => {
 					Set: [
 						[
 							{
-								value1: 1,
-								value2: true,
+								json: { value1: 1, value2: true },
 							},
 						],
 					],
 					Set1: [
 						[
 							{
-								value1: 2,
-								value2: false,
+								json: { value1: 2, value2: false },
 							},
 						],
 					],

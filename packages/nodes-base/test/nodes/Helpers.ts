@@ -208,11 +208,7 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 	return nodeTypes;
 }
 
-export function getResultNodeData(
-	result: IRun,
-	testData: WorkflowTestData,
-	testBinaryData = false,
-) {
+export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	return Object.keys(testData.output.nodeData).map((nodeName) => {
 		if (result.data.resultData.runData[nodeName] === undefined) {
 			throw new Error(`Data for node "${nodeName}" is missing!`);
@@ -222,8 +218,9 @@ export function getResultNodeData(
 				return null;
 			}
 			return nodeData.data.main[0]!.map((entry) => {
-				if (testBinaryData && entry.binary && !isEmpty(entry.binary)) return entry.binary;
-				return entry.json;
+				if (entry.binary && isEmpty(entry.binary)) delete entry.binary;
+				delete entry.pairedItem;
+				return entry;
 			});
 		});
 		return {
@@ -261,7 +258,7 @@ export const workflowToTests = (workflowFiles: string[]) => {
 		}
 		const nodeData = Object.keys(workflowData.pinData).reduce(
 			(acc, key) => {
-				const data = (workflowData.pinData[key] as IDataObject[]).map((item) => item.json);
+				const data = workflowData.pinData[key] as IDataObject[];
 				acc[key] = [data as IDataObject[]];
 				return acc;
 			},
