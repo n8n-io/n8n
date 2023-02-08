@@ -53,7 +53,7 @@ jobs:
         with:
           name: build
           if-no-files-found: error
-          path: build
+          path: packages/*/dist
 
   testing:
     runs-on: ubuntu-latest
@@ -82,7 +82,11 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: build
-          path: build
+          path: packages
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: ./
 
       - name: Cypress run
         uses: cypress-io/github-action@v4
