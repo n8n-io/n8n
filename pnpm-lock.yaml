@@ -81,6 +81,7 @@ importers:
       eslint-config-airbnb-typescript: ~17.0
       eslint-config-prettier: ~8.5
       eslint-import-resolver-typescript: ~3.5
+      eslint-plugin-cypress: ^2.12.1
       eslint-plugin-diff: ~2.0
       eslint-plugin-import: ~2.26
       eslint-plugin-n8n-local-rules: ~1.0
@@ -95,6 +96,7 @@ importers:
       eslint-config-airbnb-typescript: 17.0.0_twozqnrpw2n42bn4rzkw5rgv4m
       eslint-config-prettier: 8.5.0_eslint@8.28.0
       eslint-import-resolver-typescript: 3.5.2_ktrec6dplf4now6nlbc6d67jee
+      eslint-plugin-cypress: 2.12.1_eslint@8.28.0
       eslint-plugin-diff: 2.0.1_eslint@8.28.0
       eslint-plugin-import: 2.26.0_xmouedd5rhgbah4737x2hltudq
       eslint-plugin-n8n-local-rules: 1.0.0
@@ -11075,6 +11077,15 @@ packages:
       eslint-import-resolver-typescript: 3.5.2_ktrec6dplf4now6nlbc6d67jee
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /eslint-plugin-cypress/2.12.1_eslint@8.28.0:
+    resolution: {integrity: sha512-c2W/uPADl5kospNDihgiLc7n87t5XhUbFDoTl6CfVkmG+kDAb5Ux10V9PoLPu9N+r7znpc+iQlcmAqT1A/89HA==}
+    peerDependencies:
+      eslint: '>= 3.2.1'
+    dependencies:
+      eslint: 8.28.0
+      globals: 11.12.0
     dev: true
 
   /eslint-plugin-diff/2.0.1_eslint@8.28.0:
