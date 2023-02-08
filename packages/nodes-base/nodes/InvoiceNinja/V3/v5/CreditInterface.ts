@@ -1,3 +1,3 @@
 import type { Credit } from './interfaces/credit';
 
-export type ICredit = Partial<Omit<Credit, 'id' | 'user_id'>>;
+export type ICredit = Partial<Omit<Credit, 'id' | 'user_id' | 'entity_type'>>;
