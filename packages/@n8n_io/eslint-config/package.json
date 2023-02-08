@@ -11,6 +11,7 @@
     "eslint-config-airbnb-typescript": "~17.0",
     "eslint-config-prettier": "~8.5",
     "eslint-import-resolver-typescript": "~3.5",
+    "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-diff": "~2.0",
     "eslint-plugin-import": "~2.26",
     "eslint-plugin-n8n-local-rules": "~1.0",
