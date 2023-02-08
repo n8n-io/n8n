@@ -5,6 +5,7 @@
 		:ref="data.name"
 		:style="stickyPosition"
 		:data-name="data.name"
+		data-test-id="sticky"
 	>
 		<div
 			:class="{
