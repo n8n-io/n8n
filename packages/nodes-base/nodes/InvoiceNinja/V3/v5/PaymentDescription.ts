@@ -336,8 +336,13 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Exchange Currency ID',
 				name: 'exchangeCurrencyId',
-				type: 'string',
-				default: '',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrenciesID',
+				},
+				default: ''
 			},
 			{
 				displayName: 'Private Notes',
@@ -503,8 +508,13 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Exchange Currency ID',
 				name: 'exchangeCurrencyId',
-				type: 'string',
-				default: '',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrenciesID',
+				},
+				default: ''
 			},
 			{
 				displayName: 'Private Notes',

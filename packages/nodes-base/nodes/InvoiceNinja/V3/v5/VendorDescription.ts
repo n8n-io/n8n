@@ -233,10 +233,15 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency ID',
+				displayName: 'Currency',
 				name: 'currencyId',
-				type: 'string',
-				default: '',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrenciesV5',
+				},
+				default: ''
 			},
 			{
 				displayName: 'VAT Number',
@@ -276,13 +281,6 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Auto Bill Enabled',
-				name: 'autoBillEnabled',
-				type: 'boolean',
-				typeOptions: {},
-				default: false,
-			},
-			{
 				displayName: 'Custom Value 2',
 				name: 'customValue2',
 				type: 'string',
@@ -302,6 +300,13 @@ export const vendorFields: INodeProperties[] = [
 				type: 'string',
 				typeOptions: {},
 				default: '',
+			},
+			{
+				displayName: 'Auto Bill Enabled',
+				name: 'autoBillEnabled',
+				type: 'boolean',
+				typeOptions: {},
+				default: false,
 			},
 		],
 	},
@@ -518,10 +523,15 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency ID',
+				displayName: 'Currency',
 				name: 'currencyId',
-				type: 'string',
-				default: '',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrenciesID',
+				},
+				default: ''
 			},
 			{
 				displayName: 'VAT Number',
@@ -559,13 +569,6 @@ export const vendorFields: INodeProperties[] = [
 				type: 'string',
 				typeOptions: {},
 				default: '',
-			},
-			{
-				displayName: 'Auto Bill Enabled',
-				name: 'autoBillEnabled',
-				type: 'boolean',
-				typeOptions: {},
-				default: false,
 			},
 			{
 				displayName: 'Custom Value 2',
