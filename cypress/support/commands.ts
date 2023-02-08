@@ -24,8 +24,7 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import "cypress-real-events";
-// import '@4tw/cypress-drag-drop'
-import './drag-and-drop';
+import './modules/drag-and-drop';
 
 import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
@@ -175,19 +174,3 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 		$destination[0].dispatchEvent(pasteEvent);
 	});
 });
-
-// Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
-// 	const element = cy.get(selector);
-// 	element.should('exist');
-
-// 	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
-
-// 	element.trigger('mousedown');
-// 	element.trigger('mousemove', {
-// 		which: 1,
-// 		pageX: originalLocation.right + xDiff,
-// 		pageY: originalLocation.top + yDiff,
-// 		force: true,
-// 	});
-// 	element.trigger('mouseup');
-// });

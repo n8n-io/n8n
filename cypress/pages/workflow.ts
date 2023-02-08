@@ -25,7 +25,7 @@ export class WorkflowPage extends BasePage {
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			return `[data-endpoint-name=${nodeName}][data-endpoint-type=${type}][data-input-index='${index}']`
+			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`
 		},
 		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
@@ -129,7 +129,9 @@ export class WorkflowPage extends BasePage {
 			this.getters.workflowMenu().click();
 		},
 		saveWorkflowOnButtonClick: () => {
+			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
+			this.getters.saveButton().should('contain', 'Saved')
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');

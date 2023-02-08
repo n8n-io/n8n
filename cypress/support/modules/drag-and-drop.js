@@ -1,9 +1,9 @@
-/// <reference types="cypress" />
-
 // Modified version of "@4tw/cypress-drag-drop"
 // Changes:
 // 1. Omit dataTransfer to stop the UI from throwing an error
 // 2. Skip `dropped` check which only works if the same element is used for drag and drop
+// 3. Enforce force: true
+
 function omit(object = {}, keys = []) {
   return Object.entries(object).reduce((accum, [key, value]) => (key in keys ? accum : { ...accum, [key]: value }), {})
 }
@@ -110,7 +110,7 @@ const DragSimulator = {
 		return true
   },
   init(source, target, options = {}) {
-    this.options = this.createDefaultOptions(options)
+		this.options = this.createDefaultOptions({...options, force: true})
     this.counter = 0
     this.source = source.get(0)
     this.initialSourcePosition = this.source.getBoundingClientRect()
@@ -130,11 +130,10 @@ const DragSimulator = {
         }
       })
   },
-  move(sourceWrapper: Cypress.Chainable<Element>, options) {
+  move(sourceWrapper, options) {
     const { deltaX, deltaY } = options
     const { top, left } = sourceWrapper.offset()
     const finalCoords = { clientX: left + deltaX, clientY: top + deltaY }
-    console.log("🚀 ~ file: drag-and-drop.ts:137 ~ move ~ sourceWrapper.offset", sourceWrapper.offset)
     this.init(sourceWrapper, sourceWrapper, options)
       .then(() => this.dragstart({ clientX: left, clientY: top }))
       .then(() => this.dragover(finalCoords))
