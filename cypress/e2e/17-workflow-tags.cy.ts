@@ -30,6 +30,7 @@ describe('Workflow tags', () => {
 		cy.contains('Create a tag').click();
 		cy.getByTestId('tags-table').find('input').type(first).type('{enter}');
 		cy.contains('Add new').click();
+		cy.wait(300);
 		cy.getByTestId('tags-table').find('input').type(second).type('{enter}');
 		cy.contains('Done').click();
 
