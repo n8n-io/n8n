@@ -13,28 +13,6 @@
       ]
     },
     {
-      "parameters": {},
-      "id": "0d66efa6-8127-4455-b3e3-67350bdd3d2f",
-      "name": "No Operation, do nothing",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        -400
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "f52835d9-e3d8-461f-ac3f-6fc4187933ec",
-      "name": "No Operation, do nothing1",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        -60
-      ]
-    },
-    {
       "parameters": {
         "action": "calculate",
         "value": "08/01/2022",
@@ -48,17 +26,6 @@
       "position": [
         520,
         -400
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "22535836-18b7-44d4-8cb4-f7ca56371589",
-      "name": "No Operation, do nothing3",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        -240
       ]
     },
     {
@@ -199,83 +166,6 @@
       ]
     },
     {
-      "parameters": {},
-      "id": "8cb0f9d2-b410-4774-98f8-6511bb01d0c4",
-      "name": "No Operation, do nothing2",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        140
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "317a6848-4c19-4bdb-b8d3-bd43675c453e",
-      "name": "No Operation, do nothing4",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "ed1edf72-6570-4486-8da7-2f92d841fb77",
-      "name": "No Operation, do nothing5",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        480
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "6a26fec7-4103-44ad-b053-bf5f7438c5a1",
-      "name": "No Operation, do nothing6",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        660
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "3dc22221-f5b6-4b93-b348-fb01688f2c04",
-      "name": "No Operation, do nothing7",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        840
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "15bdcc6b-b1df-4c74-a3d8-b6730c32d6da",
-      "name": "No Operation, do nothing8",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        220,
-        200
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "96490fbb-49ea-4e67-bbb0-98210a6e42cb",
-      "name": "No Operation, do nothing9",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        220,
-        380
-      ]
-    },
-    {
       "parameters": {
         "value": "2022-01-12",
         "toFormat": "MM-DD-YYYY",
@@ -296,73 +186,73 @@
     }
   ],
   "pinData": {
-    "No Operation, do nothing3": [
-      {
-        "json": {
-          "data": "2022-07-29T22:00:00.000Z"
-        }
-      }
-    ],
-    "No Operation, do nothing1": [
-      {
-        "json": {
-          "data": "2023-01-31T23:00:00.000Z"
-        }
-      }
-    ],
-    "No Operation, do nothing2": [
-      {
-        "json": {
-          "data": "2022-09-30T22:00:00.000Z"
-        }
-      }
-    ],
-    "No Operation, do nothing8": [
+    "Calculate Date: Format YYYY/MM/DD with Timezone Unix": [
       {
         "json": {
           "data": "1659312000000"
         }
       }
     ],
-    "No Operation, do nothing9": [
+    "Calculate Date: Format YYYY/MM/DD with Timezone with special zone": [
       {
         "json": {
           "data": "12-01-2022"
         }
       }
     ],
-    "No Operation, do nothing4": [
+    "Calculate Date: Add Day": [
       {
         "json": {
-          "data": "2022-05-31T22:00:00.000Z"
+          "data": "2022-08-11T00:00:00.000Z"
         }
       }
     ],
-    "No Operation, do nothing5": [
+    "Calculate Date: Substract Day": [
+      {
+        "json": {
+          "data": "2022-07-30T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Substract Quarter": [
+      {
+        "json": {
+          "data": "2023-02-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Add months": [
+      {
+        "json": {
+          "data": "2022-10-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Substract Months": [
+      {
+        "json": {
+          "data": "2022-06-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Format YYYY/MM/DD": [
       {
         "json": {
           "data": "2022/08/01"
         }
       }
     ],
-    "No Operation, do nothing6": [
+    "Calculate Date: Format YYYY/MM/DD with Timezone": [
       {
         "json": {
           "data": "2022/07/31"
         }
       }
     ],
-    "No Operation, do nothing7": [
+    "Calculate Date: Format YYYY/MM/DD with Timezone1": [
       {
         "json": {
           "data": "2022/07/31"
-        }
-      }
-    ],
-    "No Operation, do nothing": [
-      {
-        "json": {
-          "data": "2022-08-10T22:00:00.000Z"
         }
       }
     ]
@@ -423,126 +313,16 @@
           }
         ]
       ]
-    },
-    "Calculate Date: Add Day": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Substract Quarter": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Substract Day": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Add months": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Substract Months": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing4",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Format YYYY/MM/DD": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing5",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Format YYYY/MM/DD with Timezone": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing6",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Format YYYY/MM/DD with Timezone1": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing7",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Format YYYY/MM/DD with Timezone Unix": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing8",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Date: Format YYYY/MM/DD with Timezone with special zone": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing9",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
   "settings": {
     "saveManualExecutions": false,
     "callerPolicy": "workflowsFromSameOwner",
-    "timezone": "America/Bahia",
+    "timezone": "America/New_York",
     "saveExecutionProgress": "DEFAULT"
   },
-  "versionId": "14980bcc-6daa-4bf7-a2c7-6993d6070e43",
+  "versionId": "2737913c-dd04-438a-ba00-b1ee5f734038",
   "id": "230",
   "meta": {
     "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"

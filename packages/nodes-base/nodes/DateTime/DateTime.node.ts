@@ -397,7 +397,6 @@ export class DateTime implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const workflowTimezone = this.getTimezone();
-		console.log(workflowTimezone);
 		let item: INodeExecutionData;
 
 		for (let i = 0; i < length; i++) {
