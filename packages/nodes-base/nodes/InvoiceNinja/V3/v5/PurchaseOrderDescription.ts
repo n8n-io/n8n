@@ -1057,11 +1057,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				action: 'Add to Inventory a purchase order',
 			},
 			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive a purchase order',
-			},
-			{
 				name: 'Cancel',
 				value: 'cancel',
 				action: 'Cancel a purchase order',
@@ -1077,11 +1072,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				action: 'Mark Sent a purchase order',
 			},
 			{
-				name: 'Restore',
-				value: 'restore',
-				action: 'Restore a purchase order',
-			},
-			{
 				name: 'Send Email',
 				value: 'email',
 				action: 'Send an email',
@@ -1090,6 +1080,16 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'Send Email',
 				value: 'custom_email',
 				action: 'Send a custom email',
+			},
+			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a purchase order',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a purchase order',
 			},
 		],
 	},

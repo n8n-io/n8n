@@ -1001,7 +1001,7 @@ export const invoiceFields: INodeProperties[] = [
 				action: 'Clone To Quote an invoice',
 			},
 			{
-				name: 'Mark Send',
+				name: 'Mark Sent',
 				value: 'mark_sent',
 				action: 'Mark as Sent',
 			},

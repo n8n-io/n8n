@@ -932,7 +932,7 @@ export const quoteFields: INodeProperties[] = [
 				action: 'Convert to Invoice a quote',
 			},
 			{
-				name: 'Mark Send',
+				name: 'Mark Sent',
 				value: 'mark_sent',
 				action: 'Mark Send a quote',
 			},
