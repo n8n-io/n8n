@@ -51,7 +51,7 @@ jobs:
           run_install: true
 
       - name: Cypress install
-        uses: cypress-io/github-action@v5
+        uses: naorpeled/github-action@b01e4017951ea95148bb8ba418cc4737f84b1754
         with:
           # Disable running of tests within install job
           runTests: false
@@ -125,13 +125,12 @@ jobs:
         run: find ./node_modules -name "*cypress" -type f
 
       - name: Cypress run
-        uses: cypress-io/github-action@v5
+        uses: naorpeled/github-action@b01e4017951ea95148bb8ba418cc4737f84b1754
         with:
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678' # Waits for above
           wait-on-timeout: 120 #
-          command: /__w/n8n/n8n/node_modules/.bin/cypress run --headless
           browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
