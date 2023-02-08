@@ -10,15 +10,11 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-class NodeTypesClass implements INodeTypes {
+export class NodeTypesClass implements INodeTypes {
 	constructor(private nodesAndCredentials: INodesAndCredentials) {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
-		// eslint-disable-next-line no-restricted-syntax
-		for (const nodeTypeData of Object.values(this.loadedNodes)) {
-			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
-			NodeHelpers.applySpecialNodeParameters(nodeType);
-		}
+		this.applySpecialNodeParameters();
 	}
 
 	/**
@@ -45,6 +41,13 @@ class NodeTypesClass implements INodeTypes {
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
+	}
+
+	applySpecialNodeParameters() {
+		for (const nodeTypeData of Object.values(this.loadedNodes)) {
+			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
+			NodeHelpers.applySpecialNodeParameters(nodeType);
+		}
 	}
 
 	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {
