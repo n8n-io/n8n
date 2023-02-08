@@ -1,12 +1,10 @@
-import { INodeType } from 'n8n-workflow';
-import * as Helpers from '../Helpers';
-import { Start } from '../../../nodes/Start/Start.node';
-import { Set } from '../../../nodes/Set/Set.node';
-import { executeWorkflow } from '../ExecuteWorkflow';
-import { WorkflowTestData } from '../types';
+/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import * as Helpers from '../../../test/nodes/Helpers';
+import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
+import type { WorkflowTestData } from '../../../test/nodes/types';
 
 describe('Execute Set Node', () => {
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'should set value',
 			input: {
@@ -180,6 +178,7 @@ describe('Execute Set Node', () => {
 	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
+		// eslint-disable-next-line @typescript-eslint/no-loop-func
 		test(testData.description, async () => {
 			// execute workflow
 			const { result } = await executeWorkflow(testData, nodeTypes);
