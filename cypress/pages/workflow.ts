@@ -78,6 +78,8 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
+		shareButton: () => cy.getByTestId('workflow-share-button').find('button'),
+
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
@@ -109,7 +111,11 @@ export class WorkflowPage extends BasePage {
 			if (keepNdvOpen) return;
 			cy.get('body').type('{esc}');
 		},
-		addNodeToCanvas: (nodeDisplayName: string, plusButtonClick = true, preventNdvClose?: boolean) => {
+		addNodeToCanvas: (
+			nodeDisplayName: string,
+			plusButtonClick = true,
+			preventNdvClose?: boolean,
+		) => {
 			if (plusButtonClick) {
 				this.getters.nodeCreatorPlusButton().click();
 			}
@@ -132,6 +138,9 @@ export class WorkflowPage extends BasePage {
 		},
 		openWorkflowMenu: () => {
 			this.getters.workflowMenu().click();
+		},
+		openShareModal: () => {
+			this.getters.shareButton().click();
 		},
 		saveWorkflowOnButtonClick: () => {
 			this.getters.saveButton().should('contain', 'Save');
