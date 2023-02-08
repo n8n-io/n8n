@@ -58,6 +58,13 @@ jobs:
           install: false
           build: pnpm build
 
+
+      - name: Debugging - list root
+        run: ls -la /__w/n8n/n8n/
+
+      - name: Print current path
+        run: pwd
+
       - name: Zip packages dist folders
         run: tar -czvf ./packages_build.tar.gz ./packages/*
 
@@ -108,11 +115,8 @@ jobs:
       - name: Unzip packages dist folders
         run: tar -xzvf packages_build.tar.gz ./
 
-      - name: Debugging - list home cache files
-        run: ls -la /github/home/.cache
-
-      - name: Debugging - list node modules files
-        run: ls -la ./node_modules
+      - name: Debugging - list root
+        run: ls -la /__w/n8n/n8n/
 
       - name: Print current path
         run: pwd
@@ -137,7 +141,7 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          CYPRESS_RUN_BINARY: ./node_modules/.bin/cypress
+          CYPRESS_RUN_BINARY: /__w/n8n/n8n/node_modules/.bin/cypress
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
