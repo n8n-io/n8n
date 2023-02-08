@@ -1,0 +1,546 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "bd40f2b1-090e-4cf0-8342-0ebcca1089b4",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -20
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0d66efa6-8127-4455-b3e3-67350bdd3d2f",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        -400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f52835d9-e3d8-461f-ac3f-6fc4187933ec",
+      "name": "No Operation, do nothing1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "duration": 10,
+        "options": {}
+      },
+      "id": "cadf04c8-5900-414e-bf61-46adbf3687c2",
+      "name": "Calculate Date: Add Day",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "22535836-18b7-44d4-8cb4-f7ca56371589",
+      "name": "No Operation, do nothing3",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "duration": 2,
+        "timeUnit": "quarters",
+        "options": {}
+      },
+      "id": "77939e5a-db02-4c85-bf31-b61a017f4f64",
+      "name": "Calculate Date: Substract Quarter",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "operation": "subtract",
+        "duration": 2,
+        "options": {}
+      },
+      "id": "6426aa5b-96ad-4516-a346-b9d0ee68b7bd",
+      "name": "Calculate Date: Substract Day",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "duration": 2,
+        "timeUnit": "months",
+        "options": {}
+      },
+      "id": "de76ce11-7865-4b15-9829-5ed7d6a287eb",
+      "name": "Calculate Date: Add months",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "operation": "subtract",
+        "duration": 2,
+        "timeUnit": "months",
+        "options": {}
+      },
+      "id": "ccbe4625-e470-45f8-b494-06ee1ecfb1a5",
+      "name": "Calculate Date: Substract Months",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "YYYY/MM/DD",
+        "options": {}
+      },
+      "id": "aed1eed3-db4e-431b-be04-488b47880665",
+      "name": "Calculate Date: Format YYYY/MM/DD",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "YYYY/MM/DD",
+        "options": {
+          "fromTimezone": "US/Hawaii"
+        }
+      },
+      "id": "3bc2aa26-bc98-40c0-be8a-75bc0d58601c",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "YYYY/MM/DD",
+        "options": {
+          "fromTimezone": "US/Hawaii",
+          "toTimezone": "US/Pacific"
+        }
+      },
+      "id": "e2defb6b-e465-4d5f-9d65-d66ab91345f5",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone1",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "x",
+        "options": {
+          "fromTimezone": "US/Hawaii",
+          "toTimezone": "US/Pacific"
+        }
+      },
+      "id": "cdf19ab4-aa0c-4cad-8264-bd4356928baf",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        40,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8cb0f9d2-b410-4774-98f8-6511bb01d0c4",
+      "name": "No Operation, do nothing2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        140
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "317a6848-4c19-4bdb-b8d3-bd43675c453e",
+      "name": "No Operation, do nothing4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ed1edf72-6570-4486-8da7-2f92d841fb77",
+      "name": "No Operation, do nothing5",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6a26fec7-4103-44ad-b053-bf5f7438c5a1",
+      "name": "No Operation, do nothing6",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        660
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3dc22221-f5b6-4b93-b348-fb01688f2c04",
+      "name": "No Operation, do nothing7",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        840
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "15bdcc6b-b1df-4c74-a3d8-b6730c32d6da",
+      "name": "No Operation, do nothing8",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "96490fbb-49ea-4e67-bbb0-98210a6e42cb",
+      "name": "No Operation, do nothing9",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        220,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "value": "2022-01-12",
+        "toFormat": "MM-DD-YYYY",
+        "options": {
+          "fromFormat": "YYYY-DD-MM",
+          "fromTimezone": "US/Hawaii",
+          "toTimezone": "US/Pacific"
+        }
+      },
+      "id": "3383f04e-f13d-438b-b1c4-1bc09332401c",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        40,
+        380
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "data": "2022-08-10T22:00:00.000Z"
+        }
+      }
+    ],
+    "No Operation, do nothing3": [
+      {
+        "json": {
+          "data": "2022-07-29T22:00:00.000Z"
+        }
+      }
+    ],
+    "No Operation, do nothing1": [
+      {
+        "json": {
+          "data": "2023-01-31T23:00:00.000Z"
+        }
+      }
+    ],
+    "No Operation, do nothing2": [
+      {
+        "json": {
+          "data": "2022-09-30T22:00:00.000Z"
+        }
+      }
+    ],
+    "No Operation, do nothing8": [
+      {
+        "json": {
+          "data": "1659312000000"
+        }
+      }
+    ],
+    "No Operation, do nothing9": [
+      {
+        "json": {
+          "data": "12-01-2022"
+        }
+      }
+    ],
+    "No Operation, do nothing4": [
+      {
+        "json": {
+          "data": "2022-05-31T22:00:00.000Z"
+        }
+      }
+    ],
+    "No Operation, do nothing5": [
+      {
+        "json": {
+          "data": "2022/08/01"
+        }
+      }
+    ],
+    "No Operation, do nothing6": [
+      {
+        "json": {
+          "data": "2022/07/31"
+        }
+      }
+    ],
+    "No Operation, do nothing7": [
+      {
+        "json": {
+          "data": "2022/07/31"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Calculate Date: Add Day",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Substract Day",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Substract Quarter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Add months",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Substract Months",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Add Day": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Substract Quarter": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Substract Day": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Add months": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Substract Months": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Format YYYY/MM/DD": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Format YYYY/MM/DD with Timezone": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Format YYYY/MM/DD with Timezone1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Format YYYY/MM/DD with Timezone Unix": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date: Format YYYY/MM/DD with Timezone with special zone": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "b67ba269-3b0d-4e4f-995a-9c4238cf6099",
+  "id": "230",
+  "meta": {
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "tags": []
+}
