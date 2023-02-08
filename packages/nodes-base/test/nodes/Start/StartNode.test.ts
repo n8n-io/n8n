@@ -30,8 +30,7 @@ describe('Execute Start Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new Start()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {

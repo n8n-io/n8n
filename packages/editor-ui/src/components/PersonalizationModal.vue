@@ -92,6 +92,7 @@ import {
 	NOT_SURE_YET_GOAL,
 	AUTOMATION_GOAL_OTHER_KEY,
 	COMPANY_TYPE_KEY,
+	EMAIL_KEY,
 	SAAS_COMPANY_TYPE,
 	ECOMMERCE_COMPANY_TYPE,
 	MSP_INDUSTRY,
@@ -155,6 +156,16 @@ export default mixins(showMessage, workflowHelpers).extend({
 		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
 		survey() {
 			const survey: IFormInputs = [
+				{
+					name: EMAIL_KEY,
+					properties: {
+						label: this.$locale.baseText('personalizationModal.yourEmailAddress'),
+						type: 'text',
+						placeholder: this.$locale.baseText('personalizationModal.email'),
+					},
+					shouldDisplay: () =>
+						this.settingsStore.isDesktopDeployment && !this.usersStore.currentUser?.firstName,
+				},
 				{
 					name: COMPANY_TYPE_KEY,
 					properties: {

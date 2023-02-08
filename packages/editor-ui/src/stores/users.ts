@@ -19,11 +19,12 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
-import {
+import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import type {
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
+	IRole,
 	IUser,
 	IUserResponse,
 	IUsersState,
@@ -41,6 +42,9 @@ const isDefaultUser = (user: IUserResponse | null) =>
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
+const isInstanceOwner = (user: IUserResponse | null) =>
+	Boolean(user?.globalRole?.name === ROLE.Owner);
+
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
 		currentUserId: null,
@@ -55,6 +59,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		isDefaultUser(): boolean {
 			return isDefaultUser(this.currentUser);
+		},
+		isInstanceOwner(): boolean {
+			return isInstanceOwner(this.currentUser);
 		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];

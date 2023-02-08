@@ -85,6 +85,7 @@
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
 						@execute="onNodeExecute"
 						telemetrySource="inputs"
+						data-test-id="execute-previous-node"
 					/>
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">

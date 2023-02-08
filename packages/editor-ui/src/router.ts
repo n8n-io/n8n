@@ -525,7 +525,11 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.isUserManagementEnabled === false;
+
+									return (
+										settingsStore.isUserManagementEnabled === false &&
+										!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
+									);
 								},
 							},
 						},
