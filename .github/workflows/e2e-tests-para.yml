@@ -131,6 +131,7 @@ jobs:
           start: pnpm start
           wait-on: 'http://localhost:5678' # Waits for above
           wait-on-timeout: 120 #
+          command: /__w/n8n/n8n/node_modules/.bin/cypress run --headless
           browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
@@ -141,8 +142,6 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          CYPRESS_RUN_BINARY: /__w/n8n/n8n/node_modules/.bin/cypress
-
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
       #   if: failure()
