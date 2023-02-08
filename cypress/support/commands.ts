@@ -23,8 +23,8 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-import "cypress-real-events";
-import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
+import 'cypress-real-events';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
@@ -87,14 +87,34 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 	);
 });
 
-Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
+Cypress.Commands.add('signout', () => {
+	cy.visit('/signout');
+	cy.waitForLoad();
+	cy.url().should('include', '/signin');
+	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
+});
+
+Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 	const signupPage = new SignupPage();
 
-	cy.visit(signupPage.url);
+	cy.visit(url);
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
-			if (url.endsWith(signupPage.url)) {
+			signupPage.getters.firstName().type(firstName);
+			signupPage.getters.lastName().type(lastName);
+			signupPage.getters.password().type(password);
+			signupPage.getters.submit().click();
+		});
+	});
+});
+
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
+	const signupPage = new SignupPage();
+
+	signupPage.getters.form().within(() => {
+		cy.url().then((url) => {
+			if (url.includes(signupPage.url)) {
 				signupPage.getters.email().type(email);
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
@@ -103,6 +123,36 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 			} else {
 				cy.log('User already signed up');
 			}
+		});
+	});
+});
+
+Cypress.Commands.add('interceptREST', (method, url) => {
+	cy.intercept(method, `http://localhost:5678/rest${url}`);
+});
+
+Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
+	const settingsUsersPage = new SettingsUsersPage();
+
+	cy.signin(instanceOwner);
+
+	users.forEach((user) => {
+		cy.signin(instanceOwner);
+		cy.visit(settingsUsersPage.url);
+
+		cy.interceptREST('POST', '/users').as('inviteUser');
+
+		settingsUsersPage.getters.inviteButton().click();
+		settingsUsersPage.getters.inviteUsersModal().within((modal) => {
+			settingsUsersPage.getters.inviteUsersModalEmailsInput().type(user.email).type('{enter}');
+		});
+
+		cy.wait('@inviteUser').then((interception) => {
+			const inviteLink = interception.response!.body.data[0].user.inviteAcceptUrl;
+			cy.log(JSON.stringify(interception.response!.body.data[0].user));
+			cy.log(inviteLink);
+			cy.signout();
+			cy.signup({ ...user, url: inviteLink });
 		});
 	});
 });
