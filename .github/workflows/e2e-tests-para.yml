@@ -61,15 +61,6 @@ jobs:
       - name: Cypress install
         run: pnpm cypress:install
 
-      - name: Debugging - list home cache files
-        run: ls -la /github/home/.cache
-
-      - name: Debugging - search Cypress exec in home
-        run: find /github/home -name "*cypress" -type f
-
-      - name: Debugging - search Cypress exec in project node modules
-        run: find ./node_modules -name "*cypress" -type f
-
       - name: Zip packages dist folders
         run: tar -czvf ./packages_build.tar.gz ./packages/*
 
@@ -120,18 +111,6 @@ jobs:
       - name: Unzip packages dist folders
         run: tar -xzvf packages_build.tar.gz ./
 
-      - name: Debugging - list home cache files
-        run: ls -la /github/home/.cache
-
-      - name: Debugging - list node modules files
-        run: ls -la ./node_modules
-
-      - name: Print current path
-        run: pwd
-
-      - name: Debugging - search Cypress exec in project node modules
-        run: find ./node_modules -name "*cypress" -type f
-
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
@@ -148,6 +127,7 @@ jobs:
           # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          config-file: ./cypress-config.json
           E2E_TESTS: true
 
       # - name: Notify Slack on failure
