@@ -1,0 +1,114 @@
+name: End-to-End tests parallel
+run-name: Parallel E2E Tests ${{ inputs.branch }} - ${{ inputs.user }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
+      user:
+        description: 'User who kicked this off.'
+        required: false
+        default: 'schedule'
+      # start-url:
+      #   description: 'URL to call after workflow is kicked off.'
+      #   required: false
+      #   default: ''
+      # success-url:
+      #   description: 'URL to call after workflow is done.'
+      #   required: false
+      #   default: ''
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    container: cypress/browsers:node16.16.0-chrome107-ff107
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
+          ref: ${{ github.event.inputs.branch || 'master' }}
+
+      - uses: pnpm/action-setup@v2.2.4
+
+      - name: Use Node.js 16.16.0
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.16.0
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Save build folder
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          if-no-files-found: error
+          path: build
+
+  testing:
+    runs-on: ubuntu-latest
+    container: cypress/browsers:node16.16.0-chrome107-ff107
+    needs: install
+    strategy:
+      fail-fast: false
+      matrix:
+        # node-version: [14.x, 16.x]
+        containers: [1, 2, 3, 4]
+
+    steps:
+      # - name: Call Start URL - optionally
+      #   run: |
+      #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
+      #   shell: bash
+      - uses: pnpm/action-setup@v2.2.4
+
+      - name: Use Node.js 16.16.0
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.16.0
+          cache: 'pnpm'
+
+      - name: Download the build folders
+        uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: build
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v4
+        with:
+          install: false
+          start: pnpm start
+          wait-on: 'http://localhost:5678' # Waits for above
+          wait-on-timeout: 120 #
+          browser: electron
+          record: true
+          parallel: true # Runs test in parallel using settings above
+          spec: cypress/e2e/*
+        env:
+          # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
+          # in GitHub repo → Settings → Secrets → Actions
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          E2E_TESTS: true
+
+      # - name: Notify Slack on failure
+      #   uses: act10ns/slack@v2.0.0
+      #   if: failure()
+      #   with:
+      #     status: ${{ job.status }}
+      #     channel: '#updates-build-alerts'
+      #     webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      # - name: Call Success URL - optionally
+      #   run: |
+      #     [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""
+      #   shell: bash

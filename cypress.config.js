@@ -4,6 +4,7 @@ const { defineConfig } = require('cypress');
 const BASE_URL = 'http://localhost:5678';
 
 module.exports = defineConfig({
+	projectId: "5hbsdn",
 	retries: {
 		openMode: 0,
 		runMode: 3,
