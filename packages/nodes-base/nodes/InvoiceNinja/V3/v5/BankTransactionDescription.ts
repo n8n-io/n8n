@@ -1,5 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+// NOTE: most of the parameters are ignored by n8n, only the base parameters could be changed. consider changing this in the future?!
 export const bankTransactionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -222,6 +223,22 @@ export const bankTransactionFields: INodeProperties[] = [
 	/*                                 bankTransaction:create                     */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Bank Integration ID',
+		name: 'bankIntegrationId',
+		type: 'options',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['create'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getBankIntegrationsV5',
+		},
+		default: '',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -236,67 +253,36 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor Name or ID',
-				name: 'vendorId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getVendorsV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Account Type',
-				name: 'accountType',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
 				displayName: 'Amount',
 				name: 'amount',
 				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
 				default: 0,
-			},
-			{
-				displayName: 'Bank Account ID',
-				name: 'bankAccountId',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Bank Integration ID',
-				name: 'bankIntegrationId',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Bank Transaction Rule ID',
-				name: 'bankTransactionRuleId',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Base Type',
 				name: 'baseType',
+				type: 'options',
+				options: [
+					{
+						name: "Debit",
+						value: 'DEBIT'
+					},
+					{
+						name: "Credit",
+						value: 'CREDIT'
+					},
+				],
+				default: '',
+			},
+			{
+				displayName: 'Bank Account ID',
+				name: 'bankAccountId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Category ID',
-				name: 'categoryId',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Category Type',
-				name: 'categoryType',
+				displayName: 'Bank Transaction Rule ID',
+				name: 'bankTransactionRuleId',
 				type: 'string',
 				default: '',
 			},
@@ -307,7 +293,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getCurrenciesID',
+					loadOptionsMethod: 'getCurrenciesV5',
 				},
 				default: ''
 			},
@@ -324,42 +310,6 @@ export const bankTransactionFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				default: '',
-			},
-			{
-				displayName: 'Expense ID',
-				name: 'expenseId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Invoice IDs',
-				name: 'invoiceIds',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Ninja Category ID',
-				name: 'ninjaCategoryId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Payment ID',
-				name: 'paymentId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Status ID',
-				name: 'statusId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Transaction ID',
-				name: 'transactionId',
-				type: 'string',
 				default: '',
 			},
 		],
@@ -396,14 +346,25 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor Name or ID',
-				name: 'vendorId',
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Base Type',
+				name: 'baseType',
 				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getVendorsV5',
-				},
+				options: [
+					{
+						name: "Debit",
+						value: 'DEBIT'
+					},
+					{
+						name: "Credit",
+						value: 'CREDIT'
+					},
+				],
 				default: '',
 			},
 			{
@@ -416,47 +377,14 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
 				displayName: 'Bank Account ID',
 				name: 'bankAccountId',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Bank Integration ID',
-				name: 'bankIntegrationId',
-				type: 'number',
-				default: 0,
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Bank Transaction Rule ID',
 				name: 'bankTransactionRuleId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Base Type',
-				name: 'baseType',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Category ID',
-				name: 'categoryId',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Category Type',
-				name: 'categoryType',
 				type: 'string',
 				default: '',
 			},
@@ -467,7 +395,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getCurrenciesID',
+					loadOptionsMethod: 'getCurrenciesV5',
 				},
 				default: ''
 			},
@@ -484,42 +412,6 @@ export const bankTransactionFields: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				default: '',
-			},
-			{
-				displayName: 'Expense ID',
-				name: 'expenseId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Invoice IDs',
-				name: 'invoiceIds',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Ninja Category ID',
-				name: 'ninjaCategoryId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Payment ID',
-				name: 'paymentId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Status ID',
-				name: 'statusId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Transaction ID',
-				name: 'transactionId',
-				type: 'string',
 				default: '',
 			},
 		],
@@ -590,9 +482,24 @@ export const bankTransactionFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName:
+			'<strong>Warning</strong><br />This node will fail silently, when a match has already be performed and return the actual data of the transaction.<br />You can check afterwards with a code node, if your changes were successfully.',
+		name: 'notice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['bankTransaction'],
+				operation: ['action'],
+				action: ['convert_matched'],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Vendor ID',
 		name: 'convertMatchedVendorId',
-		description: 'Bei Angabe des Parameters wird eine Ausgabe erstellt',
+		description: 'use this parameter to create an expense<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -607,7 +514,7 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Invoice IDs',
 		name: 'convertMatchedInvoiceIds',
-		description: 'Bei Angabe des Parameters wird eine / mehrere Rechnungen verknüpft. Durch Komma getrennte Werte.',
+		description: 'use this parameter to connect one or multiple invoices. use "," as delimiter.<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -622,22 +529,7 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Expense IDs',
 		name: 'convertMatchedExpenseIds',
-		description: 'Bei Angabe des Parameters wird eine / mehrere Ausgaben verknüpft. Durch Komma getrennte Werte.',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['bankTransaction'],
-				operation: ['action'],
-				action: ['convert_matched'],
-			},
-		},
-	},
-	{
-		displayName: 'Invoice IDs',
-		name: 'convertMatchedInvoiceIds',
-		description: 'Bei Angabe des Parameters wird eine / mehrere Rechnungen verknüpft. Durch Komma getrennte Werte.',
+		description: 'use this parameter to connect one or multiple expenses. use "," as delimiter.<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -652,7 +544,7 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Payment IDs',
 		name: 'convertMatchedPaymentId',
-		description: 'Bei Angabe des Parameters wird eine Zahlung verknüpft.',
+		description: 'use this parameter to connect one or multiple payments. use "," as delimiter.<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {

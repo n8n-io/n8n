@@ -19,28 +19,21 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const bankIntegrationId = this.getNodeParameter('bankIntegrationId', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IBankTransaction = {};
-				if (additionalFields.accountType !== undefined) {
-					body.account_type = additionalFields.accountType as string;
-				}
+				body.bank_integration_id = bankIntegrationId as string;
 				if (additionalFields.amount !== undefined) {
 					body.amount = additionalFields.amount as number;
 				}
-				if (additionalFields.bankIntegrationId !== undefined) {
-					body.bank_integration_id = additionalFields.bankIntegrationId as string;
+				if (additionalFields.bankAccountId !== undefined) {
+					body.bank_account_id = additionalFields.bankAccountId as number;
 				}
 				if (additionalFields.bankTransactionRuleId !== undefined) {
 					body.bank_transaction_rule_id = additionalFields.bankTransactionRuleId as string;
 				}
 				if (additionalFields.baseType !== undefined) {
 					body.base_type = additionalFields.baseType as string;
-				}
-				if (additionalFields.categoryId !== undefined) {
-					body.category_id = additionalFields.categoryId as number;
-				}
-				if (additionalFields.categoryType !== undefined) {
-					body.category_type = additionalFields.categoryType as string;
 				}
 				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
@@ -50,27 +43,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
-				}
-				if (additionalFields.expenseId !== undefined) {
-					body.expense_id = additionalFields.expenseId as string;
-				}
-				if (additionalFields.invoiceIds !== undefined) {
-					body.invoice_ids = additionalFields.invoiceIds as string;
-				}
-				if (additionalFields.ninjaCategoryId !== undefined) {
-					body.ninja_category_id = additionalFields.ninjaCategoryId as string;
-				}
-				if (additionalFields.paymentId !== undefined) {
-					body.payment_id = additionalFields.paymentId as string;
-				}
-				if (additionalFields.statusId !== undefined) {
-					body.status_id = additionalFields.statusId as string;
-				}
-				if (additionalFields.transactionId !== undefined) {
-					body.transaction_id = additionalFields.transactionId as number;
-				}
-				if (additionalFields.vendorId !== undefined) {
-					body.vendor_id = additionalFields.vendorId as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
@@ -84,26 +56,20 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IBankTransaction = {};
-				if (additionalFields.accountType) {
-					body.account_type = additionalFields.accountType as string;
+				if (additionalFields.bankIntegrationId) {
+					body.bank_integration_id = additionalFields.bankIntegrationId as string;
 				}
 				if (additionalFields.amount !== undefined) {
 					body.amount = additionalFields.amount as number;
 				}
-				if (additionalFields.bankIntegrationId !== undefined) {
-					body.bank_integration_id = additionalFields.bankIntegrationId as string;
+				if (additionalFields.bankAccountId !== undefined) {
+					body.bank_account_id = additionalFields.bankAccountId as number;
 				}
 				if (additionalFields.bankTransactionRuleId !== undefined) {
 					body.bank_transaction_rule_id = additionalFields.bankTransactionRuleId as string;
 				}
 				if (additionalFields.baseType !== undefined) {
 					body.base_type = additionalFields.baseType as string;
-				}
-				if (additionalFields.categoryId !== undefined) {
-					body.category_id = additionalFields.categoryId as number;
-				}
-				if (additionalFields.categoryType !== undefined) {
-					body.category_type = additionalFields.categoryType as string;
 				}
 				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
@@ -113,27 +79,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
-				}
-				if (additionalFields.expenseId !== undefined) {
-					body.expense_id = additionalFields.expenseId as string;
-				}
-				if (additionalFields.invoiceIds !== undefined) {
-					body.invoice_ids = additionalFields.invoiceIds as string;
-				}
-				if (additionalFields.ninjaCategoryId !== undefined) {
-					body.ninja_category_id = additionalFields.ninjaCategoryId as string;
-				}
-				if (additionalFields.paymentId !== undefined) {
-					body.payment_id = additionalFields.paymentId as string;
-				}
-				if (additionalFields.statusId !== undefined) {
-					body.status_id = additionalFields.statusId as string;
-				}
-				if (additionalFields.transactionId !== undefined) {
-					body.transaction_id = additionalFields.transactionId as number;
-				}
-				if (additionalFields.vendorId !== undefined) {
-					body.vendor_id = additionalFields.vendorId as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
@@ -223,7 +168,15 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 							]
 						}
 					);
-					responseData = responseData.data[0];
+					// return data of the transaction, because otherwise there woulnt be any
+					responseData = await invoiceNinjaApiRequest.call(
+						this,
+						'GET',
+						`/bank_transactions/${bankTransactionId}`,
+						{},
+						qs,
+					);
+					responseData = responseData.data;
 				} else {
 					responseData = await invoiceNinjaApiRequest.call(
 						this,

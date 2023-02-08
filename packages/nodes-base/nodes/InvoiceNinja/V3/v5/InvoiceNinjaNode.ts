@@ -181,7 +181,7 @@ export const InvoiceNinjaV5 = {
 		loadOptions: {
 			// Get all the available bank integrations to display them to user so that he can
 			// select them easily
-			async getBanksV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getBankIntegrationsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				let banks = await invoiceNinjaApiRequestAllItems.call(
 					this,
