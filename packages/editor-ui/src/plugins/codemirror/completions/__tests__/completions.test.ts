@@ -145,7 +145,7 @@ describe('Resolution-based completions', () => {
 		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
 
-		test('should return bracket-aware completions for: {{ $input.item.json.str.| }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.str.|() }}', () => {
 			resolveParameterSpy.mockReturnValue($input.item.json.str);
 
 			const found = completions('{{ $input.item.json.str.|() }}');
@@ -156,7 +156,7 @@ describe('Resolution-based completions', () => {
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
-		test('should return bracket-aware completions for: {{ $input.item.json.num.| }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.num.|() }}', () => {
 			resolveParameterSpy.mockReturnValue($input.item.json.num);
 
 			const found = completions('{{ $input.item.json.num.|() }}');
