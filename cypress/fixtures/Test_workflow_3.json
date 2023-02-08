@@ -58,13 +58,27 @@
       {
         "json": {
           "name": "First item",
-          "code": 1
+          "code": 1,
+					"input": [
+						{
+							"count": 0,
+							"with space": "!!",
+							"with.dot": "!!",
+							"with\"quotes": "!!",
+							"other": "unkown"
+						}
+					]
         }
       },
       {
         "json": {
           "name": "Second item",
-          "code": 2
+          "code": 2,
+					"input": [
+						{
+							"count": 1
+						}
+					]
         }
       }
     ]
