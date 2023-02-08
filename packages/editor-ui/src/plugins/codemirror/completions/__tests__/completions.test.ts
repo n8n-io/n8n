@@ -57,6 +57,15 @@ describe('Top-level completions', () => {
 		expect(found[0].label).toBe('Math');
 	});
 
+	test('should return Object completion for: {{ O| }}', () => {
+		const found = completions('{{ O| }}');
+
+		if (!found) throw new Error('Expected to find completion');
+
+		expect(found).toHaveLength(1);
+		expect(found[0].label).toBe('Object');
+	});
+
 	test('should return dollar completions for: {{ $| }}', () => {
 		expect(completions('{{ $| }}')).toHaveLength(dollarOptions().length);
 	});
@@ -128,6 +137,17 @@ describe('Resolution-based completions', () => {
 			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(
 				natives('array').length + extensions('array').length,
 			);
+		});
+
+		test('should return completions for Object methods: {{ Object.values({ abc: 123 }).| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce([123]);
+
+			const found = completions('{{ Object.values({ abc: 123 }).| }}');
+
+			if (!found) throw new Error('Expected to find completion');
+
+			expect(found).toHaveLength(natives('array').length + extensions('array').length);
 		});
 
 		test('should return completions for object literal', () => {
