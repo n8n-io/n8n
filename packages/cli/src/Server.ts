@@ -42,9 +42,6 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
-// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
-import { compare } from 'bcryptjs';
 
 import {
 	BinaryDataManager,
@@ -68,9 +65,6 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-import jwt from 'jsonwebtoken';
-import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import history from 'connect-history-api-fallback';
@@ -166,6 +160,8 @@ import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
+import { setupBasicAuth } from './middlewares/basicAuth';
+import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 
 const exec = promisify(callbackExec);
 
@@ -307,7 +303,8 @@ class Server extends AbstractServer {
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				config.getEnv('userManagement.skipInstanceOwnerSetup') === false &&
+				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
 		// refresh enterprise status
@@ -408,150 +405,13 @@ class Server extends AbstractServer {
 		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive = config.getEnv('security.basicAuth.active');
-		if (basicAuthActive) {
-			const basicAuthUser = config.getEnv('security.basicAuth.user');
-			if (basicAuthUser === '') {
-				throw new Error('Basic auth is activated but no user got defined. Please set one!');
-			}
-
-			const basicAuthPassword = config.getEnv('security.basicAuth.password');
-			if (basicAuthPassword === '') {
-				throw new Error('Basic auth is activated but no password got defined. Please set one!');
-			}
-
-			const basicAuthHashEnabled = config.getEnv('security.basicAuth.hash') as boolean;
-
-			let validPassword: null | string = null;
-
-			this.app.use(
-				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-					// Skip basic auth for a few listed endpoints or when instance owner has been setup
-					if (
-						authIgnoreRegex.exec(req.url) ||
-						config.getEnv('userManagement.isInstanceOwnerSetUp')
-					) {
-						return next();
-					}
-					const realm = 'n8n - Editor UI';
-					const basicAuthData = basicAuth(req);
-
-					if (basicAuthData === undefined) {
-						// Authorization data is missing
-						return ResponseHelper.basicAuthAuthorizationError(
-							res,
-							realm,
-							'Authorization is required!',
-						);
-					}
-
-					if (basicAuthData.name === basicAuthUser) {
-						if (basicAuthHashEnabled) {
-							if (
-								validPassword === null &&
-								(await compare(basicAuthData.pass, basicAuthPassword))
-							) {
-								// Password is valid so save for future requests
-								validPassword = basicAuthData.pass;
-							}
-
-							if (validPassword === basicAuthData.pass && validPassword !== null) {
-								// Provided hash is correct
-								return next();
-							}
-						} else if (basicAuthData.pass === basicAuthPassword) {
-							// Provided password is correct
-							return next();
-						}
-					}
-
-					// Provided authentication data is wrong
-					return ResponseHelper.basicAuthAuthorizationError(
-						res,
-						realm,
-						'Authorization data is wrong!',
-					);
-				},
-			);
+		if (config.getEnv('security.basicAuth.active')) {
+			await setupBasicAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
-		if (jwtAuthActive) {
-			const jwtAuthHeader = config.getEnv('security.jwtAuth.jwtHeader');
-			if (jwtAuthHeader === '') {
-				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
-			}
-			const jwksUri = config.getEnv('security.jwtAuth.jwksUri');
-			if (jwksUri === '') {
-				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
-			}
-			const jwtHeaderValuePrefix = config.getEnv('security.jwtAuth.jwtHeaderValuePrefix');
-			const jwtIssuer = config.getEnv('security.jwtAuth.jwtIssuer');
-			const jwtNamespace = config.getEnv('security.jwtAuth.jwtNamespace');
-			const jwtAllowedTenantKey = config.getEnv('security.jwtAuth.jwtAllowedTenantKey');
-			const jwtAllowedTenant = config.getEnv('security.jwtAuth.jwtAllowedTenant');
-
-			// eslint-disable-next-line no-inner-declarations
-			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
-					return true;
-				}
-
-				for (const [k, v] of Object.entries(decodedToken)) {
-					if (k === jwtNamespace) {
-						for (const [kn, kv] of Object.entries(v)) {
-							if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
-								return true;
-							}
-						}
-					}
-				}
-
-				return false;
-			}
-
-			// eslint-disable-next-line consistent-return
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (authIgnoreRegex.exec(req.url)) {
-					return next();
-				}
-
-				let token = req.header(jwtAuthHeader) as string;
-				if (token === undefined || token === '') {
-					return ResponseHelper.jwtAuthAuthorizationError(res, 'Missing token');
-				}
-				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
-					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
-				}
-
-				const jwkClient = jwks({ cache: true, jwksUri });
-				// eslint-disable-next-line @typescript-eslint/ban-types
-				function getKey(header: any, callback: Function) {
-					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
-						// eslint-disable-next-line @typescript-eslint/no-throw-literal
-						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
-
-						const signingKey = key.publicKey || key.rsaPublicKey;
-						callback(null, signingKey);
-					});
-				}
-
-				const jwtVerifyOptions: jwt.VerifyOptions = {
-					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false,
-				};
-
-				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-					} else if (!isTenantAllowed(decoded)) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-					} else {
-						next();
-					}
-				});
-			});
+		if (config.getEnv('security.jwtAuth.active')) {
+			await setupExternalJWTAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// ----------------------------------------

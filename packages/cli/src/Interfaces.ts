@@ -571,6 +571,7 @@ export interface IN8nUISettings {
 }
 
 export interface IPersonalizationSurveyAnswers {
+	email: string | null;
 	codingSkill: string | null;
 	companyIndustry: string[];
 	companySize: string | null;

@@ -80,16 +80,21 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
 		ndvParameters: () => cy.getByTestId('parameter-item'),
 		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
+		getConnectionBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
+			cy.get(`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
+		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
+			cy.get(`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
 	};
 	actions = {
 		visit: () => {
 			cy.visit(this.url);
 			cy.waitForLoad();
 		},
-		addInitialNodeToCanvas: (nodeDisplayName: string) => {
+		addInitialNodeToCanvas: (nodeDisplayName: string, { keepNdvOpen } = { keepNdvOpen: false }) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
+			if (keepNdvOpen) return;
 			cy.get('body').type('{esc}');
 		},
 		addNodeToCanvas: (nodeDisplayName: string, plusButtonClick = true, preventNdvClose?: boolean) => {
@@ -170,10 +175,14 @@ export class WorkflowPage extends BasePage {
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
 		},
-		addNodeBetweenFirstTwoNodes: (nodeName: string) => {
-			this.getters.nodeConnections().first().realHover();
-			cy.get('.connection-actions .add').first().click({ force: true });
-			this.actions.addNodeToCanvas(nodeName, false);
+		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
+			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.add').first().click({ force: true });
+			this.actions.addNodeToCanvas(newNodeName, false);
+		},
+		deleteNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
+			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.delete').first().click({ force: true });
 		},
 	};
 }
