@@ -63,9 +63,12 @@ jobs:
       fail-fast: false
       matrix:
         # node-version: [14.x, 16.x]
-        containers: [1, 2, 3, 4]
-
+        containers: [1, 2]
     steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
+          ref: ${{ github.event.inputs.branch || 'master' }}
       # - name: Call Start URL - optionally
       #   run: |
       #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
@@ -103,7 +106,7 @@ jobs:
           # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
           # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
 
       # - name: Notify Slack on failure
