@@ -137,7 +137,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Purchase Order Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

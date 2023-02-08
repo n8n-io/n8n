@@ -129,7 +129,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -214,7 +214,7 @@ export const quoteFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
+		name: 'lineItemsUi',
 		placeholder: 'Add Invoice Item',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -230,7 +230,7 @@ export const quoteFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'invoiceItemsValues',
+				name: 'lineItemsValues',
 				displayName: 'Invoice Item',
 				values: [
 					{
@@ -384,22 +384,6 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
 				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
@@ -411,7 +395,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -429,7 +413,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Date',
+				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -545,7 +529,7 @@ export const quoteFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
+		name: 'lineItemsUi',
 		placeholder: 'Add Invoice Item',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -561,7 +545,7 @@ export const quoteFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'invoiceItemsValues',
+				name: 'lineItemsValues',
 				displayName: 'Invoice Item',
 				values: [
 					{
@@ -726,22 +710,6 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
 				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
@@ -753,7 +721,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -771,7 +739,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Quote Date',
+				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -924,12 +892,12 @@ export const quoteFields: INodeProperties[] = [
 			{
 				name: 'Clone To Quote',
 				value: 'clone_to_quote',
-				action: 'Clone To Quote a quote',
+				action: 'Clone To Quote',
 			},
 			{
 				name: 'Convert to Invoice',
 				value: 'convert_to_quote',
-				action: 'Convert to Invoice a quote',
+				action: 'Convert to Invoice',
 			},
 			{
 				name: 'Mark Sent',

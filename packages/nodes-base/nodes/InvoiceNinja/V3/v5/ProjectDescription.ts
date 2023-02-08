@@ -121,7 +121,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -239,7 +239,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Project Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -366,7 +366,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

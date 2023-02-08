@@ -260,9 +260,8 @@ export const documentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['client'],
-				operation: ['action'],
-				action: ['purge'],
+				resource: ['document'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

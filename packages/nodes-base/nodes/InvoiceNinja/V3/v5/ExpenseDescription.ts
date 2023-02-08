@@ -120,7 +120,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Expense Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

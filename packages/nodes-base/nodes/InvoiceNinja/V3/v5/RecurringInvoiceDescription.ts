@@ -129,7 +129,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Recurring Invoice Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

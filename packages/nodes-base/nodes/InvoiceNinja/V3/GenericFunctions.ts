@@ -87,10 +87,10 @@ export async function invoiceNinjaApiRequest(
 	if (version === 'v5' && option?.usePassword) {
 		if (!credentials.password) throw new NodeOperationError(
 			this.getNode(),
-			`this route is protected. set api-password property within credentials to perform this request.`,
+			`this route is protected. set your user-password property within credentials to perform this request.`,
 		);
 		option.headers = {
-			'X-API-PASSWORD-BASE64': btoa(credentials.password as string),
+			'X-API-PASSWORD-BASE64': Buffer.from(credentials.password as string).toString('base64'),
 			...option.headers,
 		}
 	}

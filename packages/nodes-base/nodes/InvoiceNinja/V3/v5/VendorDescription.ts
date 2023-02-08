@@ -117,7 +117,7 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

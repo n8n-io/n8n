@@ -116,7 +116,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Task Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

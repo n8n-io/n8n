@@ -120,7 +120,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Recurring Expense Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

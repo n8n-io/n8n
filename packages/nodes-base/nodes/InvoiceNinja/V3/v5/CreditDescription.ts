@@ -23,19 +23,19 @@ export const creditOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new credit',
-				action: 'Create a credit',
+				action: 'Create an credit',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a credit',
-				action: 'Delete a credit',
+				action: 'Delete an credit',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a credit',
-				action: 'Get a credit',
+				action: 'Get an credit',
 			},
 			{
 				name: 'Get Many',
@@ -56,7 +56,7 @@ export const creditOperations: INodeProperties[] = [
 
 export const creditFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                  credit:get                                */
+	/*                                  credit:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Credit ID',
@@ -89,10 +89,6 @@ export const creditFields: INodeProperties[] = [
 				name: 'Client',
 				value: 'client',
 			},
-			{
-				name: 'Vendor',
-				value: 'vendor',
-			},
 		],
 		default: [],
 	},
@@ -110,7 +106,7 @@ export const creditFields: INodeProperties[] = [
 		default: false,
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  credit:getAll                             */
+	/*                                  credit:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Filters',
@@ -133,38 +129,28 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Credit Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Credit Status',
-				name: 'creditStatus',
-				type: 'multiOptions',
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-					},
-					{
-						name: 'Overdue',
-						value: 'overdue',
-					},
-					{
-						name: 'Paid',
-						value: 'paid',
-					},
-					{
-						name: 'Reversed',
-						value: 'reversed',
-					},
-					{
-						name: 'Unpaid',
-						value: 'unpaid',
-					},
-				],
-				default: [],
+				displayName: 'Without Deleted Clients',
+				name: 'withoutDeletedClients',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Upcomming',
+				name: 'upcomming',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Overdue',
+				name: 'overdue',
+				type: 'boolean',
+				default: false,
 			},
 		],
 	},
@@ -184,10 +170,6 @@ export const creditFields: INodeProperties[] = [
 			{
 				name: 'Client',
 				value: 'client',
-			},
-			{
-				name: 'Vendor',
-				value: 'vendor',
 			},
 		],
 		default: [],
@@ -228,8 +210,151 @@ export const creditFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 credit:create                              */
+	/*                                 credit:create                             */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client',
+		name: 'clientId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['create'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getClientsV5',
+		},
+		required: true,
+		default: '',
+	},
+	{
+		displayName: 'Credit Items',
+		name: 'lineItemsUi',
+		placeholder: 'Add Credit Item',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'lineItemsValues',
+				displayName: 'Credit Item',
+				values: [
+					{
+						displayName: 'Cost',
+						name: 'cost',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anzahl',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1,
+					},
+					{
+						displayName: 'Product Key / Article Name',
+						description: 'Name of the Article / Product to credit',
+						name: 'productKey',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Notes / Description',
+						description: 'an extended Description for the credit line',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+				],
+			},
+		],
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -244,28 +369,6 @@ export const creditFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'User (Assigned)',
-				name: 'assignedUserId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsersV5',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Client',
-				name: 'clientId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClientsV5',
-				},
-				default: '',
-			},
 			{
 				displayName: 'Vendor',
 				name: 'vendorId',
@@ -289,34 +392,6 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Balance',
-				name: 'balance',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
 				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
@@ -328,12 +403,6 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Recurring ID',
-				name: 'recurringId',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -342,8 +411,8 @@ export const creditFields: INodeProperties[] = [
 			{
 				displayName: 'Discount',
 				name: 'discount',
-				type: 'number',
-				default: 0,
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'PO Number',
@@ -353,12 +422,6 @@ export const creditFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Date',
-				name: 'date',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Next Send Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -388,20 +451,20 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
-				name: 'privateNotes',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Public Notes',
-				name: 'publicNotes',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Uses Inclusive Taxes',
 				name: 'usesInclusiveTaxes',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Is Amount Discount',
+				name: 'isAmountDiscount',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Auto Bill',
+				name: 'autoBillEnabled',
 				type: 'boolean',
 				default: false,
 			},
@@ -457,48 +520,58 @@ export const creditFields: INodeProperties[] = [
 				displayName: 'Exchange Rate',
 				name: 'exchangeRate',
 				type: 'number',
-				default: 0,
+				default: 1,
 			},
 			{
-				displayName: 'Subscription ID',
-				name: 'subscriptionId',
+				displayName: 'Private Notes',
+				name: 'privateNotes',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 			},
 			{
-				displayName: 'Auto Bill Enabled',
-				name: 'autoBillEnabled',
-				type: 'boolean',
-				default: false,
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 			{
 				displayName: 'Custom Value 1',
 				name: 'customValue1',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 			{
 				displayName: 'Custom Value 2',
 				name: 'customValue2',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 			{
 				displayName: 'Custom Value 3',
 				name: 'customValue3',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 			{
 				displayName: 'Custom Value 4',
 				name: 'customValue4',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 credit:update                              */
+	/*                                 credit:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Credit ID',
@@ -515,6 +588,130 @@ export const creditFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Credit Items',
+		name: 'lineItemsUi',
+		placeholder: 'Add Credit Item',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'lineItemsValues',
+				displayName: 'Credit Item',
+				values: [
+					{
+						displayName: 'Cost',
+						name: 'cost',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anzahl',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1,
+					},
+					{
+						displayName: 'Product Key / Article Name',
+						description: 'Name of the Article / Product to credit',
+						name: 'productKey',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Notes / Description',
+						description: 'an extended Description for the credit line',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -523,22 +720,11 @@ export const creditFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
-				resource: ['credit'],
 				operation: ['update'],
+				resource: ['credit'],
 			},
 		},
 		options: [
-			{
-				displayName: 'User (Assigned)',
-				name: 'assignedUserId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsersV5',
-				},
-				default: '',
-			},
 			{
 				displayName: 'Client',
 				name: 'clientId',
@@ -573,34 +759,6 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Balance',
-				name: 'balance',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
 				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
@@ -612,12 +770,6 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Recurring ID',
-				name: 'recurringId',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -626,8 +778,8 @@ export const creditFields: INodeProperties[] = [
 			{
 				displayName: 'Discount',
 				name: 'discount',
-				type: 'number',
-				default: 0,
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'PO Number',
@@ -637,12 +789,6 @@ export const creditFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Date',
-				name: 'date',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Next Send Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -672,20 +818,20 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
-				name: 'privateNotes',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Public Notes',
-				name: 'publicNotes',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Uses Inclusive Taxes',
 				name: 'usesInclusiveTaxes',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Is Amount Discount',
+				name: 'isAmountDiscount',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Auto Bill',
+				name: 'autoBillEnabled',
 				type: 'boolean',
 				default: false,
 			},
@@ -741,48 +887,58 @@ export const creditFields: INodeProperties[] = [
 				displayName: 'Exchange Rate',
 				name: 'exchangeRate',
 				type: 'number',
-				default: 0,
+				default: 1,
 			},
 			{
-				displayName: 'Subscription ID',
-				name: 'subscriptionId',
+				displayName: 'Private Notes',
+				name: 'privateNotes',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 			},
 			{
-				displayName: 'Auto Bill Enabled',
-				name: 'autoBillEnabled',
-				type: 'boolean',
-				default: false,
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 			{
 				displayName: 'Custom Value 1',
 				name: 'customValue1',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 			{
 				displayName: 'Custom Value 2',
 				name: 'customValue2',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 			{
 				displayName: 'Custom Value 3',
 				name: 'customValue3',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 			{
 				displayName: 'Custom Value 4',
 				name: 'customValue4',
 				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 credit:delete                              */
+	/*                                 credit:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Credit ID',
@@ -799,10 +955,10 @@ export const creditFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  client:action                             */
+	/*                                  credit:action                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client ID',
+		displayName: 'Credit ID',
 		name: 'creditId',
 		type: 'string',
 		default: '',
@@ -830,6 +986,16 @@ export const creditFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Clone to Credit',
+				value: 'clone_to_credit',
+				action: 'Clone to credit',
+			},
+			{
+				name: 'Mark Sent',
+				value: 'mark_sent',
+				action: 'Mark as Sent',
+			},
+			{
 				name: 'Send Email',
 				value: 'email',
 				action: 'Send an email',
@@ -840,26 +1006,36 @@ export const creditFields: INodeProperties[] = [
 				action: 'Send a custom email',
 			},
 			{
-				name: 'Mark Sent',
-				value: 'mark_sent',
-				action: 'Mark as sent',
-			},
-			{
 				name: 'Archive',
 				value: 'archive',
-				action: 'Archive a credit',
+				action: 'Archive an credit',
 			},
 			{
 				name: 'Restore',
 				value: 'restore',
-				action: 'Restore a credit',
+				action: 'Restore an credit',
 			},
 		],
 	},
 	{
+		displayName: 'Email Type',
+		name: 'emailEmailType',
+		description: 'an email type, which is not default, like: \'reminder1\', \'reminder2\', \'reminder3\', \'reminder_endless\', \'custom1\', \'custom2\', \'custom3\'',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['credit'],
+				operation: ['action'],
+				action: ['email'],
+			},
+		},
+	},
+	{
 		displayName: 'Subject',
 		name: 'customEmailSubject',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description: 'use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>',
 		type: 'string',
 		default: '',
 		required: true,
@@ -875,7 +1051,7 @@ export const creditFields: INodeProperties[] = [
 	{
 		displayName: 'Body',
 		name: 'customEmailBody',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description: 'use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>',
 		type: 'string',
 		default: '',
 		required: true,
@@ -891,7 +1067,7 @@ export const creditFields: INodeProperties[] = [
 	{
 		displayName: 'Template',
 		name: 'customEmailTemplate',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description: 'use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>',
 		type: 'options',
 		default: 'email_template_credit',
 		required: true,
@@ -909,8 +1085,32 @@ export const creditFields: INodeProperties[] = [
 				value: 'email_template_credit',
 			},
 			{
+				name: 'Reminder 1',
+				value: 'email_template_reminder1',
+			},
+			{
+				name: 'Reminder 2',
+				value: 'email_template_reminder2',
+			},
+			{
+				name: 'Reminder 3',
+				value: 'email_template_reminder3',
+			},
+			{
+				name: 'Reminder Endless',
+				value: 'email_template_reminder_endless',
+			},
+			{
 				name: 'Custom 1',
 				value: 'email_template_custom1',
+			},
+			{
+				name: 'Custom 2',
+				value: 'email_template_custom2',
+			},
+			{
+				name: 'Custom 3',
+				value: 'email_template_custom3',
 			},
 		]
 	},

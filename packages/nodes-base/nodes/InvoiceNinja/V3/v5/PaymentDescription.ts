@@ -124,7 +124,7 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Payment Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

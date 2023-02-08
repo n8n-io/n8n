@@ -129,7 +129,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
@@ -213,7 +213,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                 invoice:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Name or ID',
+		displayName: 'Client',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -233,7 +233,7 @@ export const invoiceFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
+		name: 'lineItemsUi',
 		placeholder: 'Add Invoice Item',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -249,7 +249,7 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'invoiceItemsValues',
+				name: 'lineItemsValues',
 				displayName: 'Invoice Item',
 				values: [
 					{
@@ -370,7 +370,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor Name or ID',
+				displayName: 'Vendor',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -381,7 +381,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -392,7 +392,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design Name or ID',
+				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -421,7 +421,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -589,7 +589,7 @@ export const invoiceFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Invoice Items',
-		name: 'invoiceItemsUi',
+		name: 'lineItemsUi',
 		placeholder: 'Add Invoice Item',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -605,7 +605,7 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'invoiceItemsValues',
+				name: 'lineItemsValues',
 				displayName: 'Invoice Item',
 				values: [
 					{
@@ -726,7 +726,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client Name or ID',
+				displayName: 'Client',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -737,7 +737,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor Name or ID',
+				displayName: 'Vendor',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -748,7 +748,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project Name or ID',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -759,7 +759,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design Name or ID',
+				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -788,7 +788,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Invoice Date',
+				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',
 				default: '',
@@ -993,12 +993,12 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				name: 'Clone to Invoice',
 				value: 'clone_to_invoice',
-				action: 'Clone to Invoice an invoice',
+				action: 'Clone to Invoice',
 			},
 			{
 				name: 'Clone To Quote',
 				value: 'clone_to_quote',
-				action: 'Clone To Quote an invoice',
+				action: 'Clone To Quote',
 			},
 			{
 				name: 'Mark Sent',

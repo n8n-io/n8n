@@ -123,7 +123,7 @@ export const clientFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client Number',
+				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',

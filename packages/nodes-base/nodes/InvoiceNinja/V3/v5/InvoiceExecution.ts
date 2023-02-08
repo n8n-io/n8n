@@ -117,8 +117,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.autoBillEnabled !== undefined) {
 					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 				}
-				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
-					.invoiceItemsValues as IDataObject[];
+				const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+					.lineItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IInvoiceItem[] = [];
 					for (const itemValue of lineItemsValues) {
@@ -248,8 +248,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.autoBillEnabled !== undefined) {
 					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 				}
-				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
-					.invoiceItemsValues as IDataObject[];
+				const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+					.lineItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IInvoiceItem[] = [];
 					for (const itemValue of lineItemsValues) {

@@ -42,9 +42,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.designId !== undefined) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.statusId !== undefined) {
-					body.status_id = additionalFields.statusId as string;
-				}
 				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
@@ -111,8 +108,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
-					.invoiceItemsValues as IDataObject[];
+				const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+					.lineItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IQuoteItem[] = [];
 					for (const itemValue of lineItemsValues) {
@@ -167,9 +164,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.designId !== undefined) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.statusId !== undefined) {
-					body.status_id = additionalFields.statusId as string;
-				}
 				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
@@ -236,8 +230,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
-					.invoiceItemsValues as IDataObject[];
+				const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+					.lineItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IQuoteItem[] = [];
 					for (const itemValue of lineItemsValues) {
