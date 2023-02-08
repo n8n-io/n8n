@@ -59,6 +59,8 @@ jobs:
         env:
           CYPRESS_CACHE_FOLDER: node_modules/.bin
 
+      - name: Debugging - list files
+        run: ls -la /github/home
       - name: Zip packages dist folders
         run: tar -czvf ./packages_build.tar.gz ./packages/*
 
@@ -128,6 +130,7 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
+          CYPRESS_RUN_BINARY: ${{ github.workspace }}/node_modules/.bin/cypress
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
