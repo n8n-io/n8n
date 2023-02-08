@@ -40,6 +40,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
+            /github/home/.cache
             ~/.pnpm-store
             ./node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}--modules
@@ -60,7 +61,8 @@ jobs:
           CYPRESS_CACHE_FOLDER: node_modules/.bin
 
       - name: Debugging - list files
-        run: ls -la /github/home
+        run: ls -la /github/home/.cache
+
       - name: Zip packages dist folders
         run: tar -czvf ./packages_build.tar.gz ./packages/*
 
@@ -95,6 +97,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
+            /github/home/.cache
             ~/.pnpm-store
             ./node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}--modules
@@ -108,7 +111,7 @@ jobs:
           name: build
 
       - name: Debugging - list files
-        run: ls -la ./
+        run: ls -la ${{ github.workspace }}/node_modules/.bin
 
       - name: Unzip packages dist folders
         run: tar -xzvf packages_build.tar.gz ./
@@ -130,7 +133,7 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          CYPRESS_RUN_BINARY: ${{ github.workspace }}/node_modules/.bin/cypress
+          # CYPRESS_RUN_BINARY: ${{ github.workspace }}/node_modules/.bin/cypress
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
