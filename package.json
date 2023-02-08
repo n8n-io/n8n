@@ -67,6 +67,7 @@
     "overrides": {
       "@types/node": "^16.18.12",
       "browserslist": "^4.21.4",
+      "chokidar": "3.5.2",
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
       "jsonwebtoken": "9.0.0",
