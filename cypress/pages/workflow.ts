@@ -122,6 +122,10 @@ export class WorkflowPage extends BasePage {
 			cy.contains('Expression').invoke('show').click();
 			cy.getByTestId('expander').invoke('show').click();
 		},
+		openTagManagerModal: () => {
+			this.getters.createTagButton().click();
+			this.getters.tagsDropdown().find('li.manage-tags').first().click();
+		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();

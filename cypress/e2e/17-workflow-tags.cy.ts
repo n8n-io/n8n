@@ -23,8 +23,7 @@ describe('Workflow tags', () => {
 	});
 
 	it('should create tags via modal', () => {
-		wf.getters.createTagButton().click();
-		wf.getters.tagsDropdown().find('li.manage-tags').first().click();
+		wf.actions.openTagManagerModal();
 
 		const [first, second] = TEST_TAGS;
 
@@ -40,8 +39,7 @@ describe('Workflow tags', () => {
 	});
 
 	it('should delete a tag via modal', () => {
-		wf.getters.createTagButton().click();
-		wf.getters.tagsDropdown().find('li.manage-tags').first().click();
+		wf.actions.openTagManagerModal();
 
 		const [first] = TEST_TAGS;
 
@@ -56,8 +54,7 @@ describe('Workflow tags', () => {
 	});
 
 	it('should update a tag via modal', () => {
-		wf.getters.createTagButton().click();
-		wf.getters.tagsDropdown().find('li.manage-tags').first().click();
+		wf.actions.openTagManagerModal();
 
 		const [first] = TEST_TAGS;
 
