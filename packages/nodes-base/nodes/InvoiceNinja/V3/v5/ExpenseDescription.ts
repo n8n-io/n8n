@@ -306,7 +306,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Project ID or',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -317,7 +317,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Invoice ID or',
+				displayName: 'Invoice ID',
 				name: 'invoiceId',
 				type: 'options',
 				description:
@@ -328,7 +328,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Recuring Expense ID or',
+				displayName: 'Recuring Expense',
 				name: 'recurringExpenseId',
 				type: 'options',
 				description:
@@ -573,7 +573,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Project ID or',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -584,7 +584,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Invoice ID or',
+				displayName: 'Invoice',
 				name: 'invoiceId',
 				type: 'options',
 				description:
@@ -595,7 +595,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Recuring Expense ID or',
+				displayName: 'Recuring Expense',
 				name: 'recurringExpenseId',
 				type: 'options',
 				description:

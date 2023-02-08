@@ -9,7 +9,7 @@ import type {
 
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
-import { countryCodes, currencies, paymentTypes } from './Entities';
+import { countryCodes, currencies, frequencies, paymentTypes } from './Entities';
 
 // import Descriptions
 import { bankTransactionFields, bankTransactionOperations } from './BankTransactionDescription';
@@ -280,6 +280,20 @@ export const InvoiceNinjaV5 = {
 					returnData.push({
 						name: categoryName,
 						value: categoryId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available country codes to display them to user so that he can
+			// select them easily
+			async getFrequenciesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (let i = 0; i < frequencies.length; i++) {
+					const frequencyName = frequencies[i].name as string;
+					const frequencyId = frequencies[i].id as string;
+					returnData.push({
+						name: frequencyName,
+						value: frequencyId,
 					});
 				}
 				return returnData;

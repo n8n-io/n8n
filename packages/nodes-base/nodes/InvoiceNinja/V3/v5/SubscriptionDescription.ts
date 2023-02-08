@@ -252,7 +252,10 @@ export const subscriptionFields: INodeProperties[] = [
 			{
 				displayName: 'Frequency ID',
 				name: 'frequencyId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getFrequenciesV5',
+				},
 				default: '',
 			},
 			{
@@ -464,7 +467,10 @@ export const subscriptionFields: INodeProperties[] = [
 			{
 				displayName: 'Frequency ID',
 				name: 'frequencyId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getFrequenciesV5',
+				},
 				default: '',
 			},
 			{

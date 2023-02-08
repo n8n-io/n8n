@@ -19,8 +19,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const frequencyId = this.getNodeParameter('frequencyId', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IRecurringExpense = {};
+				body.frequency_id = frequencyId as string;
 				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
@@ -87,11 +89,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.remainingCycles !== undefined) {
 					body.remaining_cycles = additionalFields.remainingCycles as number;
 				}
-				if (additionalFields.frequencyId !== undefined) {
-					body.frequency_id = additionalFields.frequencyId as string;
-				}
 				if (additionalFields.nextSendDate !== undefined) {
-					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD HH:mm:ss");
 				}
 				if (additionalFields.taxAmount3 !== undefined) {
 					body.tax_amount3 = additionalFields.taxAmount3 as number;
@@ -110,6 +109,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+				}
+				if (additionalFields.paymentDate !== undefined) {
+					body.payment_date = moment(additionalFields.paymentDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
@@ -135,6 +137,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.calculateTaxByAmount !== undefined) {
 					body.calculate_tax_by_amount = additionalFields.calculateTaxByAmount as boolean;
 				}
+				console.log(body)
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'POST',
@@ -147,7 +150,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const recurringExpenseId = this.getNodeParameter('recurringExpenseId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IRecurringExpense = {};
-
 				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
@@ -218,7 +220,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
 				if (additionalFields.nextSendDate !== undefined) {
-					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD HH:mm:ss");
 				}
 				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
@@ -234,6 +236,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+				}
+				if (additionalFields.paymentDate !== undefined) {
+					body.payment_date = moment(additionalFields.paymentDate as string).format("YYYY-MM-DD");
 				}
 				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
@@ -331,7 +336,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'action') {
 				const recurringExpenseId = this.getNodeParameter('recurringExpenseId', i) as string;
-				const action = this.getNodeParameter('action', i) as string;				
+				const action = this.getNodeParameter('action', i) as string;
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'POST',

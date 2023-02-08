@@ -1826,3 +1826,54 @@ export const currencies = [
 	{ id: "112", 'name': 'Cayman Island Dollar', 'code': 'KYD', 'symbol': '', 'precision': '2', 'thousand_separator': ',', 'decimal_separator': '.' },
 	{ id: "113", 'name': 'Swazi lilangeni', 'code': 'SZL', 'symbol': 'E', 'precision': '2', 'thousand_separator': ',', 'decimal_separator': '.' },
 ] as IDataObject[];
+
+export const frequencies = [
+	{
+		name: 'Daily',
+		value: 1,
+	},
+	{
+		name: 'Weekly',
+		value: 2,
+	},
+	{
+		name: 'Every 2 Weeks',
+		value: 3,
+	},
+	{
+		name: 'Every 4 Weeks',
+		value: 4,
+	},
+	{
+		name: 'Monthly',
+		value: 5,
+	},
+	{
+		name: 'Every 2 Months',
+		value: 6,
+	},
+	{
+		name: 'Every 3 Months',
+		value: 7,
+	},
+	{
+		name: 'Every 4 Months',
+		value: 8,
+	},
+	{
+		name: 'Every 6 Months',
+		value: 9,
+	},
+	{
+		name: 'Yearly',
+		value: 10,
+	},
+	{
+		name: 'Every 2 Years',
+		value: 11,
+	},
+	{
+		name: 'Every 3 Years',
+		value: 12,
+	},
+] as IDataObject[];

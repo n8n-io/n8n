@@ -223,57 +223,10 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		options: [
-			{
-				name: 'Daily',
-				value: 1,
-			},
-			{
-				name: 'Weekly',
-				value: 2,
-			},
-			{
-				name: 'Every 2 Weeks',
-				value: 3,
-			},
-			{
-				name: 'Every 4 Weeks',
-				value: 4,
-			},
-			{
-				name: 'Monthly',
-				value: 5,
-			},
-			{
-				name: 'Every 2 Months',
-				value: 6,
-			},
-			{
-				name: 'Every 3 Months',
-				value: 7,
-			},
-			{
-				name: 'Every 4 Months',
-				value: 8,
-			},
-			{
-				name: 'Every 6 Months',
-				value: 9,
-			},
-			{
-				name: 'Yearly',
-				value: 10,
-			},
-			{
-				name: 'Every 2 Years',
-				value: 11,
-			},
-			{
-				name: 'Every 3 Years',
-				value: 12,
-			},
-		],
-		default: 5,
+		typeOptions: {
+			loadOptionsMethod: 'getFrequenciesV5',
+		},
+		default: '',
 	},
 	{
 		displayName: 'Recurring Invoice Items',
@@ -907,57 +860,10 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				displayName: 'Frequency',
 				name: 'frequencyId',
 				type: 'options',
-				options: [
-					{
-						name: 'Daily',
-						value: 1,
-					},
-					{
-						name: 'Weekly',
-						value: 2,
-					},
-					{
-						name: 'Every 2 Weeks',
-						value: 3,
-					},
-					{
-						name: 'Every 4 Weeks',
-						value: 4,
-					},
-					{
-						name: 'Monthly',
-						value: 5,
-					},
-					{
-						name: 'Every 2 Months',
-						value: 6,
-					},
-					{
-						name: 'Every 3 Months',
-						value: 7,
-					},
-					{
-						name: 'Every 4 Months',
-						value: 8,
-					},
-					{
-						name: 'Every 6 Months',
-						value: 9,
-					},
-					{
-						name: 'Yearly',
-						value: 10,
-					},
-					{
-						name: 'Every 2 Years',
-						value: 11,
-					},
-					{
-						name: 'Every 3 Years',
-						value: 12,
-					},
-				],
-				default: 5,
+				typeOptions: {
+					loadOptionsMethod: 'getFrequenciesV5',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Next Send Date',

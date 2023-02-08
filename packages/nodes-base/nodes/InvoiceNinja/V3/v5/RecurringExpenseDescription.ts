@@ -196,6 +196,22 @@ export const recurringExpenseFields: INodeProperties[] = [
 	/*                                 recurringExpense:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Frequency',
+		name: 'frequencyId',
+		type: 'options',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['recurringExpense'],
+				operation: ['create'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getFrequenciesV5',
+		},
+		default: '',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -290,7 +306,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Should Be Invoiced',
-				name: 'should_be_invoiced',
+				name: 'shouldBeInvoiced',
 				type: 'boolean',
 				default: false,
 			},
@@ -306,7 +322,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Project ID or',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -370,62 +386,6 @@ export const recurringExpenseFields: INodeProperties[] = [
 				name: 'remainingCycles',
 				type: 'number',
 				default: -1,
-			},
-			{
-				displayName: 'Frequency',
-				name: 'frequencyId',
-				type: 'options',
-				options: [
-					{
-						name: 'Daily',
-						value: 1,
-					},
-					{
-						name: 'Weekly',
-						value: 2,
-					},
-					{
-						name: 'Every 2 Weeks',
-						value: 3,
-					},
-					{
-						name: 'Every 4 Weeks',
-						value: 4,
-					},
-					{
-						name: 'Monthly',
-						value: 5,
-					},
-					{
-						name: 'Every 2 Months',
-						value: 6,
-					},
-					{
-						name: 'Every 3 Months',
-						value: 7,
-					},
-					{
-						name: 'Every 4 Months',
-						value: 8,
-					},
-					{
-						name: 'Every 6 Months',
-						value: 9,
-					},
-					{
-						name: 'Yearly',
-						value: 10,
-					},
-					{
-						name: 'Every 2 Years',
-						value: 11,
-					},
-					{
-						name: 'Every 3 Years',
-						value: 12,
-					},
-				],
-				default: 5,
 			},
 			{
 				displayName: 'Next Send Date',
@@ -595,7 +555,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Should Be Invoiced',
-				name: 'should_be_invoiced',
+				name: 'shouldBeInvoiced',
 				type: 'boolean',
 				default: false,
 			},
@@ -611,7 +571,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Connected Project ID or',
+				displayName: 'Project',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -680,57 +640,10 @@ export const recurringExpenseFields: INodeProperties[] = [
 				displayName: 'Frequency',
 				name: 'frequencyId',
 				type: 'options',
-				options: [
-					{
-						name: 'Daily',
-						value: 1,
-					},
-					{
-						name: 'Weekly',
-						value: 2,
-					},
-					{
-						name: 'Every 2 Weeks',
-						value: 3,
-					},
-					{
-						name: 'Every 4 Weeks',
-						value: 4,
-					},
-					{
-						name: 'Monthly',
-						value: 5,
-					},
-					{
-						name: 'Every 2 Months',
-						value: 6,
-					},
-					{
-						name: 'Every 3 Months',
-						value: 7,
-					},
-					{
-						name: 'Every 4 Months',
-						value: 8,
-					},
-					{
-						name: 'Every 6 Months',
-						value: 9,
-					},
-					{
-						name: 'Yearly',
-						value: 10,
-					},
-					{
-						name: 'Every 2 Years',
-						value: 11,
-					},
-					{
-						name: 'Every 3 Years',
-						value: 12,
-					},
-				],
-				default: 5,
+				typeOptions: {
+					loadOptionsMethod: 'getFrequenciesV5',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Next Send Date',
