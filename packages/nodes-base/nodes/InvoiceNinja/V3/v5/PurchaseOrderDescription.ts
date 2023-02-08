@@ -239,6 +239,148 @@ export const purchaseOrderFields: INodeProperties[] = [
 	/*                                 purchaseOrder:create                       */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Vendor',
+		name: 'vendorId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getVendorsV5',
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchaseOrder'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Purchase Order Items',
+		name: 'lineItemsUi',
+		placeholder: 'Add Purchase Order Item',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchaseOrder'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'lineItemsValues',
+				displayName: 'Purchase Order Item',
+				values: [
+					{
+						displayName: 'Cost',
+						name: 'cost',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anzahl',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1,
+					},
+					{
+						displayName: 'Product Key / Article Name',
+						description: 'Name of the Article / Product to invoice',
+						name: 'productKey',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Notes / Description',
+						description: 'an extended Description for the invoice line',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -275,17 +417,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
-				name: 'vendorId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getVendorsV5',
-				},
-				default: '',
-			},
-			{
 				displayName: 'User (Assigned)',
 				name: 'assignedUserId',
 				type: 'options',
@@ -295,40 +426,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsersV5',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Balance',
-				name: 'balance',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
 			},
 			{
 				displayName: 'Design',
@@ -367,8 +464,8 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Due Date',
-				name: 'dateTime',
-				type: 'string',
+				name: 'dueDate',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -444,16 +541,15 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Subscription ID',
-				name: 'subscriptionId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Expense ID',
-				name: 'expenseId',
-				type: 'string',
-				default: '',
+				displayName: 'Currency',
+				name: 'currencyId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrenciesV5',
+				},
+				default: ''
 			},
 			{
 				displayName: 'Private Notes',
@@ -496,119 +592,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'customValue4',
 				type: 'string',
 				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Purchase Order Items',
-		name: 'purchaseOrderItemsUi',
-		placeholder: 'Add Purchase Order Item',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['purchaseOrder'],
-				operation: ['create'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'purchaseOrderItemsValues',
-				displayName: 'Purchase Order Item',
-				values: [
-					{
-						displayName: 'Cost',
-						name: 'cost',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Anzahl',
-						name: 'quantity',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 1,
-					},
-					{
-						displayName: 'Notes',
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 1',
-						name: 'taxName1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 2',
-						name: 'taxName2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 3',
-						name: 'taxName3',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Rate 1',
-						name: 'taxRate1',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 2',
-						name: 'taxRate2',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 3',
-						name: 'taxRate3',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Custom Value 1',
-						name: 'customValue1',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 2',
-						name: 'customValue2',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 3',
-						name: 'customValue3',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 4',
-						name: 'customValue4',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-				],
 			},
 		],
 	},
@@ -630,6 +613,130 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Purchase Order Items',
+		name: 'lineItemsUi',
+		placeholder: 'Add Purchase Order Item',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['purchaseOrder'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'lineItemsValues',
+				displayName: 'Purchase Order Item',
+				values: [
+					{
+						displayName: 'Cost',
+						name: 'cost',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anzahl',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1,
+					},
+					{
+						displayName: 'Product Key / Article Name',
+						description: 'Name of the Article / Product to invoice',
+						name: 'productKey',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Notes / Description',
+						description: 'an extended Description for the invoice line',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 1',
+						name: 'taxName1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 2',
+						name: 'taxName2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Name 3',
+						name: 'taxName3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Tax Rate 1',
+						name: 'taxRate1',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 2',
+						name: 'taxRate2',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Tax Rate 3',
+						name: 'taxRate3',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						typeOptions: {},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -688,40 +795,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Balance',
-				name: 'balance',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Status',
-				name: 'statusId',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 1,
-					},
-					{
-						name: 'Sent',
-						value: 2,
-					},
-				],
-				default: 1,
-			},
-			{
 				displayName: 'Design',
 				name: 'designId',
 				type: 'options',
@@ -758,8 +831,8 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Due Date',
-				name: 'dateTime',
-				type: 'string',
+				name: 'dueDate',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -835,16 +908,15 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Subscription ID',
-				name: 'subscriptionId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Expense ID',
-				name: 'expenseId',
-				type: 'string',
-				default: '',
+				displayName: 'Currency',
+				name: 'currencyId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrenciesV5',
+				},
+				default: ''
 			},
 			{
 				displayName: 'Private Notes',
@@ -887,119 +959,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'customValue4',
 				type: 'string',
 				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Purchase Order Items',
-		name: 'purchaseOrderItemsUi',
-		placeholder: 'Add Purchase Order Item',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				apiVersion: ['v5'],
-				resource: ['purchaseOrder'],
-				operation: ['update'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'purchaseOrderItemsValues',
-				displayName: 'Purchase Order Item',
-				values: [
-					{
-						displayName: 'Cost',
-						name: 'cost',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Anzahl',
-						name: 'quantity',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 1,
-					},
-					{
-						displayName: 'Notes',
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 1',
-						name: 'taxName1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 2',
-						name: 'taxName2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Name 3',
-						name: 'taxName3',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Tax Rate 1',
-						name: 'taxRate1',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 2',
-						name: 'taxRate2',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Tax Rate 3',
-						name: 'taxRate3',
-						type: 'number',
-						default: 0,
-					},
-					{
-						displayName: 'Custom Value 1',
-						name: 'customValue1',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 2',
-						name: 'customValue2',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 3',
-						name: 'customValue3',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-					{
-						displayName: 'Custom Value 4',
-						name: 'customValue4',
-						type: 'string',
-						typeOptions: {},
-						default: '',
-					},
-				],
 			},
 		],
 	},

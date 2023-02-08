@@ -19,25 +19,18 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const vendorId = this.getNodeParameter('vendorId', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IPurchaseOrder = {};
+				body.vendor_id = vendorId as string;
 				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
 				if (additionalFields.projectId !== undefined) {
 					body.project_id = additionalFields.projectId as string;
 				}
-				if (additionalFields.amount !== undefined) {
-					body.amount = additionalFields.amount as number;
-				}
-				if (additionalFields.balance !== undefined) {
-					body.balance = additionalFields.balance as number;
-				}
 				if (additionalFields.clientId !== undefined) {
 					body.client_id = additionalFields.clientId as string;
-				}
-				if (additionalFields.statusId !== undefined) {
-					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.designId !== undefined) {
 					body.design_id = additionalFields.designId as string;
@@ -99,12 +92,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.paidToDate !== undefined) {
 					body.paid_to_date = additionalFields.paidToDate as number;
 				}
-				if (additionalFields.subscriptionId !== undefined) {
-					body.subscription_id = additionalFields.subscriptionId as string;
-				}
-				if (additionalFields.expenseId !== undefined) {
-					body.expense_id = additionalFields.expenseId as string;
-				}
 				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
 				}
@@ -123,16 +110,16 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
-					.invoiceItemsValues as IDataObject[];
+				const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+					.lineItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IPurchaseOrderItem[] = [];
 					for (const itemValue of lineItemsValues) {
 						const item: IPurchaseOrderItem = {
 							quantity: itemValue.quantity as number,
 							cost: itemValue.cost as number,
-							product_key: itemValue.service as string,
-							notes: itemValue.description as string,
+							product_key: itemValue.productKey as string,
+							notes: itemValue.notes as string,
 							discount: itemValue.discount as number,
 							tax_rate1: itemValue.taxRate1 as number,
 							tax_rate2: itemValue.taxRate2 as number,
@@ -149,6 +136,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					}
 					body.line_items = lineItems;
 				}
+				console.log(additionalFields, body)
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'POST',
@@ -167,17 +155,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.projectId !== undefined) {
 					body.project_id = additionalFields.projectId as string;
 				}
-				if (additionalFields.amount !== undefined) {
-					body.amount = additionalFields.amount as number;
-				}
-				if (additionalFields.balance !== undefined) {
-					body.balance = additionalFields.balance as number;
-				}
 				if (additionalFields.clientId !== undefined) {
 					body.client_id = additionalFields.clientId as string;
-				}
-				if (additionalFields.statusId !== undefined) {
-					body.status_id = additionalFields.statusId as string;
 				}
 				if (additionalFields.designId !== undefined) {
 					body.design_id = additionalFields.designId as string;
@@ -239,12 +218,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.paidToDate !== undefined) {
 					body.paid_to_date = additionalFields.paidToDate as number;
 				}
-				if (additionalFields.subscriptionId !== undefined) {
-					body.subscription_id = additionalFields.subscriptionId as string;
-				}
-				if (additionalFields.expenseId !== undefined) {
-					body.expense_id = additionalFields.expenseId as string;
-				}
 				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
 				}
@@ -263,16 +236,16 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				const lineItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
-					.invoiceItemsValues as IDataObject[];
+				const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
+					.lineItemsValues as IDataObject[];
 				if (lineItemsValues) {
 					const lineItems: IPurchaseOrderItem[] = [];
 					for (const itemValue of lineItemsValues) {
 						const item: IPurchaseOrderItem = {
 							quantity: itemValue.quantity as number,
 							cost: itemValue.cost as number,
-							product_key: itemValue.service as string,
-							notes: itemValue.description as string,
+							product_key: itemValue.productKey as string,
+							notes: itemValue.notes as string,
 							discount: itemValue.discount as number,
 							tax_rate1: itemValue.taxRate1 as number,
 							tax_rate2: itemValue.taxRate2 as number,
