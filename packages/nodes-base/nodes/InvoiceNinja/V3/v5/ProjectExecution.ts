@@ -24,40 +24,40 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const body: IProject = {};
 				body.name = name as string;
 				body.client_id = clientId as string;
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.taskRate) {
+				if (additionalFields.taskRate !== undefined) {
 					body.task_rate = additionalFields.taskRate as number;
 				}
-				if (additionalFields.budgetedHours) {
+				if (additionalFields.budgetedHours !== undefined) {
 					body.budgeted_hours = additionalFields.budgetedHours as number;
 				}
-				if (additionalFields.dueDate) {
+				if (additionalFields.dueDate !== undefined) {
 					body.due_date = additionalFields.dueDate as string;
 				}
-				if (additionalFields.privateNotes) {
+				if (additionalFields.privateNotes !== undefined) {
 					body.private_notes = additionalFields.privateNotes as string;
 				}
-				if (additionalFields.publicNotes) {
+				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				if (additionalFields.color) {
+				if (additionalFields.color !== undefined) {
 					body.color = additionalFields.color as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
@@ -72,46 +72,46 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const projectId = this.getNodeParameter('projectId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IProject = {};
-				if (additionalFields.name) {
+				if (additionalFields.name !== undefined) {
 					body.name = additionalFields.name as string;
 				}
-				if (additionalFields.clientId) {
+				if (additionalFields.clientId !== undefined) {
 					body.client_id = additionalFields.clientId as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.taskRate) {
+				if (additionalFields.taskRate !== undefined) {
 					body.task_rate = additionalFields.taskRate as number;
 				}
-				if (additionalFields.budgetedHours) {
+				if (additionalFields.budgetedHours !== undefined) {
 					body.budgeted_hours = additionalFields.budgetedHours as number;
 				}
-				if (additionalFields.dueDate) {
+				if (additionalFields.dueDate !== undefined) {
 					body.due_date = additionalFields.dueDate as string;
 				}
-				if (additionalFields.privateNotes) {
+				if (additionalFields.privateNotes !== undefined) {
 					body.private_notes = additionalFields.privateNotes as string;
 				}
-				if (additionalFields.publicNotes) {
+				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				if (additionalFields.color) {
+				if (additionalFields.color !== undefined) {
 					body.color = additionalFields.color as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
@@ -162,7 +162,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/projects', {}, qs);
 					responseData = responseData.data;

@@ -20,61 +20,61 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'create') {
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IProduct = {};
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.productKey) {
+				if (additionalFields.productKey !== undefined) {
 					body.product_key = additionalFields.productKey as string;
 				}
-				if (additionalFields.notes) {
+				if (additionalFields.notes !== undefined) {
 					body.notes = additionalFields.notes as string;
 				}
-				if (additionalFields.cost) {
+				if (additionalFields.cost !== undefined) {
 					body.cost = additionalFields.cost as number;
 				}
-				if (additionalFields.price) {
+				if (additionalFields.price !== undefined) {
 					body.price = additionalFields.price as number;
 				}
-				if (additionalFields.quantity) {
+				if (additionalFields.quantity !== undefined) {
 					body.quantity = additionalFields.quantity as number;
 				}
-				if (additionalFields.inStockQuantity) {
+				if (additionalFields.inStockQuantity !== undefined) {
 					body.in_stock_quantity = additionalFields.inStockQuantity as number;
 				}
-				if (additionalFields.stockNotifications) {
+				if (additionalFields.stockNotifications !== undefined) {
 					body.stock_notification = additionalFields.stockNotifications as boolean;
 				}
-				if (additionalFields.stockNotificationsThreshold) {
+				if (additionalFields.stockNotificationsThreshold !== undefined) {
 					body.stock_notification_threshold = additionalFields.stockNotificationsThreshold as number;
 				}
-				if (additionalFields.taxName1) {
+				if (additionalFields.taxName1 !== undefined) {
 					body.tax_name1 = additionalFields.taxName1 as string;
 				}
-				if (additionalFields.taxName2) {
+				if (additionalFields.taxName2 !== undefined) {
 					body.tax_name2 = additionalFields.taxName2 as string;
 				}
-				if (additionalFields.taxName3) {
+				if (additionalFields.taxName3 !== undefined) {
 					body.tax_name3 = additionalFields.taxName3 as string;
 				}
-				if (additionalFields.taxtRate1) {
+				if (additionalFields.taxtRate1 !== undefined) {
 					body.tax_rate1 = additionalFields.taxtRate1 as number;
 				}
-				if (additionalFields.taxtRate2) {
+				if (additionalFields.taxtRate2 !== undefined) {
 					body.tax_rate2 = additionalFields.taxtRate2 as number;
 				}
-				if (additionalFields.taxtRate3) {
+				if (additionalFields.taxtRate3 !== undefined) {
 					body.tax_rate3 = additionalFields.taxtRate3 as number;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
@@ -89,61 +89,61 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const productId = this.getNodeParameter('productId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IProduct = {};
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.productKey) {
+				if (additionalFields.productKey !== undefined) {
 					body.product_key = additionalFields.productKey as string;
 				}
-				if (additionalFields.notes) {
+				if (additionalFields.notes !== undefined) {
 					body.notes = additionalFields.notes as string;
 				}
-				if (additionalFields.cost) {
+				if (additionalFields.cost !== undefined) {
 					body.cost = additionalFields.cost as number;
 				}
-				if (additionalFields.price) {
+				if (additionalFields.price !== undefined) {
 					body.price = additionalFields.price as number;
 				}
-				if (additionalFields.quantity) {
+				if (additionalFields.quantity !== undefined) {
 					body.quantity = additionalFields.quantity as number;
 				}
-				if (additionalFields.inStockQuantity) {
+				if (additionalFields.inStockQuantity !== undefined) {
 					body.in_stock_quantity = additionalFields.inStockQuantity as number;
 				}
-				if (additionalFields.stockNotifications) {
+				if (additionalFields.stockNotifications !== undefined) {
 					body.stock_notification = additionalFields.stockNotifications as boolean;
 				}
-				if (additionalFields.stockNotificationsThreshold) {
+				if (additionalFields.stockNotificationsThreshold !== undefined) {
 					body.stock_notification_threshold = additionalFields.stockNotificationsThreshold as number;
 				}
-				if (additionalFields.taxName1) {
+				if (additionalFields.taxName1 !== undefined) {
 					body.tax_name1 = additionalFields.taxName1 as string;
 				}
-				if (additionalFields.taxName2) {
+				if (additionalFields.taxName2 !== undefined) {
 					body.tax_name2 = additionalFields.taxName2 as string;
 				}
-				if (additionalFields.taxName3) {
+				if (additionalFields.taxName3 !== undefined) {
 					body.tax_name3 = additionalFields.taxName3 as string;
 				}
-				if (additionalFields.taxtRate1) {
+				if (additionalFields.taxtRate1 !== undefined) {
 					body.tax_rate1 = additionalFields.taxtRate1 as number;
 				}
-				if (additionalFields.taxtRate2) {
+				if (additionalFields.taxtRate2 !== undefined) {
 					body.tax_rate2 = additionalFields.taxtRate2 as number;
 				}
-				if (additionalFields.taxtRate3) {
+				if (additionalFields.taxtRate3 !== undefined) {
 					body.tax_rate3 = additionalFields.taxtRate3 as number;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
@@ -192,7 +192,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/products', {}, qs);
 					responseData = responseData.data;

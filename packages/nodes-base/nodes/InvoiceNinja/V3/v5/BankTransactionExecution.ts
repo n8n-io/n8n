@@ -21,55 +21,55 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'create') {
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IBankTransaction = {};
-				if (additionalFields.accountType) {
+				if (additionalFields.accountType !== undefined) {
 					body.account_type = additionalFields.accountType as string;
 				}
-				if (additionalFields.amount) {
+				if (additionalFields.amount !== undefined) {
 					body.amount = additionalFields.amount as number;
 				}
-				if (additionalFields.bankIntegrationId) {
+				if (additionalFields.bankIntegrationId !== undefined) {
 					body.bank_integration_id = additionalFields.bankIntegrationId as string;
 				}
-				if (additionalFields.bankTransactionRuleId) {
+				if (additionalFields.bankTransactionRuleId !== undefined) {
 					body.bank_transaction_rule_id = additionalFields.bankTransactionRuleId as string;
 				}
-				if (additionalFields.baseType) {
+				if (additionalFields.baseType !== undefined) {
 					body.base_type = additionalFields.baseType as string;
 				}
-				if (additionalFields.categoryId) {
+				if (additionalFields.categoryId !== undefined) {
 					body.category_id = additionalFields.categoryId as number;
 				}
-				if (additionalFields.categoryType) {
+				if (additionalFields.categoryType !== undefined) {
 					body.category_type = additionalFields.categoryType as string;
 				}
-				if (additionalFields.currencyId) {
+				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
 				}
-				if (additionalFields.date) {
+				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.description) {
+				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
 				}
-				if (additionalFields.expenseId) {
+				if (additionalFields.expenseId !== undefined) {
 					body.expense_id = additionalFields.expenseId as string;
 				}
-				if (additionalFields.invoiceIds) {
+				if (additionalFields.invoiceIds !== undefined) {
 					body.invoice_ids = additionalFields.invoiceIds as string;
 				}
-				if (additionalFields.ninjaCategoryId) {
+				if (additionalFields.ninjaCategoryId !== undefined) {
 					body.ninja_category_id = additionalFields.ninjaCategoryId as string;
 				}
-				if (additionalFields.paymentId) {
+				if (additionalFields.paymentId !== undefined) {
 					body.payment_id = additionalFields.paymentId as string;
 				}
-				if (additionalFields.statusId) {
+				if (additionalFields.statusId !== undefined) {
 					body.status_id = additionalFields.statusId as string;
 				}
-				if (additionalFields.transactionId) {
+				if (additionalFields.transactionId !== undefined) {
 					body.transaction_id = additionalFields.transactionId as number;
 				}
-				if (additionalFields.vendorId) {
+				if (additionalFields.vendorId !== undefined) {
 					body.vendor_id = additionalFields.vendorId as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
@@ -87,52 +87,52 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.accountType) {
 					body.account_type = additionalFields.accountType as string;
 				}
-				if (additionalFields.amount) {
+				if (additionalFields.amount !== undefined) {
 					body.amount = additionalFields.amount as number;
 				}
-				if (additionalFields.bankIntegrationId) {
+				if (additionalFields.bankIntegrationId !== undefined) {
 					body.bank_integration_id = additionalFields.bankIntegrationId as string;
 				}
-				if (additionalFields.bankTransactionRuleId) {
+				if (additionalFields.bankTransactionRuleId !== undefined) {
 					body.bank_transaction_rule_id = additionalFields.bankTransactionRuleId as string;
 				}
-				if (additionalFields.baseType) {
+				if (additionalFields.baseType !== undefined) {
 					body.base_type = additionalFields.baseType as string;
 				}
-				if (additionalFields.categoryId) {
+				if (additionalFields.categoryId !== undefined) {
 					body.category_id = additionalFields.categoryId as number;
 				}
-				if (additionalFields.categoryType) {
+				if (additionalFields.categoryType !== undefined) {
 					body.category_type = additionalFields.categoryType as string;
 				}
-				if (additionalFields.currencyId) {
+				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
 				}
-				if (additionalFields.date) {
+				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.description) {
+				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
 				}
-				if (additionalFields.expenseId) {
+				if (additionalFields.expenseId !== undefined) {
 					body.expense_id = additionalFields.expenseId as string;
 				}
-				if (additionalFields.invoiceIds) {
+				if (additionalFields.invoiceIds !== undefined) {
 					body.invoice_ids = additionalFields.invoiceIds as string;
 				}
-				if (additionalFields.ninjaCategoryId) {
+				if (additionalFields.ninjaCategoryId !== undefined) {
 					body.ninja_category_id = additionalFields.ninjaCategoryId as string;
 				}
-				if (additionalFields.paymentId) {
+				if (additionalFields.paymentId !== undefined) {
 					body.payment_id = additionalFields.paymentId as string;
 				}
-				if (additionalFields.statusId) {
+				if (additionalFields.statusId !== undefined) {
 					body.status_id = additionalFields.statusId as string;
 				}
-				if (additionalFields.transactionId) {
+				if (additionalFields.transactionId !== undefined) {
 					body.transaction_id = additionalFields.transactionId as number;
 				}
-				if (additionalFields.vendorId) {
+				if (additionalFields.vendorId !== undefined) {
 					body.vendor_id = additionalFields.vendorId as string;
 				}
 				responseData = await invoiceNinjaApiRequest.call(
@@ -184,7 +184,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/bank_transactions', {}, qs);
 					responseData = responseData.data;

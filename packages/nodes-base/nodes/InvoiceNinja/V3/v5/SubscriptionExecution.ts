@@ -20,89 +20,89 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'create') {
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ISubscription = {};
-				if (additionalFields.allowCancellation) {
+				if (additionalFields.allowCancellation !== undefined) {
 					body.allow_cancellation = additionalFields.allowCancellation as boolean;
 				}
-				if (additionalFields.allowPlanChanges) {
+				if (additionalFields.allowPlanChanges !== undefined) {
 					body.allow_plan_changes = additionalFields.allowPlanChanges as boolean;
 				}
-				if (additionalFields.allowQueryOverrides) {
+				if (additionalFields.allowQueryOverrides !== undefined) {
 					body.allow_query_overrides = additionalFields.allowQueryOverrides as boolean;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.autoBill) {
+				if (additionalFields.autoBill !== undefined) {
 					body.auto_bill = additionalFields.autoBill as string;
 				}
-				if (additionalFields.companyId) {
+				if (additionalFields.companyId !== undefined) {
 					body.company_id = additionalFields.companyId as string;
 				}
-				if (additionalFields.currencyId) {
+				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
 				}
-				if (additionalFields.frequencyId) {
+				if (additionalFields.frequencyId !== undefined) {
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
-				if (additionalFields.groupId) {
+				if (additionalFields.groupId !== undefined) {
 					body.group_id = additionalFields.groupId as string;
 				}
-				if (additionalFields.isAmountDiscount) {
+				if (additionalFields.isAmountDiscount !== undefined) {
 					body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
 				}
-				if (additionalFields.maxSeatsLimit) {
+				if (additionalFields.maxSeatsLimit !== undefined) {
 					body.max_seats_limit = additionalFields.maxSeatsLimit as number;
 				}
-				if (additionalFields.name) {
+				if (additionalFields.name !== undefined) {
 					body.name = additionalFields.name as string;
 				}
-				if (additionalFields.optionalProductIds) {
+				if (additionalFields.optionalProductIds !== undefined) {
 					body.optional_product_ids = additionalFields.optionalProductIds as string;
 				}
-				if (additionalFields.optionalRecurringProductIds) {
+				if (additionalFields.optionalRecurringProductIds !== undefined) {
 					body.optional_recurring_product_ids =
 						additionalFields.optionalRecurringProductIds as string;
 				}
-				if (additionalFields.perSeatEnabled) {
+				if (additionalFields.perSeatEnabled !== undefined) {
 					body.per_seat_enabled = additionalFields.perSeatEnabled as boolean;
 				}
-				if (additionalFields.planMap) {
+				if (additionalFields.planMap !== undefined) {
 					body.plan_map = additionalFields.planMap as string;
 				}
-				if (additionalFields.price) {
+				if (additionalFields.price !== undefined) {
 					body.price = additionalFields.price as number;
 				}
-				if (additionalFields.productIds) {
+				if (additionalFields.productIds !== undefined) {
 					body.product_ids = additionalFields.productIds as string;
 				}
-				if (additionalFields.promoDiscount) {
+				if (additionalFields.promoDiscount !== undefined) {
 					body.promo_discount = additionalFields.promoDiscount as number;
 				}
-				if (additionalFields.promoPrice) {
+				if (additionalFields.promoPrice !== undefined) {
 					body.promo_price = additionalFields.promoPrice as number;
 				}
-				if (additionalFields.purchasePage) {
+				if (additionalFields.purchasePage !== undefined) {
 					body.purchase_page = additionalFields.purchasePage as string;
 				}
-				if (additionalFields.recurringProductIds) {
+				if (additionalFields.recurringProductIds !== undefined) {
 					body.recurring_product_ids = additionalFields.recurringProductIds as string;
 				}
-				if (additionalFields.refundPeriod) {
+				if (additionalFields.refundPeriod !== undefined) {
 					body.refund_period = additionalFields.refundPeriod as number;
 				}
-				if (additionalFields.registrationRequired) {
+				if (additionalFields.registrationRequired !== undefined) {
 					body.registration_required = additionalFields.registrationRequired as boolean;
 				}
-				if (additionalFields.trialDuration) {
+				if (additionalFields.trialDuration !== undefined) {
 					body.trial_duration = additionalFields.trialDuration as number;
 				}
-				if (additionalFields.trialEnabled) {
+				if (additionalFields.trialEnabled !== undefined) {
 					body.trial_enabled = additionalFields.trialEnabled as boolean;
 				}
-				if (additionalFields.useInventoryManagement) {
+				if (additionalFields.useInventoryManagement !== undefined) {
 					body.use_inventory_management = additionalFields.useInventoryManagement as boolean;
 				}
-				if (additionalFields.webhookConfiguration) {
+				if (additionalFields.webhookConfiguration !== undefined) {
 					body.webhook_configuration =
 						typeof additionalFields.webhookConfiguration == 'string'
 							? JSON.parse(additionalFields.webhookConfiguration)
@@ -120,89 +120,89 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const subscriptionId = this.getNodeParameter('subscriptionId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ISubscription = {};
-				if (additionalFields.allowCancellation) {
+				if (additionalFields.allowCancellation !== undefined) {
 					body.allow_cancellation = additionalFields.allowCancellation as boolean;
 				}
-				if (additionalFields.allowPlanChanges) {
+				if (additionalFields.allowPlanChanges !== undefined) {
 					body.allow_plan_changes = additionalFields.allowPlanChanges as boolean;
 				}
-				if (additionalFields.allowQueryOverrides) {
+				if (additionalFields.allowQueryOverrides !== undefined) {
 					body.allow_query_overrides = additionalFields.allowQueryOverrides as boolean;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.autoBill) {
+				if (additionalFields.autoBill !== undefined) {
 					body.auto_bill = additionalFields.autoBill as string;
 				}
-				if (additionalFields.companyId) {
+				if (additionalFields.companyId !== undefined) {
 					body.company_id = additionalFields.companyId as string;
 				}
-				if (additionalFields.currencyId) {
+				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
 				}
-				if (additionalFields.frequencyId) {
+				if (additionalFields.frequencyId !== undefined) {
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
-				if (additionalFields.groupId) {
+				if (additionalFields.groupId !== undefined) {
 					body.group_id = additionalFields.groupId as string;
 				}
-				if (additionalFields.isAmountDiscount) {
+				if (additionalFields.isAmountDiscount !== undefined) {
 					body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
 				}
-				if (additionalFields.maxSeatsLimit) {
+				if (additionalFields.maxSeatsLimit !== undefined) {
 					body.max_seats_limit = additionalFields.maxSeatsLimit as number;
 				}
-				if (additionalFields.name) {
+				if (additionalFields.name !== undefined) {
 					body.name = additionalFields.name as string;
 				}
-				if (additionalFields.optionalProductIds) {
+				if (additionalFields.optionalProductIds !== undefined) {
 					body.optional_product_ids = additionalFields.optionalProductIds as string;
 				}
-				if (additionalFields.optionalRecurringProductIds) {
+				if (additionalFields.optionalRecurringProductIds !== undefined) {
 					body.optional_recurring_product_ids =
 						additionalFields.optionalRecurringProductIds as string;
 				}
-				if (additionalFields.perSeatEnabled) {
+				if (additionalFields.perSeatEnabled !== undefined) {
 					body.per_seat_enabled = additionalFields.perSeatEnabled as boolean;
 				}
-				if (additionalFields.planMap) {
+				if (additionalFields.planMap !== undefined) {
 					body.plan_map = additionalFields.planMap as string;
 				}
-				if (additionalFields.price) {
+				if (additionalFields.price !== undefined) {
 					body.price = additionalFields.price as number;
 				}
-				if (additionalFields.productIds) {
+				if (additionalFields.productIds !== undefined) {
 					body.product_ids = additionalFields.productIds as string;
 				}
-				if (additionalFields.promoDiscount) {
+				if (additionalFields.promoDiscount !== undefined) {
 					body.promo_discount = additionalFields.promoDiscount as number;
 				}
-				if (additionalFields.promoPrice) {
+				if (additionalFields.promoPrice !== undefined) {
 					body.promo_price = additionalFields.promoPrice as number;
 				}
-				if (additionalFields.purchasePage) {
+				if (additionalFields.purchasePage !== undefined) {
 					body.purchase_page = additionalFields.purchasePage as string;
 				}
-				if (additionalFields.recurringProductIds) {
+				if (additionalFields.recurringProductIds !== undefined) {
 					body.recurring_product_ids = additionalFields.recurringProductIds as string;
 				}
-				if (additionalFields.refundPeriod) {
+				if (additionalFields.refundPeriod !== undefined) {
 					body.refund_period = additionalFields.refundPeriod as number;
 				}
-				if (additionalFields.registrationRequired) {
+				if (additionalFields.registrationRequired !== undefined) {
 					body.registration_required = additionalFields.registrationRequired as boolean;
 				}
-				if (additionalFields.trialDuration) {
+				if (additionalFields.trialDuration !== undefined) {
 					body.trial_duration = additionalFields.trialDuration as number;
 				}
-				if (additionalFields.trialEnabled) {
+				if (additionalFields.trialEnabled !== undefined) {
 					body.trial_enabled = additionalFields.trialEnabled as boolean;
 				}
-				if (additionalFields.useInventoryManagement) {
+				if (additionalFields.useInventoryManagement !== undefined) {
 					body.use_inventory_management = additionalFields.useInventoryManagement as boolean;
 				}
-				if (additionalFields.webhookConfiguration) {
+				if (additionalFields.webhookConfiguration !== undefined) {
 					body.webhook_configuration =
 						typeof additionalFields.webhookConfiguration == 'string'
 							? JSON.parse(additionalFields.webhookConfiguration)
@@ -252,7 +252,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/subscriptions', {}, qs);
 					responseData = responseData.data;

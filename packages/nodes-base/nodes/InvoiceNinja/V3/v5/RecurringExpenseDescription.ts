@@ -317,15 +317,6 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Payment Type',
-				name: 'entity_type',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPaymentTypesV5',
-				},
-				default: 1,
-			},
-			{
 				displayName: 'Tax Name 1',
 				name: 'taxName1',
 				type: 'string',
@@ -629,15 +620,6 @@ export const recurringExpenseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Payment Type',
-				name: 'entity_type',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPaymentTypesV5',
-				},
-				default: 1,
 			},
 			{
 				displayName: 'Tax Name 1',

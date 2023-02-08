@@ -25,43 +25,43 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const body: IPayment = {};
 				body.client_id = clientId as string;
 				body.amount = amount as number;
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.amount) {
+				if (additionalFields.amount !== undefined) {
 					body.amount = additionalFields.amount as number;
 				}
-				if (additionalFields.transactionReference) {
+				if (additionalFields.transactionReference !== undefined) {
 					body.transaction_reference = additionalFields.transactionReference as string;
 				}
-				if (additionalFields.date) {
+				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.typeId) {
+				if (additionalFields.typeId !== undefined) {
 					body.type_id = additionalFields.typeId as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.exchangeRate) {
+				if (additionalFields.exchangeRate !== undefined) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
 				}
-				if (additionalFields.exchangeCurrencyId) {
+				if (additionalFields.exchangeCurrencyId !== undefined) {
 					body.exchange_currency_id = additionalFields.exchangeCurrencyId as string;
 				}
-				if (additionalFields.privateNotes) {
+				if (additionalFields.privateNotes !== undefined) {
 					body.private_notes = additionalFields.privateNotes as string;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
 				const assignInvoicesValues = (this.getNodeParameter('assignInvoicesUi', i) as IDataObject)
@@ -89,40 +89,40 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const paymentId = this.getNodeParameter('paymentId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IPayment = {};
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.transactionReference) {
+				if (additionalFields.transactionReference !== undefined) {
 					body.transaction_reference = additionalFields.transactionReference as string;
 				}
-				if (additionalFields.date) {
+				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.typeId) {
+				if (additionalFields.typeId !== undefined) {
 					body.type_id = additionalFields.typeId as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.exchangeRate) {
+				if (additionalFields.exchangeRate !== undefined) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
 				}
-				if (additionalFields.exchangeCurrencyId) {
+				if (additionalFields.exchangeCurrencyId !== undefined) {
 					body.exchange_currency_id = additionalFields.exchangeCurrencyId as string;
 				}
-				if (additionalFields.privateNotes) {
+				if (additionalFields.privateNotes !== undefined) {
 					body.private_notes = additionalFields.privateNotes as string;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
 				const assignInvoicesValues = (this.getNodeParameter('assignInvoicesUi', i) as IDataObject)
@@ -184,7 +184,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/payments', {}, qs);
 					responseData = responseData.data;

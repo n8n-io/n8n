@@ -20,37 +20,37 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'create') {
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ITask = {};
-				if (additionalFields.clientId) {
+				if (additionalFields.clientId !== undefined) {
 					body.client_id = additionalFields.clientId as string;
 				}
-				if (additionalFields.projectId) {
+				if (additionalFields.projectId !== undefined) {
 					body.project_id = additionalFields.projectId as string;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.description) {
+				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.rate) {
+				if (additionalFields.rate !== undefined) {
 					body.rate = additionalFields.rate as number;
 				}
-				if (additionalFields.statusId) {
+				if (additionalFields.statusId !== undefined) {
 					body.status_id = additionalFields.statusId as string;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
 				const timeLogsValues = (this.getNodeParameter('timeLogsUi', i) as IDataObject)
@@ -85,37 +85,37 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const taskId = this.getNodeParameter('taskId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ITask = {};
-				if (additionalFields.clientId) {
+				if (additionalFields.clientId !== undefined) {
 					body.client_id = additionalFields.clientId as string;
 				}
-				if (additionalFields.projectId) {
+				if (additionalFields.projectId !== undefined) {
 					body.project_id = additionalFields.projectId as string;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.description) {
+				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.rate) {
+				if (additionalFields.rate !== undefined) {
 					body.rate = additionalFields.rate as number;
 				}
-				if (additionalFields.statusId) {
+				if (additionalFields.statusId !== undefined) {
 					body.status_id = additionalFields.statusId as string;
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
 				const timeLogsValues = (this.getNodeParameter('timeLogsUi', i) as IDataObject)
@@ -178,7 +178,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/tasks', {}, qs);
 					responseData = responseData.data;

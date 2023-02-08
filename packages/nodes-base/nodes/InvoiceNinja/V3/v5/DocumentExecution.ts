@@ -94,7 +94,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
                         qs,
                     );
                 } else {
-                    const perPage = this.getNodeParameter('perPage', i) as boolean;
+                    const perPage = this.getNodeParameter('perPage', i) as number;
                     if (perPage) qs.per_page = perPage;
                     responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/documents', {}, qs);
                     responseData = responseData.data;

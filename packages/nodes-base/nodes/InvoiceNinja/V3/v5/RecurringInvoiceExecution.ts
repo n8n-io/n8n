@@ -23,108 +23,106 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const clientId = this.getNodeParameter('clientId', i);
+				const frequencyId = this.getNodeParameter('frequencyId', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IRecurringInvoice = {};
-				if (additionalFields.projectId) {
+				body.client_id = clientId as string;
+				body.frequency_id = frequencyId as string;
+				if (additionalFields.projectId !== undefined) {
 					body.project_id = additionalFields.projectId as string;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.clientId) {
-					body.client_id = additionalFields.clientId as string;
-				}
-				if (additionalFields.vendorId) {
+				if (additionalFields.vendorId !== undefined) {
 					body.vendor_id = additionalFields.vendorId as string;
 				}
-				if (additionalFields.statusId) {
-					body.status_id = additionalFields.statusId as string;
-				}
-				if (additionalFields.designId) {
+				if (additionalFields.designId !== undefined) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.discount) {
+				if (additionalFields.discount !== undefined) {
 					body.discount = additionalFields.discount as number;
 				}
-				if (additionalFields.poNumber) {
+				if (additionalFields.poNumber !== undefined) {
 					body.po_number = additionalFields.poNumber as string;
 				}
-				if (additionalFields.date) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
-				}
-				if (additionalFields.dueDate) {
+				if (additionalFields.dueDate !== undefined) {
 					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.terms) {
+				if (additionalFields.terms !== undefined) {
 					body.terms = additionalFields.terms as string;
 				}
-				if (additionalFields.usesInclusiveTaxes) {
+				if (additionalFields.footer !== undefined) {
+					body.footer = additionalFields.footer as string;
+				}
+				if (additionalFields.usesInclusiveTaxes !== undefined) {
 					body.uses_inclusive_taxes = additionalFields.usesInclusiveTaxes as boolean;
 				}
-				if (additionalFields.isAmountDiscount) {
+				if (additionalFields.isAmountDiscount !== undefined) {
 					body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
 				}
-				if (additionalFields.partial) {
+				if (additionalFields.partial !== undefined) {
 					body.partial = additionalFields.partial as number;
 				}
-				if (additionalFields.partialDueDate) {
+				if (additionalFields.date !== undefined) {
+					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+				}
+				if (additionalFields.partialDueDate !== undefined) {
 					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.poNumber) {
+				if (additionalFields.poNumber !== undefined) {
 					body.po_number = additionalFields.poNumber as string;
 				}
-				if (additionalFields.discount) {
+				if (additionalFields.discount !== undefined) {
 					body.discount = additionalFields.discount as number;
 				}
-				if (additionalFields.privateNotes) {
+				if (additionalFields.privateNotes !== undefined) {
 					body.private_notes = additionalFields.privateNotes as string;
 				}
-				if (additionalFields.publicNotes) {
+				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
 				}
-				if (additionalFields.taxName1) {
+				if (additionalFields.taxName1 !== undefined) {
 					body.tax_name1 = additionalFields.taxName1 as string;
 				}
-				if (additionalFields.taxName2) {
+				if (additionalFields.taxName2 !== undefined) {
 					body.tax_name2 = additionalFields.taxName2 as string;
 				}
-				if (additionalFields.taxName3) {
+				if (additionalFields.taxName3 !== undefined) {
 					body.tax_name3 = additionalFields.taxName3 as string;
 				}
-				if (additionalFields.taxRate1) {
+				if (additionalFields.taxRate1 !== undefined) {
 					body.tax_rate1 = additionalFields.taxtRate1 as number;
 				}
-				if (additionalFields.taxRate2) {
+				if (additionalFields.taxRate2 !== undefined) {
 					body.tax_rate2 = additionalFields.taxtRate2 as number;
 				}
-				if (additionalFields.taxRate3) {
+				if (additionalFields.taxRate3 !== undefined) {
 					body.tax_rate3 = additionalFields.taxtRate3 as number;
 				}
-				if (additionalFields.remainingCycles) {
+				if (additionalFields.remainingCycles !== undefined) {
 					body.remaining_cycles = additionalFields.remainingCycles as number;
 				}
-				if (additionalFields.frequencyId) {
-					body.frequency_id = additionalFields.frequencyId as string;
+				if (additionalFields.nextSendDate !== undefined) {
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD HH:mm:ss");
 				}
-				if (additionalFields.nextSendDate) {
-					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
-				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				if (additionalFields.autoBillEnabled) {
+				if (additionalFields.autoBillEnabled !== undefined) {
 					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 				}
 				const lineItemsValues = (this.getNodeParameter('recurringInvoiceItemsUi', i) as IDataObject)
@@ -165,106 +163,103 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const recurringInvoiceId = this.getNodeParameter('recurringInvoiceId', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IRecurringInvoice = {};
-				if (additionalFields.projectId) {
+				if (additionalFields.projectId !== undefined) {
 					body.project_id = additionalFields.projectId as string;
 				}
-				if (additionalFields.assignedUserId) {
+				if (additionalFields.assignedUserId !== undefined) {
 					body.assigned_user_id = additionalFields.assignedUserId as string;
 				}
-				if (additionalFields.clientId) {
+				if (additionalFields.clientId !== undefined) {
 					body.client_id = additionalFields.clientId as string;
 				}
-				if (additionalFields.vendorId) {
+				if (additionalFields.vendorId !== undefined) {
 					body.vendor_id = additionalFields.vendorId as string;
 				}
-				if (additionalFields.statusId) {
-					body.status_id = additionalFields.statusId as string;
-				}
-				if (additionalFields.designId) {
+				if (additionalFields.designId !== undefined) {
 					body.design_id = additionalFields.designId as string;
 				}
-				if (additionalFields.number) {
+				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
 				}
-				if (additionalFields.discount) {
+				if (additionalFields.discount !== undefined) {
 					body.discount = additionalFields.discount as number;
 				}
-				if (additionalFields.poNumber) {
+				if (additionalFields.poNumber !== undefined) {
 					body.po_number = additionalFields.poNumber as string;
 				}
-				if (additionalFields.date) {
+				if (additionalFields.date !== undefined) {
 					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.dueDate) {
+				if (additionalFields.dueDate !== undefined) {
 					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.terms) {
+				if (additionalFields.terms !== undefined) {
 					body.terms = additionalFields.terms as string;
 				}
-				if (additionalFields.usesInclusiveTaxes) {
+				if (additionalFields.usesInclusiveTaxes !== undefined) {
 					body.uses_inclusive_taxes = additionalFields.usesInclusiveTaxes as boolean;
 				}
-				if (additionalFields.isAmountDiscount) {
+				if (additionalFields.isAmountDiscount !== undefined) {
 					body.is_amount_discount = additionalFields.isAmountDiscount as boolean;
 				}
-				if (additionalFields.partial) {
+				if (additionalFields.partial !== undefined) {
 					body.partial = additionalFields.partial as number;
 				}
-				if (additionalFields.partialDueDate) {
+				if (additionalFields.partialDueDate !== undefined) {
 					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
 				}
-				if (additionalFields.poNumber) {
+				if (additionalFields.poNumber !== undefined) {
 					body.po_number = additionalFields.poNumber as string;
 				}
-				if (additionalFields.discount) {
+				if (additionalFields.discount !== undefined) {
 					body.discount = additionalFields.discount as number;
 				}
-				if (additionalFields.privateNotes) {
+				if (additionalFields.privateNotes !== undefined) {
 					body.private_notes = additionalFields.privateNotes as string;
 				}
-				if (additionalFields.publicNotes) {
+				if (additionalFields.publicNotes !== undefined) {
 					body.public_notes = additionalFields.publicNotes as string;
 				}
-				if (additionalFields.taxName1) {
+				if (additionalFields.taxName1 !== undefined) {
 					body.tax_name1 = additionalFields.taxName1 as string;
 				}
-				if (additionalFields.taxName2) {
+				if (additionalFields.taxName2 !== undefined) {
 					body.tax_name2 = additionalFields.taxName2 as string;
 				}
-				if (additionalFields.taxName3) {
+				if (additionalFields.taxName3 !== undefined) {
 					body.tax_name3 = additionalFields.taxName3 as string;
 				}
-				if (additionalFields.taxRate1) {
+				if (additionalFields.taxRate1 !== undefined) {
 					body.tax_rate1 = additionalFields.taxtRate1 as number;
 				}
-				if (additionalFields.taxRate2) {
+				if (additionalFields.taxRate2 !== undefined) {
 					body.tax_rate2 = additionalFields.taxtRate2 as number;
 				}
-				if (additionalFields.taxRate3) {
+				if (additionalFields.taxRate3 !== undefined) {
 					body.tax_rate3 = additionalFields.taxtRate3 as number;
 				}
-				if (additionalFields.remainingCycles) {
+				if (additionalFields.remainingCycles !== undefined) {
 					body.remaining_cycles = additionalFields.remainingCycles as number;
 				}
-				if (additionalFields.frequencyId) {
+				if (additionalFields.frequencyId !== undefined) {
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
-				if (additionalFields.nextSendDate) {
-					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD");
+				if (additionalFields.nextSendDate !== undefined) {
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD HH:mm:ss");
 				}
-				if (additionalFields.customValue1) {
+				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
 				}
-				if (additionalFields.customValue2) {
+				if (additionalFields.customValue2 !== undefined) {
 					body.custom_value2 = additionalFields.customValue2 as string;
 				}
-				if (additionalFields.customValue3) {
+				if (additionalFields.customValue3 !== undefined) {
 					body.custom_value3 = additionalFields.customValue3 as string;
 				}
-				if (additionalFields.customValue4) {
+				if (additionalFields.customValue4 !== undefined) {
 					body.custom_value4 = additionalFields.customValue4 as string;
 				}
-				if (additionalFields.autoBillEnabled) {
+				if (additionalFields.autoBillEnabled !== undefined) {
 					body.auto_bill_enabled = additionalFields.autoBillEnabled as boolean;
 				}
 				const lineItemsValues = (this.getNodeParameter('recurringInvoiceItemsUi', i) as IDataObject)
@@ -344,13 +339,13 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (filters.number) {
 					qs.number = filters.number as string;
 				}
-				if (filters.withoutDeletedClients) {
+				if (filters.withoutDeletedClients !== undefined) {
 					qs.without_deleted_clients = filters.withoutDeletedClients as boolean;
 				}
-				if (filters.upcomming) {
+				if (filters.upcomming !== undefined) {
 					qs.upcomming = filters.upcomming as boolean;
 				}
-				if (filters.overdue) {
+				if (filters.overdue !== undefined) {
 					qs.overdue = filters.overdue as boolean;
 				}
 				const include = this.getNodeParameter('include', i) as string[];
@@ -368,7 +363,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						qs,
 					);
 				} else {
-					const perPage = this.getNodeParameter('perPage', i) as boolean;
+					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
 					responseData = await invoiceNinjaApiRequest.call(
 						this,
