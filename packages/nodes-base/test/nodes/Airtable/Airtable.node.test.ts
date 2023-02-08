@@ -1,11 +1,7 @@
-import { INodeType } from 'n8n-workflow';
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
 import { WorkflowTestData } from '../types';
 import nock from 'nock';
-
-import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
-import { Airtable } from '../../../nodes/Airtable/Airtable.node';
 
 const records = [
 	{
