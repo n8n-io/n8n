@@ -121,13 +121,13 @@ jobs:
           browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
-          spec: cypress/e2e/*
+          spec: /__w/n8n/n8n/cypress/e2e/*
+          config-file: /__w/n8n/n8n/cypress-config.json
         env:
           # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
           # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          config-file: ./cypress-config.json
           E2E_TESTS: true
 
       # - name: Notify Slack on failure
