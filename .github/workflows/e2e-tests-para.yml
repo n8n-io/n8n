@@ -42,32 +42,31 @@ jobs:
           path: |
             /github/home/.cache
             /github/home/.pnpm-store
-            ${{ github.workspace }}/node_modules
+            ./node_modules
           key: ${{ github.sha	}}-e2e-modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
-        with:
-          run_install: true
 
       - name: Cypress install
         uses: cypress-io/github-action@v5
         with:
           # Disable running of tests within install job
           runTests: false
-          install: false
+          install: true
           build: pnpm build
-        env:
-          CYPRESS_CACHE_FOLDER: node_modules/.bin
 
-      - name: Debugging - list files
+      - name: Debugging - list home cache files
         run: ls -la /github/home/.cache
 
       - name: Debugging - search Cypress exec in home
         run: find /github/home -name "*cypress" -type f
 
       - name: Debugging - search Cypress exec in project root
-        run: find ${{ github.workspace }} -name "*cypress" -type f
+        run: find /home/runner/ -name "*cypress" -type f
+
+      - name: Debugging - search Cypress exec in project node modules
+        run: find ./node_modules -name "*cypress" -type f
 
       - name: Zip packages dist folders
         run: tar -czvf ./packages_build.tar.gz ./packages/*
@@ -105,7 +104,7 @@ jobs:
           path: |
             /github/home/.cache
             /github/home/.pnpm-store
-            ${{ github.workspace }}/node_modules
+            ./node_modules
           key: ${{ github.sha	}}-e2e-modules
 
       - name: Setup pnpm
@@ -119,14 +118,20 @@ jobs:
       - name: Unzip packages dist folders
         run: tar -xzvf packages_build.tar.gz ./
 
-      - name: Debugging - list files
-        run: ls -la ${{ github.workspace }}/node_modules/.bin
+      - name: Debugging - list home cache files
+        run: ls -la /github/home/.cache
+
+      - name: Debugging - list node modules files
+        run: ls -la ./node_modules
 
       - name: Debugging - search Cypress exec in home
         run: find /github/home -name "*cypress" -type f
 
       - name: Debugging - search Cypress exec in project root
-        run: find ${{ github.workspace }} -name "*cypress" -type f
+        run: find /home/runner/ -name "*cypress" -type f
+
+      - name: Debugging - search Cypress exec in project node modules
+        run: find ./node_modules -name "*cypress" -type f
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
