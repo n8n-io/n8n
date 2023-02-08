@@ -266,7 +266,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		// Move first one
 		WorkflowPage.getters.canvasNodes().first().click();
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150])
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		// Delete the set node
 		WorkflowPage.getters.canvasNodeByName(SET_NODE_NAME).click().click();
 		cy.get('body').type('{backspace}');
