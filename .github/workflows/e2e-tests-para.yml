@@ -64,9 +64,6 @@ jobs:
       - name: Debugging - search Cypress exec in home
         run: find /github/home -name "*cypress" -type f
 
-      - name: Debugging - search Cypress exec in project root
-        run: find /home/runner/ -name "*cypress" -type f
-
       - name: Debugging - search Cypress exec in project node modules
         run: find ./node_modules -name "*cypress" -type f
 
@@ -128,9 +125,6 @@ jobs:
 
       - name: Debugging - search Cypress exec in home
         run: find /github/home -name "*cypress" -type f
-
-      - name: Debugging - search Cypress exec in project root
-        run: find /home/runner/ -name "*cypress" -type f
 
       - name: Debugging - search Cypress exec in project node modules
         run: find ./node_modules -name "*cypress" -type f
