@@ -43,7 +43,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Cypress install
-        uses: cypress-io/github-action
+        uses: cypress-io/github-action@v4
         with:
           # Disable running of tests within install job
           runTests: false
