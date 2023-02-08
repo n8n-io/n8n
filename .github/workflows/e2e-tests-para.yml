@@ -47,13 +47,15 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
 
       - name: Cypress install
         uses: cypress-io/github-action@v5
         with:
           # Disable running of tests within install job
           runTests: false
-          install: true
+          install: false
           build: pnpm build
 
       - name: Debugging - list home cache files
