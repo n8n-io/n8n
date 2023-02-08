@@ -37,6 +37,26 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.executeWorkflowButton().should('be.visible');
 	});
 
+	it('should connect and disconnect a simple node', () => {
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
+		cy.get('.jtk-connector').should('have.length', 1);
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+
+		// Change connection from Set to Set1
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('input', SET_NODE_NAME),
+			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`)
+		)
+
+		WorkflowPage.getters.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`).should('have.class', 'jtk-endpoint-connected');
+
+		cy.get('.jtk-connector').should('have.length', 1);
+		// Disconnect Set1
+		cy.drag(WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`), [-200, 100])
+		cy.get('.jtk-connector').should('have.length', 0);
+	});
+
 	it('should add first step', () => {
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
@@ -59,14 +79,14 @@ describe('Canvas Actions', () => {
 
 		// Switch has 4 output endpoints
 		for (let i = 0; i < 4; i++) {
-			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click()
+			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true })
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
 			WorkflowPage.actions.zoomToFit();
 		}
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		cy.reload()
-
+		cy.waitForLoad();
 		// Make sure all connections are there after reload
 		for (let i = 0; i < 4; i++) {
 			const setName = `${SET_NODE_NAME}${i > 0 ? i : ''}`;
@@ -108,6 +128,7 @@ describe('Canvas Actions', () => {
 		// Make sure all connections are there after save & reload
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		cy.reload()
+		cy.waitForLoad();
 
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 4);
 		WorkflowPage.actions.executeWorkflow();
@@ -134,27 +155,6 @@ describe('Canvas Actions', () => {
 		cy.get('.jtk-connector.success').should('have.length', 3);
 		cy.get('.jtk-connector').should('have.length', 4);
 	})
-
-	it('should connect and disconnect a simple node', () => {
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
-		cy.get('.jtk-connector').should('have.length', 1);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-		// Wait for endpoints to get attached otherwise Cypress will get wrong reference
-		cy.wait(1000)
-		// Change connection from Set to Set1
-		cy.draganddrop(
-			WorkflowPage.getters.getEndpointSelector('input', SET_NODE_NAME),
-			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`)
-		)
-
-		WorkflowPage.getters.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`).should('have.class', 'jtk-endpoint-connected');
-
-		cy.get('.jtk-connector').should('have.length', 1);
-		// Disconnect Set1
-		cy.drag(WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`), [-200, 100])
-		cy.get('.jtk-connector').should('have.length', 0);
-	});
 
 	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
