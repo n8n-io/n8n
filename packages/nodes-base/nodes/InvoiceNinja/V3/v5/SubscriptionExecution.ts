@@ -218,10 +218,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'get') {
 				const subscriptionId = this.getNodeParameter('subscriptionId', i) as string;
-				const include = this.getNodeParameter('include', i) as string[];
-				if (include.length) {
-					qs.include = include.toString();
-				}
+				// include does not exists
+				// const include = this.getNodeParameter('include', i) as string[];
+				// if (include.length) {
+				// 	qs.include = include.toString();
+				// }
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'GET',
