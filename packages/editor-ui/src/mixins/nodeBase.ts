@@ -10,7 +10,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { EndpointOptions } from '@jsplumb/core';
+import { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history';
 import { useCanvasStore } from '@/stores/canvas';
@@ -60,6 +60,14 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 		},
 	},
 	methods: {
+		__addEndpointTestingData(endpoint: Endpoint, type: string, inputIndex: number) {
+			if (window?.Cypress && 'canvas' in endpoint.endpoint) {
+				const canvas = endpoint.endpoint.canvas;
+				this.instance.setAttribute(canvas, 'data-endpoint-name', this.data.name);
+				this.instance.setAttribute(canvas, 'data-input-index', inputIndex.toString());
+				this.instance.setAttribute(canvas, 'data-endpoint-type', type);
+			}
+		},
 		__addInputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs
 			let index;
@@ -104,6 +112,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
+				this.__addEndpointTestingData(endpoint, 'input', index);
 				if (nodeTypeData.inputNames) {
 					// Apply input names if they got set
 					endpoint.addOverlay(NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]));
@@ -155,7 +164,6 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
-
 					endpoint: {
 						type: 'Dot',
 						options: {
@@ -185,10 +193,11 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
+				this.__addEndpointTestingData(endpoint, 'output', index);
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]);
-					const overlay = endpoint.addOverlay(overlaySpec);
+					endpoint.addOverlay(overlaySpec);
 				}
 
 				if (!Array.isArray(endpoint)) {
@@ -236,6 +245,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
 					);
+					this.__addEndpointTestingData(plusEndpoint, 'plus', index);
 
 					if (!Array.isArray(plusEndpoint)) {
 						plusEndpoint.__meta = {
