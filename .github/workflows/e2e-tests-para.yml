@@ -41,9 +41,9 @@ jobs:
         with:
           path: |
             /github/home/.cache
-            ~/.pnpm-store
+            /github/home/.pnpm-store
             ./node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}--modules
+          key: ${{ github.sha	}}-e2e-modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -98,9 +98,9 @@ jobs:
         with:
           path: |
             /github/home/.cache
-            ~/.pnpm-store
+            /github/home/.pnpm-store
             ./node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}--modules
+          key: ${{ github.sha	}}-e2e-modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -110,11 +110,12 @@ jobs:
         with:
           name: build
 
-      - name: Debugging - list files
-        run: ls -la ${{ github.workspace }}/node_modules/.bin
 
       - name: Unzip packages dist folders
         run: tar -xzvf packages_build.tar.gz ./
+
+      - name: Debugging - list files
+        run: ls -la ${{ github.workspace }}/node_modules/.bin
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
