@@ -34,7 +34,7 @@ const users = [
 	},
 ];
 
-describe('Workflows', () => {
+describe('Sharing', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setupOwner(instanceOwner);
