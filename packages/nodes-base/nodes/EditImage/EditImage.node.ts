@@ -909,6 +909,10 @@ export class EditImage implements INodeType {
 								name: 'tiff',
 								value: 'tiff',
 							},
+							{
+								name: 'WebP',
+								value: 'webp',
+							},
 						],
 						default: 'jpeg',
 						description: 'Set the output image format',
