@@ -450,7 +450,7 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import { Component, PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
 import {
@@ -491,7 +491,6 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
-import { CodeEditor } from '@/components/forms';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
 import { isEmpty } from '@/utils';
@@ -515,7 +514,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		BinaryDataDisplay,
 		NodeErrorView,
 		WarningTooltip,
-		CodeEditor,
+		CodeEditor: () => import('./forms/CodeEditor.vue') as Promise<Component>,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,

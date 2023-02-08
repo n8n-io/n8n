@@ -104,7 +104,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 				return;
 			}
 			try {
-				await this.settingsStore.testTemplatesEndpoint();
+				this.settingsStore.testTemplatesEndpoint();
 			} catch (e) {}
 		},
 		logHiringBanner() {

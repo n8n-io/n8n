@@ -36,16 +36,16 @@ import {
 } from 'n8n-workflow';
 
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
-import { CodeEditor } from './forms';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
+import { Component } from 'vue';
 
 export default mixins(genericHelpers, workflowHelpers).extend({
 	name: 'CodeEdit',
 	components: {
-		CodeEditor,
+		CodeEditor: () => import('./forms/CodeEditor.vue') as Promise<Component>,
 	},
 	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value', 'readonly'],
 	computed: {

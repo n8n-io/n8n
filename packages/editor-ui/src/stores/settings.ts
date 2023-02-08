@@ -254,10 +254,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				return;
 			}
 		},
-		async testTemplatesEndpoint(): Promise<void> {
-			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
-			await Promise.race([testHealthEndpoint(this.templatesHost), timeout]);
-			this.templatesEndpointHealthy = true;
+		testTemplatesEndpoint(): void {
+			testHealthEndpoint(this.templatesHost).then(() => {
+				this.templatesEndpointHealthy = true
+			})
 		},
 		async getApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
