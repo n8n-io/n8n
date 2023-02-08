@@ -189,9 +189,11 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorPlusButton().realHover();
 			this.getters.addStickyButton().click();
 		},
-		moveAroundCanvas: (diff: [number, number]) => {
-
-			// cy.drag('node-view-root', end, start);
+		deleteSticky: () => {
+			this.getters.stickies().eq(0)
+				.realHover()
+				.find('[data-test-id="delete-sticky"]')
+				.click();
 		},
 	};
 }

@@ -55,9 +55,14 @@ describe('Canvas Actions', () => {
 			});
 	});
 
-	// it('deletes sticky', () => {
+	it('deletes sticky', () => {
+		workflowPage.actions.addSticky();
+		workflowPage.getters.stickies().should('have.length', 1)
 
-	// });
+		workflowPage.actions.deleteSticky();
+
+		workflowPage.getters.stickies().should('have.length', 0)
+	});
 
 	// it('edits sticky with double click and updates content', () => {
 
