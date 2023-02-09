@@ -42,7 +42,7 @@ jobs:
       user: ${{ github.event.inputs.user || 'schedule' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
       run-env: ${{ github.event.inputs.run-env || 'browsers:node16.18.0-chrome90-ff88' }}
-      start-url: ${{ github.event.inputs.start-url || '' }}
-      success-url: ${{ github.event.inputs.success-url || '' }}
+      # start-url: ${{ github.event.inputs.start-url || '' }}
+      # success-url: ${{ github.event.inputs.success-url || '' }}
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
