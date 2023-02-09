@@ -5,16 +5,18 @@ const ndv = new NDV();
 const canvasNode = new CanvasNode();
 
 describe('Data mapping', () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-	});
-
-	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.waitForLoad();
+
+		cy.window()
+			// @ts-ignore
+			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload))
 	});
 
-	it('Should be able to map expressions from table header', () => {
+	it('maps expressions from table header', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -33,5 +35,189 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }} {{ $json["Readable date"] }}');
+	});
+
+	it('maps expressions from table json, and resolves value based on hover', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		canvasNode.actions.openNode('Set');
+		ndv.actions.switchInputMode('Table');
+		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
+
+		ndv.getters.parameterInput('name').should('have.length', 1).find('input').should('have.value', 'other');
+		ndv.getters.parameterInput('value').should('have.length', 1).find('input').should('have.value', '');
+
+		ndv.getters.inputTbodyCell(1, 0).find('span').contains('count').trigger('mousedown', {force: true});
+		ndv.actions.mapToParameter('value');
+
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '0')
+
+		ndv.getters.inputTbodyCell(1, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0')
+			.invoke('css', 'color')
+			.should('equal', 'rgb(125, 125, 135)');
+
+		ndv.getters.inputTbodyCell(2, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+				.should('include.text', '1')
+				.invoke('css', 'color')
+				.should('equal', 'rgb(125, 125, 135)');
+
+		ndv.actions.execute();
+
+		ndv.getters.outputTbodyCell(1, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0')
+			.invoke('css', 'color')
+			.should('equal', 'rgb(125, 125, 135)'); // todo update color
+
+		ndv.getters.outputTbodyCell(2, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+				.should('include.text', '1')
+				.invoke('css', 'color')
+				.should('equal', 'rgb(125, 125, 135)');
+	});
+
+	it('maps expressions from json view', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		canvasNode.actions.openNode('Set');
+		ndv.actions.switchInputMode('JSON');
+
+		ndv.getters.inputDataContainer().should('exist').find('.json-data')
+			.should('have.text', '[{"input":[{"count":0,"with space":"!!","with.dot":"!!","with"quotes":"!!"}]},{"input":[{"count":1}]}]')
+			.find('span').contains('"count"')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0');
+
+		ndv.getters.inputDataContainer().find('.json-data')
+			.find('span').contains('"input"')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0 [object Object]');
+	});
+
+	it('maps expressions from schema view', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		canvasNode.actions.openNode('Set');
+		ndv.actions.clearParameterInput('value');
+		cy.get('body').type('{esc}');
+
+		ndv.getters.inputDataContainer()
+			.should('exist')
+			.find('span').contains('count')
+			.realMouseDown();
+
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0');
+
+		ndv.getters.inputDataContainer()
+			.find('span').contains('input')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0 [object Object]');
+	});
+
+	it('maps expressions from previous nodes', () => {
+		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		canvasNode.actions.openNode('Set1');
+
+		ndv.actions.selectInputNode('Schedule Trigger');
+
+		ndv.getters.inputDataContainer()
+			.find('span').contains('count')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.input[0].count }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('not.exist');
+
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.mapDataFromHeader(1, 'value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.input[0].count }} {{ $node["Schedule Trigger"].json.input }}');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('not.exist');
+
+		ndv.actions.selectInputNode('Set');
+
+		ndv.actions.executePrevious();
+		ndv.getters.executingLoader().should('not.exist');
+		ndv.getters.inputDataContainer().should('exist');
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '0 [object Object]');
+
+		ndv.getters.inputTbodyCell(2, 0).realHover();
+		ndv.getters.parameterExpressionPreview('value')
+			.should('include.text', '1 [object Object]');
+	});
+
+	it('maps keys to path', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger', {keepNdvOpen: true});
+
+		ndv.actions.setPinnedData([
+			{
+				input: [
+					{
+						"hello.world": {
+							"my count": 0,
+						},
+					}
+				]
+			},
+			{
+				input: [
+					{
+						"hello.world": {
+							"my count": 1,
+						}
+					}
+				]
+			},
+		]);
+
+		ndv.actions.close();
+
+		workflowPage.actions.addNodeToCanvas('Item Lists');
+		canvasNode.actions.openNode('Item Lists');
+
+		ndv.getters.parameterInput('operation')
+			.click()
+			.find('li').contains('Sort')
+			.click();
+
+		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
+
+		ndv.getters.inputDataContainer()
+			.find('span').contains('my count')
+			.realMouseDown();
+
+		ndv.actions.mapToParameter('fieldName');
+
+		ndv.getters.inlineExpressionEditorInput().should('have.length', 0);
+		ndv.getters.parameterInput('fieldName')
+			.find('input').should('have.value', 'input[0]["hello.world"]["my count"]');
 	});
 });
