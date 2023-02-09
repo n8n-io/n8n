@@ -10,6 +10,7 @@ export class NDV extends BasePage {
 		inputOption: () => cy.getByTestId('ndv-input-option'),
 		inputPanel: () => cy.getByTestId('ndv-input-panel'),
 		outputPanel: () => cy.getByTestId('output-panel'),
+		executingLoader: () => cy.getByTestId('ndv-executing'),
 		inputDataContainer: () => this.getters.inputPanel().findChildByTestId('ndv-data-container'),
 		inputDisplayMode: () => this.getters.inputPanel().getByTestId('ndv-run-data-display-mode'),
 		outputDataContainer: () => this.getters.outputPanel().findChildByTestId('ndv-data-container'),
@@ -24,18 +25,18 @@ export class NDV extends BasePage {
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
 		outputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
-		inputTableRows: () => this.getters.outputDataContainer().find('table tr'),
-		inputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
-		inputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
-		inputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
+		inputTableRows: () => this.getters.inputDataContainer().find('table tr'),
+		inputTableHeaders: () => this.getters.inputDataContainer().find('table thead th'),
+		inputTableRow: (row: number) => this.getters.inputTableRows().eq(row),
+		inputTbodyCell: (row: number, col: number) => this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
+		parameterExpressionPreview: (parameterName: string) => this.getters.nodeParameters().find(`[data-test-id="parameter-input-${parameterName}"] + [data-test-id="parameter-expression-preview"]`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 	};
 
@@ -45,6 +46,9 @@ export class NDV extends BasePage {
 		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
+		},
+		savePinnedData: () => {
+			this.getters.savePinnedDataButton().click();
 		},
 		execute: () => {
 			this.getters.nodeExecuteButton().first().click();
@@ -64,7 +68,10 @@ export class NDV extends BasePage {
 			editor.type(`{selectall}{backspace}`);
 			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
 
-			this.getters.savePinnedDataButton().click();
+			this.actions.savePinnedData();
+		},
+		clearParameterInput: (parameterName: string) => {
+			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.parameterInput(parameterName).type(content);
@@ -92,11 +99,23 @@ export class NDV extends BasePage {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
 			cy.draganddrop(draggable, droppable);
 		},
+		mapToParameter: (parameterName: string) => {
+			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
+			cy.draganddrop('', droppable);
+		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
-			this.getters.inputDisplayMode().find('label').contains(type).click();
+			this.getters.inputDisplayMode().find('label').contains(type).click({force: true});
 		},
 		switchOutputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
-			this.getters.outputDisplayMode().find('label').contains(type).click();
+			this.getters.outputDisplayMode().find('label').contains(type).click({force: true});
+		},
+		selectInputNode: (nodeName: string) => {
+			this.getters.inputSelect().find('.el-select').click();
+			this.getters.inputOption().contains(nodeName).click();
+		},
+		addDefaultPinnedData: () => {
+			this.actions.editPinnedData();
+			this.actions.savePinnedData();
 		},
 	};
 }
