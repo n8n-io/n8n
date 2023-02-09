@@ -96,14 +96,12 @@ export class NDV extends BasePage {
 		},
 		mapDataFromHeader: (col: number, parameterName: string) => {
 			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;
-			cy.get(draggable).realMouseDown();
-
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
-			cy.dropOn(droppable);
+			cy.draganddrop(draggable, droppable);
 		},
 		mapToParameter: (parameterName: string) => {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
-			cy.dropOn(droppable);
+			cy.draganddrop('', droppable);
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
 			this.getters.inputDisplayMode().find('label').contains(type).click({force: true});
