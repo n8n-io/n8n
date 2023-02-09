@@ -8,10 +8,16 @@ import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
 import jsParser from 'prettier/parser-babel';
-import { html } from 'codemirror-lang-html-n8n';
+import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, insertNewlineAndIndent, history } from '@codemirror/commands';
-import { bracketMatching, ensureSyntaxTree, foldGutter, indentOnInput } from '@codemirror/language';
+import {
+	bracketMatching,
+	ensureSyntaxTree,
+	foldGutter,
+	indentOnInput,
+	LanguageSupport,
+} from '@codemirror/language';
 import { EditorState, Extension } from '@codemirror/state';
 import {
 	dropCursor,
@@ -23,6 +29,7 @@ import {
 	ViewUpdate,
 } from '@codemirror/view';
 
+import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
@@ -50,6 +57,10 @@ export default mixins(expressionManager).extend({
 			type: Boolean,
 			default: false,
 		},
+		disableExpressionCompletions: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -62,10 +73,18 @@ export default mixins(expressionManager).extend({
 		},
 
 		extensions(): Extension[] {
+			function htmlWithCompletions() {
+				return new LanguageSupport(
+					htmlLanguage,
+					n8nCompletionSources().map((source) => htmlLanguage.data.of(source)),
+				);
+			}
+
 			return [
 				bracketMatching(),
 				autocompletion(),
-				html({ autoCloseTags: true }),
+				this.disableExpressionCompletions ? html() : htmlWithCompletions(),
+				autoCloseTags,
 				expressionInputHandler(),
 				keymap.of([indentWithTab, { key: 'Enter', run: insertNewlineAndIndent }]),
 				indentOnInput(),
