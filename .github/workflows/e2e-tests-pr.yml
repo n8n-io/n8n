@@ -7,12 +7,12 @@ on:
       - 'master'
 
 jobs:
-  runTests:
-    name: 'Run E2E tests'
+  cancel-previous-runs:
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
 
     timeout-minutes: 30
+    name: 'Run E2E tests'
 
     strategy:
       matrix:
@@ -28,32 +28,15 @@ jobs:
         if: github.event.review.state != 'approved'
         uses: andymckay/cancel-action@0.2
 
-      - uses: actions/checkout@v3
-
-      - uses: pnpm/action-setup@v2.2.4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test E2E
-        run: |
-          pnpm cypress:install
-          pnpm test:e2e:all
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: cypress-screenshots
-          path: |
-            cypress/screenshots
-          retention-days: 1
+  e2e-node-16:
+    name: Electron - Node 16
+    # TODO: Change to master branch before merge
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    with:
+      branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
+      user: ${{ github.event.inputs.user || 'PR User' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
+      run-env: base:16.18.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
