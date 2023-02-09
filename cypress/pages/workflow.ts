@@ -12,11 +12,12 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () =>
 			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		workflowTagElements: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
-		firstWorkflowTagElement: () =>
-			cy.get('[data-test-id="workflow-tags-container"] span.tags > span:nth-child(1)'),
-		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
-		newTagLink: () => cy.getByTestId('new-tag-link'),
+		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
+		nthTagPill: (n: number) =>
+			cy.get(`[data-test-id="workflow-tags-container"] span.tags > span:nth-child(${n})`),
+		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
+		tagsInDropdown: () => cy.getByTestId('workflow-tags-dropdown').find('li').filter('.tag'),
+		createTagButton: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
@@ -95,9 +96,13 @@ export class WorkflowPage extends BasePage {
 		ndvParameters: () => cy.getByTestId('parameter-item'),
 		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 		getConnectionBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
-			cy.get(`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
+			cy.get(
+				`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
+			),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
-			cy.get(`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`),
+			cy.get(
+				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
+			),
 	};
 	actions = {
 		visit: () => {
@@ -132,6 +137,10 @@ export class WorkflowPage extends BasePage {
 			cy.contains('Expression').invoke('show').click();
 			cy.getByTestId('expander').invoke('show').click();
 		},
+		openTagManagerModal: () => {
+			this.getters.createTagButton().click();
+			this.getters.tagsDropdown().find('li.manage-tags').first().click();
+		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
@@ -161,7 +170,9 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(newName);
 			cy.get('body').type('{enter}');
 		},
-		addTags: (tags: string[]) => {
+		addTags: (tags: string | string[]) => {
+			if (!Array.isArray(tags)) tags = [tags];
+
 			tags.forEach((tag) => {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
@@ -200,12 +211,24 @@ export class WorkflowPage extends BasePage {
 		},
 		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
-			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.add').first().click({ force: true });
+			this.getters
+				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
+				.find('.add')
+				.first()
+				.click({ force: true });
 			this.actions.addNodeToCanvas(newNodeName, false);
 		},
-		deleteNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+		deleteNodeBetweenNodes: (
+			sourceNodeName: string,
+			targetNodeName: string,
+			newNodeName: string,
+		) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
-			this.getters.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName).find('.delete').first().click({ force: true });
+			this.getters
+				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
+				.find('.delete')
+				.first()
+				.click({ force: true });
 		},
 	};
 }
