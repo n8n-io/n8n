@@ -10,7 +10,7 @@ on:
       branch:
         description: 'GitHub branch to test.'
         required: false
-        default: 'master'
+        default: 'parallel_e2e'
       user:
         description: 'User who kicked this off.'
         required: false
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
-          ref: ${{ github.event.inputs.branch || 'master' }}
+          ref: ${{ github.event.inputs.branch || 'parallel_e2e' }}
 
       - name: Cache pnpm modules
         uses: actions/cache@v3
@@ -49,9 +49,6 @@ jobs:
         uses: pnpm/action-setup@v2.2.4
         with:
           run_install: true
-
-      - name: Debugging - cat cypress config
-        run: cat /__w/n8n/n8n/cypress.config.js
 
       - name: Cypress build
         uses: cypress-io/github-action@v5
@@ -84,12 +81,12 @@ jobs:
       fail-fast: false
       matrix:
         # node-version: [14.x, 16.x]
-        containers: [1, 2]
+        containers: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v3
         with:
           repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
-          ref: ${{ github.event.inputs.branch || 'master' }}
+          ref: ${{ github.event.inputs.branch || 'parallel_e2e' }}
       # - name: Call Start URL - optionally
       #   run: |
       #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
@@ -114,9 +111,6 @@ jobs:
       - name: Unzip packages dist folders
         run: tar -xzf packages_build.tar.gz ./
 
-      - name: Debugging - cat cypress config
-        run: cat /__w/n8n/n8n/cypress.config.js
-
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
@@ -134,7 +128,6 @@ jobs:
           # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CYPRESS_PROJECT_ID: 5hbsdn
           E2E_TESTS: true
 
       # - name: Notify Slack on failure
@@ -144,7 +137,7 @@ jobs:
       #     status: ${{ job.status }}
       #     channel: '#updates-build-alerts'
       #     webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-      #     message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      #     message: E2E failure for branch `${{ inputs.branch || 'parallel_e2e' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       # - name: Call Success URL - optionally
       #   run: |
