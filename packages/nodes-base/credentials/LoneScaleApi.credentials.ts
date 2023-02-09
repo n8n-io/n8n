@@ -1,8 +1,15 @@
-import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class LoneScaleApi implements ICredentialType {
 	name = 'loneScaleApi';
+
 	displayName = 'LoneScale API';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -12,12 +19,20 @@ export class LoneScaleApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://public-api.lonescale.com',
+			url: '/users',
 		},
 	};
 }

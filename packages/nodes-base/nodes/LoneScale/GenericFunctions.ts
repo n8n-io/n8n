@@ -1,8 +1,8 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 import { BASE_URL } from './constants';
 
 export async function lonescaleApiRequest(
@@ -12,16 +12,12 @@ export async function lonescaleApiRequest(
 	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('loneScaleApi'))?.apiKey;
-
-	const endpoint = `${BASE_URL}/workflows`;
+	const endpoint = `${BASE_URL}`;
 
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'X-API-KEY': credentials,
 		},
 		method,
 		body,
@@ -37,7 +33,7 @@ export async function lonescaleApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'loneScaleApi', options);
 	} catch (error) {
 		if (error.response) {
 			const errorMessage =

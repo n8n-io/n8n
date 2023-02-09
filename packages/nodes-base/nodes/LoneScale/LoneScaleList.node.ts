@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,18 +8,17 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import { BASE_URL } from './constants';
+import { lonescaleApiRequest } from './GenericFunctions';
 
 export class LoneScaleList implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LoneScale List',
 		name: 'loneScaleList',
 		group: ['transform'],
-		icon: 'file:./lonescale-logo.svg',
+		icon: 'file:lonescale-logo.svg',
 		version: 1,
 		description: 'Create List, add / delete items',
+		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		defaults: {
 			name: 'LoneScale List',
 		},
@@ -314,14 +313,28 @@ export class LoneScaleList implements INodeType {
 			},
 		],
 	};
-	// The execute method will go here
+
+	methods = {
+		loadOptions: {
+			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const type = this.getNodeParameter('type') as string;
+				const data = await lonescaleApiRequest.call(this, 'GET', '/lists');
+				return (data as { list: Array<{ name: string; id: string; entity: string }> })?.list
+					?.filter((l) => l.entity === type)
+					.map((d) => ({
+						name: d.name,
+						value: d.id,
+					}));
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		let responseData;
 		const returnData = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const credentials = (await this.getCredentials('loneScaleApi'))?.apiKey;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'list') {
@@ -333,19 +346,7 @@ export class LoneScaleList implements INodeType {
 						entity,
 					};
 
-					const endpoint = `${BASE_URL}/lists`;
-
-					const options: OptionsWithUri = {
-						headers: {
-							Accept: 'application/json',
-							'X-API-KEY': credentials,
-						},
-						method: 'Post',
-						body,
-						uri: endpoint,
-						json: true,
-					};
-					responseData = await this.helpers.request!(options);
+					responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
 					returnData.push(responseData);
 				}
 			}
@@ -376,47 +377,16 @@ export class LoneScaleList implements INodeType {
 						...(contactId && { contact_id: contactId }),
 					};
 
-					const endpoint = `${BASE_URL}/lists/${listId}/item`;
-
-					const options: OptionsWithUri = {
-						headers: {
-							Accept: 'application/json',
-							'X-API-KEY': credentials,
-						},
-						method: 'Post',
+					responseData = await lonescaleApiRequest.call(
+						this,
+						'POST',
+						`/lists/${listId}/item`,
 						body,
-						uri: endpoint,
-						json: true,
-					};
-					responseData = await this.helpers.request!(options);
+					);
 					returnData.push(responseData);
 				}
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
-
-	methods = {
-		loadOptions: {
-			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = (await this.getCredentials('loneScaleApi'))?.apiKey;
-				const type = this.getNodeParameter('type') as string;
-				const data = await this.helpers.httpRequest({
-					method: 'GET',
-					baseURL: BASE_URL,
-					url: '/lists',
-					json: true,
-					headers: {
-						'X-API-KEY': credentials,
-					},
-				});
-				return (data as { list: Array<{ name: string; id: string; entity: string }> })?.list
-					?.filter((l) => l.entity === type)
-					.map((d) => ({
-						name: d.name,
-						value: d.id,
-					}));
-			},
-		},
-	};
 }
