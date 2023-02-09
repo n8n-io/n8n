@@ -53,7 +53,7 @@ jobs:
             /github/home/.cache
             /github/home/.pnpm-store
             ./node_modules
-            ./packages/*/dist
+            ./packages
           key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
 
       - name: Cypress build
@@ -116,7 +116,7 @@ jobs:
             /github/home/.cache
             /github/home/.pnpm-store
             ./node_modules
-            ./packages/*/dist
+            ./packages
           key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
 
       - name: Cypress run
