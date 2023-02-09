@@ -239,6 +239,14 @@ export class Start extends Command {
 		const { flags } = this.parse(Start);
 
 		try {
+			// Load all node and credential types
+			const loadNodesAndCredentials = LoadNodesAndCredentials();
+			await loadNodesAndCredentials.init();
+
+			// Add the found types to an instance other parts of the application can use
+			const nodeTypes = NodeTypes(loadNodesAndCredentials);
+			const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+
 			// Start directly with the init of the database to improve startup time
 			await Db.init().catch(async (error: Error) =>
 				exitWithCrash('There was an error initializing DB', error),
@@ -265,17 +273,9 @@ export class Start extends Command {
 				await Start.generateStaticAssets();
 			}
 
-			// Load all node and credential types
-			const loadNodesAndCredentials = LoadNodesAndCredentials();
-			await loadNodesAndCredentials.init();
-
 			// Load all external hooks
 			const externalHooks = ExternalHooks();
 			await externalHooks.init();
-
-			// Add the found types to an instance other parts of the application can use
-			const nodeTypes = NodeTypes(loadNodesAndCredentials);
-			const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 			// Load the credentials overwrites if any exist
 			CredentialsOverwrites(credentialTypes);
