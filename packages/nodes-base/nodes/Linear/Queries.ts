@@ -121,6 +121,15 @@ export const query = {
 			}
 		}`;
 	},
+	getIssueTeam() {
+		return `query Issue($issueId: String!) {
+			issue(id: $issueId) {
+				team {
+					id
+				}
+			}
+		}`;
+	},
 	getIssues() {
 		return `query Issue ($first: Int, $after: String){
 					issues (first: $first, after: $after){
