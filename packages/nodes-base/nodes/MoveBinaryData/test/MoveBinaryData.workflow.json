@@ -1,0 +1,135 @@
+{
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b4be19de-91fa-433e-9379-d2e92e352def",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				640,
+				500
+			]
+		},
+		{
+			"parameters": {
+				"filePath": "C:\\Users\\spech\\Documents\\GitHub\\n8n-master\\packages\\nodes-base\\nodes\\MoveBinaryData\\test\\data\\sample.json"
+			},
+			"id": "a60324d8-8772-4708-99d9-6ac78722f857",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [
+				860,
+				500
+			]
+		},
+		{
+			"parameters": {
+				"setAllData": false,
+				"options": {}
+			},
+			"id": "707a5814-74c1-4322-865a-a18d2b555459",
+			"name": "Binary to JSON - No Set All Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [
+				1080,
+				620
+			]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "08e9399b-2a2d-4ae3-a235-e7c63eab7c86",
+			"name": "Binary to JSON",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [
+				1080,
+				380
+			]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"options": {}
+			},
+			"id": "03aa51c9-eaec-4c9d-87f5-55ad3e51dbd8",
+			"name": "JSON to Binary",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [
+				1400,
+				240
+			]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"convertAllData": false,
+				"sourceKey": "title",
+				"options": {
+					"fileName": "example.json"
+				}
+			},
+			"id": "69c85dfd-cb50-4039-b061-e1501e7bf55f",
+			"name": "JSON to Binary - No Convert All Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [
+				1400,
+				500
+			]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Binary to JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Binary to JSON - No Set All Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Binary to JSON": {
+			"main": [
+				[
+					{
+						"node": "JSON to Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "JSON to Binary - No Convert All Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
