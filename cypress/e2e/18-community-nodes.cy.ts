@@ -27,13 +27,13 @@ describe('Community Node', async () => {
 		cy.visit(settingsCommunityNodes.url);
 		settingsCommunityNodes.actions.clickInstallCommunityNodeButton();
 		settingsCommunityNodes.getters.communityInstallModal().should('be.visible');
-		settingsCommunityNodes.getters.installCommunityNodeButton().should('be.disabled');
+		settingsCommunityNodes.getters.communityInstallModalButton().should('be.disabled');
 
 		settingsCommunityNodes.actions.enterInstallCommunityNodeName(communityNodeRepo);
-		settingsCommunityNodes.getters.installCommunityNodeButton().should('be.disabled');
+		settingsCommunityNodes.getters.communityInstallModalButton().should('be.disabled');
 
 		settingsCommunityNodes.actions.clickCommunityInstallModalCheckbox();
-		settingsCommunityNodes.getters.installCommunityNodeButton().should('not.be.disabled');
+		settingsCommunityNodes.getters.communityInstallModalButton().should('not.be.disabled');
 
 		settingsCommunityNodes.actions.clickCommunityInstallModalButton();
 	});

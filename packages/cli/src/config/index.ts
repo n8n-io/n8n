@@ -5,8 +5,13 @@ import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
+import { execSync } from 'child_process';
 
 if (inE2ETests) {
+	const NPM_PATH = execSync('which npm')
+		.toString()
+		.trim()
+		.replace(/\/bin\/npm$/, '/bin');
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
 		E2E_TESTS: 'true',
@@ -16,6 +21,7 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		PATH: NPM_PATH,
 	};
 } else if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';

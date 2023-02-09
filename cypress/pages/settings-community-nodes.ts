@@ -8,10 +8,8 @@ export class SettingsCommunityNodes extends BasePage {
 			cy.getByTestId('settings-community-nodes-install-button').find('button').first(),
 		communityInstallModalInput: () =>
 			cy.getByTestId('community-package-install-modal-input').find('input').first(),
-		communityInstallModalCheckbox: () =>
-			cy.getByTestId('community-package-install-modal-checkbox').find('input').first(),
-		communityInstallModalButton: () =>
-			cy.getByTestId('community-package-install-modal-button').find('button').first(),
+		communityInstallModalCheckbox: () => cy.getByTestId('community-package-install-modal-checkbox'),
+		communityInstallModalButton: () => cy.getByTestId('community-package-install-modal-button'),
 		communityInstallModal: () => cy.getByTestId('communityPackageInstall-modal'),
 		communityInstallSidebarEntry: () => cy.getByTestId('settings-community-nodes'),
 	};
