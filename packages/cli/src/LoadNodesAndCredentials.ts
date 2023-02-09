@@ -18,13 +18,7 @@ import type {
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { createWriteStream } from 'fs';
-import {
-	access as fsAccess,
-	copyFile,
-	mkdir,
-	readdir as fsReaddir,
-	stat as fsStat,
-} from 'fs/promises';
+import { access as fsAccess, mkdir, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -50,6 +44,8 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 	types: Types = { nodes: [], credentials: [] };
 
+	loaders: Record<string, DirectoryLoader> = {};
+
 	excludeNodes = config.getEnv('nodes.exclude');
 
 	includeNodes = config.getEnv('nodes.include');
@@ -67,12 +63,10 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/nodes'), { recursive: true });
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/credentials'), { recursive: true });
-
 		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
 		await this.loadNodesFromCustomDirectories();
+		await this.postProcessLoaders();
 		this.injectCustomApiCallOptions();
 	}
 
@@ -117,7 +111,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	async loadNodesFromBasePackages() {
+	private async loadNodesFromBasePackages() {
 		const nodeModulesPath = await this.getNodeModulesPath();
 		const nodePackagePaths = await this.getN8nNodePackages(nodeModulesPath);
 
@@ -126,7 +120,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 	}
 
-	async loadNodesFromDownloadedPackages(): Promise<void> {
+	private async loadNodesFromDownloadedPackages(): Promise<void> {
 		const nodePackages = [];
 		try {
 			// Read downloaded nodes and credentials
@@ -160,24 +154,23 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		return customDirectories;
 	}
 
-	async loadNodesFromCustomDirectories(): Promise<void> {
+	private async loadNodesFromCustomDirectories(): Promise<void> {
 		for (const directory of this.getCustomDirectories()) {
 			await this.runDirectoryLoader(CustomDirectoryLoader, directory);
 		}
 	}
 
 	/**
-	 * Returns all the names of the packages which could
-	 * contain n8n nodes
-	 *
+	 * Returns all the names of the packages which could contain n8n nodes
 	 */
-	async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
+	private async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
 			const results: string[] = [];
 			const nodeModulesPath = `${baseModulesPath}/${relativePath}`;
-			for (const file of await fsReaddir(nodeModulesPath)) {
-				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
-				const isNpmScopedPackage = file.indexOf('@') === 0;
+			const nodeModules = await fsReaddir(nodeModulesPath);
+			for (const nodeModule of nodeModules) {
+				const isN8nNodesPackage = nodeModule.indexOf('n8n-nodes-') === 0;
+				const isNpmScopedPackage = nodeModule.indexOf('@') === 0;
 				if (!isN8nNodesPackage && !isNpmScopedPackage) {
 					continue;
 				}
@@ -185,10 +178,10 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					continue;
 				}
 				if (isN8nNodesPackage) {
-					results.push(`${baseModulesPath}/${relativePath}${file}`);
+					results.push(`${baseModulesPath}/${relativePath}${nodeModule}`);
 				}
 				if (isNpmScopedPackage) {
-					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${file}/`)));
+					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${nodeModule}/`)));
 				}
 			}
 			return results;
@@ -392,62 +385,50 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		await loader.loadAll();
-
-		// list of node & credential types that will be sent to the frontend
-		const { types } = loader;
-		this.types.nodes = this.types.nodes.concat(types.nodes);
-		this.types.credentials = this.types.credentials.concat(types.credentials);
-
-		// Copy over all icons and set `iconUrl` for the frontend
-		const iconPromises = Object.entries(types).flatMap(([typeName, typesArr]) =>
-			typesArr.map((type) => {
-				if (!type.icon?.startsWith('file:')) return;
-				const icon = type.icon.substring(5);
-				const iconUrl = `icons/${typeName}/${type.name}${path.extname(icon)}`;
-				delete type.icon;
-				type.iconUrl = iconUrl;
-				const source = path.join(dir, icon);
-				const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
-				return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
-					copyFile(source, destination),
-				);
-			}),
-		);
-
-		await Promise.all(iconPromises);
-
-		// Nodes and credentials that have been loaded immediately
-		for (const nodeTypeName in loader.nodeTypes) {
-			this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
-		}
-
-		for (const credentialTypeName in loader.credentialTypes) {
-			this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
-		}
-
-		// Nodes and credentials that will be lazy loaded
-		if (loader instanceof PackageDirectoryLoader) {
-			const { packageName, known } = loader;
-
-			for (const type in known.nodes) {
-				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[type] = {
-					className,
-					sourcePath: path.join(dir, sourcePath),
-				};
-			}
-
-			for (const type in known.credentials) {
-				const { className, sourcePath, nodesToTestWith } = known.credentials[type];
-				this.known.credentials[type] = {
-					className,
-					sourcePath: path.join(dir, sourcePath),
-					nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
-				};
-			}
-		}
-
+		this.loaders[dir] = loader;
 		return loader;
+	}
+
+	async postProcessLoaders() {
+		this.types.nodes = [];
+		this.types.credentials = [];
+		for (const [dir, loader] of Object.entries(this.loaders)) {
+			// list of node & credential types that will be sent to the frontend
+			const { types } = loader;
+			this.types.nodes = this.types.nodes.concat(types.nodes);
+			this.types.credentials = this.types.credentials.concat(types.credentials);
+
+			// Nodes and credentials that have been loaded immediately
+			for (const nodeTypeName in loader.nodeTypes) {
+				this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+			}
+
+			for (const credentialTypeName in loader.credentialTypes) {
+				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+			}
+
+			// Nodes and credentials that will be lazy loaded
+			if (loader instanceof PackageDirectoryLoader) {
+				const { packageName, known } = loader;
+
+				for (const type in known.nodes) {
+					const { className, sourcePath } = known.nodes[type];
+					this.known.nodes[type] = {
+						className,
+						sourcePath: path.join(dir, sourcePath),
+					};
+				}
+
+				for (const type in known.credentials) {
+					const { className, sourcePath, nodesToTestWith } = known.credentials[type];
+					this.known.credentials[type] = {
+						className,
+						sourcePath: path.join(dir, sourcePath),
+						nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
+					};
+				}
+			}
+		}
 	}
 
 	private async getNodeModulesPath(): Promise<string> {

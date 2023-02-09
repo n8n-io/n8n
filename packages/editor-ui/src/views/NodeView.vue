@@ -1995,7 +1995,7 @@ export default mixins(
 				},
 			] as [IConnection, IConnection];
 
-			this.__addConnection(connectionData, true);
+			this.__addConnection(connectionData);
 		},
 		async addNode(
 			nodeTypeName: string,
@@ -2536,7 +2536,10 @@ export default mixins(
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
-			window.addEventListener('beforeunload', (e) => {
+
+			// allow to be overriden in e2e tests
+			// @ts-ignore
+			window.onBeforeUnload = (e) => {
 				if (this.isDemo) {
 					return;
 				} else if (this.uiStore.stateIsDirty) {
@@ -2549,7 +2552,8 @@ export default mixins(
 					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
 					return;
 				}
-			});
+			};
+			window.addEventListener('beforeunload', window.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -2567,22 +2571,19 @@ export default mixins(
 
 			return NodeViewUtils.getInputEndpointUUID(node.id, index);
 		},
-		__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
-			if (addVisualConnection) {
-				const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
-				const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
-				if (!outputUuid || !inputUuid) {
-					return;
-				}
-
-				const uuid: [string, string] = [outputUuid, inputUuid];
-				// Create connections in DOM
-				this.instance?.connect({
-					uuids: uuid,
-					detachable: !this.isReadOnly,
-				});
+		__addConnection(connection: [IConnection, IConnection]) {
+			const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
+			const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+			if (!outputUuid || !inputUuid) {
+				return;
 			}
-			this.workflowsStore.addConnection({ connection });
+
+			const uuid: [string, string] = [outputUuid, inputUuid];
+			// Create connections in DOM
+			this.instance?.connect({
+				uuids: uuid,
+				detachable: !this.isReadOnly,
+			});
 
 			setTimeout(() => {
 				this.addPinDataConnections(this.workflowsStore.pinData);
@@ -3273,7 +3274,7 @@ export default mixins(
 									},
 								] as [IConnection, IConnection];
 
-								this.__addConnection(connectionData, true);
+								this.__addConnection(connectionData);
 							});
 						}
 					}
@@ -3759,7 +3760,7 @@ export default mixins(
 		},
 		async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection] }) {
 			this.suspendRecordingDetachedConnections = true;
-			this.__addConnection(connection, true);
+			this.__addConnection(connection);
 			this.suspendRecordingDetachedConnections = false;
 		},
 		async onRevertNameChange({ currentName, newName }: { currentName: string; newName: string }) {
