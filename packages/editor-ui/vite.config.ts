@@ -60,18 +60,16 @@ export default mergeConfig(
 		},
 		plugins: [
 			vue(),
-			...(!isCI
-				? [
-						legacy({
-							targets: ['defaults', 'not IE 11'],
-						}),
-						monacoEditorPlugin({
-							publicPath: 'assets/monaco-editor',
-							customDistPath: (root: string, buildOutDir: string, base: string) =>
-								`${root}/${buildOutDir}/assets/monaco-editor`,
-						}),
-				  ]
-				: []),
+			...([
+				legacy({
+					targets: ['defaults', 'not IE 11'],
+				}),
+				monacoEditorPlugin({
+					publicPath: 'assets/monaco-editor',
+					customDistPath: (root: string, buildOutDir: string, base: string) =>
+						`${root}/${buildOutDir}/assets/monaco-editor`,
+				}),
+			]),
 		],
 		resolve: {
 			alias: [
