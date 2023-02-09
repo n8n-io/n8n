@@ -123,6 +123,20 @@ workflowsController.get(
 	}),
 );
 
+workflowsController.get(
+	'/connections-check',
+	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
+		return WorkflowsService.checkWorkflowsConnectionsValidity(req.user);
+	}),
+);
+
+workflowsController.get(
+	'/purge-invalid-connections',
+	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
+		return WorkflowsService.purgeInvalidConnections(req.user);
+	}),
+);
+
 /**
  * GET /workflows/new
  */

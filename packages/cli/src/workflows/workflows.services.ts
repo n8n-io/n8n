@@ -1,8 +1,8 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import type { IConnection, IConnections, INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsWhere, UpdateResult } from 'typeorm';
-import { In } from 'typeorm';
+import { In, MoreThan } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -112,6 +112,125 @@ export class WorkflowsService {
 	// Warning: this function is overridden by EE to disregard role list.
 	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
+	}
+	static filterInvalidWorkflowConnections(workflowData: WorkflowEntity): { source: string, sourceOutput: string, sourceIndex: number, target: string, targetIndex: number }[] {
+		const nodeTypes = NodeTypes()
+		const { nodes, connections } = workflowData;
+
+		const invalidConnections: { source: string, sourceOutput: string, sourceIndex: number, target: string, targetIndex: number }[] = [];
+
+		Object.keys(connections).forEach((sourceNodeName) => {
+			const sourceNode = nodes.find((node) => node.name === sourceNodeName);
+			let isInvalid = false;
+			if(!sourceNode) return null;
+
+			const sourceNodeType = nodeTypes.getByNameAndVersion(sourceNode.type, sourceNode.typeVersion);
+			const sourceOutputs = sourceNodeType.description.outputs || [];
+
+			for (let outputIndex = 0; outputIndex < sourceOutputs.length; outputIndex++) {
+				const outputConnections = connections[sourceNodeName][sourceOutputs[outputIndex]][outputIndex] || [];
+
+				for (let i = 0; i < outputConnections.length; i++) {
+					const connection = outputConnections[i];
+					const connectionNode = nodes.find((node) => node.name === connection.node);
+					if(!connectionNode) continue;
+
+					const connectionNodeType = nodeTypes.getByNameAndVersion(connectionNode?.type, connectionNode?.typeVersion);
+					const connectionNodeInputs = connectionNodeType.description.inputs || [];
+					// Connection is valid if the input type is supported by the node
+					isInvalid = !connectionNodeInputs.includes(connection.type);
+
+					if(isInvalid) {
+						invalidConnections.push({
+							source: sourceNodeName,
+							sourceOutput: sourceOutputs[outputIndex],
+							sourceIndex: outputIndex,
+							target: connectionNode.name,
+							targetIndex: i,
+						});
+					};
+				}
+			}
+
+
+			return isInvalid;
+		})
+
+		return invalidConnections
+	}
+
+	static async checkWorkflowsConnectionsValidity(user: User): Promise<WorkflowEntity[]> {
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
+		if (sharedWorkflowIds.length === 0) {
+			return [];
+		}
+
+		const fields: Array<keyof WorkflowEntity> = [
+			'id',
+			'name',
+			'active',
+			'createdAt',
+			'updatedAt',
+			'nodes',
+			'connections'
+		];
+
+		const workflowsData = await Db.collections.Workflow.find({
+			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
+			relations: [],
+			where: {
+				id: In(sharedWorkflowIds)
+			},
+		});
+
+		const invalidWorkflows = workflowsData.filter((workflowData) => {
+			const invalidConnections = this.filterInvalidWorkflowConnections(workflowData);
+			console.log("🚀 ~ file: workflows.services.ts:177 ~ WorkflowsService ~ invalidWorkflows ~ invalidConnections", invalidConnections)
+
+			return invalidConnections.length > 0;
+		})
+		return invalidWorkflows;
+	}
+
+	static async purgeInvalidConnections(user: User): Promise<void> {
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
+		if (sharedWorkflowIds.length === 0) {
+			return;
+		}
+
+		const fields: Array<keyof WorkflowEntity> = [
+			'id',
+			'name',
+			'nodes',
+			'connections'
+		];
+
+		const workflowsData = await Db.collections.Workflow.find({
+			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
+			relations: [],
+			where: {
+				id: In(sharedWorkflowIds),
+			},
+		});
+
+		for (let i = 0; i < workflowsData.length; i++) {
+			const workflowData = workflowsData[i];
+			const allConnections = workflowData.connections;
+			const invalidConnections = this.filterInvalidWorkflowConnections(workflowData);
+
+			const purgedConnections = Object.keys(allConnections).reduce((acc, sourceNodeName) => {
+				const partiallyInvalid = invalidConnections.filter((connection) => connection.source === sourceNodeName);
+				if(partiallyInvalid.length === 0) return { ...acc, [sourceNodeName]: allConnections[sourceNodeName]};
+
+				const connection = allConnections[sourceNodeName];
+				partiallyInvalid.forEach((invalidConnection) => {
+					connection[invalidConnection.sourceOutput][invalidConnection.sourceIndex].splice(invalidConnection.targetIndex, 1)
+				})
+
+				return { ...acc, [sourceNodeName]: connection}
+			}, {})
+			console.log("🚀 ~ file: workflows.services.ts:232 ~ WorkflowsService ~ purgedConnections ~ purgedConnections", purgedConnections)
+		}
 	}
 
 	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
