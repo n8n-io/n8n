@@ -1,8 +1,8 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { IConnection, IConnections, INode, IPinData, JsonObject } from 'n8n-workflow';
+import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsWhere, UpdateResult } from 'typeorm';
-import { In, MoreThan } from 'typeorm';
+import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
