@@ -1,0 +1,59 @@
+{
+	"name": "execute wf test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "fde63c2d-9d0b-4273-b319-04bfad515ca1",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [760, 400]
+		},
+		{
+			"parameters": {
+				"source": "parameter",
+				"workflowJson": "{\n  \"meta\": {\n    \"instanceId\": \"36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0\"\n  },\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"options\": {}\n      },\n      \"id\": \"f0f37a8f-9136-42e8-be34-f32b77e4aa88\",\n      \"name\": \"XML2\",\n      \"type\": \"n8n-nodes-base.xml\",\n      \"typeVersion\": 1,\n      \"position\": [\n        840,\n        520\n      ]\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"return {\\n\\\"data\\\":\\n'<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\" standalone=\\\"yes\\\"?> <data> <id>1</id> <firstName>Adam</firstName> <secondName>Smith</secondName> <fullName>Adam Smith</fullName> </data>'\\n}\"\n      },\n      \"id\": \"1f7dfe58-f877-454b-a680-dc9e1764c663\",\n      \"name\": \"Code1\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 1,\n      \"position\": [\n        660,\n        520\n      ]\n    },\n    {\n      \"parameters\": {},\n      \"id\": \"8e56a83b-e9d2-453d-aaed-8e3601d0e8f2\",\n      \"name\": \"Execute Workflow Trigger\",\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        480,\n        520\n      ]\n    }\n  ],\n  \"connections\": {\n    \"Code1\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"XML2\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Execute Workflow Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Code1\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}"
+			},
+			"id": "aacf9116-8103-473c-964f-e9bfbe5f580e",
+			"name": "Execute Workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1,
+			"position": [1080, 400]
+		}
+	],
+	"pinData": {
+		"Execute Workflow": [
+			{
+				"json": {
+					"data": {
+						"id": "1",
+						"firstName": "Adam",
+						"secondName": "Smith",
+						"fullName": "Adam Smith"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "bfcf9faa-0a2e-4e0b-b27a-d0f591a83fe4",
+	"id": "111",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

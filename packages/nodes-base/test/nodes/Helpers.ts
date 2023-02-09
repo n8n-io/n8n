@@ -219,6 +219,7 @@ export function readJsonFileSync(path: string) {
 
 export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes) => {
 	// execute workflow
+	console.log(JSON.stringify(await executeWorkflow(testData, types), null, 2));
 	const { result } = await executeWorkflow(testData, types);
 
 	// check if result node data matches expected test data
