@@ -23,8 +23,8 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-import "cypress-real-events";
-import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
+import 'cypress-real-events';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
@@ -87,6 +87,28 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 	);
 });
 
+Cypress.Commands.add('signout', () => {
+	cy.visit('/signout');
+	cy.waitForLoad();
+	cy.url().should('include', '/signin');
+	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
+});
+
+Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
+	const signupPage = new SignupPage();
+
+	cy.visit(url);
+
+	signupPage.getters.form().within(() => {
+		cy.url().then((url) => {
+			signupPage.getters.firstName().type(firstName);
+			signupPage.getters.lastName().type(lastName);
+			signupPage.getters.password().type(password);
+			signupPage.getters.submit().click();
+		});
+	});
+});
+
 Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	const signupPage = new SignupPage();
 
@@ -94,7 +116,7 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
-			if (url.endsWith(signupPage.url)) {
+			if (url.includes(signupPage.url)) {
 				signupPage.getters.email().type(email);
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
@@ -103,6 +125,36 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 			} else {
 				cy.log('User already signed up');
 			}
+		});
+	});
+});
+
+Cypress.Commands.add('interceptREST', (method, url) => {
+	cy.intercept(method, `http://localhost:5678/rest${url}`);
+});
+
+Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
+	const settingsUsersPage = new SettingsUsersPage();
+
+	cy.signin(instanceOwner);
+
+	users.forEach((user) => {
+		cy.signin(instanceOwner);
+		cy.visit(settingsUsersPage.url);
+
+		cy.interceptREST('POST', '/users').as('inviteUser');
+
+		settingsUsersPage.getters.inviteButton().click();
+		settingsUsersPage.getters.inviteUsersModal().within((modal) => {
+			settingsUsersPage.getters.inviteUsersModalEmailsInput().type(user.email).type('{enter}');
+		});
+
+		cy.wait('@inviteUser').then((interception) => {
+			const inviteLink = interception.response!.body.data[0].user.inviteAcceptUrl;
+			cy.log(JSON.stringify(interception.response!.body.data[0].user));
+			cy.log(inviteLink);
+			cy.signout();
+			cy.signup({ ...user, url: inviteLink });
 		});
 	});
 });
@@ -187,23 +239,27 @@ Cypress.Commands.add('drag', (selector, pos) => {
 		pageY: originalLocation.top + yDiff,
 		force: true,
 	});
-	element.trigger('mouseup');
+	element.trigger('mouseup', { force: true });
 });
 
 Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 	cy.get(draggableSelector).should('exist');
 	cy.get(droppableSelector).should('exist');
 
-	const droppableEl = Cypress.$(droppableSelector)[0];
-	const coords = droppableEl.getBoundingClientRect();
+	cy.get(droppableSelector)
+		.first()
+		.then(([$el]) => {
+			const coords = $el.getBoundingClientRect();
 
-	const pageX = coords.left + coords.width / 2;
-	const pageY = coords.top + coords.height / 2;
+			const pageX = coords.left + coords.width / 2;
+			const pageY = coords.top + coords.height / 2;
 
-	cy.get(draggableSelector).realMouseDown();
-	cy.get(droppableSelector).realMouseMove(pageX, pageY)
-		.realHover()
-		.realMouseUp();
+			// We can't use realMouseDown here because it hangs headless run
+			cy.get(draggableSelector).trigger('mousedown');
+			// We don't chain these commands to make sure cy.get is re-trying correctly
+			cy.get(droppableSelector).realMouseMove(pageX, pageY);
+			cy.get(droppableSelector).realHover();
+			cy.get(droppableSelector).realMouseUp();
+			cy.get(draggableSelector).realMouseUp();
+		});
 });
-
-
