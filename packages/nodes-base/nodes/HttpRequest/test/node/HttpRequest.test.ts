@@ -84,6 +84,38 @@ describe('Test HTTP Request Node', () => {
 			completed: false,
 			userId: '42',
 		});
+
+		//PATCH
+		nock(baseUrl)
+			.patch('/products/1', '{"title":"iPhone 12"}')
+			.reply(200, {
+				id: 1,
+				title: 'iPhone 12',
+				price: 549,
+				stock: 94,
+				rating: 4.69,
+				images: [
+					'https://i.dummyjson.com/data/products/1/1.jpg',
+					'https://i.dummyjson.com/data/products/1/2.jpg',
+					'https://i.dummyjson.com/data/products/1/3.jpg',
+					'https://i.dummyjson.com/data/products/1/4.jpg',
+					'https://i.dummyjson.com/data/products/1/thumbnail.jpg',
+				],
+				thumbnail: 'https://i.dummyjson.com/data/products/1/thumbnail.jpg',
+				description: 'An apple mobile which is nothing like apple',
+				brand: 'Apple',
+				category: 'smartphones',
+			});
+
+		//DELETE
+		nock(baseUrl).delete('/todos/1').reply(200, {
+			id: 1,
+			todo: 'Do something nice for someone I care about',
+			completed: true,
+			userId: 26,
+			isDeleted: true,
+			deletedOn: '2023-02-09T05:37:31.720Z',
+		});
 	});
 
 	afterAll(() => {
