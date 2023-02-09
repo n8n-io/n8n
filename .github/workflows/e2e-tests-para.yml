@@ -40,15 +40,6 @@ jobs:
           repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
           ref: ${{ github.event.inputs.branch || 'parallel_e2e' }}
 
-      - name: Cache pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
         with:
@@ -64,6 +55,15 @@ jobs:
 
       - name: Cypress install
         run: pnpm cypress:install
+
+      - name: Cache pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
 
       - name: Zip packages dist folders
         run: tar -czf ./packages_build.tar.gz ./packages/*
@@ -95,14 +95,6 @@ jobs:
       #   run: |
       #     [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
       #   shell: bash
-      - name: Restore cached pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -114,6 +106,15 @@ jobs:
 
       - name: Unzip packages dist folders
         run: tar -xzf packages_build.tar.gz ./
+
+      - name: Restore cached pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
