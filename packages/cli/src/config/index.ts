@@ -10,6 +10,7 @@ if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
 		E2E_TESTS: 'true',
+		VUE_N8N_E2E_TESTS: process.env.CYPRESS_N8N_E2E_TESTS,
 		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
 		EXECUTIONS_PROCESS: 'main',
 		N8N_DIAGNOSTICS_ENABLED: 'false',

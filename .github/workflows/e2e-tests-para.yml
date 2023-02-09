@@ -15,14 +15,22 @@ on:
         description: 'User who kicked this off.'
         required: false
         default: 'schedule'
-      # start-url:
-      #   description: 'URL to call after workflow is kicked off.'
-      #   required: false
-      #   default: ''
-      # success-url:
-      #   description: 'URL to call after workflow is done.'
-      #   required: false
-      #   default: ''
+      specs:
+        description: 'Specify specs.'
+        required: false
+        default: 'e2e/*'
+      run-env:
+        description: 'Node env version to run tests with.'
+        required: false
+        default: '16.18.1'
+      start-url:
+        description: 'URL to call after workflow is kicked off.'
+        required: false
+        default: ''
+      success-url:
+        description: 'URL to call after workflow is done.'
+        required: false
+        default: ''
 
 jobs:
   install:
@@ -33,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["16.18.1"]
+        env-version: ["${{ github.event.inputs.run-env || '16.18.1' }}"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -67,16 +75,6 @@ jobs:
       - name: Cypress install
         run: pnpm cypress:install
 
-      # - name: Zip packages dist folders
-      #   run: tar -czf ./packages_build.tar.gz ./packages/*
-
-      # - name: Save build folder
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: build
-      #     if-no-files-found: error
-      #     path:  packages_build.tar.gz
-
   testing:
     runs-on: ubuntu-latest
     container:
@@ -86,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["16.18.1"]
+        env-version: ["${{ github.event.inputs.run-env || '16.18.1' }}"]
         containers: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v3
@@ -100,14 +98,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
-
-      # - name: Download the build folders
-      #   uses: actions/download-artifact@v3
-      #   with:
-      #     name: build
-
-      # - name: Unzip packages dist folders
-      #   run: tar -xzf packages_build.tar.gz ./
 
       - name: Restore cached pnpm modules
         uses: actions/cache@v3
@@ -128,14 +118,14 @@ jobs:
           wait-on-timeout: 120 #
           record: true
           parallel: true # Runs test in parallel using settings above
-          spec: /__w/n8n/n8n/cypress/e2e/*
+          spec: "/__w/n8n/n8n/cypress/${{ github.event.inputs.specs || 'e2e/*' }}"
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
           # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
           # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          E2E_TESTS: true
+          CYPRESS_N8N_E2E_TESTS: true
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
