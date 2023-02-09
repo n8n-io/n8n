@@ -63,7 +63,7 @@ describe('Test Write Binary File Node', () => {
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
-			// console.log('result', JSON.stringify(result, null, 2));
+
 			expect(result.finished).toEqual(true);
 		});
 	}
