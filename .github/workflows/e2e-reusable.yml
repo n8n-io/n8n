@@ -1,0 +1,153 @@
+name: Reusable e2e workflow
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        type: string
+        default: 'parallel_e2e'
+      user:
+        description: 'User who kicked this off.'
+        required: false
+        type: string
+        default: 'schedule'
+      spec:
+        description: 'Specify specs.'
+        required: false
+        default: 'e2e/*'
+        type: string
+      run-env:
+        description: 'Node env version to run tests with.'
+        required: false
+        default: 'browsers:node16.18.0-chrome90-ff88'
+        type: string
+    secrets:
+      CYPRESS_RECORD_KEY:
+        description: 'Cypress record key.'
+        required: true
+      # start-url:
+      #   description: 'URL to call after workflow is kicked off.'
+      #   required: false
+      #   default: ''
+      #   type: string
+      # success-url:
+      #   description: 'URL to call after workflow is done.'
+      #   required: false
+      #   default: ''
+      #   type: string
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    container:
+      image: cypress/${{ matrix.env-version }}
+      options: --user 1001
+    strategy:
+      fail-fast: false
+      matrix:
+        env-version: ["${{ inputs.run-env }}"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.branch }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
+
+      - name: Echo spec input
+        run: echo ${{ inputs.spec }}
+
+      - name: Cache pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages
+          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
+
+      - name: Cypress build
+        uses: cypress-io/github-action@v5
+        with:
+          # Disable running of tests within install job
+          runTests: false
+          install: false
+          build: pnpm build
+
+      - name: Cypress install
+        run: pnpm cypress:install
+
+  testing:
+    runs-on: ubuntu-latest
+    container:
+      image: cypress/${{ matrix.env-version }}
+      options: --user 1001
+    needs: install
+    strategy:
+      fail-fast: false
+      matrix:
+        env-version: ["${{ inputs.run-env }}"]
+        containers: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.branch }}
+      # - name: Call Start URL - optionally
+      #   run: |
+      #     [[ "${{inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{inputs.start-url}} || echo ""
+      #   shell: bash
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+
+      - name: Restore cached pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages
+          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v5
+        with:
+          install: false
+          start: pnpm start
+          wait-on: 'http://localhost:5678' # Waits for above
+          wait-on-timeout: 120 #
+          record: true
+          browser: chrome
+          parallel: true # Runs test in parallel using settings above
+          spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
+          config-file: /__w/n8n/n8n/cypress.config.js
+        env:
+          # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
+          # in GitHub repo → Settings → Secrets → Actions
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CYPRESS_N8N_E2E_TESTS: true
+          E2E_TEST: true
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🐳 ${{ matrix.containers }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+
+      # - name: Notify Slack on failure
+      #   uses: act10ns/slack@v2.0.0
+      #   if: failure()
+      #   with:
+      #     status: ${{ job.status }}
+      #     channel: '#updates-build-alerts'
+      #     webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     message: E2E failure for branch `${{ inputs.branch || 'parallel_e2e' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      # - name: Call Success URL - optionally
+      #   run: |
+      #     [[ "${{inputs.success-url}}" != "" ]] && curl -v ${{inputs.success-url}} || echo ""
+      #   shell: bash
