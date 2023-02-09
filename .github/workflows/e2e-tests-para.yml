@@ -45,6 +45,17 @@ jobs:
         with:
           run_install: true
 
+
+      - name: Cache pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages/*/dist
+          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
+
       - name: Cypress build
         uses: cypress-io/github-action@v5
         with:
@@ -56,24 +67,15 @@ jobs:
       - name: Cypress install
         run: pnpm cypress:install
 
-      - name: Cache pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-          key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
+      # - name: Zip packages dist folders
+      #   run: tar -czf ./packages_build.tar.gz ./packages/*
 
-      - name: Zip packages dist folders
-        run: tar -czf ./packages_build.tar.gz ./packages/*
-
-      - name: Save build folder
-        uses: actions/upload-artifact@v3
-        with:
-          name: build
-          if-no-files-found: error
-          path:  packages_build.tar.gz
+      # - name: Save build folder
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: build
+      #     if-no-files-found: error
+      #     path:  packages_build.tar.gz
 
   testing:
     runs-on: ubuntu-latest
@@ -99,13 +101,13 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
 
-      - name: Download the build folders
-        uses: actions/download-artifact@v3
-        with:
-          name: build
+      # - name: Download the build folders
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: build
 
-      - name: Unzip packages dist folders
-        run: tar -xzf packages_build.tar.gz ./
+      # - name: Unzip packages dist folders
+      #   run: tar -xzf packages_build.tar.gz ./
 
       - name: Restore cached pnpm modules
         uses: actions/cache@v3
@@ -114,6 +116,7 @@ jobs:
             /github/home/.cache
             /github/home/.pnpm-store
             ./node_modules
+            ./packages/*/dist
           key: ${{ github.sha	}}-${{ matrix.env-version }}-e2e-modules
 
       - name: Cypress run
