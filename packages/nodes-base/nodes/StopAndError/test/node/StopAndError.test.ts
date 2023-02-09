@@ -76,6 +76,8 @@ describe('Execute Stop and Error Node', () => {
 		test(testData.description, async () => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
 
+			expect(result.finished).toBeUndefined();
+
 			const stopAndErrorRunData = result.data.resultData.runData['Stop and Error'];
 			const stopAndErrorMessage = (
 				(stopAndErrorRunData as unknown as IDataObject[])[0].error as IDataObject
