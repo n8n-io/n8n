@@ -165,7 +165,10 @@ export class ActiveWorkflowRunner {
 		}
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows.map((workflow) => workflow.id)];
+		activeWorkflowIds = [
+			...activeWorkflowIds,
+			...activeWorkflows.map((workflow) => workflow.id.toString()),
+		];
 
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
@@ -982,6 +985,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
+				console.log(error);
 				ErrorReporter.error(error);
 				console.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
