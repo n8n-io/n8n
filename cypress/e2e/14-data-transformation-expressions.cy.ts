@@ -8,6 +8,11 @@ describe('Data transformation expressions', () => {
 		cy.resetAll();
 		cy.skipSetup();
 		wf.actions.visit();
+		cy.waitForLoad();
+
+		cy.window()
+			// @ts-ignore
+			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload));
 	});
 
 	it('$json + native string methods', () => {
@@ -21,7 +26,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().contains(output).should('be.visible');
+		ndv.getters.outputDataContainer().should('be.visible').contains(output);
 	});
 
 	it('$json + n8n string methods', () => {
@@ -35,7 +40,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().contains(output).should('be.visible');
+		ndv.getters.outputDataContainer().should('be.visible').contains(output);
 	});
 
 	it('$json + native numeric methods', () => {
@@ -49,7 +54,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().contains(output).should('be.visible');
+		ndv.getters.outputDataContainer().should('be.visible').contains(output);
 	});
 
 	it('$json + n8n numeric methods', () => {
@@ -63,7 +68,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().contains(output).should('be.visible');
+		ndv.getters.outputDataContainer().should('be.visible').contains(output);
 	});
 
 	it('$json + native array methods', () => {
@@ -77,7 +82,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().contains(output).should('be.visible');
+		ndv.getters.outputDataContainer().should('be.visible').contains(output);
 	});
 
 	it('$json + n8n array methods', () => {
@@ -91,7 +96,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().contains(output).should('be.visible');
+		ndv.getters.outputDataContainer().should('be.visible').contains(output);
 	});
 });
 
