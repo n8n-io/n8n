@@ -31,8 +31,9 @@ jobs:
       image: cypress/browsers:${{ matrix.env-version }}
       options: --user 1001
     strategy:
+      fail-fast: false
       matrix:
-        env-version: ["node14.17.6-chrome100-ff98", "node16.17.0-chrome106"]
+        env-version: ["node18.12.0-chrome107", "node16.17.0-chrome106"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -83,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["node14.17.6-chrome100-ff98", "node16.17.0-chrome106"]
+        env-version: ["node18.12.0-chrome107", "node16.17.0-chrome106"]
         containers: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v3
