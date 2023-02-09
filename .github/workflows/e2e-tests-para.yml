@@ -50,6 +50,9 @@ jobs:
         with:
           run_install: true
 
+      - name: Debugging - cat cypress config
+        run: cat /__w/n8n/n8n/cypress.config.js
+
       - name: Cypress build
         uses: cypress-io/github-action@v5
         with:
@@ -111,6 +114,9 @@ jobs:
       - name: Unzip packages dist folders
         run: tar -xzf packages_build.tar.gz ./
 
+      - name: Debugging - cat cypress config
+        run: cat /__w/n8n/n8n/cypress.config.js
+
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
@@ -128,6 +134,7 @@ jobs:
           # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CYPRESS_PROJECT_ID: 5hbsdn
           E2E_TESTS: true
 
       # - name: Notify Slack on failure

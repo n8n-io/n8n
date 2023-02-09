@@ -10,6 +10,7 @@ module.exports = defineConfig({
 		runMode: 3,
 	},
 	e2e: {
+		projectId: "5hbsdn",
 		baseUrl: BASE_URL,
 		video: false,
 		screenshotOnRunFailure: true,
