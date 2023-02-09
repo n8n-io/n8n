@@ -1,3 +1,12 @@
+## [0.214.3](https://github.com/n8n-io/n8n/compare/n8n@0.214.2...n8n@0.214.3) (2023-02-09)
+
+
+### Bug Fixes
+
+* **editor:** Prevent creation of input connections for nodes without input slot ([#5425](https://github.com/n8n-io/n8n/issues/5425)) ([b57ec1d](https://github.com/n8n-io/n8n/commit/b57ec1d6abbae9e23ae5f473d70674aa14701bce))
+
+
+
 ## [0.214.1](https://github.com/n8n-io/n8n/compare/n8n@0.214.0...n8n@0.214.1) (2023-02-06)
 
 
