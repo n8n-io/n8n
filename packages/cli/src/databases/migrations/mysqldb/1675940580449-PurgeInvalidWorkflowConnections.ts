@@ -11,7 +11,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 
 		const tablePrefix = getTablePrefix();
 
-		const workflows: Array<{ id: number; nodes: string; connections: string }> =
+		const workflows: Array<{ id: number; nodes: INode[]; connections: IConnections }> =
 			await queryRunner.query(`
 			SELECT id, nodes, connections
 			FROM \`${tablePrefix}workflow_entity\`
@@ -20,8 +20,8 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 		const nodeTypes = NodeTypes();
 
 		workflows.forEach(async (workflow) => {
-			let connections: IConnections = JSON.parse(workflow.connections);
-			const nodes: INode[] = JSON.parse(workflow.nodes);
+			let connections: IConnections = workflow.connections;
+			const nodes: INode[] = workflow.nodes;
 
 			const nodesThatCannotReceiveInput: string[] = nodes.reduce((acc, node) => {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
