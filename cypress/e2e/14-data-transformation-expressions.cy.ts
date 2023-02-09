@@ -4,15 +4,13 @@ const wf = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data transformation expressions', () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		cy.waitForLoad();
+		wf.actions.visit();
 	});
 
 	it('$json + native string methods', () => {
-		wf.actions.visit();
-
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myStr: 'Monday' }]);
 		ndv.actions.close();
@@ -27,8 +25,6 @@ describe('Data transformation expressions', () => {
 	});
 
 	it('$json + n8n string methods', () => {
-		wf.actions.visit();
-
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
 		ndv.actions.close();
@@ -43,8 +39,6 @@ describe('Data transformation expressions', () => {
 	});
 
 	it('$json + native numeric methods', () => {
-		wf.actions.visit();
-
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myNum: 9.123 }]);
 		ndv.actions.close();
@@ -59,8 +53,6 @@ describe('Data transformation expressions', () => {
 	});
 
 	it('$json + n8n numeric methods', () => {
-		wf.actions.visit();
-
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
 		ndv.actions.close();
@@ -75,8 +67,6 @@ describe('Data transformation expressions', () => {
 	});
 
 	it('$json + native array methods', () => {
-		wf.actions.visit();
-
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
 		ndv.actions.close();
@@ -91,8 +81,6 @@ describe('Data transformation expressions', () => {
 	});
 
 	it('$json + n8n array methods', () => {
-		wf.actions.visit();
-
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
 		ndv.actions.close();
