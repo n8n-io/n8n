@@ -134,11 +134,19 @@ export class Linear implements INodeType {
 				return returnData;
 			},
 			async getStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getNodeParameter('teamId') as string;
 				const returnData: INodePropertyOptions[] = [];
 				const body = {
 					query: query.getStates(),
 					variables: {
 						$first: 10,
+						filter: {
+							team: {
+								id: {
+									eq: teamId,
+								},
+							},
+						},
 					},
 				};
 				const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body);
