@@ -128,9 +128,6 @@ jobs:
           CYPRESS_N8N_E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ github.event.inputs.branch || 'parallel_e2e' }} 🖥️ ${{ github.event.inputs.run-env || '16.18.1' }} 🐳 ${{ matrix.containers }} 🤖 ${{ github.event.inputs.user || 'scheduled' }} 🗃️ ${{ github.event.inputs.specs || 'e2e/*' }}
 
-      - name: Cypress run2
-        uses: cypress-io/github-action@v5
-
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
       #   if: failure()
