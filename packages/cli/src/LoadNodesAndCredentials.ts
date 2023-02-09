@@ -63,9 +63,6 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/nodes'), { recursive: true });
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/credentials'), { recursive: true });
-
 		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
 		await this.loadNodesFromCustomDirectories();
