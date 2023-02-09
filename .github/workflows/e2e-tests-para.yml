@@ -28,12 +28,12 @@ jobs:
   install:
     runs-on: ubuntu-latest
     container:
-      image: cypress/browsers:${{ matrix.env-version }}
+      image: cypress/base:${{ matrix.env-version }}
       options: --user 1001
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["node14.19.0-chrome100-ff99-edge"]
+        env-version: ["14.21.1"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -78,13 +78,13 @@ jobs:
   testing:
     runs-on: ubuntu-latest
     container:
-      image: cypress/browsers:${{ matrix.env-version }}
+      image: cypress/base:${{ matrix.env-version }}
       options: --user 1001
     needs: install
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["node14.19.0-chrome100-ff99-edge"]
+        env-version: ["14.21.1"]
         containers: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v3
@@ -122,7 +122,6 @@ jobs:
           start: pnpm start
           wait-on: 'http://localhost:5678' # Waits for above
           wait-on-timeout: 120 #
-          browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
           spec: /__w/n8n/n8n/cypress/e2e/*

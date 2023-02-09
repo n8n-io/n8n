@@ -7,7 +7,7 @@ module.exports = defineConfig({
 	projectId: "5hbsdn",
 	retries: {
 		openMode: 0,
-		runMode: 3,
+		runMode: 1,
 	},
 	e2e: {
 		baseUrl: BASE_URL,
