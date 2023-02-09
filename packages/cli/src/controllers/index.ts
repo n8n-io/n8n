@@ -3,5 +3,6 @@ export { MeController } from './me.controller';
 export { NodeTypesController } from './nodeTypes.controller';
 export { OwnerController } from './owner.controller';
 export { PasswordResetController } from './passwordReset.controller';
+export { TagsController } from './tags.controller';
 export { TranslationController } from './translation.controller';
 export { UsersController } from './users.controller';

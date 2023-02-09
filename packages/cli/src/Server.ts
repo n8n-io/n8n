@@ -87,12 +87,12 @@ import {
 	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
+	TagsController,
 	TranslationController,
 	UsersController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
-import { tagsController } from '@/api/tags.api';
 import { workflowStatsController } from '@/api/workflowStats.api';
 import { loadPublicApiVersions } from '@/PublicApi';
 import {
@@ -379,7 +379,9 @@ class Server extends AbstractServer {
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
@@ -391,7 +393,6 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new NodeTypesController({ config, nodeTypes }),
 		];
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
@@ -499,11 +500,6 @@ class Server extends AbstractServer {
 		// Workflow Statistics
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
-
-		// ----------------------------------------
-		// Tags
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
 
 		// ----------------------------------------
 		// LDAP

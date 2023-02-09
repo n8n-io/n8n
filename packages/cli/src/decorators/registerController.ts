@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Router } from 'express';
 import type { Config } from '@/config';
-import { CONTROLLER_BASE_PATH, CONTROLLER_ROUTES } from './constants';
+import { CONTROLLER_BASE_PATH, CONTROLLER_MIDDLEWARES, CONTROLLER_ROUTES } from './constants';
 import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
-import type { Application, Request, Response } from 'express';
+import type { Application, Request, Response, RequestHandler } from 'express';
 import type { Controller, RouteMetadata } from './types';
 
 export const registerController = (app: Application, config: Config, controller: object) => {
@@ -14,6 +14,10 @@ export const registerController = (app: Application, config: Config, controller:
 	if (!controllerBasePath)
 		throw new Error(`${controllerClass.name} is missing the RestController decorator`);
 
+	const middlewares = Reflect.getMetadata(
+		CONTROLLER_MIDDLEWARES,
+		controllerClass,
+	) as RequestHandler[];
 	const routes = Reflect.getMetadata(CONTROLLER_ROUTES, controllerClass) as RouteMetadata[];
 	if (routes.length > 0) {
 		const router = Router({ mergeParams: true });
@@ -23,6 +27,7 @@ export const registerController = (app: Application, config: Config, controller:
 		routes.forEach(({ method, path, handlerName }) => {
 			router[method](
 				path,
+				...middlewares,
 				send(async (req: Request, res: Response) =>
 					(controller as Controller)[handlerName](req, res),
 				),
