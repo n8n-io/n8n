@@ -37,6 +37,7 @@ import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
+import { oauth2CredentialController } from '@/credentials/oauth2Credential.api'
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
@@ -131,7 +132,8 @@ export async function initTestServer({
 		endpointGroups.includes('credentials') ||
 		endpointGroups.includes('me') ||
 		endpointGroups.includes('users') ||
-		endpointGroups.includes('passwordReset')
+		endpointGroups.includes('passwordReset') ||
+		endpointGroups.includes('oauth2')
 	) {
 		testServer.externalHooks = ExternalHooks();
 	}
@@ -146,6 +148,7 @@ export async function initTestServer({
 			license: { controller: licenseController, path: 'license' },
 			eventBus: { controller: eventBusRouter, path: 'eventbus' },
 			ldap: { controller: ldapController, path: 'ldap' },
+			oauth2: { controller: oauth2CredentialController, path: 'oauth2-credential'  }
 		};
 
 		if (enablePublicAPI) {
@@ -241,6 +244,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 		'ldap',
 		'eventBus',
 		'license',
+		'oauth2',
 	];
 
 	endpointGroups.forEach((group) =>
