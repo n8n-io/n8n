@@ -34,7 +34,7 @@ describe('Execute Airtable Node', () => {
 			},
 			output: {
 				nodeData: {
-					Airtable: [[...records]],
+					Airtable: [[...records.map((r) => ({ json: r }))]],
 				},
 			},
 		},
