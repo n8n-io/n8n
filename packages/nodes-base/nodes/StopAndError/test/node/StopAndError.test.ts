@@ -84,11 +84,11 @@ describe('Execute Stop and Error Node', () => {
 			expect(stopAndErrorMessage).toEqual('error message from node');
 
 			const stopAndError1RunData = result.data.resultData.runData['Stop and Error1'];
-			const stopAndErrorObject = (
+			const stopAndError1Object = (
 				(stopAndError1RunData as unknown as IDataObject[])[0].error as IDataObject
 			).cause;
 
-			expect(stopAndErrorObject).toEqual({
+			expect(stopAndError1Object).toEqual({
 				code: 404,
 				message: 'error object from node',
 				name: 'User-thrown error',
