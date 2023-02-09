@@ -20,7 +20,7 @@ const eventID: { [key: string]: string } = {
 	create_invoice: '2',
 	update_invoice: '8',
 	sent_invoice: '60',
-	delay_invoice: '22',
+	late_invoice: '22',
 	remind_invoice: '24',
 	archive_invoice: '33',
 	delete_invoice: '9',
@@ -164,12 +164,12 @@ const headProperties: INodeProperties[] = [
 				value: 'create_invoice',
 			},
 			{
-				name: 'Invoice Delayed',
-				value: 'delay_invoice',
-			},
-			{
 				name: 'Invoice Deleted',
 				value: 'delete_invoice',
+			},
+			{
+				name: 'Invoice Late',
+				value: 'late_invoice',
 			},
 			{
 				name: 'Invoice Reminded',
