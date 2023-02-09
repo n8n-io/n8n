@@ -2,10 +2,12 @@ import vue from '@vitejs/plugin-vue2';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
-import { defineConfig, mergeConfig, PluginOption } from 'vite';
+import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 import packageJSON from './package.json';
+
+const isCI = process.env.CI === 'true';
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -57,15 +59,19 @@ export default mergeConfig(
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins: [
-			legacy({
-				targets: ['defaults', 'not IE 11'],
-			}),
 			vue(),
-			monacoEditorPlugin({
-				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) =>
-					`${root}/${buildOutDir}/assets/monaco-editor`,
-			}) as PluginOption,
+			...(!isCI
+				? [
+						legacy({
+							targets: ['defaults', 'not IE 11'],
+						}),
+						monacoEditorPlugin({
+							publicPath: 'assets/monaco-editor',
+							customDistPath: (root: string, buildOutDir: string, base: string) =>
+								`${root}/${buildOutDir}/assets/monaco-editor`,
+						}),
+				  ]
+				: []),
 		],
 		resolve: {
 			alias: [
@@ -104,9 +110,11 @@ export default mergeConfig(
 			},
 		},
 		build: {
+			minify: !isCI,
 			assetsInlineLimit: 0,
 			sourcemap: false,
 			rollupOptions: {
+				treeshake: !isCI,
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
