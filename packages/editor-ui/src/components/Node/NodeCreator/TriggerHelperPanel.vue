@@ -227,11 +227,13 @@ const {
 	setAddedNodeActionParameters,
 } = useNodeCreatorStore();
 
+const { getNodeType } = useNodeTypesStore();
+
 const telemetry = instance?.proxy.$telemetry;
 const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(
 	() =>
-		state.latestNodeData?.properties.some((p) =>
+		activeNodeActions.value?.properties.some((p) =>
 			p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
 		) === true,
 );
@@ -336,27 +338,10 @@ function getCustomAPICallHintLocale(key: string) {
 		interpolate: { nodeNameTitle },
 	});
 }
-// The nodes.json doesn't contain API CALL option so we need to fetch the node detail
-// to determine if need to render the API CALL hint
-async function fetchNodeDetails() {
-	if (!state.activeNodeActions) return;
-
-	const { getNodesInformation } = useNodeTypesStore();
-	const { version, name } = state.activeNodeActions;
-	const payload = {
-		name,
-		version: Array.isArray(version) ? version?.slice(-1)[0] : version,
-	} as INodeTypeNameVersion;
-
-	const nodesInfo = await getNodesInformation([payload], false);
-
-	state.latestNodeData = nodesInfo[0];
-}
 
 function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
 	state.activeNodeActions = nodeType;
 	setShowTabs(false);
-	fetchNodeDetails();
 
 	if (nodeType) trackActionsView();
 }
@@ -368,18 +353,26 @@ function onActionSelected(actionCreateElement: INodeCreateElement) {
 	setAddedNodeActionParameters(actionUpdateData, telemetry);
 }
 function addHttpNode() {
+	const app_identifier = state.activeNodeActions?.name;
+	let nodeCredentialType = '';
+	const nodeType = app_identifier ? getNodeType(app_identifier) : null;
+
+	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
+		nodeCredentialType = nodeType.credentials[0].name;
+	}
+
 	const updateData = {
 		name: '',
 		key: HTTP_REQUEST_NODE_TYPE,
 		value: {
 			authentication: 'predefinedCredentialType',
+			nodeCredentialType,
 		},
 	} as IUpdateInformation;
 
 	emit('nodeTypeSelected', [MANUAL_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
 	setAddedNodeActionParameters(updateData, telemetry, false);
 
-	const app_identifier = state.activeNodeActions?.name;
 	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 }

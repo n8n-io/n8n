@@ -3,11 +3,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
-import {
-	n8n,
-	RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES,
-	UserSettings,
-} from 'n8n-core';
+import type { n8n } from 'n8n-core';
+import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
@@ -15,6 +12,8 @@ export const inProduction = NODE_ENV === 'production';
 export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
 export const inTest = NODE_ENV === 'test';
 export const inE2ETests = E2E_TESTS === 'true';
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
+export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
@@ -67,6 +66,7 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
+	LDAP = 'feat:ldap',
 	LOG_STREAMING = 'feat:logStreaming',
 }
 

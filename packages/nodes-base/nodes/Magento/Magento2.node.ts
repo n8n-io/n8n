@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	adjustAddresses,
@@ -29,7 +29,7 @@ import { productFields, productOperations } from './ProductDescription';
 
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import {
+import type {
 	CustomAttribute,
 	CustomerAttributeMetadata,
 	Filter,

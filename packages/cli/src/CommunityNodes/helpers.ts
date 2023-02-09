@@ -5,7 +5,8 @@ import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import axios from 'axios';
 import { UserSettings } from 'n8n-core';
-import { LoggerProxy, PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -14,7 +15,7 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import config from '@/config';
 
 import type { CommunityPackages } from '@/Interfaces';

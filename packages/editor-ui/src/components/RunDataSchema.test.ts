@@ -60,4 +60,23 @@ describe('RunDataJsonSchema.vue', () => {
 		});
 		expect(container).toMatchSnapshot();
 	});
+
+	it('renders schema with spaces and dots', () => {
+		renderOptions.props.data = [
+			{
+				'hello world': [
+					{
+						test: {
+							'more to think about': 1,
+						},
+						'test.how': 'ignore',
+					},
+				],
+			},
+		];
+		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
+			vue.use(PiniaVuePlugin);
+		});
+		expect(container).toMatchSnapshot();
+	});
 });

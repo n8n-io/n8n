@@ -1,5 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { upleadApiRequest } from './GenericFunctions';
 import { companyFields, companyOperations } from './CompanyDesciption';
 import { personFields, personOperations } from './PersonDescription';

@@ -1,13 +1,7 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">
-				{{
-					`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${
-						finishedExecutionsCountEstimated === true ? '~' : ''
-					}${combinedExecutionsCount}`
-				}}
-			</n8n-heading>
+			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 			<div :class="$style.filters">
 				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
 				<n8n-select
@@ -60,6 +54,7 @@
 						<th></th>
 						<th></th>
 						<th></th>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -86,10 +81,13 @@
 						</td>
 						<td>
 							<div :class="$style.statusColumn">
-								<span v-if="execution.stoppedAt === undefined" :class="$style.spinner">
+								<span v-if="isRunning(execution)" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
-								<i18n :path="getStatusTextTranslationPath(execution)">
+								<i18n
+									v-if="!isWaitTillIndefinite(execution)"
+									:path="getStatusTextTranslationPath(execution)"
+								>
 									<template #status>
 										<span :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
@@ -109,6 +107,12 @@
 										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n>
+								<n8n-tooltip v-else placement="top">
+									<template #content>
+										<span>{{ getStatusTooltipText(execution) }}</span>
+									</template>
+									<span :class="$style.status">{{ getStatusText(execution) }}</span>
+								</n8n-tooltip>
 							</div>
 						</td>
 						<td>
@@ -129,18 +133,15 @@
 							</span>
 						</td>
 						<td>
-							<font-awesome-icon v-if="execution.mode === 'manual'" icon="flask" />
+							<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+								<template #content>
+									<span>{{ $locale.baseText('executionsList.test') }}</span>
+								</template>
+								<font-awesome-icon icon="flask" />
+							</n8n-tooltip>
 						</td>
 						<td>
-							<div :class="$style.actionsContainer">
-								<n8n-button
-									v-if="execution.stoppedAt === undefined || execution.waitTill"
-									size="small"
-									outline
-									:label="$locale.baseText('executionsList.stop')"
-									@click.stop="stopExecution(execution.id)"
-									:loading="stoppingExecutions.includes(execution.id)"
-								/>
+							<div :class="$style.buttonCell">
 								<n8n-button
 									v-if="execution.stoppedAt !== undefined && execution.id"
 									size="small"
@@ -151,7 +152,23 @@
 							</div>
 						</td>
 						<td>
-							<el-dropdown trigger="click" @command="handleActionItemClick">
+							<div :class="$style.buttonCell">
+								<n8n-button
+									v-if="execution.stoppedAt === undefined || execution.waitTill"
+									size="small"
+									outline
+									:label="$locale.baseText('executionsList.stop')"
+									@click.stop="stopExecution(execution.id)"
+									:loading="stoppingExecutions.includes(execution.id)"
+								/>
+							</div>
+						</td>
+						<td>
+							<el-dropdown
+								v-if="!isRunning(execution)"
+								trigger="click"
+								@command="handleActionItemClick"
+							>
 								<span class="retry-button">
 									<n8n-icon-button
 										text
@@ -235,7 +252,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { VIEWS } from '@/constants';
+import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -253,6 +270,9 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { setPageTitle } from '@/utils';
+
+type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -285,6 +305,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				stoppingExecutions: [] as string[],
 				workflows: [] as IWorkflowShortResponse[],
 			};
+		},
+		mounted() {
+			setPageTitle(`n8n - ${this.pageTitle}`);
 		},
 		async created() {
 			await this.loadWorkflows();
@@ -378,6 +401,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					filter.finished = this.filter.status === 'success';
 				}
 				return filter;
+			},
+			pageTitle() {
+				return this.$locale.baseText('executionsList.workflowExecutions');
 			},
 		},
 		methods: {
@@ -528,29 +554,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					this.deleteExecution(commandData.execution);
 				}
 			},
-			getRowClass(execution: IExecutionsSummary): string {
-				const classes: string[] = [this.$style.execRow];
-				if (execution.waitTill) {
-					classes.push(this.$style.waiting);
-				} else if (execution.stoppedAt === undefined) {
-					classes.push(this.$style.running);
-				} else if (execution.finished) {
-					classes.push(this.$style.success);
-				} else if (execution.stoppedAt !== null) {
-					classes.push(this.$style.failed);
-				} else {
-					classes.push(this.$style.unknown);
-				}
-
-				return classes.join(' ');
-			},
 			getWorkflowName(workflowId: string): string | undefined {
-				const workflow = this.workflows.find((data) => data.id === workflowId);
-				if (workflow === undefined) {
-					return undefined;
-				}
-
-				return workflow.name;
+				return this.workflows.find((data) => data.id === workflowId)?.name;
 			},
 			async loadActiveExecutions(): Promise<void> {
 				const activeExecutions = await this.restApi().getCurrentExecutions(
@@ -576,7 +581,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				// iF you use firstId, filtering id >= 504 you won't
 				// ever get ids 500, 501, 502 and 503 when they finish
 				const pastExecutionsPromise: Promise<IExecutionsListResponse> =
-					this.restApi().getPastExecutions(filter, 30);
+					this.restApi().getPastExecutions(filter, this.requestItemsPerRequest);
 				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> =
 					this.restApi().getCurrentExecutions({});
 
@@ -594,7 +599,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.workflowsStore.activeExecutions = results[1];
 
 				// execution IDs are typed as string, int conversion is necessary so we can order.
-				const alreadyPresentExecutionIds = this.finishedExecutions.map((exec) =>
+				const alreadyPresentExecutions = [...this.finishedExecutions];
+				const alreadyPresentExecutionIds = alreadyPresentExecutions.map((exec) =>
 					parseInt(exec.id, 10),
 				);
 				let lastId = 0;
@@ -602,7 +608,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				for (let i = results[0].results.length - 1; i >= 0; i--) {
 					const currentItem = results[0].results[i];
 					const currentId = parseInt(currentItem.id, 10);
-					if (lastId !== 0 && isNaN(currentId) === false) {
+					if (lastId !== 0 && !isNaN(currentId)) {
 						// We are doing this iteration to detect possible gaps.
 						// The gaps are used to remove executions that finished
 						// and were deleted from database but were displaying
@@ -622,14 +628,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						// Execution that we received is already present.
 
 						if (
-							this.finishedExecutions[executionIndex].finished === false &&
+							alreadyPresentExecutions[executionIndex].finished === false &&
 							currentItem.finished === true
 						) {
 							// Concurrency stuff. This might happen if the execution finishes
 							// prior to saving all information to database. Somewhat rare but
 							// With auto refresh and several executions, it happens sometimes.
 							// So we replace the execution data so it displays correctly.
-							this.finishedExecutions[executionIndex] = currentItem;
+							alreadyPresentExecutions[executionIndex] = currentItem;
 						}
 
 						continue;
@@ -637,23 +643,25 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 					// Find the correct position to place this newcomer
 					let j;
-					for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-						if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
-							this.finishedExecutions.splice(j + 1, 0, currentItem);
+					for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
+						if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
+							alreadyPresentExecutions.splice(j + 1, 0, currentItem);
 							break;
 						}
 					}
 					if (j === -1) {
-						this.finishedExecutions.unshift(currentItem);
+						alreadyPresentExecutions.unshift(currentItem);
 					}
 				}
-				this.finishedExecutions = this.finishedExecutions.filter(
+				const alreadyPresentExecutionsFiltered = alreadyPresentExecutions.filter(
 					(execution) =>
 						!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
 				);
 				this.finishedExecutionsCount = results[0].count;
 				this.finishedExecutionsCountEstimated = results[0].estimated;
-				this.workflowsStore.addToCurrentExecutions(this.finishedExecutions);
+
+				Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
+				this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 			},
 			async loadFinishedExecutions(): Promise<void> {
 				if (this.filter.status === 'running') {
@@ -784,16 +792,35 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				this.isDataLoading = false;
 			},
+			getStatus(execution: IExecutionsSummary): ExecutionStatus {
+				let status: ExecutionStatus = 'unknown';
+				if (execution.waitTill) {
+					status = 'waiting';
+				} else if (execution.stoppedAt === undefined) {
+					status = 'running';
+				} else if (execution.finished) {
+					status = 'success';
+				} else if (execution.stoppedAt !== null) {
+					status = 'failed';
+				} else {
+					status = 'unknown';
+				}
+				return status;
+			},
+			getRowClass(execution: IExecutionsSummary): string {
+				return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
+			},
 			getStatusText(entry: IExecutionsSummary): string {
+				const status = this.getStatus(entry);
 				let text = '';
 
-				if (entry.waitTill) {
+				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
-				} else if (entry.stoppedAt === undefined) {
+				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
-				} else if (entry.finished) {
+				} else if (status === 'success') {
 					text = this.$locale.baseText('executionsList.succeeded');
-				} else if (entry.stoppedAt !== null) {
+				} else if (status === 'failed') {
 					text = this.$locale.baseText('executionsList.error');
 				} else {
 					text = this.$locale.baseText('executionsList.unknown');
@@ -802,21 +829,34 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return text;
 			},
 			getStatusTextTranslationPath(entry: IExecutionsSummary): string {
+				const status = this.getStatus(entry);
 				let path = '';
 
-				if (entry.waitTill) {
+				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
-				} else if (entry.stoppedAt === undefined) {
+				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
-				} else if (entry.finished) {
+				} else if (status === 'success') {
 					path = 'executionsList.statusText';
-				} else if (entry.stoppedAt !== null) {
+				} else if (status === 'failed') {
 					path = 'executionsList.statusText';
 				} else {
 					path = 'executionsList.statusUnknown';
 				}
 
 				return path;
+			},
+			getStatusTooltipText(entry: IExecutionsSummary): string {
+				const status = this.getStatus(entry);
+				let text = '';
+
+				if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
+					text = this.$locale.baseText(
+						'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
+					);
+				}
+
+				return text;
 			},
 			async stopExecution(activeExecutionId: string) {
 				try {
@@ -868,6 +908,15 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 				this.isDataLoading = true;
 			},
+			isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
+				if (!execution.waitTill) {
+					return false;
+				}
+				return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
+			},
+			isRunning(execution: IExecutionsSummary): boolean {
+				return this.getStatus(execution) === 'running';
+			},
 		},
 	},
 );
@@ -879,13 +928,18 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	grid-template-rows: 1fr 0;
 	position: relative;
 	height: 100%;
+	width: 100%;
+	max-width: 1280px;
 }
 
 .execList {
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-3xl) var(--spacing-xl);
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .selectionOptions {
@@ -936,6 +990,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		color: var(--color-danger);
 	}
 
+	.waiting & {
+		color: var(--color-secondary);
+	}
+
 	.success & {
 		font-weight: var(--font-weight-normal);
 	}
@@ -949,7 +1007,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	}
 }
 
-.actionsContainer {
+.buttonCell {
 	overflow: hidden;
 
 	button {
@@ -959,10 +1017,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		&:focus-visible,
 		.execRow:hover & {
 			transform: translateX(0);
-		}
-
-		&:not(:first-child) {
-			margin-left: 5px;
 		}
 	}
 }

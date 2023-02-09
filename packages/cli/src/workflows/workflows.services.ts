@@ -1,6 +1,8 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import { FindConditions, In } from 'typeorm';
+import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import type { FindOptionsWhere, UpdateResult } from 'typeorm';
+import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -9,13 +11,13 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
-import { WorkflowRequest } from '@/requests';
+import type { WorkflowRequest } from '@/requests';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -48,8 +50,8 @@ export class WorkflowsService {
 		workflowId: string,
 		relations: string[] = ['workflow'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedWorkflow | undefined> {
-		const where: FindConditions<SharedWorkflow> = { workflowId };
+	): Promise<SharedWorkflow | null> {
+		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
@@ -103,8 +105,8 @@ export class WorkflowsService {
 		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
-	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
-		return Db.collections.Workflow.findOne(workflow, options);
+	static async get(workflow: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+		return Db.collections.Workflow.findOne({ where: workflow, relations: options?.relations });
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
@@ -299,9 +301,12 @@ export class WorkflowsService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, { relations });
+		const updatedWorkflow = await Db.collections.Workflow.findOne({
+			where: { id: workflowId },
+			relations,
+		});
 
-		if (updatedWorkflow === undefined) {
+		if (updatedWorkflow === null) {
 			throw new ResponseHelper.BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);
@@ -331,8 +336,12 @@ export class WorkflowsService {
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
 
+				let message;
+				if (error instanceof NodeApiError) message = error.description;
+				message = message ?? (error as Error).message;
+
 				// Now return the original error for UI to display
-				throw new ResponseHelper.BadRequestError((error as Error).message);
+				throw new ResponseHelper.BadRequestError(message);
 			}
 		}
 
@@ -449,5 +458,22 @@ export class WorkflowsService {
 		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
+	}
+
+	static async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
+		const qb = Db.collections.Workflow.createQueryBuilder('workflow');
+		return qb
+			.update()
+			.set({
+				triggerCount,
+				updatedAt: () => {
+					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+						return 'updatedAt';
+					}
+					return '"updatedAt"';
+				},
+			})
+			.where('id = :id', { id })
+			.execute();
 	}
 }

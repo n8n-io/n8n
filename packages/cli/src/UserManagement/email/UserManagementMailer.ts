@@ -2,9 +2,8 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import * as GenericHelpers from '@/GenericHelpers';
 import config from '@/config';
-import {
+import type {
 	InviteEmailData,
 	PasswordResetData,
 	SendEmailResult,
@@ -23,9 +22,7 @@ async function getTemplate(
 ): Promise<Template> {
 	let template = templates[templateName];
 	if (!template) {
-		const templateOverride = (await GenericHelpers.getConfigValue(
-			`userManagement.emails.templates.${templateName}`,
-		)) as string;
+		const templateOverride = config.getEnv(`userManagement.emails.templates.${templateName}`);
 
 		let markup;
 		if (templateOverride && existsSync(templateOverride)) {
@@ -72,7 +69,7 @@ export class UserManagementMailer {
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
-		const template = await getTemplate('passwordReset');
+		const template = await getTemplate('passwordReset', 'passwordReset.html');
 		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',

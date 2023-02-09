@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,8 +7,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
@@ -910,6 +909,10 @@ export class EditImage implements INodeType {
 								name: 'tiff',
 								value: 'tiff',
 							},
+							{
+								name: 'WebP',
+								value: 'webp',
+							},
 						],
 						default: 'jpeg',
 						description: 'Set the output image format',
@@ -1106,6 +1109,7 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
@@ -1286,6 +1290,7 @@ export class EditImage implements INodeType {
 					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}

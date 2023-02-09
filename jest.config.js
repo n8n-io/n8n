@@ -5,7 +5,7 @@ const tsJestOptions = {
 	tsconfig: {
 		...compilerOptions,
 		declaration: false,
-		sourceMap: false,
+		sourceMap: true,
 		skipLibCheck: true,
 	},
 };

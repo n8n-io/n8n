@@ -12,11 +12,12 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () =>
 			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		workflowTagElements: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
-		firstWorkflowTagElement: () =>
-			cy.get('[data-test-id="workflow-tags-container"] span.tags > span:nth-child(1)'),
-		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
-		newTagLink: () => cy.getByTestId('new-tag-link'),
+		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
+		nthTagPill: (n: number) =>
+			cy.get(`[data-test-id="workflow-tags-container"] span.tags > span:nth-child(${n})`),
+		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
+		tagsInDropdown: () => cy.getByTestId('workflow-tags-dropdown').find('li').filter('.tag'),
+		createTagButton: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
@@ -24,10 +25,18 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
-		ndvParameterInput: (parameterName: string) =>
-			cy.getByTestId(`parameter-input-${parameterName}`),
-		ndvOutputPanel: () => cy.getByTestId('output-panel'),
-		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
+			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`
+		},
+		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
+			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
+		},
+		canvasNodeOutputEndpointByName: (nodeName: string, index = 0) => {
+			return cy.get(this.getters.getEndpointSelector('output', nodeName, index));
+		},
+		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
+			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
+		},
 		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
 		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
@@ -45,8 +54,6 @@ export class WorkflowPage extends BasePage {
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.get('.node-box.disabled'),
 		selectedNodes: () => this.getters.canvasNodes().filter('.jtk-drag-selected'),
-		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
-		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		// Workflow menu items
 		workflowMenuItemDuplicate: () => cy.getByTestId('workflow-menu-item-duplicate'),
 		workflowMenuItemDownload: () => cy.getByTestId('workflow-menu-item-download'),
@@ -72,6 +79,8 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
+		shareButton: () => cy.getByTestId('workflow-share-button').find('button'),
+
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
@@ -81,53 +90,71 @@ export class WorkflowPage extends BasePage {
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
 		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
+		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
+		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
+		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
+		ndvParameters: () => cy.getByTestId('parameter-item'),
+		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
+		getConnectionBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
+			cy.get(
+				`.jtk-connector[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
+			),
+		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
+			cy.get(
+				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
+			),
 	};
 	actions = {
 		visit: () => {
 			cy.visit(this.url);
 			cy.waitForLoad();
 		},
-		addInitialNodeToCanvas: (nodeDisplayName: string) => {
+		addInitialNodeToCanvas: (nodeDisplayName: string, { keepNdvOpen } = { keepNdvOpen: false }) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
+			if (keepNdvOpen) return;
 			cy.get('body').type('{esc}');
 		},
-		addNodeToCanvas: (nodeDisplayName: string) => {
-			this.getters.nodeCreatorPlusButton().click();
+		addNodeToCanvas: (
+			nodeDisplayName: string,
+			plusButtonClick = true,
+			preventNdvClose?: boolean,
+		) => {
+			if (plusButtonClick) {
+				this.getters.nodeCreatorPlusButton().click();
+			}
+
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.get('body').type('{esc}');
+
+			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
-		openNodeNdv: (nodeTypeName: string) => {
+		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
 			cy.getByTestId('expander').invoke('show').click();
 		},
+		openTagManagerModal: () => {
+			this.getters.createTagButton().click();
+			this.getters.tagsDropdown().find('li.manage-tags').first().click();
+		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
 		},
-		typeIntoParameterInput: (parameterName: string, content: string) => {
-			this.getters.ndvParameterInput(parameterName).type(content);
-		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
-			this.getters
-				.ndvParameterInput(parameterName)
-				.find('.option-headline')
-				.contains(content)
-				.click();
-		},
-		executeNodeFromNdv: () => {
-			cy.contains('Execute node').click();
-		},
 		openWorkflowMenu: () => {
 			this.getters.workflowMenu().click();
 		},
+		openShareModal: () => {
+			this.getters.shareButton().click();
+		},
 		saveWorkflowOnButtonClick: () => {
+			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
+			this.getters.saveButton().should('contain', 'Saved')
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
@@ -143,7 +170,9 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(newName);
 			cy.get('body').type('{enter}');
 		},
-		addTags: (tags: string[]) => {
+		addTags: (tags: string | string[]) => {
+			if (!Array.isArray(tags)) tags = [tags];
+
 			tags.forEach((tag) => {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
@@ -176,6 +205,30 @@ export class WorkflowPage extends BasePage {
 		},
 		hitPaste: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
+		},
+		executeWorkflow: () => {
+			this.getters.executeWorkflowButton().click();
+		},
+		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
+			this.getters
+				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
+				.find('.add')
+				.first()
+				.click({ force: true });
+			this.actions.addNodeToCanvas(newNodeName, false);
+		},
+		deleteNodeBetweenNodes: (
+			sourceNodeName: string,
+			targetNodeName: string,
+			newNodeName: string,
+		) => {
+			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
+			this.getters
+				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
+				.find('.delete')
+				.first()
+				.click({ force: true });
 		},
 	};
 }

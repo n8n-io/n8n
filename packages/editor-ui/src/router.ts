@@ -10,6 +10,7 @@ import WorkflowExecutionsList from '@/components/ExecutionsView/ExecutionsList.v
 import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
 import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsView from './views/SettingsView.vue';
+import SettingsLdapView from './views/SettingsLdapView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -30,10 +31,11 @@ import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
-import { VIEWS } from './constants';
+import { EnterpriseEditionFeature, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
+import SignoutView from '@/views/SignoutView.vue';
 
 Vue.use(Router);
 
@@ -105,23 +107,6 @@ const router = new Router({
 					},
 				},
 				getRedirect: getTemplatesRedirect,
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-				},
-			},
-		},
-		{
-			path: '/execution/:id',
-			name: VIEWS.EXECUTION,
-			components: {
-				default: NodeView,
-				header: MainHeader,
-				sidebar: MainSidebar,
-			},
-			meta: {
-				nodeView: true,
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -384,6 +369,23 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/signout',
+			name: VIEWS.SIGNOUT,
+			components: {
+				default: SignoutView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '/setup',
 			name: VIEWS.SETUP,
 			components: {
@@ -523,7 +525,11 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.isUserManagementEnabled === false;
+
+									return (
+										settingsStore.isUserManagementEnabled === false &&
+										!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
+									);
 								},
 							},
 						},
@@ -619,6 +625,20 @@ const router = new Router({
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+				{
+					path: 'ldap',
+					name: VIEWS.LDAP_SETTINGS,
+					components: {
+						settingsView: SettingsLdapView,
+					},
+					meta: {
+						permissions: {
+							allow: {
+								role: [ROLE.Owner],
 							},
 						},
 					},

@@ -2,12 +2,18 @@
 	<ResizeObserver :breakpoints="[{ bp: 'md', width: 500 }]">
 		<template #default="{ bp }">
 			<div :class="bp === 'md' || columnView ? $style.grid : $style.gridMulti">
-				<div v-for="input in filteredInputs" :key="input.name">
+				<div
+					v-for="(input, index) in filteredInputs"
+					:key="input.name"
+					:class="{ [`mt-${verticalSpacing}`]: index > 0 }"
+				>
 					<n8n-text
 						color="text-base"
 						v-if="input.properties.type === 'info'"
 						tag="div"
-						align="center"
+						:size="input.properties.labelSize"
+						:align="input.properties.labelAlignment"
+						class="form-text"
 					>
 						{{ input.properties.label }}
 					</n8n-text>
@@ -15,11 +21,13 @@
 						v-else
 						v-bind="input.properties"
 						:name="input.name"
+						:label="input.properties.label || ''"
 						:value="values[input.name]"
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
 						@input="(value) => onInput(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
+						@change="(value) => onInput(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -52,6 +60,12 @@ export default Vue.extend({
 		},
 		columnView: {
 			type: Boolean,
+			default: false,
+		},
+		verticalSpacing: {
+			type: String,
+			required: false,
+			validator: (value: string): boolean => ['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
 	},
 	data() {

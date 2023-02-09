@@ -5,7 +5,7 @@ const BASE_URL = 'http://localhost:5678';
 
 module.exports = defineConfig({
 	retries: {
-		openMode: 1,
+		openMode: 0,
 		runMode: 3,
 	},
 	e2e: {

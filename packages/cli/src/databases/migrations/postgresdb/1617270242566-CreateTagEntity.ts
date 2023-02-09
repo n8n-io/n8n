@@ -1,42 +1,35 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import { getTablePrefix } from '@db/utils/migrationHelpers';
 
 export class CreateTagEntity1617270242566 implements MigrationInterface {
 	name = 'CreateTagEntity1617270242566';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const tablePrefixPure = tablePrefix;
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
+		const tablePrefix = getTablePrefix();
 
 		// create tags table + relationship with workflow entity
 
 		await queryRunner.query(
-			`CREATE TABLE ${tablePrefix}tag_entity ("id" SERIAL NOT NULL, "name" character varying(24) NOT NULL, "createdAt" TIMESTAMP NOT NULL, "updatedAt" TIMESTAMP NOT NULL, CONSTRAINT "PK_${tablePrefixPure}7a50a9b74ae6855c0dcaee25052" PRIMARY KEY ("id"))`,
+			`CREATE TABLE ${tablePrefix}tag_entity ("id" SERIAL NOT NULL, "name" character varying(24) NOT NULL, "createdAt" TIMESTAMP NOT NULL, "updatedAt" TIMESTAMP NOT NULL, CONSTRAINT "PK_${tablePrefix}7a50a9b74ae6855c0dcaee25052" PRIMARY KEY ("id"))`,
 		);
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX IDX_${tablePrefixPure}812eb05f7451ca757fb98444ce ON ${tablePrefix}tag_entity ("name") `,
+			`CREATE UNIQUE INDEX IDX_${tablePrefix}812eb05f7451ca757fb98444ce ON ${tablePrefix}tag_entity ("name") `,
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE ${tablePrefix}workflows_tags ("workflowId" integer NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "PK_${tablePrefixPure}a60448a90e51a114e95e2a125b3" PRIMARY KEY ("workflowId", "tagId"))`,
+			`CREATE TABLE ${tablePrefix}workflows_tags ("workflowId" integer NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "PK_${tablePrefix}a60448a90e51a114e95e2a125b3" PRIMARY KEY ("workflowId", "tagId"))`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX IDX_${tablePrefixPure}31140eb41f019805b40d008744 ON ${tablePrefix}workflows_tags ("workflowId") `,
+			`CREATE INDEX IDX_${tablePrefix}31140eb41f019805b40d008744 ON ${tablePrefix}workflows_tags ("workflowId") `,
 		);
 		await queryRunner.query(
-			`CREATE INDEX IDX_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a4 ON ${tablePrefix}workflows_tags ("tagId") `,
+			`CREATE INDEX IDX_${tablePrefix}5e29bfe9e22c5d6567f509d4a4 ON ${tablePrefix}workflows_tags ("tagId") `,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT "FK_${tablePrefixPure}31140eb41f019805b40d0087449" FOREIGN KEY ("workflowId") REFERENCES ${tablePrefix}workflow_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT "FK_${tablePrefix}31140eb41f019805b40d0087449" FOREIGN KEY ("workflowId") REFERENCES ${tablePrefix}workflow_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT "FK_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a46" FOREIGN KEY ("tagId") REFERENCES ${tablePrefix}tag_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT "FK_${tablePrefix}5e29bfe9e22c5d6567f509d4a46" FOREIGN KEY ("tagId") REFERENCES ${tablePrefix}tag_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
 		);
 
 		// set default dates for `createdAt` and `updatedAt`
@@ -80,14 +73,7 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const tablePrefixPure = tablePrefix;
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
+		const tablePrefix = getTablePrefix();
 
 		// `createdAt` and `updatedAt`
 
@@ -131,15 +117,15 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 		// tags
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags DROP CONSTRAINT "FK_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a46"`,
+			`ALTER TABLE ${tablePrefix}workflows_tags DROP CONSTRAINT "FK_${tablePrefix}5e29bfe9e22c5d6567f509d4a46"`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags DROP CONSTRAINT "FK_${tablePrefixPure}31140eb41f019805b40d0087449"`,
+			`ALTER TABLE ${tablePrefix}workflows_tags DROP CONSTRAINT "FK_${tablePrefix}31140eb41f019805b40d0087449"`,
 		);
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a4`);
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}31140eb41f019805b40d008744`);
+		await queryRunner.query(`DROP INDEX IDX_${tablePrefix}5e29bfe9e22c5d6567f509d4a4`);
+		await queryRunner.query(`DROP INDEX IDX_${tablePrefix}31140eb41f019805b40d008744`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}workflows_tags`);
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}812eb05f7451ca757fb98444ce`);
+		await queryRunner.query(`DROP INDEX IDX_${tablePrefix}812eb05f7451ca757fb98444ce`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}tag_entity`);
 	}
 }

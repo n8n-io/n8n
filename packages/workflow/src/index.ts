@@ -28,3 +28,8 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 } from './type-guards';
+
+export { ExpressionExtensions } from './Extensions';
+export { NativeMethods } from './NativeMethods';
+
+export type { DocMetadata } from './Extensions';

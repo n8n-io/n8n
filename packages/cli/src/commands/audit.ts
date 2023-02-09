@@ -1,7 +1,8 @@
 import Command, { flags } from '@oclif/command';
 import { LoggerProxy } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
-import { getLogger, Logger } from '@/Logger';
+import type { Logger } from '@/Logger';
+import { getLogger } from '@/Logger';
 import { audit } from '@/audit';
 import { RISK_CATEGORIES } from '@/audit/constants';
 import { CredentialTypes } from '@/CredentialTypes';
