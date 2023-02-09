@@ -311,6 +311,7 @@ export enum VIEWS {
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
+	SIGNOUT = 'SignoutView',
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
