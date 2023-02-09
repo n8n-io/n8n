@@ -1995,7 +1995,7 @@ export default mixins(
 				},
 			] as [IConnection, IConnection];
 
-			this.__addConnection(connectionData, true);
+			this.__addConnection(connectionData);
 		},
 		async addNode(
 			nodeTypeName: string,
@@ -2558,22 +2558,19 @@ export default mixins(
 
 			return NodeViewUtils.getInputEndpointUUID(node.id, index);
 		},
-		__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
-			if (addVisualConnection) {
-				const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
-				const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
-				if (!outputUuid || !inputUuid) {
-					return;
-				}
-
-				const uuid: [string, string] = [outputUuid, inputUuid];
-				// Create connections in DOM
-				this.instance?.connect({
-					uuids: uuid,
-					detachable: !this.isReadOnly,
-				});
+		__addConnection(connection: [IConnection, IConnection]) {
+			const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
+			const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+			if (!outputUuid || !inputUuid) {
+				return;
 			}
-			this.workflowsStore.addConnection({ connection });
+
+			const uuid: [string, string] = [outputUuid, inputUuid];
+			// Create connections in DOM
+			this.instance?.connect({
+				uuids: uuid,
+				detachable: !this.isReadOnly,
+			});
 
 			setTimeout(() => {
 				this.addPinDataConnections(this.workflowsStore.pinData);
@@ -3264,7 +3261,7 @@ export default mixins(
 									},
 								] as [IConnection, IConnection];
 
-								this.__addConnection(connectionData, true);
+								this.__addConnection(connectionData);
 							});
 						}
 					}
@@ -3750,7 +3747,7 @@ export default mixins(
 		},
 		async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection] }) {
 			this.suspendRecordingDetachedConnections = true;
-			this.__addConnection(connection, true);
+			this.__addConnection(connection);
 			this.suspendRecordingDetachedConnections = false;
 		},
 		async onRevertNameChange({ currentName, newName }: { currentName: string; newName: string }) {
