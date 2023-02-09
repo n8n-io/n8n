@@ -1,13 +1,11 @@
-import { WorkflowPage, WorkflowsPage, NDV, CredentialsModal } from '../pages';
+import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { cowBase64 } from '../support/binaryTestFiles';
 
-const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const credentialsModal = new CredentialsModal();
 
-const webhookWorkflowName = 'Webhook Workflow';
 const waitForWebhook = 500;
 
 interface SimpleWebhookCallOptions {
@@ -31,10 +29,6 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		executeNow = true,
 		} = options;
 
-	cy.visit(workflowsPage.url);
-
-	workflowsPage.actions.createWorkflowFromCard();
-	workflowPage.actions.renameWorkflow(webhookWorkflowName);
 	workflowPage.actions.addInitialNodeToCanvas('Webhook');
 	workflowPage.actions.openNode('Webhook');
 
@@ -100,8 +94,12 @@ describe('Webhook Trigger node', async () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		cy.visit(workflowsPage.url);
+		workflowPage.actions.visit();
 		cy.waitForLoad();
+
+		cy.window()
+			// @ts-ignore
+			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload));
 	});
 
 	it('should listen for a GET request', () => {
