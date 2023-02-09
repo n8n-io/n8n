@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - "parallel_e2e"
+  repository_dispatch:
+    types: [slack_command]
   workflow_dispatch:
     inputs:
       branch:
@@ -15,7 +17,7 @@ on:
         description: 'User who kicked this off.'
         required: false
         default: 'schedule'
-      specs:
+      spec:
         description: 'Specify specs.'
         required: false
         default: 'e2e/*'
@@ -53,6 +55,8 @@ jobs:
         with:
           run_install: true
 
+      - name: Echo spec input
+        run: echo ${{ github.event.inputs.spec }}
 
       - name: Cache pnpm modules
         uses: actions/cache@v3
@@ -118,7 +122,7 @@ jobs:
           wait-on-timeout: 120 #
           record: true
           parallel: true # Runs test in parallel using settings above
-          spec: "/__w/n8n/n8n/cypress/${{ github.event.inputs.specs || 'e2e/*' }}"
+          spec: "/__w/n8n/n8n/cypress/${{ github.event.inputs.spec || 'e2e/*' }}"
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
           # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
@@ -126,7 +130,7 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CYPRESS_N8N_E2E_TESTS: true
-          COMMIT_INFO_MESSAGE: 🌳 ${{ github.event.inputs.branch || 'parallel_e2e' }} 🖥️ ${{ github.event.inputs.run-env || '16.18.1' }} 🐳 ${{ matrix.containers }} 🤖 ${{ github.event.inputs.user || 'scheduled' }} 🗃️ ${{ github.event.inputs.specs || 'e2e/*' }}
+          COMMIT_INFO_MESSAGE: 🌳 ${{ github.event.inputs.branch || 'parallel_e2e' }} 🖥️ ${{ github.event.inputs.run-env || '16.18.1' }} 🐳 ${{ matrix.containers }} 🤖 ${{ github.event.inputs.user || 'scheduled' }} 🗃️ ${{ github.event.inputs.spec || 'e2e/*' }}
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
