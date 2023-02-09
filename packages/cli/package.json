@@ -106,9 +106,8 @@
     "mock-jwks": "^1.0.9",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",
-    "ts-node": "^9.1.1",
-    "tsc-alias": "^1.7.0",
-    "tsconfig-paths": "^3.14.1"
+    "tsc-alias": "^1.8.2",
+    "tsconfig-paths": "^4.1.2"
   },
   "dependencies": {
     "@n8n_io/license-sdk": "^1.8.0",
@@ -193,7 +192,7 @@
     "sse-channel": "^4.0.0",
     "swagger-ui-express": "^4.3.0",
     "syslog-client": "^1.1.1",
-    "typeorm": "0.3.11",
+    "typeorm": "^0.3.12",
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",
