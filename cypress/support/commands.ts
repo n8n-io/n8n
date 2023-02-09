@@ -269,17 +269,3 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 			}
 		});
 });
-
-Cypress.Commands.add('dropOn', (droppableSelector) => {
-	cy.get(droppableSelector).should('exist');
-
-	const droppableEl = Cypress.$(droppableSelector)[0];
-	const coords = droppableEl.getBoundingClientRect();
-
-	const pageX = coords.left + coords.width / 2;
-	const pageY = coords.top + coords.height / 2;
-
-	cy.get(droppableSelector).realMouseMove(pageX, pageY)
-		.realHover()
-		.realMouseUp();
-});

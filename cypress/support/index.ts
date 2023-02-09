@@ -49,7 +49,6 @@ declare global {
 			paste(pastePayload: string): void;
 			drag(selector: string, target: [number, number]): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
-			dropOn(droppableSelector: string): void;
 		}
 	}
 }
