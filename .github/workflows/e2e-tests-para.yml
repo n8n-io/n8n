@@ -21,28 +21,25 @@ on:
         description: 'Specify specs.'
         required: false
         default: 'e2e/*'
-      run-env:
-        description: 'Node env version to run tests with.'
-        required: false
-        default: 'browsers:node16.18.0-chrome90-ff88'
-      start-url:
-        description: 'URL to call after workflow is kicked off.'
-        required: false
-        default: ''
-      success-url:
-        description: 'URL to call after workflow is done.'
-        required: false
-        default: ''
 
 jobs:
-  reusable-e2e:
+  e2e-node-14:
+    name: base:14.21.1
     uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
     with:
       branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
       user: ${{ github.event.inputs.user || 'schedule' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
-      run-env: ${{ github.event.inputs.run-env || 'browsers:node16.18.0-chrome90-ff88' }}
-      # start-url: ${{ github.event.inputs.start-url || '' }}
-      # success-url: ${{ github.event.inputs.success-url || '' }}
+      run-env: base:14.21.1'
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+  e2e-node-16:
+    name: base:16.18.1
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    with:
+      branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
+      user: ${{ github.event.inputs.user || 'schedule' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
+      run-env: base:16.18.1'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
