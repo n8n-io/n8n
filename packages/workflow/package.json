@@ -52,7 +52,9 @@
   },
   "dependencies": {
     "@n8n_io/riot-tmpl": "^2.0.0",
+    "ast-types": "0.15.2",
     "crypto-js": "^4.1.1",
+    "esprima-next": "5.8.4",
     "jmespath": "^0.16.0",
     "js-base64": "^3.7.2",
     "lodash.get": "^4.4.2",
