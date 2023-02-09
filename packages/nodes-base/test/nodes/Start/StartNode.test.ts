@@ -1,6 +1,4 @@
-import { INodeType } from 'n8n-workflow';
 import * as Helpers from '../Helpers';
-import { Start } from '../../../nodes/Start/Start.node';
 import { WorkflowTestData } from '../types';
 import { executeWorkflow } from '../ExecuteWorkflow';
 
