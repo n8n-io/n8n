@@ -14,7 +14,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 		const workflows: Array<{ id: number; nodes: string; connections: string }> =
 			await queryRunner.query(`
 			SELECT id, nodes, connections
-			FROM ${tablePrefix}workflow_entity
+			FROM \`${tablePrefix}workflow_entity\`
 		`);
 
 		const nodeTypes = NodeTypes();
@@ -64,7 +64,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 			const [updateQuery, updateParams] =
 				queryRunner.connection.driver.escapeQueryWithParameters(
 					`
-						UPDATE ${tablePrefix}workflow_entity
+						UPDATE \`${tablePrefix}workflow_entity\`
 						SET connections = :connections
 						WHERE id = '${workflow.id}'
 					`,
