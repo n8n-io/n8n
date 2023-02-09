@@ -2538,7 +2538,8 @@ export default mixins(
 			document.addEventListener('keyup', this.keyUp);
 
 			// allow to be overriden in e2e tests
-			window.onBeforeUnload = () => {
+			// @ts-ignore
+			window.onBeforeUnload = (e) => {
 				if (this.isDemo) {
 					return;
 				} else if (this.uiStore.stateIsDirty) {
