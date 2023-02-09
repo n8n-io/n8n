@@ -251,7 +251,7 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 const preparePinData = (pinData: IDataObject) => {
 	const returnData = Object.keys(pinData).reduce(
 		(acc, key) => {
-			const data = (pinData[key] as IDataObject[]).map((item) => item.json);
+			const data = pinData[key] as IDataObject[];
 			acc[key] = [data as IDataObject[]];
 			return acc;
 		},
