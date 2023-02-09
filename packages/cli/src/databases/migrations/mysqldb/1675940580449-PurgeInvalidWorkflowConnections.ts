@@ -21,8 +21,9 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 		const nodeTypes = NodeTypes();
 
 		workflows.forEach(async (workflow) => {
-			let connections: IConnections = workflow.connections;
-			const nodes: INode[] = workflow.nodes;
+			let connections: IConnections = typeof workflow.connections === 'string' ? JSON.parse(workflow.connections) : workflow.connections;
+			const nodes: INode[] = typeof workflow.nodes === 'string' ? JSON.parse(workflow.nodes) : workflow.nodes;
+
 
 			const nodesThatCannotReceiveInput: string[] = nodes.reduce((acc, node) => {
 				try {
