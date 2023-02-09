@@ -235,7 +235,7 @@ export const clientFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -369,7 +369,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -515,7 +515,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -579,7 +579,7 @@ export const clientFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -713,7 +713,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -859,7 +859,7 @@ export const clientFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -922,19 +922,19 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Merge',
-				value: 'merge',
-				action: 'Merge with another client',
-			},
-			{
 				name: 'Archive',
 				value: 'archive',
 				action: 'Archive a client',
 			},
 			{
-				name: 'Restore',
-				value: 'restore',
-				action: 'Restore a client',
+				name: 'Client Statement',
+				value: 'client_statement',
+				action: 'Generate or queue the client statement',
+			},
+			{
+				name: 'Merge',
+				value: 'merge',
+				action: 'Merge with another client',
 			},
 			{
 				name: 'Purge',
@@ -942,16 +942,17 @@ export const clientFields: INodeProperties[] = [
 				action: 'Purge a client',
 			},
 			{
-				name: 'Client Statement',
-				value: 'client_statement',
-				action: 'Generate or queue the client statement',
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a client',
 			},
 		],
 	},
 	{
 		displayName: 'Merge Client ID',
 		name: 'mergeClientId',
-		description: 'this client will get merged into the selected client above and is deleted afterwards',
+		description:
+			'This client will get merged into the selected client above and is deleted afterwards',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1014,7 +1015,7 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Show Payments Table',
 		name: 'showPaymentsTable',
-		description: 'Flag which determines if the payments table is shown',
+		description: 'Whether this is active, the payments table is shown',
 		type: 'boolean',
 		default: false,
 		required: true,
@@ -1030,7 +1031,7 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Show Aging Table',
 		name: 'showAgingTable',
-		description: 'Flag which determines if the aging table is shown',
+		description: 'Whether this is active, the aging table is shown',
 		type: 'boolean',
 		default: false,
 		required: true,
@@ -1046,7 +1047,8 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Queue Generation',
 		name: 'sendEmail',
-		description: 'queue the generation and send email with link afterwards',
+		description:
+			'Whether this is active, the generation will be queued and a email will be sent with the link to download afterwards',
 		type: 'boolean',
 		default: false,
 		required: true,

@@ -20,7 +20,7 @@ export async function invoiceNinjaApiDownloadFile(
 	query?: IDataObject,
 	option: {
 		uri?: string;
-		formData?: Object;
+		formData?: object;
 	} = {},
 ) {
 	const credentials = await this.getCredentials('invoiceNinjaApi');
@@ -43,7 +43,7 @@ export async function invoiceNinjaApiDownloadFile(
 		body,
 		json: false,
 		encoding: null,
-		...option
+		...option,
 	};
 
 	try {
@@ -61,7 +61,7 @@ export async function invoiceNinjaApiRequest(
 	query?: IDataObject,
 	option: {
 		uri?: string;
-		formData?: Object;
+		formData?: object;
 		usePassword?: boolean;
 		headers?: {
 			[key: string]: any;
@@ -85,21 +85,22 @@ export async function invoiceNinjaApiRequest(
 
 	// usePassword: X-API-PASSWORD
 	if (version === 'v5' && option?.usePassword) {
-		if (!credentials.password) throw new NodeOperationError(
-			this.getNode(),
-			`this route is protected. set your user-password property within credentials to perform this request.`,
-		);
+		if (!credentials.password)
+			throw new NodeOperationError(
+				this.getNode(),
+				'this route is protected. set your user-password property within credentials to perform this request.',
+			);
 		option.headers = {
 			'X-API-PASSWORD-BASE64': Buffer.from(credentials.password as string).toString('base64'),
 			...option.headers,
-		}
+		};
 	}
 
 	// CREATE / UPDATE - Parameter: jsonBody - for more parameters to send via the api
 	let jsonBody;
 	try {
 		jsonBody = (this.getNodeParameter('jsonBody', 0) as object) || {};
-	} catch (err) { }
+	} catch (err) {}
 	if (jsonBody)
 		try {
 			if (typeof jsonBody == 'string') jsonBody = JSON.parse(jsonBody);

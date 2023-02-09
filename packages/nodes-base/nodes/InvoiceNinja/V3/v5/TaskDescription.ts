@@ -212,7 +212,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
-						description: 'eighter provide End Date or Duration',
+						description: 'Eighter provide End Date or Duration',
 						default: '',
 					},
 					{
@@ -222,7 +222,7 @@ export const taskFields: INodeProperties[] = [
 						typeOptions: {
 							minValue: 0,
 						},
-						description: 'eighter provide End Date or Duration',
+						description: 'Eighter provide End Date or Duration',
 						default: 0,
 					},
 				],
@@ -242,9 +242,9 @@ export const taskFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		options: [		
+		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -255,18 +255,18 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -295,10 +295,10 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Rate',
 				name: 'rate',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				description:
@@ -382,7 +382,7 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
-						description: 'eighter provide End Date or Duration',
+						description: 'Eighter provide End Date or Duration',
 						default: '',
 					},
 					{
@@ -392,7 +392,7 @@ export const taskFields: INodeProperties[] = [
 						typeOptions: {
 							minValue: 0,
 						},
-						description: 'eighter provide End Date or Duration',
+						description: 'Eighter provide End Date or Duration',
 						default: 0,
 					},
 				],
@@ -412,9 +412,9 @@ export const taskFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		options: [			
+		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -425,18 +425,18 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -465,10 +465,10 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Rate',
 				name: 'rate',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				description:
@@ -563,5 +563,5 @@ export const taskFields: INodeProperties[] = [
 				action: 'Restore an task',
 			},
 		],
-	}
+	},
 ];

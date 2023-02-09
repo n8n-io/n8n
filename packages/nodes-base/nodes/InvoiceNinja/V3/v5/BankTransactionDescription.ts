@@ -223,9 +223,11 @@ export const bankTransactionFields: INodeProperties[] = [
 	/*                                 bankTransaction:create                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bank Integration ID',
+		displayName: 'Bank Integration Name or ID',
 		name: 'bankIntegrationId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -264,12 +266,12 @@ export const bankTransactionFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: "Debit",
-						value: 'DEBIT'
+						name: 'Debit',
+						value: 'DEBIT',
 					},
 					{
-						name: "Credit",
-						value: 'CREDIT'
+						name: 'Credit',
+						value: 'CREDIT',
 					},
 				],
 				default: '',
@@ -287,7 +289,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -295,7 +297,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Date',
@@ -357,12 +359,12 @@ export const bankTransactionFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: "Debit",
-						value: 'DEBIT'
+						name: 'Debit',
+						value: 'DEBIT',
 					},
 					{
-						name: "Credit",
-						value: 'CREDIT'
+						name: 'Credit',
+						value: 'CREDIT',
 					},
 				],
 				default: '',
@@ -389,7 +391,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -397,7 +399,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Date',
@@ -499,7 +501,8 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'convertMatchedVendorId',
-		description: 'use this parameter to create an expense<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
+		description:
+			'Use this parameter to create an expenseplease only provide 1 parameter. (vendor, invoices, expenses, payments).',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -514,7 +517,8 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Invoice IDs',
 		name: 'convertMatchedInvoiceIds',
-		description: 'use this parameter to connect one or multiple invoices. use "," as delimiter.<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
+		description:
+			'Use this parameter to connect one or multiple invoices. use "," as delimiter.please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -529,7 +533,8 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Expense IDs',
 		name: 'convertMatchedExpenseIds',
-		description: 'use this parameter to connect one or multiple expenses. use "," as delimiter.<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
+		description:
+			'Use this parameter to connect one or multiple expenses. use "," as delimiter.please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -544,7 +549,8 @@ export const bankTransactionFields: INodeProperties[] = [
 	{
 		displayName: 'Payment IDs',
 		name: 'convertMatchedPaymentId',
-		description: 'use this parameter to connect one or multiple payments. use "," as delimiter.<br />please only provide 1 parameter. (vendor, invoices, expenses, payments)',
+		description:
+			'Use this parameter to connect one or multiple payments. use "," as delimiter.please only provide 1 parameter. (vendor, invoices, expenses, payments)',
 		type: 'string',
 		default: '',
 		displayOptions: {

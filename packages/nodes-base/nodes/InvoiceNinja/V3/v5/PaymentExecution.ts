@@ -35,7 +35,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_reference = additionalFields.transactionReference as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.typeId !== undefined) {
 					body.type_id = additionalFields.typeId as string;
@@ -96,7 +96,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_reference = additionalFields.transactionReference as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.typeId !== undefined) {
 					body.type_id = additionalFields.typeId as string;
@@ -233,26 +233,21 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					responseData = await invoiceNinjaApiRequest.call(
 						this,
 						'POST',
-						`/payments/refund`,
+						'/payments/refund',
 						{
 							...responseData,
-							...body
+							...body,
 						},
 						{
 							emailReceipt,
-						}
+						},
 					);
 					responseData = responseData.data;
 				} else {
-					responseData = await invoiceNinjaApiRequest.call(
-						this,
-						'POST',
-						`/payments/bulk`,
-						{
-							action,
-							ids: [paymentId]
-						}
-					);
+					responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/payments/bulk', {
+						action,
+						ids: [paymentId],
+					});
 					responseData = responseData.data[0];
 				}
 			}

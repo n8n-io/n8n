@@ -195,7 +195,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 	/*                                 recurringInvoice:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -213,9 +213,11 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Frequency',
+		displayName: 'Frequency Name or ID',
 		name: 'frequencyId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -356,7 +358,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -367,7 +369,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -697,7 +699,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -708,7 +710,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -719,7 +721,7 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -857,9 +859,11 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				default: -1,
 			},
 			{
-				displayName: 'Frequency',
+				displayName: 'Frequency Name or ID',
 				name: 'frequencyId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getFrequenciesV5',
 				},
@@ -968,21 +972,6 @@ export const recurringInvoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Start',
-				value: 'start',
-				action: 'Start a recurring invoice',
-			},
-			{
-				name: 'Stop',
-				value: 'stop',
-				action: 'Stop a recurring invoice',
-			},
-			{
-				name: 'Send Email',
-				value: 'send_now',
-				action: 'Send an email',
-			},
-			{
 				name: 'Archive',
 				value: 'archive',
 				action: 'Archive a recurring invoice',
@@ -991,6 +980,21 @@ export const recurringInvoiceFields: INodeProperties[] = [
 				name: 'Restore',
 				value: 'restore',
 				action: 'Restore a recurring invoice',
+			},
+			{
+				name: 'Send Email',
+				value: 'send_now',
+				action: 'Send an email',
+			},
+			{
+				name: 'Start',
+				value: 'start',
+				action: 'Start a recurring invoice',
+			},
+			{
+				name: 'Stop',
+				value: 'stop',
+				action: 'Stop a recurring invoice',
 			},
 		],
 	},

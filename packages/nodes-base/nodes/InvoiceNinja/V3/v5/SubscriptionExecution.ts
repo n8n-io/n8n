@@ -18,8 +18,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 		//Routes: https://github.com/invoiceninja/invoiceninja/blob/v5-stable/routes/api.php or swagger documentation
 		try {
 			if (operation === 'create') {
+				const name = this.getNodeParameter('name', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: ISubscription = {};
+				body.name = name as string;
 				if (additionalFields.allowCancellation !== undefined) {
 					body.allow_cancellation = additionalFields.allowCancellation as boolean;
 				}
@@ -34,9 +36,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				}
 				if (additionalFields.autoBill !== undefined) {
 					body.auto_bill = additionalFields.autoBill as string;
-				}
-				if (additionalFields.companyId !== undefined) {
-					body.company_id = additionalFields.companyId as string;
 				}
 				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
@@ -53,9 +52,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.maxSeatsLimit !== undefined) {
 					body.max_seats_limit = additionalFields.maxSeatsLimit as number;
 				}
-				if (additionalFields.name !== undefined) {
-					body.name = additionalFields.name as string;
-				}
 				if (additionalFields.optionalProductIds !== undefined) {
 					body.optional_product_ids = additionalFields.optionalProductIds as string;
 				}
@@ -66,9 +62,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.perSeatEnabled !== undefined) {
 					body.per_seat_enabled = additionalFields.perSeatEnabled as boolean;
 				}
-				if (additionalFields.planMap !== undefined) {
-					body.plan_map = additionalFields.planMap as string;
-				}
 				if (additionalFields.price !== undefined) {
 					body.price = additionalFields.price as number;
 				}
@@ -78,11 +71,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.promoDiscount !== undefined) {
 					body.promo_discount = additionalFields.promoDiscount as number;
 				}
-				if (additionalFields.promoPrice !== undefined) {
-					body.promo_price = additionalFields.promoPrice as number;
-				}
-				if (additionalFields.purchasePage !== undefined) {
-					body.purchase_page = additionalFields.purchasePage as string;
+				if (additionalFields.promoCode !== undefined) {
+					body.promo_code = additionalFields.promoCode as string;
 				}
 				if (additionalFields.recurringProductIds !== undefined) {
 					body.recurring_product_ids = additionalFields.recurringProductIds as string;
@@ -135,9 +125,6 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.autoBill !== undefined) {
 					body.auto_bill = additionalFields.autoBill as string;
 				}
-				if (additionalFields.companyId !== undefined) {
-					body.company_id = additionalFields.companyId as string;
-				}
 				if (additionalFields.currencyId !== undefined) {
 					body.currency_id = additionalFields.currencyId as string;
 				}
@@ -166,23 +153,17 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				if (additionalFields.perSeatEnabled !== undefined) {
 					body.per_seat_enabled = additionalFields.perSeatEnabled as boolean;
 				}
-				if (additionalFields.planMap !== undefined) {
-					body.plan_map = additionalFields.planMap as string;
-				}
 				if (additionalFields.price !== undefined) {
 					body.price = additionalFields.price as number;
 				}
 				if (additionalFields.productIds !== undefined) {
 					body.product_ids = additionalFields.productIds as string;
 				}
+				if (additionalFields.promoCode !== undefined) {
+					body.promo_code = additionalFields.promoCode as string;
+				}
 				if (additionalFields.promoDiscount !== undefined) {
 					body.promo_discount = additionalFields.promoDiscount as number;
-				}
-				if (additionalFields.promoPrice !== undefined) {
-					body.promo_price = additionalFields.promoPrice as number;
-				}
-				if (additionalFields.purchasePage !== undefined) {
-					body.purchase_page = additionalFields.purchasePage as string;
 				}
 				if (additionalFields.recurringProductIds !== undefined) {
 					body.recurring_product_ids = additionalFields.recurringProductIds as string;
@@ -208,6 +189,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 							? JSON.parse(additionalFields.webhookConfiguration)
 							: (additionalFields.webhookConfiguration as object);
 				}
+				console.log(body);
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'PUT',
@@ -271,15 +253,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'action') {
 				const subscriptionId = this.getNodeParameter('subscriptionId', i) as string;
 				const action = this.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					this,
-					'POST',
-					`/subscriptions/bulk`,
-					{
-						action,
-						ids: [subscriptionId]
-					}
-				);
+				responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/subscriptions/bulk', {
+					action,
+					ids: [subscriptionId],
+				});
 				responseData = responseData.data[0];
 			}
 

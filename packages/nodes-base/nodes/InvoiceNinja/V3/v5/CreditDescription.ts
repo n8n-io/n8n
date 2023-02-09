@@ -213,7 +213,7 @@ export const creditFields: INodeProperties[] = [
 	/*                                 credit:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -279,7 +279,7 @@ export const creditFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the credit line',
+						description: 'An extended Description for the credit line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -370,7 +370,7 @@ export const creditFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -381,18 +381,18 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -635,7 +635,7 @@ export const creditFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the credit line',
+						description: 'An extended Description for the credit line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -726,7 +726,7 @@ export const creditFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -737,7 +737,7 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -748,18 +748,18 @@ export const creditFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -986,6 +986,11 @@ export const creditFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an credit',
+			},
+			{
 				name: 'Clone to Credit',
 				value: 'clone_to_credit',
 				action: 'Clone to credit',
@@ -996,31 +1001,27 @@ export const creditFields: INodeProperties[] = [
 				action: 'Mark as Sent',
 			},
 			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an credit',
+			},
+			{
 				name: 'Send Email',
 				value: 'email',
 				action: 'Send an email',
 			},
 			{
-				name: 'Send Email (custom)',
+				name: 'Send Email (Custom)',
 				value: 'custom_email',
 				action: 'Send a custom email',
-			},
-			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive an credit',
-			},
-			{
-				name: 'Restore',
-				value: 'restore',
-				action: 'Restore an credit',
 			},
 		],
 	},
 	{
 		displayName: 'Email Type',
 		name: 'emailEmailType',
-		description: 'an email type, which is not default, like: \'reminder1\', \'reminder2\', \'reminder3\', \'reminder_endless\', \'custom1\', \'custom2\', \'custom3\'',
+		description:
+			"An email type, which is not default, like: 'reminder1', 'reminder2', 'reminder3', 'reminder_endless', 'custom1', 'custom2', 'custom3'",
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -1035,7 +1036,8 @@ export const creditFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'customEmailSubject',
-		description: 'use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1051,7 +1053,8 @@ export const creditFields: INodeProperties[] = [
 	{
 		displayName: 'Body',
 		name: 'customEmailBody',
-		description: 'use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1067,7 +1070,8 @@ export const creditFields: INodeProperties[] = [
 	{
 		displayName: 'Template',
 		name: 'customEmailTemplate',
-		description: 'use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://creditninja.github.io/docs/custom-fields/#custom-fields">https://creditninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'options',
 		default: 'email_template_credit',
 		required: true,
@@ -1080,6 +1084,18 @@ export const creditFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Custom 1',
+				value: 'email_template_custom1',
+			},
+			{
+				name: 'Custom 2',
+				value: 'email_template_custom2',
+			},
+			{
+				name: 'Custom 3',
+				value: 'email_template_custom3',
+			},
 			{
 				name: 'Initial',
 				value: 'email_template_credit',
@@ -1100,18 +1116,6 @@ export const creditFields: INodeProperties[] = [
 				name: 'Reminder Endless',
 				value: 'email_template_reminder_endless',
 			},
-			{
-				name: 'Custom 1',
-				value: 'email_template_custom1',
-			},
-			{
-				name: 'Custom 2',
-				value: 'email_template_custom2',
-			},
-			{
-				name: 'Custom 3',
-				value: 'email_template_custom3',
-			},
-		]
+		],
 	},
 ];

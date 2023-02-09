@@ -97,68 +97,68 @@ export const documentFields: INodeProperties[] = [
 				operation: ['upload'],
 			},
 		},
-        options: [
-            {
-                name: 'Client',
-                value: 'clients'
-            },
-            {
-                name: 'Vendor',
-                value: 'vendors'
-            },
-            {
-                name: 'Invoice',
-                value: 'invoices'
-            },
-            {
-                name: 'Recurring Invoice',
-                value: 'recurring_invoices'
-            },
-            {
-                name: 'Quote',
-                value: 'quotes'
-            },
-            {
-                name: 'Expense',
-                value: 'expenses'
-            },
-            {
-                name: 'Recurring Expense',
-                value: 'recurring_expenses'
-            },
-            {
-                name: 'Payment',
-                value: 'payments'
-            },
-            {
-                name: 'Project',
-                value: 'projects'
-            },
-            {
-                name: 'Task',
-                value: 'tasks'
-            },
-            {
-                name: 'Product',
-                value: 'products'
-            },
-            {
-                name: 'Purchase Order',
-                value: 'purchase_orders'
-            },
-            {
-                name: 'Credit',
-                value: 'credits'
-            },
-            {
-                name: 'Company',
-                value: 'companies'
-            },
-            {
-                name: 'Group Setting',
-                value: 'group_settings'
-            },
-        ],
+		options: [
+			{
+				name: 'Client',
+				value: 'clients',
+			},
+			{
+				name: 'Company',
+				value: 'companies',
+			},
+			{
+				name: 'Credit',
+				value: 'credits',
+			},
+			{
+				name: 'Expense',
+				value: 'expenses',
+			},
+			{
+				name: 'Group Setting',
+				value: 'group_settings',
+			},
+			{
+				name: 'Invoice',
+				value: 'invoices',
+			},
+			{
+				name: 'Payment',
+				value: 'payments',
+			},
+			{
+				name: 'Product',
+				value: 'products',
+			},
+			{
+				name: 'Project',
+				value: 'projects',
+			},
+			{
+				name: 'Purchase Order',
+				value: 'purchase_orders',
+			},
+			{
+				name: 'Quote',
+				value: 'quotes',
+			},
+			{
+				name: 'Recurring Expense',
+				value: 'recurring_expenses',
+			},
+			{
+				name: 'Recurring Invoice',
+				value: 'recurring_invoices',
+			},
+			{
+				name: 'Task',
+				value: 'tasks',
+			},
+			{
+				name: 'Vendor',
+				value: 'vendors',
+			},
+		],
 	},
 	{
 		displayName: 'Upload Ressource ID',
@@ -177,8 +177,7 @@ export const documentFields: INodeProperties[] = [
 	{
 		displayName: 'Binary Property Name',
 		name: 'binaryPropertyName',
-		description:
-			'Name of the binary property which containsthe data for the file to be uploaded',
+		description: 'Name of the binary property which containsthe data for the file to be uploaded',
 		type: 'string',
 		default: 'data',
 		required: true,

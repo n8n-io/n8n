@@ -198,7 +198,7 @@ export const vendorFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -233,7 +233,7 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -241,7 +241,7 @@ export const vendorFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'VAT Number',
@@ -362,7 +362,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -488,7 +488,7 @@ export const vendorFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -523,7 +523,7 @@ export const vendorFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -531,7 +531,7 @@ export const vendorFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'VAT Number',
@@ -645,7 +645,7 @@ export const vendorFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryId',
 						type: 'options',
 						description:
@@ -798,5 +798,5 @@ export const vendorFields: INodeProperties[] = [
 				action: 'Restore an vendor',
 			},
 		],
-	}
+	},
 ];

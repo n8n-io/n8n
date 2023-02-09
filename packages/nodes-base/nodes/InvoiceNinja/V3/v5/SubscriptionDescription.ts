@@ -178,6 +178,19 @@ export const subscriptionFields: INodeProperties[] = [
 	/*                                 subscription:create                        */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['subscription'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -192,13 +205,7 @@ export const subscriptionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -233,13 +240,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Company ID',
-				name: 'companyId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -247,12 +248,14 @@ export const subscriptionFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
-				displayName: 'Frequency ID',
+				displayName: 'Frequency Name or ID',
 				name: 'frequencyId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getFrequenciesV5',
 				},
@@ -289,16 +292,10 @@ export const subscriptionFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Plan Map',
-				name: 'planMap',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Price',
 				name: 'price',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Product IDs',
@@ -316,19 +313,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Promo Discount',
 				name: 'promoDiscount',
 				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Promo Price',
-				name: 'promoPrice',
-				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Purchase Page',
-				name: 'puchasePage',
-				type: 'string',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Recurring Product IDs',
@@ -340,7 +325,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Refund Period',
 				name: 'refundPeriod',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Registration Required',
@@ -352,7 +337,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Trial Duration',
 				name: 'trialDuration',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Trial Enabled',
@@ -371,7 +356,7 @@ export const subscriptionFields: INodeProperties[] = [
 				name: 'webhookConfiguration',
 				type: 'json',
 				default:
-					'{ "post_purchase_body: string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }',
+					'{ "post_purchase_body": "string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }',
 			},
 		],
 	},
@@ -413,7 +398,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -448,13 +433,7 @@ export const subscriptionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Company ID',
-				name: 'companyId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -462,12 +441,14 @@ export const subscriptionFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
-				displayName: 'Frequency ID',
+				displayName: 'Frequency Name or ID',
 				name: 'frequencyId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getFrequenciesV5',
 				},
@@ -504,16 +485,10 @@ export const subscriptionFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Plan Map',
-				name: 'planMap',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Price',
 				name: 'price',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Product IDs',
@@ -531,19 +506,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Promo Discount',
 				name: 'promoDiscount',
 				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Promo Price',
-				name: 'promoPrice',
-				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Purchase Page',
-				name: 'puchasePage',
-				type: 'string',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Recurring Product IDs',
@@ -555,7 +518,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Refund Period',
 				name: 'refundPeriod',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Registration Required',
@@ -567,7 +530,7 @@ export const subscriptionFields: INodeProperties[] = [
 				displayName: 'Trial Duration',
 				name: 'trialDuration',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Trial Enabled',
@@ -586,7 +549,7 @@ export const subscriptionFields: INodeProperties[] = [
 				name: 'webhookConfiguration',
 				type: 'json',
 				default:
-					'{ "post_purchase_body: string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }',
+					'{ "post_purchase_body": "string", "post_purchase_headers": { "key": "value" }, "post_purchase_rest_method": "string", "post_purchase_url": "string", "return_url": "string" }',
 			},
 		],
 	},
@@ -649,5 +612,5 @@ export const subscriptionFields: INodeProperties[] = [
 				action: 'Restore an subscription',
 			},
 		],
-	}
+	},
 ];

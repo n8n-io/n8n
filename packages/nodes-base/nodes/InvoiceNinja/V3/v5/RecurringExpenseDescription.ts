@@ -196,9 +196,11 @@ export const recurringExpenseFields: INodeProperties[] = [
 	/*                                 recurringExpense:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Frequency',
+		displayName: 'Frequency Name or ID',
 		name: 'frequencyId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				apiVersion: ['v5'],
@@ -250,7 +252,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -261,7 +263,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -272,7 +274,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Bank Account',
+				displayName: 'Bank Account Name or ID',
 				name: 'bankId',
 				type: 'options',
 				description:
@@ -283,7 +285,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -291,10 +293,10 @@ export const recurringExpenseFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -311,7 +313,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -322,11 +324,11 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
@@ -499,7 +501,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -510,7 +512,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -521,7 +523,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Bank Account',
+				displayName: 'Bank Account Name or ID',
 				name: 'bankId',
 				type: 'options',
 				description:
@@ -532,7 +534,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -540,10 +542,10 @@ export const recurringExpenseFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				description:
@@ -560,7 +562,7 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -571,11 +573,11 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
@@ -637,9 +639,11 @@ export const recurringExpenseFields: INodeProperties[] = [
 				default: -1,
 			},
 			{
-				displayName: 'Frequency',
+				displayName: 'Frequency Name or ID',
 				name: 'frequencyId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getFrequenciesV5',
 				},

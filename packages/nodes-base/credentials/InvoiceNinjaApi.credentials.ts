@@ -38,6 +38,7 @@ export class InvoiceNinjaApi implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			hint: 'This is optional, only enter if you are using v5. Used for destructive operations like purging clients or deleting documents.',
 		},

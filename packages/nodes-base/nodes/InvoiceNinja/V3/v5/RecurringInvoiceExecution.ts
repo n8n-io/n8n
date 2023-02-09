@@ -51,7 +51,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.dueDate !== undefined) {
-					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
+					body.due_date = moment(additionalFields.dueDate as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.terms !== undefined) {
 					body.terms = additionalFields.terms as string;
@@ -69,10 +69,12 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.partialDueDate !== undefined) {
-					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format(
+						'YYYY-MM-DD',
+					);
 				}
 				if (additionalFields.poNumber !== undefined) {
 					body.po_number = additionalFields.poNumber as string;
@@ -108,7 +110,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.remaining_cycles = additionalFields.remainingCycles as number;
 				}
 				if (additionalFields.nextSendDate !== undefined) {
-					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD HH:mm:ss");
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format(
+						'YYYY-MM-DD HH:mm:ss',
+					);
 				}
 				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
@@ -188,10 +192,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.dueDate !== undefined) {
-					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
+					body.due_date = moment(additionalFields.dueDate as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.terms !== undefined) {
 					body.terms = additionalFields.terms as string;
@@ -206,7 +210,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate !== undefined) {
-					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format(
+						'YYYY-MM-DD',
+					);
 				}
 				if (additionalFields.poNumber !== undefined) {
 					body.po_number = additionalFields.poNumber as string;
@@ -245,7 +251,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.frequency_id = additionalFields.frequencyId as string;
 				}
 				if (additionalFields.nextSendDate !== undefined) {
-					body.next_send_date = moment(additionalFields.nextSendDate as string).format("YYYY-MM-DD HH:mm:ss");
+					body.next_send_date = moment(additionalFields.nextSendDate as string).format(
+						'YYYY-MM-DD HH:mm:ss',
+					);
 				}
 				if (additionalFields.customValue1 !== undefined) {
 					body.custom_value1 = additionalFields.customValue1 as string;
@@ -309,7 +317,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					qs,
 				);
 				responseData = responseData.data;
-				const download = this.getNodeParameter('download', i) as boolean;
+				const download = this.getNodeParameter('download', i);
 				if (download) {
 					if (!responseData.invitations[0].key)
 						throw new Error('Download failed - No invitation key present');
@@ -318,11 +326,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						json: responseData,
 						binary: {
 							data: await this.helpers.prepareBinaryData(
-								(await invoiceNinjaApiDownloadFile.call(
+								await invoiceNinjaApiDownloadFile.call(
 									this,
 									'GET',
 									`/recurring_invoice/${responseData.invitations[0].key}/download`,
-								)),
+								),
 								'recurring_invoice.pdf',
 								'application/pdf',
 							),
@@ -387,15 +395,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'action') {
 				const recurringInvoiceId = this.getNodeParameter('recurringInvoiceId', i) as string;
 				const action = this.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					this,
-					'POST',
-					`/recurring_invoices/bulk`,
-					{
-						action,
-						ids: [recurringInvoiceId]
-					}
-				);
+				responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/recurring_invoices/bulk', {
+					action,
+					ids: [recurringInvoiceId],
+				});
 				responseData = responseData.data[0];
 			}
 

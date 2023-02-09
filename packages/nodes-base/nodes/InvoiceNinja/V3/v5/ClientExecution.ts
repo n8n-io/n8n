@@ -1,6 +1,10 @@
 import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
+import {
+	invoiceNinjaApiDownloadFile,
+	invoiceNinjaApiRequest,
+	invoiceNinjaApiRequestAllItems,
+} from '../GenericFunctions';
 import type { IClient, IClientContact } from './ClientInterface';
 
 export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -197,7 +201,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					}
 					body.contacts = contacts;
 				}
-				console.log(body)
+				console.log(body);
 				responseData = await invoiceNinjaApiRequest.call(
 					this,
 					'PUT',
@@ -274,7 +278,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					responseData = await invoiceNinjaApiRequest.call(
 						this,
 						'POST',
-						`/clients/${clientId}/${mergeClientId}/merge`
+						`/clients/${clientId}/${mergeClientId}/merge`,
 					);
 					responseData = responseData.data;
 				} else if (action === 'purge') {
@@ -285,8 +289,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						{},
 						{},
 						{
-							usePassword: true
-						}
+							usePassword: true,
+						},
 					);
 					responseData = responseData.data;
 				} else if (action === 'client_statement') {
@@ -296,8 +300,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					const showAgingTable = this.getNodeParameter('showAgingTable', i) as string;
 					const sendEmail = this.getNodeParameter('sendEmail', i) as string;
 					const body: IDataObject = {
-						start_date: moment(startDate).format("YYYY-MM-DD"),
-						end_date: moment(endDate).format("YYYY-MM-DD"),
+						start_date: moment(startDate).format('YYYY-MM-DD'),
+						end_date: moment(endDate).format('YYYY-MM-DD'),
 						client_id: clientId,
 						show_payments_table: showPaymentsTable,
 						show_aging_table: showAgingTable,
@@ -307,15 +311,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 							json: body,
 							binary: {
 								data: await this.helpers.prepareBinaryData(
-									(await invoiceNinjaApiDownloadFile.call(
-										this,
-										'POST',
-										`/client_statement`,
-										body,
-										{
-											send_email: sendEmail
-										},
-									)),
+									await invoiceNinjaApiDownloadFile.call(this, 'POST', '/client_statement', body, {
+										send_email: sendEmail,
+									}),
 									'client_statement.pdf',
 									'application/pdf',
 								),
@@ -326,24 +324,19 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						responseData = await invoiceNinjaApiDownloadFile.call(
 							this,
 							'POST',
-							`/client_statement`,
+							'/client_statement',
 							body,
 							{
-								send_email: sendEmail
+								send_email: sendEmail,
 							},
 						);
 						responseData = responseData.data;
 					}
 				} else {
-					responseData = await invoiceNinjaApiRequest.call(
-						this,
-						'POST',
-						`/clients/bulk`,
-						{
-							action,
-							ids: [clientId]
-						}
-					);
+					responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/clients/bulk', {
+						action,
+						ids: [clientId],
+					});
 					responseData = responseData.data[0];
 				}
 			}

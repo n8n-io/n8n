@@ -239,7 +239,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	/*                                 purchaseOrder:create                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Vendor',
+		displayName: 'Vendor Name or ID',
 		name: 'vendorId',
 		type: 'options',
 		description:
@@ -304,7 +304,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the invoice line',
+						description: 'An extended Description for the invoice line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -395,7 +395,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -406,18 +406,18 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -428,7 +428,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -448,7 +448,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				displayName: 'Discount',
 				name: 'discount',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'PO Number',
@@ -541,7 +541,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -549,7 +549,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -660,7 +660,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the invoice line',
+						description: 'An extended Description for the invoice line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -751,7 +751,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -762,18 +762,18 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -784,7 +784,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -795,7 +795,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -815,7 +815,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				displayName: 'Discount',
 				name: 'discount',
 				type: 'number',
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'PO Number',
@@ -908,7 +908,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Currency',
+				displayName: 'Currency Name or ID',
 				name: 'currencyId',
 				type: 'options',
 				description:
@@ -916,7 +916,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -1016,6 +1016,11 @@ export const purchaseOrderFields: INodeProperties[] = [
 				action: 'Add to Inventory a purchase order',
 			},
 			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a purchase order',
+			},
+			{
 				name: 'Cancel',
 				value: 'cancel',
 				action: 'Cancel a purchase order',
@@ -1031,31 +1036,22 @@ export const purchaseOrderFields: INodeProperties[] = [
 				action: 'Mark Sent a purchase order',
 			},
 			{
-				name: 'Send Email',
-				value: 'email',
-				action: 'Send an email',
-			},
-			{
-				name: 'Send Email',
-				value: 'custom_email',
-				action: 'Send a custom email',
-			},
-			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive a purchase order',
-			},
-			{
 				name: 'Restore',
 				value: 'restore',
 				action: 'Restore a purchase order',
+			},
+			{
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send an email',
 			},
 		],
 	},
 	{
 		displayName: 'Subject',
 		name: 'customEmailSubject',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1071,7 +1067,8 @@ export const purchaseOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Body',
 		name: 'customEmailBody',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1087,7 +1084,8 @@ export const purchaseOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Template',
 		name: 'customEmailTemplate',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'options',
 		default: 'email_template_purchase_order',
 		required: true,
@@ -1108,6 +1106,6 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'Custom 1',
 				value: 'email_template_custom1',
 			},
-		]
+		],
 	},
 ];

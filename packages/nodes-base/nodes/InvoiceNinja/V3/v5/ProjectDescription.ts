@@ -192,7 +192,7 @@ export const projectFields: INodeProperties[] = [
 	/*                                 project:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -204,7 +204,7 @@ export const projectFields: INodeProperties[] = [
 				resource: ['project'],
 				operation: ['create'],
 			},
-		}, 
+		},
 		typeOptions: {
 			loadOptionsMethod: 'getClientsV5',
 		},
@@ -245,7 +245,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -355,7 +355,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -372,7 +372,7 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -509,5 +509,5 @@ export const projectFields: INodeProperties[] = [
 				action: 'Restore an project',
 			},
 		],
-	}
+	},
 ];

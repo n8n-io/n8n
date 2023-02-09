@@ -45,7 +45,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.stock_notification = additionalFields.stockNotifications as boolean;
 				}
 				if (additionalFields.stockNotificationsThreshold !== undefined) {
-					body.stock_notification_threshold = additionalFields.stockNotificationsThreshold as number;
+					body.stock_notification_threshold =
+						additionalFields.stockNotificationsThreshold as number;
 				}
 				if (additionalFields.taxName1 !== undefined) {
 					body.tax_name1 = additionalFields.taxName1 as string;
@@ -114,7 +115,8 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.stock_notification = additionalFields.stockNotifications as boolean;
 				}
 				if (additionalFields.stockNotificationsThreshold !== undefined) {
-					body.stock_notification_threshold = additionalFields.stockNotificationsThreshold as number;
+					body.stock_notification_threshold =
+						additionalFields.stockNotificationsThreshold as number;
 				}
 				if (additionalFields.taxName1 !== undefined) {
 					body.tax_name1 = additionalFields.taxName1 as string;
@@ -205,16 +207,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'action') {
 				const productId = this.getNodeParameter('productId', i) as string;
-				const action = this.getNodeParameter('action', i) as string;				
-				responseData = await invoiceNinjaApiRequest.call(
-					this,
-					'POST',
-					`/products/bulk`,
-					{
-						action,
-						ids: [productId]
-					}
-				);
+				const action = this.getNodeParameter('action', i) as string;
+				responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/products/bulk', {
+					action,
+					ids: [productId],
+				});
 				responseData = responseData.data[0];
 			}
 

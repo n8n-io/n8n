@@ -176,15 +176,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			if (operation === 'action') {
 				const projectId = this.getNodeParameter('projectId', i) as string;
 				const action = this.getNodeParameter('action', i) as string;
-				responseData = await invoiceNinjaApiRequest.call(
-					this,
-					'POST',
-					`/projects/bulk`,
-					{
-						action,
-						ids: [projectId]
-					}
-				);
+				responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/projects/bulk', {
+					action,
+					ids: [projectId],
+				});
 				responseData = responseData.data[0];
 			}
 

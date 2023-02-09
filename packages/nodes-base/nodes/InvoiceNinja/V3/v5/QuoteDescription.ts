@@ -195,7 +195,7 @@ export const quoteFields: INodeProperties[] = [
 	/*                                 quote:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -260,7 +260,7 @@ export const quoteFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the invoice line',
+						description: 'An extended Description for the invoice line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -351,7 +351,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -362,7 +362,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -373,7 +373,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -384,7 +384,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -575,7 +575,7 @@ export const quoteFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the invoice line',
+						description: 'An extended Description for the invoice line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -666,7 +666,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
@@ -677,7 +677,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -688,7 +688,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -699,7 +699,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -710,7 +710,7 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -890,6 +890,11 @@ export const quoteFields: INodeProperties[] = [
 				action: 'Approve a quote',
 			},
 			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive a quote',
+			},
+			{
 				name: 'Clone To Quote',
 				value: 'clone_to_quote',
 				action: 'Clone To Quote',
@@ -905,31 +910,27 @@ export const quoteFields: INodeProperties[] = [
 				action: 'Mark Send a quote',
 			},
 			{
-				name: 'Send Email',
-				value: 'email',
-				action: 'Send an email',
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore a quote',
 			},
 			{
-				name: 'Send custom Email',
+				name: 'Send Custom Email',
 				value: 'custom_email',
 				action: 'Send a custom email',
 			},
 			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive a quote',
-			},
-			{
-				name: 'Restore',
-				value: 'restore',
-				action: 'Restore a quote',
+				name: 'Send Email',
+				value: 'email',
+				action: 'Send an email',
 			},
 		],
 	},
 	{
 		displayName: 'Subject',
 		name: 'customEmailSubject',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -945,7 +946,8 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Body',
 		name: 'customEmailBody',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -961,7 +963,8 @@ export const quoteFields: INodeProperties[] = [
 	{
 		displayName: 'Template',
 		name: 'customEmailTemplate',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'options',
 		default: 'email_template_quote',
 		required: true,
@@ -982,6 +985,6 @@ export const quoteFields: INodeProperties[] = [
 				name: 'Custom 1',
 				value: 'email_template_custom1',
 			},
-		]
+		],
 	},
 ];

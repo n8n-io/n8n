@@ -76,6 +76,10 @@ const headProperties: INodeProperties[] = [
 				value: 'credit',
 			},
 			{
+				name: 'Document',
+				value: 'document',
+			},
+			{
 				name: 'Expense',
 				value: 'expense',
 			},
@@ -116,20 +120,16 @@ const headProperties: INodeProperties[] = [
 				value: 'subscription',
 			},
 			{
+				name: 'System / Other',
+				value: 'system',
+			},
+			{
 				name: 'Task',
 				value: 'task',
 			},
 			{
 				name: 'Vendor',
 				value: 'vendor',
-			},
-			{
-				name: 'Document',
-				value: 'document',
-			},
-			{
-				name: 'System / Other',
-				value: 'system',
 			},
 		],
 		default: 'client',
@@ -238,7 +238,7 @@ export const InvoiceNinjaV5 = {
 			async getCurrenciesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (let i = 0; i < currencies.length; i++) {
-					const currencyName = currencies[i].code + " - " + currencies[i].name as string;
+					const currencyName = currencies[i].code + ' - ' + currencies[i].name;
 					const currencyId = currencies[i].id as string;
 					returnData.push({
 						name: currencyName,
@@ -316,13 +316,9 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getProjectsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const projects = await invoiceNinjaApiRequest.call(
-					this,
-					'GET',
-					'/projects',
-					{},
-					{ per_page: 100 }
-				).then(res => res.data);
+				const projects = await invoiceNinjaApiRequest
+					.call(this, 'GET', '/projects', {}, { per_page: 100 })
+					.then((res) => res.data);
 				for (const project of projects) {
 					const projectName = project.name as string;
 					const projectId = project.id as string;
@@ -337,13 +333,9 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getInvoicesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const invoices = await invoiceNinjaApiRequest.call(
-					this,
-					'GET',
-					'/invoices',
-					{},
-					{ per_page: 100 }
-				).then(res => res.data);
+				const invoices = await invoiceNinjaApiRequest
+					.call(this, 'GET', '/invoices', {}, { per_page: 100 })
+					.then((res) => res.data);
 				for (const invoice of invoices) {
 					const invoiceName = invoice.number as string;
 					const invoiceId = invoice.id as string;
@@ -364,7 +356,7 @@ export const InvoiceNinjaV5 = {
 					'GET',
 					'/task_statuses',
 				);
-				console.log(statuses)
+				console.log(statuses);
 				for (const status of statuses) {
 					const statusName = status.name as string;
 					const statusId = status.id as string;
@@ -379,13 +371,9 @@ export const InvoiceNinjaV5 = {
 			// select them easily
 			async getRecuringExpensesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const recurringExpenses = await invoiceNinjaApiRequest.call(
-					this,
-					'GET',
-					'/recurring_expenses',
-					{},
-					{ per_page: 100 }
-				).then(res => res.data);
+				const recurringExpenses = await invoiceNinjaApiRequest
+					.call(this, 'GET', '/recurring_expenses', {}, { per_page: 100 })
+					.then((res) => res.data);
 				for (const recurringExpense of recurringExpenses) {
 					const recurringExpenseName = recurringExpense.number as string;
 					const recurringExpenseAmount = recurringExpense.amount as string;

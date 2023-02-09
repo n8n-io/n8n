@@ -196,7 +196,7 @@ export const productFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -351,7 +351,7 @@ export const productFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -533,5 +533,5 @@ export const productFields: INodeProperties[] = [
 				action: 'Restore an product',
 			},
 		],
-	}
+	},
 ];

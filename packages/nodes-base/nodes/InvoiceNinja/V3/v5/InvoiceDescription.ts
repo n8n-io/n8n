@@ -213,7 +213,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                 invoice:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -279,7 +279,7 @@ export const invoiceFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the invoice line',
+						description: 'An extended Description for the invoice line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -370,7 +370,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -381,18 +381,18 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -635,7 +635,7 @@ export const invoiceFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Notes / Description',
-						description: 'an extended Description for the invoice line',
+						description: 'An extended Description for the invoice line',
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -726,7 +726,7 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
 				description:
@@ -737,7 +737,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendorId',
 				type: 'options',
 				description:
@@ -748,18 +748,18 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br />Only the last 100 entries will be displayed here.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>Only the last 100 entries will be displayed here. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectsV5',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Design',
+				displayName: 'Design Name or ID',
 				name: 'designId',
 				type: 'options',
 				description:
@@ -986,9 +986,19 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Archive',
+				value: 'archive',
+				action: 'Archive an invoice',
+			},
+			{
 				name: 'Auto Bill',
 				value: 'auto_bill',
 				action: 'Auto Bill an invoice',
+			},
+			{
+				name: 'Cancel',
+				value: 'cancel',
+				action: 'Cancel an invoice',
 			},
 			{
 				name: 'Clone to Invoice',
@@ -1001,9 +1011,19 @@ export const invoiceFields: INodeProperties[] = [
 				action: 'Clone To Quote',
 			},
 			{
+				name: 'Mark Paid',
+				value: 'mark_paid',
+				action: 'Mark Paid an invoice',
+			},
+			{
 				name: 'Mark Sent',
 				value: 'mark_sent',
 				action: 'Mark as Sent',
+			},
+			{
+				name: 'Restore',
+				value: 'restore',
+				action: 'Restore an invoice',
 			},
 			{
 				name: 'Send Email',
@@ -1011,36 +1031,17 @@ export const invoiceFields: INodeProperties[] = [
 				action: 'Send an email',
 			},
 			{
-				name: 'Send Email (custom)',
+				name: 'Send Email (Custom)',
 				value: 'custom_email',
 				action: 'Send a custom email',
-			},
-			{
-				name: 'Mark Paid',
-				value: 'mark_paid',
-				action: 'Mark Paid an invoice',
-			},
-			{
-				name: 'Cancel',
-				value: 'cancel',
-				action: 'Cancel an invoice',
-			},
-			{
-				name: 'Archive',
-				value: 'archive',
-				action: 'Archive an invoice',
-			},
-			{
-				name: 'Restore',
-				value: 'restore',
-				action: 'Restore an invoice',
 			},
 		],
 	},
 	{
 		displayName: 'Email Type',
 		name: 'emailEmailType',
-		description: 'an email type, which is not default, like: \'reminder1\', \'reminder2\', \'reminder3\', \'reminder_endless\', \'custom1\', \'custom2\', \'custom3\'',
+		description:
+			"An email type, which is not default, like: 'reminder1', 'reminder2', 'reminder3', 'reminder_endless', 'custom1', 'custom2', 'custom3'",
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -1055,7 +1056,8 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'customEmailSubject',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1071,7 +1073,8 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Body',
 		name: 'customEmailBody',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -1087,7 +1090,8 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Template',
 		name: 'customEmailTemplate',
-		description: 'use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>',
+		description:
+			'Use HTML with variables within this input. see: <a href="https://invoiceninja.github.io/docs/custom-fields/#custom-fields">https://invoiceninja.github.io/docs/custom-fields/#custom-fields</a>.',
 		type: 'options',
 		default: 'email_template_invoice',
 		required: true,
@@ -1100,6 +1104,18 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Custom 1',
+				value: 'email_template_custom1',
+			},
+			{
+				name: 'Custom 2',
+				value: 'email_template_custom2',
+			},
+			{
+				name: 'Custom 3',
+				value: 'email_template_custom3',
+			},
 			{
 				name: 'Initial',
 				value: 'email_template_invoice',
@@ -1120,18 +1136,6 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'Reminder Endless',
 				value: 'email_template_reminder_endless',
 			},
-			{
-				name: 'Custom 1',
-				value: 'email_template_custom1',
-			},
-			{
-				name: 'Custom 2',
-				value: 'email_template_custom2',
-			},
-			{
-				name: 'Custom 3',
-				value: 'email_template_custom3',
-			},
-		]
+		],
 	},
 ];

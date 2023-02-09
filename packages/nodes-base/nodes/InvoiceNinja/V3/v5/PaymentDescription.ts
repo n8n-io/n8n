@@ -198,7 +198,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		description:
@@ -255,11 +255,11 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Invoice',
 				values: [
 					{
-						displayName: 'Invoice',
+						displayName: 'Invoice Name or ID',
 						name: 'invoiceId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br/>This invoice will be addes as paymentables with the full amount of the payment.',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>This invoice will be addes as paymentables with the full amount of the payment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						typeOptions: {
 							loadOptionsMethod: 'getInvoicesV5',
 						},
@@ -290,7 +290,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -313,9 +313,11 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Payment Type',
+				displayName: 'Payment Type Name or ID',
 				name: 'typeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPaymentTypesV5',
 				},
@@ -334,7 +336,7 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Exchange Currency ID',
+				displayName: 'Exchange Currency Name or ID',
 				name: 'exchangeCurrencyId',
 				type: 'options',
 				description:
@@ -342,7 +344,7 @@ export const paymentFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -427,11 +429,11 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Invoice',
 				values: [
 					{
-						displayName: 'Invoice',
+						displayName: 'Invoice Name or ID',
 						name: 'invoiceId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br/>This invoice will be addes as paymentables with the full amount of the payment.',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>This invoice will be addes as paymentables with the full amount of the payment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						typeOptions: {
 							loadOptionsMethod: 'getInvoicesV5',
 						},
@@ -462,7 +464,7 @@ export const paymentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'User (Assigned)',
+				displayName: 'User (Assigned) Name or ID',
 				name: 'assignedUserId',
 				type: 'options',
 				description:
@@ -485,9 +487,11 @@ export const paymentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Payment Type',
+				displayName: 'Payment Type Name or ID',
 				name: 'typeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPaymentTypesV5',
 				},
@@ -506,7 +510,7 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Exchange Currency ID',
+				displayName: 'Exchange Currency Name or ID',
 				name: 'exchangeCurrencyId',
 				type: 'options',
 				description:
@@ -514,7 +518,7 @@ export const paymentFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCurrenciesV5',
 				},
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Private Notes',
@@ -671,11 +675,11 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Invoice',
 				values: [
 					{
-						displayName: 'Invoice',
+						displayName: 'Invoice Name or ID',
 						name: 'invoiceId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a><br/>This invoice will be addes as paymentables with the full amount of the payment.',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>This invoice will be addes as paymentables with the full amount of the payment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						typeOptions: {
 							loadOptionsMethod: 'getInvoicesV5',
 						},

@@ -86,7 +86,8 @@ export class InvoiceNinjaTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
-				if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhookMethods.default.create.call(this);
+				if (apiVersion == 'v4')
+					return InvoiceNinjaTriggerV4.webhookMethods.default.create.call(this);
 				else if (apiVersion == 'v5')
 					return InvoiceNinjaTriggerV5.webhookMethods.default.create.call(this);
 
@@ -95,7 +96,8 @@ export class InvoiceNinjaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
-				if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhookMethods.default.delete.call(this);
+				if (apiVersion == 'v4')
+					return InvoiceNinjaTriggerV4.webhookMethods.default.delete.call(this);
 				else if (apiVersion == 'v5')
 					return InvoiceNinjaTriggerV5.webhookMethods.default.delete.call(this);
 

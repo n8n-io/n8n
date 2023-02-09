@@ -1,6 +1,10 @@
 import moment from 'moment';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { invoiceNinjaApiDownloadFile, invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
+import {
+	invoiceNinjaApiDownloadFile,
+	invoiceNinjaApiRequest,
+	invoiceNinjaApiRequestAllItems,
+} from '../GenericFunctions';
 import type { IPurchaseOrder, IPurchaseOrderItem } from './PurchaseOrderInterface';
 
 export const execute = async function (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -45,10 +49,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.dueDate !== undefined) {
-					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
+					body.due_date = moment(additionalFields.dueDate as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.terms !== undefined) {
 					body.terms = additionalFields.terms as string;
@@ -84,7 +88,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate !== undefined) {
-					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format(
+						'YYYY-MM-DD',
+					);
 				}
 				if (additionalFields.exchangeRate !== undefined) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
@@ -173,10 +179,10 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.po_number = additionalFields.poNumber as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.dueDate !== undefined) {
-					body.due_date = moment(additionalFields.dueDate as string).format("YYYY-MM-DD");
+					body.due_date = moment(additionalFields.dueDate as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.terms !== undefined) {
 					body.terms = additionalFields.terms as string;
@@ -212,7 +218,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.partial = additionalFields.partial as number;
 				}
 				if (additionalFields.partialDueDate !== undefined) {
-					body.partial_due_date = moment(additionalFields.partialDueDate as string).format("YYYY-MM-DD");
+					body.partial_due_date = moment(additionalFields.partialDueDate as string).format(
+						'YYYY-MM-DD',
+					);
 				}
 				if (additionalFields.exchangeRate !== undefined) {
 					body.exchange_rate = additionalFields.exchangeRate as number;
@@ -289,7 +297,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					qs,
 				);
 				responseData = responseData.data;
-				const download = this.getNodeParameter('download', i) as boolean;
+				const download = this.getNodeParameter('download', i);
 				if (download) {
 					if (!responseData.invitations[0].key)
 						throw new Error('Download failed - No invitation key present');
@@ -298,11 +306,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						json: responseData,
 						binary: {
 							data: await this.helpers.prepareBinaryData(
-								(await invoiceNinjaApiDownloadFile.call(
+								await invoiceNinjaApiDownloadFile.call(
 									this,
 									'GET',
 									`/purchase_order/${responseData.invitations[0].key}/download`,
-								)),
+								),
 								'purchase_order.pdf',
 								'application/pdf',
 							),
@@ -359,29 +367,19 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					const customEmailBody = this.getNodeParameter('customEmailBody', i) as string;
 					const customEmailSubject = this.getNodeParameter('customEmailSubject', i) as string;
 					const customEmailTemplate = this.getNodeParameter('customEmailTemplate', i) as string;
-					responseData = await invoiceNinjaApiRequest.call(
-						this,
-						'POST',
-						`/emails`,
-						{
-							body: customEmailBody,
-							entity: "purchase_order",
-							entity_id: purchaseOrderId,
-							subject: customEmailSubject,
-							template: customEmailTemplate,
-						}
-					);
+					responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/emails', {
+						body: customEmailBody,
+						entity: 'purchase_order',
+						entity_id: purchaseOrderId,
+						subject: customEmailSubject,
+						template: customEmailTemplate,
+					});
 					responseData = responseData.data;
 				} else {
-					responseData = await invoiceNinjaApiRequest.call(
-						this,
-						'POST',
-						`/purchase_orders/bulk`,
-						{
-							action,
-							ids: [purchaseOrderId]
-						}
-					);
+					responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/purchase_orders/bulk', {
+						action,
+						ids: [purchaseOrderId],
+					});
 					responseData = responseData.data[0];
 				}
 			}

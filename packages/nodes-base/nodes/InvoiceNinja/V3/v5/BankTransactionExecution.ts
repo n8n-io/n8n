@@ -39,7 +39,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.currency_id = additionalFields.currencyId as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
@@ -75,7 +75,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.currency_id = additionalFields.currencyId as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.description !== undefined) {
 					body.description = additionalFields.description as string;
@@ -131,7 +131,13 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				} else {
 					const perPage = this.getNodeParameter('perPage', i) as number;
 					if (perPage) qs.per_page = perPage;
-					responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/bank_transactions', {}, qs);
+					responseData = await invoiceNinjaApiRequest.call(
+						this,
+						'GET',
+						'/bank_transactions',
+						{},
+						qs,
+					);
 					responseData = responseData.data;
 				}
 			}
@@ -148,14 +154,26 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 				const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
 				const action = this.getNodeParameter('action', i) as string;
 				if (action == 'convert_matched') {
-					const convertMatchedVendorId = this.getNodeParameter('convertMatchedVendorId', i) as string;
-					const convertMatchedExpenseIds = this.getNodeParameter('convertMatchedExpenseIds', i) as string;
-					const convertMatchedInvoiceIds = this.getNodeParameter('convertMatchedInvoiceIds', i) as string;
-					const convertMatchedPaymentId = this.getNodeParameter('convertMatchedPaymentId', i) as string;
+					const convertMatchedVendorId = this.getNodeParameter(
+						'convertMatchedVendorId',
+						i,
+					) as string;
+					const convertMatchedExpenseIds = this.getNodeParameter(
+						'convertMatchedExpenseIds',
+						i,
+					) as string;
+					const convertMatchedInvoiceIds = this.getNodeParameter(
+						'convertMatchedInvoiceIds',
+						i,
+					) as string;
+					const convertMatchedPaymentId = this.getNodeParameter(
+						'convertMatchedPaymentId',
+						i,
+					) as string;
 					responseData = await invoiceNinjaApiRequest.call(
 						this,
 						'POST',
-						`/bank_transactions/match`,
+						'/bank_transactions/match',
 						{
 							transactions: [
 								{
@@ -164,9 +182,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 									expense_id: convertMatchedExpenseIds ? convertMatchedExpenseIds : undefined,
 									invoice_ids: convertMatchedInvoiceIds ? convertMatchedInvoiceIds : undefined,
 									payment_id: convertMatchedPaymentId ? convertMatchedPaymentId : undefined,
-								}
-							]
-						}
+								},
+							],
+						},
 					);
 					// return data of the transaction, because otherwise there woulnt be any
 					responseData = await invoiceNinjaApiRequest.call(
@@ -181,11 +199,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					responseData = await invoiceNinjaApiRequest.call(
 						this,
 						'POST',
-						`/bank_transactions/bulk`,
+						'/bank_transactions/bulk',
 						{
 							action,
-							ids: [bankTransactionId]
-						}
+							ids: [bankTransactionId],
+						},
 					);
 					responseData = responseData.data[0];
 				}

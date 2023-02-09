@@ -100,7 +100,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_id = additionalFields.transactionId as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
@@ -217,7 +217,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					body.transaction_id = additionalFields.transactionId as string;
 				}
 				if (additionalFields.date !== undefined) {
-					body.date = moment(additionalFields.date as string).format("YYYY-MM-DD");
+					body.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 				}
 				if (additionalFields.number !== undefined) {
 					body.number = additionalFields.number as string;
@@ -305,16 +305,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 			if (operation === 'action') {
 				const expenseId = this.getNodeParameter('expenseId', i) as string;
-				const action = this.getNodeParameter('action', i) as string;				
-				responseData = await invoiceNinjaApiRequest.call(
-					this,
-					'POST',
-					`/expenses/bulk`,
-					{
-						action,
-						ids: [expenseId]
-					}
-				);
+				const action = this.getNodeParameter('action', i) as string;
+				responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/expenses/bulk', {
+					action,
+					ids: [expenseId],
+				});
 				responseData = responseData.data[0];
 			}
 
