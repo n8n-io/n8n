@@ -81,7 +81,7 @@ jobs:
       fail-fast: false
       matrix:
         # node-version: [14.x, 16.x]
-        containers: [1, 2, 3, 4]
+        containers: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v3
         with:
