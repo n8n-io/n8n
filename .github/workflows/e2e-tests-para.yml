@@ -85,7 +85,7 @@ jobs:
       fail-fast: false
       matrix:
         env-version: ["${{ github.event.inputs.run-env || '16.18.1' }}"]
-        containers: [1, 2, 3, 4, 5, 6, 7, 8]
+        containers: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -126,6 +126,10 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CYPRESS_N8N_E2E_TESTS: true
+          COMMIT_INFO_MESSAGE: 🌳 ${{ github.event.inputs.branch || 'parallel_e2e' }} 🖥️ ${{ github.event.inputs.run-env || '16.18.1' }} 🐳 ${{ matrix.containers }} 🤖 ${{ github.event.inputs.user || 'scheduled' }} 🗃️ ${{ github.event.inputs.specs || 'e2e/*' }}
+
+      - name: Cypress run2
+        uses: cypress-io/github-action@v5
 
       # - name: Notify Slack on failure
       #   uses: act10ns/slack@v2.0.0
