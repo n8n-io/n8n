@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["node18.12.0-chrome107", "node16.17.0-chrome106"]
+        env-version: ["node18.12.0-chrome107", "node16.17.0-chrome106", "node14.19.0-chrome100-ff99-edge"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -84,8 +84,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env-version: ["node18.12.0-chrome107", "node16.17.0-chrome106"]
-        containers: [1, 2, 3, 4, 5, 6]
+        env-version: ["node18.12.0-chrome107", "node16.17.0-chrome106", "node14.19.0-chrome100-ff99-edge"]
+        containers: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -114,9 +114,6 @@ jobs:
 
       - name: Unzip packages dist folders
         run: tar -xzf packages_build.tar.gz ./
-
-      - name: Debug workspace root
-        run: cd ${{ github.workspace }} && ls -la ./ && pwd
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
