@@ -38,22 +38,22 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 				outputs.forEach((outputConnectionName /* Like `main` */, idx) => {
 					const outputConnection = connection[outputConnectionName];
 
-					// It removes all connections that are connected to a node that cannot receive input
+					// It filters out all connections that are connected to a node that cannot receive input
 					outputConnection.forEach((outputConnectionItem, outputConnectionItemIdx) => {
 						outputConnection[outputConnectionItemIdx] = outputConnectionItem.filter(
-							(outgoingConnections) => {
-								return !nodesThatCannotReceiveInput.includes(outgoingConnections.node);
-							},
-						);
+							(outgoingConnections) => !nodesThatCannotReceiveInput.includes(outgoingConnections.node));
 					});
-					connection[outputConnectionName] = connection[outputConnectionName].filter((item) => {
-						return item.length > 0;
-					});
+
+					// Filter out output connection items that are empty
+					connection[outputConnectionName] = connection[outputConnectionName].filter((item) => item.length > 0);
+
+					// Delete the output connection container if it is empty
 					if (connection[outputConnectionName].length === 0) {
 						delete connection[outputConnectionName];
 					}
 				});
 
+				// Finally delete the source node if it has no output connections
 				if (Object.keys(connection).length === 0) {
 					delete connections[sourceNodeName];
 				}
