@@ -7,7 +7,7 @@ module.exports = defineConfig({
 	projectId: "5hbsdn",
 	retries: {
 		openMode: 0,
-		runMode: 1,
+		runMode: 2,
 	},
 	defaultCommandTimeout: 10000,
 	requestTimeout: 12000,
