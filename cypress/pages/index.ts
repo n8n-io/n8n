@@ -10,3 +10,4 @@ export * from './settings-log-streaming';
 export * from './sidebar';
 export * from './ndv';
 export * from './canvas-node';
+export * from './settings-community-nodes';

@@ -45,6 +45,7 @@
 						"
 						:required="true"
 						:disabled="loading"
+						data-test-id="community-package-install-modal-input"
 						@blur="onInputBlur"
 					/>
 				</n8n-input-label>
@@ -60,6 +61,7 @@
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
 					@change="onCheckboxChecked"
+					data-test-id="community-package-install-modal-checkbox"
 				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
@@ -73,7 +75,7 @@
 		<template #footer>
 			<n8n-button
 				:loading="loading"
-				:disabled="packageName === '' || loading"
+				:disabled="packageName === '' || loading || !userAgreed"
 				:label="
 					loading
 						? $locale.baseText('settings.communityNodes.installModal.installButton.label.loading')
@@ -82,6 +84,7 @@
 				size="large"
 				float="right"
 				@click="onInstallClick"
+				data-test-id="community-package-install-modal-button"
 			/>
 		</template>
 	</Modal>

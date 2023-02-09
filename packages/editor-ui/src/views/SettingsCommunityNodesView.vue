@@ -39,6 +39,7 @@
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
 				@click="onClickEmptyStateButton"
+				data-test-id="settings-community-nodes-install-button"
 			/>
 		</div>
 		<div :class="$style.cardsContainer" v-else>
