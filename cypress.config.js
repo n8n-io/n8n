@@ -9,6 +9,8 @@ module.exports = defineConfig({
 		openMode: 0,
 		runMode: 1,
 	},
+	defaultCommandTimeout: 10000,
+	requestTimeout: 12000,
 	e2e: {
 		baseUrl: BASE_URL,
 		video: false,
