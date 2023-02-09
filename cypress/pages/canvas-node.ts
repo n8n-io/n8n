@@ -9,7 +9,7 @@ export class CanvasNode extends BasePage {
 
 	actions = {
 		openNode: (nodeName: string) => {
-			this.getters.nodeByName(nodeName).dblclick();
+			this.getters.nodeByName(nodeName).eq(0).dblclick();
 		},
 	};
 }
