@@ -81,6 +81,7 @@ import {
 	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	inDevelopment,
 	N8N_VERSION,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
@@ -122,7 +123,6 @@ import {
 import { getInstance as getMailerInstance } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
-	DatabaseType,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
@@ -139,10 +139,11 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import * as GenericHelpers from '@/GenericHelpers';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
+import type { NodeTypesClass } from '@/NodeTypes';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WaitTrackerClass } from '@/WaitTracker';
 import { WaitTracker } from '@/WaitTracker';
@@ -176,15 +177,20 @@ class Server extends AbstractServer {
 
 	presetCredentialsLoaded: boolean;
 
-	nodeTypes: INodeTypes;
+	loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+
+	nodeTypes: NodeTypesClass;
 
 	credentialTypes: ICredentialTypes;
+
+	push: Push.Push;
 
 	constructor() {
 		super();
 
 		this.nodeTypes = NodeTypes();
 		this.credentialTypes = CredentialTypes();
+		this.loadNodesAndCredentials = LoadNodesAndCredentials();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
@@ -195,6 +201,8 @@ class Server extends AbstractServer {
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
 		}
+
+		this.push = Push.getInstance();
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -427,7 +435,6 @@ class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		// Get push connections
-		const push = Push.getInstance();
 		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
 			const { sessionId } = req.query;
 			if (sessionId === undefined) {
@@ -445,7 +452,7 @@ class Server extends AbstractServer {
 				}
 			}
 
-			push.add(sessionId as string, req, res);
+			this.push.add(sessionId as string, req, res);
 		});
 
 		// Make sure that Vue history mode works properly
@@ -1265,7 +1272,7 @@ class Server extends AbstractServer {
 
 						CredentialsOverwrites().setData(body);
 
-						await LoadNodesAndCredentials().generateTypesForFrontend();
+						await this.loadNodesAndCredentials.generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1277,17 +1284,31 @@ class Server extends AbstractServer {
 			);
 		}
 
-		const staticOptions: ServeStaticOptions = {
-			cacheControl: false,
-			setHeaders: (res: express.Response, path: string) => {
-				const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
-				const cacheControl = isIndex
-					? 'no-cache, no-store, must-revalidate'
-					: 'max-age=86400, immutable';
-				res.header('Cache-Control', cacheControl);
-			},
-		};
 		if (!config.getEnv('endpoints.disableUi')) {
+			const staticOptions: ServeStaticOptions = {
+				cacheControl: false,
+				setHeaders: (res: express.Response, path: string) => {
+					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const cacheControl = isIndex
+						? 'no-cache, no-store, must-revalidate'
+						: 'max-age=86400, immutable';
+					res.header('Cache-Control', cacheControl);
+				},
+			};
+
+			for (const [dir, loader] of Object.entries(this.loadNodesAndCredentials.loaders)) {
+				const pathPrefix = `/icons/${loader.packageName}`;
+				this.app.use(`${pathPrefix}/*/*.(svg|png)`, async (req, res) => {
+					const filePath = pathResolve(dir, req.originalUrl.substring(pathPrefix.length + 1));
+					try {
+						await fsAccess(filePath);
+						res.sendFile(filePath);
+					} catch {
+						res.sendStatus(404);
+					}
+				});
+			}
+
 			this.app.use(
 				'/',
 				express.static(GENERATED_STATIC_DIR),
@@ -1353,6 +1374,11 @@ export async function start(): Promise<void> {
 
 	// Set up event handling
 	initEvents();
+
+	if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+		const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+		await reloadNodesAndCredentials(app.loadNodesAndCredentials, app.nodeTypes, app.push);
+	}
 
 	void Db.collections.Workflow.findOne({
 		select: ['createdAt'],

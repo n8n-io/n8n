@@ -18,10 +18,7 @@ LoggerProxy.init({
 	const nodeTypes = Object.values(loader.nodeTypes)
 		.map((data) => {
 			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
-			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
-			if (applyParameters.length) {
-				nodeType.description.properties.unshift(...applyParameters);
-			}
+			NodeHelpers.applySpecialNodeParameters(nodeType);
 			return data.type;
 		})
 		.flatMap((nodeData) => {
