@@ -1,4 +1,6 @@
+import { MainSidebar } from './../pages/sidebar/main-sidebar';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
+import { SettingsSidebar, WorkflowsPage } from '../pages';
 
 /**
  * User A - Instance owner
@@ -34,7 +36,11 @@ const users = [
 	},
 ];
 
-describe('Sharing', () => {
+const mainSidebar = new MainSidebar();
+const workflowsPage = new WorkflowsPage();
+const settingsSidebar = new SettingsSidebar();
+
+describe('User Management', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setupOwner(instanceOwner);
@@ -47,7 +53,17 @@ describe('Sharing', () => {
 		});
 	});
 
-	it(`should invite User A and UserB to instance`, () => {
+	it(`should invite User B and User C to instance`, () => {
 		cy.inviteUsers({ instanceOwner, users });
+	});
+
+	it('should prevent non-owners to access UM settings', () => {
+		cy.signin({ email: users[0].email, password: DEFAULT_USER_PASSWORD });
+		cy.visit(workflowsPage.url);
+		mainSidebar.actions.goToSettings();
+		settingsSidebar.getters.menuItem('Users').should('not.exist');
+		// Should be redirected to workflows page if trying to access UM url
+		cy.visit('/settings/users');
+		cy.url().should('match', new RegExp(workflowsPage.url));
 	});
 });
