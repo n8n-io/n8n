@@ -13,9 +13,15 @@
 				</div>
 				<div :class="$style.qrContainer">
 					<qrcode-vue :value="qrCode" size="200" level="H" />
-					<n8n-text size="small"
-						>{{ $locale.baseText('settings.mfa.secret', { interpolate: { secret } }) }}
-					</n8n-text>
+				</div>
+				<div :class="$style.testing">
+					<CopyInput
+						label="Secret:"
+						:value="secret"
+						:copy-button-text="$locale.baseText('generic.clickToCopy')"
+						toast-title="Secret copied to clipboard"
+						@copy="onCopy"
+					/>
 				</div>
 				<div :class="$style.textContainer">
 					<n8n-text size="large" :bold="true">2. Enter six-digits from the application.</n8n-text>
@@ -25,7 +31,6 @@
 						v-if="formInputs"
 						:inputs="formInputs"
 						:eventBus="formBus"
-						@ready="onReadyToSubmit"
 						@submit="onSubmit"
 					/>
 				</div>
@@ -89,11 +94,12 @@ import Modal from './Modal.vue';
 import { MFA_SETUP_MODAL_KEY, VIEWS } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { IFormInputs, INodeUi } from '@/Interface';
+import { IFormInputs, INodeUi, Validatable } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
 import { useSettingsStore } from '@/stores/settings';
+import CopyInput from '@/components/CopyInput.vue';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 
@@ -102,6 +108,7 @@ export default mixins(showMessage).extend({
 	components: {
 		Modal,
 		QrcodeVue,
+		CopyInput,
 	},
 	data() {
 		return {
@@ -132,9 +139,6 @@ export default mixins(showMessage).extend({
 		// onInput(input: { value: string }) {
 		// 	this.hasAnyChanges = true;
 		// },
-		onReadyToSubmit(ready: boolean) {
-			this.readyToSubmit = ready;
-		},
 		async onSubmit(form: { authenticatorCode: string }) {
 			try {
 				await this.settingsStore.verifyMfaToken({ token: form.authenticatorCode });
@@ -183,23 +187,27 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			}
 		},
-		validateMfaCode(value: string | number | boolean | null | undefined) {
+		validateMfaCode(value: Validatable) {
 			if (typeof value !== 'string') {
 				return false;
 			}
 
+			if (/\D/.test(value)) {
+				this.readyToSubmit = false;
+				return {
+					messageKey: 'Code must be only numbers',
+				};
+			}
+
 			if (value.length !== 6) {
+				this.readyToSubmit = false;
 				return false;
 			}
 
-			// if (value !== this.password) {
-			// 	return {
-			// 		messageKey: 'auth.changePassword.passwordsMustMatchError',
-			// 	};
-			// }
-
-			return false;
+			this.readyToSubmit = true;
+			return null;
 		},
+		onCopy() {},
 	},
 	async mounted() {
 		console.log('montando');
@@ -212,7 +220,7 @@ export default mixins(showMessage).extend({
 					maxlength: 6,
 					placeholder: 'XXXXXX',
 					required: true,
-					validateOnBlur: false,
+					validateOnBlur: true,
 					validationRules: [{ name: 'MFA_CODE_VALIDATOR' }],
 					validators: {
 						MFA_CODE_VALIDATOR: {

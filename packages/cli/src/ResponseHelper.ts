@@ -46,8 +46,8 @@ export class BadRequestError extends ResponseError {
 }
 
 export class AuthError extends ResponseError {
-	constructor(message: string) {
-		super(message, 401);
+	constructor(message: string, errorCode?: number) {
+		super(message, 401, errorCode);
 	}
 }
 

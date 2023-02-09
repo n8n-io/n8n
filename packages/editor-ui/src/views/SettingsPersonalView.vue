@@ -189,13 +189,26 @@ export default mixins(showMessage).extend({
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 		},
 		onMfaEnableClick() {
-			console.log('ajaj papa');
 			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
-			//	this.$router.push({ name: VIEWS.MFA_SETUP });
 		},
 		async onMfaDisableClick() {
-			const settingStore = useSettingsStore();
-			await settingStore.disabledMfa();
+			const mfaDisableConfirmation = await this.confirmMessage(
+				'Are you sure you want to disable MFA? This will make your account less secure.',
+				'Disabling Multi-factor authentication?',
+				null,
+				'Yes, disable it',
+			);
+
+			if (mfaDisableConfirmation) {
+				const settingStore = useSettingsStore();
+				await settingStore.disabledMfa();
+				this.$showToast({
+					title: 'Multi-factor Authentication',
+					message: 'Succefully disabled',
+					type: 'success',
+					duration: 0,
+				});
+			}
 		},
 	},
 });

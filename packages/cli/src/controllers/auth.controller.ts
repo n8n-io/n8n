@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
+import { ResponseError, BadRequestError, InternalServerError, AuthError } from '@/ResponseHelper';
 import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -13,6 +13,7 @@ import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import { validateMfaToken } from '@/Mfa/helpers';
 
 @RestController()
 export class AuthController {
@@ -47,7 +48,7 @@ export class AuthController {
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser> {
-		const { email, password } = req.body;
+		const { email, password, mfaToken = '' } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
@@ -55,6 +56,10 @@ export class AuthController {
 			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
 
 		if (user) {
+			if (user.mfaEnabled && !validateMfaToken(user, mfaToken)) {
+				throw new AuthError('MFA Error', 998);
+			}
+
 			await issueCookie(res, user);
 			return sanitizeUser(user);
 		}
