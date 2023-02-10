@@ -5,6 +5,7 @@ export class NDV extends BasePage {
 		container: () => cy.getByTestId('ndv'),
 		backToCanvas: () => cy.getByTestId('back-to-canvas'),
 		copyInput: () => cy.getByTestId('copy-input'),
+		credentialInput: (eq = 0) => cy.getByTestId('node-credentials-select').eq(eq),
 		nodeExecuteButton: () => cy.getByTestId('node-execute-button'),
 		inputSelect: () => cy.getByTestId('ndv-input-select'),
 		inputOption: () => cy.getByTestId('ndv-input-option'),
@@ -23,12 +24,13 @@ export class NDV extends BasePage {
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
-		outputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
+		outputTbodyCell: (row: number, col: number) =>
+			this.getters.outputTableRow(row).find('td').eq(col),
 		inputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		inputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		inputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
-		inputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inputTbodyCell: (row: number, col: number) =>
+			this.getters.outputTableRow(row).find('td').eq(col),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
@@ -70,18 +72,11 @@ export class NDV extends BasePage {
 			this.getters.parameterInput(parameterName).type(content);
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
-			this.getters
-				.parameterInput(parameterName)
-				.find('.option-headline')
-				.contains(content)
-				.click();
+			this.getters.parameterInput(parameterName).find('.option-headline').contains(content).click();
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
-			this.getters.nodeRenameInput()
-				.should('be.visible')
-				.type('{selectall}')
-				.type(newName);
+			this.getters.nodeRenameInput().should('be.visible').type('{selectall}').type(newName);
 			cy.get('body').type('{enter}');
 		},
 		executePrevious: () => {

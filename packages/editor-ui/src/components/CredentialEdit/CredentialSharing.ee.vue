@@ -61,6 +61,7 @@
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				data-test-id="credential-sharing-modal-users-select"
 				@input="onAddSharee"
 			>
 				<template #prefix>
