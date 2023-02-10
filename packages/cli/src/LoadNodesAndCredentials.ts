@@ -30,6 +30,7 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
+	inTest,
 } from '@/constants';
 import {
 	persistInstalledPackageData,
@@ -61,7 +62,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 		// @ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		module.constructor._initPaths();
+		if (!inTest) module.constructor._initPaths();
 
 		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
