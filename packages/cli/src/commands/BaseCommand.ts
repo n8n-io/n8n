@@ -1,4 +1,5 @@
 import { Command } from '@oclif/command';
+import { ExitError } from '@oclif/errors';
 import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
@@ -92,6 +93,7 @@ export abstract class BaseCommand extends Command {
 			await sleep(100); // give any in-flight query some time to finish
 			await Db.connection.destroy();
 		}
-		this.exit(error ? 1 : 0);
+		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
+		this.exit(exitCode);
 	}
 }
