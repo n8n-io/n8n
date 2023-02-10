@@ -2,9 +2,9 @@ name: End-to-End tests parallel
 run-name: Parallel E2E Tests ${{ inputs.branch }} - ${{ inputs.user }}
 
 on:
-  push:
-    branches:
-      - "parallel_e2e"
+  # push:
+  #   branches:
+  #     - "parallel_e2e"
   repository_dispatch:
     types: [slack_command]
   workflow_dispatch:
