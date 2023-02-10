@@ -23,6 +23,21 @@ on:
         required: false
         default: 'browsers:node16.18.0-chrome90-ff88'
         type: string
+      record:
+        description: 'Record test run.'
+        required: false
+        default: true
+        type: boolean
+      parallel:
+        description: 'Run tests in parallel.'
+        required: false
+        default: true
+        type: boolean
+      containers:
+        description: 'Number of containers to run tests in.'
+        required: false
+        default: '[1, 2, 3, 4, 5, 6]'
+        type: string
     secrets:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
@@ -78,7 +93,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containers: [1, 2, 3, 4, 5, 6]
+        containers: ${{ fromJSON(inputs.containers) }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -105,8 +120,8 @@ jobs:
           start: pnpm start
           wait-on: 'http://localhost:5678' # Waits for above
           wait-on-timeout: 120 #
-          record: true
-          parallel: true # Runs test in parallel using settings above
+          record: ${{ inputs.record }}
+          parallel: ${{ inputs.parallel }} # Runs test in parallel using settings above
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: '${{ github.sha }}-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.run-env }}-e2e'

@@ -12,6 +12,9 @@ jobs:
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
       run-env: base:16.18.1
+      record: false
+      parallel: false
+      containers: '[1]'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
   e2e-node-14:
@@ -22,6 +25,9 @@ jobs:
       user: ${{ github.event.inputs.user || 'schedule' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
       run-env: base:14.21.1
+      record: false
+      parallel: false
+      containers: '[1]'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
