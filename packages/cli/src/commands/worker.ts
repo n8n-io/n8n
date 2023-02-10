@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
@@ -219,10 +218,6 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
-		// Make sure that n8n shuts down gracefully if possible
-		process.once('SIGTERM', this.stopProcess);
-		process.once('SIGINT', this.stopProcess);
-
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.debug('Starting n8n worker...');
