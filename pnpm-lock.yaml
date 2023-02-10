@@ -148,6 +148,7 @@ importers:
       '@types/syslog-client': ^1.1.2
       '@types/uuid': ^8.3.2
       '@types/validator': ^13.7.0
+      '@types/ws': ^8.5.4
       '@types/yamljs': ^0.2.31
       axios: ^0.21.1
       basic-auth: ^2.0.1
@@ -236,6 +237,7 @@ importers:
       uuid: ^8.3.2
       validator: 13.7.0
       winston: ^3.3.3
+      ws: ^8.12.0
       yamljs: ^0.3.0
     dependencies:
       '@n8n_io/license-sdk': 1.8.0
@@ -324,6 +326,7 @@ importers:
       uuid: 8.3.2
       validator: 13.7.0
       winston: 3.8.2
+      ws: 8.12.0
       yamljs: 0.3.0
     devDependencies:
       '@apidevtools/swagger-cli': 4.0.0
@@ -364,6 +367,7 @@ importers:
       '@types/syslog-client': 1.1.2
       '@types/uuid': 8.3.4
       '@types/validator': 13.7.7
+      '@types/ws': 8.5.4
       '@types/yamljs': 0.2.31
       chokidar: 3.5.2
       concurrently: 5.3.0
@@ -6481,6 +6485,12 @@ packages:
       '@types/node': 16.18.12
       '@types/webidl-conversions': 7.0.0
     dev: false
+
+  /@types/ws/8.5.4:
+    resolution: {integrity: sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==}
+    dependencies:
+      '@types/node': 16.18.12
+    dev: true
 
   /@types/xml2js/0.4.11:
     resolution: {integrity: sha512-JdigeAKmCyoJUiQljjr7tQG3if9NkqGUgwEUqBvV0N7LM4HyQk7UXCnusRa1lnvXAEYJ8mw8GtZWioagNztOwA==}
@@ -22840,7 +22850,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-    dev: true
 
   /x-default-browser/0.4.0:
     resolution: {integrity: sha512-7LKo7RtWfoFN/rHx1UELv/2zHGMx8MkZKDq1xENmOCTkfIqZJ0zZ26NEJX8czhnPXVcqS0ARjjfJB+eJ0/5Cvw==}

@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
-import { Command, flags } from '@oclif/command';
-
+import { flags } from '@oclif/command';
 import type { IDataObject } from 'n8n-workflow';
-
 import * as Db from '@/Db';
+import { BaseCommand } from '../BaseCommand';
 
-export class ListWorkflowCommand extends Command {
+export class ListWorkflowCommand extends BaseCommand {
 	static description = '\nList workflows';
 
 	static examples = [
@@ -25,7 +22,6 @@ export class ListWorkflowCommand extends Command {
 		}),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ListWorkflowCommand);
@@ -34,28 +30,23 @@ export class ListWorkflowCommand extends Command {
 			this.error('The --active flag has to be passed using true or false');
 		}
 
-		try {
-			await Db.init();
-
-			const findQuery: IDataObject = {};
-			if (flags.active !== undefined) {
-				findQuery.active = flags.active === 'true';
-			}
-
-			const workflows = await Db.collections.Workflow.find(findQuery);
-			if (flags.onlyId) {
-				workflows.forEach((workflow) => console.log(workflow.id));
-			} else {
-				workflows.forEach((workflow) => console.log(`${workflow.id}|${workflow.name}`));
-			}
-		} catch (e) {
-			console.error('\nGOT ERROR');
-			console.log('====================================');
-			console.error(e.message);
-			console.error(e.stack);
-			this.exit(1);
+		const findQuery: IDataObject = {};
+		if (flags.active !== undefined) {
+			findQuery.active = flags.active === 'true';
 		}
 
-		this.exit();
+		const workflows = await Db.collections.Workflow.find(findQuery);
+		if (flags.onlyId) {
+			workflows.forEach((workflow) => this.logger.info(workflow.id));
+		} else {
+			workflows.forEach((workflow) => this.logger.info(`${workflow.id}|${workflow.name}`));
+		}
+	}
+
+	async catch(error: Error) {
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
 	}
 }
