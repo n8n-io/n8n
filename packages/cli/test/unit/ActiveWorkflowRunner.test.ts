@@ -21,7 +21,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
  * TODO:
  * - test workflow webhooks activation (that trigger `executeWebhook`and other webhook methods)
  * - test activation error catching and getters such as `getActivationError` (requires building a workflow that fails to activate)
- *
+ * - test queued workflow activation functions (might need to create a non-working workflow to test this)
  */
 
 let databaseActiveWorkflowsCount = 0;
