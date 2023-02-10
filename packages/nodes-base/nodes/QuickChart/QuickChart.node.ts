@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestOptions,
@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { CHART_TYPE_OPTIONS, HORIZONTAL_CHARTS, ITEM_STYLE_CHARTS } from './constants';
-import { IDataset } from './types';
+import type { IDataset } from './types';
 
 import _ from 'lodash';
 export class QuickChart implements INodeType {
@@ -280,7 +280,8 @@ export class QuickChart implements INodeType {
 		if (HORIZONTAL_CHARTS.includes(chartType)) {
 			const horizontal = this.getNodeParameter('horizontal', 0) as boolean;
 			if (horizontal) {
-				chartType = 'horizontal' + chartType[0].toUpperCase() + chartType.substring(1, chartType.length);
+				chartType =
+					'horizontal' + chartType[0].toUpperCase() + chartType.substring(1, chartType.length);
 			}
 		}
 
@@ -359,7 +360,11 @@ export class QuickChart implements INodeType {
 		return this.prepareOutputData([
 			{
 				binary: {
-					[output]: await this.helpers.prepareBinaryData(response.body, undefined, mimeType),
+					[output]: await this.helpers.prepareBinaryData(
+						response.body as Buffer,
+						undefined,
+						mimeType,
+					),
 				},
 				json: {},
 			},
