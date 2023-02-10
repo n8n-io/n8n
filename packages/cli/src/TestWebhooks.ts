@@ -14,14 +14,15 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
-import * as Push from '@/Push';
+import type { Push } from '@/push';
+import { getPushInstance } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
-export class TestWebhooks {
+class TestWebhooks {
 	private testWebhookData: {
 		[key: string]: {
 			sessionId?: string;
@@ -32,18 +33,14 @@ export class TestWebhooks {
 		};
 	} = {};
 
-	private activeWebhooks: ActiveWebhooks | null = null;
-
-	constructor() {
-		this.activeWebhooks = new ActiveWebhooks();
-		this.activeWebhooks.testWebhooks = true;
+	constructor(private activeWebhooks: ActiveWebhooks, private push: Push) {
+		activeWebhooks.testWebhooks = true;
 	}
 
 	/**
 	 * Executes a test-webhook and returns the data. It also makes sure that the
 	 * data gets additionally send to the UI. After the request got handled it
 	 * automatically remove the test-webhook.
-	 *
 	 */
 	async callTestWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -59,14 +56,16 @@ export class TestWebhooks {
 			path = path.slice(0, -1);
 		}
 
-		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
+		const { activeWebhooks, push, testWebhookData } = this;
+
+		let webhookData: IWebhookData | undefined = activeWebhooks.get(httpMethod, path);
 
 		// check if path is dynamic
 		if (webhookData === undefined) {
 			const pathElements = path.split('/');
 			const webhookId = pathElements.shift();
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			webhookData = this.activeWebhooks!.get(httpMethod, pathElements.join('/'), webhookId);
+			webhookData = activeWebhooks.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.NotFoundError(
@@ -85,14 +84,15 @@ export class TestWebhooks {
 			});
 		}
 
-		const webhookKey = `${this.activeWebhooks!.getWebhookKey(
+		const { workflowId } = webhookData;
+		const webhookKey = `${activeWebhooks.getWebhookKey(
 			webhookData.httpMethod,
 			webhookData.path,
 			webhookData.webhookId,
-		)}|${webhookData.workflowId}`;
+		)}|${workflowId}`;
 
 		// TODO: Clean that duplication up one day and improve code generally
-		if (this.testWebhookData[webhookKey] === undefined) {
+		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
 			throw new ResponseHelper.NotFoundError(
 				`The requested webhook "${httpMethod} ${path}" is not registered.`,
@@ -100,7 +100,8 @@ export class TestWebhooks {
 			);
 		}
 
-		const { workflow } = this.testWebhookData[webhookKey];
+		const { destinationNode, sessionId, workflow, workflowData, timeout } =
+			testWebhookData[webhookKey];
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -116,61 +117,46 @@ export class TestWebhooks {
 				const executionId = await WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData!,
-					this.testWebhookData[webhookKey].workflowData,
+					workflowData,
 					workflowStartNode,
 					executionMode,
-					this.testWebhookData[webhookKey].sessionId,
+					sessionId,
 					undefined,
 					undefined,
 					request,
 					response,
 					(error: Error | null, data: IResponseCallbackData) => {
-						if (error !== null) {
-							return reject(error);
-						}
-						resolve(data);
+						if (error !== null) reject(error);
+						else resolve(data);
 					},
-					this.testWebhookData[webhookKey].destinationNode,
+					destinationNode,
 				);
 
-				if (executionId === undefined) {
-					// The workflow did not run as the request was probably setup related
-					// or a ping so do not resolve the promise and wait for the real webhook
-					// request instead.
-					return;
-				}
+				// The workflow did not run as the request was probably setup related
+				// or a ping so do not resolve the promise and wait for the real webhook
+				// request instead.
+				if (executionId === undefined) return;
 
 				// Inform editor-ui that webhook got received
-				if (this.testWebhookData[webhookKey].sessionId !== undefined) {
-					const pushInstance = Push.getInstance();
-					pushInstance.send(
-						'testWebhookReceived',
-						{ workflowId: webhookData!.workflowId, executionId },
-						this.testWebhookData[webhookKey].sessionId,
-					);
+				if (sessionId !== undefined) {
+					push.send('testWebhookReceived', { workflowId, executionId }, sessionId);
 				}
-			} catch (error) {
+			} finally {
 				// Delete webhook also if an error is thrown
-			}
+				if (timeout) clearTimeout(timeout);
+				delete testWebhookData[webhookKey];
 
-			// Remove the webhook
-			if (this.testWebhookData[webhookKey]) {
-				clearTimeout(this.testWebhookData[webhookKey].timeout);
-				delete this.testWebhookData[webhookKey];
+				await activeWebhooks.removeWorkflow(workflow);
 			}
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			this.activeWebhooks!.removeWorkflow(workflow);
 		});
 	}
 
 	/**
 	 * Gets all request methods associated with a single test webhook
-	 * @param path webhook path
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhookMethods: string[] = this.activeWebhooks!.getWebhookMethods(path);
-
-		if (webhookMethods === undefined) {
+		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
+		if (!webhookMethods.length) {
 			// The requested webhook is not registered
 			throw new ResponseHelper.NotFoundError(
 				`The requested webhook "${path}" is not registered.`,
@@ -182,10 +168,8 @@ export class TestWebhooks {
 	}
 
 	/**
-	 * Checks if it has to wait for webhook data to execute the workflow. If yes it waits
-	 * for it and resolves with the result of the workflow if not it simply resolves
-	 * with undefined
-	 *
+	 * Checks if it has to wait for webhook data to execute the workflow.
+	 * If yes it waits for it and resolves with the result of the workflow if not it simply resolves with undefined
 	 */
 	async needsWebhookData(
 		workflowData: IWorkflowDb,
@@ -216,11 +200,13 @@ export class TestWebhooks {
 			this.cancelTestWebhook(workflowData.id);
 		}, 120000);
 
+		const { activeWebhooks, testWebhookData } = this;
+
 		let key: string;
 		const activatedKey: string[] = [];
 		// eslint-disable-next-line no-restricted-syntax
 		for (const webhookData of webhooks) {
-			key = `${this.activeWebhooks!.getWebhookKey(
+			key = `${activeWebhooks.getWebhookKey(
 				webhookData.httpMethod,
 				webhookData.path,
 				webhookData.webhookId,
@@ -228,7 +214,7 @@ export class TestWebhooks {
 
 			activatedKey.push(key);
 
-			this.testWebhookData[key] = {
+			testWebhookData[key] = {
 				sessionId,
 				timeout,
 				workflow,
@@ -238,11 +224,11 @@ export class TestWebhooks {
 
 			try {
 				// eslint-disable-next-line no-await-in-loop
-				await this.activeWebhooks!.add(workflow, webhookData, mode, activation);
+				await activeWebhooks.add(workflow, webhookData, mode, activation);
 			} catch (error) {
-				activatedKey.forEach((deleteKey) => delete this.testWebhookData[deleteKey]);
+				activatedKey.forEach((deleteKey) => delete testWebhookData[deleteKey]);
 				// eslint-disable-next-line no-await-in-loop
-				await this.activeWebhooks!.removeWorkflow(workflow);
+				await activeWebhooks.removeWorkflow(workflow);
 				throw error;
 			}
 		}
@@ -256,40 +242,34 @@ export class TestWebhooks {
 	 */
 	cancelTestWebhook(workflowId: string): boolean {
 		let foundWebhook = false;
+		const { activeWebhooks, push, testWebhookData } = this;
 		// eslint-disable-next-line no-restricted-syntax
-		for (const webhookKey of Object.keys(this.testWebhookData)) {
-			const webhookData = this.testWebhookData[webhookKey];
+		for (const webhookKey of Object.keys(testWebhookData)) {
+			const { sessionId, timeout, workflow, workflowData } = testWebhookData[webhookKey];
 
-			if (webhookData.workflowData.id !== workflowId) {
+			if (workflowData.id !== workflowId) {
 				// eslint-disable-next-line no-continue
 				continue;
 			}
 
-			clearTimeout(this.testWebhookData[webhookKey].timeout);
+			clearTimeout(timeout);
 
 			// Inform editor-ui that webhook got received
-			if (this.testWebhookData[webhookKey].sessionId !== undefined) {
+			if (sessionId !== undefined) {
 				try {
-					const pushInstance = Push.getInstance();
-					pushInstance.send(
-						'testWebhookDeleted',
-						{ workflowId },
-						this.testWebhookData[webhookKey].sessionId,
-					);
-				} catch (error) {
+					push.send('testWebhookDeleted', { workflowId }, sessionId);
+				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}
 			}
 
-			const { workflow } = this.testWebhookData[webhookKey];
-
 			// Remove the webhook
-			delete this.testWebhookData[webhookKey];
+			delete testWebhookData[webhookKey];
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				this.activeWebhooks!.removeWorkflow(workflow);
+				activeWebhooks.removeWorkflow(workflow);
 			}
 
 			foundWebhook = true;
@@ -302,18 +282,7 @@ export class TestWebhooks {
 	 * Removes all the currently active test webhooks
 	 */
 	async removeAll(): Promise<void> {
-		if (this.activeWebhooks === null) {
-			return;
-		}
-
-		let workflow: Workflow;
-		const workflows: Workflow[] = [];
-		// eslint-disable-next-line no-restricted-syntax
-		for (const webhookKey of Object.keys(this.testWebhookData)) {
-			workflow = this.testWebhookData[webhookKey].workflow;
-			workflows.push(workflow);
-		}
-
+		const workflows = Object.values(this.testWebhookData).map(({ workflow }) => workflow);
 		return this.activeWebhooks.removeAll(workflows);
 	}
 }
@@ -322,7 +291,7 @@ let testWebhooksInstance: TestWebhooks | undefined;
 
 export function getInstance(): TestWebhooks {
 	if (testWebhooksInstance === undefined) {
-		testWebhooksInstance = new TestWebhooks();
+		testWebhooksInstance = new TestWebhooks(new ActiveWebhooks(), getPushInstance());
 	}
 
 	return testWebhooksInstance;
