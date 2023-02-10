@@ -31,8 +31,6 @@ importers:
       '@types/jest': ^29.2.2
       '@types/supertest': ^2.0.12
       cross-env: ^7.0.3
-      cypress: ^10.0.3
-      cypress-real-events: ^1.7.6
       jest: ^29.4.2
       jest-environment-jsdom: ^29.4.2
       jest-mock: ^29.4.2
@@ -42,7 +40,6 @@ importers:
       prettier: ^2.8.3
       rimraf: ^3.0.2
       run-script-os: ^1.0.7
-      start-server-and-test: ^1.14.0
       supertest: ^6.3.3
       ts-jest: ^29.0.5
       tsc-watch: ^6.0.0
@@ -55,8 +52,6 @@ importers:
       '@types/jest': 29.2.2
       '@types/supertest': 2.0.12
       cross-env: 7.0.3
-      cypress: 10.11.0
-      cypress-real-events: 1.7.6_cypress@10.11.0
       jest: 29.4.2
       jest-environment-jsdom: 29.4.2
       jest-mock: 29.4.2
@@ -65,11 +60,24 @@ importers:
       prettier: 2.8.3
       rimraf: 3.0.2
       run-script-os: 1.1.6
-      start-server-and-test: 1.14.0
       supertest: 6.3.3
       ts-jest: 29.0.5_pa4ebk5usulsg7iw3zwjv5figy
       tsc-watch: 6.0.0_typescript@4.9.4
       turbo: 1.7.4
+
+  e2e:
+    specifiers:
+      '@n8n_io/eslint-config': ''
+      cypress: ^10.0.3
+      cypress-real-events: ^1.7.6
+      eslint-plugin-cypress: ^2.12.1
+      start-server-and-test: ^1.15.3
+    devDependencies:
+      '@n8n_io/eslint-config': link:../packages/@n8n_io/eslint-config
+      cypress: 10.11.0
+      cypress-real-events: 1.7.6_cypress@10.11.0
+      eslint-plugin-cypress: 2.12.1_eslint@8.28.0
+      start-server-and-test: 1.15.3
 
   packages/@n8n_io/eslint-config:
     specifiers:
@@ -81,7 +89,6 @@ importers:
       eslint-config-airbnb-typescript: ~17.0
       eslint-config-prettier: ~8.5
       eslint-import-resolver-typescript: ~3.5
-      eslint-plugin-cypress: ^2.12.1
       eslint-plugin-diff: ~2.0
       eslint-plugin-import: ~2.26
       eslint-plugin-n8n-local-rules: ~1.0
@@ -96,7 +103,6 @@ importers:
       eslint-config-airbnb-typescript: 17.0.0_twozqnrpw2n42bn4rzkw5rgv4m
       eslint-config-prettier: 8.5.0_eslint@8.28.0
       eslint-import-resolver-typescript: 3.5.2_ktrec6dplf4now6nlbc6d67jee
-      eslint-plugin-cypress: 2.12.1_eslint@8.28.0
       eslint-plugin-diff: 2.0.1_eslint@8.28.0
       eslint-plugin-import: 2.26.0_xmouedd5rhgbah4737x2hltudq
       eslint-plugin-n8n-local-rules: 1.0.0
@@ -3844,7 +3850,7 @@ packages:
       debug: 4.3.4
       globby: 11.1.0
       is-wsl: 2.2.0
-      tslib: 2.4.0
+      tslib: 2.5.0
     transitivePeerDependencies:
       - supports-color
 
@@ -3857,7 +3863,7 @@ packages:
       debug: 4.3.4_supports-color@8.1.1
       globby: 11.1.0
       is-wsl: 2.2.0
-      tslib: 2.4.0
+      tslib: 2.5.0
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -3982,7 +3988,7 @@ packages:
       '@oclif/errors': 1.3.6
       '@oclif/linewrap': 1.0.0
       chalk: 4.1.2
-      tslib: 2.4.0
+      tslib: 2.5.0
 
   /@oclif/plugin-help/3.2.18:
     resolution: {integrity: sha512-5n5Pkz4L0duknIvFwx2Ko9Xda3miT6RZP8bgaaK3Q/9fzVBrhi4bOM0u05/OThI6V+3NsSdxYS2o1NLcXToWDg==}
@@ -7415,6 +7421,10 @@ packages:
     dev: false
     optional: true
 
+  /arg/5.0.2:
+    resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
+    dev: true
+
   /argparse/1.0.10:
     resolution: {integrity: sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg==}
     dependencies:
@@ -7830,6 +7840,7 @@ packages:
       follow-redirects: 1.15.2_debug@4.3.2
     transitivePeerDependencies:
       - debug
+    dev: false
 
   /axios/0.27.2:
     resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
@@ -7848,6 +7859,15 @@ packages:
     transitivePeerDependencies:
       - debug
     dev: false
+
+  /axios/0.27.2_debug@4.3.4:
+    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
+    dependencies:
+      follow-redirects: 1.15.2_debug@4.3.4
+      form-data: 4.0.0
+    transitivePeerDependencies:
+      - debug
+    dev: true
 
   /axios/1.1.3:
     resolution: {integrity: sha512-00tXVRwKx/FZr/IDVFt4C+f9FYairX517WoGCL6dpOntqLkZofjhu43F/Xl44UOpqa+9sLFDrG/XAnFsUYgkDA==}
@@ -8951,7 +8971,7 @@ packages:
       strip-ansi: 6.0.1
       supports-color: 8.1.1
       supports-hyperlinks: 2.3.0
-      tslib: 2.4.0
+      tslib: 2.5.0
     transitivePeerDependencies:
       - '@oclif/config'
     dev: true
@@ -10082,6 +10102,7 @@ packages:
         optional: true
     dependencies:
       ms: 2.1.2
+    dev: false
 
   /debug/4.3.4:
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
@@ -11979,6 +12000,19 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.2
+    dev: false
+
+  /follow-redirects/1.15.2_debug@4.3.4:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+    dependencies:
+      debug: 4.3.4
+    dev: true
 
   /for-each/0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -15125,7 +15159,7 @@ packages:
       log-update: 4.0.0
       p-map: 4.0.0
       rfdc: 1.3.0
-      rxjs: 7.5.7
+      rxjs: 7.8.0
       through: 2.3.8
       wrap-ansi: 7.0.0
     dev: true
@@ -18161,10 +18195,6 @@ packages:
     resolution: {integrity: sha512-jmYNElW7yvO7TV33CjSmvSiE2yco3bV2czu/OzDKdMNVZQWfxCblURLhf+47syQRBntjfLdd/H0egrzIG+oaFQ==}
     dev: true
 
-  /punycode/2.1.1:
-    resolution: {integrity: sha512-XRsRjdf+j5ml+y/6GKHPZbrF/8p2Yga0JPtdqTIY2Xe5ohJPD9saDJJLPvp9+NSBprVvevdXZybnj2cv8OEd0A==}
-    engines: {node: '>=6'}
-
   /punycode/2.2.0:
     resolution: {integrity: sha512-LN6QV1IJ9ZhxWTNdktaPClrNfp8xdSAYS0Zk2ddX7XsXZAxckMHPCBcHRo0cTcEIgYPRiGEkmji3Idkh2yFtYw==}
     engines: {node: '>=6'}
@@ -19005,8 +19035,8 @@ packages:
     dependencies:
       tslib: 1.14.1
 
-  /rxjs/7.5.7:
-    resolution: {integrity: sha512-z9MzKh/UcOqB3i20H6rtrlaE/CgjLOvheWK/9ILrbhROGTweAi1BaFsTT9FbwZi5Trr1qNRs+MXkhmR06awzQA==}
+  /rxjs/7.8.0:
+    resolution: {integrity: sha512-F2+gxDshqmIub1KdvZkaEfGDwLNpPvk9Fs6LD/MyQxNgMds/WH9OdDDXOmxUZpME+iSK3rQCctkL0DYyytUqMg==}
     dependencies:
       tslib: 2.5.0
     dev: true
@@ -19870,18 +19900,19 @@ packages:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
     dev: false
 
-  /start-server-and-test/1.14.0:
-    resolution: {integrity: sha512-on5ELuxO2K0t8EmNj9MtVlFqwBMxfWOhu4U7uZD1xccVpFlOQKR93CSe0u98iQzfNxRyaNTb/CdadbNllplTsw==}
+  /start-server-and-test/1.15.3:
+    resolution: {integrity: sha512-4GqkqghvUR9cJ8buvtgkyT0AHgVwCJ5EN8eDEhe9grTChGwWUxGm2nqfSeE9+0PZkLRdFqcwTwxVHe1y3ViutQ==}
     engines: {node: '>=6'}
     hasBin: true
     dependencies:
+      arg: 5.0.2
       bluebird: 3.7.2
       check-more-types: 2.24.0
-      debug: 4.3.2
+      debug: 4.3.4
       execa: 5.1.1
       lazy-ass: 1.6.0
       ps-tree: 1.2.0
-      wait-on: 6.0.0_debug@4.3.2
+      wait-on: 7.0.1_debug@4.3.4
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -20482,7 +20513,7 @@ packages:
       jsbi: 4.3.0
       native-duplexpair: 1.0.0
       node-abort-controller: 3.0.1
-      punycode: 2.1.1
+      punycode: 2.2.0
       sprintf-js: 1.1.2
     transitivePeerDependencies:
       - supports-color
@@ -20796,7 +20827,7 @@ packages:
     engines: {node: '>=0.8'}
     dependencies:
       psl: 1.9.0
-      punycode: 2.1.1
+      punycode: 2.2.0
 
   /tough-cookie/3.0.1:
     resolution: {integrity: sha512-yQyJ0u4pZsv9D4clxO69OEjLWYw+jbgspjTue4lTQZLfV0c5l1VmK2y1JK8E9ahdpltPOaAThPcp5nKPUgSnsg==}
@@ -20804,7 +20835,7 @@ packages:
     dependencies:
       ip-regex: 2.1.0
       psl: 1.9.0
-      punycode: 2.1.1
+      punycode: 2.2.0
     dev: false
 
   /tough-cookie/4.1.2:
@@ -22441,16 +22472,16 @@ packages:
       xml-name-validator: 4.0.0
     dev: true
 
-  /wait-on/6.0.0_debug@4.3.2:
-    resolution: {integrity: sha512-tnUJr9p5r+bEYXPUdRseolmz5XqJTTj98JgOsfBn7Oz2dxfE2g3zw1jE+Mo8lopM3j3et/Mq1yW7kKX6qw7RVw==}
-    engines: {node: '>=10.0.0'}
+  /wait-on/7.0.1_debug@4.3.4:
+    resolution: {integrity: sha512-9AnJE9qTjRQOlTZIldAaf/da2eW0eSRSgcqq85mXQja/DW3MriHxkpODDSUEg+Gri/rKEcXUZHe+cevvYItaog==}
+    engines: {node: '>=12.0.0'}
     hasBin: true
     dependencies:
-      axios: 0.21.4_debug@4.3.2
+      axios: 0.27.2_debug@4.3.4
       joi: 17.7.0
       lodash: 4.17.21
       minimist: 1.2.7
-      rxjs: 7.5.7
+      rxjs: 7.8.0
     transitivePeerDependencies:
       - debug
     dev: true

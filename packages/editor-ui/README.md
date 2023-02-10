@@ -41,7 +41,7 @@ pnpm lint
 ### Run your end-to-end tests
 
 ```
-pnpm test:e2e
+pnpm --filter=e2e test:all
 ```
 
 ### Run your unit tests

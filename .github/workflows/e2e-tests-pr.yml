@@ -46,8 +46,8 @@ jobs:
 
       - name: Test E2E
         run: |
-          pnpm cypress:install
-          pnpm test:e2e:all
+          pnpm --filter=e2e cypress:install
+          pnpm --filter=e2e test:all
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -55,5 +55,5 @@ jobs:
         with:
           name: cypress-screenshots
           path: |
-            cypress/screenshots
+            e2e/cypress/screenshots
           retention-days: 1

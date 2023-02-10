@@ -1,0 +1,23 @@
+{
+	"name": "e2e",
+	"private": true,
+	"devDependencies": {
+		"@n8n_io/eslint-config": "",
+		"cypress": "^10.0.3",
+		"cypress-real-events": "^1.7.6",
+		"eslint-plugin-cypress": "^2.12.1",
+		"start-server-and-test": "^1.15.3"
+	},
+	"scripts": {
+		"format": "prettier --write . --ignore-path ../.prettierignore",
+		"lint": "eslint --quiet cypress/**/*.ts",
+		"lintfix": "eslint --fix cypress/**/*.ts",
+		"cypress:install": "cypress install",
+		"cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
+		"start": "../packages/cli/bin/n8n",
+		"test:open-ui": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress open'",
+		"test:dev": "cross-env E2E_TESTS=true CYPRESS_BASE_URL=http://localhost:8080 start-server-and-test dev http://localhost:8080/favicon.ico 'cypress open'",
+		"test:smoke": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"'",
+		"test:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
+	}
+}

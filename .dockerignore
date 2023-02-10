@@ -7,6 +7,7 @@ packages/node-dev
 packages/**/node_modules
 packages/**/dist
 packages/**/.turbo
+cypress
 .git
 .github
 *.tsbuildinfo

@@ -1,3 +1,4 @@
 packages:
+  - e2e
   - packages/*
   - packages/@n8n_io/*
