@@ -31,9 +31,11 @@
     "test:e2e:ui": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress open'",
     "test:e2e:dev": "cross-env E2E_TESTS=true CYPRESS_BASE_URL=http://localhost:8080 start-server-and-test dev http://localhost:8080/favicon.ico 'cypress open'",
     "test:e2e:smoke": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"'",
-    "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
+    "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'currents run --record --key V27C8FDX1qmBPBPW --ci-build-id local-test-run --group local-run'"
   },
   "dependencies": {
+    "@currents/cli": "^4.0.2",
+    "cy2": "^4.0.6",
     "n8n": "*"
   },
   "devDependencies": {

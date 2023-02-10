@@ -37,26 +37,26 @@ jobs:
   e2e-node-16:
     name: E2E[Electron/Node 16]
     # TODO: Change to master branch before merge
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e_sorry_cy
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
       # TODO: Change to master branch before merge
-      branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
+      branch: ${{ github.event.inputs.branch || 'parallel_e2e_sorry_cy' }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
       run-env: base:16.18.1
     secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
   e2e-node-14:
     name: E2E[Electron/Node 14]
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e_sorry_cy
     with:
-      branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
+      branch: ${{ github.event.inputs.branch || 'parallel_e2e_sorry_cy' }}
       user: ${{ github.event.inputs.user || 'schedule' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
       run-env: base:14.21.1
     secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
 
   calls-success-url-notify:
     name: Calls success URL and notifies

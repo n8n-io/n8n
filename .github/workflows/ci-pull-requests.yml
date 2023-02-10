@@ -5,7 +5,7 @@ on: [pull_request]
 jobs:
   e2e-node-16:
     name: E2E[Electron/Node 16]
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e_sorry_cy
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
       branch: ${{ github.event.pull_request.base.ref }}
@@ -16,10 +16,10 @@ jobs:
       parallel: false
       containers: '[1]'
     secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
   e2e-node-14:
     name: E2E[Electron/Node 14]
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e_sorry_cy
     with:
       branch: ${{ github.event.pull_request.base.ref }}
       user: ${{ github.event.inputs.user || 'schedule' }}
@@ -29,7 +29,7 @@ jobs:
       parallel: false
       containers: '[1]'
     secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
 
   lint:
     runs-on: ubuntu-latest
