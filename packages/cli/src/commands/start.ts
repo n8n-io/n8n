@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/await-thenable */
-/* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import path from 'path';
@@ -199,10 +198,6 @@ export class Start extends BaseCommand {
 	}
 
 	async init() {
-		// Make sure that n8n shuts down gracefully if possible
-		process.once('SIGTERM', this.stopProcess);
-		process.once('SIGINT', this.stopProcess);
-
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
