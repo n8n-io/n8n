@@ -62,6 +62,6 @@ export const postgresMigrations = [
 	MessageEventBusDestinations1671535397530,
 	DeleteExecutionsWithWorkflows1673268682475,
 	CreateLdapEntities1674509946020,
-	PurgeInvalidWorkflowConnections1675940580449
+	PurgeInvalidWorkflowConnections1675940580449,
 	AddStatusToExecutions1674138566000,
 ];
