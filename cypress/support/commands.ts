@@ -225,7 +225,7 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, pos) => {
+Cypress.Commands.add('drag', (selector, pos, options) => {
 	const [xDiff, yDiff] = pos;
 	const element = cy.get(selector);
 	element.should('exist');
@@ -235,8 +235,8 @@ Cypress.Commands.add('drag', (selector, pos) => {
 	element.trigger('mousedown');
 	element.trigger('mousemove', {
 		which: 1,
-		pageX: originalLocation.right + xDiff,
-		pageY: originalLocation.top + yDiff,
+		pageX: options?.abs? xDiff: originalLocation.right + xDiff,
+		pageY: options?.abs? yDiff: originalLocation.top + yDiff,
 		force: true,
 	});
 	element.trigger('mouseup', { force: true });
