@@ -35,8 +35,8 @@ export abstract class BaseCommand extends Command {
 	async init(): Promise<void> {
 		await initErrorHandling();
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		this.stopProcess = this.stopProcess.bind(this);
+		process.once('SIGTERM', async () => this.stopProcess());
+		process.once('SIGINT', async () => this.stopProcess());
 
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
