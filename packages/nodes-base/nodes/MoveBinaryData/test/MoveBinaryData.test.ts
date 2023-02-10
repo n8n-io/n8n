@@ -22,7 +22,93 @@ describe('Test Move Binary Data Node', () => {
 				workflowData: workflow,
 			},
 			output: {
-				nodeData: {},
+				nodeData: {
+					'Binary to JSON': [
+						[
+							{
+								json: {
+									id: 1,
+									title: 'My Title',
+									description: 'Lorem Ipsum ...',
+								},
+							},
+						],
+					],
+					'Binary to JSON - No Set All Data': [
+						[
+							{
+								json: {
+									data: '{\n\t"id": 1,\n\t"title": "My Title",\n\t"description": "Lorem Ipsum ..."\n}',
+								},
+							},
+						],
+					],
+					'Binary to JSON - No Set All Data + Json Parse': [
+						[
+							{
+								json: {
+									data: {
+										id: 1,
+										title: 'My Title',
+										description: 'Lorem Ipsum ...',
+									},
+								},
+							},
+						],
+					],
+					'Binary to JSON - No Set All Data + Encoding base64': [
+						[
+							{
+								json: {
+									data: 'ewoJImlkIjogMSwKCSJ0aXRsZSI6ICJNeSBUaXRsZSIsCgkiZGVzY3JpcHRpb24iOiAiTG9yZW0gSXBzdW0gLi4uIgp9',
+								},
+							},
+						],
+					],
+					'Binary to JSON - Keep as Base64': [
+						[
+							{
+								json: {
+									data: 'ewoJImlkIjogMSwKCSJ0aXRsZSI6ICJNeSBUaXRsZSIsCgkiZGVzY3JpcHRpb24iOiAiTG9yZW0gSXBzdW0gLi4uIgp9',
+								},
+							},
+						],
+					],
+					'JSON to Binary': [
+						[
+							{
+								json: {},
+								binary: {
+									data: {
+										data: 'eyJpZCI6MSwidGl0bGUiOiJNeSBUaXRsZSIsImRlc2NyaXB0aW9uIjoiTG9yZW0gSXBzdW0gLi4uIn0=',
+										mimeType: 'application/json',
+										fileType: 'json',
+										fileSize: '59 B',
+									},
+								},
+							},
+						],
+					],
+					'JSON to Binary - No Convert All Data': [
+						[
+							{
+								json: {
+									id: 1,
+									description: 'Lorem Ipsum ...',
+								},
+								binary: {
+									data: {
+										data: 'Ik15IFRpdGxlIg==',
+										mimeType: 'application/json',
+										fileType: 'json',
+										fileSize: '10 B',
+										fileName: 'example.json',
+									},
+								},
+							},
+						],
+					],
+				},
 			},
 		},
 	];
