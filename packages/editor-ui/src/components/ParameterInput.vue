@@ -87,6 +87,7 @@
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
+					:disableExpressionCompletions="!isHtmlNode(node)"
 					@valueChanged="valueChangedDebounced"
 				/>
 

@@ -1,37 +1,11 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, UserSettings } from 'n8n-core';
-import { Command, flags } from '@oclif/command';
-
-import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { flags } from '@oclif/command';
+import { LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
 import * as ActiveExecutions from '@/ActiveExecutions';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
-import * as Db from '@/Db';
-import { ExternalHooks } from '@/ExternalHooks';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { WebhookServer } from '@/WebhookServer';
-import { getLogger } from '@/Logger';
-import { initErrorHandling } from '@/ErrorReporting';
-import * as CrashJournal from '@/CrashJournal';
+import { BaseCommand } from './BaseCommand';
 
-const exitWithCrash = async (message: string, error: unknown) => {
-	ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
-	await sleep(2000);
-	process.exit(1);
-};
-
-const exitSuccessFully = async () => {
-	try {
-		await CrashJournal.cleanup();
-	} finally {
-		process.exit();
-	}
-};
-
-export class Webhook extends Command {
+export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 
 	static examples = ['$ n8n webhook'];
@@ -45,18 +19,16 @@ export class Webhook extends Command {
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	static async stopProcess() {
+	async stopProcess() {
 		LoggerProxy.info('\nStopping n8n...');
 
 		try {
-			const externalHooks = ExternalHooks();
-			await externalHooks.run('n8n.stop', []);
+			await this.externalHooks.run('n8n.stop', []);
 
 			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				await exitSuccessFully();
+				await this.exitSuccessFully();
 			}, 30000);
 
 			// Wait for active workflow executions to finish
@@ -75,14 +47,13 @@ export class Webhook extends Command {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 		} catch (error) {
-			await exitWithCrash('There was an error shutting down n8n.', error);
+			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		await exitSuccessFully();
+		await this.exitSuccessFully();
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async run() {
+	async init() {
 		if (config.getEnv('executions.mode') !== 'queue') {
 			/**
 			 * It is technically possible to run without queues but
@@ -99,56 +70,19 @@ export class Webhook extends Command {
 			this.error('Webhook processes can only run with execution mode as queue.');
 		}
 
-		const logger = getLogger();
-		LoggerProxy.init(logger);
+		await this.initCrashJournal();
+		await super.init();
 
-		// Make sure that n8n shuts down gracefully if possible
-		process.once('SIGTERM', Webhook.stopProcess);
-		process.once('SIGINT', Webhook.stopProcess);
+		await this.initBinaryManager();
+		await this.initExternalHooks();
+	}
 
-		await initErrorHandling();
-		await CrashJournal.init();
+	async run() {
+		await new WebhookServer().start();
+		this.logger.info('Webhook listener waiting for requests.');
+	}
 
-		try {
-			// Start directly with the init of the database to improve startup time
-			const startDbInitPromise = Db.init().catch(async (error: Error) =>
-				exitWithCrash('There was an error initializing DB', error),
-			);
-
-			// Make sure the settings exist
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			await UserSettings.prepareUserSettings();
-
-			// Load all node and credential types
-			const loadNodesAndCredentials = LoadNodesAndCredentials();
-			await loadNodesAndCredentials.init();
-
-			// Add the found types to an instance other parts of the application can use
-			const nodeTypes = NodeTypes(loadNodesAndCredentials);
-			const credentialTypes = CredentialTypes(loadNodesAndCredentials);
-
-			// Load the credentials overwrites if any exist
-			CredentialsOverwrites(credentialTypes);
-
-			// Load all external hooks
-			const externalHooks = ExternalHooks();
-			await externalHooks.init();
-
-			// Wait till the database is ready
-			await startDbInitPromise;
-
-			const instanceId = await UserSettings.getInstanceId();
-			await InternalHooksManager.init(instanceId, nodeTypes);
-
-			const binaryDataConfig = config.getEnv('binaryDataManager');
-			await BinaryDataManager.init(binaryDataConfig);
-
-			const server = new WebhookServer();
-			await server.start();
-
-			console.info('Webhook listener waiting for requests.');
-		} catch (error) {
-			await exitWithCrash('Exiting due to error.', error);
-		}
+	async catch(error: Error) {
+		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }
