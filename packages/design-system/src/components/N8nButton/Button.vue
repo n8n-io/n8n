@@ -325,8 +325,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 .medium {
 	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-padding-horizontal: var(--spacing-s);
+	--button-font-size: var(--font-size-xs);
 
 	&.square {
 		height: 30px;
@@ -335,6 +335,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .large {
+	--button-padding-vertical: var(--spacing-xs);
+	--button-padding-horizontal: var(--spacing-l);
+	--button-font-size: var(--font-size-s);
+
 	&.square {
 		height: 42px;
 		width: 42px;

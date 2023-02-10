@@ -21,7 +21,7 @@
 							</template>
 							<n8n-icon-button
 								icon="link"
-								type="tertiary"
+								type="secondary"
 								@click="onCopyInviteLink(user)"
 							></n8n-icon-button>
 						</n8n-tooltip>

@@ -177,10 +177,10 @@ const openPricingPage = () => {
 
 			<div :class="$style.buttons">
 				<n8n-button
-					:class="$style.buttonTertiary"
+					:class="$style.buttonSecondary"
 					@click="onAddActivationKey"
 					v-if="usageStore.canUserActivateLicense"
-					type="tertiary"
+					type="secondary"
 					size="large"
 				>
 					<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>

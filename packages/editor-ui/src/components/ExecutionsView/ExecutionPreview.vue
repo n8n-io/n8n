@@ -9,7 +9,7 @@
 		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+		<n8n-button class="mt-l" type="secondary" size="medium" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
@@ -77,7 +77,7 @@
 					<span class="retry-button">
 						<n8n-icon-button
 							size="large"
-							type="tertiary"
+							type="secondary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
 							@blur="onRetryButtonBlur"
@@ -98,7 +98,7 @@
 					:title="$locale.baseText('executionDetails.deleteExecution')"
 					icon="trash"
 					size="large"
-					type="tertiary"
+					type="secondary"
 					@click="onDeleteExecution"
 				/>
 			</div>

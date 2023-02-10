@@ -66,7 +66,7 @@
 					:disabled="node.disabled"
 					class="ml-2xs"
 					icon="pencil-alt"
-					type="tertiary"
+					type="secondary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
@@ -96,7 +96,7 @@
 					</template>
 					<n8n-icon-button
 						:class="['ml-2xs', $style['pin-data-button']]"
-						type="tertiary"
+						type="secondary"
 						:active="hasPinData"
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
@@ -107,7 +107,7 @@
 
 				<div :class="$style['edit-mode-actions']" v-show="editMode.enabled">
 					<n8n-button
-						type="tertiary"
+						type="secondary"
 						:label="$locale.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
@@ -147,11 +147,11 @@
 					v-if="linkedRuns"
 					icon="unlink"
 					text
-					type="tertiary"
+					type="secondary"
 					size="small"
 					@click="unlinkRun"
 				/>
-				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
+				<n8n-icon-button v-else icon="link" text type="secondary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>

@@ -74,7 +74,7 @@
 			</div>
 			<n8n-button
 				v-if="!isReadOnly"
-				type="tertiary"
+				type="secondary"
 				block
 				@click="addItem()"
 				:label="addButtonText"

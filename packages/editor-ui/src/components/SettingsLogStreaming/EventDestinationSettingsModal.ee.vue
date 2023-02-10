@@ -40,7 +40,7 @@
 									: 'Event returned with error'
 							"
 							size="medium"
-							type="tertiary"
+							type="secondary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
 							@click="sendTestEvent"
@@ -52,7 +52,7 @@
 								:title="$locale.baseText('settings.log-streaming.delete')"
 								icon="trash"
 								size="medium"
-								type="tertiary"
+								type="secondary"
 								:disabled="isSaving"
 								:loading="isDeleting"
 								@click="removeThis"

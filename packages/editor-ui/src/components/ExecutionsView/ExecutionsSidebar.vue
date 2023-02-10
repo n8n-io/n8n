@@ -12,7 +12,7 @@
 			<n8n-popover trigger="click">
 				<template #reference>
 					<div :class="$style.filterButton">
-						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
+						<n8n-button icon="filter" type="secondary" size="medium" :active="statusFilterApplied">
 							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
 							{{ $locale.baseText('executionsList.filters') }}
 						</n8n-button>

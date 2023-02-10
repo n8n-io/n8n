@@ -172,7 +172,7 @@
 								<span class="retry-button">
 									<n8n-icon-button
 										text
-										type="tertiary"
+										type="secondary"
 										size="mini"
 										:title="$locale.baseText('executionsList.retryExecution')"
 										icon="ellipsis-v"
@@ -221,6 +221,7 @@
 			>
 				<n8n-button
 					icon="sync"
+					type="secondary"
 					:title="$locale.baseText('executionsList.loadMore')"
 					:label="$locale.baseText('executionsList.loadMore')"
 					@click="loadMore()"
@@ -235,12 +236,12 @@
 			</span>
 			<n8n-button
 				:label="$locale.baseText('generic.delete')"
-				type="tertiary"
+				type="secondary"
 				@click="handleDeleteSelected"
 			/>
 			<n8n-button
 				:label="$locale.baseText('executionsList.clearSelection')"
-				type="tertiary"
+				type="secondary"
 				@click="handleClearSelection"
 			/>
 		</div>

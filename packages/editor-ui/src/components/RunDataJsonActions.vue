@@ -5,7 +5,7 @@
 				<n8n-icon-button
 					:title="$locale.baseText('runData.copyToClipboard')"
 					icon="copy"
-					type="tertiary"
+					type="secondary"
 					:circle="false"
 				/>
 			</span>

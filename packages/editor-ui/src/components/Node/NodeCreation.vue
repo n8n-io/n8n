@@ -9,7 +9,7 @@
 				<n8n-icon-button
 					size="xlarge"
 					icon="plus"
-					type="tertiary"
+					type="secondary"
 					:class="$style.nodeCreatorPlus"
 					@click="openNodeCreator"
 					:title="$locale.baseText('nodeView.addNode')"
@@ -20,7 +20,7 @@
 				>
 					<n8n-icon-button
 						size="medium"
-						type="tertiary"
+						type="secondary"
 						:icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')"
 					/>

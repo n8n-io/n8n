@@ -8,7 +8,7 @@
 	>
 		<n8n-icon-button
 			@click="zoomToFit"
-			type="tertiary"
+			type="secondary"
 			size="large"
 			:title="$locale.baseText('nodeView.zoomToFit')"
 			icon="expand"
@@ -16,7 +16,7 @@
 		/>
 		<n8n-icon-button
 			@click="zoomIn"
-			type="tertiary"
+			type="secondary"
 			size="large"
 			:title="$locale.baseText('nodeView.zoomIn')"
 			icon="search-plus"
@@ -24,7 +24,7 @@
 		/>
 		<n8n-icon-button
 			@click="zoomOut"
-			type="tertiary"
+			type="secondary"
 			size="large"
 			:title="$locale.baseText('nodeView.zoomOut')"
 			icon="search-minus"
@@ -33,7 +33,7 @@
 		<n8n-icon-button
 			v-if="nodeViewScale !== 1 && !isDemo"
 			@click="resetZoom"
-			type="tertiary"
+			type="secondary"
 			size="large"
 			:title="$locale.baseText('nodeView.resetZoom')"
 			icon="undo"

@@ -3,7 +3,7 @@
 		<template #reference>
 			<n8n-button
 				icon="filter"
-				type="tertiary"
+				type="secondary"
 				size="medium"
 				:active="hasFilters"
 				:class="[$style['filter-button'], 'ml-2xs']"
