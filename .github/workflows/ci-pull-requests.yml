@@ -62,6 +62,9 @@ jobs:
         run: echo ${{ inputs.spec }}
 
 
+      - name: Install git # required for ESLint plugin and not included in the base image
+        run: sudo apt-get install -y git
+
       - name: Fetch base branch for `git diff`
         run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
 

@@ -118,18 +118,16 @@ jobs:
         with:
           install: false
           start: pnpm start
-          wait-on: 'http://localhost:5678' # Waits for above
+          wait-on: 'http://localhost:5678'
           wait-on-timeout: 120 #
           record: ${{ inputs.record }}
-          parallel: ${{ inputs.parallel }} # Runs test in parallel using settings above
+          parallel: ${{ inputs.parallel }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: '${{ github.sha }}-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.run-env }}-e2e'
           spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
-          # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
-          # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CYPRESS_N8N_E2E_TESTS: true

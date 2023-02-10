@@ -230,7 +230,6 @@ export class Start extends Command {
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
-		logger.info(`Is e2e ${process.env.E2E_TESTS}`);
 		logger.info('Initializing n8n process');
 
 		await initErrorHandling();
