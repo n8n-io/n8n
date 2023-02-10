@@ -1,44 +1,35 @@
 /* eslint-disable @typescript-eslint/await-thenable */
-/* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
-import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
-import { Command, flags } from '@oclif/command';
+import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
 
-import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
-import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as Server from '@/Server';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker } from '@/WaitTracker';
-
-import { getLogger } from '@/Logger';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { handleLdapInit } from '@/Ldap/helpers';
-import { initErrorHandling } from '@/ErrorReporting';
-import * as CrashJournal from '@/CrashJournal';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
-import { eventBus } from '../eventbus';
+import { eventBus } from '@/eventbus';
+import { BaseCommand } from './BaseCommand';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -46,21 +37,7 @@ const pipeline = promisify(stream.pipeline);
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 
-const exitWithCrash = async (message: string, error: unknown) => {
-	ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
-	await sleep(2000);
-	process.exit(1);
-};
-
-const exitSuccessFully = async () => {
-	try {
-		await CrashJournal.cleanup();
-	} finally {
-		process.exit();
-	}
-};
-
-export class Start extends Command {
+export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
 
 	static examples = [
@@ -89,8 +66,7 @@ export class Start extends Command {
 	/**
 	 * Opens the UI in browser
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	static openBrowser() {
+	private openBrowser() {
 		const editorUrl = GenericHelpers.getBaseUrl();
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -106,22 +82,20 @@ export class Start extends Command {
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	static async stopProcess() {
-		getLogger().info('\nStopping n8n...');
+	async stopProcess() {
+		this.logger.info('\nStopping n8n...');
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
 			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
 
-			const externalHooks = ExternalHooks();
-			await externalHooks.run('n8n.stop', []);
+			await this.externalHooks.run('n8n.stop', []);
 
 			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
 				console.log('process exited after 30s');
-				await exitSuccessFully();
+				await this.exitSuccessFully();
 			}, 30000);
 
 			await InternalHooksManager.getInstance().onN8nStop();
@@ -162,13 +136,13 @@ export class Start extends Command {
 			//finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {
-			await exitWithCrash('There was an error shutting down n8n.', error);
+			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		await exitSuccessFully();
+		await this.exitSuccessFully();
 	}
 
-	static async generateStaticAssets() {
+	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = config.getEnv('path');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
@@ -223,239 +197,202 @@ export class Start extends Command {
 		await Promise.all(files.map(compileFile));
 	}
 
+	async init() {
+		await this.initCrashJournal();
+		await super.init();
+		this.logger.info('Initializing n8n process');
+
+		await this.initBinaryManager();
+		await this.initExternalHooks();
+
+		if (!config.getEnv('endpoints.disableUi')) {
+			await this.generateStaticAssets();
+		}
+	}
+
 	async run() {
-		// Make sure that n8n shuts down gracefully if possible
-		process.once('SIGTERM', Start.stopProcess);
-		process.once('SIGINT', Start.stopProcess);
-
-		const logger = getLogger();
-		LoggerProxy.init(logger);
-		logger.info('Initializing n8n process');
-
-		await initErrorHandling();
-		await CrashJournal.init();
-
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
 
-		try {
-			// Load all node and credential types
-			const loadNodesAndCredentials = LoadNodesAndCredentials();
-			await loadNodesAndCredentials.init();
+		if (!config.getEnv('userManagement.jwtSecret')) {
+			// If we don't have a JWT secret set, generate
+			// one based and save to config.
+			const encryptionKey = await UserSettings.getEncryptionKey();
 
-			// Add the found types to an instance other parts of the application can use
-			const nodeTypes = NodeTypes(loadNodesAndCredentials);
-			const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+			// For a key off every other letter from encryption key
+			// CAREFUL: do not change this or it breaks all existing tokens.
+			let baseKey = '';
+			for (let i = 0; i < encryptionKey.length; i += 2) {
+				baseKey += encryptionKey[i];
+			}
+			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
+		}
 
-			// Start directly with the init of the database to improve startup time
-			await Db.init().catch(async (error: Error) =>
-				exitWithCrash('There was an error initializing DB', error),
+		await this.loadNodesAndCredentials.generateTypesForFrontend();
+
+		const installedPackages = await getAllInstalledPackages();
+		const missingPackages = new Set<{
+			packageName: string;
+			version: string;
+		}>();
+		installedPackages.forEach((installedPackage) => {
+			installedPackage.installedNodes.forEach((installedNode) => {
+				if (!this.loadNodesAndCredentials.known.nodes[installedNode.type]) {
+					// Leave the list ready for installing in case we need.
+					missingPackages.add({
+						packageName: installedPackage.packageName,
+						version: installedPackage.installedVersion,
+					});
+				}
+			});
+		});
+
+		await UserSettings.getEncryptionKey();
+
+		// Load settings from database and set them to config.
+		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
+		databaseSettings.forEach((setting) => {
+			config.set(setting.key, jsonParse(setting.value));
+		});
+
+		config.set('nodes.packagesMissing', '');
+		if (missingPackages.size) {
+			LoggerProxy.error(
+				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 			);
 
-			// Make sure the settings exist
-			const userSettings = await UserSettings.prepareUserSettings();
-
-			if (!config.getEnv('userManagement.jwtSecret')) {
-				// If we don't have a JWT secret set, generate
-				// one based and save to config.
-				const encryptionKey = await UserSettings.getEncryptionKey();
-
-				// For a key off every other letter from encryption key
-				// CAREFUL: do not change this or it breaks all existing tokens.
-				let baseKey = '';
-				for (let i = 0; i < encryptionKey.length; i += 2) {
-					baseKey += encryptionKey[i];
-				}
-				config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
-			}
-
-			if (!config.getEnv('endpoints.disableUi')) {
-				await Start.generateStaticAssets();
-			}
-
-			// Load all external hooks
-			const externalHooks = ExternalHooks();
-			await externalHooks.init();
-
-			// Load the credentials overwrites if any exist
-			CredentialsOverwrites(credentialTypes);
-
-			await loadNodesAndCredentials.generateTypesForFrontend();
-
-			const installedPackages = await getAllInstalledPackages();
-			const missingPackages = new Set<{
-				packageName: string;
-				version: string;
-			}>();
-			installedPackages.forEach((installedPackage) => {
-				installedPackage.installedNodes.forEach((installedNode) => {
-					if (!loadNodesAndCredentials.known.nodes[installedNode.type]) {
-						// Leave the list ready for installing in case we need.
-						missingPackages.add({
-							packageName: installedPackage.packageName,
-							version: installedPackage.installedVersion,
-						});
+			if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+				LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
+				try {
+					// Optimistic approach - stop if any installation fails
+					// eslint-disable-next-line no-restricted-syntax
+					for (const missingPackage of missingPackages) {
+						// eslint-disable-next-line no-await-in-loop
+						void (await this.loadNodesAndCredentials.loadNpmModule(
+							missingPackage.packageName,
+							missingPackage.version,
+						));
+						missingPackages.delete(missingPackage);
 					}
-				});
-			});
-
-			await UserSettings.getEncryptionKey();
-
-			// Load settings from database and set them to config.
-			const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
-			databaseSettings.forEach((setting) => {
-				config.set(setting.key, JSON.parse(setting.value));
-			});
-
-			config.set('nodes.packagesMissing', '');
-			if (missingPackages.size) {
-				LoggerProxy.error(
-					'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
-				);
-
-				if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
-					LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
-					try {
-						// Optimistic approach - stop if any installation fails
-						// eslint-disable-next-line no-restricted-syntax
-						for (const missingPackage of missingPackages) {
-							// eslint-disable-next-line no-await-in-loop
-							void (await loadNodesAndCredentials.loadNpmModule(
-								missingPackage.packageName,
-								missingPackage.version,
-							));
-							missingPackages.delete(missingPackage);
-						}
-						LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
-					} catch (error) {
-						LoggerProxy.error('n8n was unable to install the missing packages.');
-					}
-				}
-
-				config.set(
-					'nodes.packagesMissing',
-					Array.from(missingPackages)
-						.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
-						.join(' '),
-				);
-			}
-
-			const dbType = config.getEnv('database.type');
-			if (dbType === 'sqlite') {
-				const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
-				if (shouldRunVacuum) {
-					// eslint-disable-next-line @typescript-eslint/no-floating-promises
-					await Db.collections.Execution.query('VACUUM;');
+					LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
+				} catch (error) {
+					LoggerProxy.error('n8n was unable to install the missing packages.');
 				}
 			}
 
-			if (flags.tunnel) {
-				this.log('\nWaiting for tunnel ...');
-
-				let tunnelSubdomain;
-				if (
-					process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
-					process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
-				) {
-					tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
-				} else if (userSettings.tunnelSubdomain !== undefined) {
-					tunnelSubdomain = userSettings.tunnelSubdomain;
-				}
-
-				if (tunnelSubdomain === undefined) {
-					// When no tunnel subdomain did exist yet create a new random one
-					const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-					userSettings.tunnelSubdomain = Array.from({ length: 24 })
-						.map(() => {
-							return availableCharacters.charAt(
-								Math.floor(Math.random() * availableCharacters.length),
-							);
-						})
-						.join('');
-
-					await UserSettings.writeUserSettings(userSettings);
-				}
-
-				const tunnelSettings: localtunnel.TunnelConfig = {
-					host: 'https://hooks.n8n.cloud',
-					subdomain: tunnelSubdomain,
-				};
-
-				const port = config.getEnv('port');
-
-				// @ts-ignore
-				const webhookTunnel = await localtunnel(port, tunnelSettings);
-
-				process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
-				this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
-				this.log(
-					'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
-				);
-			}
-
-			const instanceId = await UserSettings.getInstanceId();
-			await InternalHooksManager.init(instanceId, nodeTypes);
-
-			const binaryDataConfig = config.getEnv('binaryDataManager');
-			await BinaryDataManager.init(binaryDataConfig, true);
-
-			await Server.start();
-
-			// Start to get active workflows and run their triggers
-			activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-			await activeWorkflowRunner.init();
-
-			WaitTracker();
-
-			await handleLdapInit();
-
-			const editorUrl = GenericHelpers.getBaseUrl();
-			this.log(`\nEditor is now accessible via:\n${editorUrl}`);
-
-			const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-
-			if (saveManualExecutions) {
-				this.log('\nManual executions will be visible only for the owner');
-			}
-
-			// Allow to open n8n editor by pressing "o"
-			if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
-				process.stdin.setRawMode(true);
-				process.stdin.resume();
-				process.stdin.setEncoding('utf8');
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				let inputText = '';
-
-				if (flags.open) {
-					Start.openBrowser();
-				}
-				this.log('\nPress "o" to open in Browser.');
-				process.stdin.on('data', (key: string) => {
-					if (key === 'o') {
-						Start.openBrowser();
-						inputText = '';
-					} else if (key.charCodeAt(0) === 3) {
-						// Ctrl + c got pressed
-						// eslint-disable-next-line @typescript-eslint/no-floating-promises
-						Start.stopProcess();
-					} else {
-						// When anything else got pressed, record it and send it on enter into the child process
-						// eslint-disable-next-line no-lonely-if
-						if (key.charCodeAt(0) === 13) {
-							// send to child process and print in terminal
-							process.stdout.write('\n');
-							inputText = '';
-						} else {
-							// record it and write into terminal
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
-							inputText += key;
-							process.stdout.write(key);
-						}
-					}
-				});
-			}
-		} catch (error) {
-			await exitWithCrash('There was an error', error);
+			config.set(
+				'nodes.packagesMissing',
+				Array.from(missingPackages)
+					.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
+					.join(' '),
+			);
 		}
+
+		const dbType = config.getEnv('database.type');
+		if (dbType === 'sqlite') {
+			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
+			if (shouldRunVacuum) {
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises
+				await Db.collections.Execution.query('VACUUM;');
+			}
+		}
+
+		if (flags.tunnel) {
+			this.log('\nWaiting for tunnel ...');
+
+			let tunnelSubdomain;
+			if (
+				process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
+				process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
+			) {
+				tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
+			} else if (this.userSettings.tunnelSubdomain !== undefined) {
+				tunnelSubdomain = this.userSettings.tunnelSubdomain;
+			}
+
+			if (tunnelSubdomain === undefined) {
+				// When no tunnel subdomain did exist yet create a new random one
+				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+				this.userSettings.tunnelSubdomain = Array.from({ length: 24 })
+					.map(() => {
+						return availableCharacters.charAt(
+							Math.floor(Math.random() * availableCharacters.length),
+						);
+					})
+					.join('');
+
+				await UserSettings.writeUserSettings(this.userSettings);
+			}
+
+			const tunnelSettings: localtunnel.TunnelConfig = {
+				host: 'https://hooks.n8n.cloud',
+				subdomain: tunnelSubdomain,
+			};
+
+			const port = config.getEnv('port');
+
+			// @ts-ignore
+			const webhookTunnel = await localtunnel(port, tunnelSettings);
+
+			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
+			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
+			this.log(
+				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
+			);
+		}
+
+		await Server.start();
+
+		// Start to get active workflows and run their triggers
+		activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+		await activeWorkflowRunner.init();
+
+		WaitTracker();
+
+		await handleLdapInit();
+
+		const editorUrl = GenericHelpers.getBaseUrl();
+		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+
+		const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
+
+		if (saveManualExecutions) {
+			this.log('\nManual executions will be visible only for the owner');
+		}
+
+		// Allow to open n8n editor by pressing "o"
+		if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
+			process.stdin.setRawMode(true);
+			process.stdin.resume();
+			process.stdin.setEncoding('utf8');
+
+			if (flags.open) {
+				this.openBrowser();
+			}
+			this.log('\nPress "o" to open in Browser.');
+			process.stdin.on('data', (key: string) => {
+				if (key === 'o') {
+					this.openBrowser();
+				} else if (key.charCodeAt(0) === 3) {
+					// Ctrl + c got pressed
+					// eslint-disable-next-line @typescript-eslint/no-floating-promises
+					this.stopProcess();
+				} else {
+					// When anything else got pressed, record it and send it on enter into the child process
+					// eslint-disable-next-line no-lonely-if
+					if (key.charCodeAt(0) === 13) {
+						// send to child process and print in terminal
+						process.stdout.write('\n');
+					} else {
+						// record it and write into terminal
+						process.stdout.write(key);
+					}
+				}
+			});
+		}
+	}
+
+	async catch(error: Error) {
+		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }

@@ -449,56 +449,6 @@ export interface IInternalHooksClass {
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 }
 
-export interface IN8nConfig {
-	database: IN8nConfigDatabase;
-	endpoints: IN8nConfigEndpoints;
-	executions: IN8nConfigExecutions;
-	generic: IN8nConfigGeneric;
-	host: string;
-	nodes: IN8nConfigNodes;
-	port: number;
-	protocol: 'http' | 'https';
-}
-
-export interface IN8nConfigDatabase {
-	type: DatabaseType;
-	postgresdb: {
-		host: string;
-		password: string;
-		port: number;
-		user: string;
-	};
-}
-
-export interface IN8nConfigEndpoints {
-	rest: string;
-	webhook: string;
-	webhookTest: string;
-}
-
-// eslint-disable-next-line import/export
-export interface IN8nConfigExecutions {
-	saveDataOnError: SaveExecutionDataType;
-	saveDataOnSuccess: SaveExecutionDataType;
-	saveDataManualExecutions: boolean;
-}
-
-// eslint-disable-next-line import/export
-export interface IN8nConfigExecutions {
-	saveDataOnError: SaveExecutionDataType;
-	saveDataOnSuccess: SaveExecutionDataType;
-	saveDataManualExecutions: boolean;
-}
-
-export interface IN8nConfigGeneric {
-	timezone: string;
-}
-
-export interface IN8nConfigNodes {
-	errorTriggerType: string;
-	exclude: string[];
-}
-
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
@@ -550,6 +500,7 @@ export interface IN8nUISettings {
 	onboardingCallPromptEnabled: boolean;
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	deployment: {
 		type: string;
