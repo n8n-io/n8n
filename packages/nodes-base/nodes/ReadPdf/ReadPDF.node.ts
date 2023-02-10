@@ -1,12 +1,31 @@
 import type {
 	IExecuteFunctions,
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import pdf from 'pdf-parse';
+import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
+
+type Document = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
+type Page = Awaited<ReturnType<Awaited<Document['getPage']>>>;
+type TextContent = Awaited<ReturnType<Page['getTextContent']>>;
+
+const parseText = (textContent: TextContent) => {
+	let lastY = undefined;
+	const text = [];
+	for (const item of textContent.items) {
+		if ('str' in item) {
+			if (lastY == item.transform[5] || !lastY) {
+				text.push(item.str);
+			} else {
+				text.push(`\n${item.str}`);
+			}
+			lastY = item.transform[5];
+		}
+	}
+	return text.join('');
+};
 
 export class ReadPDF implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,10 +74,28 @@ export class ReadPDF implements INodeType {
 					itemIndex,
 					binaryPropertyName,
 				);
+				const document = await readPDF(binaryDataBuffer.buffer).promise;
+				const { info, metadata } = await document
+					.getMetadata()
+					.catch(() => ({ info: null, metadata: null }));
+
+				const pages = [];
+				for (let i = 1; i <= document.numPages; i++) {
+					const page = await document.getPage(i);
+					const text = await page.getTextContent().then(parseText);
+					pages.push(text);
+				}
+
 				returnData.push({
 					binary: item.binary,
-
-					json: (await pdf(binaryDataBuffer)) as unknown as IDataObject,
+					json: {
+						numpages: document.numPages,
+						numrender: document.numPages,
+						info,
+						metadata,
+						text: pages.join('\n\n'),
+						version: pdfJsVersion,
+					},
 				});
 			} catch (error) {
 				if (this.continueOnFail()) {
