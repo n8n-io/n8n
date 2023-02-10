@@ -64,13 +64,12 @@
     "storybook-addon-themes": "^6.1.0",
     "trim": "^1.0.1",
     "vite": "^4.0.4",
-    "vitest": "^0.27.2",
+    "vitest": "^0.28.4",
     "vue-class-component": "^7.2.6",
     "vue-loader": "^15.10.1",
     "vue-property-decorator": "^9.1.2",
     "vue-template-compiler": "^2.7.14",
     "vue-tsc": "^1.0.24",
-    "vue2-boring-avatars": "0.3.4",
     "webpack": "^4.46.0"
   },
   "dependencies": {
@@ -82,7 +81,7 @@
     "sanitize-html": "2.7.3",
     "vue": "^2.7.14",
     "vue-typed-mixins": "^0.2.0",
-    "vue2-boring-avatars": "0.3.8",
+    "vue2-boring-avatars": "^0.3.8",
     "xss": "^1.0.14"
   }
 }
