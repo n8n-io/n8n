@@ -1,6 +1,7 @@
 import { MainSidebar } from './../pages/sidebar/main-sidebar';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { SettingsSidebar, SettingsUsersPage, WorkflowPage, WorkflowsPage } from '../pages';
+import { PersonalSettingsPage } from '../pages/settings-personal';
 
 /**
  * User A - Instance owner
@@ -36,8 +37,17 @@ const users = [
 	},
 ];
 
+const updatedPersonalData = {
+	newFirstName: 'Something',
+	newLastName: 'Else',
+	newEmail: 'something_else@acme.corp',
+	newPassword: 'Keybo4rd',
+	invalidPasswords: ['abc', 'longEnough', 'longenough123']
+}
+
 const usersSettingsPage = new SettingsUsersPage();
 const workflowPage = new WorkflowPage();
+const personalSettingsPage = new PersonalSettingsPage();
 
 describe('User Management', () => {
 	before(() => {
@@ -92,5 +102,47 @@ describe('User Management', () => {
 		usersSettingsPage.getters.userSelectOptions().first().realClick();
 		usersSettingsPage.getters.deleteUserButton().realClick();
 		workflowPage.getters.successToast().should('contain', 'User deleted');
+	});
+
+	it(`should allow user to change their personal data`, () => {
+		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.updateFirstAndLastName(updatedPersonalData.newFirstName, updatedPersonalData.newLastName);
+		personalSettingsPage.getters.currentUserName().should('contain', `${updatedPersonalData.newFirstName} ${updatedPersonalData.newLastName}`);
+		workflowPage.getters.successToast().should('contain', 'Personal details updated');
+	});
+
+	it(`shouldn't allow user to set weak password`, () => {
+		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		for (let weakPass of updatedPersonalData.invalidPasswords) {
+			personalSettingsPage.actions.tryToSetWeakPassword(instanceOwner.password, weakPass);
+		}
+	});
+
+	it(`shouldn't allow user to change password if old password is wrong`, () => {
+		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.updatePassword('iCannotRemember', updatedPersonalData.newPassword);
+		workflowPage.getters.errorToast().closest('div').should('contain', 'Provided current password is incorrect.');
+	});
+
+	it(`should change current user password`, () => {
+		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.updatePassword(instanceOwner.password, updatedPersonalData.newPassword);
+		workflowPage.getters.successToast().should('contain', 'Password updated');
+		personalSettingsPage.actions.loginWithNewData(instanceOwner.email, updatedPersonalData.newPassword);
+	});
+
+	it(`shouldn't allow users to set invalid email`, () => {
+		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, updatedPersonalData.newPassword);
+		// try without @ part
+		personalSettingsPage.actions.tryToSetInvalidEmail(updatedPersonalData.newEmail.split('@')[0]);
+		// try without domain
+		personalSettingsPage.actions.tryToSetInvalidEmail(updatedPersonalData.newEmail.split('.')[0]);
+	});
+
+	it(`should change user email`, () => {
+		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, updatedPersonalData.newPassword);
+		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);
+		workflowPage.getters.successToast().should('contain', 'Personal details updated');
+		personalSettingsPage.actions.loginWithNewData(updatedPersonalData.newEmail, updatedPersonalData.newPassword);
 	});
 });
