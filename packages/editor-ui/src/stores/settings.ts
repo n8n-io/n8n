@@ -141,6 +141,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		templatesHost(): string {
 			return this.settings.templates.host;
 		},
+		pushBackend(): IN8nUISettings['pushBackend'] {
+			return this.settings.pushBackend;
+		},
 		isCommunityNodesFeatureEnabled(): boolean {
 			return this.settings.communityNodesEnabled;
 		},
