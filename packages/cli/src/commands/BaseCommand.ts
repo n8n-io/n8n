@@ -88,7 +88,10 @@ export abstract class BaseCommand extends Command {
 
 	async finally(error: Error | undefined) {
 		if (inTest || this.id === 'start') return;
-		if (Db.isInitialized) await Db.connection.destroy();
+		if (Db.isInitialized) {
+			await sleep(100); // give any in-flight query some time to finish
+			await Db.connection.destroy();
+		}
 		this.exit(error ? 1 : 0);
 	}
 }
