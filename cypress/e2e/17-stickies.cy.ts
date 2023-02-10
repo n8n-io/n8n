@@ -2,34 +2,6 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const workflowPage = new WorkflowPageClass();
 
-function shouldHaveOneSticky(): Cypress.Chainable<JQuery<HTMLElement>> {
-	return workflowPage.getters.stickies().should('have.length', 1);
-}
-
-function shouldBeInDefaultLocaiton(sticky: Cypress.Chainable<JQuery<HTMLElement>>): Cypress.Chainable<JQuery<HTMLElement>> {
-	return sticky.should(($el) => {
-		expect($el).to.have.css('top', '340px');
-		expect($el).to.have.css('left', '400px');
-		expect($el).to.have.css('height', '160px');
-		expect($el).to.have.css('width', '240px');
-	})
-}
-
-function stickyShouldBePositionedCorrectly(position: [number, number]) {
-	const yOffset = -60;
-	const xOffset = -180;
-	workflowPage.getters.stickies()
-		.should(($el) => {
-			expect($el).to.have.css('top', `${yOffset + position[0]}px`);
-			expect($el).to.have.css('left', `${xOffset + position[1]}px`);
-		});
-}
-
-function moveSticky(target: [number, number]) {
-	cy.drag('[data-test-id="sticky"]', target, {abs: true});
-	stickyShouldBePositionedCorrectly(target);
-}
-
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		cy.resetAll();
@@ -44,9 +16,8 @@ describe('Canvas Actions', () => {
 
 	it('adds sticky to canvas with default text and position', () => {
 		workflowPage.getters.addStickyButton().should('not.be.visible');
-		workflowPage.actions.addSticky();
 
-		shouldBeInDefaultLocaiton(shouldHaveOneSticky())
+		addDefaultSticky()
 			.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
 			.find('a').contains('Guide').should('have.attr', 'href');
 	});
@@ -54,18 +25,12 @@ describe('Canvas Actions', () => {
 	it('drags sticky around to top left corner', () => {
 		// used to caliberate rest of tests
 		// if this does not pass, rest would fail
-		workflowPage.actions.addSticky();
-
-		shouldBeInDefaultLocaiton(shouldHaveOneSticky())
-
+		addDefaultSticky();
 		moveSticky([0, 0]);
 	});
 
 	it('drags sticky around and position/size are saved correctly', () => {
-		workflowPage.actions.addSticky();
-
-		shouldBeInDefaultLocaiton(shouldHaveOneSticky())
-
+		addDefaultSticky();
 		moveSticky([500, 500]);
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
@@ -95,47 +60,27 @@ describe('Canvas Actions', () => {
 		workflowPage.actions.editSticky('# hello world \n ## text text');
 		workflowPage.getters.stickies().find('h1').should('have.text', 'hello world');
 		workflowPage.getters.stickies().find('h2').should('have.text', 'text text');
-
 	});
 
-	// it('expands/shrinks sticky from the right edge', () => {
-	// 	workflowPage.actions.addSticky();
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '400px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '240px');
-	// 		});
+	it('expands/shrinks sticky from the right edge', () => {
+		addDefaultSticky();
 
-	// 	cy.drag('[data-test-id="sticky"] [data-dir="right"]', [100, 100]);
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '400px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '346px');
-	// 		});
+		moveSticky([200, 200]);
 
-	// 	cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '400px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '302px');
-	// 		});
-	// });
+		dragRightEdge([200, 200, 160, 240], 100);
+
+		// cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
+		// workflowPage.getters.stickies()
+		// 	.should(($el) => {
+		// 		expect($el).to.have.css('top', '340px');
+		// 		expect($el).to.have.css('left', '400px');
+		// 		expect($el).to.have.css('height', '160px');
+		// 		expect($el).to.have.css('width', '302px');
+		// 	});
+	});
 
 	// it('expands/shrinks sticky from the left edge', () => {
-	// 	workflowPage.actions.addSticky();
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '400px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '240px');
-	// 		});
+	//	addDefaultSticky();
 
 	// 	cy.drag('[data-test-id="sticky"] [data-dir="left"]', [100, 100]);
 	// 	workflowPage.getters.stickies()
@@ -247,14 +192,7 @@ describe('Canvas Actions', () => {
 	// });
 
 	// it('expands/shrinks sticky from the top right edge', () => {
-	// 	workflowPage.actions.addSticky();
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '400px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '240px');
-	// 		});
+	//	addDefaultSticky();
 
 	// 	cy.drag('[data-test-id="sticky"] [data-dir="topRight"]', [100, 100]);
 	// 	workflowPage.getters.stickies()
@@ -276,14 +214,7 @@ describe('Canvas Actions', () => {
 	// });
 
 	// it('expands/shrinks sticky from the top left edge, and reach min height/width', () => {
-	// 	workflowPage.actions.addSticky();
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '400px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '240px');
-	// 		});
+	//	addDefaultSticky();
 
 	// 	cy.drag('[data-test-id="sticky"] [data-dir="topLeft"]', [100, 100]);
 	// 	workflowPage.getters.stickies()
@@ -304,3 +235,61 @@ describe('Canvas Actions', () => {
 	// 		});
 	// });
 });
+
+
+function dragRightEdge(curr: [number, number, number, number], move: number) {
+	workflowPage.getters.stickies().first().then(($el) => {
+		const [left, top, height, width] = curr;
+		cy.drag(`[data-test-id="sticky"] [data-dir="right"]`, [left + width + move, 0], {abs: true});
+		stickyShouldBePositionedCorrectly([top, left]);
+		stickyShouldHaveCorrectSize([height, width * 1.5 + move]);
+	});
+}
+
+function shouldHaveOneSticky(): Cypress.Chainable<JQuery<HTMLElement>> {
+	return workflowPage.getters.stickies().should('have.length', 1);
+}
+
+function shouldBeInDefaultLocation(sticky: Cypress.Chainable<JQuery<HTMLElement>>): Cypress.Chainable<JQuery<HTMLElement>> {
+	return sticky.should(($el) => {
+		expect($el).to.have.css('height', '160px');
+		expect($el).to.have.css('width', '240px');
+	})
+}
+
+function shouldHaveDefaultSize(sticky: Cypress.Chainable<JQuery<HTMLElement>>): Cypress.Chainable<JQuery<HTMLElement>> {
+	return sticky.should(($el) => {
+		expect($el).to.have.css('height', '160px');
+		expect($el).to.have.css('width', '240px');
+	})
+}
+
+function addDefaultSticky() {
+	workflowPage.actions.addSticky();
+	return shouldHaveDefaultSize(shouldBeInDefaultLocation(shouldHaveOneSticky()));
+}
+
+function stickyShouldBePositionedCorrectly(position: [number, number]) {
+	const yOffset = -60;
+	const xOffset = -180;
+	workflowPage.getters.stickies()
+		.should(($el) => {
+			expect($el).to.have.css('top', `${yOffset + position[0]}px`);
+			expect($el).to.have.css('left', `${xOffset + position[1]}px`);
+		});
+}
+
+function stickyShouldHaveCorrectSize(size: [number, number]) {
+	const yOffset = 0;
+	const xOffset = 0;
+	workflowPage.getters.stickies()
+		.should(($el) => {
+			expect($el).to.have.css('height', `${yOffset + size[0]}px`);
+			expect($el).to.have.css('width', `${xOffset + size[1]}px`);
+		});
+}
+
+function moveSticky(target: [number, number]) {
+	cy.drag('[data-test-id="sticky"]', target, {abs: true});
+	stickyShouldBePositionedCorrectly(target);
+}
