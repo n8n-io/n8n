@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { flags } from '@oclif/command';
 import { LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
@@ -70,10 +69,6 @@ export class Webhook extends BaseCommand {
 
 			this.error('Webhook processes can only run with execution mode as queue.');
 		}
-
-		// Make sure that n8n shuts down gracefully if possible
-		process.once('SIGTERM', this.stopProcess);
-		process.once('SIGINT', this.stopProcess);
 
 		await this.initCrashJournal();
 		await super.init();

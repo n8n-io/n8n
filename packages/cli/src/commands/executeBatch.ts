@@ -95,7 +95,7 @@ export class ExecuteBatch extends BaseCommand {
 	 * Gracefully handles exit.
 	 * @param {boolean} skipExit Whether to skip exit or number according to received signal
 	 */
-	static async stopProcess(skipExit: boolean | number = false) {
+	async stopProcess(skipExit: boolean | number = false) {
 		if (ExecuteBatch.cancelled) {
 			process.exit(0);
 		}
@@ -168,11 +168,6 @@ export class ExecuteBatch extends BaseCommand {
 	}
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/unbound-method
-		process.once('SIGTERM', ExecuteBatch.stopProcess);
-		// eslint-disable-next-line @typescript-eslint/unbound-method
-		process.once('SIGINT', ExecuteBatch.stopProcess);
-
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
 
@@ -318,7 +313,7 @@ export class ExecuteBatch extends BaseCommand {
 			console.log(this.formatJsonOutput(results));
 		}
 
-		await ExecuteBatch.stopProcess(true);
+		await this.stopProcess(true);
 
 		if (results.summary.failedExecutions > 0) {
 			this.exit(1);
