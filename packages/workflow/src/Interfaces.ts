@@ -186,6 +186,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	body?: IDataObject;
 	headers?: IDataObject;
 	qs?: IDataObject;
+	url?: string;
 	skipSslCertificateValidation?: boolean | string;
 }
 
@@ -530,6 +531,7 @@ export interface IN8nHttpFullResponse {
 
 export interface IN8nRequestOperations {
 	pagination?:
+		| IN8nRequestOperationPaginationGeneric
 		| IN8nRequestOperationPaginationOffset
 		| ((
 				this: IExecutePaginationFunctions,
@@ -540,7 +542,15 @@ export interface IN8nRequestOperations {
 export interface IN8nRequestOperationPaginationBase {
 	type: string;
 	properties: {
-		[key: string]: string | number;
+		[key: string]: unknown;
+	};
+}
+
+export interface IN8nRequestOperationPaginationGeneric extends IN8nRequestOperationPaginationBase {
+	type: 'generic';
+	properties: {
+		continue: boolean | string;
+		request: IRequestOptionsSimplifiedAuth;
 	};
 }
 

@@ -35,15 +35,13 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions } from 'typeorm';
 import { Not, In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
-// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
-import { compare } from 'bcryptjs';
 
 import {
 	BinaryDataManager,
@@ -69,9 +67,6 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-import jwt from 'jsonwebtoken';
-import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import history from 'connect-history-api-fallback';
@@ -88,6 +83,7 @@ import {
 	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	inDevelopment,
 	N8N_VERSION,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
@@ -144,9 +140,11 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
+import type { NodeTypesClass } from '@/NodeTypes';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WaitTrackerClass } from '@/WaitTracker';
 import { WaitTracker } from '@/WaitTracker';
@@ -163,7 +161,8 @@ import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
-import { eventBus } from './eventbus/MessageEventBus/MessageEventBus';
+import { setupBasicAuth } from './middlewares/basicAuth';
+import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 
 const exec = promisify(callbackExec);
 
@@ -178,15 +177,20 @@ class Server extends AbstractServer {
 
 	presetCredentialsLoaded: boolean;
 
-	nodeTypes: INodeTypes;
+	loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+
+	nodeTypes: NodeTypesClass;
 
 	credentialTypes: ICredentialTypes;
+
+	push: Push.Push;
 
 	constructor() {
 		super();
 
 		this.nodeTypes = NodeTypes();
 		this.credentialTypes = CredentialTypes();
+		this.loadNodesAndCredentials = LoadNodesAndCredentials();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
@@ -197,6 +201,8 @@ class Server extends AbstractServer {
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
 		}
+
+		this.push = Push.getInstance();
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -305,7 +311,8 @@ class Server extends AbstractServer {
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				config.getEnv('userManagement.skipInstanceOwnerSetup') === false &&
+				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
 		// refresh enterprise status
@@ -406,150 +413,13 @@ class Server extends AbstractServer {
 		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive = config.getEnv('security.basicAuth.active');
-		if (basicAuthActive) {
-			const basicAuthUser = config.getEnv('security.basicAuth.user');
-			if (basicAuthUser === '') {
-				throw new Error('Basic auth is activated but no user got defined. Please set one!');
-			}
-
-			const basicAuthPassword = config.getEnv('security.basicAuth.password');
-			if (basicAuthPassword === '') {
-				throw new Error('Basic auth is activated but no password got defined. Please set one!');
-			}
-
-			const basicAuthHashEnabled = config.getEnv('security.basicAuth.hash') as boolean;
-
-			let validPassword: null | string = null;
-
-			this.app.use(
-				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-					// Skip basic auth for a few listed endpoints or when instance owner has been setup
-					if (
-						authIgnoreRegex.exec(req.url) ||
-						config.getEnv('userManagement.isInstanceOwnerSetUp')
-					) {
-						return next();
-					}
-					const realm = 'n8n - Editor UI';
-					const basicAuthData = basicAuth(req);
-
-					if (basicAuthData === undefined) {
-						// Authorization data is missing
-						return ResponseHelper.basicAuthAuthorizationError(
-							res,
-							realm,
-							'Authorization is required!',
-						);
-					}
-
-					if (basicAuthData.name === basicAuthUser) {
-						if (basicAuthHashEnabled) {
-							if (
-								validPassword === null &&
-								(await compare(basicAuthData.pass, basicAuthPassword))
-							) {
-								// Password is valid so save for future requests
-								validPassword = basicAuthData.pass;
-							}
-
-							if (validPassword === basicAuthData.pass && validPassword !== null) {
-								// Provided hash is correct
-								return next();
-							}
-						} else if (basicAuthData.pass === basicAuthPassword) {
-							// Provided password is correct
-							return next();
-						}
-					}
-
-					// Provided authentication data is wrong
-					return ResponseHelper.basicAuthAuthorizationError(
-						res,
-						realm,
-						'Authorization data is wrong!',
-					);
-				},
-			);
+		if (config.getEnv('security.basicAuth.active')) {
+			await setupBasicAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
-		if (jwtAuthActive) {
-			const jwtAuthHeader = config.getEnv('security.jwtAuth.jwtHeader');
-			if (jwtAuthHeader === '') {
-				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
-			}
-			const jwksUri = config.getEnv('security.jwtAuth.jwksUri');
-			if (jwksUri === '') {
-				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
-			}
-			const jwtHeaderValuePrefix = config.getEnv('security.jwtAuth.jwtHeaderValuePrefix');
-			const jwtIssuer = config.getEnv('security.jwtAuth.jwtIssuer');
-			const jwtNamespace = config.getEnv('security.jwtAuth.jwtNamespace');
-			const jwtAllowedTenantKey = config.getEnv('security.jwtAuth.jwtAllowedTenantKey');
-			const jwtAllowedTenant = config.getEnv('security.jwtAuth.jwtAllowedTenant');
-
-			// eslint-disable-next-line no-inner-declarations
-			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
-					return true;
-				}
-
-				for (const [k, v] of Object.entries(decodedToken)) {
-					if (k === jwtNamespace) {
-						for (const [kn, kv] of Object.entries(v)) {
-							if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
-								return true;
-							}
-						}
-					}
-				}
-
-				return false;
-			}
-
-			// eslint-disable-next-line consistent-return
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (authIgnoreRegex.exec(req.url)) {
-					return next();
-				}
-
-				let token = req.header(jwtAuthHeader) as string;
-				if (token === undefined || token === '') {
-					return ResponseHelper.jwtAuthAuthorizationError(res, 'Missing token');
-				}
-				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
-					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
-				}
-
-				const jwkClient = jwks({ cache: true, jwksUri });
-				// eslint-disable-next-line @typescript-eslint/ban-types
-				function getKey(header: any, callback: Function) {
-					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
-						// eslint-disable-next-line @typescript-eslint/no-throw-literal
-						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
-
-						const signingKey = key.publicKey || key.rsaPublicKey;
-						callback(null, signingKey);
-					});
-				}
-
-				const jwtVerifyOptions: jwt.VerifyOptions = {
-					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false,
-				};
-
-				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-					} else if (!isTenantAllowed(decoded)) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-					} else {
-						next();
-					}
-				});
-			});
+		if (config.getEnv('security.jwtAuth.active')) {
+			await setupExternalJWTAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// ----------------------------------------
@@ -565,7 +435,6 @@ class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		// Get push connections
-		const push = Push.getInstance();
 		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
 			const { sessionId } = req.query;
 			if (sessionId === undefined) {
@@ -583,7 +452,7 @@ class Server extends AbstractServer {
 				}
 			}
 
-			push.add(sessionId as string, req, res);
+			this.push.add(sessionId as string, req, res);
 		});
 
 		// Make sure that Vue history mode works properly
@@ -1412,7 +1281,7 @@ class Server extends AbstractServer {
 
 						CredentialsOverwrites().setData(body);
 
-						await LoadNodesAndCredentials().generateTypesForFrontend();
+						await this.loadNodesAndCredentials.generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1425,7 +1294,35 @@ class Server extends AbstractServer {
 		}
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(EDITOR_UI_DIST_DIR));
+			const staticOptions: ServeStaticOptions = {
+				cacheControl: false,
+				setHeaders: (res: express.Response, path: string) => {
+					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const cacheControl = isIndex
+						? 'no-cache, no-store, must-revalidate'
+						: 'max-age=86400, immutable';
+					res.header('Cache-Control', cacheControl);
+				},
+			};
+
+			for (const [dir, loader] of Object.entries(this.loadNodesAndCredentials.loaders)) {
+				const pathPrefix = `/icons/${loader.packageName}`;
+				this.app.use(`${pathPrefix}/*/*.(svg|png)`, async (req, res) => {
+					const filePath = pathResolve(dir, req.originalUrl.substring(pathPrefix.length + 1));
+					try {
+						await fsAccess(filePath);
+						res.sendFile(filePath);
+					} catch {
+						res.sendStatus(404);
+					}
+				});
+			}
+
+			this.app.use(
+				'/',
+				express.static(GENERATED_STATIC_DIR),
+				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+			);
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
@@ -1487,11 +1384,16 @@ export async function start(): Promise<void> {
 	// Set up event handling
 	initEvents();
 
-	const workflow = await Db.collections.Workflow.findOne({
+	if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+		const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+		await reloadNodesAndCredentials(app.loadNodesAndCredentials, app.nodeTypes, app.push);
+	}
+
+	void Db.collections.Workflow.findOne({
 		select: ['createdAt'],
 		order: { createdAt: 'ASC' },
 		where: {},
-	});
-
-	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
+	}).then(async (workflow) =>
+		InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+	);
 }

@@ -495,6 +495,9 @@ export const pushConnection = mixins(
 				this.credentialsStore.fetchCredentialTypes(false).then(() => {
 					this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 				});
+			} else if (receivedData.type === 'nodeDescriptionUpdated') {
+				this.nodeTypesStore.getNodeTypes();
+				this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
 		},

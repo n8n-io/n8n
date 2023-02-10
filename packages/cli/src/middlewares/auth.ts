@@ -13,7 +13,7 @@ import {
 	isAuthenticatedRequest,
 	isAuthExcluded,
 	isPostUsersId,
-	isUserManagementDisabled,
+	isUserManagementEnabled,
 } from '@/UserManagement/UserManagementHelper';
 import type { Repository } from 'typeorm';
 import type { User } from '@db/entities/User';
@@ -101,7 +101,7 @@ export const setupAuthMiddlewares = (
 		}
 
 		// skip authentication if user management is disabled
-		if (isUserManagementDisabled()) {
+		if (!isUserManagementEnabled()) {
 			req.user = await userRepository.findOneOrFail({
 				relations: ['globalRole'],
 				where: {},
@@ -126,11 +126,7 @@ export const setupAuthMiddlewares = (
 			`/${restEndpoint}/ldap/sync`,
 			`/${restEndpoint}/ldap/test-connection`,
 		];
-		const getRestrictedUrls = [
-			`/${restEndpoint}/users`,
-			`/${restEndpoint}/ldap/sync`,
-			`/${restEndpoint}/ldap/config`,
-		];
+		const getRestrictedUrls = [`/${restEndpoint}/ldap/sync`, `/${restEndpoint}/ldap/config`];
 		const putRestrictedUrls = [`/${restEndpoint}/ldap/config`];
 		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
 		if (

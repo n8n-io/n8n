@@ -1,13 +1,7 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">
-				{{
-					`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${
-						finishedExecutionsCountEstimated === true ? '~' : ''
-					}${combinedExecutionsCount}`
-				}}
-			</n8n-heading>
+			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 			<div :class="$style.filters">
 				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
 				<n8n-select
@@ -276,6 +270,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { setPageTitle } from '@/utils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -308,6 +303,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				stoppingExecutions: [] as string[],
 				workflows: [] as IWorkflowShortResponse[],
 			};
+		},
+		mounted() {
+			setPageTitle(`n8n - ${this.pageTitle}`);
 		},
 		async created() {
 			await this.loadWorkflows();
@@ -423,6 +421,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						break;
 				}
 				return queryFilter;
+			},
+			pageTitle() {
+				return this.$locale.baseText('executionsList.workflowExecutions');
 			},
 		},
 		methods: {
@@ -959,13 +960,18 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	grid-template-rows: 1fr 0;
 	position: relative;
 	height: 100%;
+	width: 100%;
+	max-width: 1280px;
 }
 
 .execList {
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-3xl) var(--spacing-xl);
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .selectionOptions {

@@ -29,8 +29,9 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
-import { getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
+import { PermissionChecker } from './UserManagement/PermissionChecker';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -94,30 +95,7 @@ export async function executeErrorWorkflow(
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		let workflowData: WorkflowEntity | null = null;
-		if (workflowId !== workflowErrorData.workflow.id) {
-			// To make this code easier to understand, we split it in 2 parts:
-			// 1) Fetch the owner of the errored workflows and then
-			// 2) if now instance owner, then check if the user has access to the
-			//    triggered workflow.
-
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
-
-			if (user.globalRole.name === 'owner') {
-				workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
-			} else {
-				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
-					where: { workflowId, userId: user.id },
-					relations: ['workflow'],
-				});
-				if (sharedWorkflowData) {
-					workflowData = sharedWorkflowData.workflow;
-				}
-			}
-		} else {
-			workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
-		}
+		const workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
 
 		if (workflowData === null) {
 			// The error workflow could not be found
@@ -125,15 +103,6 @@ export async function executeErrorWorkflow(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
 				{ workflowId },
-			);
-			return;
-		}
-
-		const user = await getWorkflowOwner(workflowId);
-		if (user.id !== runningUser.id) {
-			// The error workflow could not be found
-			Logger.warn(
-				`An attempt to execute workflow ID ${workflowId} as error workflow was blocked due to wrong permission`,
 			);
 			return;
 		}
@@ -151,6 +120,20 @@ export async function executeErrorWorkflow(
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});
+
+		try {
+			await PermissionChecker.checkSubworkflowExecutePolicy(
+				workflowInstance,
+				runningUser.id,
+				workflowErrorData.workflow.id,
+			);
+		} catch (error) {
+			Logger.info('Error workflow execution blocked due to subworkflow settings', {
+				erroredWorkflowId: workflowErrorData.workflow.id,
+				errorWorkflowId: workflowId,
+			});
+			return;
+		}
 
 		let node: INode;
 		let workflowStartNode: INode | undefined;
@@ -204,7 +187,7 @@ export async function executeErrorWorkflow(
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,
-			userId: user.id,
+			userId: runningUser.id,
 		};
 
 		const workflowRunner = new WorkflowRunner();

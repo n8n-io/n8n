@@ -564,6 +564,7 @@ export interface IN8nUISettings {
 }
 
 export interface IPersonalizationSurveyAnswers {
+	email: string | null;
 	codingSkill: string | null;
 	companyIndustry: string[];
 	companySize: string | null;
@@ -607,7 +608,8 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataNodeDescriptionUpdated;
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -647,6 +649,11 @@ type PushDataRemoveNodeType = {
 type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
+};
+
+type PushDataNodeDescriptionUpdated = {
+	data: undefined;
+	type: 'nodeDescriptionUpdated';
 };
 
 export interface IPushDataExecutionFinished {

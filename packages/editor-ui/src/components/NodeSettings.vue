@@ -116,7 +116,11 @@
 					</n8n-text>
 				</div>
 
-				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
+				<div
+					v-if="isCustomApiCallSelected(nodeValues)"
+					class="parameter-item parameter-notice"
+					data-test-id="node-parameters-http-notice"
+				>
 					<n8n-notice
 						:content="
 							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
@@ -549,7 +553,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		nameChanged(name: string) {
 			if (this.node) {
-				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name));
 			}
 			// @ts-ignore
 			this.valueChanged({

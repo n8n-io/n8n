@@ -246,8 +246,19 @@ export class ExecutionsService {
 			});
 		}
 
-		let query = Db.collections.Execution.createQueryBuilder()
-			.select()
+		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		let query = Db.collections.Execution.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.waitTill',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowData',
+			])
 			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);

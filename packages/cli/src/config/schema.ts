@@ -983,6 +983,17 @@ export const schema = {
 		},
 	},
 
+	ldap: {
+		loginEnabled: {
+			format: Boolean,
+			default: false,
+		},
+		loginLabel: {
+			format: String,
+			default: '',
+		},
+	},
+
 	hiringBanner: {
 		enabled: {
 			doc: 'Whether hiring banner in browser console is enabled.',
