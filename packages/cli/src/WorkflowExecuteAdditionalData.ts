@@ -60,7 +60,7 @@ import type {
 } from '@/Interfaces';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { NodeTypes } from '@/NodeTypes';
-import * as Push from '@/Push';
+import { getPushInstance } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -250,76 +250,67 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				const { sessionId, executionId } = this;
 				// Push data to session which started workflow before each
 				// node which starts rendering
-				if (this.sessionId === undefined) {
+				if (sessionId === undefined) {
 					return;
 				}
+
 				Logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
-					executionId: this.executionId,
-					sessionId: this.sessionId,
+					executionId,
+					sessionId,
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = Push.getInstance();
-				pushInstance.send(
-					'nodeExecuteBefore',
-					{
-						executionId: this.executionId,
-						nodeName,
-					},
-					this.sessionId,
-				);
+				const pushInstance = getPushInstance();
+				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, sessionId);
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string, data: ITaskData): Promise<void> {
+				const { sessionId, executionId } = this;
 				// Push data to session which started workflow after each rendered node
-				if (this.sessionId === undefined) {
+				if (sessionId === undefined) {
 					return;
 				}
+
 				Logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
-					executionId: this.executionId,
-					sessionId: this.sessionId,
+					executionId,
+					sessionId,
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = Push.getInstance();
-				pushInstance.send(
-					'nodeExecuteAfter',
-					{
-						executionId: this.executionId,
-						nodeName,
-						data,
-					},
-					this.sessionId,
-				);
+				const pushInstance = getPushInstance();
+				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, sessionId);
 			},
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
+				const { sessionId, executionId } = this;
+				const { id: workflowId, name: workflowName } = this.workflowData;
 				Logger.debug('Executing hook (hookFunctionsPush)', {
-					executionId: this.executionId,
-					sessionId: this.sessionId,
-					workflowId: this.workflowData.id,
+					executionId,
+					sessionId,
+					workflowId,
 				});
 				// Push data to session which started the workflow
-				if (this.sessionId === undefined) {
+				if (sessionId === undefined) {
 					return;
 				}
-				const pushInstance = Push.getInstance();
+				const pushInstance = getPushInstance();
 				pushInstance.send(
 					'executionStarted',
 					{
-						executionId: this.executionId,
+						executionId,
 						mode: this.mode,
 						startedAt: new Date(),
 						retryOf: this.retryOf,
-						workflowId: this.workflowData.id,
-						sessionId: this.sessionId,
-						workflowName: this.workflowData.name,
+						workflowId,
+						sessionId,
+						workflowName,
 					},
-					this.sessionId,
+					sessionId,
 				);
 			},
 		],
@@ -329,13 +320,15 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				fullRunData: IRun,
 				newStaticData: IDataObject,
 			): Promise<void> {
+				const { sessionId, executionId, retryOf } = this;
+				const { id: workflowId } = this.workflowData;
 				Logger.debug('Executing hook (hookFunctionsPush)', {
-					executionId: this.executionId,
-					sessionId: this.sessionId,
-					workflowId: this.workflowData.id,
+					executionId,
+					sessionId,
+					workflowId,
 				});
 				// Push data to session which started the workflow
-				if (this.sessionId === undefined) {
+				if (sessionId === undefined) {
 					return;
 				}
 
@@ -354,19 +347,19 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				};
 
 				// Push data to editor-ui once workflow finished
-				Logger.debug(`Save execution progress to database for execution ID ${this.executionId} `, {
-					executionId: this.executionId,
-					workflowId: this.workflowData.id,
+				Logger.debug(`Save execution progress to database for execution ID ${executionId} `, {
+					executionId,
+					workflowId,
 				});
 				// TODO: Look at this again
 				const sendData: IPushDataExecutionFinished = {
-					executionId: this.executionId,
+					executionId,
 					data: pushRunData,
-					retryOf: this.retryOf,
+					retryOf,
 				};
 
-				const pushInstance = Push.getInstance();
-				pushInstance.send('executionFinished', sendData, this.sessionId);
+				const pushInstance = getPushInstance();
+				pushInstance.send('executionFinished', sendData, sessionId);
 			},
 		],
 	};
@@ -1041,11 +1034,11 @@ async function executeWorkflow(
 	if (data.finished === true) {
 		// Workflow did finish successfully
 
-		await ActiveExecutions.getInstance().remove(executionId, data);
+		ActiveExecutions.getInstance().remove(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	await ActiveExecutions.getInstance().remove(executionId, data);
+	ActiveExecutions.getInstance().remove(executionId, data);
 	// Workflow did fail
 	const { error } = data.data.resultData;
 	// eslint-disable-next-line @typescript-eslint/no-throw-literal
@@ -1057,20 +1050,21 @@ async function executeWorkflow(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function sendMessageToUI(source: string, messages: any[]) {
-	if (this.sessionId === undefined) {
+	const { sessionId } = this;
+	if (sessionId === undefined) {
 		return;
 	}
 
 	// Push data to session which started workflow
 	try {
-		const pushInstance = Push.getInstance();
+		const pushInstance = getPushInstance();
 		pushInstance.send(
 			'sendConsoleMessage',
 			{
 				source: `[Node: "${source}"]`,
 				messages,
 			},
-			this.sessionId,
+			sessionId,
 		);
 	} catch (error) {
 		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
