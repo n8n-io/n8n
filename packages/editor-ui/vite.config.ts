@@ -1,6 +1,5 @@
 import vue from '@vitejs/plugin-vue2';
 import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig, PluginOption } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
@@ -61,11 +60,6 @@ export default mergeConfig(
 				targets: ['defaults', 'not IE 11'],
 			}),
 			vue(),
-			monacoEditorPlugin({
-				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) =>
-					`${root}/${buildOutDir}/assets/monaco-editor`,
-			}) as PluginOption,
 		],
 		resolve: {
 			alias: [

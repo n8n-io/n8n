@@ -9,6 +9,7 @@ import { Compartment, EditorState, EditorStateConfig } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
+import { json } from '@codemirror/lang-json';
 
 import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './languages/javaScript/linter';
@@ -17,8 +18,6 @@ import { CODE_NODE_EDITOR_THEME } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
-import * as javaScriptConstants from './languages/javaScript/constants';
-import * as pythonScriptConstants from './languages/python/constants';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 
@@ -34,18 +33,23 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			type: Boolean,
 			default: false,
 		},
-		code: {
+		value: {
+			type: String,
+		},
+		defaultValue: {
 			type: String,
 		},
 		language: {
 			type: String,
 			default: 'javaScript',
+			validator: (value: string): boolean => ['javaScript', 'json', 'python'].includes(value),
 		},
 	},
 	data() {
 		return {
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
+			isDefault: false,
 		};
 	},
 	watch: {
@@ -64,21 +68,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 			return this.editor.state.doc.toString();
 		},
-		languageConstants() {
-			return this.language === 'python' ? pythonScriptConstants : javaScriptConstants;
-		},
-		placeholder(): string {
-			return {
-				runOnceForAllItems: this.languageConstants.ALL_ITEMS_PLACEHOLDER,
-				runOnceForEachItem: this.languageConstants.EACH_ITEM_PLACEHOLDER,
-			}[this.mode];
-		},
-		previousPlaceholder(): string {
-			return {
-				runOnceForAllItems: this.languageConstants.EACH_ITEM_PLACEHOLDER,
-				runOnceForEachItem: this.languageConstants.ALL_ITEMS_PLACEHOLDER,
-			}[this.mode];
-		},
 	},
 	methods: {
 		reloadLinter() {
@@ -91,10 +80,11 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
-			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
+			if (!this.content.trim() || this.isDefault) {
 				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder },
+					changes: { from: 0, to: this.content.length, insert: this.defaultValue },
 				});
+				this.isDefault = true;
 			}
 		},
 		highlightLine(line: number | 'final') {
@@ -133,6 +123,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					insertedText = full.slice(lastDotIndex + 1);
 				}
 
+				// TODO: Still has to get updated for Python and JSON
 				this.$telemetry.track('User autocompleted code', {
 					instance_id: this.rootStore.instanceId,
 					node_type: CODE_NODE_TYPE,
@@ -156,18 +147,25 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				if (!viewUpdate.docChanged) return;
 				this.trackCompletion(viewUpdate);
 				this.$emit('valueChanged', this.content);
+				if (this.content === this.defaultValue) {
+					this.isDefault = true;
+				} else {
+					this.isDefault = false;
+				}
 			}),
 		];
 
 		// empty on first load, default param value
-		if (this.code === '') {
-			this.$emit('valueChanged', this.placeholder);
+		if (this.value === '') {
+			this.$emit('valueChanged', this.defaultValue);
 		}
+
+		this.isDefault = this.value === this.defaultValue;
 
 		let editorSettings: EditorStateConfig;
 		if (this.language === 'python') {
 			editorSettings = {
-				doc: this.code === '' ? this.placeholder : this.code,
+				doc: this.value === '' ? this.defaultValue : this.value,
 				extensions: [
 					...baseExtensions,
 					...stateBasedExtensions,
@@ -176,9 +174,14 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					// this.autocompletionExtension(),
 				],
 			};
+		} else if (this.language === 'json') {
+			editorSettings = {
+				doc: this.value === '' ? this.defaultValue : this.value,
+				extensions: [...baseExtensions, ...stateBasedExtensions, CODE_NODE_EDITOR_THEME, json()],
+			};
 		} else {
 			editorSettings = {
-				doc: this.code === '' ? this.placeholder : this.code,
+				doc: this.value === '' ? this.defaultValue : this.value,
 				extensions: [
 					this.linterCompartment.of(this.linterExtension()),
 					...baseExtensions,

@@ -525,6 +525,7 @@ importers:
       '@codemirror/autocomplete': ^6.4.0
       '@codemirror/commands': ^6.1.0
       '@codemirror/lang-javascript': ^6.1.2
+      '@codemirror/lang-json': ^6.0.1
       '@codemirror/lang-python': ^6.1.1
       '@codemirror/language': ^6.2.1
       '@codemirror/lint': ^6.0.0
@@ -576,7 +577,6 @@ importers:
       lodash.orderby: ^4.6.0
       lodash.set: ^4.3.2
       luxon: ^3.1.0
-      monaco-editor: ^0.33.0
       n8n-design-system: ~0.52.0
       n8n-workflow: ~0.135.0
       normalize-wheel: ^1.0.1
@@ -591,7 +591,6 @@ importers:
       uuid: ^8.3.2
       v-click-outside: ^3.1.2
       vite: 4.0.4
-      vite-plugin-monaco-editor: ^1.0.10
       vitest: 0.27.2
       vue: ^2.7.14
       vue-agile: ^2.0.0
@@ -612,6 +611,7 @@ importers:
       '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/commands': 6.1.2
       '@codemirror/lang-javascript': 6.1.2
+      '@codemirror/lang-json': 6.0.1
       '@codemirror/lang-python': 6.1.1_zyklskjzaprvz25ee7sq7godcq
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
@@ -645,7 +645,6 @@ importers:
       lodash.orderby: 4.6.0
       lodash.set: 4.3.2
       luxon: 3.1.1
-      monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
       n8n-workflow: link:../workflow
       normalize-wheel: 1.0.1
@@ -693,7 +692,6 @@ importers:
       sass-loader: 10.3.1_sass@1.55.0+webpack@5.74.0
       string-template-parser: 1.2.6
       vite: 4.0.4_sass@1.55.0+terser@5.16.1
-      vite-plugin-monaco-editor: 1.1.0_monaco-editor@0.33.0
       vitest: 0.27.2_sass@1.55.0+terser@5.16.1
       vue-tsc: 1.0.24_typescript@4.9.4
 
@@ -3000,6 +2998,13 @@ packages:
       '@lezer/javascript': 1.0.2
     dev: false
 
+  /@codemirror/lang-json/6.0.1:
+    resolution: {integrity: sha512-+T1flHdgpqDDlJZ2Lkil/rLiRy684WMLc74xUnjJH48GQdfJo/pudlTRreZmKwzP8/tGdKf83wlbAdOCzlJOGQ==}
+    dependencies:
+      '@codemirror/language': 6.2.1
+      '@lezer/json': 1.0.0
+    dev: false
+
   /@codemirror/lang-python/6.1.1_zyklskjzaprvz25ee7sq7godcq:
     resolution: {integrity: sha512-AddGMIKUssUAqaDKoxKWA5GAzy/CVE0eSY7/ANgNzdS1GYBkp6N49XKEyMElkuN04UsZ+bTIQdj+tVV75NMwJw==}
     dependencies:
@@ -3813,6 +3818,13 @@ packages:
 
   /@lezer/javascript/1.0.2:
     resolution: {integrity: sha512-IjOVeIRhM8IuafWNnk+UzRz7p4/JSOKBNINLYLsdSGuJS9Ju7vFdc82AlTt0jgtV5D8eBZf4g0vK4d3ttBNz7A==}
+    dependencies:
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    dev: false
+
+  /@lezer/json/1.0.0:
+    resolution: {integrity: sha512-zbAuUY09RBzCoCA3lJ1+ypKw5WSNvLqGMtasdW6HvVOqZoCpPr8eWrsGnOVWGKGn8Rh21FnrKRVlJXrGAVUqRw==}
     dependencies:
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
@@ -16334,9 +16346,6 @@ packages:
   /moment/2.29.4:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
 
-  /monaco-editor/0.33.0:
-    resolution: {integrity: sha512-VcRWPSLIUEgQJQIE0pVT8FcGBIgFoxz7jtqctE+IiCxWugD0DwgyQBcZBhdSrdMC84eumoqMZsGl2GTreOzwqw==}
-
   /mongodb-connection-string-url/2.5.4:
     resolution: {integrity: sha512-SeAxuWs0ez3iI3vvmLk/j2y+zHwigTDKQhtdxTgt5ZCOQQS5+HW4g45/Xw5vzzbn7oQXCNQ24Z40AkJsizEy7w==}
     dependencies:
@@ -22196,14 +22205,6 @@ packages:
       - sugarss
       - supports-color
       - terser
-    dev: true
-
-  /vite-plugin-monaco-editor/1.1.0_monaco-editor@0.33.0:
-    resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
-    peerDependencies:
-      monaco-editor: '>=0.33.0'
-    dependencies:
-      monaco-editor: 0.33.0
     dev: true
 
   /vite/4.0.4_7rfoeown37vwv4fneiebr6nt2u:
