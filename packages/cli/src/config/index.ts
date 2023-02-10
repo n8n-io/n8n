@@ -5,24 +5,43 @@ import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
-import { execSync } from 'child_process';
+// import { execSync } from 'child_process';
 
 if (inE2ETests) {
-	const NPM_PATH = execSync('which npm')
-		.toString()
-		.trim()
-		.replace(/\/bin\/npm$/, '/bin');
+	// const NPM_PATH = execSync('which npm')
+	// 	.toString()
+	// 	.trim()
+	// 	.replace(/\/bin\/npm$/, '/bin');
+
+	// This will successfully install the community node (watch with `pnpm run test:e2e:ui`)
+	process.env.E2E_TESTS = 'true';
+	process.env.N8N_USER_FOLDER = mkdtempSync(join(tmpdir(), 'n8n-e2e-'));
+	process.env.EXECUTIONS_PROCESS = 'main';
+	process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
+	process.env.N8N_PUBLIC_API_DISABLED = 'true';
+	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
+	process.env.N8N_PERSONALIZATION_ENABLED = 'false';
+
+	// This still works
+	process.env = process.env;
+
+	// This will break it
+	process.env = { ...process.env };
+
+	// Original version:
+
 	// Skip loading config from env variables in end-to-end tests
-	process.env = {
-		E2E_TESTS: 'true',
-		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
-		EXECUTIONS_PROCESS: 'main',
-		N8N_DIAGNOSTICS_ENABLED: 'false',
-		N8N_PUBLIC_API_DISABLED: 'true',
-		EXTERNAL_FRONTEND_HOOKS_URLS: '',
-		N8N_PERSONALIZATION_ENABLED: 'false',
-		PATH: NPM_PATH,
-	};
+	// process.env = {
+	// 	E2E_TESTS: 'true',
+	// 	N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
+	// 	EXECUTIONS_PROCESS: 'main',
+	// 	N8N_DIAGNOSTICS_ENABLED: 'false',
+	// 	N8N_PUBLIC_API_DISABLED: 'true',
+	// 	EXTERNAL_FRONTEND_HOOKS_URLS: '',
+	// 	N8N_PERSONALIZATION_ENABLED: 'false',
+	// };
+
+	console.log(process.env);
 } else if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.N8N_PUBLIC_API_SWAGGERUI_DISABLED = 'true';
