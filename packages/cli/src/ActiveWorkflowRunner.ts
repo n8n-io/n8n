@@ -1,7 +1,6 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
-/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-floating-promises */
@@ -64,6 +63,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
+import { START_NODES } from './constants';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -92,7 +92,7 @@ export class ActiveWorkflowRunner {
 		// so instead of pulling all the active webhooks just pull the actives that have a trigger
 		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		})) as IWorkflowDb[];
 
 		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
@@ -108,12 +108,12 @@ export class ActiveWorkflowRunner {
 		}
 
 		if (workflowsData.length !== 0) {
-			console.info(' ================================');
-			console.info('   Start Active Workflows:');
-			console.info(' ================================');
+			Logger.info(' ================================');
+			Logger.info('   Start Active Workflows:');
+			Logger.info(' ================================');
 
 			for (const workflowData of workflowsData) {
-				console.log(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+				Logger.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
 				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, {
 					workflowName: workflowData.name,
 					workflowId: workflowData.id,
@@ -124,14 +124,14 @@ export class ActiveWorkflowRunner {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
 					});
-					console.log('     => Started');
+					Logger.info('     => Started');
 				} catch (error) {
 					ErrorReporter.error(error);
-					console.log(
+					Logger.info(
 						'     => ERROR: Workflow could not be activated on first try, keep on trying',
 					);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.log(`               ${error.message}`);
+					Logger.info(`               ${error.message}`);
 					Logger.error(
 						`Issue on intital workflow activation try "${workflowData.name}" (startup)`,
 						{
@@ -165,7 +165,10 @@ export class ActiveWorkflowRunner {
 		}
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows.map((workflow) => workflow.id)];
+		activeWorkflowIds = [
+			...activeWorkflowIds,
+			...activeWorkflows.map((workflow) => workflow.id.toString()),
+		];
 
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
@@ -479,7 +482,7 @@ export class ActiveWorkflowRunner {
 				try {
 					await this.removeWorkflowWebhooks(workflow.id as string);
 				} catch (error) {
-					console.error(
+					Logger.error(
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
 					);
@@ -648,7 +651,7 @@ export class ActiveWorkflowRunner {
 							.catch(donePromise.reject);
 					});
 				} else {
-					executePromise.catch(console.error);
+					executePromise.catch(Logger.error);
 				}
 			};
 
@@ -705,7 +708,7 @@ export class ActiveWorkflowRunner {
 							.catch(donePromise.reject);
 					});
 				} else {
-					executePromise.catch(console.error);
+					executePromise.catch(Logger.error);
 				}
 			};
 			returnFunctions.emitError = async (error: Error): Promise<void> => {
@@ -782,7 +785,7 @@ export class ActiveWorkflowRunner {
 			if (workflowData === undefined) {
 				workflowData = (await Db.collections.Workflow.findOne({
 					where: { id: workflowId },
-					relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+					relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 				})) as IWorkflowDb;
 			}
 
@@ -801,10 +804,7 @@ export class ActiveWorkflowRunner {
 				settings: workflowData.settings,
 			});
 
-			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated([
-				'n8n-nodes-base.start',
-				'n8n-nodes-base.manualTrigger',
-			]);
+			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated(START_NODES);
 			if (!canBeActivated) {
 				Logger.error(`Unable to activate workflow "${workflowData.name}"`);
 				throw new Error(
@@ -813,9 +813,13 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(
-				(workflowData as WorkflowEntity).shared[0].user.id,
+			const workflowOwner = (workflowData as WorkflowEntity).shared.find(
+				(shared) => shared.role.name === 'owner',
 			);
+			if (!workflowOwner) {
+				throw new Error('Workflow cannot be activated because it has no owner');
+			}
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.user.id);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(
 				workflowData,
 				additionalData,
@@ -979,7 +983,7 @@ export class ActiveWorkflowRunner {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
 				ErrorReporter.error(error);
-				console.error(
+				Logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 				);

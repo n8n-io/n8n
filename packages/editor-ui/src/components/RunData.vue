@@ -172,7 +172,7 @@
 		</div>
 
 		<div :class="$style['data-container']" ref="dataContainer" data-test-id="ndv-data-container">
-			<div v-if="isExecuting" :class="$style.center">
+			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>

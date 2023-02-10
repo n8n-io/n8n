@@ -3,6 +3,8 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
+	ITriggerFunctions,
+	ITriggerResponse,
 	IVersionedNodeType,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -41,6 +43,41 @@ class NodeTypesClass implements INodeTypes {
 				},
 			},
 		},
+		'fake-scheduler': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Schedule',
+					name: 'set',
+					group: ['input'],
+					version: 1,
+					description: 'Schedules execuitons',
+					defaults: {
+						name: 'Set',
+						color: '#0000FF',
+					},
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Value1',
+							name: 'value1',
+							type: 'string',
+							default: 'default-value1',
+						},
+						{
+							displayName: 'Value2',
+							name: 'value2',
+							type: 'string',
+							default: 'default-value2',
+						},
+					],
+				},
+				trigger: () => {
+					return Promise.resolve(undefined);
+				},
+			},
+		},
 	};
 
 	constructor(nodesAndCredentials?: INodesAndCredentials) {
@@ -74,3 +111,33 @@ export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypes
  * after all promises in the microtask queue have settled first.
  */
 export const flushPromises = async () => new Promise(setImmediate);
+
+export function mockNodeTypesData(
+	nodeNames: string[],
+	options?: {
+		addTrigger?: boolean;
+	},
+) {
+	return nodeNames.reduce<INodeTypeData>((acc, nodeName) => {
+		return (
+			(acc[`n8n-nodes-base.${nodeName}`] = {
+				sourcePath: '',
+				type: {
+					description: {
+						displayName: nodeName,
+						name: nodeName,
+						group: [],
+						description: '',
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+					},
+					trigger: options?.addTrigger ? () => Promise.resolve(undefined) : undefined,
+				},
+			}),
+			acc
+		);
+	}, {});
+}
