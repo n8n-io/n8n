@@ -28,7 +28,6 @@ export class WorkflowExecutionsTab extends BasePage {
 			this.actions.createManualExecutions(2);
 			this.actions.toggleNodeEnabled('Error');
 			this.actions.createManualExecutions(4);
-			this.actions.switchToEditorTab();
 			this.actions.switchToExecutionsTab();
 			cy.waitForLoad();
 		},
