@@ -3,7 +3,6 @@ import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-import type { Logger } from '@/Logger';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -23,7 +22,7 @@ export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
 export abstract class BaseCommand extends Command {
-	protected logger: Logger;
+	protected logger = LoggerProxy.init(getLogger());
 
 	protected externalHooks: IExternalHooksClass;
 
@@ -34,9 +33,6 @@ export abstract class BaseCommand extends Command {
 	protected userSettings: IUserSettings;
 
 	async init(): Promise<void> {
-		this.logger = getLogger();
-		LoggerProxy.init(this.logger);
-
 		await initErrorHandling();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

@@ -2,7 +2,6 @@ import { Command, flags } from '@oclif/command';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
-import type { Logger } from '@/Logger';
 import { getLogger } from '@/Logger';
 import { getConnectionOptions } from '@/Db';
 import config from '@/config';
@@ -16,14 +15,11 @@ export class DbRevertMigrationCommand extends Command {
 		help: flags.help({ char: 'h' }),
 	};
 
-	private logger: Logger;
+	protected logger = LoggerProxy.init(getLogger());
 
 	private connection: Connection;
 
 	async init() {
-		this.logger = getLogger();
-		LoggerProxy.init(this.logger);
-
 		this.parse(DbRevertMigrationCommand);
 	}
 
