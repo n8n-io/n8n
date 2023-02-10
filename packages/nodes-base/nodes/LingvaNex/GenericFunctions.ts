@@ -1,24 +1,24 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function lingvaNexApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('lingvaNexApi');
@@ -35,7 +35,7 @@ export async function lingvaNexApiRequest(
 
 		options = Object.assign({}, options, option);
 
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (response.err !== null) {
 			throw new NodeApiError(this.getNode(), response);

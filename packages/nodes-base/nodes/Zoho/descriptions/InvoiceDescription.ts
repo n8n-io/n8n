@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -46,10 +46,10 @@ export const invoiceOperations: INodeProperties[] = [
 				action: 'Get an invoice',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all invoices',
-				action: 'Get all invoices',
+				description: 'Get many invoices',
+				action: 'Get many invoices',
 			},
 			{
 				name: 'Update',

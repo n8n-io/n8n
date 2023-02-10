@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const profileOperations: INodeProperties[] = [
 	{
@@ -14,9 +14,9 @@ export const profileOperations: INodeProperties[] = [
 				action: 'Get a profile',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all profiles',
+				action: 'Get many profiles',
 			},
 		],
 		displayOptions: {

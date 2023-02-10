@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -8,15 +8,15 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import {
 	payoutFields,
 	payoutItemFields,
 	payoutItemOperations,
 	payoutOperations,
 } from './PaymentDescription';
-import {
+import type {
 	IAmount,
 	IItem,
 	IPaymentBatch,
@@ -88,7 +88,7 @@ export class PayPal implements INodeType {
 				if (!clientId || !clientSecret || !environment) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid: missing credentials`,
+						message: 'Connection details not valid: missing credentials',
 					};
 				}
 
@@ -113,7 +113,7 @@ export class PayPal implements INodeType {
 				};
 
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 					return {
 						status: 'OK',
 						message: 'Authentication successful!',
@@ -130,13 +130,13 @@ export class PayPal implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -144,9 +144,9 @@ export class PayPal implements INodeType {
 					if (operation === 'create') {
 						const body: IPaymentBatch = {};
 						const header: ISenderBatchHeader = {};
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const senderBatchId = this.getNodeParameter('senderBatchId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						header.sender_batch_id = senderBatchId;
 						if (additionalFields.emailSubject) {
 							header.email_subject = additionalFields.emailSubject as string;
@@ -190,8 +190,8 @@ export class PayPal implements INodeType {
 					}
 					if (operation === 'get') {
 						const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						if (returnAll === true) {
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						if (returnAll) {
 							responseData = await payPalApiRequestAllItems.call(
 								this,
 								'items',
@@ -201,7 +201,7 @@ export class PayPal implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await payPalApiRequest.call(
 								this,
 								`/payments/payouts/${payoutBatchId}`,
@@ -234,19 +234,25 @@ export class PayPal implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

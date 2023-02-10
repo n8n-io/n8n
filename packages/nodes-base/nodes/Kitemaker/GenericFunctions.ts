@@ -1,6 +1,7 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function kitemakerRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -20,7 +21,7 @@ export async function kitemakerRequest(
 		json: true,
 	};
 
-	const responseData = await this.helpers.request!.call(this, options);
+	const responseData = await this.helpers.request.call(this, options);
 
 	if (responseData.errors) {
 		throw new NodeApiError(this.getNode(), responseData);
@@ -29,15 +30,25 @@ export async function kitemakerRequest(
 	return responseData;
 }
 
+function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
+	const map: { [key: string]: { [key: string]: string } } = {
+		space: { group: 'organization', items: 'spaces' },
+		user: { group: 'organization', items: 'users' },
+		workItem: { group: 'workItems', items: 'workItems' },
+	};
+
+	return [map[resource].group, map[resource].items];
+}
+
 export async function kitemakerRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions,
 	body: { query: string; variables: { [key: string]: string } },
 ) {
 	const resource = this.getNodeParameter('resource', 0) as 'space' | 'user' | 'workItem';
 	const [group, items] = getGroupAndItems(resource);
 
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -53,16 +64,6 @@ export async function kitemakerRequestAllItems(
 	} while (responseData.data[group].hasMore);
 
 	return returnData;
-}
-
-function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
-	const map: { [key: string]: { [key: string]: string } } = {
-		space: { group: 'organization', items: 'spaces' },
-		user: { group: 'organization', items: 'users' },
-		workItem: { group: 'workItems', items: 'workItems' },
-	};
-
-	return [map[resource]['group'], map[resource]['items']];
 }
 
 export function createLoadOptions(

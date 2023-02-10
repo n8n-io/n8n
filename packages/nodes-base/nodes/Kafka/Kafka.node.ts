@@ -1,22 +1,21 @@
-import {
-	CompressionTypes,
-	Kafka as apacheKafka,
-	KafkaConfig,
-	SASLOptions,
-	TopicMessages,
-} from 'kafkajs';
+import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
+import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,6 +34,7 @@ export class Kafka implements INodeType {
 			{
 				name: 'kafka',
 				required: true,
+				testedBy: 'kafkaConnectionTest',
 			},
 		],
 		properties: [
@@ -91,6 +91,27 @@ export class Kafka implements INodeType {
 				placeholder: 'https://schema-registry-domain:8081',
 				default: '',
 				description: 'URL of the schema registry',
+			},
+			{
+				displayName: 'Use Key',
+				name: 'useKey',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use a message key',
+			},
+			{
+				displayName: 'Key',
+				name: 'key',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useKey: [true],
+					},
+				},
+				placeholder: '',
+				default: '',
+				description: 'The message key',
 			},
 			{
 				displayName: 'Event Name',
@@ -185,6 +206,56 @@ export class Kafka implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async kafkaConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const brokers = ((credentials.brokers as string) || '')
+						.split(',')
+						.map((item) => item.trim());
+
+					const clientId = credentials.clientId as string;
+
+					const ssl = credentials.ssl as boolean;
+
+					const config: KafkaConfig = {
+						clientId,
+						brokers,
+						ssl,
+					};
+					if (credentials.authentication === true) {
+						if (!(credentials.username && credentials.password)) {
+							throw Error('Username and password are required for authentication');
+						}
+						config.sasl = {
+							username: credentials.username as string,
+							password: credentials.password as string,
+							mechanism: credentials.saslMechanism as string,
+						} as SASLOptions;
+					}
+
+					const kafka = new apacheKafka(config);
+
+					await kafka.admin().connect();
+					await kafka.admin().disconnect();
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -195,7 +266,7 @@ export class Kafka implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const options = this.getNodeParameter('options', 0);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
@@ -212,9 +283,7 @@ export class Kafka implements INodeType {
 
 			const credentials = await this.getCredentials('kafka');
 
-			const brokers = ((credentials.brokers as string) || '')
-				.split(',')
-				.map((item) => item.trim()) as string[];
+			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 			const clientId = credentials.clientId as string;
 
@@ -249,7 +318,7 @@ export class Kafka implements INodeType {
 			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
-				if (sendInputData === true) {
+				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
@@ -274,11 +343,15 @@ export class Kafka implements INodeType {
 
 				const topic = this.getNodeParameter('topic', i) as string;
 
-				const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+				const jsonParameters = this.getNodeParameter('jsonParameters', i);
+
+				const useKey = this.getNodeParameter('useKey', i) as boolean;
+
+				const key = useKey ? (this.getNodeParameter('key', i) as string) : null;
 
 				let headers;
 
-				if (jsonParameters === true) {
+				if (jsonParameters) {
 					headers = this.getNodeParameter('headerParametersJson', i) as string;
 					try {
 						headers = JSON.parse(headers);
@@ -303,6 +376,7 @@ export class Kafka implements INodeType {
 						{
 							value: message,
 							headers,
+							key,
 						},
 					],
 				});

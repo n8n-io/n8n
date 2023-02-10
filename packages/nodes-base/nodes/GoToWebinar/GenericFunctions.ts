@@ -1,17 +1,21 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment';
 
 import * as losslessJSON from 'lossless-json';
+
+function convertLosslessNumber(key: any, value: any) {
+	if (value?.isLosslessNumber) {
+		return value.toString();
+	} else {
+		return value;
+	}
+}
 
 /**
  * Make an authenticated API request to GoToWebinar.
@@ -24,8 +28,8 @@ export async function goToWebinarApiRequest(
 	body: IDataObject | IDataObject[],
 	option: IDataObject = {},
 ) {
-	const operation = this.getNodeParameter('operation', 0) as string;
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const operation = this.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -41,7 +45,7 @@ export async function goToWebinarApiRequest(
 	};
 
 	if (resource === 'session' && operation === 'getAll') {
-		options.headers!['Accept'] = 'application/vnd.citrix.g2wapi-v1.1+json';
+		options.headers!.Accept = 'application/vnd.citrix.g2wapi-v1.1+json';
 	}
 
 	if (['GET', 'DELETE'].includes(method)) {
@@ -57,7 +61,7 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, {
+		const response = await this.helpers.requestOAuth2.call(this, 'goToWebinarOAuth2Api', options, {
 			tokenExpiredStatusCode: 403,
 		});
 
@@ -98,7 +102,7 @@ export async function goToWebinarApiRequestAllItems(
 
 		if (responseData.page && parseInt(responseData.page.totalElements, 10) === 0) {
 			return [];
-		} else if (responseData._embedded && responseData._embedded[key]) {
+		} else if (responseData._embedded?.[key]) {
 			returnData.push(...responseData._embedded[key]);
 		} else {
 			returnData.push(...responseData);
@@ -123,13 +127,13 @@ export async function handleGetAll(
 	body: IDataObject,
 	resource: string,
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		qs.limit = this.getNodeParameter('limit', 0) as number;
+		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
-	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
+	return goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {
@@ -274,13 +278,4 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 	});
 
 	return returnData;
-}
-
-// tslint:disable-next-line: no-any
-function convertLosslessNumber(key: any, value: any) {
-	if (value && value.isLosslessNumber) {
-		return value.toString();
-	} else {
-		return value;
-	}
 }

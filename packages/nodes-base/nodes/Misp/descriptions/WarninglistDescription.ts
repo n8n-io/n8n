@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const warninglistOperations: INodeProperties[] = [
 	{
@@ -18,9 +18,9 @@ export const warninglistOperations: INodeProperties[] = [
 				action: 'Get a warninglist',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all warninglists',
+				action: 'Get many warninglists',
 			},
 		],
 		default: 'get',

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const quoteOperations: INodeProperties[] = [
 	{
@@ -37,10 +37,10 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Get a quote',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all quotes',
-				action: 'Get all quotes',
+				description: 'Get data of many quotes',
+				action: 'Get many quotes',
 			},
 		],
 		default: 'create',
@@ -186,18 +186,12 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -256,17 +250,11 @@ export const quoteFields: INodeProperties[] = [
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 					},
 					{
 						displayName: 'Service',
 						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						type: 'string',
 						default: '',
 					},

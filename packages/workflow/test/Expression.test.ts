@@ -2,43 +2,42 @@
  * @jest-environment jsdom
  */
 
+import { DateTime, Duration, Interval } from 'luxon';
+import { Expression } from '@/Expression';
+import { Workflow } from '@/Workflow';
+import * as Helpers from './Helpers';
+import { baseFixtures } from './ExpressionFixtures/base';
 import {
-	Expression,
-	Workflow,
-} from "../src";
-import * as Helpers from "./Helpers";
-import {
-	DateTime,
-	Duration,
-	Interval
-} from "luxon";
+	IConnections,
+	IExecuteData,
+	INode,
+	INodeExecutionData,
+	IRunExecutionData,
+	ITaskData,
+} from '@/Interfaces';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
 		const nodeTypes = Helpers.NodeTypes();
-		const workflow = new Workflow({ nodes: [
-			{
-				name: 'node',
-				typeVersion: 1,
-				type: 'test.set',
-				id: 'uuid-1234',
-				position: [0, 0],
-				parameters: {}
-			}
-		], connections: {}, active: false, nodeTypes });
+		const workflow = new Workflow({
+			nodes: [
+				{
+					name: 'node',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-1234',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
 		const expression = new Expression(workflow);
 
-		const evaluate = (value: string) => expression.getParameterValue(
-			value,
-			null,
-			0,
-			0,
-			'node',
-			[],
-			'manual',
-			'',
-			{},
-		);
+		const evaluate = (value: string) =>
+			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', '', {});
 
 		it('should not be able to use global built-ins from denylist', () => {
 			expect(evaluate('={{document}}')).toEqual({});
@@ -81,8 +80,12 @@ describe('Expression', () => {
 
 		it('should be able to use global built-ins from allowlist', () => {
 			expect(evaluate('={{new Date()}}')).toBeInstanceOf(Date);
-			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(DateTime.now().toLocaleString());
-			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(Interval.after(new Date(), 100));
+			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(
+				DateTime.now().toLocaleString(),
+			);
+			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
+				Interval.after(new Date(), 100),
+			);
 			expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
 
 			expect(evaluate('={{new Object()}}')).toEqual(new Object());
@@ -116,31 +119,79 @@ describe('Expression', () => {
 			expect(evaluate('={{Intl}}')).toEqual(Intl);
 
 			expect(evaluate('={{new String()}}')).toEqual(new String());
-			expect(evaluate('={{new RegExp(\'\')}}')).toEqual(new RegExp(''));
+			expect(evaluate("={{new RegExp('')}}")).toEqual(new RegExp(''));
 
 			expect(evaluate('={{Math}}')).toEqual(Math);
 			expect(evaluate('={{new Number()}}')).toEqual(new Number());
-			expect(evaluate('={{BigInt(\'1\')}}')).toEqual(BigInt('1'));
+			expect(evaluate("={{BigInt('1')}}")).toEqual(BigInt('1'));
 			expect(evaluate('={{Infinity}}')).toEqual(Infinity);
 			expect(evaluate('={{NaN}}')).toEqual(NaN);
 			expect(evaluate('={{isFinite(1)}}')).toEqual(isFinite(1));
 			expect(evaluate('={{isNaN(1)}}')).toEqual(isNaN(1));
-			expect(evaluate('={{parseFloat(\'1\')}}')).toEqual(parseFloat('1'));
-			expect(evaluate('={{parseInt(\'1\', 10)}}')).toEqual(parseInt('1', 10));
+			expect(evaluate("={{parseFloat('1')}}")).toEqual(parseFloat('1'));
+			expect(evaluate("={{parseInt('1', 10)}}")).toEqual(parseInt('1', 10));
 
 			expect(evaluate('={{JSON.stringify({})}}')).toEqual(JSON.stringify({}));
 			expect(evaluate('={{new ArrayBuffer(10)}}')).toEqual(new ArrayBuffer(10));
 			expect(evaluate('={{new SharedArrayBuffer(10)}}')).toEqual(new SharedArrayBuffer(10));
 			expect(evaluate('={{Atomics}}')).toEqual(Atomics);
-			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(new DataView(new ArrayBuffer(1)));
+			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(
+				new DataView(new ArrayBuffer(1)),
+			);
 
-			expect(evaluate('={{encodeURI(\'https://google.com\')}}')).toEqual(encodeURI('https://google.com'));
-			expect(evaluate('={{encodeURIComponent(\'https://google.com\')}}')).toEqual(encodeURIComponent('https://google.com'));
-			expect(evaluate('={{decodeURI(\'https://google.com\')}}')).toEqual(decodeURI('https://google.com'));
-			expect(evaluate('={{decodeURIComponent(\'https://google.com\')}}')).toEqual(decodeURIComponent('https://google.com'));
+			expect(evaluate("={{encodeURI('https://google.com')}}")).toEqual(
+				encodeURI('https://google.com'),
+			);
+			expect(evaluate("={{encodeURIComponent('https://google.com')}}")).toEqual(
+				encodeURIComponent('https://google.com'),
+			);
+			expect(evaluate("={{decodeURI('https://google.com')}}")).toEqual(
+				decodeURI('https://google.com'),
+			);
+			expect(evaluate("={{decodeURIComponent('https://google.com')}}")).toEqual(
+				decodeURIComponent('https://google.com'),
+			);
 
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 		});
 	});
-})
+
+	describe('Test all expression value fixtures', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			nodes: [
+				{
+					name: 'node',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-1234',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		const expression = new Expression(workflow);
+
+		const evaluate = (value: string, data: INodeExecutionData[]) => {
+			return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', '', {});
+		};
+
+		for (const t of baseFixtures) {
+			if (!t.tests.some((test) => test.type === 'evaluation')) {
+				continue;
+			}
+			test(t.expression, () => {
+				for (const test of t.tests.filter((test) => test.type === 'evaluation')) {
+					expect(evaluate(t.expression, test.input.map((d) => ({ json: d })) as any)).toStrictEqual(
+						test.output,
+					);
+				}
+			});
+		}
+	});
+});

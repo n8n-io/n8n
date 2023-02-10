@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const tableRecordOperations: INodeProperties[] = [
 	{
@@ -28,9 +28,9 @@ export const tableRecordOperations: INodeProperties[] = [
 				action: 'Get a table record',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all table records',
+				action: 'Get many table records',
 			},
 			{
 				name: 'Update',

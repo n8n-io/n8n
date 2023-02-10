@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Create a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all chat threads',
-				action: 'Get all threads',
+				description: 'Get many chat threads',
+				action: 'Get many threads',
 			},
 		],
 		default: 'create',
@@ -86,9 +86,6 @@ export const threadFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {

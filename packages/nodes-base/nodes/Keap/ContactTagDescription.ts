@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const contactTagOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const contactTagOperations: INodeProperties[] = [
 				action: 'Delete a contact tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: "Retrieve all contact's tags",
-				action: 'Get all contact tags',
+				description: "Retrieve many contact's tags",
+				action: 'Get many contact tags',
 			},
 		],
 		default: 'create',

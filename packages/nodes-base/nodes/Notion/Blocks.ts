@@ -1,4 +1,4 @@
-import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 const colors = [
 	{
@@ -196,20 +196,71 @@ const typeMention: INodeProperties[] = [
 		description: 'The ID of the page being mentioned',
 	},
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database',
 		name: 'database',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				mentionType: ['database'],
 			},
 		},
-		default: '',
-		description:
-			'The ID of the database being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Notion Database being mentioned',
 	},
 	{
 		displayName: 'Range',
@@ -420,6 +471,21 @@ const textContent = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	},
 ];
 
+const imageBlock = (type: string): INodeProperties[] => [
+	{
+		displayName: 'Image URL',
+		name: 'url',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: [type],
+			},
+		},
+		default: '',
+		description: 'Image file reference',
+	},
+];
+
 const block = (blockType: string): INodeProperties[] => {
 	const data: INodeProperties[] = [];
 	switch (blockType) {
@@ -451,6 +517,9 @@ const block = (blockType: string): INodeProperties[] => {
 			break;
 		case 'child_page':
 			data.push(...title(blockType));
+			break;
+		case 'image':
+			data.push(...imageBlock(blockType));
 			break;
 		default:
 			data.push(
@@ -522,6 +591,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 					...block('child_page'),
 					...block('bulleted_list_item'),
 					...block('numbered_list_item'),
+					...block('image'),
 				],
 			},
 		],

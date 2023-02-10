@@ -1,6 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const taskOpeations: INodeProperties[] = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,10 +31,10 @@ export const taskOpeations: INodeProperties[] = [
 				action: 'Get a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the tasks',
-				action: 'Get all tasks',
+				description: 'Get many tasks',
+				action: 'Get many tasks',
 			},
 		],
 		default: 'create',
@@ -135,9 +135,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Note Content',
 				name: 'noteContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: "Provide the content for the task's note",
 			},
@@ -315,9 +312,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Note Content',
 				name: 'noteContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: "Provide the content for the task's note",
 			},

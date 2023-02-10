@@ -1,11 +1,12 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
@@ -18,9 +19,9 @@ import {
 	uploadAttachments,
 } from './GenericFunctions';
 
-import { ITweet } from './TweetInterface';
+import type { ITweet } from './TweetInterface';
 
-const ISO6391 = require('iso-639-1');
+import ISO6391 from 'iso-639-1';
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,11 +92,11 @@ export class Twitter implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'directMessage') {
@@ -103,7 +104,7 @@ export class Twitter implements INodeType {
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'message_create',
 							message_create: {
@@ -150,7 +151,7 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 					if (operation === 'create') {
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITweet = {
 							status: text,
 						};
@@ -214,8 +215,8 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 					if (operation === 'search') {
 						const q = this.getNodeParameter('searchText', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {
 							q,
 						};
@@ -258,7 +259,7 @@ export class Twitter implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
+							qs.count = this.getNodeParameter('limit', 0);
 							responseData = await twitterApiRequest.call(
 								this,
 								'GET',
@@ -272,7 +273,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
 					if (operation === 'like') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const qs: IDataObject = {
 							id: tweetId,
@@ -293,7 +294,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-retweet-id
 					if (operation === 'retweet') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const qs: IDataObject = {
 							id: tweetId,
@@ -312,19 +313,25 @@ export class Twitter implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = {
+						json: {
+							error: (error as JsonObject).message,
+						},
+					};
+					returnData.push(executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

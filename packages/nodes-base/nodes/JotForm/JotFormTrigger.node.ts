@@ -1,8 +1,8 @@
 import * as formidable from 'formidable';
 
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -10,6 +10,7 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
 
@@ -100,6 +101,7 @@ export class JotFormTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -156,7 +158,6 @@ export class JotFormTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const formId = this.getNodeParameter('form') as string;
@@ -165,14 +166,14 @@ export class JotFormTrigger implements INodeType {
 
 		const form = new formidable.IncomingForm({});
 
-		return new Promise((resolve, reject) => {
-			form.parse(req, async (err, data, files) => {
-				const rawRequest = JSON.parse(data.rawRequest as string);
+		return new Promise((resolve, _reject) => {
+			form.parse(req, async (err, data, _files) => {
+				const rawRequest = jsonParse<any>(data.rawRequest as string);
 				data.rawRequest = rawRequest;
 
 				let returnData: IDataObject;
-				if (resolveData === false) {
-					if (onlyAnswers === true) {
+				if (!resolveData) {
+					if (onlyAnswers) {
 						returnData = data.rawRequest as unknown as IDataObject;
 					} else {
 						returnData = data;
@@ -189,7 +190,7 @@ export class JotFormTrigger implements INodeType {
 
 				// Create a dictionary to resolve the keys
 				const questionNames: IDataObject = {};
-				for (const question of Object.values(responseData.content) as IQuestionData[]) {
+				for (const question of Object.values<IQuestionData>(responseData.content)) {
 					questionNames[question.name] = question.text;
 				}
 
@@ -209,7 +210,7 @@ export class JotFormTrigger implements INodeType {
 					questionsData[questionNames[questionKey] as string] = rawRequest[key];
 				}
 
-				if (onlyAnswers === true) {
+				if (onlyAnswers) {
 					returnData = questionsData as unknown as IDataObject;
 				} else {
 					// @ts-ignore

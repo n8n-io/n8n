@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	{
@@ -28,9 +28,9 @@ export const listOperations: INodeProperties[] = [
 				action: 'Get a list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all lists',
+				action: 'Get many lists',
 			},
 			{
 				name: 'Update',

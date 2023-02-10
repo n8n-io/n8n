@@ -24,13 +24,12 @@ x-shared: &shared
     - postgres
     - redis
   volumes:
-    - n8n_storage:/home/node/
+    - n8n_storage:/home/node/.n8n
   depends_on:
     redis:
       condition: service_healthy
     postgres:
       condition: service_healthy
-
 
 services:
   postgres:
@@ -46,7 +45,7 @@ services:
       - db_storage:/var/lib/postgresql/data
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -57,7 +56,7 @@ services:
     volumes:
       - redis_storage:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10

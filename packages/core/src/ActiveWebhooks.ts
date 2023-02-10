@@ -1,4 +1,4 @@
-import {
+import type {
 	IWebhookData,
 	WebhookHttpMethod,
 	Workflow,
@@ -6,8 +6,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { NodeExecuteFunctions } from '.';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class ActiveWebhooks {
 	private workflowWebhooks: {
@@ -23,10 +22,6 @@ export class ActiveWebhooks {
 	/**
 	 * Adds a new webhook
 	 *
-	 * @param {IWebhookData} webhookData
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWebhooks
 	 */
 	async add(
 		workflow: Workflow,
@@ -48,7 +43,7 @@ export class ActiveWebhooks {
 			webhookData.webhookId,
 		);
 
-		// check that there is not a webhook already registed with that path/method
+		// check that there is not a webhook already registered with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
 			throw new Error(
 				`The URL path that the "${webhookData.node}" node uses is already taken. Please change it to something else.`,
@@ -104,11 +99,7 @@ export class ActiveWebhooks {
 	/**
 	 * Returns webhookData if a webhook with matches is currently registered
 	 *
-	 * @param {WebhookHttpMethod} httpMethod
-	 * @param {string} path
 	 * @param {(string | undefined)} webhookId
-	 * @returns {(IWebhookData | undefined)}
-	 * @memberof ActiveWebhooks
 	 */
 	get(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): IWebhookData | undefined {
 		const webhookKey = this.getWebhookKey(httpMethod, path, webhookId);
@@ -140,7 +131,6 @@ export class ActiveWebhooks {
 
 	/**
 	 * Gets all request methods associated with a single webhook
-	 * @param path
 	 */
 	getWebhookMethods(path: string): string[] {
 		const methods: string[] = [];
@@ -158,8 +148,6 @@ export class ActiveWebhooks {
 	/**
 	 * Returns the ids of all the workflows which have active webhooks
 	 *
-	 * @returns {string[]}
-	 * @memberof ActiveWebhooks
 	 */
 	getWorkflowIds(): string[] {
 		return Object.keys(this.workflowWebhooks);
@@ -168,11 +156,7 @@ export class ActiveWebhooks {
 	/**
 	 * Returns key to uniquely identify a webhook
 	 *
-	 * @param {WebhookHttpMethod} httpMethod
-	 * @param {string} path
 	 * @param {(string | undefined)} webhookId
-	 * @returns {string}
-	 * @memberof ActiveWebhooks
 	 */
 	getWebhookKey(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): string {
 		if (webhookId) {
@@ -189,9 +173,6 @@ export class ActiveWebhooks {
 	/**
 	 * Removes all webhooks of a workflow
 	 *
-	 * @param {Workflow} workflow
-	 * @returns {boolean}
-	 * @memberof ActiveWebhooks
 	 */
 	async removeWorkflow(workflow: Workflow): Promise<boolean> {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion

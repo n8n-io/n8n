@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -27,10 +27,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts from a subreddit',
-				action: 'Get all posts',
+				description: 'Get many posts from a subreddit',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Search',

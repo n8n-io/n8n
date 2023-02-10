@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -22,9 +23,9 @@ export async function update(
 	const endpoint = `employees/${id}`;
 
 	//body parameters
-	body = this.getNodeParameter('updateFields', index) as IDataObject;
+	body = this.getNodeParameter('updateFields', index);
 
-	const updateFields = this.getNodeParameter('updateFields', index) as IDataObject;
+	const updateFields = this.getNodeParameter('updateFields', index);
 	const synced = this.getNodeParameter('synced', index) as boolean;
 
 	if (synced) {

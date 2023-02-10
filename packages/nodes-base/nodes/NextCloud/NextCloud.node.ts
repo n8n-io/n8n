@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IBinaryKeyData, NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URLSearchParams } from 'url';
 
@@ -223,10 +223,10 @@ export class NextCloud implements INodeType {
 						action: 'Get a user',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'Retrieve a list of users',
-						action: 'Get all users',
+						action: 'Get many users',
 					},
 					{
 						name: 'Update',
@@ -557,6 +557,7 @@ export class NextCloud implements INodeType {
 						displayName: 'Password',
 						name: 'password',
 						type: 'string',
+						typeOptions: { password: true },
 						displayOptions: {
 							show: {
 								'/resource': ['file', 'folder'],
@@ -870,12 +871,12 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
-		let responseData: any; // tslint:disable-line:no-any
+		let responseData: any;
 
 		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
@@ -909,7 +910,7 @@ export class NextCloud implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -981,7 +982,7 @@ export class NextCloud implements INodeType {
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
-						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
+						const bodyParameters = this.getNodeParameter('options', i);
 
 						bodyParameters.path = this.getNodeParameter('path', i) as string;
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
@@ -1017,7 +1018,7 @@ export class NextCloud implements INodeType {
 
 						body = `userid=${userid}&email=${email}`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.displayName) {
 							body += `&displayName=${additionalFields.displayName}`;
@@ -1055,12 +1056,12 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						qs = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						qs = this.getNodeParameter('options', i);
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
-						endpoint = `ocs/v1.php/cloud/users`;
+						endpoint = 'ocs/v1.php/cloud/users';
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1075,9 +1076,7 @@ export class NextCloud implements INodeType {
 						const userid = this.getNodeParameter('userId', i) as string;
 						endpoint = `ocs/v1.php/cloud/users/${userid}`;
 
-						body = Object.entries(
-							(this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject,
-						)
+						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
 							.map((entry) => {
 								const [key, value] = entry;
 								return `${key}=${value}`;
@@ -1144,13 +1143,14 @@ export class NextCloud implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData,
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData, { explicitArray: false }, (err, data) => {
 							if (err) {
@@ -1167,9 +1167,10 @@ export class NextCloud implements INodeType {
 						});
 					});
 
-					returnData.push(jsonResponseData as IDataObject);
+					returnData.push(jsonResponseData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 							parseString(responseData, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1190,8 +1191,9 @@ export class NextCloud implements INodeType {
 							});
 						});
 
-						returnData.push(jsonResponseData as IDataObject);
+						returnData.push(jsonResponseData);
 					} else {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
 							parseString(responseData, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1215,6 +1217,7 @@ export class NextCloud implements INodeType {
 						});
 					}
 				} else if (resource === 'folder' && operation === 'list') {
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData, { explicitArray: false }, (err, data) => {
 							if (err) {
@@ -1241,7 +1244,7 @@ export class NextCloud implements INodeType {
 						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
 							// @ts-ignore
 							for (const item of jsonResponseData['d:multistatus']['d:response']) {
-								if (skippedFirst === false) {
+								if (!skippedFirst) {
 									skippedFirst = true;
 									continue;
 								}
@@ -1271,7 +1274,7 @@ export class NextCloud implements INodeType {
 								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
-								returnData.push(newItem as IDataObject);
+								returnData.push(newItem);
 							}
 						}
 					}

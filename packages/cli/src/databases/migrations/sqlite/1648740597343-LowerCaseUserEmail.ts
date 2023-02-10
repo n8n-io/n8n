@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config = require('../../../../config');
-import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class LowerCaseUserEmail1648740597343 implements MigrationInterface {
 	name = 'LowerCaseUserEmail1648740597343';
@@ -8,7 +8,7 @@ export class LowerCaseUserEmail1648740597343 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(`
 			UPDATE "${tablePrefix}user"

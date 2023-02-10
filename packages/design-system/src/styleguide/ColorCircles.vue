@@ -1,10 +1,7 @@
 <template>
 	<div :class="$style.section">
 		<div v-for="color in colors" :key="color" :class="$style.container">
-			<div
-				:class="$style.circle"
-				:style="{ backgroundColor: `var(${color})` }"
-			></div>
+			<div :class="$style.circle" :style="{ backgroundColor: `var(${color})` }"></div>
 			<span>{{ color }}</span>
 			<span :class="$style.hsl">{{ hsl[color] }}</span>
 			<span :class="$style.color">{{ getHexValue(color) }}</span>

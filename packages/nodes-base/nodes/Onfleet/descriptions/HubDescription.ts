@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { destinationExternalField } from './DestinationDescription';
 
@@ -21,10 +21,10 @@ export const hubOperations: INodeProperties[] = [
 				action: 'Create a hub',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all Onfleet hubs',
-				action: 'Get all hubs',
+				description: 'Get many Onfleet hubs',
+				action: 'Get many hubs',
 			},
 			{
 				name: 'Update',

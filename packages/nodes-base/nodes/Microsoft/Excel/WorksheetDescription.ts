@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const worksheetOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const worksheetOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all worksheets',
-				action: 'Get all worksheets',
+				description: 'Get many worksheets',
+				action: 'Get many worksheets',
 			},
 			{
 				name: 'Get Content',

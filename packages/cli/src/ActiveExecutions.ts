@@ -5,28 +5,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-	createDeferredPromise,
-	IDeferredPromise,
-	IExecuteResponsePromiseData,
-	IRun,
-} from 'n8n-workflow';
+import type { IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import PCancelable from 'p-cancelable';
-// eslint-disable-next-line import/no-cycle
-import {
-	Db,
+import type PCancelable from 'p-cancelable';
+import * as Db from '@/Db';
+import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
-	ResponseHelper,
-	WorkflowHelpers,
-} from '.';
+} from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
 
 export class ActiveExecutions {
 	private activeExecutions: {
@@ -36,10 +30,6 @@ export class ActiveExecutions {
 	/**
 	 * Add a new active execution
 	 *
-	 * @param {ChildProcess} process
-	 * @param {IWorkflowExecutionDataProcess} executionData
-	 * @returns {string}
-	 * @memberof ActiveExecutions
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
@@ -61,11 +51,9 @@ export class ActiveExecutions {
 				fullExecutionData.retryOf = executionData.retryOf.toString();
 			}
 
-			if (
-				executionData.workflowData.id !== undefined &&
-				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString())
-			) {
-				fullExecutionData.workflowId = executionData.workflowData.id.toString();
+			const workflowId = executionData.workflowData.id;
+			if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+				fullExecutionData.workflowId = workflowId;
 			}
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
@@ -103,9 +91,6 @@ export class ActiveExecutions {
 	/**
 	 * Attaches an execution
 	 *
-	 * @param {string} executionId
-	 * @param {PCancelable<IRun>} workflowExecution
-	 * @memberof ActiveExecutions
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
@@ -143,10 +128,6 @@ export class ActiveExecutions {
 	/**
 	 * Remove an active execution
 	 *
-	 * @param {string} executionId
-	 * @param {IRun} fullRunData
-	 * @returns {void}
-	 * @memberof ActiveExecutions
 	 */
 	remove(executionId: string, fullRunData?: IRun): void {
 		if (this.activeExecutions[executionId] === undefined) {
@@ -168,8 +149,6 @@ export class ActiveExecutions {
 	 *
 	 * @param {string} executionId The id of the execution to stop
 	 * @param {string} timeout String 'timeout' given if stop due to timeout
-	 * @returns {(Promise<IRun | undefined>)}
-	 * @memberof ActiveExecutions
 	 */
 	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
 		if (this.activeExecutions[executionId] === undefined) {
@@ -204,8 +183,6 @@ export class ActiveExecutions {
 	 * with the given id
 	 *
 	 * @param {string} executionId The id of the execution to wait for
-	 * @returns {Promise<IRun>}
-	 * @memberof ActiveExecutions
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
 		// Create the promise which will be resolved when the execution finished
@@ -224,8 +201,6 @@ export class ActiveExecutions {
 	/**
 	 * Returns all the currently active executions
 	 *
-	 * @returns {IExecutionsCurrentSummary[]}
-	 * @memberof ActiveExecutions
 	 */
 	getActiveExecutions(): IExecutionsCurrentSummary[] {
 		const returnData: IExecutionsCurrentSummary[] = [];

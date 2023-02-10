@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-cycle
-import {
+import type {
 	IWorkflowBase,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
@@ -39,7 +38,6 @@ export class WorkflowHooks {
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 	async executeHookFunctions(hookName: string, parameters: any[]) {
-		// tslint:disable-line:no-any
 		if (this.hookFunctions[hookName] !== undefined && Array.isArray(this.hookFunctions[hookName])) {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion, no-restricted-syntax
 			for (const hookFunction of this.hookFunctions[hookName]!) {

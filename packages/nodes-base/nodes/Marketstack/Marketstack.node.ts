@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	endOfDayDataFields,
@@ -24,7 +24,7 @@ import {
 	validateTimeOptions,
 } from './GenericFunctions';
 
-import { EndOfDayDataFilters, Operation, Resource } from './types';
+import type { EndOfDayDataFilters, Operation, Resource } from './types';
 
 export class Marketstack implements INodeType {
 	description: INodeTypeDescription = {
@@ -87,8 +87,8 @@ export class Marketstack implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as Resource;
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		let responseData: any; // tslint:disable-line: no-any
-		const returnData: IDataObject[] = [];
+		let responseData: any;
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -108,7 +108,7 @@ export class Marketstack implements INodeType {
 						) as EndOfDayDataFilters;
 
 						validateTimeOptions.call(this, [
-							latest !== undefined && latest !== false,
+							latest !== undefined && latest,
 							specificDate !== undefined,
 							dateFrom !== undefined && dateTo !== undefined,
 						]);
@@ -163,17 +163,24 @@ export class Marketstack implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

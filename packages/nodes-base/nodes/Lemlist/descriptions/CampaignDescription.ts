@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const campaignOperations: INodeProperties[] = [
 	{
@@ -9,9 +9,9 @@ export const campaignOperations: INodeProperties[] = [
 		default: 'getAll',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all campaigns',
+				action: 'Get many campaigns',
 			},
 		],
 		displayOptions: {

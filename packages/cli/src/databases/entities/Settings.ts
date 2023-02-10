@@ -1,9 +1,11 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
-
+import type { IDataObject } from 'n8n-workflow';
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-import { ISettingsDb } from '../..';
+interface ISettingsDb {
+	key: string;
+	value: string | boolean | IDataObject | number;
+	loadOnStartup: boolean;
+}
 
 @Entity()
 export class Settings implements ISettingsDb {

@@ -1,12 +1,12 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export async function segmentApiRequest(
 	this:
@@ -17,18 +17,13 @@ export async function segmentApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
+	_option: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('segmentApi');
-	const base64Key = Buffer.from(`${credentials.writekey}:`).toString('base64');
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Basic ${base64Key}`,
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -40,9 +35,5 @@ export async function segmentApiRequest(
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
 }

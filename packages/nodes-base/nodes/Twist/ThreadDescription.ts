@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Get a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all threads',
-				action: 'Get all threads',
+				description: 'Get many threads',
+				action: 'Get many threads',
 			},
 			{
 				name: 'Update',

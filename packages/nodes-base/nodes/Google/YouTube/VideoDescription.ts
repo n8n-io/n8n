@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const videoOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const videoOperations: INodeProperties[] = [
 				action: 'Get a video',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all videos',
-				action: 'Get all videos',
+				description: 'Retrieve many videos',
+				action: 'Get many videos',
 			},
 			{
 				name: 'Rate',

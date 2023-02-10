@@ -1,0 +1,80 @@
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use './common/var';
+@use './input.scss';
+@use './scrollbar.scss';
+@use './popper';
+
+@include mixins.b(autocomplete) {
+	position: relative;
+	display: inline-block;
+}
+
+@include mixins.b(autocomplete-suggestion) {
+	margin: 5px 0;
+	box-shadow: var.$box-shadow-light;
+	border-radius: var(--border-radius-base);
+	border: 1px solid var(--border-color-base);
+	box-sizing: border-box;
+	background-color: var.$color-white;
+
+	@include mixins.e(wrap) {
+		max-height: 280px;
+		padding: 10px 0;
+		box-sizing: border-box;
+	}
+
+	@include mixins.e(list) {
+		margin: 0;
+		padding: 0;
+	}
+
+	& li {
+		padding: 0 20px;
+		margin: 0;
+		line-height: 34px;
+		cursor: pointer;
+		color: var(--color-text-dark);
+		font-size: var.$font-size-base;
+		list-style: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+
+		&:hover {
+			background-color: var.$select-option-hover-background;
+		}
+
+		&.highlighted {
+			background-color: var.$select-option-hover-background;
+		}
+
+		&.divider {
+			margin-top: 6px;
+			border-top: 1px solid var.$color-black;
+		}
+
+		&.divider:last-child {
+			margin-bottom: -6px;
+		}
+	}
+
+	@include mixins.when(loading) {
+		li {
+			text-align: center;
+			height: 100px;
+			line-height: 100px;
+			font-size: 20px;
+			color: var(--color-text-light);
+			@include utils.utils-vertical-center;
+
+			&:hover {
+				background-color: var.$color-white;
+			}
+		}
+
+		& .el-icon-loading {
+			vertical-align: middle;
+		}
+	}
+}

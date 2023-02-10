@@ -1,4 +1,4 @@
-import { IN8nHttpFullResponse, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const databasesOperations: INodeProperties[] = [
 	{
@@ -25,9 +25,9 @@ export const databasesOperations: INodeProperties[] = [
 				action: 'Add a databases',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the databases',
+				description: 'Get many databases',
 				routing: {
 					request: {
 						method: 'GET',
@@ -44,7 +44,7 @@ export const databasesOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Get Fields',
@@ -211,6 +211,7 @@ export const databasesFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		placeholder: 'password',
 		displayOptions: {
@@ -328,28 +329,3 @@ export const databasesFields: INodeProperties[] = [
 		default: true,
 	},
 ];
-
-type MetabaseDatabaseResult = IN8nHttpFullResponse & {
-	body: Array<{
-		data: Array<{
-			id: number;
-			name: string;
-			description: string;
-			details: MetabaseDatabaseDetail;
-			timezone: string;
-			creator_id: number;
-			created_at: string;
-			updated_at: string;
-			engine: string;
-			is_full_sync: string;
-		}>;
-	}>;
-};
-
-type MetabaseDatabaseDetail = {
-	host?: string;
-	port?: number;
-	user?: string;
-	ssl?: boolean;
-	db?: string;
-};

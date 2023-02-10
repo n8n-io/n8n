@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const searchResultOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const searchResultOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all search results for a search job',
-				action: 'Get all search results',
+				description: 'Retrieve many search results for a search job',
+				action: 'Get many search results',
 			},
 		],
 		default: 'getAll',

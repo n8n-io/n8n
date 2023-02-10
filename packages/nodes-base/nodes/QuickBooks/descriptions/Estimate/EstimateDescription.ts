@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { estimateAdditionalFieldsOptions } from './EstimateAdditionalFieldsOptions';
 
@@ -26,9 +26,9 @@ export const estimateOperations: INodeProperties[] = [
 				action: 'Get an estimate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all estimates',
+				action: 'Get many estimates',
 			},
 			{
 				name: 'Send',
@@ -101,9 +101,6 @@ export const estimateFields: INodeProperties[] = [
 				description: 'Textual description of the line item',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Detail Type',
@@ -293,9 +290,6 @@ export const estimateFields: INodeProperties[] = [
 				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
 				description:
 					'The condition for selecting estimates. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 		displayOptions: {

@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getTableColumns,
@@ -24,9 +24,9 @@ import {
 
 import { rowFields, rowOperations } from './RowDescription';
 
-import { TColumnsUiValues, TColumnValue } from './types';
+import type { TColumnsUiValues, TColumnValue } from './types';
 
-import { ICtx, IRow, IRowObject } from './Interfaces';
+import type { ICtx, IRow, IRowObject } from './Interfaces';
 
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,7 +77,7 @@ export class SeaTable implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -95,7 +95,7 @@ export class SeaTable implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -133,11 +133,11 @@ export class SeaTable implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -187,7 +187,7 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'POST',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							body,
 						);
 
@@ -226,10 +226,19 @@ export class SeaTable implements INodeType {
 							tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']),
 						);
 
-						returnData.push(row);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(row),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -248,10 +257,20 @@ export class SeaTable implements INodeType {
 							{},
 							{ table_id: tableId, convert: true },
 						)) as IDataObject;
-						returnData.push(response);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -265,15 +284,19 @@ export class SeaTable implements INodeType {
 				const tableName = this.getNodeParameter('tableName', 0) as string;
 				const tableColumns = await getTableColumns.call(this, tableName);
 
-				try {
-					for (let i = 0; i < items.length; i++) {
-						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const endpoint = '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/';
 						qs.table_name = tableName;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const filters = this.getNodeParameter('filters', i);
+						const options = this.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						Object.assign(qs, filters, options);
+
+						if (qs.convert_link_id === false) {
+							delete qs.convert_link_id;
+						}
 
 						if (returnAll) {
 							responseData = await setableApiRequestAllItems.call(
@@ -286,7 +309,7 @@ export class SeaTable implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}
@@ -298,20 +321,29 @@ export class SeaTable implements INodeType {
 							),
 						);
 
-						returnData.push(...rows);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
+						}
+						throw error;
 					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-					}
-					throw error;
 				}
 			} else if (operation === 'delete') {
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const tableName = this.getNodeParameter('tableName', 0) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
-						const body: IDataObject = {
+						const requestBody: IDataObject = {
 							table_name: tableName,
 							row_id: rowId,
 						};
@@ -319,14 +351,24 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'DELETE',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
-							body,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+							requestBody,
 							qs,
 						)) as IDataObject;
-						returnData.push(response);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -377,14 +419,23 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'PUT',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							body,
 						);
 
-						returnData.push({ _id: rowId, ...responseData });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ _id: rowId, ...responseData }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -394,6 +445,6 @@ export class SeaTable implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

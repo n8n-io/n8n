@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -21,7 +21,6 @@ export class LinearTrigger implements INodeType {
 		description: 'Starts the workflow when Linear events occur',
 		defaults: {
 			name: 'Linear Trigger',
-			color: '#D9DCF8',
 		},
 		inputs: [],
 		outputs: ['main'],

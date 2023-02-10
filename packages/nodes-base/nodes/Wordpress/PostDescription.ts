@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -30,10 +30,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts',
-				action: 'Get all posts',
+				description: 'Get many posts',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Update',
@@ -92,9 +92,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The content for the post',
 			},
@@ -109,6 +106,7 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'A password to protect access to the content and excerpt',
 			},
@@ -373,9 +371,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The content for the post',
 			},
@@ -390,6 +385,7 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'A password to protect access to the content and excerpt',
 			},
@@ -636,6 +632,7 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'The password for the post if it is password protected',
 			},

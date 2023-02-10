@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	bitwardenApiRequest as tokenlessBitwardenApiRequest,
@@ -16,27 +16,22 @@ import {
 	loadResource,
 } from './GenericFunctions';
 
-import {
-	collectionFields,
-	collectionOperations,
-	CollectionUpdateFields,
-} from './descriptions/CollectionDescription';
+import type { CollectionUpdateFields } from './descriptions/CollectionDescription';
+import { collectionFields, collectionOperations } from './descriptions/CollectionDescription';
 
 import { eventFields, eventOperations } from './descriptions/EventDescription';
 
-import {
+import type {
 	GroupCreationAdditionalFields,
-	groupFields,
-	groupOperations,
 	GroupUpdateFields,
 } from './descriptions/GroupDescription';
+import { groupFields, groupOperations } from './descriptions/GroupDescription';
 
-import {
+import type {
 	MemberCreationAdditionalFields,
-	memberFields,
-	memberOperations,
 	MemberUpdateFields,
 } from './descriptions/MemberDescription';
+import { memberFields, memberOperations } from './descriptions/MemberDescription';
 
 import { isEmpty, partialRight } from 'lodash';
 
@@ -100,11 +95,11 @@ export class Bitwarden implements INodeType {
 	methods = {
 		loadOptions: {
 			async getGroups(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'groups');
+				return loadResource.call(this, 'groups');
 			},
 
 			async getCollections(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'collections');
+				return loadResource.call(this, 'collections');
 			},
 		},
 	};
@@ -112,11 +107,11 @@ export class Bitwarden implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const token = await getAccessToken.call(this);
 		const bitwardenApiRequest = partialRight(tokenlessBitwardenApiRequest, token);
@@ -136,7 +131,12 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('collectionId', i);
 					const endpoint = `/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = { success: true };
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//        collection: get
@@ -145,6 +145,12 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('collectionId', i);
 					const endpoint = `/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//       collection: getAll
@@ -152,6 +158,12 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/collections';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//       collection: update
@@ -185,6 +197,12 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('collectionId', i);
 					const endpoint = `/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			} else if (resource === 'event') {
 				// *********************************************************************
@@ -196,10 +214,16 @@ export class Bitwarden implements INodeType {
 					//         event: getAll
 					// ----------------------------------
 
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i);
 					const qs = isEmpty(filters) ? {} : filters;
 					const endpoint = '/public/events';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, qs, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			} else if (resource === 'group') {
 				// *********************************************************************
@@ -234,6 +258,12 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/groups';
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//       group: delete
@@ -242,7 +272,12 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('groupId', i);
 					const endpoint = `/public/groups/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = { success: true };
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//        group: get
@@ -251,6 +286,12 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('groupId', i);
 					const endpoint = `/public/groups/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//       group: getAll
@@ -258,6 +299,12 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/groups';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'getMembers') {
 					// ----------------------------------
 					//       group: getMembers
@@ -267,6 +314,12 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/groups/${id}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.map((memberId: string) => ({ memberId }));
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//       group: update
@@ -323,6 +376,12 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = `/public/groups/${groupId}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'updateMembers') {
 					// ----------------------------------
 					//       group: updateMembers
@@ -337,7 +396,12 @@ export class Bitwarden implements INodeType {
 					const groupId = this.getNodeParameter('groupId', i);
 					const endpoint = `/public/groups/${groupId}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
-					responseData = { success: true };
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				}
 			} else if (resource === 'member') {
 				// *********************************************************************
@@ -373,6 +437,12 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/members/';
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//       member: delete
@@ -382,6 +452,12 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//        member: get
@@ -390,6 +466,12 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//       member: getAll
@@ -397,6 +479,12 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/members';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (operation === 'getGroups') {
 					// ----------------------------------
 					//       member: getGroups
@@ -406,6 +494,11 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${id}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.map((groupId: string) => ({ groupId }));
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//       member: update
@@ -447,6 +540,11 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (operation === 'updateGroups') {
 					// ----------------------------------
 					//       member: updateGroups
@@ -461,15 +559,15 @@ export class Bitwarden implements INodeType {
 					const memberId = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${memberId}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
-					responseData = { success: true };
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ success: true }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -8,15 +8,8 @@
 		v-on="$listeners"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
-			<n8n-spinner
-				v-if="loading"
-				:size="size"
-			/>
-			<n8n-icon
-				v-else-if="icon"
-				:icon="icon"
-				:size="size"
-			/>
+			<n8n-spinner v-if="loading" :size="size" />
+			<n8n-icon v-else-if="icon" :icon="icon" :size="size" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
@@ -70,10 +63,17 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		active: {
+			type: Boolean,
+			default: false,
+		},
 		float: {
 			type: String,
-			validator: (value: string): boolean =>
-				['left', 'right'].includes(value),
+			validator: (value: string): boolean => ['left', 'right'].includes(value),
+		},
+		square: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	components: {
@@ -88,23 +88,27 @@ export default Vue.extend({
 			return this.disabled ? 'true' : 'false';
 		},
 		classes(): string {
-			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+			return (
+				`button ${this.$style.button} ${this.$style[this.type]}` +
 				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
-				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
-				`${this.loading ? ` ${this.$style['loading']}` : ''}` +
+				`${this.outline ? ` ${this.$style.outline}` : ''}` +
+				`${this.loading ? ` ${this.$style.loading}` : ''}` +
 				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
-				`${this.text ? ` ${this.$style['text']}` : ''}` +
-				`${this.disabled ? ` ${this.$style['disabled']}` : ''}` +
-				`${this.block ? ` ${this.$style['block']}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style['icon']}` : ''}`;
+				`${this.text ? ` ${this.$style.text}` : ''}` +
+				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
+				`${this.block ? ` ${this.$style.block}` : ''}` +
+				`${this.active ? ` ${this.$style.active}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
+				`${this.square ? ` ${this.$style.square}` : ''}`
+			);
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-@import '../../../theme/src/mixins/utils';
-@import '../../../theme/src/common/var';
+@import '../../css/mixins/utils';
+@import '../../css/common/var';
 
 .button {
 	display: inline-block;
@@ -140,7 +144,8 @@ export default Vue.extend({
 		outline: $focus-outline-width solid $button-focus-outline-color;
 	}
 
-	&:active {
+	&:active,
+	&.active {
 		color: $button-active-color;
 		border-color: $button-active-border-color;
 		background-color: $button-active-background-color;
@@ -203,7 +208,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-color: var(--color-text-dark);
 	--button-hover-border-color: var(--color-neutral-800);
 
-	--button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
+	--button-focus-outline-color: hsla(
+		var(--color-neutral-h),
+		var(--color-neutral-s),
+		var(--color-neutral-l),
+		0.2
+	);
 }
 
 .success {
@@ -217,7 +227,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-background-color: var(--color-success-450);
 	--button-hover-border-color: var(--color-success-450);
 
-	--button-focus-outline-color: hsla(var(--color-success-h), var(--color-success-s), var(--color-success-l), 0.33);
+	--button-focus-outline-color: hsla(
+		var(--color-success-h),
+		var(--color-success-s),
+		var(--color-success-l),
+		0.33
+	);
 }
 
 .warning {
@@ -231,7 +246,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-background-color: var(--color-warning-650);
 	--button-hover-border-color: var(--color-warning-650);
 
-	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
+	--button-focus-outline-color: hsla(
+		var(--color-warning-h),
+		var(--color-warning-s),
+		var(--color-warning-l),
+		0.33
+	);
 }
 
 .danger {
@@ -246,7 +266,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-background-color: var(--color-danger-700);
 	--button-hover-border-color: var(--color-danger-700);
 
-	--button-focus-outline-color: hsla(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l), 0.33);
+	--button-focus-outline-color: hsla(
+		var(--color-danger-h),
+		var(--color-danger-s),
+		var(--color-danger-l),
+		0.33
+	);
 }
 
 /**
@@ -258,7 +283,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-2xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button {
+	&.square {
 		height: 22px;
 		width: 22px;
 	}
@@ -269,7 +294,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button {
+	&.square {
 		height: 26px;
 		width: 26px;
 	}
@@ -280,14 +305,14 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
-	&.icon-button {
-		height: 32px;
-		width: 32px;
+	&.square {
+		height: 30px;
+		width: 30px;
 	}
 }
 
 .large {
-	&.icon-button {
+	&.square {
 		height: 42px;
 		width: 42px;
 	}
@@ -298,7 +323,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-padding-horizontal: var(--spacing-s);
 	--button-font-size: var(--font-size-m);
 
-	&.icon-button {
+	&.square {
 		height: 46px;
 		width: 46px;
 	}
@@ -372,6 +397,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 		--button-hover-color: var(--color-success);
 	}
 
+	&.tertiary {
+		--button-hover-color: var(--color-primary);
+	}
+
 	&.warning {
 		--button-color: var(--color-warning);
 		--button-active-color: var(--color-warning);
@@ -389,8 +418,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	}
 }
 
-.loading,
-.active {
+.loading {
 	position: relative;
 	pointer-events: none;
 
@@ -427,6 +455,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 .icon {
 	display: inline-flex;
+	justify-content: center;
 
 	svg {
 		display: block;

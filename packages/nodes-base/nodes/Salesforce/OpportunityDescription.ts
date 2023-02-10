@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -44,10 +44,10 @@ export const opportunityOperations: INodeProperties[] = [
 				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all opportunities',
-				action: 'Get all opportunities',
+				description: 'Get many opportunities',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Get Summary',
@@ -742,9 +742,6 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'body',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{

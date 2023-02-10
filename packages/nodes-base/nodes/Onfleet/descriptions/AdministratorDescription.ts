@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const adminOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const adminOperations: INodeProperties[] = [
 				action: 'Delete an admin',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all Onfleet admins',
-				action: 'Get all admins',
+				description: 'Get many Onfleet admins',
+				action: 'Get many admins',
 			},
 			{
 				name: 'Update',

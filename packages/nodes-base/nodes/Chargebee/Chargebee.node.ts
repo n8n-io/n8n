@@ -1,13 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface CustomProperty {
 	name: string;
@@ -447,8 +446,8 @@ export class Chargebee implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		let item: INodeExecutionData;
+		const returnData: INodeExecutionData[] = [];
+		let _item: INodeExecutionData;
 
 		const credentials = await this.getCredentials('chargebeeApi');
 
@@ -461,9 +460,9 @@ export class Chargebee implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				item = items[i];
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				_item = items[i];
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 
 				let requestMethod = 'GET';
 				let endpoint = '';
@@ -493,7 +492,7 @@ export class Chargebee implements INodeType {
 							}
 						}
 
-						endpoint = `customers`;
+						endpoint = 'customers';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -596,33 +595,45 @@ export class Chargebee implements INodeType {
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request!(options);
+					responseData = await this.helpers.request(options);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (resource === 'invoice' && operation === 'list') {
 					responseData.list.forEach((data: IDataObject) => {
-						returnData.push(data.invoice as IDataObject);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ ...(data.invoice as IDataObject) }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...responseData);
 					});
 				} else if (resource === 'invoice' && operation === 'pdfUrl') {
 					const data: IDataObject = {};
 					Object.assign(data, items[i].json);
 
 					data.pdfUrl = responseData.download.download_url;
-					returnData.push(data);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ ...data }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...responseData);
 				} else {
-					returnData.push(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

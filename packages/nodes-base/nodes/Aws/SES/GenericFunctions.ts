@@ -1,19 +1,14 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
-import { OptionsWithUri } from 'request';
-
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -24,39 +19,23 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
-	const endpoint = new URL(
-		(((credentials.sesEndpoint as string) || '').replace(
-			'{region}',
-			credentials.region as string,
-		) || `https://${service}.${credentials.region}.amazonaws.com`) + path,
-	);
-
-	// Sign AWS API request with the user credentials
-
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
-
-	sign(signOpts, securityHeaders);
-
-	const options: OptionsWithUri = {
-		headers: signOpts.headers,
+	const requestOptions = {
+		qs: {
+			service,
+			path,
+		},
 		method,
-		uri: endpoint.href,
-		body: signOpts.body as string,
-	};
+		body: JSON.stringify(body),
+		url: '',
+		headers,
+		region: credentials?.region as string,
+	} as IHttpRequestOptions;
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
@@ -69,7 +48,6 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -86,7 +64,6 @@ export async function awsApiRequestSOAP(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -111,10 +88,9 @@ export async function awsApiRequestSOAPAllItems(
 	path: string,
 	body?: string,
 	query: IDataObject = {},
-	headers: IDataObject = {},
-	option: IDataObject = {},
-	region?: string,
-	// tslint:disable-next-line:no-any
+	_headers: IDataObject = {},
+	_option: IDataObject = {},
+	_region?: string,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -126,7 +102,7 @@ export async function awsApiRequestSOAPAllItems(
 		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query);
 
 		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
-			query['NextToken'] = get(
+			query.NextToken = get(
 				responseData,
 				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`,
 			);

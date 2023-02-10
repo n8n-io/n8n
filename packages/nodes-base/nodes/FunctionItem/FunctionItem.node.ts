@@ -1,30 +1,38 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+/* eslint-disable @typescript-eslint/no-loop-func */
+import type { NodeVMOptions, VMRequire } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function Item',
 		name: 'functionItem',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
 		description: 'Run custom function code which gets executed once per item',
 		defaults: {
-			name: 'FunctionItem',
+			name: 'Function Item',
 			color: '#ddbb33',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
@@ -36,7 +44,7 @@ export class FunctionItem implements INodeType {
 				},
 				type: 'string',
 				default: `// Code here will run once per input item.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.functionitem/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item
@@ -67,7 +75,7 @@ return item;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});
@@ -75,22 +83,70 @@ return item;`,
 		};
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			const mode = this.getMode();
+
 			try {
 				item = items[itemIndex];
+				item.index = itemIndex;
 
 				// Copy the items as they may get changed in the functions
-				item = JSON.parse(JSON.stringify(item));
+				item = deepCopy(item);
 
 				// Define the global objects for the custom function
 				const sandbox = {
+					/** @deprecated for removal - replaced by getBinaryDataAsync() */
 					getBinaryData: (): IBinaryKeyData | undefined => {
+						if (mode === 'manual') {
+							this.sendMessageToUI(
+								'getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.',
+							);
+						}
 						return item.binary;
+					},
+					/** @deprecated for removal - replaced by setBinaryDataAsync() */
+					setBinaryData: async (data: IBinaryKeyData) => {
+						if (mode === 'manual') {
+							this.sendMessageToUI(
+								'setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.',
+							);
+						}
+						item.binary = data;
 					},
 					getNodeParameter: this.getNodeParameter,
 					getWorkflowStaticData: this.getWorkflowStaticData,
 					helpers: this.helpers,
 					item: item.json,
-					setBinaryData: (data: IBinaryKeyData) => {
+					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
+						// Fetch Binary Data, if available. Cannot check item with `if (item?.index)`, as index may be 0.
+						if (item?.binary && item?.index !== undefined && item?.index !== null) {
+							for (const binaryPropertyName of Object.keys(item.binary)) {
+								item.binary[binaryPropertyName].data = (
+									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
+								)?.toString('base64');
+							}
+						}
+						// Retrun Data
+						return item.binary;
+					},
+					setBinaryDataAsync: async (data: IBinaryKeyData) => {
+						// Ensure data is present
+						if (!data) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No data was provided to setBinaryDataAsync (data: IBinaryKeyData).',
+							);
+						}
+
+						// Set Binary Data
+						for (const binaryPropertyName of Object.keys(data)) {
+							const binaryItem = data[binaryPropertyName];
+							data[binaryPropertyName] = await this.helpers.setBinaryDataBuffer(
+								binaryItem,
+								Buffer.from(binaryItem.data, 'base64'),
+							);
+						}
+
+						// Set Item Reference
 						item.binary = data;
 					},
 				};
@@ -99,28 +155,28 @@ return item;`,
 				const dataProxy = this.getWorkflowDataProxy(itemIndex);
 				Object.assign(sandbox, dataProxy);
 
-				const mode = this.getMode();
-
-				const options = {
+				const options: NodeVMOptions = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
 					sandbox,
 					require: {
-						external: false as boolean | { modules: string[] },
-						builtin: [] as string[],
+						external: false,
+						builtin: [],
 					},
 				};
 
+				const vmRequire = options.require as VMRequire;
 				if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-					options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+					vmRequire.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
 				}
 
 				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					options.require.external = {
+					vmRequire.external = {
 						modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+						transitive: false,
 					};
 				}
 
-				const vm = new NodeVM(options);
+				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 				if (mode === 'manual') {
 					vm.on('console.log', this.sendMessageToUI);

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const incidentNoteOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const incidentNoteOperations: INodeProperties[] = [
 				action: 'Create an incident note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: "Get all incident's notes",
-				action: 'Get all incident notes',
+				description: "Get many incident's notes",
+				action: 'Get many incident notes',
 			},
 		],
 		default: 'create',
@@ -51,9 +51,6 @@ export const incidentNoteFields: INodeProperties[] = [
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {

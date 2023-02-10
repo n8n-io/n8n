@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const callOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const callOperations: INodeProperties[] = [
 				action: 'Get a call',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all calls',
-				action: 'Get all calls',
+				description: 'Retrieve many calls',
+				action: 'Get many calls',
 			},
 			{
 				name: 'Update',
@@ -83,9 +83,6 @@ export const callFields: INodeProperties[] = [
 		displayName: 'Description',
 		name: 'content',
 		description: 'Description of the call - max 100,000 characters',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		type: 'string',
 		required: true,
 		default: '',

@@ -10,83 +10,65 @@
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
+import type { IProcessMessage } from 'n8n-core';
+import { BinaryDataManager, WorkflowExecute } from 'n8n-core';
 
-import {
+import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
-	LoggerProxy as Logger,
-	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+} from 'n8n-workflow';
+import {
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy as Logger,
+	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import Bull from 'bull';
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import {
-	ActiveExecutions,
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	IBullJobData,
-	IBullJobResponse,
-	ICredentialsOverwrite,
-	ICredentialsTypeData,
+import * as ActiveExecutions from '@/ActiveExecutions';
+import config from '@/config';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import type {
 	IExecutionFlattedDb,
 	IProcessMessageDataHook,
-	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-} from '.';
-import * as Queue from './Queue';
-import { InternalHooksManager } from './InternalHooksManager';
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as Queue from '@/Queue';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { initErrorHandling } from '@/ErrorReporting';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
 
-	credentialsOverwrites: ICredentialsOverwrite;
-
 	push: Push.Push;
 
-	jobQueue: Bull.Queue;
+	jobQueue: Queue.JobQueue;
 
 	constructor() {
 		this.push = Push.getInstance();
 		this.activeExecutions = ActiveExecutions.getInstance();
-		this.credentialsOverwrites = CredentialsOverwrites().getAll();
-
-		const executionsMode = config.getEnv('executions.mode');
-
-		if (executionsMode === 'queue') {
-			this.jobQueue = Queue.getInstance().getBullObjectInstance();
-		}
 	}
 
 	/**
-	 * The process did send a hook message so execute the appropiate hook
-	 *
-	 * @param {WorkflowHooks} workflowHooks
-	 * @param {IProcessMessageDataHook} hookData
-	 * @memberof WorkflowRunner
+	 * The process did send a hook message so execute the appropriate hook
 	 */
 	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -95,12 +77,6 @@ export class WorkflowRunner {
 
 	/**
 	 * The process did error
-	 *
-	 * @param {ExecutionError} error
-	 * @param {Date} startedAt
-	 * @param {WorkflowExecuteMode} executionMode
-	 * @param {string} executionId
-	 * @memberof WorkflowRunner
 	 */
 	async processError(
 		error: ExecutionError,
@@ -109,6 +85,8 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
+		ErrorReporter.error(error);
+
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -138,11 +116,8 @@ export class WorkflowRunner {
 	/**
 	 * Run the workflow
 	 *
-	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowRunner
 	 */
 	async run(
 		data: IWorkflowExecutionDataProcess,
@@ -151,13 +126,20 @@ export class WorkflowRunner {
 		executionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		const executionsProcess = config.getEnv('executions.process');
 		const executionsMode = config.getEnv('executions.mode');
+		const executionsProcess = config.getEnv('executions.process');
+
+		await initErrorHandling();
+
+		if (executionsMode === 'queue') {
+			const queue = await Queue.getInstance();
+			this.jobQueue = queue.getBullObjectInstance();
+		}
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
-			executionId = await this.runBull(
+			executionId = await this.enqueueExecution(
 				data,
 				loadStaticData,
 				realtime,
@@ -169,6 +151,8 @@ export class WorkflowRunner {
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
+
+		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
@@ -183,6 +167,7 @@ export class WorkflowRunner {
 				);
 			})
 			.catch((error) => {
+				ErrorReporter.error(error);
 				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
 			});
 
@@ -196,6 +181,7 @@ export class WorkflowRunner {
 					]);
 				})
 				.catch((error) => {
+					ErrorReporter.error(error);
 					console.error('There was a problem running hook "workflow.postExecute"', error);
 				});
 		}
@@ -206,11 +192,8 @@ export class WorkflowRunner {
 	/**
 	 * Run the workflow in current process
 	 *
-	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowRunner
 	 */
 	async runMainProcess(
 		data: IWorkflowExecutionDataProcess,
@@ -218,10 +201,9 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		if (loadStaticData === true && data.workflowData.id) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
-				data.workflowData.id as string,
-			);
+		const workflowId = data.workflowData.id;
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
 		const nodeTypes = NodeTypes();
@@ -240,7 +222,7 @@ export class WorkflowRunner {
 		}
 
 		const workflow = new Workflow({
-			id: data.workflowData.id as string | undefined,
+			id: workflowId,
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
@@ -271,13 +253,30 @@ export class WorkflowRunner {
 				{ executionId },
 			);
 
-			await checkPermissionsForExecution(workflow, data.userId);
-
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
 				true,
 			);
+
+			try {
+				await PermissionChecker.check(workflow, data.userId);
+			} catch (error) {
+				ErrorReporter.error(error);
+				// Create a failed execution with the data for the node
+				// save it and abort execution
+				const failedExecution = generateFailedExecutionFromError(
+					data.executionMode,
+					error,
+					error.node,
+				);
+				additionalData.hooks
+					.executeHookFunctions('workflowExecuteAfter', [failedExecution])
+					.then(() => {
+						this.activeExecutions.remove(executionId, failedExecution);
+					});
+				return executionId;
+			}
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -310,11 +309,19 @@ export class WorkflowRunner {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, { executionId });
 				// Execute all nodes
 
+				let startNode;
+				if (
+					data.startNodes?.length === 1 &&
+					Object.keys(data.pinData ?? {}).includes(data.startNodes[0])
+				) {
+					startNode = workflow.getNode(data.startNodes[0]) ?? undefined;
+				}
+
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(
 					workflow,
-					undefined,
+					startNode,
 					data.destinationNode,
 					data.pinData,
 				);
@@ -372,7 +379,7 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	async runBull(
+	async enqueueExecution(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
@@ -387,7 +394,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		const jobData: IBullJobData = {
+		const jobData: Queue.JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
@@ -404,7 +411,7 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		let job: Bull.Job;
+		let job: Queue.Job;
 		let hooks: WorkflowHooks;
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
@@ -438,7 +445,8 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					await Queue.getInstance().stopJob(job);
+					const queue = await Queue.getInstance();
+					await queue.stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
@@ -455,11 +463,11 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<IBullJobResponse> = job.finished();
+				const jobData: Promise<Queue.JobResponse> = job.finished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
+				const racingPromises: Array<Promise<Queue.JobResponse | object>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -469,7 +477,7 @@ export class WorkflowRunner {
 					 * when Redis crashes and recovers shortly       *
 					 * but during this time, some execution(s)       *
 					 * finished. The end result is that the main     *
-					 * process will wait indefinitively and never    *
+					 * process will wait indefinitely and never      *
 					 * get a response. This adds an active polling to*
 					 * the queue that allows us to identify that the *
 					 * execution finished and get information from   *
@@ -504,6 +512,7 @@ export class WorkflowRunner {
 						clearWatchdogInterval();
 					}
 				} catch (error) {
+					ErrorReporter.error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
@@ -521,9 +530,9 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const executionDb = (await Db.collections.Execution.findOne(
-					executionId,
-				)) as IExecutionFlattedDb;
+				const executionDb = (await Db.collections.Execution.findOneBy({
+					id: executionId,
+				})) as IExecutionFlattedDb;
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 				const runData = {
 					data: fullExecutionData.data,
@@ -582,11 +591,8 @@ export class WorkflowRunner {
 	/**
 	 * Run the workflow
 	 *
-	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowRunner
 	 */
 	async runSubprocess(
 		data: IWorkflowExecutionDataProcess,
@@ -594,55 +600,18 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		const workflowId = data.workflowData.id;
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
-		if (loadStaticData === true && data.workflowData.id) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
-				data.workflowData.id as string,
-			);
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
-		// Check if workflow contains a "executeWorkflow" Node as in this
-		// case we can not know which nodeTypes and credentialTypes will
-		// be needed and so have to load all of them in the workflowRunnerProcess
-		let loadAllNodeTypes = false;
-		for (const node of data.workflowData.nodes) {
-			if (node.type === 'n8n-nodes-base.executeWorkflow' && node.disabled !== true) {
-				loadAllNodeTypes = true;
-				break;
-			}
-		}
-		let nodeTypeData: ITransferNodeTypes;
-		let credentialTypeData: ICredentialsTypeData;
-		// eslint-disable-next-line prefer-destructuring
-		let credentialsOverwrites = this.credentialsOverwrites;
-		if (loadAllNodeTypes) {
-			// Supply all nodeTypes and credentialTypes
-			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			credentialTypeData = WorkflowHelpers.getAllCredentalsTypeData();
-		} else {
-			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
-			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
-			credentialTypeData = WorkflowHelpers.getCredentialsDataByNodes(data.workflowData.nodes);
-
-			credentialsOverwrites = {};
-			for (const credentialName of Object.keys(credentialTypeData)) {
-				if (this.credentialsOverwrites[credentialName] !== undefined) {
-					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
-				}
-			}
-		}
-
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite =
-			this.credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData =
-			credentialTypeData;
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

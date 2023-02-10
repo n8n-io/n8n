@@ -1,22 +1,22 @@
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 export async function mauticApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
 
@@ -70,15 +70,13 @@ export async function mauticApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let data: IDataObject[] = [];
 	query.limit = 30;
 	query.start = 0;
 
@@ -88,7 +86,6 @@ export async function mauticApiRequestAllItems(
 		//@ts-ignore
 		returnData.push.apply(returnData, values);
 		query.start += query.limit;
-		data = [];
 	} while (
 		responseData.total !== undefined &&
 		returnData.length - parseInt(responseData.total, 10) < 0
@@ -97,7 +94,6 @@ export async function mauticApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

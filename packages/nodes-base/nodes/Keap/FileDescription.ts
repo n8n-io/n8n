@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Delete a file',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all files',
-				action: 'Get all files',
+				description: 'Retrieve many files',
+				action: 'Get many files',
 			},
 			{
 				name: 'Upload',
@@ -127,9 +127,6 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'File Data',
 		name: 'fileData',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {

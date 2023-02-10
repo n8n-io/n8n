@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const journalEntryOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const journalEntryOperations: INodeProperties[] = [
 				action: 'Get a journal entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all journal entries',
-				action: 'Get all journal entries',
+				description: 'Retrieve many journal entries',
+				action: 'Get many journal entries',
 			},
 			{
 				name: 'Update',
@@ -72,9 +72,6 @@ export const journalEntryFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['journalEntry'],
@@ -189,9 +186,6 @@ export const journalEntryFields: INodeProperties[] = [
 				description: 'Content of the journal entry - max 100,000 characters',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Title',

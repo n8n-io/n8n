@@ -4,7 +4,7 @@ import * as del from './del';
 import * as update from './update';
 import * as get from './get';
 
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export { getAll, create, del as delete, update, get };
 
@@ -39,10 +39,10 @@ export const descriptions = [
 				action: 'Get a customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all customers',
-				action: 'Get all customers',
+				description: 'Retrieve many customers',
+				action: 'Get many customers',
 			},
 			{
 				name: 'Update',

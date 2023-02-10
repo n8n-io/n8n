@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const customObjectOperations: INodeProperties[] = [
 	{
@@ -37,10 +37,10 @@ export const customObjectOperations: INodeProperties[] = [
 				action: 'Get a custom object',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all custom object records',
-				action: 'Get all custom objects',
+				description: 'Get many custom object records',
+				action: 'Get many custom objects',
 			},
 			{
 				name: 'Update',

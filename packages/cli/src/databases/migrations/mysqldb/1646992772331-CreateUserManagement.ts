@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-import * as config from '../../../../config';
-import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
+import config from '@/config';
+import { loadSurveyFromDisk } from '@db/utils/migrationHelpers';
 
 export class CreateUserManagement1646992772331 implements MigrationInterface {
 	name = 'CreateUserManagement1646992772331';
@@ -147,7 +147,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}shared_credentials (createdAt, updatedAt, roleId, userId, credentialsId)   SELECT NOW(), NOW(), '${credentialOwnerRole[0].insertId}', '${ownerUserId}', id FROM ${tablePrefix} credentials_entity`,
+			`INSERT INTO ${tablePrefix}shared_credentials (createdAt, updatedAt, roleId, userId, credentialsId)   SELECT NOW(), NOW(), '${credentialOwnerRole[0].insertId}', '${ownerUserId}', id FROM ${tablePrefix}credentials_entity`,
 		);
 
 		await queryRunner.query(

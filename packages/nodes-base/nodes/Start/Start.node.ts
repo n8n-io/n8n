@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class Start implements INodeType {
 	description: INodeTypeDescription = {
@@ -10,6 +10,7 @@ export class Start implements INodeType {
 		version: 1,
 		description: 'Starts the workflow execution from this node',
 		maxNodes: 1,
+		hidden: true,
 		defaults: {
 			name: 'Start',
 			color: '#00e000',
@@ -28,7 +29,7 @@ export class Start implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		return this.prepareOutputData(items);

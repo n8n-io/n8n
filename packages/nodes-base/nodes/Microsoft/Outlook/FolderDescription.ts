@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
@@ -31,16 +31,16 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Get a folder',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all folders under the root folder of the signed-in user',
-				action: 'Get all folders',
-			},
-			{
 				name: 'Get Children',
 				value: 'getChildren',
 				description: 'Lists all child folders under the folder',
 				action: 'Get items in a folder',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many folders under the root folder of the signed-in user',
+				action: 'Get many folders',
 			},
 		],
 		default: 'create',

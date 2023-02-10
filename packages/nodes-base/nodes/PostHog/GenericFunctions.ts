@@ -1,18 +1,18 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function posthogApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('postHogApi');
 
@@ -35,7 +35,7 @@ export async function posthogApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -43,14 +43,14 @@ export async function posthogApiRequest(
 
 export interface IEvent {
 	event: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
 }
 
 export interface IAlias {
 	type: string;
 	event: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
-	context: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
+	context: { [key: string]: any };
 }
 
 export interface ITrack {
@@ -60,13 +60,13 @@ export interface ITrack {
 	messageId?: string;
 	distinct_id: string;
 	category?: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
-	context: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
+	context: { [key: string]: any };
 }
 
 export interface IIdentity {
 	event: string;
 	messageId?: string;
 	distinct_id: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
 }

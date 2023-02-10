@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	microsoftApiRequest,
@@ -92,7 +91,7 @@ export class MicrosoftExcel implements INodeType {
 					this,
 					'value',
 					'GET',
-					`/drive/root/search(q='.xlsx')`,
+					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
 				);
@@ -164,13 +163,13 @@ export class MicrosoftExcel implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'table') {
 			//https://docs.microsoft.com/en-us/graph/api/table-post-rows?view=graph-rest-1.0&tabs=http
@@ -181,7 +180,7 @@ export class MicrosoftExcel implements INodeType {
 					const workbookId = this.getNodeParameter('workbook', 0) as string;
 					const worksheetId = this.getNodeParameter('worksheet', 0) as string;
 					const tableId = this.getNodeParameter('table', 0) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', 0);
 					const body: IDataObject = {};
 
 					if (additionalFields.index) {
@@ -198,7 +197,7 @@ export class MicrosoftExcel implements INodeType {
 					);
 					const columns = responseData.value.map((column: IDataObject) => column.name);
 
-					const rows: any[][] = []; // tslint:disable-line:no-any
+					const rows: any[][] = [];
 
 					// Bring the items into the correct format
 					for (const item of items) {
@@ -235,14 +234,19 @@ export class MicrosoftExcel implements INodeType {
 						{ 'workbook-session-id': id },
 					);
 
-					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
-					} else if (responseData !== undefined) {
-						returnData.push(responseData as IDataObject);
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: 0 } },
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: 0 } },
+						);
+						returnData.push(...executionErrorData);
 					} else {
 						throw error;
 					}
@@ -256,15 +260,15 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItemsSkip.call(
 								this,
 								'value',
@@ -274,7 +278,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -291,14 +295,19 @@ export class MicrosoftExcel implements INodeType {
 							responseData = { [dataProperty]: responseData };
 						}
 
-						if (Array.isArray(responseData)) {
-							returnData.push.apply(returnData, responseData as IDataObject[]);
-						} else if (responseData !== undefined) {
-							returnData.push(responseData as IDataObject);
-						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -313,15 +322,15 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItemsSkip.call(
 								this,
 								'value',
@@ -332,7 +341,7 @@ export class MicrosoftExcel implements INodeType {
 							);
 						} else {
 							const rowsQs = { ...qs };
-							rowsQs['$top'] = this.getNodeParameter('limit', i) as number;
+							rowsQs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -344,7 +353,7 @@ export class MicrosoftExcel implements INodeType {
 						}
 						if (!rawData) {
 							const columnsQs = { ...qs };
-							columnsQs['$select'] = 'name';
+							columnsQs.$select = 'name';
 							// TODO: That should probably be cached in the future
 							let columns = await microsoftApiRequestAllItemsSkip.call(
 								this,
@@ -356,20 +365,34 @@ export class MicrosoftExcel implements INodeType {
 							);
 							//@ts-ignore
 							columns = columns.map((column) => column.name);
-							for (let i = 0; i < responseData.length; i++) {
+							for (let index = 0; index < responseData.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < columns.length; y++) {
-									object[columns[y]] = responseData[i].values[0][y];
+									object[columns[y]] = responseData[index].values[0][y];
 								}
-								returnData.push({ ...object });
+								const executionData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ ...object }),
+									{ itemData: { item: index } },
+								);
+
+								returnData.push(...executionData);
 							}
 						} else {
 							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-							returnData.push({ [dataProperty]: responseData });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -385,7 +408,7 @@ export class MicrosoftExcel implements INodeType {
 						const tableId = this.getNodeParameter('table', i) as string;
 						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
 						const lookupValue = this.getNodeParameter('lookupValue', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						responseData = await microsoftApiRequestAllItemsSkip.call(
 							this,
@@ -396,7 +419,7 @@ export class MicrosoftExcel implements INodeType {
 							{},
 						);
 
-						qs['$select'] = 'name';
+						qs.$select = 'name';
 						// TODO: That should probably be cached in the future
 						let columns = await microsoftApiRequestAllItemsSkip.call(
 							this,
@@ -415,10 +438,10 @@ export class MicrosoftExcel implements INodeType {
 						}
 
 						result.length = 0;
-						for (let i = 0; i < responseData.length; i++) {
+						for (let index = 0; index < responseData.length; index++) {
 							const object: IDataObject = {};
 							for (let y = 0; y < columns.length; y++) {
-								object[columns[y]] = responseData[i].values[0][y];
+								object[columns[y]] = responseData[index].values[0][y];
 							}
 							result.push({ ...object });
 						}
@@ -427,16 +450,30 @@ export class MicrosoftExcel implements INodeType {
 							responseData = result.filter((data: IDataObject) => {
 								return data[lookupColumn]?.toString() === lookupValue;
 							});
-							returnData.push.apply(returnData, responseData as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						} else {
 							responseData = result.find((data: IDataObject) => {
 								return data[lookupColumn]?.toString() === lookupValue;
 							});
-							returnData.push(responseData as IDataObject);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData as IDataObject),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -451,7 +488,7 @@ export class MicrosoftExcel implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
 					if (operation === 'addWorksheet') {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (additionalFields.name) {
 							body.name = additionalFields.name;
@@ -482,26 +519,26 @@ export class MicrosoftExcel implements INodeType {
 						);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
-							qs['$select'] = filters.fields;
+							qs.$select = filters.fields;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
 								'GET',
-								`/drive/root/search(q='.xlsx')`,
+								"/drive/root/search(q='.xlsx')",
 								{},
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								`/drive/root/search(q='.xlsx')`,
+								"/drive/root/search(q='.xlsx')",
 								{},
 								qs,
 							);
@@ -510,13 +547,27 @@ export class MicrosoftExcel implements INodeType {
 					}
 
 					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (responseData !== undefined) {
-						returnData.push(responseData as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -529,13 +580,13 @@ export class MicrosoftExcel implements INodeType {
 				try {
 					//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const workbookId = this.getNodeParameter('workbook', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
-							qs['$select'] = filters.fields;
+							qs.$select = filters.fields;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -545,7 +596,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -561,11 +612,11 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const range = this.getNodeParameter('range', i) as string;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
 
@@ -586,21 +637,35 @@ export class MicrosoftExcel implements INodeType {
 								});
 							}
 							const keyValues = responseData.values[keyRow];
-							for (let i = dataStartRow; i < responseData.values.length; i++) {
+							for (let index = dataStartRow; index < responseData.values.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < keyValues.length; y++) {
-									object[keyValues[y]] = responseData.values[i][y];
+									object[keyValues[y]] = responseData.values[index][y];
 								}
-								returnData.push({ ...object });
+								const executionData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ ...object }),
+									{ itemData: { item: index } },
+								);
+
+								returnData.push(...executionData);
 							}
 						} else {
 							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-							returnData.push({ [dataProperty]: responseData });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -608,6 +673,6 @@ export class MicrosoftExcel implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

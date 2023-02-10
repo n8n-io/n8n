@@ -1,14 +1,11 @@
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
 import type { SuperAgentTest } from 'supertest';
 
-import type { ICredentialsDb, IDatabaseCollections } from '../../../src';
-import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-import type { User } from '../../../src/databases/entities/User';
-import { MAPPING_TABLES } from './constants';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { User } from '@db/entities/User';
+import type { ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
 
 export type CollectionName = keyof IDatabaseCollections;
-
-export type MappingName = keyof typeof MAPPING_TABLES;
 
 export type ApiPath = 'internal' | 'public';
 
@@ -23,7 +20,10 @@ type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes';
+	| 'nodes'
+	| 'ldap'
+	| 'eventBus'
+	| 'license';
 
 export type CredentialPayload = {
 	name: string;

@@ -1,6 +1,7 @@
-import { BINARY_ENCODING, IExecuteFunctions, WAIT_TIME_UNLIMITED } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
@@ -8,18 +9,19 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-import basicAuth from 'basic-auth';
-
-import { Response } from 'express';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
-
+import stream from 'stream';
+import { promisify } from 'util';
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
 import formidable from 'formidable';
-
 import isbot from 'isbot';
+import { file as tmpFile } from 'tmp-promise';
+
+const pipeline = promisify(stream.pipeline);
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -114,7 +116,7 @@ export class Wait implements INodeType {
 				],
 				default: 'none',
 				description:
-					'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security',
+					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
 			},
 			{
 				displayName: 'Resume',
@@ -212,7 +214,7 @@ export class Wait implements INodeType {
 			// ----------------------------------
 			{
 				displayName:
-					'The webhook URL will be generated at run time. It can be referenced with the <strong>$resumeWebhookUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+					'The webhook URL will be generated at run time. It can be referenced with the <strong>$execution.resumeUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
@@ -641,8 +643,8 @@ export class Wait implements INodeType {
 			}
 
 			if (
-				basicAuthData.name !== httpBasicAuth!.user ||
-				basicAuthData.pass !== httpBasicAuth!.password
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
 			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
@@ -673,13 +675,11 @@ export class Wait implements INodeType {
 			}
 		}
 
-		// @ts-ignore
-		const mimeType = headers['content-type'] || 'application/json';
+		const mimeType = headers['content-type'] ?? 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				form.parse(req, async (err, data, files) => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
@@ -708,19 +708,17 @@ export class Wait implements INodeType {
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
 							}
-							if (multiFile === true) {
+							if (multiFile) {
 								binaryPropertyName += fileCount++;
 							}
 							if (options.binaryPropertyName) {
 								binaryPropertyName = `${options.binaryPropertyName}${count}`;
 							}
 
-							const fileJson = file.toJSON() as unknown as IDataObject;
-							const fileContent = await fs.promises.readFile(file.path);
-
-							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-								Buffer.from(fileContent),
-								fileJson.name as string,
+							const fileJson = file.toJSON();
+							returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+								file.path,
+								fileJson.name || fileJson.filename,
 								fileJson.type as string,
 							);
 
@@ -735,38 +733,35 @@ export class Wait implements INodeType {
 		}
 
 		if (options.binaryData === true) {
-			return new Promise((resolve, reject) => {
-				const binaryPropertyName = options.binaryPropertyName || 'data';
-				const data: Buffer[] = [];
+			const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
 
-				req.on('data', (chunk) => {
-					data.push(chunk);
-				});
+			try {
+				await pipeline(req, fs.createWriteStream(binaryFile.path));
 
-				req.on('end', async () => {
-					const returnItem: INodeExecutionData = {
-						binary: {},
-						json: {
-							headers,
-							params: this.getParamsData(),
-							query: this.getQueryData(),
-							body: this.getBodyData(),
-						},
-					};
+				const returnItem: INodeExecutionData = {
+					binary: {},
+					json: {
+						headers,
+						params: this.getParamsData(),
+						query: this.getQueryData(),
+						body: this.getBodyData(),
+					},
+				};
 
-					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(
-						Buffer.concat(data),
-					);
+				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
+				returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+					binaryFile.path,
+					mimeType,
+				);
 
-					return resolve({
-						workflowData: [[returnItem]],
-					});
-				});
-
-				req.on('error', (error) => {
-					throw new NodeOperationError(this.getNode(), error);
-				});
-			});
+				return {
+					workflowData: [[returnItem]],
+				};
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error);
+			} finally {
+				await binaryFile.cleanup();
+			}
 		}
 
 		const response: INodeExecutionData = {
@@ -781,7 +776,6 @@ export class Wait implements INodeType {
 		if (options.rawBody) {
 			response.binary = {
 				data: {
-					// @ts-ignore
 					data: req.rawBody.toString(BINARY_ENCODING),
 					mimeType,
 				},
@@ -865,7 +859,7 @@ export class Wait implements INodeType {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				setTimeout(() => {
 					resolve([this.getInputData()]);
 				}, waitValue);

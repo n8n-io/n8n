@@ -3,14 +3,11 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"details": "The Crypto node allows you to hash and Hmac string in a specified format and sign a string using a private key. Use this node when you want to encrypt your data.",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.crypto/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/"
 			}
 		],
 		"generic": [
@@ -21,14 +18,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Encrypt",
-		"SHA",
-		"Hash"
-	],
+	"alias": ["Encrypt", "SHA", "Hash"],
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
+		"Core Nodes": ["Helpers"]
 	}
 }

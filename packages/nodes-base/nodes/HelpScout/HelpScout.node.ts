@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { countriesCodes } from './CountriesCodes';
 
@@ -17,9 +17,9 @@ import { conversationFields, conversationOperations } from './ConversationDescri
 
 import { customerFields, customerOperations } from './CustomerDescription';
 
-import { ICustomer } from './CustomerInterface';
+import type { ICustomer } from './CustomerInterface';
 
-import { IConversation } from './ConversationInterface';
+import type { IConversation } from './ConversationInterface';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
@@ -27,7 +27,7 @@ import { mailboxFields, mailboxOperations } from './MailboxDescription';
 
 import { threadFields, threadOperations } from './ThreadDescription';
 
-import { IAttachment, IThread } from './ThreadInterface';
+import type { IAttachment, IThread } from './ThreadInterface';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,7 +114,7 @@ export class HelpScout implements INodeType {
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
-					const tagId = tag.id;
+					const _tagId = tag.id;
 					returnData.push({
 						name: tagName,
 						value: tagName,
@@ -147,12 +147,12 @@ export class HelpScout implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'conversation') {
@@ -162,8 +162,8 @@ export class HelpScout implements INodeType {
 						const status = this.getNodeParameter('status', i) as string;
 						const subject = this.getNodeParameter('subject', i) as string;
 						const type = this.getNodeParameter('type', i) as string;
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const resolveData = this.getNodeParameter('resolveData', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const threads = (this.getNodeParameter('threadsUi', i) as IDataObject)
 							.threadsValues as IDataObject[];
 						const body: IConversation = {
@@ -195,12 +195,12 @@ export class HelpScout implements INodeType {
 							);
 						}
 						if (threads) {
-							for (let i = 0; i < threads.length; i++) {
-								if (threads[i].type === '' || threads[i].text === '') {
+							for (let index = 0; index < threads.length; index++) {
+								if (threads[index].type === '' || threads[index].text === '') {
 									throw new NodeOperationError(this.getNode(), 'Chat Threads cannot be empty');
 								}
-								if (threads[i].type !== 'note') {
-									threads[i].customer = body.customer;
+								if (threads[index].type !== 'note') {
+									threads[index].customer = body.customer;
 								}
 							}
 							body.threads = threads;
@@ -246,9 +246,14 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
+						if (options.tags) {
+							qs.tag = options.tags.toString();
+						}
 						Object.assign(qs, options);
+						delete qs.tags;
+
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
@@ -259,7 +264,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.conversations',
@@ -275,8 +280,8 @@ export class HelpScout implements INodeType {
 				if (resource === 'customer') {
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/create
 					if (operation === 'create') {
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const resolveData = this.getNodeParameter('resolveData', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const chats = (this.getNodeParameter('chatsUi', i) as IDataObject)
 							.chatsValues as IDataObject[];
 						const address = (this.getNodeParameter('addressUi', i) as IDataObject)
@@ -360,8 +365,8 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
@@ -373,7 +378,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.customers',
@@ -388,7 +393,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/overwrite/
 					if (operation === 'update') {
 						const customerId = this.getNodeParameter('customerId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						let body: ICustomer = {};
 						body = Object.assign({}, updateFields);
 						if (body.age) {
@@ -425,7 +430,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
@@ -436,7 +441,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.mailboxes',
@@ -453,9 +458,9 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/chat
 					if (operation === 'create') {
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
-						const type = this.getNodeParameter('type', i) as string;
+						const _type = this.getNodeParameter('type', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
 						const body: IThread = {
 							text,
@@ -518,9 +523,7 @@ export class HelpScout implements INodeType {
 								};
 								body.attachments?.push.apply(
 									body.attachments,
-									(attachments.attachmentsBinary as IDataObject[]).map(
-										mapFunction,
-									) as IAttachment[],
+									(attachments.attachmentsBinary as IDataObject[]).map(mapFunction),
 								);
 							}
 						}
@@ -534,7 +537,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
@@ -544,7 +547,7 @@ export class HelpScout implements INodeType {
 								`/v2/conversations/${conversationId}/threads`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.threads',
@@ -559,17 +562,24 @@ export class HelpScout implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
-			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

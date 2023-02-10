@@ -1,14 +1,15 @@
 <template>
 	<div :class="$style.container">
 		<div :class="$style.logoContainer">
-				<Logo />
+			<Logo />
 		</div>
 		<div v-if="subtitle" :class="$style.textContainer">
-			<n8n-text size="large">{{subtitle}}</n8n-text>
+			<n8n-text size="large">{{ subtitle }}</n8n-text>
 		</div>
 		<div :class="$style.formContainer">
 			<n8n-form-box
 				v-bind="form"
+				data-test-id="auth-form"
 				:buttonLoading="formLoading"
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
@@ -29,8 +30,7 @@ export default Vue.extend({
 		Logo,
 	},
 	props: {
-		form: {
-		},
+		form: {},
 		formLoading: {
 			type: Boolean,
 			default: false,
@@ -40,10 +40,10 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			this.$emit('input', e);
 		},
-		onSubmit(values: {[key: string]: string}) {
+		onSubmit(values: { [key: string]: string }) {
 			this.$emit('submit', values);
 		},
 		onSecondaryClick() {
@@ -85,9 +85,7 @@ body {
 </style>
 
 <style lang="scss">
-
 .el-checkbox__label span {
 	font-size: var(--font-size-2xs) !important;
 }
-
 </style>

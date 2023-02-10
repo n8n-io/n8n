@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.koBoToolbox",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Data & Storage"
-	],
+	"categories": ["Communication", "Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/nodes/n8n-nodes-base.kobotoolbox/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.kobotoolbox/"
 			}
 		]
 	}

@@ -1,20 +1,24 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { AttributesValuesUi, CommentAnalyzeBody, Language, RequestedAttributes } from './types';
+import type {
+	AttributesValuesUi,
+	CommentAnalyzeBody,
+	Language,
+	RequestedAttributes,
+} from './types';
 
 import { googleApiRequest } from './GenericFunctions';
 
-const ISO6391 = require('iso-639-1');
+import ISO6391 from 'iso-639-1';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
@@ -206,7 +210,7 @@ export class GooglePerspective implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0);
 
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
@@ -260,17 +264,24 @@ export class GooglePerspective implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(responseData)];
+		return this.prepareOutputData(returnData);
 	}
 }

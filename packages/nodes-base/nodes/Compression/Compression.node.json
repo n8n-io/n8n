@@ -3,25 +3,16 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"details": "The Compression node is useful when you want to compress files to either gzip or zip format. You can even use this node to decompress your gzip and zip files.",
-	"categories": [
-		"Core Nodes",
-		"Data & Storage"
-	],
+	"categories": ["Core Nodes", "Data & Storage"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.compression/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.compression/"
 			}
 		]
 	},
-	"alias": [
-		"Zip",
-		"Gzip",
-		"uncompress"
-	],
+	"alias": ["Zip", "Gzip", "uncompress"],
 	"subcategories": {
-		"Core Nodes": [
-			"Files"
-		]
+		"Core Nodes": ["Files"]
 	}
 }

@@ -1,13 +1,12 @@
-import { IExecuteFunctions, IPollFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IPollFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	NodeApiError,
 } from 'n8n-workflow';
 
 interface IAttachment {
@@ -25,11 +24,6 @@ export interface IRecord {
 /**
  * Make an API request to Airtable
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -39,10 +33,7 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('airtableApi');
-
 	query = query || {};
 
 	// For some reason for some endpoints the bearer auth does not work
@@ -68,24 +59,14 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
 }
 
 /**
  * Make an API request to paginated Airtable endpoint
  * and return all results
  *
- * @export
  * @param {(IExecuteFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -93,7 +74,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};

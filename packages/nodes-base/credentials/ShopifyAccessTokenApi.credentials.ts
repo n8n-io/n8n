@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class ShopifyAccessTokenApi implements ICredentialType {
 	name = 'shopifyAccessTokenApi';
+
 	displayName = 'Shopify Access Token API';
+
 	documentationUrl = 'shopify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Shop Subdomain',
@@ -23,6 +26,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			name: 'accessToken',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -34,6 +38,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			description: 'Secret key needed to verify the webhook when using Shopify Trigger node',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -42,6 +47,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/2019-10',

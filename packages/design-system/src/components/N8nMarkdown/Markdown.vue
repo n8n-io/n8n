@@ -3,18 +3,14 @@
 		<div
 			v-if="!loading"
 			ref="editor"
-			:class="$style[theme]" v-html="htmlContent"
+			class="ph-no-capture"
+			:class="$style[theme]"
+			v-html="htmlContent"
 			@click="onClick"
 		/>
 		<div v-else :class="$style.markdown">
-			<div v-for="(block, index) in loadingBlocks"
-				:key="index">
-				<n8n-loading
-					:loading="loading"
-					:rows="loadingRows"
-					animated
-					variant="p"
-				/>
+			<div v-for="(block, index) in loadingBlocks" :key="index">
+				<n8n-loading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
 			</div>
 		</div>
@@ -24,11 +20,14 @@
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
 import Markdown from 'markdown-it';
-const markdownLink = require('markdown-it-link-attributes');
-const markdownEmoji = require('markdown-it-emoji');
-const markdownTasklists = require('markdown-it-task-lists');
 
-import xss from 'xss';
+import markdownLink from 'markdown-it-link-attributes';
+import markdownEmoji from 'markdown-it-emoji';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import markdownTasklists from 'markdown-it-task-lists';
+
+import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';
 
 const DEFAULT_OPTIONS_MARKDOWN = {
@@ -36,26 +35,32 @@ const DEFAULT_OPTIONS_MARKDOWN = {
 	linkify: true,
 	typographer: true,
 	breaks: true,
-};
+} as const;
 
 const DEFAULT_OPTIONS_LINK_ATTRIBUTES = {
 	attrs: {
 		target: '_blank',
 		rel: 'noopener',
 	},
-};
+} as const;
 
 const DEFAULT_OPTIONS_TASKLISTS = {
 	label: true,
 	labelAfter: true,
-};
+} as const;
 
 interface IImage {
 	id: string;
 	url: string;
 }
 
-import Vue from 'vue';
+interface Options {
+	markdown: typeof DEFAULT_OPTIONS_MARKDOWN;
+	linkAttributes: typeof DEFAULT_OPTIONS_LINK_ATTRIBUTES;
+	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
+}
+
+import Vue, { PropType } from 'vue';
 
 export default Vue.extend({
 	components: {
@@ -70,7 +75,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		images: {
-			type: Array,
+			type: Array<IImage>,
 		},
 		loading: {
 			type: Boolean,
@@ -81,16 +86,14 @@ export default Vue.extend({
 		},
 		loadingRows: {
 			type: Number,
-			default: () => {
-				return 3;
-			},
+			default: () => 3,
 		},
 		theme: {
 			type: String,
 			default: 'markdown',
 		},
 		options: {
-			type: Object,
+			type: Object as PropType<Options>,
 			default() {
 				return {
 					markdown: DEFAULT_OPTIONS_MARKDOWN,
@@ -103,12 +106,11 @@ export default Vue.extend({
 	computed: {
 		htmlContent(): string {
 			if (!this.content) {
-				 return '';
+				return '';
 			}
 
 			const imageUrls: { [key: string]: string } = {};
 			if (this.images) {
-				// @ts-ignore
 				this.images.forEach((image: IImage) => {
 					if (!image) {
 						// Happens if an image got deleted but the workflow
@@ -120,18 +122,17 @@ export default Vue.extend({
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			const imageFilesRegex = /\.(jpeg|jpg|gif|png|webp|bmp|tif|tiff|apng|svg|avif)$/;
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
 				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
 			}
 			const html = this.md.render(escapeMarkdown(contentToRender));
 			const safeHtml = xss(html, {
-				onTagAttr: (tag, name, value, isWhiteAttr) => {
+				onTagAttr: (tag, name, value) => {
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
-							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
+							return `src=${friendlyAttrValue(imageUrls[id])}` || '';
 						}
 						// Only allow http requests to supported image files from the `static` directory
 						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -142,8 +143,8 @@ export default Vue.extend({
 					}
 					// Return nothing, means keep the default handling measure
 				},
-				onTag: function (tag, html, options) {
-					if (tag === 'img' && html.includes(`alt="workflow-screenshot"`)) {
+				onTag(tag, code) {
+					if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
 						return '';
 					}
 					// return nothing, keep tag
@@ -155,28 +156,29 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			md: new Markdown(this.options.markdown)
-				.use(markdownLink, this.options.linkAttributes)
+			md: new Markdown(this.options.markdown) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
+				.use(markdownLink, this.options.linkAttributes) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 				.use(markdownEmoji)
-				.use(markdownTasklists, this.options.tasklists),
+				.use(markdownTasklists, this.options.tasklists), // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 		};
 	},
 	methods: {
-		onClick(event) {
+		onClick(event: MouseEvent) {
 			let clickedLink = null;
 
-			if(event.target instanceof HTMLAnchorElement) {
+			if (event.target instanceof HTMLAnchorElement) {
 				clickedLink = event.target;
 			}
-			if(event.target.matches('a *')) {
+
+			if (event.target instanceof HTMLElement && event.target.matches('a *')) {
 				const parentLink = event.target.closest('a');
-				if(parentLink) {
+				if (parentLink) {
 					clickedLink = parentLink;
 				}
 			}
 			this.$emit('markdown-click', clickedLink, event);
-		}
-	}
+		},
+	},
 });
 </script>
 
@@ -189,13 +191,17 @@ export default Vue.extend({
 		line-height: var(--font-line-height-xloose);
 	}
 
-	h1, h2, h3, h4 {
+	h1,
+	h2,
+	h3,
+	h4 {
 		margin-bottom: var(--spacing-s);
 		font-size: var(--font-size-m);
 		font-weight: var(--font-weight-bold);
 	}
 
-	h3, h4 {
+	h3,
+	h4 {
 		font-weight: var(--font-weight-bold);
 	}
 
@@ -204,7 +210,8 @@ export default Vue.extend({
 		margin-bottom: var(--spacing-s);
 	}
 
-	ul, ol {
+	ul,
+	ol {
 		margin-bottom: var(--spacing-s);
 		padding-left: var(--spacing-m);
 
@@ -255,7 +262,10 @@ export default Vue.extend({
 .sticky {
 	color: var(--color-text-dark);
 
-	h1, h2, h3, h4 {
+	h1,
+	h2,
+	h3,
+	h4 {
 		margin-bottom: var(--spacing-2xs);
 		font-weight: var(--font-weight-bold);
 		line-height: var(--font-line-height-loose);
@@ -269,7 +279,10 @@ export default Vue.extend({
 		font-size: 24px;
 	}
 
-	h3, h4, h5, h6 {
+	h3,
+	h4,
+	h5,
+	h6 {
 		font-size: var(--font-size-m);
 	}
 
@@ -280,7 +293,8 @@ export default Vue.extend({
 		line-height: var(--font-line-height-loose);
 	}
 
-	ul, ol {
+	ul,
+	ol {
 		margin-bottom: var(--spacing-2xs);
 		padding-left: var(--spacing-m);
 
@@ -298,7 +312,9 @@ export default Vue.extend({
 		color: var(--color-secondary);
 	}
 
-	pre > code,li > code, p > code {
+	pre > code,
+	li > code,
+	p > code {
 		color: var(--color-secondary);
 	}
 
@@ -311,7 +327,7 @@ export default Vue.extend({
 	img {
 		object-fit: contain;
 
-		&[src*="#full-width"] {
+		&[src*='#full-width'] {
 			width: 100%;
 		}
 	}

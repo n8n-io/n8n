@@ -1,16 +1,12 @@
-import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions } from 'kafkajs';
+import type { KafkaConfig, SASLOptions } from 'kafkajs';
+import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { ITriggerFunctions } from 'n8n-core';
+import type { ITriggerFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,7 +110,7 @@ export class KafkaTrigger implements INodeType {
 						displayName: 'Max Number of Requests',
 						name: 'maxInFlightRequests',
 						type: 'number',
-						default: 0,
+						default: 1,
 						description:
 							'Max number of requests that may be in progress at any time. If falsey then no limit.',
 					},
@@ -171,9 +167,7 @@ export class KafkaTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('kafka');
 
-		const brokers = ((credentials.brokers as string) || '')
-			.split(',')
-			.map((item) => item.trim()) as string[];
+		const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 		const clientId = credentials.clientId as string;
 
@@ -202,9 +196,15 @@ export class KafkaTrigger implements INodeType {
 
 		const kafka = new apacheKafka(config);
 
+		const maxInFlightRequests = (
+			this.getNodeParameter('options.maxInFlightRequests', null) === 0
+				? null
+				: this.getNodeParameter('options.maxInFlightRequests', null)
+		) as number;
+
 		const consumer = kafka.consumer({
 			groupId,
-			maxInFlightRequests: this.getNodeParameter('options.maxInFlightRequests', 0) as number,
+			maxInFlightRequests,
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
@@ -215,8 +215,6 @@ export class KafkaTrigger implements INodeType {
 
 		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-		const self = this;
-
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
@@ -225,7 +223,7 @@ export class KafkaTrigger implements INodeType {
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-				eachMessage: async ({ topic, message }) => {
+				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
 					let value = message.value?.toString() as string;
 
@@ -253,19 +251,19 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					data.message = value;
-					data.topic = topic;
+					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
 						//@ts-ignore
 						data = value;
 					}
 
-					self.emit([self.helpers.returnJsonArray([data])]);
+					this.emit([this.helpers.returnJsonArray([data])]);
 				},
 			});
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -280,7 +278,7 @@ export class KafkaTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-			startConsumer();
+			await startConsumer();
 		}
 
 		return {

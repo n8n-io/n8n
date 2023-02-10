@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const webinarOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const webinarOperations: INodeProperties[] = [
 				action: 'Get a webinar',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all webinars',
-				action: 'Get all webinars',
+				description: 'Retrieve many webinars',
+				action: 'Get many webinars',
 			},
 			{
 				name: 'Update',
@@ -177,6 +177,7 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password to join the webinar with maximum 10 characters',
 			},
@@ -519,6 +520,7 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password to join the webinar with maximum 10 characters',
 			},

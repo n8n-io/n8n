@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -91,7 +91,7 @@ export class GetResponse implements INodeType {
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const campaigns = await getresponseApiRequest.call(this, 'GET', `/campaigns`);
+				const campaigns = await getresponseApiRequest.call(this, 'GET', '/campaigns');
 				for (const campaign of campaigns) {
 					returnData.push({
 						name: campaign.name as string,
@@ -104,7 +104,7 @@ export class GetResponse implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await getresponseApiRequest.call(this, 'GET', `/tags`);
+				const tags = await getresponseApiRequest.call(this, 'GET', '/tags');
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name as string,
@@ -117,7 +117,7 @@ export class GetResponse implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const customFields = await getresponseApiRequest.call(this, 'GET', `/custom-fields`);
+				const customFields = await getresponseApiRequest.call(this, 'GET', '/custom-fields');
 				for (const customField of customFields) {
 					returnData.push({
 						name: customField.name as string,
@@ -131,12 +131,12 @@ export class GetResponse implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -146,7 +146,7 @@ export class GetResponse implements INodeType {
 
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -162,9 +162,9 @@ export class GetResponse implements INodeType {
 								.customFieldValues as IDataObject[];
 							if (customFieldValues) {
 								body.customFieldValues = customFieldValues;
-								for (let i = 0; i < customFieldValues.length; i++) {
-									if (!Array.isArray(customFieldValues[i].value)) {
-										customFieldValues[i].value = [customFieldValues[i].value];
+								for (let index = 0; index < customFieldValues.length; index++) {
+									if (!Array.isArray(customFieldValues[index].value)) {
+										customFieldValues[index].value = [customFieldValues[index].value];
 									}
 								}
 								delete body.customFieldsUi;
@@ -179,7 +179,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'delete') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 
@@ -197,7 +197,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 
@@ -211,9 +211,9 @@ export class GetResponse implements INodeType {
 					}
 					//https://apireference.getresponse.com/?_ga=2.160836350.2102802044.1604719933-1897033509.1604598019#operation/getContactList
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const timezone = this.getTimezone();
 
@@ -248,7 +248,7 @@ export class GetResponse implements INodeType {
 						}
 
 						if (qs.exactMatch === true) {
-							qs['additionalFlags'] = 'exactMatch';
+							qs.additionalFlags = 'exactMatch';
 							delete qs.exactMatch;
 						}
 
@@ -256,20 +256,20 @@ export class GetResponse implements INodeType {
 							responseData = await getResponseApiRequestAllItems.call(
 								this,
 								'GET',
-								`/contacts`,
+								'/contacts',
 								{},
 								qs,
 							);
 						} else {
-							qs.perPage = this.getNodeParameter('limit', i) as number;
-							responseData = await getresponseApiRequest.call(this, 'GET', `/contacts`, {}, qs);
+							qs.perPage = this.getNodeParameter('limit', i);
+							responseData = await getresponseApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						}
 					}
 					//https://apireference.getresponse.com/?_ga=2.160836350.2102802044.1604719933-1897033509.1604598019#operation/updateContact
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
@@ -292,19 +292,23 @@ export class GetResponse implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

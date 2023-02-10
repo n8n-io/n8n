@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const couponOperations: INodeProperties[] = [
 	{
@@ -15,10 +15,10 @@ export const couponOperations: INodeProperties[] = [
 				action: 'Create a coupon',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all coupons',
-				action: 'Get all coupons',
+				description: 'Get many coupons',
+				action: 'Get many coupons',
 			},
 		],
 		displayOptions: {

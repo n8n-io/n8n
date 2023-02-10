@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const linkedResourceOperations: INodeProperties[] = [
 	{
@@ -28,9 +28,9 @@ export const linkedResourceOperations: INodeProperties[] = [
 				action: 'Get a linked resource',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all linked resources',
+				action: 'Get many linked resources',
 			},
 			{
 				name: 'Update',

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const lightOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const lightOperations: INodeProperties[] = [
 				action: 'Get a light',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all lights',
-				action: 'Get all lights',
+				description: 'Retrieve many lights',
+				action: 'Get many lights',
 			},
 			{
 				name: 'Update',

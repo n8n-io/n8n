@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { LANGUAGES } from '../constants';
 
 export const requesterOperations: INodeProperties[] = [
@@ -32,10 +32,10 @@ export const requesterOperations: INodeProperties[] = [
 				action: 'Get a requester',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all requesters',
-				action: 'Get all requesters',
+				description: 'Retrieve many requesters',
+				action: 'Get many requesters',
 			},
 			{
 				name: 'Update',

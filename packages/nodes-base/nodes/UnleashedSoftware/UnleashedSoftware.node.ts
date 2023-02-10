@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	convertNETDates,
@@ -63,20 +68,20 @@ export class UnleashedSoftware implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource', 0);
+			const operation = this.getNodeParameter('operation', 0);
 
 			//https://apidocs.unleashedsoftware.com/SalesOrders
 			if (resource === 'salesOrder') {
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 
 					if (filters.startDate) {
 						filters.startDate = moment(filters.startDate as string).format('YYYY-MM-DD');
@@ -106,22 +111,25 @@ export class UnleashedSoftware implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs, 1);
+						responseData = await unleashedApiRequest.call(this, 'GET', '/SalesOrders', {}, qs, 1);
 						responseData = responseData.Items;
 					}
-
 					convertNETDates(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 			}
 
 			//https://apidocs.unleashedsoftware.com/StockOnHand
 			if (resource === 'stockOnHand') {
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i);
 
 					if (filters.asAtDate) {
 						filters.asAtDate = moment(filters.asAtDate as string).format('YYYY-MM-DD');
@@ -147,13 +155,17 @@ export class UnleashedSoftware implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand`, {}, qs, 1);
+						responseData = await unleashedApiRequest.call(this, 'GET', '/StockOnHand', {}, qs, 1);
 						responseData = responseData.Items;
 					}
 
 					convertNETDates(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'get') {
@@ -162,14 +174,13 @@ export class UnleashedSoftware implements INodeType {
 					convertNETDates(responseData);
 				}
 			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

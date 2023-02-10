@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const folderMessageOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const folderMessageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the messages in a folder',
-				action: 'Get all folder messages',
+				description: 'Get many messages in a folder',
+				action: 'Get many folder messages',
 			},
 		],
 		default: 'create',

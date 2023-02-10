@@ -1,0 +1,3 @@
+coverage
+storybook-static
+**/*.stories.js

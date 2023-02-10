@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const expenseOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const expenseOperations: INodeProperties[] = [
 				action: 'Get an expense',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all expenses',
-				action: 'Get all expenses',
+				description: 'Get data of many expenses',
+				action: 'Get many expenses',
 			},
 		],
 		default: 'create',
@@ -256,18 +256,12 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

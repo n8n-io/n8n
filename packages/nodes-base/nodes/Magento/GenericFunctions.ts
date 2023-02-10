@@ -1,27 +1,27 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
+import type { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	headers: IDataObject = {},
+	_headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('magento2Api');
 
@@ -50,10 +50,9 @@ export async function magentoApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -62,7 +61,7 @@ export async function magentoApiRequestAllItems(
 	do {
 		responseData = await magentoApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query['current_page'] = query.current_page ? (query.current_page as number)++ : 1;
+		query.current_page = query.current_page ? (query.current_page as number)++ : 1;
 	} while (returnData.length < responseData.total_count);
 
 	return returnData;
@@ -193,7 +192,6 @@ export function getAddressesUi(): INodeProperties {
 	};
 }
 
-// tslint:disable-next-line: no-any
 export function adjustAddresses(addresses: [{ street: string; [key: string]: string }]): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
@@ -206,6 +204,94 @@ export function adjustAddresses(addresses: [{ street: string; [key: string]: str
 		});
 	}
 	return _addresses;
+}
+
+function getConditionTypeFields(): INodeProperties {
+	return {
+		displayName: 'Condition Type',
+		name: 'condition_type',
+		type: 'options',
+		options: [
+			{
+				name: 'Equals',
+				value: 'eq',
+			},
+			{
+				name: 'Greater than',
+				value: 'gt',
+			},
+			{
+				name: 'Greater than or equal',
+				value: 'gteq',
+			},
+			{
+				name: 'In',
+				value: 'in',
+				description: 'The value can contain a comma-separated list of values',
+			},
+			{
+				name: 'Less Than',
+				value: 'lt',
+			},
+			{
+				name: 'Less Than or Equal',
+				value: 'lte',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
+			},
+			{
+				name: 'More or Equal',
+				value: 'moreq',
+			},
+			{
+				name: 'Not Equal',
+				value: 'neq',
+			},
+			{
+				name: 'Not In',
+				value: 'nin',
+				description: 'The value can contain a comma-separated list of values',
+			},
+			{
+				name: 'Not Null',
+				value: 'notnull',
+			},
+			{
+				name: 'Null',
+				value: 'null',
+			},
+		],
+		default: 'eq',
+	};
+}
+
+function getConditions(attributeFunction: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Field',
+			name: 'field',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: attributeFunction,
+			},
+			default: '',
+		},
+		getConditionTypeFields(),
+		{
+			displayName: 'Value',
+			name: 'value',
+			type: 'string',
+			displayOptions: {
+				hide: {
+					condition_type: ['null', 'notnull'],
+				},
+			},
+			default: '',
+		},
+	];
 }
 
 export function getSearchFilters(
@@ -305,9 +391,6 @@ export function getSearchFilters(
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: [resource],
@@ -390,94 +473,6 @@ export function getSearchFilters(
 	];
 }
 
-function getConditionTypeFields(): INodeProperties {
-	return {
-		displayName: 'Condition Type',
-		name: 'condition_type',
-		type: 'options',
-		options: [
-			{
-				name: 'Equals',
-				value: 'eq',
-			},
-			{
-				name: 'Greater than',
-				value: 'gt',
-			},
-			{
-				name: 'Greater than or equal',
-				value: 'gteq',
-			},
-			{
-				name: 'In',
-				value: 'in',
-				description: 'The value can contain a comma-separated list of values',
-			},
-			{
-				name: 'Less Than',
-				value: 'lt',
-			},
-			{
-				name: 'Less Than or Equal',
-				value: 'lte',
-			},
-			{
-				name: 'Like',
-				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified',
-			},
-			{
-				name: 'More or Equal',
-				value: 'moreq',
-			},
-			{
-				name: 'Not Equal',
-				value: 'neq',
-			},
-			{
-				name: 'Not In',
-				value: 'nin',
-				description: 'The value can contain a comma-separated list of values',
-			},
-			{
-				name: 'Not Null',
-				value: 'notnull',
-			},
-			{
-				name: 'Null',
-				value: 'null',
-			},
-		],
-		default: 'eq',
-	};
-}
-
-function getConditions(attributeFunction: string): INodeProperties[] {
-	return [
-		{
-			displayName: 'Field',
-			name: 'field',
-			type: 'options',
-			typeOptions: {
-				loadOptionsMethod: attributeFunction,
-			},
-			default: '',
-		},
-		getConditionTypeFields(),
-		{
-			displayName: 'Value',
-			name: 'value',
-			type: 'string',
-			displayOptions: {
-				hide: {
-					condition_type: ['null', 'notnull'],
-				},
-			},
-			default: '',
-		},
-	];
-}
-
 export function getFilterQuery(data: {
 	conditions?: Filter[];
 	matchType: string;
@@ -515,7 +510,6 @@ export function getFilterQuery(data: {
 	};
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -641,6 +635,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -986,7 +981,7 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 
 export async function getProductAttributes(
 	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	filter?: (attribute: ProductAttribute) => any,
 	extraValue?: { name: string; value: string },
 ): Promise<INodePropertyOptions[]> {
@@ -996,7 +991,7 @@ export async function getProductAttributes(
 		this,
 		'items',
 		'GET',
-		`/rest/default/V1/products/attributes`,
+		'/rest/default/V1/products/attributes',
 		{},
 		{
 			search_criteria: 0,
@@ -1015,8 +1010,8 @@ export async function getProductAttributes(
 	const returnData: INodePropertyOptions[] = [];
 	for (const attribute of attributes) {
 		returnData.push({
-			name: attribute.default_frontend_label as string,
-			value: attribute.attribute_code as string,
+			name: attribute.default_frontend_label,
+			value: attribute.attribute_code,
 		});
 	}
 	if (extraValue) {

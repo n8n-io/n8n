@@ -1,13 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -46,11 +47,6 @@ export enum FormstackFieldFormat {
 /**
  * Make an API request to Formstack
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -58,7 +54,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -79,10 +74,10 @@ export async function apiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
 
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-			return await this.helpers.request!(options);
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'formstackOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -93,13 +88,7 @@ export async function apiRequest(
  * Make an API request to paginated Formstack endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -108,7 +97,6 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	dataKey: string,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -139,9 +127,6 @@ export async function apiRequestAllItems(
 /**
  * Returns all the available forms
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @returns {Promise<INodePropertyOptions[]>}
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'form.json';
@@ -165,10 +150,6 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 /**
  * Returns all the fields of a form
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @param {string} formID
- * @returns {Promise<IFormstackFieldDefinitionType[]>}
  */
 export async function getFields(
 	this: IWebhookFunctions,
@@ -194,10 +175,6 @@ export async function getFields(
 /**
  * Returns all the fields of a form
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @param {string} uniqueId
- * @returns {Promise<IFormstackFieldDefinitionType[]>}
  */
 export async function getSubmission(
 	this: ILoadOptionsFunctions | IWebhookFunctions,

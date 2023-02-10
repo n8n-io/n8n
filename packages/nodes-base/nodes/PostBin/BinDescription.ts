@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { buildBinAPIURL, transformBinReponse } from './GenericFunctions';
 
@@ -75,8 +75,8 @@ export const binOperations: INodeProperties[] = [
 // Properties of the `Bin` resource
 export const binFields: INodeProperties[] = [
 	{
-		name: 'binId',
 		displayName: 'Bin ID',
+		name: 'binId',
 		type: 'string',
 		default: '',
 		required: true,

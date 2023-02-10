@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const itemOperations: INodeProperties[] = [
 	{
@@ -14,9 +14,9 @@ export const itemOperations: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all items',
+				action: 'Get many items',
 			},
 		],
 		displayOptions: {
@@ -95,9 +95,6 @@ export const itemFields: INodeProperties[] = [
 				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
 				description:
 					'The condition for selecting items. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 		displayOptions: {

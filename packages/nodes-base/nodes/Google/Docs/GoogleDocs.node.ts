@@ -1,13 +1,13 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	extractID,
@@ -19,7 +19,7 @@ import {
 
 import { documentFields, documentOperations } from './DocumentDescription';
 
-import { IUpdateBody, IUpdateFields } from './interfaces';
+import type { IUpdateBody, IUpdateFields } from './interfaces';
 
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
@@ -83,7 +83,8 @@ export class GoogleDocs implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -115,6 +116,7 @@ export class GoogleDocs implements INodeType {
 			...documentFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the drives to display them to user so that he can
@@ -194,15 +196,16 @@ export class GoogleDocs implements INodeType {
 			},
 		},
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -240,11 +243,11 @@ export class GoogleDocs implements INodeType {
 						if (simple) {
 							const content = (responseData.body.content as IDataObject[])
 								.reduce((arr: string[], contentItem) => {
-									if (contentItem && contentItem.paragraph) {
+									if (contentItem?.paragraph) {
 										const texts = (
 											(contentItem.paragraph as IDataObject).elements as IDataObject[]
 										).map((element) => {
-											if (element && element.textRun) {
+											if (element?.textRun) {
 												return (element.textRun as IDataObject).content as string;
 											}
 										}) as string[];
@@ -490,7 +493,7 @@ export class GoogleDocs implements INodeType {
 							body,
 						);
 
-						if (simple === true) {
+						if (simple) {
 							if (Object.keys(responseData.replies[0]).length !== 0) {
 								const key = Object.keys(responseData.replies[0])[0];
 								responseData = responseData.replies[0][key];
@@ -503,17 +506,23 @@ export class GoogleDocs implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

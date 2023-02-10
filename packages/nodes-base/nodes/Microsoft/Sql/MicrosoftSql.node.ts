@@ -1,18 +1,22 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import { chunk, flatten } from '../../../utils/utilities';
 
 import mssql from 'mssql';
 
-import { ITables } from './TableInterface';
+import type { ITables } from './TableInterface';
 
 import {
 	copyInputItem,
@@ -42,6 +46,7 @@ export class MicrosoftSql implements INodeType {
 			{
 				name: 'microsoftSql',
 				required: true,
+				testedBy: 'microsoftSqlConnectionTest',
 			},
 		],
 		properties: [
@@ -86,9 +91,6 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -213,6 +215,44 @@ export class MicrosoftSql implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async microsoftSqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const config = {
+						server: credentials.server as string,
+						port: credentials.port as number,
+						database: credentials.database as string,
+						user: credentials.user as string,
+						password: credentials.password as string,
+						domain: credentials.domain ? (credentials.domain as string) : undefined,
+						connectionTimeout: credentials.connectTimeout as number,
+						requestTimeout: credentials.requestTimeout as number,
+						options: {
+							encrypt: credentials.tls as boolean,
+							enableArithAbort: false,
+						},
+					};
+					const pool = new mssql.ConnectionPool(config);
+					await pool.connect();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('microsoftSql');
 
@@ -228,16 +268,18 @@ export class MicrosoftSql implements INodeType {
 			options: {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
+				tdsVersion: credentials.tdsVersion as string,
 			},
 		};
 
 		const pool = new mssql.ConnectionPool(config);
 		await pool.connect();
 
-		let returnItems = [];
+		const returnItems: INodeExecutionData[] = [];
+		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		try {
 			if (operation === 'executeQuery') {
@@ -254,7 +296,7 @@ export class MicrosoftSql implements INodeType {
 						? flatten(queryResult.recordsets)
 						: queryResult.recordsets[0];
 
-				returnItems = this.helpers.returnJsonArray(result as IDataObject[]);
+				responseData = result;
 			} else if (operation === 'insert') {
 				// ----------------------------------
 				//         insert
@@ -266,13 +308,14 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return chunk(items, 1000).map((insertValues) => {
+						return chunk(items, 1000).map(async (insertValues) => {
 							const values = insertValues.map((item: IDataObject) => extractValues(item)).join(',');
 							return pool
 								.request()
@@ -281,7 +324,7 @@ export class MicrosoftSql implements INodeType {
 					},
 				);
 
-				returnItems = items;
+				responseData = items;
 			} else if (operation === 'update') {
 				// ----------------------------------
 				//         update
@@ -301,13 +344,14 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return items.map((item) => {
+						return items.map(async (item) => {
 							const columns = columnString.split(',').map((column) => column.trim());
 
 							const setValues = extractUpdateSet(item, columns);
@@ -318,35 +362,35 @@ export class MicrosoftSql implements INodeType {
 					},
 				);
 
-				returnItems = items;
+				responseData = items;
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
 				// ----------------------------------
 
-				const tables = items.reduce((tables, item, index) => {
+				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (tables[table] === undefined) {
-						tables[table] = {};
+					if (acc[table] === undefined) {
+						acc[table] = {};
 					}
-					if (tables[table][deleteKey] === undefined) {
-						tables[table][deleteKey] = [];
+					if (acc[table][deleteKey] === undefined) {
+						acc[table][deleteKey] = [];
 					}
-					tables[table][deleteKey].push(item);
-					return tables;
+					acc[table][deleteKey].push(item);
+					return acc;
 				}, {} as ITables);
 
 				const queriesResults = await Promise.all(
-					Object.keys(tables).map((table) => {
-						const deleteKeyResults = Object.keys(tables[table]).map((deleteKey) => {
+					Object.keys(tables).map(async (table) => {
+						const deleteKeyResults = Object.keys(tables[table]).map(async (deleteKey) => {
 							const deleteItemsList = chunk(
 								tables[table][deleteKey].map((item) =>
 									copyInputItem(item as INodeExecutionData, [deleteKey]),
 								),
 								1000,
 							);
-							const queryQueue = deleteItemsList.map((deleteValues) => {
+							const queryQueue = deleteItemsList.map(async (deleteValues) => {
 								return pool
 									.request()
 									.query(
@@ -368,9 +412,7 @@ export class MicrosoftSql implements INodeType {
 					0,
 				);
 
-				returnItems = this.helpers.returnJsonArray({
-					rowsDeleted,
-				} as IDataObject);
+				responseData = rowsDeleted;
 			} else {
 				await pool.close();
 				throw new NodeOperationError(
@@ -379,8 +421,8 @@ export class MicrosoftSql implements INodeType {
 				);
 			}
 		} catch (error) {
-			if (this.continueOnFail() === true) {
-				returnItems = items;
+			if (this.continueOnFail()) {
+				responseData = items;
 			} else {
 				await pool.close();
 				throw error;
@@ -389,7 +431,12 @@ export class MicrosoftSql implements INodeType {
 
 		// Close the connection
 		await pool.close();
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: 0 } },
+		);
 
+		returnItems.push(...executionData);
 		return this.prepareOutputData(returnItems);
 	}
 }

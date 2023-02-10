@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const stockOnHandOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const stockOnHandOperations: INodeProperties[] = [
 				action: 'Get a stock on hand',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all stocks on hand',
-				action: 'Get all stocks on hand',
+				description: 'Get many stocks on hand',
+				action: 'Get many stocks on hand',
 			},
 		],
 		default: 'getAll',

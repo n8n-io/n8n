@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const siteOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const siteOperations: INodeProperties[] = [
 				action: 'Get a site',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Returns all sites',
-				action: 'Get all sites',
+				description: 'Returns many sites',
+				action: 'Get many sites',
 			},
 		],
 		default: 'delete',

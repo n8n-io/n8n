@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,7 +23,6 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	getFields,
-	getModuleName,
 	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
@@ -33,7 +32,7 @@ import {
 	zohoApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
+import type {
 	CamelCaseResource,
 	GetAllFilterOptions,
 	LoadedAccounts,
@@ -77,7 +76,7 @@ export class ZohoCrm implements INodeType {
 		version: 1,
 		description: 'Consume Zoho CRM API',
 		defaults: {
-			name: 'Zoho',
+			name: 'Zoho CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -331,11 +330,10 @@ export class ZohoCrm implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resolveData = this.getNodeParameter('resolveData', 0, false) as boolean;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -364,7 +362,7 @@ export class ZohoCrm implements INodeType {
 							Account_Name: this.getNodeParameter('accountName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccountPayload(additionalFields));
@@ -409,7 +407,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustAccountPayload(updateFields));
@@ -431,7 +429,7 @@ export class ZohoCrm implements INodeType {
 							Account_Name: this.getNodeParameter('accountName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccountPayload(additionalFields));
@@ -457,7 +455,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustContactPayload(additionalFields));
@@ -502,7 +500,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustContactPayload(updateFields));
@@ -524,7 +522,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustContactPayload(additionalFields));
@@ -551,7 +549,7 @@ export class ZohoCrm implements INodeType {
 							Stage: this.getNodeParameter('stage', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustDealPayload(additionalFields));
@@ -594,7 +592,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustDealPayload(updateFields));
@@ -616,7 +614,7 @@ export class ZohoCrm implements INodeType {
 							Stage: this.getNodeParameter('stage', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustDealPayload(additionalFields));
@@ -647,7 +645,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
@@ -692,7 +690,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustInvoicePayloadOnUpdate(updateFields));
@@ -718,7 +716,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
@@ -745,7 +743,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadPayload(additionalFields));
@@ -800,7 +798,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustLeadPayload(updateFields));
@@ -822,7 +820,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadPayload(additionalFields));
@@ -848,7 +846,7 @@ export class ZohoCrm implements INodeType {
 							Product_Name: this.getNodeParameter('productName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustProductPayload(additionalFields));
@@ -893,7 +891,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustProductPayload(updateFields));
@@ -915,7 +913,7 @@ export class ZohoCrm implements INodeType {
 							Product_Name: this.getNodeParameter('productName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustProductPayload(additionalFields));
@@ -947,7 +945,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
@@ -992,7 +990,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(updateFields));
@@ -1018,7 +1016,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
@@ -1049,7 +1047,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustQuotePayload(additionalFields));
@@ -1092,7 +1090,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustQuotePayload(updateFields));
@@ -1116,7 +1114,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustQuotePayload(additionalFields));
@@ -1146,7 +1144,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(additionalFields));
@@ -1191,7 +1189,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(updateFields));
@@ -1217,7 +1215,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(additionalFields));
@@ -1243,7 +1241,7 @@ export class ZohoCrm implements INodeType {
 							Vendor_Name: this.getNodeParameter('vendorName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustVendorPayload(additionalFields));
@@ -1288,7 +1286,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustVendorPayload(updateFields));
@@ -1310,7 +1308,7 @@ export class ZohoCrm implements INodeType {
 							Vendor_Name: this.getNodeParameter('vendorName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustVendorPayload(additionalFields));
@@ -1322,18 +1320,18 @@ export class ZohoCrm implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
-
 				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

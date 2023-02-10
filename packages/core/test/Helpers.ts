@@ -1,4 +1,4 @@
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -17,14 +17,15 @@ import {
 	INodeTypes,
 	IRun,
 	ITaskData,
+	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeHelpers,
 	NodeParameterValue,
 	WorkflowHooks,
 } from 'n8n-workflow';
-
-import { Credentials, IExecuteFunctions } from '../src';
+import { Credentials } from '@/Credentials';
+import { IExecuteFunctions } from '@/Interfaces';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -43,8 +44,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		return undefined;
-	};
-
+	}
 
 	getParentTypes(name: string): string[] {
 		return [];
@@ -356,7 +356,7 @@ class NodeTypesClass implements INodeTypes {
 					// The different dataTypes to check the values in
 					const dataTypes = ['boolean', 'number', 'string'];
 
-					// Itterate over all items to check which ones should be output as via output "true" and
+					// Iterate over all items to check which ones should be output as via output "true" and
 					// which ones via output "false"
 					let dataType: string;
 					let compareOperationResult: boolean;
@@ -441,7 +441,7 @@ class NodeTypesClass implements INodeTypes {
 									name: 'Pass-through',
 									value: 'passThrough',
 									description:
-										'Passes through data of one input. The output will conain only items of the defined input.',
+										'Passes through data of one input. The output will contain only items of the defined input.',
 								},
 								{
 									name: 'Wait',
@@ -806,14 +806,8 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
-
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
-	}
-
-	getByName(nodeType: string): INodeType {
-		return this.getByNameAndVersion(nodeType);
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.nodeTypes[nodeType].type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -826,7 +820,6 @@ let nodeTypesInstance: NodeTypesClass | undefined;
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
-		nodeTypesInstance.init({});
 	}
 
 	return nodeTypesInstance;

@@ -1,6 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	activityFields,
@@ -97,11 +103,11 @@ export class Lemlist implements INodeType {
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -117,7 +123,7 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#activities
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
@@ -128,8 +134,8 @@ export class Lemlist implements INodeType {
 
 						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					}
@@ -167,7 +173,7 @@ export class Lemlist implements INodeType {
 						// https://developer.lemlist.com/#add-a-lead-in-a-campaign
 
 						const qs = {} as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.deduplicate !== undefined) {
 							qs.deduplicate = additionalFields.deduplicate;
@@ -274,7 +280,7 @@ export class Lemlist implements INodeType {
 							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/unsubscribes');
 						} else {
 							const qs = {
-								limit: this.getNodeParameter('limit', i) as number,
+								limit: this.getNodeParameter('limit', i),
 							};
 							responseData = await lemlistApiRequest.call(this, 'GET', '/unsubscribes', {}, qs);
 						}
@@ -282,18 +288,25 @@ export class Lemlist implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString() });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

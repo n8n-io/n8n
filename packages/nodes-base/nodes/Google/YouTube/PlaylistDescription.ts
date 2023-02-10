@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const playlistOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const playlistOperations: INodeProperties[] = [
 				action: 'Get a playlist',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all playlists',
-				action: 'Get all playlists',
+				description: 'Retrieve many playlists',
+				action: 'Get many playlists',
 			},
 			{
 				name: 'Update',

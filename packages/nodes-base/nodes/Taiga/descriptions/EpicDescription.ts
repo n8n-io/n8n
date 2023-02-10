@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const epicOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const epicOperations: INodeProperties[] = [
 				action: 'Get an epic',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all epics',
-				action: 'Get all epics',
+				description: 'Get many epics',
+				action: 'Get many epics',
 			},
 			{
 				name: 'Update',

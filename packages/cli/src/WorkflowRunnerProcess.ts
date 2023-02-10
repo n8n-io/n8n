@@ -6,51 +6,56 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import 'source-map-support/register';
+import type { IProcessMessage } from 'n8n-core';
+import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
+import type {
 	ExecutionError,
-	ICredentialType,
-	ICredentialTypeData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
+	INode,
 	INodeExecutionData,
-	INodeType,
-	INodeTypeData,
 	IRun,
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowSettings,
+	NodeOperationError,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy,
 	Workflow,
-	WorkflowExecuteMode,
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
+import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import type {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-} from '.';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { getLogger } from '@/Logger';
 
-import { getLogger } from './Logger';
+import config from '@/config';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { initErrorHandling } from '@/ErrorReporting';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { getLicense } from './License';
 
-import config from '../config';
-import { InternalHooksManager } from './InternalHooksManager';
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
-
-export class WorkflowRunnerProcess {
+class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 
 	logger: ILogger;
@@ -77,8 +82,10 @@ export class WorkflowRunnerProcess {
 	}
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
-		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
-		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
+		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
+		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
+
+		await initErrorHandling();
 
 		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
@@ -92,131 +99,32 @@ export class WorkflowRunnerProcess {
 			workflowId: this.data.workflowData.id,
 		});
 
-		let className: string;
-		let tempNode: INodeType;
-		let tempCredential: ICredentialType;
-		let filePath: string;
-
 		this.startedAt = new Date();
 
-		// Load the required nodes
-		const nodeTypesData: INodeTypeData = {};
-		// eslint-disable-next-line no-restricted-syntax
-		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
-			className = this.data.nodeTypeData[nodeTypeName].className;
+		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		await loadNodesAndCredentials.init();
 
-			filePath = this.data.nodeTypeData[nodeTypeName].sourcePath;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-			const tempModule = require(filePath);
-
-			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				const nodeObject = new tempModule[className]();
-				if (nodeObject.getNodeType !== undefined) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					tempNode = nodeObject.getNodeType();
-				} else {
-					tempNode = nodeObject;
-				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				tempNode = new tempModule[className]() as INodeType;
-			} catch (error) {
-				throw new Error(`Error loading node "${nodeTypeName}" from: "${filePath}"`);
-			}
-
-			nodeTypesData[nodeTypeName] = {
-				type: tempNode,
-				sourcePath: filePath,
-			};
-		}
-
-		const nodeTypes = NodeTypes();
-		await nodeTypes.init(nodeTypesData);
-
-		// Load the required credentials
-		const credentialsTypeData: ICredentialTypeData = {};
-		// eslint-disable-next-line no-restricted-syntax
-		for (const credentialTypeName of Object.keys(this.data.credentialsTypeData)) {
-			className = this.data.credentialsTypeData[credentialTypeName].className;
-
-			filePath = this.data.credentialsTypeData[credentialTypeName].sourcePath;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-			const tempModule = require(filePath);
-
-			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				tempCredential = new tempModule[className]() as ICredentialType;
-			} catch (error) {
-				throw new Error(`Error loading credential "${credentialTypeName}" from: "${filePath}"`);
-			}
-
-			credentialsTypeData[credentialTypeName] = {
-				type: tempCredential,
-				sourcePath: filePath,
-			};
-		}
-
-		// Init credential types the workflow uses (is needed to apply default values to credentials)
-		const credentialTypes = CredentialTypes();
-		await credentialTypes.init(credentialsTypeData);
+		const nodeTypes = NodeTypes(loadNodesAndCredentials);
+		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 		// Load the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites();
-		await credentialsOverwrites.init(inputData.credentialsOverwrite);
+		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
-		// Credentials should now be loaded from database.
-		// We check if any node uses credentials. If it does, then
-		// init database.
-		let shouldInitializaDb = false;
-		// eslint-disable-next-line array-callback-return
-		inputData.workflowData.nodes.map((node) => {
-			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
-				shouldInitializaDb = true;
-			}
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
-				// With UM, child workflows from arbitrary JSON
-				// Should be persisted by the child process,
-				// so DB needs to be initialized
-				shouldInitializaDb = true;
-			}
-		});
+		// Init db since we need to read the license.
+		await Db.init();
 
-		// This code has been split into 4 ifs just to make it easier to understand
-		// Can be made smaller but in the end it will make it impossible to read.
-		if (shouldInitializaDb) {
-			// initialize db as we need to load credentials
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings !== undefined &&
-			inputData.workflowData.settings.saveExecutionProgress === true
-		) {
-			// Workflow settings specifying it should save
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings !== undefined &&
-			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			config.getEnv('executions.saveExecutionProgress')
-		) {
-			// Workflow settings not saying anything about saving but default settings says so
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings === undefined &&
-			config.getEnv('executions.saveExecutionProgress')
-		) {
-			// Workflow settings not saying anything about saving but default settings says so
-			await Db.init();
-		}
+		const license = getLicense();
+		await license.init(instanceId);
 
 		// Start timeout for the execution
 		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
@@ -230,7 +138,7 @@ export class WorkflowRunnerProcess {
 		}
 
 		this.workflow = new Workflow({
-			id: this.data.workflowData.id as string | undefined,
+			id: this.data.workflowData.id,
 			name: this.data.workflowData.name,
 			nodes: this.data.workflowData.nodes,
 			connections: this.data.workflowData.connections,
@@ -240,7 +148,22 @@ export class WorkflowRunnerProcess {
 			settings: this.data.workflowData.settings,
 			pinData: this.data.pinData,
 		});
-		await checkPermissionsForExecution(this.workflow, userId);
+		try {
+			await PermissionChecker.check(this.workflow, userId);
+		} catch (error) {
+			const caughtError = error as NodeOperationError;
+			const failedExecutionData = generateFailedExecutionFromError(
+				this.data.executionMode,
+				caughtError,
+				caughtError.node,
+			);
+
+			// Force the `workflowExecuteAfter` hook to run since
+			// it's the one responsible for saving the execution
+			await this.sendHookToParentProcess('workflowExecuteAfter', [failedExecutionData]);
+			// Interrupt the workflow execution since we don't have all necessary creds.
+			return failedExecutionData;
+		}
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			userId,
 			undefined,
@@ -268,6 +191,7 @@ export class WorkflowRunnerProcess {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
+				ErrorReporter.error(error);
 				this.logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem sending UI data to parent process: "${error.message}"`,
@@ -286,7 +210,6 @@ export class WorkflowRunnerProcess {
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
-				userId,
 				options?.parentWorkflowId,
 				options?.parentWorkflowSettings,
 			);
@@ -294,6 +217,7 @@ export class WorkflowRunnerProcess {
 				workflowData,
 				additionalData.userId,
 				options?.inputData,
+				options?.parentWorkflowId,
 			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
@@ -301,6 +225,9 @@ export class WorkflowRunnerProcess {
 					resolve(executionId);
 				};
 			});
+
+			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+
 			let result: IRun;
 			try {
 				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(
@@ -395,9 +322,6 @@ export class WorkflowRunnerProcess {
 	/**
 	 * Sends hook data to the parent process that it executes them
 	 *
-	 * @param {string} hook
-	 * @param {any[]} parameters
-	 * @memberof WorkflowRunnerProcess
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
@@ -407,6 +331,7 @@ export class WorkflowRunnerProcess {
 				parameters,
 			});
 		} catch (error) {
+			ErrorReporter.error(error);
 			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error });
 		}
 	}
@@ -416,7 +341,6 @@ export class WorkflowRunnerProcess {
 	 * the parent process where they then can be executed with access
 	 * to database and to PushService
 	 *
-	 * @returns
 	 */
 	getProcessForwardHooks(): WorkflowHooks {
 		const hookFunctions: IWorkflowExecuteHooks = {
@@ -438,6 +362,11 @@ export class WorkflowRunnerProcess {
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					await this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
+				},
+			],
+			nodeFetchedData: [
+				async (workflowId: string, node: INode) => {
+					await this.sendHookToParentProcess('nodeFetchedData', [workflowId, node]);
 				},
 			],
 		};
@@ -466,7 +395,6 @@ export class WorkflowRunnerProcess {
  *
  * @param {string} type The type of data to send
  * @param {*} data The data
- * @returns {Promise<void>}
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {
@@ -490,7 +418,7 @@ async function sendToParentProcess(type: string, data: any): Promise<void> {
 const workflowRunner = new WorkflowRunnerProcess();
 
 // Listen to messages from parent process which send the data of
-// the worflow to process
+// the workflow to process
 process.on('message', async (message: IProcessMessage) => {
 	try {
 		if (message.type === 'startWorkflow') {

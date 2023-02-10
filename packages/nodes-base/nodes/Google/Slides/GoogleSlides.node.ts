@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -73,7 +73,8 @@ export class GoogleSlides implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -386,8 +387,8 @@ export class GoogleSlides implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -411,7 +412,12 @@ export class GoogleSlides implements INodeType {
 							'GET',
 							`/presentations/${presentationId}/pages/${pageObjectId}`,
 						);
-						returnData.push({ json: responseData });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getThumbnail') {
 						// ----------------------------------
 						//         page: getThumbnail
@@ -425,9 +431,9 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
 						);
 
-						const download = this.getNodeParameter('download', 0) as boolean;
-						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const download = this.getNodeParameter('download', 0);
+						if (download) {
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							const data = await this.helpers.request({
 								uri: responseData.contentUrl,
@@ -438,14 +444,26 @@ export class GoogleSlides implements INodeType {
 
 							const fileName = pageObjectId + '.png';
 							const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
-							returnData.push({
-								json: responseData,
-								binary: {
-									[binaryProperty]: binaryData,
-								},
-							});
+							const executionData = this.helpers.constructExecutionMetaData(
+								[
+									{
+										json: responseData,
+										binary: {
+											[binaryProperty]: binaryData,
+										},
+									},
+								],
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						} else {
-							returnData.push({ json: responseData });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
 						}
 					}
 				} else if (resource === 'presentation') {
@@ -463,7 +481,13 @@ export class GoogleSlides implements INodeType {
 						};
 
 						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
-						returnData.push({ json: responseData });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         presentation: get
@@ -475,12 +499,18 @@ export class GoogleSlides implements INodeType {
 							'GET',
 							`/presentations/${presentationId}`,
 						);
-						returnData.push({ json: responseData });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'getSlides') {
 						// ----------------------------------
 						//      presentation: getSlides
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						responseData = await googleApiRequest.call(
 							this,
@@ -490,18 +520,24 @@ export class GoogleSlides implements INodeType {
 							{ fields: 'slides' },
 						);
 						responseData = responseData.slides;
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
-						returnData.push(...this.helpers.returnJsonArray(responseData));
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'replaceText') {
 						// ----------------------------------
 						//      presentation: replaceText
 						// ----------------------------------
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const requests = texts.map((text) => {
 							return {
 								replaceAllText: {
@@ -520,7 +556,7 @@ export class GoogleSlides implements INodeType {
 						};
 
 						if (options.revisionId) {
-							body['writeControl'] = {
+							body.writeControl = {
 								requiredRevisionId: options.revisionId as string,
 							};
 						}
@@ -531,18 +567,28 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}:batchUpdate`,
 							{ requests },
 						);
-						returnData.push({ json: responseData });
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [returnData];
+		return this.prepareOutputData(returnData);
 	}
 }

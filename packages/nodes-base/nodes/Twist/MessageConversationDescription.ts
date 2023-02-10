@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageConversationOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const messageConversationOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all messages in a conversation',
-				action: 'Get all messages',
+				description: 'Get many messages in a conversation',
+				action: 'Get many messages',
 			},
 			{
 				name: 'Update',

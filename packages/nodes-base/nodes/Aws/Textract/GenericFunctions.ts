@@ -1,24 +1,25 @@
 import { URL } from 'url';
 
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
-	NodeApiError,
-	NodeOperationError,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 function getEndpointForService(
 	service: string,
@@ -42,34 +43,23 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
-	// Concatenate path and instantiate URL object so it parses correctly query strings
-	const endpoint = new URL(getEndpointForService(service, credentials) + path);
-
-	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
-
-	sign(signOpts, securityHeaders);
-
-	const options: OptionsWithUri = {
-		headers: signOpts.headers,
+	const requestOptions = {
+		qs: {
+			service,
+			path,
+		},
 		method,
-		uri: endpoint.href,
-		body: signOpts.body,
-	};
+		body,
+		url: '',
+		headers,
+		region: credentials?.region as string,
+	} as IHttpRequestOptions;
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
 		if (error?.response?.data || error?.response?.body) {
 			const errorMessage = error?.response?.data || error?.response?.body;
@@ -93,7 +83,6 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -110,7 +99,6 @@ export async function awsApiRequestSOAP(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -155,13 +143,12 @@ export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
 	service: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(
-		getEndpointForService(service, credentials) + `?Action=GetCallerIdentity&Version=2011-06-15`,
+		getEndpointForService(service, credentials) + '?Action=GetCallerIdentity&Version=2011-06-15',
 	);
 
 	// Sign AWS API request with the user credentials
@@ -187,9 +174,9 @@ export async function validateCredentials(
 		body: signOpts.body,
 	};
 
-	const response = await this.helpers.request!(options);
+	const response = await this.helpers.request(options);
 
-	return await new Promise((resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		parseString(response, { explicitArray: false }, (err, data) => {
 			if (err) {
 				return reject(err);

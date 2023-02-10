@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 const resource = ['user'];
 
@@ -33,9 +33,9 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get data of a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all users',
+				description: 'Get data of many users',
 				action: 'Get data of all users',
 			},
 

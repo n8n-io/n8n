@@ -1,13 +1,23 @@
 <template>
-	<Draggable type="panel-resize" @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd">
-		<template v-slot="{ isDragging }">
-			<div
-				:class="{ [$style.dragButton]: true }"
-			>
-				<span v-if="canMoveLeft" :class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }">
+	<Draggable
+		type="panel-resize"
+		@drag="onDrag"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
+		:class="$style.dragContainer"
+	>
+		<template #default="{ isDragging }">
+			<div :class="{ [$style.dragButton]: true }">
+				<span
+					v-if="canMoveLeft"
+					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
+				>
 					<font-awesome-icon icon="arrow-left" />
 				</span>
-				<span v-if="canMoveRight" :class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }">
+				<span
+					v-if="canMoveRight"
+					:class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }"
+				>
 					<font-awesome-icon icon="arrow-right" />
 				</span>
 				<div :class="$style.grid">
@@ -32,11 +42,10 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import Vue from 'vue';
 import Draggable from './Draggable.vue';
-import dragging from './Draggable.vue';
 
-export default mixins(dragging).extend({
+export default Vue.extend({
 	components: {
 		Draggable,
 	},
@@ -49,7 +58,7 @@ export default mixins(dragging).extend({
 		},
 	},
 	methods: {
-		onDrag(e: {x: number, y: number}) {
+		onDrag(e: { x: number; y: number }) {
 			this.$emit('drag', e);
 		},
 		onDragStart() {
@@ -63,6 +72,9 @@ export default mixins(dragging).extend({
 </script>
 
 <style lang="scss" module>
+.dragContainer {
+	pointer-events: all;
+}
 .dragButton {
 	background-color: var(--color-background-base);
 	width: 64px;
@@ -74,9 +86,12 @@ export default mixins(dragging).extend({
 	align-items: center;
 	justify-content: center;
 	overflow: visible;
+	position: relative;
+	z-index: 3;
 
 	&:hover {
-		.leftArrow, .rightArrow {
+		.leftArrow,
+		.rightArrow {
 			visibility: visible;
 		}
 	}
@@ -127,6 +142,4 @@ export default mixins(dragging).extend({
 		}
 	}
 }
-
-
 </style>

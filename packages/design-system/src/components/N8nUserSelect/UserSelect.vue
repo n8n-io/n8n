@@ -1,37 +1,42 @@
 <template>
-	<el-select
+	<n8n-select
 		:value="value"
 		:filterable="true"
 		:filterMethod="setFilter"
-		:placeholder="t('nds.userSelect.selectUser')"
+		:placeholder="placeholder"
 		:default-first-option="true"
 		:popper-append-to-body="true"
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
+		:size="size"
 		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
-		<el-option
+		<template #prefix v-if="$slots.prefix">
+			<slot name="prefix" />
+		</template>
+		<n8n-option
 			v-for="user in sortedUsers"
 			:key="user.id"
 			:value="user.id"
 			:class="$style.itemContainer"
 			:label="getLabel(user)"
+			:disabled="user.disabled"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
-		</el-option>
-	</el-select>
+		</n8n-option>
+	</n8n-select>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import 'vue';
+import mixins from 'vue-typed-mixins';
+import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
-import ElSelect from 'element-ui/lib/select';
-import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
+import { t } from '../../locale';
 
 export default mixins(Locale).extend({
 	name: 'n8n-user-select',
@@ -61,6 +66,14 @@ export default mixins(Locale).extend({
 		currentUserId: {
 			type: String,
 		},
+		placeholder: {
+			type: String,
+			default: () => t('nds.userSelect.selectUser'),
+		},
+		size: {
+			type: String,
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
+		},
 	},
 	data() {
 		return {
@@ -68,40 +81,42 @@ export default mixins(Locale).extend({
 		};
 	},
 	computed: {
-		fitleredUsers(): IUser[] {
-			return this.users
-				.filter((user: IUser) => {
-					if (user.isPendingUser || !user.email) {
-						return false;
-					}
+		filteredUsers(): IUser[] {
+			return (this.users as IUser[]).filter((user) => {
+				if (user.isPendingUser || !user.email) {
+					return false;
+				}
 
-					if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
-						return false;
-					}
+				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+					return false;
+				}
 
-					if (user.fullName) {
-						const match = user.fullName.toLowerCase().includes(this.filter.toLowerCase());
-						if (match) {
-							return true;
-						}
+				if (user.fullName) {
+					const match = user.fullName.toLowerCase().includes(this.filter.toLowerCase());
+					if (match) {
+						return true;
 					}
+				}
 
-					return user.email.includes(this.filter);
-				});
+				return user.email.includes(this.filter);
+			});
 		},
 		sortedUsers(): IUser[] {
-			return [...(this.fitleredUsers as IUser[])].sort((a: IUser, b: IUser) => {
+			return [...this.filteredUsers].sort((a: IUser, b: IUser) => {
 				if (a.lastName && b.lastName && a.lastName !== b.lastName) {
 					return a.lastName > b.lastName ? 1 : -1;
 				}
 				if (a.firstName && b.firstName && a.firstName !== b.firstName) {
-					return a.firstName > b.firstName? 1 : -1;
+					return a.firstName > b.firstName ? 1 : -1;
+				}
+
+				if (!a.email || !b.email) {
+					throw new Error('Expected all users to have email');
 				}
 
 				return a.email > b.email ? 1 : -1;
 			});
 		},
-
 	},
 	methods: {
 		setFilter(value: string) {
@@ -121,12 +136,12 @@ export default mixins(Locale).extend({
 				return user.email;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .itemContainer {

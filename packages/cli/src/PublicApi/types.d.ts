@@ -1,14 +1,15 @@
-/* eslint-disable import/no-cycle */
-import express from 'express';
-import { IDataObject } from 'n8n-workflow';
+import type express from 'express';
+import type { IDataObject } from 'n8n-workflow';
 
-import type { User } from '../databases/entities/User';
+import type { User } from '@db/entities/User';
 
-import type { Role } from '../databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 
-import type { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import * as UserManagementMailer from '../UserManagement/email/UserManagementMailer';
+import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+
+import type { Risk } from '@/audit/types';
 
 export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
@@ -38,7 +39,7 @@ export type PaginatatedRequest = AuthenticatedRequest<
 		limit?: number;
 		cursor?: string;
 		offset?: number;
-		lastId?: number;
+		lastId?: string;
 	}
 >;
 export declare namespace ExecutionRequest {
@@ -52,12 +53,12 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
-			workflowId?: number;
-			lastId?: number;
+			workflowId?: string;
+			lastId?: string;
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, { includeData?: boolean }>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 }
 
@@ -82,9 +83,9 @@ export declare namespace WorkflowRequest {
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: number }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 }
 
@@ -141,18 +142,18 @@ type PaginationBase = { limit: number };
 
 type PaginationOffsetDecoded = PaginationBase & { offset: number };
 
-type PaginationCursorDecoded = PaginationBase & { lastId: number };
+type PaginationCursorDecoded = PaginationBase & { lastId: string };
 
 type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
 
-type CursorPagination = PaginationBase & { lastId: number; numberOfNextRecords: number };
+type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
 	not?: { required?: string[] };
 }
 export interface IDependency {
 	if?: { properties: {} };
-	then?: { oneOf: IRequired[] };
+	then?: { allOf: IRequired[] };
 	else?: { allOf: IRequired[] };
 }
 
@@ -162,4 +163,16 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+// ----------------------------------
+//           /audit
+// ----------------------------------
+
+export declare namespace AuditRequest {
+	type Generate = AuthenticatedRequest<
+		{},
+		{},
+		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
+	>;
 }

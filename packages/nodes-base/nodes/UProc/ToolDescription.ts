@@ -1,4 +1,5 @@
-import { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { groups } from './Json/Groups';
 
@@ -49,7 +50,7 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 	}
 
 	//Tool
-	item.options = options.sort((a, b) => (a.name > b.name ? 1 : -1)) as any; // tslint:disable-line:no-any
+	item.options = options.sort((a, b) => (a.name > b.name ? 1 : -1)) as any;
 	item.default = options[0].value as string;
 	operations.push(item);
 }
@@ -60,7 +61,7 @@ let parameters = [];
 //all tools
 for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 	//all parameters in tool
-	for (const param of (tool as IDataObject).p as IDataObject[]) {
+	for (const param of tool.p as IDataObject[]) {
 		const displayName = param.n as string;
 		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, ' '));
 		const description = `The "${capitalizedDisplayName}" value to use as a parameter for this Operation`;
@@ -81,7 +82,7 @@ for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 					tool: [tool.k],
 				},
 			},
-			description: JSON.parse(JSON.stringify(description)),
+			description: deepCopy(description),
 		};
 
 		let modifiedParam = null;
@@ -109,6 +110,7 @@ for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 					newParameters.push(currentParam);
 				}
 			}
+			// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
 			parameters = JSON.parse(JSON.stringify(newParameters));
 		} else {
 			parameters.push(parameter);

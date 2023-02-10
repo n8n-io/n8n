@@ -1,6 +1,5 @@
-import {
+import type {
 	IAuthenticateGeneric,
-	ICredentialTestFunction,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -8,13 +7,17 @@ import {
 
 export class DropboxApi implements ICredentialType {
 	name = 'dropboxApi';
+
 	displayName = 'Dropbox API';
+
 	documentationUrl = 'dropbox';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -34,6 +37,7 @@ export class DropboxApi implements ICredentialType {
 			default: 'full',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

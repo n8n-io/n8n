@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { makeSimpleField } from './SharedFields';
 
@@ -25,9 +25,9 @@ export const tagOperations: INodeProperties[] = [
 				action: 'Get a tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all tags',
+				action: 'Get many tags',
 			},
 		],
 		default: 'create',

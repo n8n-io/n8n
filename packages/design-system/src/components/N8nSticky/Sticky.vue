@@ -1,10 +1,10 @@
 <template>
 	<div
-		:class="{'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing}"
+		:class="{ 'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing }"
 		:style="styles"
 		@keydown.prevent
 	>
-		<resize
+		<n8n-resize-wrapper
 			:isResizingEnabled="!readOnly"
 			:height="height"
 			:width="width"
@@ -19,6 +19,7 @@
 			<template>
 				<div
 					v-show="!editMode"
+					class="ph-no-capture"
 					:class="$style.wrapper"
 					@dblclick.stop="onDoubleClick"
 				>
@@ -37,8 +38,8 @@
 					@keydown.esc="onInputBlur"
 					@keydown.stop
 					@wheel.stop
-					class="sticky-textarea"
-					:class="{'full-height': !shouldShowFooter}"
+					class="sticky-textarea ph-no-capture"
+					:class="{ 'full-height': !shouldShowFooter }"
 				>
 					<n8n-input
 						:value="content"
@@ -48,25 +49,21 @@
 						@input="onInput"
 						ref="input"
 					/>
-
 				</div>
 				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-					<n8n-text
-						size="xsmall"
-						aligh="right"
-					>
+					<n8n-text size="xsmall" aligh="right">
 						<span v-html="t('sticky.markdownHint')"></span>
 					</n8n-text>
 				</div>
 			</template>
-		</resize>
+		</n8n-resize-wrapper>
 	</div>
 </template>
 
 <script lang="ts">
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import Resize from './Resize';
+import N8nResizeWrapper from '../N8nResizeWrapper';
 import N8nText from '../N8nText';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
@@ -120,7 +117,7 @@ export default mixins(Locale).extend({
 	components: {
 		N8nInput,
 		N8nMarkdown,
-		Resize,
+		N8nResizeWrapper,
 		N8nText,
 	},
 	data() {
@@ -141,13 +138,13 @@ export default mixins(Locale).extend({
 			}
 			return this.width;
 		},
-		styles() {
+		styles(): { height: string; width: string } {
 			return {
-				height: this.resHeight + 'px',
-				width: this.resWidth + 'px',
+				height: `${this.resHeight}px`,
+				width: `${this.resWidth}px`,
 			};
 		},
-		shouldShowFooter() {
+		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
 		},
 	},
@@ -157,7 +154,7 @@ export default mixins(Locale).extend({
 				this.$emit('edit', true);
 			}
 		},
-		onInputBlur(value) {
+		onInputBlur() {
 			if (!this.isResizing) {
 				this.$emit('edit', false);
 			}
@@ -165,13 +162,13 @@ export default mixins(Locale).extend({
 		onInput(value: string) {
 			this.$emit('input', value);
 		},
-		onMarkdownClick(link, event) {
+		onMarkdownClick(link: string, event: Event) {
 			this.$emit('markdown-click', link, event);
 		},
-		onResize(values) {
+		onResize(values: unknown[]) {
 			this.$emit('resize', values);
 		},
-		onResizeEnd(resizeEnd) {
+		onResizeEnd(resizeEnd: unknown) {
 			this.isResizing = false;
 			this.$emit('resizeend', resizeEnd);
 		},
@@ -183,18 +180,14 @@ export default mixins(Locale).extend({
 	watch: {
 		editMode(newMode, prevMode) {
 			setTimeout(() => {
-				if (newMode &&
-					!prevMode &&
-					this.$refs.input
-				) {
-					const textarea = this.$refs.input;
+				if (newMode && !prevMode && this.$refs.input) {
+					const textarea = this.$refs.input as HTMLTextAreaElement;
 					if (this.defaultText === this.content) {
 						textarea.select();
 					}
 					textarea.focus();
 				}
 			}, 100);
-
 		},
 	},
 });
@@ -226,7 +219,12 @@ export default mixins(Locale).extend({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky-default-background),
+			#fff5d600 0.01%,
+			var(--color-sticky-default-background)
+		);
 		border-radius: var(--border-radius-base);
 	}
 }

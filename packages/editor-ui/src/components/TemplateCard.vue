@@ -1,6 +1,11 @@
 <template>
 	<div
-		:class="[$style.card, lastItem && $style.last, firstItem && $style.first, !loading && $style.loaded]"
+		:class="[
+			$style.card,
+			lastItem && $style.last,
+			firstItem && $style.first,
+			!loading && $style.loaded,
+		]"
 		@click="onCardClick"
 	>
 		<div :class="$style.loading" v-if="loading">
@@ -20,7 +25,9 @@
 					<TimeAgo :date="workflow.createdAt" />
 				</n8n-text>
 				<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-				<n8n-text v-if="workflow.user" size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+				<n8n-text v-if="workflow.user" size="small" color="text-light"
+					>By {{ workflow.user.username }}</n8n-text
+				>
 			</div>
 		</div>
 		<div :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]" v-if="!loading">
@@ -38,9 +45,9 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes, abbreviateNumber } from './helpers';
+import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
 
 export default mixins(genericHelpers).extend({
@@ -172,5 +179,4 @@ export default mixins(genericHelpers).extend({
 	align-items: center;
 	flex-grow: 1;
 }
-
 </style>

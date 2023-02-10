@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const boardColumnOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const boardColumnOperations: INodeProperties[] = [
 				action: 'Create a board column',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all columns',
-				action: 'Get all board columns',
+				description: 'Get many columns',
+				action: 'Get many board columns',
 			},
 		],
 		default: 'create',

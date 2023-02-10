@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -20,10 +20,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts',
-				action: 'Get all posts',
+				description: 'Get many posts',
+				action: 'Get many posts',
 			},
 		],
 		default: 'get',
@@ -59,10 +59,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts',
-				action: 'Get all posts',
+				description: 'Get many posts',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Update',
@@ -122,9 +122,6 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				source: ['adminApi'],
@@ -694,9 +691,6 @@ export const postFields: INodeProperties[] = [
 					show: {
 						'/contentFormat': ['html'],
 					},
-				},
-				typeOptions: {
-					alwaysOpenEditWindow: true,
 				},
 				default: '',
 			},

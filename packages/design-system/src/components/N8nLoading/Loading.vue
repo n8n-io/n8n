@@ -1,11 +1,10 @@
 <template>
-	<el-skeleton :loading="loading" :animated="animated" class="n8n-loading">
-		<template slot="template">
-			<el-skeleton-item
-				v-if="variant === 'button'"
-				:variant="variant"
-			/>
-
+	<el-skeleton
+		:loading="loading"
+		:animated="animated"
+		:class="['n8n-loading', `n8n-loading-${variant}`]"
+	>
+		<template #template>
 			<div v-if="variant === 'h1'">
 				<div
 					v-for="(item, index) in rows"
@@ -14,34 +13,30 @@
 						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item
-						:variant="variant"
-					/>
+					<el-skeleton-item :variant="variant" />
 				</div>
 			</div>
-			<el-skeleton-item
-				v-if="variant === 'image'"
-				:variant="variant"
-			/>
-			<div v-if="variant === 'p'">
+			<div v-else-if="variant === 'p'">
 				<div
 					v-for="(item, index) in rows"
 					:key="index"
 					:class="{
 						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
-					}">
-						<el-skeleton-item
-							:variant="variant"
-						/>
+					}"
+				>
+					<el-skeleton-item :variant="variant" />
 				</div>
 			</div>
+			<div :class="$style.custom" v-else-if="variant === 'custom'">
+				<el-skeleton-item :variant="variant" />
+			</div>
+			<el-skeleton-item v-else :variant="variant" />
 		</template>
 	</el-skeleton>
 </template>
 
 <script lang="ts">
-import ElSkeleton from 'element-ui/lib/skeleton';
-import ElSkeletonItem from 'element-ui/lib/skeleton-item';
+import { Skeleton as ElSkeleton, SkeletonItem as ElSkeletonItem } from 'element-ui';
 
 import Vue from 'vue';
 
@@ -71,7 +66,20 @@ export default Vue.extend({
 		variant: {
 			type: String,
 			default: 'p',
-			validator: (value: string): boolean => ['p', 'h1', 'button', 'image'].includes(value),
+			validator: (value: string): boolean =>
+				[
+					'custom',
+					'p',
+					'text',
+					'h1',
+					'h3',
+					'text',
+					'caption',
+					'button',
+					'image',
+					'circle',
+					'rect',
+				].includes(value),
 		},
 	},
 });
@@ -79,10 +87,23 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .h1Last {
-  width: 40%;
+	width: 40%;
 }
-
 .pLast {
-  width: 61%;
+	width: 61%;
+}
+.custom {
+	width: 100%;
+	height: 100%;
+}
+</style>
+
+<style lang="scss">
+.n8n-loading-custom .el-skeleton {
+	&,
+	.el-skeleton__item {
+		width: 100%;
+		height: 100%;
+	}
 }
 </style>

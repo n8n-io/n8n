@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const tagSubscriberOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const tagSubscriberOperations: INodeProperties[] = [
 				action: 'Add a tag to a subscriber',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'List subscriptions to a tag including subscriber data',
-				action: 'Get all tag subscriptions',
+				action: 'Get many tag subscriptions',
 			},
 			{
 				name: 'Delete',

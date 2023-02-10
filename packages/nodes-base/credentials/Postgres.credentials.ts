@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Postgres implements ICredentialType {
 	name = 'postgres';
+
 	displayName = 'Postgres';
+
 	documentationUrl = 'postgres';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems, IRecord } from './GenericFunction';
+import type { IRecord } from './GenericFunction';
+import { apiRequest, apiRequestAllItems } from './GenericFunction';
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
@@ -173,11 +174,11 @@ export class Stackby implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
 				try {
@@ -188,12 +189,16 @@ export class Stackby implements INodeType {
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					returnData.push.apply(
 						returnData,
-						// tslint:disable-next-line:no-any
+
 						responseData.map((data: any) => data.field),
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -216,10 +221,20 @@ export class Stackby implements INodeType {
 						qs,
 					);
 					responseData = responseData.records;
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
@@ -237,7 +252,6 @@ export class Stackby implements INodeType {
 					const columns = this.getNodeParameter('columns', i) as string;
 					const columnList = columns.split(',').map((column) => column.trim());
 
-					// tslint:disable-next-line: no-any
 					const record: { [key: string]: any } = {};
 					for (const column of columnList) {
 						if (items[i].json[column] === undefined) {
@@ -258,20 +272,24 @@ export class Stackby implements INodeType {
 					records[key].push({ field: record });
 				}
 
-				for (const key of Object.keys(records)) {
-					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, {
-						records: records[key],
+				for (const recordKey of Object.keys(records)) {
+					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${recordKey}`, {
+						records: records[recordKey],
 					});
 				}
 
 				returnData.push.apply(
 					returnData,
-					// tslint:disable-next-line:no-any
+
 					responseData.map((data: any) => data.field),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: 0 } },
+					);
+					returnData.push(...executionErrorData);
 				} else {
 					throw error;
 				}
@@ -283,15 +301,15 @@ export class Stackby implements INodeType {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					if (additionalFields.view) {
 						qs.view = additionalFields.view;
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await apiRequestAllItems.call(
 							this,
 							'GET',
@@ -300,7 +318,7 @@ export class Stackby implements INodeType {
 							qs,
 						);
 					} else {
-						qs.maxrecord = this.getNodeParameter('limit', 0) as number;
+						qs.maxrecord = this.getNodeParameter('limit', 0);
 						responseData = await apiRequest.call(
 							this,
 							'GET',
@@ -312,18 +330,22 @@ export class Stackby implements INodeType {
 
 					returnData.push.apply(
 						returnData,
-						// tslint:disable-next-line:no-any
+
 						responseData.map((data: any) => data.field),
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 						continue;
 					}
 					throw error;
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

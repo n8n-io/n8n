@@ -5,7 +5,7 @@ export namespace PinData {
 
 	export type New = { [nodeName: string]: INodeExecutionData[] };
 
-	export type FetchedWorkflow = { id: number; pinData: string | object };
+	export type FetchedWorkflow = { id: number; pinData: string | Old };
 }
 
 export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {

@@ -1,13 +1,9 @@
-import { ContainerOptions, create_container, EventContext, Message, ReceiverOptions } from 'rhea';
+import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { create_container } from 'rhea';
 
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -150,7 +146,6 @@ export class AmqpTrigger implements INodeType {
 		const container = create_container();
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
-		const self = this;
 
 		container.on('receiver_open', (context: EventContext) => {
 			context.receiver?.add_credit(pullMessagesNumber);
@@ -172,30 +167,30 @@ export class AmqpTrigger implements INodeType {
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+				const cont = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, cont.data);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+				const cont = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, cont.data);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const content = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
+				const content = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, content.data);
 			}
 
 			if (options.jsonParseBody === true) {
-				data.body = JSON.parse(data.body);
+				data.body = jsonParse(data.body);
 			}
 			if (options.onlyBody === true) {
 				data = data.body;
 			}
 
-			self.emit([self.helpers.returnJsonArray([data as any])]); // tslint:disable-line:no-any
+			this.emit([this.helpers.returnJsonArray([data as any])]);
 
 			if (!context.receiver?.has_credit()) {
 				setTimeout(() => {
@@ -245,7 +240,7 @@ export class AmqpTrigger implements INodeType {
 		// workflow manually.
 		// for AMQP it doesn't make much sense to wait here but
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(
@@ -260,15 +255,15 @@ export class AmqpTrigger implements INodeType {
 					// otherwise we emit all properties and their content
 					const message = context.message as Message;
 					if (Object.keys(message)[0] === 'body' && Object.keys(message).length === 1) {
-						self.emit([self.helpers.returnJsonArray([message.body])]);
+						this.emit([this.helpers.returnJsonArray([message.body])]);
 					} else {
-						self.emit([self.helpers.returnJsonArray([message as any])]); // tslint:disable-line:no-any
+						this.emit([this.helpers.returnJsonArray([message as any])]);
 					}
 					clearTimeout(timeoutHandler);
 					resolve(true);
 				});
 			});
-		}
+		};
 
 		return {
 			closeFunction,

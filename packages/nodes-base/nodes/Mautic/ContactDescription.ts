@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -43,10 +43,10 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all contacts',
-				action: 'Get all contacts',
+				description: 'Get data of many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Send Email',

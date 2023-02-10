@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class GitlabApi implements ICredentialType {
 	name = 'gitlabApi';
+
 	displayName = 'GitLab API';
+
 	documentationUrl = 'gitlab';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Gitlab Server',
@@ -20,9 +23,11 @@ export class GitlabApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -35,7 +40,7 @@ export class GitlabApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.server.replace(new RegExp("/$"), "") + "/api/v4" }}',
-			url: '/users',
+			url: '/personal_access_tokens/self',
 		},
 	};
 }

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -81,11 +81,11 @@ export class Netlify implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		const body: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -103,7 +103,7 @@ export class Netlify implements INodeType {
 
 					if (operation === 'create') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(body, additionalFields);
 
@@ -135,15 +135,15 @@ export class Netlify implements INodeType {
 
 					if (operation === 'getAll') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === true) {
+						const returnAll = this.getNodeParameter('returnAll', i);
+						if (returnAll) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
 								`/sites/${siteId}/deploys`,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
@@ -166,41 +166,47 @@ export class Netlify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === true) {
+						const returnAll = this.getNodeParameter('returnAll', i);
+						if (returnAll) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all', per_page: limit },
 							);
 						}
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -13,18 +13,24 @@
 		:closeOnClickModal="false"
 		:closeOnPressEscape="false"
 		width="460px"
+		data-test-id="personalization-form"
 		@enter="onSave"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div v-if="submitted" :class="$style.submittedContainer">
-				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
+				<img :class="$style.demoImage" :src="rootStore.baseUrl + 'suggestednodes.png'" />
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
-				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" @submit="onSubmit"/>
+				<n8n-form-inputs
+					:inputs="survey"
+					:columnView="true"
+					:eventBus="formBus"
+					@submit="onSubmit"
+				/>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div>
 				<n8n-button
 					v-if="submitted"
@@ -50,7 +56,6 @@ import mixins from 'vue-typed-mixins';
 const SURVEY_VERSION = 'v3';
 
 import {
-	CODING_SKILL_KEY,
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_20_OR_LESS,
@@ -87,6 +92,7 @@ import {
 	NOT_SURE_YET_GOAL,
 	AUTOMATION_GOAL_OTHER_KEY,
 	COMPANY_TYPE_KEY,
+	EMAIL_KEY,
 	SAAS_COMPANY_TYPE,
 	ECOMMERCE_COMPANY_TYPE,
 	MSP_INDUSTRY,
@@ -111,15 +117,25 @@ import {
 	USAGE_MODE_KEY,
 	USAGE_MODE_MANIPULATE_FILES,
 	USAGE_MODE_BUILD_BE_SERVICES,
-	USAGE_MODE_CONNECT_TO_PRODUCT,
+	USAGE_MODE_CONNECT_TO_DB,
 } from '../constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
+import {
+	IFormInputs,
+	IPersonalizationLatestVersion,
+	IPersonalizationSurveyAnswersV3,
+	IUser,
+} from '@/Interface';
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
-import { getAccountAge } from '@/modules/userHelpers';
+import { getAccountAge } from '@/utils';
+import { GenericValue } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -137,17 +153,19 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapGetters({
-			baseUrl: 'getBaseUrl',
-		}),
-		...mapGetters('users', [
-			'currentUser',
-		]),
-		...mapGetters('settings', [
-			'isOnboardingCallPromptFeatureEnabled',
-		]),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
 		survey() {
 			const survey: IFormInputs = [
+				{
+					name: EMAIL_KEY,
+					properties: {
+						label: this.$locale.baseText('personalizationModal.yourEmailAddress'),
+						type: 'text',
+						placeholder: this.$locale.baseText('personalizationModal.email'),
+					},
+					shouldDisplay: () =>
+						this.settingsStore.isDesktopDeployment && !this.usersStore.currentUser?.firstName,
+				},
 				{
 					name: COMPANY_TYPE_KEY,
 					properties: {
@@ -264,8 +282,14 @@ export default mixins(showMessage, workflowHelpers).extend({
 					},
 					shouldDisplay(values): boolean {
 						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
-						const companyIndustry = (values as IPersonalizationLatestVersion)[COMPANY_INDUSTRY_EXTENDED_KEY];
-						return companyType === OTHER_COMPANY_TYPE && !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
+						const companyIndustry = (values as IPersonalizationLatestVersion)[
+							COMPANY_INDUSTRY_EXTENDED_KEY
+						];
+						return (
+							companyType === OTHER_COMPANY_TYPE &&
+							!!companyIndustry &&
+							companyIndustry.includes(OTHER_INDUSTRY_OPTION)
+						);
 					},
 				},
 				{
@@ -334,7 +358,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 					shouldDisplay(values): boolean {
 						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						const automationGoal = (values as IPersonalizationLatestVersion)[AUTOMATION_GOAL_KEY];
-						return companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL;
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL
+						);
 					},
 				},
 				{
@@ -382,7 +408,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 				{
 					name: OTHER_MARKETING_AUTOMATION_GOAL_KEY,
 					properties: {
-						placeholder: this.$locale.baseText('personalizationModal.specifyOtherSalesAndMarketingGoal'),
+						placeholder: this.$locale.baseText(
+							'personalizationModal.specifyOtherSalesAndMarketingGoal',
+						),
 					},
 					shouldDisplay(values): boolean {
 						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
@@ -397,8 +425,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
 							{
-								label: this.$locale.baseText('personalizationModal.connectToOwnProduct'),
-								value: USAGE_MODE_CONNECT_TO_PRODUCT,
+								label: this.$locale.baseText('personalizationModal.connectToInternalDB'),
+								value: USAGE_MODE_CONNECT_TO_DB,
 							},
 							{
 								label: this.$locale.baseText('personalizationModal.buildBackendServices'),
@@ -465,11 +493,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				const survey = { ...values, version: SURVEY_VERSION };
+				const survey: Record<string, GenericValue> = {
+					...values,
+					version: SURVEY_VERSION,
+					personalization_survey_submitted_at: new Date().toISOString(),
+					personalization_survey_n8n_version: this.rootStore.versionCli,
+				};
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
-				await this.$store.dispatch('users/submitPersonalizationSurvey', survey);
+				await this.usersStore.submitPersonalizationSurvey(
+					survey as IPersonalizationSurveyAnswersV3,
+				);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
@@ -484,9 +519,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = false;
 		},
 		async fetchOnboardingPrompt() {
-			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
-				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
-				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+			if (
+				this.settingsStore.onboardingCallPromptEnabled &&
+				getAccountAge(this.usersStore.currentUser || ({} as IUser)) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
+				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
+				const promptTimeout =
+					onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
 				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {
@@ -503,7 +542,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 									title: onboardingResponse.title,
 									description: onboardingResponse.description,
 								});
-								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
 							},
 						});
 					}, promptTimeout);

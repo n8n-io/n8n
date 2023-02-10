@@ -1,13 +1,12 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 
@@ -363,7 +362,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404') {
+					if (error.cause.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -412,14 +411,14 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.httpCode === '422') {
+					if (error.cause.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook
 						responseData = await githubApiRequest.call(this, 'GET', endpoint, body);
 
 						for (const webhook of responseData as IDataObject[]) {
-							if ((webhook!.config! as IDataObject).url! === webhookUrl) {
+							if ((webhook.config! as IDataObject).url! === webhookUrl) {
 								// Webhook got found
 								if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
 									// Webhook with same events exists already so no need to
@@ -491,7 +490,7 @@ export class GithubTrigger implements INodeType {
 			};
 		}
 
-		// Is a regular webhoook call
+		// Is a regular webhook call
 
 		// TODO: Add headers & requestPath
 		const returnData: IDataObject[] = [];

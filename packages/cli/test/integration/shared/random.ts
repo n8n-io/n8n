@@ -1,5 +1,7 @@
 import { randomBytes } from 'crypto';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../../../src/databases/entities/User';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
+import type { CredentialPayload } from './types';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Create a random alphanumeric string of random length between two limits, both inclusive.
@@ -16,7 +18,13 @@ export function randomApiKey() {
 
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
 
-const randomDigit = () => Math.floor(Math.random() * 10);
+export const randomDigit = () => Math.floor(Math.random() * 10);
+
+export const randomPositiveDigit = (): number => {
+	const digit = randomDigit();
+
+	return digit === 0 ? randomPositiveDigit() : digit;
+};
 
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
@@ -45,3 +53,12 @@ const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
 
 export const randomName = () => randomString(4, 8);
+
+export const randomCredentialPayload = (): CredentialPayload => ({
+	name: randomName(),
+	type: randomName(),
+	nodesAccess: [{ nodeType: randomName() }],
+	data: { accessToken: randomString(6, 16) },
+});
+
+export const uniqueId = () => uuid();

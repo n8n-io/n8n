@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
-				action: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -555,7 +555,7 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					"The unique ID for the customer's G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
+					"The unique ID for the customer's Google Workspace account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
 			},
 			{
 				displayName: 'Domain',
@@ -702,6 +702,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description:
 					'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',

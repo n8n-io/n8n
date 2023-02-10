@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -20,7 +20,7 @@ export async function create(
 	body.firstName = this.getNodeParameter('firstName', index) as string;
 	body.lastName = this.getNodeParameter('lastName', index) as string;
 
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const synced = this.getNodeParameter('synced', index) as boolean;
 
 	if (synced) {
@@ -100,7 +100,7 @@ export async function create(
 	);
 
 	//obtain employeeID
-	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');
+	const rawEmployeeId: number = responseData.headers.location.lastIndexOf('/');
 	const employeeId = responseData.headers.location.substring(rawEmployeeId + 1);
 
 	//return

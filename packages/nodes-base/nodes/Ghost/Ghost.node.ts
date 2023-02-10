@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -92,7 +92,7 @@ export class Ghost implements INodeType {
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', `/admin/users`);
+				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', '/admin/users');
 				for (const user of users) {
 					returnData.push({
 						name: user.name,
@@ -105,7 +105,7 @@ export class Ghost implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', `/admin/tags`);
+				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', '/admin/tags');
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
@@ -119,14 +119,15 @@ export class Ghost implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const source = this.getNodeParameter('source', 0) as string;
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -136,7 +137,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -147,15 +148,15 @@ export class Ghost implements INodeType {
 							} else {
 								endpoint = `/content/posts/${identifier}`;
 							}
-							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -173,8 +174,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, responseData);
 						}
 					}
 				}
@@ -188,7 +187,7 @@ export class Ghost implements INodeType {
 
 							const content = this.getNodeParameter('content', i) as string;
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							const post: IDataObject = {
 								title,
@@ -230,16 +229,13 @@ export class Ghost implements INodeType {
 								{ posts: [post] },
 								qs,
 							);
-
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'delete') {
 							const postId = this.getNodeParameter('postId', i) as string;
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
-
-							returnData.push({ success: true });
 						}
 
 						if (operation === 'get') {
@@ -247,7 +243,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -259,14 +255,13 @@ export class Ghost implements INodeType {
 								endpoint = `/admin/posts/${identifier}`;
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -284,8 +279,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, responseData);
 						}
 
 						if (operation === 'update') {
@@ -293,7 +286,7 @@ export class Ghost implements INodeType {
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 
 							const post: IDataObject = {};
 
@@ -343,19 +336,30 @@ export class Ghost implements INodeType {
 								{ posts: [post] },
 								qs,
 							);
-
-							returnData.push.apply(returnData, responseData.posts);
+							responseData = responseData.posts;
 						}
 					}
 				}
+
+				responseData = this.helpers.returnJsonArray(responseData);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,9 +1,14 @@
 <template>
 	<div>
-		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
+		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<ExecutionDetails v-if="isExecutionPage" />
-				<WorkflowDetails v-else />
+				<WorkflowDetails />
+				<tab-bar
+					v-if="onWorkflowPage"
+					:items="tabBarItems"
+					:activeTab="activeHeaderTab"
+					@select="onTabSelected"
+				/>
 			</div>
 		</div>
 	</div>
@@ -11,70 +16,154 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
-
-import { pushConnection } from '@/components/mixins/pushConnection';
-
+import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
-import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
-import { STICKY_NODE_TYPE, VIEWS } from '@/constants';
-import { INodeUi } from '@/Interface';
+import TabBar from '@/components/MainHeader/TabBar.vue';
+import {
+	MAIN_HEADER_TABS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	STICKY_NODE_TYPE,
+	VIEWS,
+} from '@/constants';
+import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { Route } from 'vue-router';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(
-	pushConnection,
-)
-	.extend({
-		name: 'MainHeader',
-		components: {
-			WorkflowDetails,
-			ExecutionDetails,
+export default mixins(pushConnection, workflowHelpers).extend({
+	name: 'MainHeader',
+	components: {
+		WorkflowDetails,
+		TabBar,
+	},
+	data() {
+		return {
+			activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
+			workflowToReturnTo: '',
+			dirtyState: false,
+		};
+	},
+	computed: {
+		...mapStores(useNDVStore, useUIStore),
+		tabBarItems(): ITabBarItem[] {
+			return [
+				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
+				{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
+			];
 		},
-		computed: {
-			...mapGetters('ui', [
-				'sidebarMenuCollapsed',
-			]),
-			isExecutionPage (): boolean {
-				return this.$route.name === VIEWS.EXECUTION;
-			},
-			activeNode (): INodeUi | null {
-				return this.$store.getters.activeNode;
-			},
-			hideMenuBar(): boolean {
-				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
-			},
+		activeNode(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
-		async mounted() {
-			// Initialize the push connection
-			this.pushConnect();
+		hideMenuBar(): boolean {
+			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 		},
-		beforeDestroy() {
-			this.pushDisconnect();
+		workflowName(): string {
+			return this.workflowsStore.workflowName;
 		},
-	});
+		currentWorkflow(): string {
+			return this.$route.params.name || this.workflowsStore.workflowId;
+		},
+		onWorkflowPage(): boolean {
+			return (
+				this.$route.meta &&
+				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
+			);
+		},
+		activeExecution(): IExecutionsSummary {
+			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
+		},
+	},
+	mounted() {
+		this.dirtyState = this.uiStore.stateIsDirty;
+		this.syncTabsWithRoute(this.$route);
+		// Initialize the push connection
+		this.pushConnect();
+	},
+	beforeDestroy() {
+		this.pushDisconnect();
+	},
+	watch: {
+		$route(to, from) {
+			this.syncTabsWithRoute(to);
+		},
+	},
+	methods: {
+		syncTabsWithRoute(route: Route): void {
+			if (
+				route.name === VIEWS.EXECUTION_HOME ||
+				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
+				route.name === VIEWS.EXECUTION_PREVIEW
+			) {
+				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+			} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
+				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+			}
+			const workflowName = route.params.name;
+			if (workflowName !== 'new') {
+				this.workflowToReturnTo = workflowName;
+			}
+		},
+		onTabSelected(tab: string, event: MouseEvent) {
+			switch (tab) {
+				case MAIN_HEADER_TABS.WORKFLOW:
+					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
+						if (this.$route.name !== VIEWS.WORKFLOW) {
+							this.$router.push({
+								name: VIEWS.WORKFLOW,
+								params: { name: this.workflowToReturnTo },
+							});
+						}
+					} else {
+						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							this.uiStore.stateIsDirty = this.dirtyState;
+						}
+					}
+					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+					break;
+				case MAIN_HEADER_TABS.EXECUTIONS:
+					this.dirtyState = this.uiStore.stateIsDirty;
+					this.workflowToReturnTo = this.currentWorkflow;
+					const routeWorkflowId =
+						this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
+					if (this.activeExecution) {
+						this.$router
+							.push({
+								name: VIEWS.EXECUTION_PREVIEW,
+								params: { name: routeWorkflowId, executionId: this.activeExecution.id },
+							})
+							.catch(() => {});
+					} else {
+						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
+					}
+					// this.modalBus.$emit('closeAll');
+					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+					break;
+				default:
+					break;
+			}
+		},
+	},
+});
 </script>
 
 <style lang="scss">
 .main-header {
-	position: fixed;
-	top: 0;
 	background-color: var(--color-background-xlight);
-	height: 65px;
+	height: $header-height;
 	width: 100%;
 	box-sizing: border-box;
-
-	padding-left: $--sidebar-width;
-
-	&.expanded {
-		padding-left: $--sidebar-expanded-width;
-	}
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
 .top-menu {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	height: $--header-height;
+	height: $header-height;
 	font-weight: 400;
-	padding: 0 20px;
+	padding: 0 var(--spacing-m) 0 var(--spacing-xs);
 }
 </style>

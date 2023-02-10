@@ -5,7 +5,7 @@ import * as getByEmail from './getByEmail';
 import * as getById from './getById';
 import * as invite from './invite';
 
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export { create, deactive, getAll, getByEmail, getById, invite };
 
@@ -35,12 +35,6 @@ export const descriptions: INodeProperties[] = [
 				action: 'Deactivate a user',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all users',
-				action: 'Get all users',
-			},
-			{
 				name: 'Get By Email',
 				value: 'getByEmail',
 				description: 'Get a user by email',
@@ -51,6 +45,12 @@ export const descriptions: INodeProperties[] = [
 				value: 'getById',
 				description: 'Get a user by ID',
 				action: 'Get a user by ID',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Retrieve many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Invite',

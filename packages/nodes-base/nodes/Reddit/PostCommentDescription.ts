@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const postCommentOperations: INodeProperties[] = [
 	{
@@ -15,10 +15,10 @@ export const postCommentOperations: INodeProperties[] = [
 				action: 'Create a comment in a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all comments in a post',
-				action: 'Get all comments in a post',
+				description: 'Retrieve many comments in a post',
+				action: 'Get many comments in a post',
 			},
 			{
 				name: 'Delete',

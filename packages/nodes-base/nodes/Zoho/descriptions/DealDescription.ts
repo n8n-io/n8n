@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { currencies, makeCustomFieldsFixedCollection, makeGetAllFields } from './SharedFields';
 
@@ -39,10 +39,10 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
-				action: 'Get all deals',
+				description: 'Get many contacts',
+				action: 'Get many deals',
 			},
 			{
 				name: 'Update',

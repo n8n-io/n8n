@@ -1,17 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -20,7 +16,6 @@ export async function githubApiRequest(
 	body: object,
 	query?: object,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -49,7 +44,7 @@ export async function githubApiRequest(
 			const credentials = await this.getCredentials('githubApi');
 			credentialType = 'githubApi';
 
-			const baseUrl = credentials!.server || 'https://api.github.com';
+			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
 		} else {
 			const credentials = await this.getCredentials('githubOAuth2Api');
@@ -68,13 +63,7 @@ export async function githubApiRequest(
 /**
  * Returns the SHA of the given file
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} owner
- * @param {string} repository
- * @param {string} filePath
- * @param {string} [branch]
- * @returns {Promise<any>}
  */
 export async function getFileSha(
 	this: IHookFunctions | IExecuteFunctions,
@@ -82,7 +71,6 @@ export async function getFileSha(
 	repository: string,
 	filePath: string,
 	branch?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const getBody: IDataObject = {};
 	if (branch !== undefined) {
@@ -101,10 +89,9 @@ export async function githubApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -119,6 +106,6 @@ export async function githubApiRequestAllItems(
 		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (responseData.headers.link && responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }

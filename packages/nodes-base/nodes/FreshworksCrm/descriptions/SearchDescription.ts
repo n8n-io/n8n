@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const searchOperations: INodeProperties[] = [
 	{
@@ -217,7 +217,8 @@ export const searchFields: INodeProperties[] = [
 					},
 				],
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-unneeded-backticks
-				description: `Use 'entities' to query against related entities. You can include multiple entities at once, provided the field is available in both entities or else you'd receive an error response.`,
+				description:
+					"Use 'entities' to query against related entities. You can include multiple entities at once, provided the field is available in both entities or else you'd receive an error response.",
 			},
 		],
 	},

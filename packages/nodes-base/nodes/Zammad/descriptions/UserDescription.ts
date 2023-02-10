@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userDescription: INodeProperties[] = [
 	// ----------------------------------
@@ -34,10 +34,10 @@ export const userDescription: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all users',
-				action: 'Get all users',
+				description: 'Retrieve many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Get Self',
@@ -255,9 +255,6 @@ export const userDescription: INodeProperties[] = [
 				name: 'note',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Organization Name or ID',
@@ -445,9 +442,6 @@ export const userDescription: INodeProperties[] = [
 				name: 'note',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Organization Name or ID',

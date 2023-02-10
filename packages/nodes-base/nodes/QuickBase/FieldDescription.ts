@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const fieldOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const fieldOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all fields',
-				action: 'Get all fields',
+				description: 'Get many fields',
+				action: 'Get many fields',
 			},
 		],
 		default: 'getAll',

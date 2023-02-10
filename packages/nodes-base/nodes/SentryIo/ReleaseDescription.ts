@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const releaseOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const releaseOperations: INodeProperties[] = [
 				action: 'Get a release by version ID',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all releases',
-				action: 'Get all releases',
+				description: 'Get many releases',
+				action: 'Get many releases',
 			},
 			{
 				name: 'Update',
@@ -321,7 +321,7 @@ export const releaseFields: INodeProperties[] = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'The types of changes that happend in that commit',
+												description: 'The types of changes that happened in that commit',
 												options: [
 													{
 														name: 'Add',
@@ -525,7 +525,7 @@ export const releaseFields: INodeProperties[] = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'The types of changes that happend in that commit',
+												description: 'The types of changes that happened in that commit',
 												options: [
 													{
 														name: 'Add',

@@ -1,15 +1,9 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IBinaryKeyData, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 interface IAttachment {
 	url: string;
@@ -21,11 +15,6 @@ interface IAttachment {
 /**
  * Make an API request to NocoDB
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -35,7 +24,6 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	const credentials = await this.getCredentials(authenticationMethod);
@@ -65,24 +53,14 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
  * Make an API request to paginated NocoDB endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
@@ -90,9 +68,8 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const version = this.getNode().typeVersion as number;
+	const version = this.getNode().typeVersion;
 
 	if (query === undefined) {
 		query = {};
@@ -125,8 +102,8 @@ export async function downloadRecordAttachments(
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
-				for (const [index, attachment] of (
-					JSON.parse(record[fieldName] as string) as IAttachment[]
+				for (const [index, attachment] of jsonParse<IAttachment[]>(
+					record[fieldName] as string,
 				).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,

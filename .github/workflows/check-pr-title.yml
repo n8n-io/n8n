@@ -1,0 +1,22 @@
+name: Check PR title
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v3
+
+      - name: Validate PR title
+        id: validate_pr_title
+        uses: ivov/validate-n8n-pull-request-title@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

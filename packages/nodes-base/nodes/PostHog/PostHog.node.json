@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.postHog",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Analytics",
-		"Development"
-	],
+	"categories": ["Analytics", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.postHog/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.posthog/"
 			}
 		]
 	}

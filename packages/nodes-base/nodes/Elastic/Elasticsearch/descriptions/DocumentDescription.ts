@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import * as placeholders from './placeholders';
 
@@ -33,10 +33,10 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Get a document',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all documents',
-				action: 'Get all documents',
+				description: 'Get many documents',
+				action: 'Get many documents',
 			},
 			{
 				name: 'Update',
@@ -191,6 +191,20 @@ export const documentFields: INodeProperties[] = [
 			show: {
 				resource: ['document'],
 				operation: ['getAll'],
+			},
+		},
+	},
+	{
+		displayName:
+			'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
+		name: 'paginateNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['document'],
+				operation: ['getAll'],
+				returnAll: [true],
 			},
 		},
 	},

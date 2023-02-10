@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { getProductOptionalFields, getSearchFilters } from './GenericFunctions';
 
@@ -33,10 +33,10 @@ export const productOperations: INodeProperties[] = [
 				action: 'Get a product',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all producs',
-				action: 'Get all products',
+				description: 'Get many products',
+				action: 'Get many products',
 			},
 			{
 				name: 'Update',

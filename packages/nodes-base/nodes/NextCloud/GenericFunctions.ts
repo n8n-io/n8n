@@ -1,17 +1,10 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { JsonObject, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to NextCloud
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function nextCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -59,10 +52,5 @@ export async function nextCloudApiRequest(
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
-
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }

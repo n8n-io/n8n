@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -78,7 +78,8 @@ export class GoogleTranslate implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -185,23 +186,32 @@ export class GoogleTranslate implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const responseData = [];
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
+		const responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			if (resource === 'language') {
 				if (operation === 'translate') {
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, {
+					const response = await googleApiRequest.call(this, 'POST', '/language/translate/v2', {
 						q: text,
 						target: translateTo,
 					});
-					responseData.push(response.data.translations[0]);
+
+					const [translation] = response.data.translations;
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(translation),
+						{ itemData: { item: i } },
+					);
+
+					responseData.push(...executionData);
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+
+		return this.prepareOutputData(responseData);
 	}
 }

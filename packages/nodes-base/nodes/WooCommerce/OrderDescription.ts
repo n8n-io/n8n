@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const orderOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const orderOperations: INodeProperties[] = [
 				action: 'Get an order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all orders',
-				action: 'Get all orders',
+				description: 'Get many orders',
+				action: 'Get many orders',
 			},
 			{
 				name: 'Update',
@@ -83,9 +83,6 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerNote',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Note left by customer during checkout',
 			},
 			{
@@ -758,9 +755,6 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerNote',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Note left by customer during checkout',
 			},
 			{

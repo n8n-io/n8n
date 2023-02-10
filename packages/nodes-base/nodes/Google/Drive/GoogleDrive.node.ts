@@ -1,16 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
+import type { Readable } from 'stream';
+import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
+
+const UPLOAD_CHUNK_SIZE = 256 * 1024;
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,7 +79,8 @@ export class GoogleDrive implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -208,59 +214,146 @@ export class GoogleDrive implements INodeType {
 			//         file
 			// ----------------------------------
 
-			// ----------------------------------
-			//         file:copy
-			// ----------------------------------
 			{
-				displayName: 'ID',
+				displayName: 'File',
 				name: 'fileId',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
+				modes: [
+					{
+						displayName: 'File',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a file...',
+						typeOptions: {
+							searchListMethod: 'fileSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder:
+							'https://drive.google.com/file/d/1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A/edit',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive File URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive File ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/file/d/{{$value}}/view',
+					},
+				],
 				displayOptions: {
 					show: {
-						operation: ['copy'],
+						operation: ['download', 'copy', 'update', 'delete', 'share'],
 						resource: ['file'],
 					},
 				},
-				description: 'The ID of the file to copy',
+				description: 'The ID of the file',
 			},
+
+			{
+				displayName: 'Folder',
+				name: 'fileId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'Folder',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a folder...',
+						typeOptions: {
+							searchListMethod: 'folderSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive Folder URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive Folder ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/drive/folders/{{$value}}',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['delete', 'share'],
+						resource: ['folder'],
+					},
+				},
+				description: 'The ID of the folder',
+			},
+
+			// ----------------------------------
+			//         file:copy
+			// ----------------------------------
 
 			// ----------------------------------
 			//         file/folder:delete
 			// ----------------------------------
-			{
-				displayName: 'ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['delete'],
-						resource: ['file', 'folder'],
-					},
-				},
-				description: 'The ID of the file/folder to delete',
-			},
 
 			// ----------------------------------
 			//         file:download
 			// ----------------------------------
-			{
-				displayName: 'File ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['download'],
-						resource: ['file'],
-					},
-				},
-				description: 'The ID of the file to download',
-			},
 			{
 				displayName: 'Binary Property',
 				name: 'binaryPropertyName',
@@ -621,20 +714,6 @@ export class GoogleDrive implements INodeType {
 			//         file:share
 			// ----------------------------------
 			{
-				displayName: 'File ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['share'],
-						resource: ['file', 'folder'],
-					},
-				},
-				description: 'The ID of the file or shared drive',
-			},
-			{
 				displayName: 'Permissions',
 				name: 'permissionsUi',
 				placeholder: 'Add Permission',
@@ -804,20 +883,6 @@ export class GoogleDrive implements INodeType {
 			// ----------------------------------
 			//         file:update
 			// ----------------------------------
-			{
-				displayName: 'ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['update'],
-						resource: ['file'],
-					},
-				},
-				description: 'The ID of the file to update',
-			},
 			{
 				displayName: 'Update Fields',
 				name: 'updateFields',
@@ -1397,6 +1462,72 @@ export class GoogleDrive implements INodeType {
 				],
 				default: 'create',
 			},
+
+			{
+				displayName: 'Drive',
+				name: 'driveId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				hint: 'The Google Drive drive to operate on',
+				modes: [
+					{
+						displayName: 'Drive',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Drive',
+						typeOptions: {
+							searchListMethod: 'driveSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive Drive URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						hint: 'The ID of the shared drive',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive Drive ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/drive/folders/{{$value}}',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['delete', 'get', 'update'],
+						resource: ['drive'],
+					},
+				},
+				description: 'The ID of the drive',
+			},
+
 			// ----------------------------------
 			//         drive:create
 			// ----------------------------------
@@ -1640,35 +1771,10 @@ export class GoogleDrive implements INodeType {
 			// ----------------------------------
 			//         drive:delete
 			// ----------------------------------
-			{
-				displayName: 'Drive ID',
-				name: 'driveId',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: ['delete'],
-						resource: ['drive'],
-					},
-				},
-				description: 'The ID of the shared drive',
-			},
+
 			// ----------------------------------
 			//         drive:get
 			// ----------------------------------
-			{
-				displayName: 'Drive ID',
-				name: 'driveId',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: ['get'],
-						resource: ['drive'],
-					},
-				},
-				description: 'The ID of the shared drive',
-			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -1760,19 +1866,6 @@ export class GoogleDrive implements INodeType {
 			// ----------------------------------
 			//         drive:update
 			// ----------------------------------
-			{
-				displayName: 'Drive ID',
-				name: 'driveId',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: ['update'],
-						resource: ['drive'],
-					},
-				},
-				description: 'The ID of the shared drive',
-			},
 			{
 				displayName: 'Update Fields',
 				name: 'options',
@@ -1928,19 +2021,27 @@ export class GoogleDrive implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			fileSearch,
+			folderSearch,
+			driveSearch,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 
 				let queryFields = 'id, name';
-				if (options && options.fields) {
+				if (options?.fields) {
 					const fields = options.fields as string[];
 					if (fields.includes('*')) {
 						queryFields = '*';
@@ -1963,29 +2064,43 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(body, options);
 
-						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, {
+						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/drives', body, {
 							requestId: uuid(),
 						});
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'get') {
 						// ----------------------------------
 						//         get
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						const qs: IDataObject = {};
 
@@ -1999,13 +2114,18 @@ export class GoogleDrive implements INodeType {
 							qs,
 						);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'list') {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs: IDataObject = {};
 
@@ -2013,29 +2133,36 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(qs, options);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							response = await googleApiRequestAllItems.call(
 								this,
 								'drives',
 								'GET',
-								`/drive/v3/drives`,
+								'/drive/v3/drives',
 								{},
 								qs,
 							);
 						} else {
-							qs.pageSize = this.getNodeParameter('limit', i) as number;
-							const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
+							qs.pageSize = this.getNodeParameter('limit', i);
+							const data = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', {}, qs);
 							response = data.drives as IDataObject[];
 						}
 
-						returnData.push.apply(returnData, response);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'update') {
 						// ----------------------------------
 						//         update
 						// ----------------------------------
 
-						const driveId = this.getNodeParameter('driveId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						const body: IDataObject = {};
 
@@ -2048,7 +2175,12 @@ export class GoogleDrive implements INodeType {
 							body,
 						);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'file') {
@@ -2057,7 +2189,9 @@ export class GoogleDrive implements INodeType {
 						//         copy
 						// ----------------------------------
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						const body: IDataObject = {
 							fields: queryFields,
@@ -2082,16 +2216,24 @@ export class GoogleDrive implements INodeType {
 							qs,
 						);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else if (operation === 'download') {
 						// ----------------------------------
 						//         download
 						// ----------------------------------
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const fileId = this.getNodeParameter('fileId', i, undefined, {
+							extractValue: true,
+						}) as string;
+						const downloadOptions = this.getNodeParameter('options', i);
 
 						const requestOptions = {
+							useStream: true,
 							resolveWithFullResponse: true,
 							encoding: null,
 							json: false,
@@ -2102,7 +2244,7 @@ export class GoogleDrive implements INodeType {
 							'GET',
 							`/drive/v3/files/${fileId}`,
 							{},
-							{ fields: 'mimeType', supportsTeamDrives: true },
+							{ fields: 'mimeType,name', supportsTeamDrives: true },
 						);
 						let response;
 
@@ -2156,15 +2298,8 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						let mimeType: string | undefined;
-						let fileName: string | undefined = undefined;
-						if (response.headers['content-type']) {
-							mimeType = response.headers['content-type'];
-						}
-
-						if (options.fileName) {
-							fileName = options.fileName as string;
-						}
+						const mimeType = response.headers['content-type'] ?? file.mimeType ?? undefined;
+						const fileName = downloadOptions.fileName ?? file.name ?? undefined;
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
@@ -2181,15 +2316,10 @@ export class GoogleDrive implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
-
-						const data = Buffer.from(response.body as string);
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-							data as unknown as Buffer,
+							response.body as unknown as Readable,
 							fileName,
 							mimeType,
 						);
@@ -2221,7 +2351,7 @@ export class GoogleDrive implements INodeType {
 
 						let queryString = '';
 						const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
-						if (useQueryString === true) {
+						if (useQueryString) {
 							// Use the user defined query string
 							queryString = this.getNodeParameter('queryString', i) as string;
 						} else {
@@ -2231,13 +2361,13 @@ export class GoogleDrive implements INodeType {
 							const queryFilterFields: string[] = [];
 							if (queryFilters.name) {
 								(queryFilters.name as IDataObject[]).forEach((nameFilter) => {
-									let operation = nameFilter.operation;
-									if (operation === 'is') {
-										operation = '=';
-									} else if (operation === 'isNot') {
-										operation = '!=';
+									let filterOperation = nameFilter.operation;
+									if (filterOperation === 'is') {
+										filterOperation = '=';
+									} else if (filterOperation === 'isNot') {
+										filterOperation = '!=';
 									}
-									queryFilterFields.push(`name ${operation} '${nameFilter.value}'`);
+									queryFilterFields.push(`name ${filterOperation} '${nameFilter.value}'`);
 								});
 
 								queryString += queryFilterFields.join(' or ');
@@ -2263,7 +2393,7 @@ export class GoogleDrive implements INodeType {
 							}
 						}
 
-						const pageSize = this.getNodeParameter('limit', i) as number;
+						const pageSize = this.getNodeParameter('limit', i);
 
 						const qs = {
 							pageSize,
@@ -2275,27 +2405,34 @@ export class GoogleDrive implements INodeType {
 							supportsAllDrives: queryCorpora !== '' || driveId !== '',
 						};
 
-						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+						const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
 
-						const files = response!.files;
+						const files = response.files;
 
 						const version = this.getNode().typeVersion;
 
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(files),
+							{ itemData: { item: i } },
+						);
+
 						if (version === 1) {
-							return [this.helpers.returnJsonArray(files as IDataObject[])];
-						} else {
-							returnData.push(...files);
+							return [executionData];
 						}
+
+						returnData.push(...executionData);
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
-						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', 0);
 
-						let mimeType = 'text/plain';
-						let body;
+						let contentLength: number;
+						let fileContent: Buffer | Readable;
 						let originalFilename: string | undefined;
-						if (this.getNodeParameter('binaryData', i) === true) {
+						let mimeType = 'text/plain';
+
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 
@@ -2305,9 +2442,10 @@ export class GoogleDrive implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
-							if (item.binary[propertyNameUpload] === undefined) {
+							const binary = item.binary[propertyNameUpload];
+							if (binary === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${propertyNameUpload}" does not exists on item!`,
@@ -2315,48 +2453,86 @@ export class GoogleDrive implements INodeType {
 								);
 							}
 
-							if (item.binary[propertyNameUpload].mimeType) {
-								mimeType = item.binary[propertyNameUpload].mimeType;
+							if (binary.id) {
+								// Stream data in 256KB chunks, and upload the via the resumable upload api
+								fileContent = this.helpers.getBinaryStream(binary.id, UPLOAD_CHUNK_SIZE);
+								const metadata = await this.helpers.getBinaryMetadata(binary.id);
+								contentLength = metadata.fileSize;
+								originalFilename = metadata.fileName;
+								if (metadata.mimeType) mimeType = binary.mimeType;
+							} else {
+								fileContent = Buffer.from(binary.data, BINARY_ENCODING);
+								contentLength = fileContent.length;
+								originalFilename = binary.fileName;
+								mimeType = binary.mimeType;
 							}
-
-							if (item.binary[propertyNameUpload].fileName) {
-								originalFilename = item.binary[propertyNameUpload].fileName;
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 						} else {
 							// Is text file
-							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
+							fileContent = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
+							contentLength = fileContent.byteLength;
 						}
 
 						const name = this.getNodeParameter('name', i) as string;
 						const parents = this.getNodeParameter('parents', i) as string[];
 
-						let qs: IDataObject = {
-							fields: queryFields,
-							uploadType: 'media',
-						};
+						let uploadId;
+						if (Buffer.isBuffer(fileContent)) {
+							const response = await googleApiRequest.call(
+								this,
+								'POST',
+								'/upload/drive/v3/files',
+								fileContent,
+								{
+									fields: queryFields,
+									uploadType: 'media',
+								},
+								undefined,
+								{
+									headers: {
+										'Content-Type': mimeType,
+										'Content-Length': contentLength,
+									},
+									encoding: null,
+									json: false,
+								},
+							);
+							uploadId = JSON.parse(response).id;
+						} else {
+							const resumableUpload = await googleApiRequest.call(
+								this,
+								'POST',
+								'/upload/drive/v3/files',
+								undefined,
+								{ uploadType: 'resumable' },
+								undefined,
+								{
+									resolveWithFullResponse: true,
+								},
+							);
+							const uploadUrl = resumableUpload.headers.location;
 
-						const requestOptions = {
-							headers: {
-								'Content-Type': mimeType,
-								'Content-Length': body.byteLength,
-							},
-							encoding: null,
-							json: false,
-						};
+							let offset = 0;
+							for await (const chunk of fileContent) {
+								const nextOffset = offset + Number(chunk.length);
+								try {
+									const response = await this.helpers.httpRequest({
+										method: 'PUT',
+										url: uploadUrl,
+										headers: {
+											'Content-Length': chunk.length,
+											'Content-Range': `bytes ${offset}-${nextOffset - 1}/${contentLength}`,
+										},
+										body: chunk,
+									});
+									uploadId = response.id;
+								} catch (error) {
+									if (error.response?.status !== 308) throw error;
+								}
+								offset = nextOffset;
+							}
+						}
 
-						let response = await googleApiRequest.call(
-							this,
-							'POST',
-							`/upload/drive/v3/files`,
-							body,
-							qs,
-							undefined,
-							requestOptions,
-						);
-
-						body = {
+						const requestBody = {
 							mimeType,
 							name,
 							originalFilename,
@@ -2369,7 +2545,7 @@ export class GoogleDrive implements INodeType {
 						) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, {
+							Object.assign(requestBody, {
 								properties: properties.reduce(
 									(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
 									{},
@@ -2384,7 +2560,7 @@ export class GoogleDrive implements INodeType {
 						) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, {
+							Object.assign(requestBody, {
 								appProperties: appProperties.reduce(
 									(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
 									{},
@@ -2392,21 +2568,19 @@ export class GoogleDrive implements INodeType {
 							});
 						}
 
-						qs = {
-							addParents: parents.join(','),
-							// When set to true shared drives can be used.
-							supportsAllDrives: true,
-						};
-
-						response = await googleApiRequest.call(
+						let response = await googleApiRequest.call(
 							this,
 							'PATCH',
-							`/drive/v3/files/${JSON.parse(response).id}`,
-							body,
-							qs,
+							`/drive/v3/files/${uploadId}`,
+							requestBody,
+							{
+								addParents: parents.join(','),
+								// When set to true shared drives can be used.
+								supportsAllDrives: true,
+							},
 						);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							response = await googleApiRequest.call(
 								this,
 								'GET',
@@ -2416,14 +2590,20 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         file:update
 						// ----------------------------------
 
-						const id = this.getNodeParameter('fileId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const id = this.getNodeParameter('fileId', i, undefined, {
+							extractValue: true,
+						}) as string;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						const qs: IDataObject = {
 							supportsAllDrives: true,
@@ -2454,7 +2634,12 @@ export class GoogleDrive implements INodeType {
 							body,
 							qs,
 						);
-						returnData.push(responseData as IDataObject);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'folder') {
@@ -2478,7 +2663,11 @@ export class GoogleDrive implements INodeType {
 
 						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (['file', 'folder'].includes(resource)) {
@@ -2487,7 +2676,9 @@ export class GoogleDrive implements INodeType {
 						//         delete
 						// ----------------------------------
 
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						await googleApiRequest.call(
 							this,
@@ -2498,17 +2689,24 @@ export class GoogleDrive implements INodeType {
 						);
 
 						// If we are still here it did succeed
-						returnData.push({
-							fileId,
-							success: true,
-						});
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								fileId,
+								success: true,
+							}),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					if (operation === 'share') {
-						const fileId = this.getNodeParameter('fileId', i) as string;
+						const fileId = this.getNodeParameter('fileId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const shareOption = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {};
 
@@ -2520,7 +2718,7 @@ export class GoogleDrive implements INodeType {
 							Object.assign(body, permissions.permissionsValues);
 						}
 
-						Object.assign(qs, options);
+						Object.assign(qs, shareOption);
 
 						const response = await googleApiRequest.call(
 							this,
@@ -2530,7 +2728,11 @@ export class GoogleDrive implements INodeType {
 							qs,
 						);
 
-						returnData.push(response as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
@@ -2538,7 +2740,7 @@ export class GoogleDrive implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}
@@ -2550,7 +2752,7 @@ export class GoogleDrive implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

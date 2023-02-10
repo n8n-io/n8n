@@ -1,14 +1,9 @@
 import { createSign } from 'crypto';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Wise.
@@ -64,7 +59,7 @@ export async function wiseApiRequest(
 
 	let response;
 	try {
-		response = await this.helpers.httpRequest!(options);
+		response = await this.helpers.httpRequest(options);
 	} catch (error) {
 		delete error.config;
 		throw new NodeApiError(this.getNode(), error);
@@ -103,7 +98,7 @@ export async function wiseApiRequest(
 		}
 		// Retry the request with signed token
 		try {
-			response = await this.helpers.httpRequest!(options);
+			response = await this.helpers.httpRequest(options);
 			return response.body;
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), {

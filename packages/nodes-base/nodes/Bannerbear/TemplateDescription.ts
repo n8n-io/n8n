@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const templateOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const templateOperations: INodeProperties[] = [
 				action: 'Get a template',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all templates',
-				action: 'Get all templates',
+				description: 'Get many templates',
+				action: 'Get many templates',
 			},
 		],
 		default: 'get',

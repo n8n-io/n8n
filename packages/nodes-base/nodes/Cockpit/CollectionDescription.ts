@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const collectionOperations: INodeProperties[] = [
 	{
@@ -19,11 +19,11 @@ export const collectionOperations: INodeProperties[] = [
 				action: 'Create a collection entry',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
-				name: 'Get All Entries',
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-many
+				name: 'Get Many Entries',
 				value: 'getAll',
-				description: 'Get all collection entries',
-				action: 'Get all collection entries',
+				description: 'Get many collection entries',
+				action: 'Get many collection entries',
 			},
 			{
 				name: 'Update an Entry',
@@ -105,9 +105,6 @@ export const collectionFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				placeholder: '_id,name',
 				description: 'Comma-separated list of fields to get',
 			},

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Create a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Gets all messages from a room',
-				action: 'Get all messages',
+				description: 'Get many messages from a room',
+				action: 'Get many messages',
 			},
 		],
 		default: 'create',
@@ -56,9 +56,6 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		placeholder: 'Hello from n8n!',
 		displayOptions: {
@@ -136,9 +133,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		description:
 			'A plain text message to display in case the HTML cannot be rendered by the Matrix client',
 	},

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const secureScoreOperations: INodeProperties[] = [
 	{
@@ -18,9 +18,9 @@ export const secureScoreOperations: INodeProperties[] = [
 				action: 'Get a secure score',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all secure scores',
+				action: 'Get many secure scores',
 			},
 		],
 		default: 'get',

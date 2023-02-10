@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
@@ -33,10 +33,10 @@ export const connectionOperations: INodeProperties[] = [
 				action: 'Get a connection',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all connections',
-				action: 'Get all connections',
+				description: 'Get data of many connections',
+				action: 'Get many connections',
 			},
 			{
 				name: 'Update',

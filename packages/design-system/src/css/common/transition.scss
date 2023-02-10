@@ -1,0 +1,100 @@
+@use './var';
+
+.fade-in-linear-enter-active,
+.fade-in-linear-leave-active {
+	transition: var.$fade-linear-transition;
+}
+.fade-in-linear-enter,
+.fade-in-linear-leave,
+.fade-in-linear-leave-active {
+	opacity: 0;
+}
+
+.el-fade-in-linear-enter-active,
+.el-fade-in-linear-leave-active {
+	transition: var.$fade-linear-transition;
+}
+.el-fade-in-linear-enter,
+.el-fade-in-linear-leave,
+.el-fade-in-linear-leave-active {
+	opacity: 0;
+}
+
+.el-fade-in-enter-active,
+.el-fade-in-leave-active {
+	transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}
+.el-fade-in-enter,
+.el-fade-in-leave-active {
+	opacity: 0;
+}
+
+.el-zoom-in-center-enter-active,
+.el-zoom-in-center-leave-active {
+	transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}
+.el-zoom-in-center-enter,
+.el-zoom-in-center-leave-active {
+	opacity: 0;
+	transform: scaleX(0);
+}
+
+.el-zoom-in-top-enter-active,
+.el-zoom-in-top-leave-active {
+	opacity: 1;
+	transform: scaleY(1);
+	transition: var.$md-fade-transition;
+	transform-origin: center top;
+}
+.el-zoom-in-top-enter,
+.el-zoom-in-top-leave-active {
+	opacity: 0;
+	transform: scaleY(0);
+}
+
+.el-zoom-in-bottom-enter-active,
+.el-zoom-in-bottom-leave-active {
+	opacity: 1;
+	transform: scaleY(1);
+	transition: var.$md-fade-transition;
+	transform-origin: center bottom;
+}
+.el-zoom-in-bottom-enter,
+.el-zoom-in-bottom-leave-active {
+	opacity: 0;
+	transform: scaleY(0);
+}
+
+.el-zoom-in-left-enter-active,
+.el-zoom-in-left-leave-active {
+	opacity: 1;
+	transform: scale(1, 1);
+	transition: var.$md-fade-transition;
+	transform-origin: top left;
+}
+.el-zoom-in-left-enter,
+.el-zoom-in-left-leave-active {
+	opacity: 0;
+	transform: scale(0.45, 0.45);
+}
+
+.collapse-transition {
+	transition: 0.3s height ease-in-out, 0.3s padding-top ease-in-out, 0.3s padding-bottom ease-in-out;
+}
+.horizontal-collapse-transition {
+	transition: 0.3s width ease-in-out, 0.3s padding-left ease-in-out, 0.3s padding-right ease-in-out;
+}
+
+.el-list-enter-active,
+.el-list-leave-active {
+	transition: all 1s;
+}
+.el-list-enter,
+.el-list-leave-active {
+	opacity: 0;
+	transform: translateY(-30px);
+}
+
+.el-opacity-transition {
+	transition: opacity 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}

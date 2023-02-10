@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 
@@ -63,10 +68,10 @@ export class AwsTranscribe implements INodeType {
 						action: 'Get a transcription job',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all transcription jobs',
-						action: 'Get all transcription jobs',
+						description: 'Get many transcription jobs',
+						action: 'Get many transcription jobs',
 					},
 				],
 				default: 'create',
@@ -355,8 +360,8 @@ export class AwsTranscribe implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'transcriptionJob') {
@@ -366,7 +371,7 @@ export class AwsTranscribe implements INodeType {
 						const mediaFileUri = this.getNodeParameter('mediaFileUri', i) as string;
 						const detectLang = this.getNodeParameter('detectLanguage', i) as boolean;
 
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 
 						const body: IDataObject = {
 							TranscriptionJobName: transcriptionJobName,
@@ -382,42 +387,44 @@ export class AwsTranscribe implements INodeType {
 							body.LanguageCode = this.getNodeParameter('languageCode', i) as string;
 						}
 
-						if (options.channelIdentification) {
-							Object.assign(body.Settings, {
-								ChannelIdentification: options.channelIdentification,
-							});
-						}
+						if (body.Settings) {
+							if (options.channelIdentification) {
+								Object.assign(body.Settings, {
+									ChannelIdentification: options.channelIdentification,
+								});
+							}
 
-						if (options.maxAlternatives) {
-							Object.assign(body.Settings, {
-								ShowAlternatives: true,
-								MaxAlternatives: options.maxAlternatives,
-							});
-						}
+							if (options.maxAlternatives) {
+								Object.assign(body.Settings, {
+									ShowAlternatives: true,
+									MaxAlternatives: options.maxAlternatives,
+								});
+							}
 
-						if (options.maxSpeakerLabels) {
-							Object.assign(body.Settings, {
-								ShowSpeakerLabels: true,
-								MaxSpeakerLabels: options.maxSpeakerLabels,
-							});
-						}
+							if (options.maxSpeakerLabels) {
+								Object.assign(body.Settings, {
+									ShowSpeakerLabels: true,
+									MaxSpeakerLabels: options.maxSpeakerLabels,
+								});
+							}
 
-						if (options.vocabularyName) {
-							Object.assign(body.Settings, {
-								VocabularyName: options.vocabularyName,
-							});
-						}
+							if (options.vocabularyName) {
+								Object.assign(body.Settings, {
+									VocabularyName: options.vocabularyName,
+								});
+							}
 
-						if (options.vocabularyFilterName) {
-							Object.assign(body.Settings, {
-								VocabularyFilterName: options.vocabularyFilterName,
-							});
-						}
+							if (options.vocabularyFilterName) {
+								Object.assign(body.Settings, {
+									VocabularyFilterName: options.vocabularyFilterName,
+								});
+							}
 
-						if (options.vocabularyFilterMethod) {
-							Object.assign(body.Settings, {
-								VocabularyFilterMethod: options.vocabularyFilterMethod,
-							});
+							if (options.vocabularyFilterMethod) {
+								Object.assign(body.Settings, {
+									VocabularyFilterMethod: options.vocabularyFilterMethod,
+								});
+							}
 						}
 
 						const action = 'Transcribe.StartTranscriptionJob';
@@ -470,14 +477,14 @@ export class AwsTranscribe implements INodeType {
 						);
 						responseData = responseData.TranscriptionJob;
 
-						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
+						if (resolve && responseData.TranscriptionJobStatus === 'COMPLETED') {
 							responseData = await this.helpers.request({
 								method: 'GET',
 								uri: responseData.Transcript.TranscriptFileUri,
 								json: true,
 							});
 							const simple = this.getNodeParameter('simple', 0) as boolean;
-							if (simple === true) {
+							if (simple) {
 								responseData = {
 									transcript: responseData.results.transcripts
 										.map((data: IDataObject) => data.transcript)
@@ -488,20 +495,20 @@ export class AwsTranscribe implements INodeType {
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						const action = 'Transcribe.ListTranscriptionJobs';
 						const body: IDataObject = {};
 
 						if (filters.status) {
-							body['Status'] = filters.status;
+							body.Status = filters.status;
 						}
 
 						if (filters.jobNameContains) {
-							body['JobNameContains'] = filters.jobNameContains;
+							body.JobNameContains = filters.jobNameContains;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'TranscriptionJobSummaries',
@@ -512,8 +519,8 @@ export class AwsTranscribe implements INodeType {
 								{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							body['MaxResults'] = limit;
+							const limit = this.getNodeParameter('limit', i);
+							body.MaxResults = limit;
 							responseData = await awsApiRequestREST.call(
 								this,
 								'transcribe',

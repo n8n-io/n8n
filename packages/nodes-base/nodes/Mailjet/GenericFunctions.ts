@@ -1,21 +1,20 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions } from 'n8n-workflow';
 
 export async function mailjetApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource', 0);
 
 	let credentialType;
 
@@ -48,21 +47,16 @@ export async function mailjetApiRequest(
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function mailjetApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -81,7 +75,6 @@ export async function mailjetApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): IDataObject | undefined {
 	let result;
 	try {

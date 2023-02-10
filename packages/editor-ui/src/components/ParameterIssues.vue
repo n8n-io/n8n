@@ -1,7 +1,9 @@
 <template>
 	<div :class="$style['parameter-issues']" v-if="issues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+		<n8n-tooltip placement="top">
+			<template #content>
+				<titled-list :title="`${$locale.baseText('parameterInput.issues')}:`" :items="issues" />
+			</template>
 			<font-awesome-icon icon="exclamation-triangle" />
 		</n8n-tooltip>
 	</div>
@@ -9,12 +11,14 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import TitledList from '@/components/TitledList.vue';
 
 export default Vue.extend({
 	name: 'ParameterIssues',
-	props: [
-		'issues',
-	],
+	components: {
+		TitledList,
+	},
+	props: ['issues'],
 });
 </script>
 

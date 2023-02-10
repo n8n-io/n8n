@@ -1,4 +1,4 @@
-import config from '../../../config';
+import config from '@/config';
 
 export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 
@@ -41,34 +41,11 @@ export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
  */
 export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
-	'GET /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
 	'POST /owner',
 	'POST /owner/skip-setup',
 ];
-
-/**
- * Mapping tables link entities but, unlike `SharedWorkflow` and `SharedCredentials`,
- * have no entity representation. Therefore, mapping tables must be cleared
- * on truncation of any of the collections they link.
- */
-export const MAPPING_TABLES_TO_CLEAR: Record<string, string[] | undefined> = {
-	Workflow: ['workflows_tags'],
-	Tag: ['workflows_tags'],
-};
-
-/**
- * Name of the connection used for creating and dropping a Postgres DB
- * for each suite test run.
- */
-export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_postgres';
-
-/**
- * Name of the connection (and database) used for creating and dropping a MySQL DB
- * for each suite test run.
- */
-export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
 
 export const COMMUNITY_PACKAGE_VERSION = {
 	CURRENT: '0.1.0',
@@ -84,10 +61,3 @@ export const COMMUNITY_NODE_VERSION = {
  * Timeout (in milliseconds) to account for DB being slow to initialize.
  */
 export const DB_INITIALIZATION_TIMEOUT = 30_000;
-
-/**
- * Mapping tables having no entity representation.
- */
-export const MAPPING_TABLES = {
-	WorkflowsTags: 'workflows_tags',
-} as const;

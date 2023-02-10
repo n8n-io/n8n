@@ -1,0 +1,97 @@
+@use 'mixins/mixins';
+@use 'checkbox';
+@use 'tag';
+@use './common/var';
+
+@include mixins.b(table-column) {
+	@include mixins.m(selection) {
+		.cell {
+			padding-left: 14px;
+			padding-right: 14px;
+		}
+	}
+}
+
+@include mixins.b(table-filter) {
+	border: solid 1px var(--border-color-light);
+	border-radius: 2px;
+	background-color: var.$color-white;
+	box-shadow: var.$dropdown-menu-box-shadow;
+	box-sizing: border-box;
+	margin: 2px 0;
+
+	/** used for dropdown mode */
+	@include mixins.e(list) {
+		padding: 5px 0;
+		margin: 0;
+		list-style: none;
+		min-width: 100px;
+	}
+
+	@include mixins.e(list-item) {
+		line-height: 36px;
+		padding: 0 10px;
+		cursor: pointer;
+		font-size: var.$font-size-base;
+
+		&:hover {
+			background-color: var.$dropdown-menuItem-hover-fill;
+			color: var.$dropdown-menuItem-hover-color;
+		}
+
+		@include mixins.when(active) {
+			background-color: var(--color-primary);
+			color: var.$color-white;
+		}
+	}
+
+	@include mixins.e(content) {
+		min-width: 100px;
+	}
+
+	@include mixins.e(bottom) {
+		border-top: 1px solid var(--border-color-light);
+		padding: 8px;
+
+		button {
+			background: transparent;
+			border: none;
+			color: var(--color-text-dark);
+			cursor: pointer;
+			font-size: var.$font-size-small;
+			padding: 0 3px;
+
+			&:hover {
+				color: var(--color-primary);
+			}
+
+			&:focus {
+				outline: none;
+			}
+
+			&.is-disabled {
+				color: var.$disabled-color-base;
+				cursor: not-allowed;
+			}
+		}
+	}
+
+	@include mixins.e(wrap) {
+		max-height: 280px;
+	}
+
+	@include mixins.e(checkbox-group) {
+		padding: 10px;
+
+		label.el-checkbox {
+			display: block;
+			margin-right: 5px;
+			margin-bottom: 8px;
+			margin-left: 5px;
+		}
+
+		.el-checkbox:last-child {
+			margin-bottom: 0;
+		}
+	}
+}

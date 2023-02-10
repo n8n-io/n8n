@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const coorganizerOperations: INodeProperties[] = [
 	{
@@ -19,9 +19,9 @@ export const coorganizerOperations: INodeProperties[] = [
 				action: 'Delete a coorganizer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all coorganizers',
+				action: 'Get many coorganizers',
 			},
 			{
 				name: 'Reinvite',

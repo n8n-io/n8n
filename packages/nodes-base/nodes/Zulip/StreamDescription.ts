@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const streamOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const streamOperations: INodeProperties[] = [
 				action: 'Delete a stream',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all streams',
-				action: 'Get all streams',
+				description: 'Get many streams',
+				action: 'Get many streams',
 			},
 			{
 				name: 'Get Subscribed',

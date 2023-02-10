@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageAttachmentOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const messageAttachmentOperations: INodeProperties[] = [
 				action: 'Get a message attachment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: "Get all the message's attachments",
-				action: 'Get all message attachments',
+				description: "Get many message's attachments",
+				action: 'Get many message attachments',
 			},
 		],
 		default: 'add',

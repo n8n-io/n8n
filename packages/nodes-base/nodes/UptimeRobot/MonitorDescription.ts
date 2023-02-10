@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const monitorOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const monitorOperations: INodeProperties[] = [
 				action: 'Get a monitor',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all monitors',
-				action: 'Get all monitors',
+				description: 'Get many monitors',
+				action: 'Get many monitors',
 			},
 			{
 				name: 'Reset',

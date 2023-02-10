@@ -4,9 +4,9 @@ import {
 	runInBatches,
 	getTablePrefix,
 	escapeQuery,
-} from '../../utils/migrationHelpers';
+} from '@db/utils/migrationHelpers';
 import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { isJsonKeyObject, PinData } from '../../utils/migrations.types';
+import { isJsonKeyObject, PinData } from '@db/utils/migrations.types';
 
 /**
  * Convert TEXT-type `pinData` column in `workflow_entity` table from
@@ -64,12 +64,25 @@ export const addJsonKeyToPinDataColumn =
 function makeUpdateParams(fetchedWorkflows: PinData.FetchedWorkflow[]) {
 	return fetchedWorkflows.reduce<PinData.FetchedWorkflow[]>(
 		(updateParams, { id, pinData: rawPinData }) => {
-			const pinDataPerWorkflow: PinData.Old | PinData.New =
-				typeof rawPinData === 'string' ? JSON.parse(rawPinData) : rawPinData;
+			let pinDataPerWorkflow: PinData.Old | PinData.New;
+
+			if (typeof rawPinData === 'string') {
+				try {
+					pinDataPerWorkflow = JSON.parse(rawPinData);
+				} catch (_) {
+					pinDataPerWorkflow = {};
+				}
+			} else {
+				pinDataPerWorkflow = rawPinData;
+			}
 
 			const newPinDataPerWorkflow = Object.keys(pinDataPerWorkflow).reduce<PinData.New>(
 				(newPinDataPerWorkflow, nodeName) => {
-					const pinDataPerNode = pinDataPerWorkflow[nodeName];
+					let pinDataPerNode = pinDataPerWorkflow[nodeName];
+
+					if (!Array.isArray(pinDataPerNode)) {
+						pinDataPerNode = [pinDataPerNode];
+					}
 
 					if (pinDataPerNode.every((item) => item.json)) return newPinDataPerWorkflow;
 

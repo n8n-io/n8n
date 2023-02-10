@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const videoCategoryOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const videoCategoryOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all video categories',
-				action: 'Get all video categories',
+				description: 'Retrieve many video categories',
+				action: 'Get many video categories',
 			},
 		],
 		default: 'getAll',

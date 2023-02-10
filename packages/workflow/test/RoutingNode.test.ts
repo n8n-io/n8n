@@ -1,11 +1,9 @@
-import {
+import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	DeclarativeRestApiSettings,
 	IRunExecutionData,
-	RoutingNode,
-	Workflow,
 	INodeProperties,
 	IDataObject,
 	IExecuteSingleFunctions,
@@ -16,7 +14,10 @@ import {
 	IN8nRequestOperations,
 	INodeCredentialDescription,
 	IExecuteData,
-} from '../src';
+	INodeTypeDescription,
+} from '@/Interfaces';
+import { RoutingNode } from '@/RoutingNode';
+import { Workflow } from '@/Workflow';
 
 import * as Helpers from './Helpers';
 
@@ -167,7 +168,7 @@ describe('RoutingNode', () => {
 				},
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					nodeParameters: {
 						multipleFields: {
@@ -175,6 +176,8 @@ describe('RoutingNode', () => {
 							value2: 'v2',
 							value3: 'v3',
 							value4: 4,
+							value6: 'value1,value2',
+							value7: 'value3,value4',
 							lowerLevel: {
 								lowLevelValue1: 1,
 								lowLevelValue2: 'llv2',
@@ -333,6 +336,35 @@ describe('RoutingNode', () => {
 									},
 								},
 							},
+
+							// Test resolve of value and properties including as objects
+							{
+								displayName: 'Value 6',
+								name: 'value6',
+								type: 'string',
+								routing: {
+									send: {
+										property: '={{ `value${5+1}A` }}',
+										type: 'query',
+										value: '={{$value.toUpperCase()}}',
+									},
+								},
+								default: '',
+							},
+							{
+								displayName: 'Value 7',
+								name: 'value7',
+								type: 'string',
+								routing: {
+									send: {
+										property: '={{ `value${6+1}B` }}',
+										type: 'body',
+										value: "={{$value.split(',')}}",
+									},
+								},
+								default: '',
+							},
+
 							{
 								displayName: 'Lower Level',
 								name: 'lowerLevel',
@@ -508,10 +540,12 @@ describe('RoutingNode', () => {
 								name: 'cSName1',
 								value: 'cSValue1',
 							},
+							value6A: 'VALUE1,VALUE2',
 						},
 						body: {
 							value1: 'v1',
 							'topLevel.value2': 'v2',
+							value7B: ['value3', 'value4'],
 							lowerLevel: {
 								value3: 'v3',
 							},
@@ -542,6 +576,8 @@ describe('RoutingNode', () => {
 									value2: 'v2',
 									value3: 'v3',
 									value4: 4,
+									value6: 'value1,value2',
+									value7: 'value3,value4',
 									lowerLevel: {
 										lowLevelValue1: 1,
 										lowLevelValue2: 'llv2',
@@ -632,10 +668,8 @@ describe('RoutingNode', () => {
 		};
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
@@ -671,7 +705,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const result = routingNode.getRequestOptionsFromParameters(
+				const result = await routingNode.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					testData.input.nodeTypeProperties,
 					itemIndex,
@@ -967,7 +1001,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					node: {
 						parameters: {
@@ -1573,7 +1607,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
 						requestDefaults: {
@@ -1691,8 +1725,7 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1716,8 +1749,7 @@ describe('RoutingNode', () => {
 					source: null,
 				} as IExecuteData;
 
-				// @ts-ignore
-				const nodeExecuteFunctions: INodeExecuteFunctions = {
+				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 					getExecuteFunctions: () => {
 						return Helpers.getExecuteFunctions(
 							workflow,
@@ -1753,7 +1785,7 @@ describe('RoutingNode', () => {
 					runIndex,
 					nodeType,
 					executeData,
-					nodeExecuteFunctions,
+					nodeExecuteFunctions as INodeExecuteFunctions,
 				);
 
 				expect(result).toEqual(testData.output);
@@ -1765,12 +1797,7 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
-				nodeType: {
-					properties?: INodeProperties[];
-					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
-					requestOperations?: IN8nRequestOperations;
-				};
+				nodeType: Partial<INodeTypeDescription>;
 				node: {
 					parameters: INodeParameters;
 				};
@@ -1870,8 +1897,7 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1897,8 +1923,7 @@ describe('RoutingNode', () => {
 
 				let currentItemIndex = 0;
 				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
-					// @ts-ignore
-					const nodeExecuteFunctions: INodeExecuteFunctions = {
+					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 						getExecuteFunctions: () => {
 							return Helpers.getExecuteFunctions(
 								workflow,
@@ -1928,6 +1953,10 @@ describe('RoutingNode', () => {
 							);
 						},
 					};
+
+					if (!nodeExecuteFunctions.getExecuteSingleFunctions) {
+						fail('Expected nodeExecuteFunctions to contain getExecuteSingleFunctions');
+					}
 
 					const routingNodeExecutionContext = nodeExecuteFunctions.getExecuteSingleFunctions(
 						routingNode.workflow,

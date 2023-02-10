@@ -1,27 +1,18 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	companyFields,
-	contactFields,
-	dealFields,
-	hubspotApiRequest,
-	propertyEvents,
-} from './GenericFunctions';
+import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
 
 import { createHash } from 'crypto';
-
-import { capitalCase } from 'change-case';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,7 +23,7 @@ export class HubspotTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
-			name: 'Hubspot Trigger',
+			name: 'HubSpot Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -117,6 +108,32 @@ export class HubspotTrigger implements INodeType {
 										value: 'contact.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any contact in a customer's account",
+									},
+									{
+										name: 'Conversation Creation',
+										value: 'conversation.creation',
+										description: 'To get notified if a new thread is created in an account',
+									},
+									{
+										name: 'Conversation Deletion',
+										value: 'conversation.deletion',
+										description:
+											'To get notified if a thread is archived or soft-deleted in an account',
+									},
+									{
+										name: 'Conversation New Message',
+										value: 'conversation.newMessage',
+										description: 'To get notified if a new message on a thread has been received',
+									},
+									{
+										name: 'Conversation Privacy Deletion',
+										value: 'conversation.privacyDeletion',
+										description: 'To get notified if a thread is permanently deleted in an account',
+									},
+									{
+										name: 'Conversation Property Change',
+										value: 'conversation.propertyChange',
+										description: 'To get notified if a property on a thread has been changed',
 									},
 									{
 										name: 'Deal Created',
@@ -324,8 +341,7 @@ export class HubspotTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 				const events =
-					(((this.getNodeParameter('eventsUi') as IDataObject) || {})
-						.eventValues as IDataObject[]) || [];
+					((this.getNodeParameter('eventsUi') as IDataObject)?.eventValues as IDataObject[]) || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
@@ -338,7 +354,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), 'You must define at least one event');
 				}
 
 				for (const event of events) {
@@ -399,7 +415,7 @@ export class HubspotTrigger implements INodeType {
 			return {};
 		}
 
-		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
+		const hash = `${credentials.clientSecret}${JSON.stringify(bodyData)}`;
 		const signature = createHash('sha256').update(hash).digest('hex');
 		//@ts-ignore
 		if (signature !== headerData['x-hubspot-signature']) {

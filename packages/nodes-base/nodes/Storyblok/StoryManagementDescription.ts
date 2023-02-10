@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const storyManagementOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const storyManagementOperations: INodeProperties[] = [
 				action: 'Get a story',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all stories',
-				action: 'Get all stories',
+				description: 'Get many stories',
+				action: 'Get many stories',
 			},
 			{
 				name: 'Publish',

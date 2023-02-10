@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
@@ -49,12 +54,12 @@ export class Strava implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'activity') {
@@ -68,7 +73,7 @@ export class Strava implements INodeType {
 
 						const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.trainer === true) {
 							additionalFields.trainer = 1;
@@ -105,7 +110,7 @@ export class Strava implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await stravaApiRequest.call(
 							this,
@@ -113,8 +118,8 @@ export class Strava implements INodeType {
 							`/activities/${activityId}/${path[operation]}`,
 						);
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -135,27 +140,27 @@ export class Strava implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await stravaApiRequestAllItems.call(
 								this,
 								'GET',
-								`/activities`,
+								'/activities',
 								{},
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 
-							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
+							responseData = await stravaApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
 					if (operation === 'update') {
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.trainer === true) {
 							updateFields.trainer = 1;
@@ -177,20 +182,26 @@ export class Strava implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

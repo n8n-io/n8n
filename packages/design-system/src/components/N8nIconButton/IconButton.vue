@@ -1,9 +1,5 @@
 <template>
-	<n8n-button
-		:class="`icon-button ${$style['icon-button']} ${$style[size]}`"
-		v-bind="$props"
-		v-on="$listeners"
-	/>
+	<n8n-button square v-bind="$props" v-on="$listeners" />
 </template>
 
 <script lang="ts">
@@ -51,51 +47,8 @@ export default Vue.extend({
 		},
 		float: {
 			type: String,
-			validator: (value: string): boolean =>
-				['left', 'right'].includes(value),
-		},
-		circle: {
-			type: Boolean,
-			default: true,
-		},
-		circle: {
-			type: Boolean,
-			default: true,
+			validator: (value: string): boolean => ['left', 'right'].includes(value),
 		},
 	},
 });
 </script>
-
-<style lang="scss" module>
-.icon-button {
-	padding: 0;
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.mini {
-	height: 22px;
-	width: 22px;
-}
-
-.small {
-	height: 26px;
-	width: 26px;
-}
-
-.medium {
-	height: 30px;
-	width: 30px;
-}
-
-.large {
-	height: 42px;
-	width: 42px;
-}
-
-.xlarge {
-	height: 46px;
-	width: 46px;
-}
-</style>

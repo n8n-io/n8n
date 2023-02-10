@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const historyOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const historyOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all state changes',
-				action: 'Get all state changes',
+				description: 'Get many state changes',
+				action: 'Get many state changes',
 			},
 		],
 		default: 'getAll',

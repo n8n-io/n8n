@@ -4,24 +4,21 @@
 /* eslint-disable no-restricted-syntax */
 import { CronJob } from 'cron';
 
-import {
+import type {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
-	LoggerProxy as Logger,
 	TriggerTime,
-	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, toCronExpression, WorkflowActivationError } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import type { IWorkflowData } from '.';
+import type { IWorkflowData } from './Interfaces';
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -32,8 +29,6 @@ export class ActiveWorkflows {
 	 * Returns if the workflow is active
 	 *
 	 * @param {string} id The id of the workflow to check
-	 * @returns {boolean}
-	 * @memberof ActiveWorkflows
 	 */
 	isActive(id: string): boolean {
 		// eslint-disable-next-line no-prototype-builtins
@@ -43,8 +38,6 @@ export class ActiveWorkflows {
 	/**
 	 * Returns the ids of the currently active workflows
 	 *
-	 * @returns {string[]}
-	 * @memberof ActiveWorkflows
 	 */
 	allActiveWorkflows(): string[] {
 		return Object.keys(this.workflowData);
@@ -54,9 +47,6 @@ export class ActiveWorkflows {
 	 * Returns the Workflow data for the workflow with
 	 * the given id if it is currently active
 	 *
-	 * @param {string} id
-	 * @returns {(WorkflowData | undefined)}
-	 * @memberof ActiveWorkflows
 	 */
 	get(id: string): IWorkflowData | undefined {
 		return this.workflowData[id];
@@ -68,8 +58,6 @@ export class ActiveWorkflows {
 	 * @param {string} id The id of the workflow to activate
 	 * @param {Workflow} workflow The workflow to activate
 	 * @param {IWorkflowExecuteAdditionalData} additionalData The additional data which is needed to run workflows
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflows
 	 */
 	async add(
 		id: string,
@@ -102,9 +90,9 @@ export class ActiveWorkflows {
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				throw new WorkflowActivationError(
-					'There was a problem activating the workflow',
-					error,
-					triggerNode,
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+					`There was a problem activating the workflow: "${error.message}"`,
+					{ cause: error as Error, node: triggerNode },
 				);
 			}
 		}
@@ -128,9 +116,9 @@ export class ActiveWorkflows {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					throw new WorkflowActivationError(
-						'There was a problem activating the workflow',
-						error,
-						pollNode,
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+						`There was a problem activating the workflow: "${error.message}"`,
+						{ cause: error as Error, node: pollNode },
 					);
 				}
 			}
@@ -140,12 +128,6 @@ export class ActiveWorkflows {
 	/**
 	 * Activates polling for the given node
 	 *
-	 * @param {INode} node
-	 * @param {Workflow} workflow
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @param {IGetExecutePollFunctions} getPollFunctions
-	 * @returns {Promise<IPollResponse>}
-	 * @memberof ActiveWorkflows
 	 */
 	async activatePolling(
 		node: INode,
@@ -163,24 +145,33 @@ export class ActiveWorkflows {
 
 		// Get all the trigger times
 		const cronTimes = (pollTimes.item || []).map(toCronExpression);
-
 		// The trigger function to execute when the cron-time got reached
-		const executeTrigger = async () => {
+		const executeTrigger = async (testingTrigger = false) => {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
 			});
-			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
-			if (pollResponse !== null) {
-				// eslint-disable-next-line no-underscore-dangle
-				pollFunctions.__emit(pollResponse);
+			try {
+				const pollResponse = await workflow.runPoll(node, pollFunctions);
+
+				if (pollResponse !== null) {
+					pollFunctions.__emit(pollResponse);
+				}
+			} catch (error) {
+				// If the poll function failes in the first activation
+				// throw the error back so we let the user know there is
+				// an issue with the trigger.
+				if (testingTrigger) {
+					throw error;
+				}
+				pollFunctions.__emitError(error);
 			}
 		};
 
 		// Execute the trigger directly to be able to know if it works
-		await executeTrigger();
+		await executeTrigger(true);
 
 		const timezone = pollFunctions.getTimezone();
 
@@ -212,8 +203,6 @@ export class ActiveWorkflows {
 	 * Makes a workflow inactive
 	 *
 	 * @param {string} id The id of the workflow to deactivate
-	 * @returns {Promise<void>}
-	 * @memberof ActiveWorkflows
 	 */
 	async remove(id: string): Promise<void> {
 		if (!this.isActive(id)) {

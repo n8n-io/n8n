@@ -1,36 +1,34 @@
 <template>
-	<div
-			v-if="isOpen(name) || keepAlive"
-	>
+	<div v-if="uiStore.isModalOpen(name) || keepAlive">
 		<slot
 			:modalName="name"
-			:active="isActive(name)"
-			:open="isOpen(name)"
-			:activeId="getActiveId(name)"
-			:mode="getMode(name)"
+			:active="uiStore.isModalActive(name)"
+			:open="uiStore.isModalOpen(name)"
+			:activeId="uiStore.getModalActiveId(name)"
+			:mode="uiStore.getModalMode(name)"
+			:data="uiStore.getModalData(name)"
 		></slot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
 
 export default Vue.extend({
-	name: "ModalRoot",
-	props: ["name", "keepAlive"],
-	methods: {
-		isActive(name: string) {
-			return this.$store.getters['ui/isModalActive'](name);
+	name: 'ModalRoot',
+	props: {
+		name: {
+			type: String,
+			required: true,
 		},
-		isOpen(name: string) {
-			return this.$store.getters['ui/isModalOpen'](name);
+		keepAlive: {
+			type: Boolean,
 		},
-		getMode(name: string) {
-			return this.$store.getters['ui/getModalMode'](name);
-		},
-		getActiveId(name: string) {
-			return this.$store.getters['ui/getModalActiveId'](name);
-		},
+	},
+	computed: {
+		...mapStores(useUIStore),
 	},
 });
 </script>

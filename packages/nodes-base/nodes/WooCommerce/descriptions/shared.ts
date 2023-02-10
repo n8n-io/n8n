@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 const customerAddressOptions: INodeProperties[] = [
 	{
@@ -125,6 +125,7 @@ const customerUpdateOptions: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		displayOptions: {
 			show: {
 				'/resource': ['customer'],

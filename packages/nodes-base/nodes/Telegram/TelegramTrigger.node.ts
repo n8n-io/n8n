@@ -1,10 +1,15 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { apiRequest, getImageBySize } from './GenericFunctions';
 
-import { IEvent } from './IEvent';
+import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +41,7 @@ export class TelegramTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Updates',
+				displayName: 'Trigger On',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
@@ -81,6 +86,7 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Poll',
 						value: 'poll',
+						action: 'On Poll Change',
 						description:
 							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
@@ -99,7 +105,13 @@ export class TelegramTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The update types to listen to',
+			},
+			{
+				displayName:
+					'Every uploaded attachment, even if sent in a group, will trigger a separate event. You can identify that an attachment belongs to a certain group by <code>media_group_id</code> .',
+				name: 'attachmentNotice',
+				type: 'notice',
+				default: '',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -218,7 +230,7 @@ export class TelegramTrigger implements INodeType {
 			}
 
 			if (
-				(bodyData[key] && bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
+				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
 				bodyData[key]?.document
 			) {
 				if (additionalFields.imageSize) {

@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
@@ -189,7 +194,6 @@ export class HelpScoutTrigger implements INodeType {
 		}
 
 		const computedSignature = createHmac('sha1', webhookData.secret as string)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('base64');
 		if (headerData['x-helpscout-signature'] !== computedSignature) {

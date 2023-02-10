@@ -1,5 +1,5 @@
 import { IRestApiContext, ITag } from '@/Interface';
-import { makeRestApiRequest } from './helpers';
+import { makeRestApiRequest } from '@/utils';
 
 export async function getTags(context: IRestApiContext, withUsageCount = false): Promise<ITag[]> {
 	return await makeRestApiRequest(context, 'GET', '/tags', { withUsageCount });
@@ -9,7 +9,11 @@ export async function createTag(context: IRestApiContext, params: { name: string
 	return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 
-export async function updateTag(context: IRestApiContext, id: string, params: { name: string }): Promise<ITag> {
+export async function updateTag(
+	context: IRestApiContext,
+	id: string,
+	params: { name: string },
+): Promise<ITag> {
 	return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
 }
 

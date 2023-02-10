@@ -1,30 +1,24 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IBinaryKeyData, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUrl = {
 		method,
@@ -55,10 +49,9 @@ export async function twitterApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -70,7 +63,7 @@ export async function twitterApiRequestAllItems(
 		responseData = await twitterApiRequest.call(this, method, endpoint, body, query);
 		query.since_id = responseData.search_metadata.max_id;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData.search_metadata && responseData.search_metadata.next_results);
+	} while (responseData.search_metadata?.next_results);
 
 	return returnData;
 }
@@ -129,23 +122,23 @@ export async function uploadAttachments(
 		}
 
 		if (isImage) {
-			const attachmentBody = {
+			const form = {
 				media_data: binaryData[binaryPropertyName].data,
 			};
 
 			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
-				form: attachmentBody,
+				form,
 			});
 
 			media.push(response);
 		} else {
 			// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
 
-			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 			attachmentBody = {
 				command: 'INIT',
-				total_bytes: dataBuffer.byteLength,
+				total_bytes: binaryDataBuffer.byteLength,
 				media_type: binaryData[binaryPropertyName].mimeType,
 			};
 
@@ -157,7 +150,7 @@ export async function uploadAttachments(
 
 			// break the data on 5mb chunks (max size that can be uploaded at once)
 
-			const binaryParts = chunks(dataBuffer, 5242880);
+			const binaryParts = chunks(binaryDataBuffer, 5242880);
 
 			let index = 0;
 
@@ -193,12 +186,7 @@ export async function uploadAttachments(
 			// data has not been uploaded yet, so wait for it to be ready
 			if (response.processing_info) {
 				const { check_after_secs } = response.processing_info as IDataObject;
-				await new Promise((resolve, reject) => {
-					setTimeout(() => {
-						// @ts-ignore
-						resolve();
-					}, (check_after_secs as number) * 1000);
-				});
+				await sleep((check_after_secs as number) * 1000);
 			}
 
 			media.push(response);

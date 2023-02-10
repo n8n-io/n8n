@@ -1,13 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -60,17 +61,15 @@ export interface IMarkupReplyKeyboardRemove {
 /**
  * Add the additional fields to the body
  *
- * @param {IExecuteFunctions} this
  * @param {IDataObject} body The body object to add fields to
  * @param {number} index The index of the item
- * @returns
  */
 export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
 	// Add the additional fields
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	Object.assign(body, additionalFields);
 
-	const operation = this.getNodeParameter('operation', index) as string;
+	const operation = this.getNodeParameter('operation', index);
 
 	// Add the reply markup
 	let replyMarkupOption = '';
@@ -140,11 +139,6 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 /**
  * Make an API request to Telegram
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -153,7 +147,6 @@ export async function apiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 
@@ -181,7 +174,7 @@ export async function apiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

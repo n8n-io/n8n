@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function philipsHueApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -48,9 +48,7 @@ export async function philipsHueApiRequest(
 	}
 }
 
-export async function getUser(
-	this: IExecuteFunctions | ILoadOptionsFunctions, // tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getUser(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<any> {
 	const { whitelist } = await philipsHueApiRequest.call(this, 'GET', '/api/0/config', {}, {});
 	//check if there is a n8n user
 	for (const user of Object.keys(whitelist)) {

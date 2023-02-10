@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all channels',
-				action: 'Get all channels',
+				description: 'Retrieve many channels',
+				action: 'Get many channels',
 			},
 			{
 				name: 'Update',
@@ -229,7 +229,7 @@ export const channelFields: INodeProperties[] = [
 				resource: ['channel'],
 			},
 		},
-		description: 'ID of the video',
+		description: 'ID of the channel',
 		default: '',
 	},
 	{
@@ -397,9 +397,6 @@ export const channelFields: INodeProperties[] = [
 										displayName: 'Keywords',
 										name: 'keywords',
 										type: 'string',
-										typeOptions: {
-											alwaysOpenEditWindow: true,
-										},
 										placeholder: 'tech,news',
 										description:
 											'Keywords associated with your channel. The value is a space-separated list of strings.',

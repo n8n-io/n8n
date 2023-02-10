@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const deployOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const deployOperations: INodeProperties[] = [
 				action: 'Get a deployment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all deployments',
-				action: 'Get all deployments',
+				description: 'Get many deployments',
+				action: 'Get many deployments',
 			},
 		],
 		default: 'getAll',

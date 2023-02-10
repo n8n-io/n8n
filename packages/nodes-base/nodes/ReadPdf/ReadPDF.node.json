@@ -2,19 +2,15 @@
 	"node": "n8n-nodes-base.readPDF",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.readPDF/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readpdf/"
 			}
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Files"
-		]
+		"Core Nodes": ["Files"]
 	}
 }

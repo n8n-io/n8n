@@ -1,0 +1,333 @@
+@use 'sass:math';
+
+@mixin theme {
+	--color-primary-h: 7;
+	--color-primary-s: 90%;
+	--color-primary-l: 68%;
+	--color-primary: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
+
+	--color-primary-tint-1-l: 18%;
+	--color-primary-tint-1: hsl(
+		var(--color-primary-h),
+		var(--color-primary-s),
+		var(--color-primary-tint-1-l)
+	);
+
+	--color-primary-tint-2-l: 9%;
+	--color-primary-tint-2: hsl(
+		var(--color-primary-h),
+		var(--color-primary-s),
+		var(--color-primary-tint-2-l)
+	);
+
+	--color-primary-tint-3-l: 3%;
+	--color-primary-tint-3: hsl(
+		var(--color-primary-h),
+		var(--color-primary-s),
+		var(--color-primary-tint-3-l)
+	);
+
+	--color-primary-shade-1-l: 89%;
+	--color-primary-shade-1: hsl(
+		var(--color-primary-h),
+		var(--color-primary-s),
+		var(--color-primary-shade-1-l)
+	);
+
+	--color-secondary-h: 247;
+	--color-secondary-s: 100%;
+	--color-secondary-l: 55%;
+	--color-secondary: hsl(
+		var(--color-secondary-h),
+		var(--color-secondary-s),
+		var(--color-secondary-l)
+	);
+
+	--color-success-h: 150;
+	--color-success-s: 74%;
+	--color-success-l: 60%;
+	--color-success: hsl(var(--color-success-h), var(--color-success-s), var(--color-success-l));
+
+	--color-success-tint-1-l: 12%;
+	--color-success-tint-1: hsl(
+		var(--color-success-h),
+		var(--color-success-s),
+		var(--color-success-tint-1-l)
+	);
+
+	--color-success-tint-2-l: 3%;
+	--color-success-tint-2: hsl(
+		var(--color-success-h),
+		var(--color-success-s),
+		var(--color-success-tint-2-l)
+	);
+
+	--color-warning-h: 36;
+	--color-warning-s: 77%;
+	--color-warning-l: 43%;
+	--color-warning: hsl(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l));
+
+	--color-warning-tint-1-l: 12%;
+	--color-warning-tint-1: hsl(
+		var(--color-warning-h),
+		var(--color-warning-s),
+		var(--color-warning-tint-1-l)
+	);
+
+	--color-warning-tint-2-l: 4%;
+	--color-warning-tint-2: hsl(
+		var(--color-warning-h),
+		var(--color-warning-s),
+		var(--color-warning-tint-2-l)
+	);
+
+	--color-danger-h: 0;
+	--color-danger-s: 88%;
+	--color-danger-l: 35%;
+	--color-danger: hsl(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l));
+
+	--color-danger-tint-1-l: 8%;
+	--color-danger-tint-1: hsl(
+		var(--color-danger-h),
+		var(--color-danger-s),
+		var(--color-danger-tint-1-l)
+	);
+
+	--color-danger-tint-2-l: 3%;
+	--color-danger-tint-2: hsl(
+		var(--color-danger-h),
+		var(--color-danger-s),
+		var(--color-danger-tint-2-l)
+	);
+
+	--color-info-h: 220;
+	--color-info-s: 4%;
+	--color-info-l: 82%;
+	--color-info: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-l));
+
+	--color-info-tint-1-l: 12%;
+	--color-info-tint-1: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-tint-1-l));
+
+	--color-info-tint-2-l: 4%;
+	--color-info-tint-2: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-tint-2-l));
+
+	--color-text-dark-h: 0;
+	--color-text-dark-s: 0%;
+	--color-text-dark-l: 100%;
+	--color-text-dark: hsl(
+		var(--color-text-dark-h),
+		var(--color-text-dark-s),
+		var(--color-text-dark-l)
+	);
+
+	--color-text-base-h: 240;
+	--color-text-base-s: 4%;
+	--color-text-base-l: 70%;
+	--color-text-base: hsl(
+		var(--color-text-base-h),
+		var(--color-text-base-s),
+		var(--color-text-base-l)
+	);
+
+	--color-text-light-h: 220;
+	--color-text-light-s: 4%;
+	--color-text-light-l: 82%;
+	--color-text-light: hsl(
+		var(--color-text-light-h),
+		var(--color-text-light-s),
+		var(--color-text-light-l)
+	);
+
+	--color-text-lighter-h: 222;
+	--color-text-lighter-s: 17%;
+	--color-text-lighter-l: 92%;
+	--color-text-lighter: hsl(
+		var(--color-text-lighter-h),
+		var(--color-text-lighter-s),
+		var(--color-text-lighter-l)
+	);
+
+	--color-text-xlight-h: 0;
+	--color-text-xlight-s: 0%;
+	--color-text-xlight-l: 10%;
+	--color-text-xlight: hsl(
+		var(--color-text-xlight-h),
+		var(--color-text-xlight-s),
+		var(--color-text-xlight-l)
+	);
+
+	--color-foreground-base-h: 220;
+	--color-foreground-base-s: 20%;
+	--color-foreground-base-l: 30%;
+	--color-foreground-base: hsl(
+		var(--color-foreground-base-h),
+		var(--color-foreground-base-s),
+		var(--color-foreground-base-l)
+	);
+
+	--color-foreground-light-h: 0;
+	--color-foreground-light-s: 0%;
+	--color-foreground-light-l: 7%;
+	--color-foreground-light: hsl(
+		var(--color-foreground-light-h),
+		var(--color-foreground-light-s),
+		var(--color-foreground-light-l)
+	);
+
+	--color-foreground-xlight-h: 0;
+	--color-foreground-xlight-s: 0%;
+	--color-foreground-xlight-l: 10%;
+	--color-foreground-xlight: hsl(
+		var(--color-foreground-xlight-h),
+		var(--color-foreground-xlight-s),
+		var(--color-foreground-xlight-l)
+	);
+
+	--color-background-dark-h: 0;
+	--color-background-dark-s: 0%;
+	--color-background-dark-l: 100%;
+	--color-background-dark: hsl(
+		var(--color-background-dark-h),
+		var(--color-background-dark-s),
+		var(--color-background-dark-l)
+	);
+
+	--color-background-base-h: 0;
+	--color-background-base-s: 0%;
+	--color-background-base-l: 10%;
+	--color-background-base: hsl(
+		var(--color-background-base-h),
+		var(--color-background-base-s),
+		var(--color-background-base-l)
+	);
+
+	--color-background-light-h: 220;
+	--color-background-light-s: 10%;
+	--color-background-light-l: 15%;
+	--color-background-light: hsl(
+		var(--color-background-light-h),
+		var(--color-background-light-s),
+		var(--color-background-light-l)
+	);
+
+	--color-background-lighter-h: 0;
+	--color-background-lighter-s: 0%;
+	--color-background-lighter-l: 36%;
+	--color-background-lighter: hsl(
+		var(--color-background-lighter-h),
+		var(--color-background-lighter-s),
+		var(--color-background-lighter-l)
+	);
+
+	--color-background-xlight-h: 240;
+	--color-background-xlight-s: 4%;
+	--color-background-xlight-l: 19%;
+	--color-background-xlight: hsl(
+		var(--color-background-xlight-h),
+		var(--color-background-xlight-s),
+		var(--color-background-xlight-l)
+	);
+
+	--color-canvas-dot-h: 204;
+	--color-canvas-dot-s: 15.6%;
+	--color-canvas-dot-l: 87.5%;
+	--color-canvas-dot: hsl(
+		var(--color-canvas-dot-h),
+		var(--color-canvas-dot-s),
+		var(--color-canvas-dot-l)
+	);
+
+	--color-canvas-background-h: 200;
+	--color-canvas-background-s: 10%;
+	--color-canvas-background-l: 10%;
+	--color-canvas-background: hsl(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l)
+	);
+
+	--color-sticky-default-background-h: 46;
+	--color-sticky-default-background-s: 100%;
+	--color-sticky-default-background-l: 12%;
+	--color-sticky-default-background: hsl(
+		var(--color-sticky-default-background-h),
+		var(--color-sticky-default-background-s),
+		var(--color-sticky-default-background-l)
+	);
+
+	--color-sticky-default-border-h: 43;
+	--color-sticky-default-border-s: 75%;
+	--color-sticky-default-border-l: 80%;
+	--color-sticky-default-border: hsl(
+		var(--color-sticky-default-border-h),
+		var(--color-sticky-default-border-s),
+		var(--color-sticky-default-border-l)
+	);
+
+	--color-json-default: #5045a1;
+	--color-json-null: var(--color-danger);
+	--color-json-boolean: #1d8ce0;
+	--color-json-number: #1d8ce0;
+	--color-json-string: #726b9f;
+	--color-json-key: var(--color-text-dark);
+	--color-json-brackets: var(--color-text-dark);
+	--color-json-brackets-hover: #1890ff;
+	--color-json-line: #bfcbd9;
+	--color-json-highlight: #dcdfea;
+
+	--color-code-background: #222020;
+	--color-code-foreground: #f8f8f2;
+	--color-code-caret: #f8f8f0;
+	--color-code-selection: #312b25;
+	--color-code-gutterBackground: #2d2a26;
+	--color-code-gutterForeground: #818080;
+	--color-code-lineHighlight: #312b25;
+	--color-code-tags-comment: #6272a4;
+	--color-code-tags-string: #f1fa8c;
+	--color-code-tags-primitive: #bd93f9;
+	--color-code-tags-keyword: #ff79c6;
+	--color-code-tags-operator: #ff79c6;
+	--color-code-tags-variable: #ea6465;
+	--color-code-tags-definition: #368da5;
+
+	// Generated Color Shades from 50 to 950
+	// Not yet used in design system
+	@each $color in ('neutral', 'success', 'warning', 'danger') {
+		@each $shade
+			in (
+				50,
+				100,
+				150,
+				200,
+				250,
+				300,
+				350,
+				400,
+				450,
+				500,
+				550,
+				600,
+				650,
+				700,
+				750,
+				800,
+				850,
+				900,
+				950
+			)
+		{
+			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
+			--color-#{$color}-#{$shade}: hsl(
+				var(--color-#{$color}-h),
+				var(--color-#{$color}-s),
+				var(--color-#{$color}-#{$shade}-l)
+			);
+		}
+	}
+}
+
+@media (prefers-color-scheme: dark) {
+	body.theme-dark-beta {
+		@include theme;
+	}
+}

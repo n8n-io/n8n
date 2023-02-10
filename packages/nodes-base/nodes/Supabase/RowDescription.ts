@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { getFilters } from './GenericFunctions';
 
@@ -33,10 +33,10 @@ export const rowOperations: INodeProperties[] = [
 				action: 'Get a row',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all rows',
-				action: 'Get all rows',
+				description: 'Get many rows',
+				action: 'Get many rows',
 			},
 			{
 				name: 'Update',

@@ -1,5 +1,7 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { ITables } from './TableInterface';
+/* eslint-disable @typescript-eslint/ban-types */
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { ITables } from './TableInterface';
 
 /**
  * Returns a copy of the item which only contains the json data and
@@ -7,7 +9,6 @@ import { ITables } from './TableInterface';
  *
  * @param {INodeExecutionData} item The item to copy
  * @param {string[]} properties The properties it should include
- * @returns
  */
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
@@ -16,7 +17,7 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
 		} else {
-			newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+			newItem[property] = deepCopy(item.json[property]);
 		}
 	}
 	return newItem;
@@ -27,7 +28,6 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
  *
  * @param {INodeExecutionData[]} items The items to extract the tables/columns for
  * @param {function} getNodeParam getter for the Node's Parameters
- * @returns {ITables} {tableName: {colNames: [items]}};
  */
 export function createTableStruct(
 	getNodeParam: Function,
@@ -60,13 +60,15 @@ export function createTableStruct(
  *
  * @param {ITables} tables The ITables to be processed.
  * @param {function} buildQueryQueue function that builds the queue of promises
- * @returns {Promise}
  */
-// tslint:disable-next-line: no-any
-export function executeQueryQueue(tables: ITables, buildQueryQueue: Function): Promise<any[]> {
+
+export async function executeQueryQueue(
+	tables: ITables,
+	buildQueryQueue: Function,
+): Promise<any[]> {
 	return Promise.all(
-		Object.keys(tables).map((table) => {
-			const columnsResults = Object.keys(tables[table]).map((columnString) => {
+		Object.keys(tables).map(async (table) => {
+			const columnsResults = Object.keys(tables[table]).map(async (columnString) => {
 				return Promise.all(
 					buildQueryQueue({
 						table,
@@ -84,10 +86,9 @@ export function executeQueryQueue(tables: ITables, buildQueryQueue: Function): P
  * Extracts the values from the item for INSERT
  *
  * @param {IDataObject} item The item to extract
- * @returns {string} (Val1, Val2, ...)
  */
 export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item as any) // tslint:disable-line:no-any
+	return `(${Object.values(item as any)
 		.map((val) => {
 			//the column cannot be found in the input
 			//so, set it to null in the sql query
@@ -108,7 +109,6 @@ export function extractValues(item: IDataObject): string {
  *
  * @param {IDataObject} item The item to extract from
  * @param {string[]} columns The columns to update
- * @returns {string} col1 = val1, col2 = val2
  */
 export function extractUpdateSet(item: IDataObject, columns: string[]): string {
 	return columns
@@ -124,7 +124,6 @@ export function extractUpdateSet(item: IDataObject, columns: string[]): string {
  *
  * @param {IDataObject} item The item to extract from
  * @param {string} key The column name to build the condition with
- * @returns {string} id = '123'
  */
 export function extractUpdateCondition(item: IDataObject, key: string): string {
 	return `${key} = ${typeof item[key] === 'string' ? `'${item[key]}'` : item[key]}`;
@@ -135,7 +134,6 @@ export function extractUpdateCondition(item: IDataObject, key: string): string {
  *
  * @param {IDataObject[]} items The items to extract the values from
  * @param {string} key The column name to extract the value from for the delete condition
- * @returns {string} (Val1, Val2, ...)
  */
 export function extractDeleteValues(items: IDataObject[], key: string): string {
 	return `(${items

@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -71,7 +76,8 @@ export class GoogleBooks implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{
@@ -120,10 +126,10 @@ export class GoogleBooks implements INodeType {
 						action: 'Get a bookshelf',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all public bookshelf resource for the specified user',
-						action: 'Get all bookshelves',
+						description: 'Get many public bookshelf resource for the specified user',
+						action: 'Get many bookshelves',
 					},
 				],
 				displayOptions: {
@@ -152,10 +158,10 @@ export class GoogleBooks implements INodeType {
 						action: 'Clear a bookshelf volume',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all volumes in a specific bookshelf for the specified user',
-						action: 'Get all bookshelf volumes',
+						description: 'Get many volumes in a specific bookshelf for the specified user',
+						action: 'Get many bookshelf volumes',
 					},
 					{
 						name: 'Move',
@@ -190,10 +196,10 @@ export class GoogleBooks implements INodeType {
 						action: 'Get a volume',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all volumes filtered by query',
-						action: 'Get all volumes',
+						description: 'Get many volumes filtered by query',
+						action: 'Get many volumes',
 					},
 				],
 				displayOptions: {
@@ -343,9 +349,9 @@ export class GoogleBooks implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
-		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const returnData: INodeExecutionData[] = [];
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const qs: IDataObject = {};
 		let responseData;
 
@@ -357,7 +363,7 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(this, 'GET', `v1/volumes/${volumeId}`, {});
 					} else if (operation === 'getAll') {
 						const searchQuery = this.getNodeParameter('searchQuery', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
@@ -367,7 +373,7 @@ export class GoogleBooks implements INodeType {
 								{},
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -385,7 +391,7 @@ export class GoogleBooks implements INodeType {
 						const shelfId = this.getNodeParameter('shelfId', i) as string;
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
 						let endpoint;
-						if (myLibrary === false) {
+						if (!myLibrary) {
 							const userId = this.getNodeParameter('userId', i) as string;
 							endpoint = `v1/users/${userId}/bookshelves/${shelfId}`;
 						} else {
@@ -395,13 +401,13 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {});
 					} else if (operation === 'getAll') {
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let endpoint;
-						if (myLibrary === false) {
+						if (!myLibrary) {
 							const userId = this.getNodeParameter('userId', i) as string;
 							endpoint = `v1/users/${userId}/bookshelves`;
 						} else {
-							endpoint = `v1/mylibrary/bookshelves`;
+							endpoint = 'v1/mylibrary/bookshelves';
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -412,7 +418,7 @@ export class GoogleBooks implements INodeType {
 								{},
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items || [];
 						}
@@ -445,10 +451,10 @@ export class GoogleBooks implements INodeType {
 
 					if (operation === 'getAll') {
 						const shelfId = this.getNodeParameter('shelfId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
 						let endpoint;
-						if (myLibrary === false) {
+						if (!myLibrary) {
 							const userId = this.getNodeParameter('userId', i) as string;
 							endpoint = `v1/users/${userId}/bookshelves/${shelfId}/volumes`;
 						} else {
@@ -463,7 +469,7 @@ export class GoogleBooks implements INodeType {
 								{},
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items || [];
 						}
@@ -499,19 +505,24 @@ export class GoogleBooks implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+		return this.prepareOutputData(returnData);
 	}
 }

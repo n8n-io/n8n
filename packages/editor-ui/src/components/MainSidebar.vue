@@ -1,225 +1,121 @@
 <template>
-	<div id="side-menu">
-		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
-
-		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
-			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
-				<font-awesome-icon icon="angle-right" class="icon" />
-			</div>
-			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
-
-				<n8n-menu-item index="logo" class="logo-item">
-					<a href="https://n8n.io" target="_blank">
-						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
-						<span class="logo-text" slot="title">n8n.io</span>
-					</a>
-				</n8n-menu-item>
-
-				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
-
-				<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="network-wired"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
-					</template>
-
-					<n8n-menu-item index="workflow-new">
-						<template slot="title">
-							<font-awesome-icon icon="file"/>&nbsp;
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
-						<template slot="title">
-							<font-awesome-icon icon="box-open"/>&nbsp;
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-open">
-						<template slot="title">
-							<font-awesome-icon icon="folder-open"/>&nbsp;
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="save"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="trash"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="file-download"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="cloud"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
-						<template slot="title">
-							<font-awesome-icon icon="hdd"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="cog"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
-
-				<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
-					<font-awesome-icon icon="box-open"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
-				</n8n-menu-item>
-
-				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
-					</template>
-
-					<n8n-menu-item index="credentials-new">
-						<template slot="title">
-							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
-						</template>
-					</n8n-menu-item>
-					<n8n-menu-item index="credentials-open">
-						<template slot="title">
-							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
-
-				<n8n-menu-item index="executions">
-					<font-awesome-icon icon="tasks"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
-				</n8n-menu-item>
-
-				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
-					<font-awesome-icon icon="cog"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
-				</n8n-menu-item>
-
-				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
-					<template slot="title">
-						<font-awesome-icon icon="question"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.help') }}</span>
-					</template>
-
-					<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
-
-					<n8n-menu-item index="help-about">
-						<template slot="title">
-							<font-awesome-icon class="about-icon" icon="info"/>
-							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.aboutN8n') }}</span>
-						</template>
-					</n8n-menu-item>
-				</el-submenu>
-
-				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
-
-				<div :class="`footer-menu-items ${currentUser ? 'logged-in': ''}`">
-					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
-						<div class="gift-container">
-							<GiftNotificationIcon />
-						</div>
-						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
-					</n8n-menu-item>
-					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<div ref="user">
-							<n8n-menu-item class="user">
-								<div class="avatar">
-									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-								</div>
-								<span slot="title" class="item-title-root" v-if="!isCollapsed">
-									{{currentUser.fullName}}
-								</span>
-							</n8n-menu-item>
-						</div>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item
-								command="settings"
-							>
-								{{ $locale.baseText('settings') }}
-							</el-dropdown-item>
-							<el-dropdown-item
-								command="logout"
-							>
-								{{ $locale.baseText('auth.signout') }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</el-dropdown>
+	<div
+		id="side-menu"
+		:class="{
+			['side-menu']: true,
+			[$style.sideMenu]: true,
+			[$style.sideMenuCollapsed]: isCollapsed,
+		}"
+	>
+		<div
+			id="collapse-change-button"
+			:class="{
+				['clickable']: true,
+				[$style.sideMenuCollapseButton]: true,
+				[$style.expandedButton]: !isCollapsed,
+			}"
+			@click="toggleCollapse"
+		></div>
+		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+			<template #header>
+				<div :class="$style.logo">
+					<img
+						:src="basePath + (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')"
+						:class="$style.icon"
+						alt="n8n"
+					/>
 				</div>
-			</n8n-menu>
-
-		</div>
+			</template>
+			<template #menuSuffix v-if="hasVersionUpdates">
+				<div :class="$style.updates" @click="openUpdatesPanel">
+					<div :class="$style.giftContainer">
+						<GiftNotificationIcon />
+					</div>
+					<n8n-text
+						:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
+						color="text-base"
+					>
+						{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
+							nextVersions.length > 1 ? 's' : ''
+						}}
+					</n8n-text>
+				</div>
+			</template>
+			<template #footer v-if="showUserArea">
+				<div :class="$style.userArea">
+					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
+						<!-- This dropdown is only enabled when sidebar is collapsed -->
+						<el-dropdown
+							:disabled="!isCollapsed"
+							placement="right-end"
+							trigger="click"
+							@command="onUserActionToggle"
+						>
+							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+								<n8n-avatar
+									:firstName="usersStore.currentUser.firstName"
+									:lastName="usersStore.currentUser.lastName"
+									size="small"
+								/>
+							</div>
+							<template #dropdown>
+								<el-dropdown-menu>
+									<el-dropdown-item command="settings">
+										{{ $locale.baseText('settings') }}
+									</el-dropdown-item>
+									<el-dropdown-item command="logout">
+										{{ $locale.baseText('auth.signout') }}
+									</el-dropdown-item>
+								</el-dropdown-menu>
+							</template>
+						</el-dropdown>
+					</div>
+					<div
+						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
+					>
+						<n8n-text size="small" :bold="true" color="text-dark">{{
+							usersStore.currentUser.fullName
+						}}</n8n-text>
+					</div>
+					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
+						<n8n-action-dropdown
+							:items="userMenuItems"
+							placement="top-start"
+							@select="onUserActionToggle"
+						/>
+					</div>
+				</div>
+			</template>
+		</n8n-menu>
 	</div>
-
 </template>
 
 <script lang="ts">
+import { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
-import { MessageBoxInputData } from 'element-ui/types/message-box';
-
-import {
-	IExecutionResponse,
-	IWorkflowDataUpdate,
-	IMenuItem,
-	IWorkflowToShare,
-} from '../Interface';
-
-import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { workflowRun } from '@/components/mixins/workflowRun';
-
-import { saveAs } from 'file-saver';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { restApi } from '@/mixins/restApi';
+import { showMessage } from '@/mixins/showMessage';
+import { titleChange } from '@/mixins/titleChange';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { workflowRun } from '@/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
-import MenuItemsIterator from './MenuItemsIterator.vue';
-import {
-	ABOUT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
-	CREDENTIAL_SELECT_MODAL_KEY,
-	DUPLICATE_MODAL_KEY,
-	MODAL_CANCEL,
-	MODAL_CLOSE,
-	MODAL_CONFIRMED,
-	TAGS_MANAGER_MODAL_KEY,
-	VERSIONS_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
-	VIEWS,
-} from '@/constants';
-import { userHelpers } from './mixins/userHelpers';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { userHelpers } from '@/mixins/userHelpers';
+import { debounceHelper } from '@/mixins/debounce';
+import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useVersionsStore } from '@/stores/versions';
+import { isNavigationFailure, NavigationFailureType, Route } from 'vue-router';
 
 export default mixins(
 	genericHelpers,
@@ -229,665 +125,465 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
-)
-	.extend({
-		name: 'MainSidebar',
-		components: {
-			ExecutionsList,
-			GiftNotificationIcon,
-			WorkflowSettings,
-			MenuItemsIterator,
+	debounceHelper,
+).extend({
+	name: 'MainSidebar',
+	components: {
+		GiftNotificationIcon,
+		WorkflowSettings,
+	},
+	data() {
+		return {
+			// @ts-ignore
+			basePath: '',
+			fullyExpanded: false,
+		};
+	},
+	computed: {
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useVersionsStore,
+			useWorkflowsStore,
+		),
+		hasVersionUpdates(): boolean {
+			return this.versionsStore.hasVersionUpdates;
 		},
-		data () {
-			return {
-				// @ts-ignore
-				basePath: this.$store.getters.getBaseUrl,
-				stopExecutionInProgress: false,
-			};
+		nextVersions(): IVersion[] {
+			return this.versionsStore.nextVersions;
 		},
-		computed: {
-			...mapGetters('ui', {
-				isCollapsed: 'sidebarMenuCollapsed',
-			}),
-			...mapGetters('versions', [
-				'hasVersionUpdates',
-				'nextVersions',
-			]),
-			...mapGetters('users', [
-				'canUserAccessSidebarUserInfo',
-				'currentUser',
-			]),
-			...mapGetters('settings', [
-				'isTemplatesEnabled',
-			]),
-			canUserAccessSettings(): boolean {
-				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
-				return accessibleRoute !== null;
-			},
-			helpMenuItems (): object[] {
-				return [
-					{
-						id: 'quickstart',
-						type: 'link',
-						properties: {
-							href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+		isCollapsed(): boolean {
+			return this.uiStore.sidebarMenuCollapsed;
+		},
+		canUserAccessSettings(): boolean {
+			const accessibleRoute = this.findFirstAccessibleSettingsRoute();
+			return accessibleRoute !== null;
+		},
+		showUserArea(): boolean {
+			return (
+				this.settingsStore.isUserManagementEnabled &&
+				this.usersStore.canUserAccessSidebarUserInfo &&
+				this.usersStore.currentUser !== null
+			);
+		},
+		workflowExecution(): IExecutionResponse | null {
+			return this.workflowsStore.getWorkflowExecution;
+		},
+		userMenuItems(): object[] {
+			return [
+				{
+					id: 'settings',
+					label: this.$locale.baseText('settings'),
+				},
+				{
+					id: 'logout',
+					label: this.$locale.baseText('auth.signout'),
+				},
+			];
+		},
+		mainMenuItems(): IMenuItem[] {
+			const items: IMenuItem[] = [];
+			const injectedItems = this.uiStore.sidebarMenuItems;
+
+			if (injectedItems && injectedItems.length > 0) {
+				for (const item of injectedItems) {
+					items.push({
+						id: item.id,
+						// @ts-ignore
+						icon: item.properties ? item.properties.icon : '',
+						// @ts-ignore
+						label: item.properties ? item.properties.title : '',
+						position: item.position,
+						type: item.properties?.href ? 'link' : 'regular',
+						properties: item.properties,
+					} as IMenuItem);
+				}
+			}
+
+			const regularItems: IMenuItem[] = [
+				{
+					id: 'workflows',
+					icon: 'network-wired',
+					label: this.$locale.baseText('mainSidebar.workflows'),
+					position: 'top',
+					activateOnRouteNames: [VIEWS.WORKFLOWS],
+				},
+				{
+					id: 'templates',
+					icon: 'box-open',
+					label: this.$locale.baseText('mainSidebar.templates'),
+					position: 'top',
+					available: this.settingsStore.isTemplatesEnabled,
+					activateOnRouteNames: [VIEWS.TEMPLATES],
+				},
+				{
+					id: 'credentials',
+					icon: 'key',
+					label: this.$locale.baseText('mainSidebar.credentials'),
+					customIconSize: 'medium',
+					position: 'top',
+					activateOnRouteNames: [VIEWS.CREDENTIALS],
+				},
+				{
+					id: 'executions',
+					icon: 'tasks',
+					label: this.$locale.baseText('mainSidebar.executions'),
+					position: 'top',
+					activateOnRouteNames: [VIEWS.EXECUTIONS],
+				},
+				{
+					id: 'settings',
+					icon: 'cog',
+					label: this.$locale.baseText('settings'),
+					position: 'bottom',
+					available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
+					activateOnRouteNames: [VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS],
+				},
+				{
+					id: 'help',
+					icon: 'question',
+					label: 'Help',
+					position: 'bottom',
+					children: [
+						{
+							id: 'quickstart',
 							icon: 'video',
-							newWindow: true,
+							label: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+							type: 'link',
+							properties: {
+								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+								newWindow: true,
+							},
 						},
-					},
-					{
-						id: 'docs',
-						type: 'link',
-						properties: {
-							href: 'https://docs.n8n.io',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.documentation'),
+						{
+							id: 'docs',
 							icon: 'book',
-							newWindow: true,
+							label: this.$locale.baseText('mainSidebar.helpMenuItems.documentation'),
+							type: 'link',
+							properties: {
+								href: 'https://docs.n8n.io',
+								newWindow: true,
+							},
 						},
-					},
-					{
-						id: 'forum',
-						type: 'link',
-						properties: {
-							href: 'https://community.n8n.io',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.forum'),
+						{
+							id: 'forum',
 							icon: 'users',
-							newWindow: true,
+							label: this.$locale.baseText('mainSidebar.helpMenuItems.forum'),
+							type: 'link',
+							properties: {
+								href: 'https://community.n8n.io',
+								newWindow: true,
+							},
 						},
-					},
-					{
-						id: 'examples',
-						type: 'link',
-						properties: {
-							href: 'https://docs.n8n.io/courses',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
+						{
+							id: 'examples',
 							icon: 'graduation-cap',
-							newWindow: true,
+							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
+							type: 'link',
+							properties: {
+								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+								newWindow: true,
+							},
 						},
-					},
-				];
-			},
-			exeuctionId (): string | undefined {
-				return this.$route.params.id;
-			},
-			executionFinished (): boolean {
-				if (!this.isExecutionPage) {
-					// We are not on an exeuction page so return false
-					return false;
-				}
-
-				const fullExecution = this.$store.getters.getWorkflowExecution;
-
-				if (fullExecution === null) {
-					// No exeuction loaded so return also false
-					return false;
-				}
-
-				if (fullExecution.finished === true) {
-					return true;
-				}
-
-				return false;
-			},
-			executionWaitingForWebhook (): boolean {
-				return this.$store.getters.executionWaitingForWebhook;
-			},
-			isExecutionPage (): boolean {
-				return this.$route.name === VIEWS.EXECUTION;
-			},
-			isWorkflowActive (): boolean {
-				return this.$store.getters.isActive;
-			},
-			currentWorkflow (): string {
-				return this.$route.params.name;
-			},
-			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
-			},
-			workflowName (): string {
-				return this.$store.getters.workflowName;
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
-			},
-			sidebarMenuTopItems(): IMenuItem[] {
-				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'top');
-			},
-			sidebarMenuBottomItems(): IMenuItem[] {
-				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
-			},
-			onWorkflowPage(): boolean {
-				return this.$route.meta && this.$route.meta.nodeView;
-			},
+						{
+							id: 'about',
+							icon: 'info',
+							label: this.$locale.baseText('mainSidebar.aboutN8n'),
+							position: 'bottom',
+						},
+					],
+				},
+			];
+			return [...items, ...regularItems];
 		},
-		mounted() {
-			if (this.$refs.user) {
-				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+	},
+	async mounted() {
+		this.basePath = this.rootStore.baseUrl;
+		if (this.$refs.user) {
+			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+		}
+		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
+			this.uiStore.sidebarMenuCollapsed = true;
+		} else {
+			this.uiStore.sidebarMenuCollapsed = false;
+		}
+		await Vue.nextTick();
+		this.fullyExpanded = !this.isCollapsed;
+	},
+	created() {
+		window.addEventListener('resize', this.onResize);
+	},
+	destroyed() {
+		window.removeEventListener('resize', this.onResize);
+	},
+	methods: {
+		trackHelpItemClick(itemType: string) {
+			this.$telemetry.track('User clicked help resource', {
+				type: itemType,
+				workflow_id: this.workflowsStore.workflowId,
+			});
+		},
+		async onUserActionToggle(action: string) {
+			switch (action) {
+				case 'logout':
+					this.onLogout();
+					break;
+				case 'settings':
+					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					break;
+				default:
+					break;
 			}
 		},
-		methods: {
-			trackHelpItemClick (itemType: string) {
-				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
-			},
-			async onUserActionToggle(action: string) {
-				if (action === 'logout') {
-					this.onLogout();
-				}
-				else {
-					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
-				}
-			},
-			async onLogout() {
-				try {
-					await this.$store.dispatch('users/logout');
-
-					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
-					window.open(route.href, '_self');
-				} catch (e) {
-					this.$showError(e, this.$locale.baseText('auth.signout.error'));
-				}
-			},
-			toggleCollapse () {
-				this.$store.commit('ui/toggleSidebarMenuCollapse');
-			},
-			clearExecutionData () {
-				this.$store.commit('setWorkflowExecutionData', null);
-				this.updateNodesExecutionIssues();
-			},
-			openTagManager() {
-				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
-			},
-			openUpdatesPanel() {
-				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
-			},
-			async stopExecution () {
-				const executionId = this.$store.getters.activeExecutionId;
-				if (executionId === null) {
-					return;
-				}
-
-				try {
-					this.stopExecutionInProgress = true;
-					await this.restApi().stopCurrentExecution(executionId);
-					this.$showMessage({
-						title: this.$locale.baseText('mainSidebar.showMessage.stopExecution.title'),
-						type: 'success',
-					});
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-					);
-				}
-				this.stopExecutionInProgress = false;
-			},
-			async openWorkflow (workflowId: string) {
-				// Change to other workflow
-				this.$router.push({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowId },
-				});
-
-				this.$store.commit('ui/closeAllModals');
-			},
-			async handleFileImport () {
-				const reader = new FileReader();
-
-				reader.onload = (event: ProgressEvent) => {
-					const data = (event.target as FileReader).result;
-
-					let worflowData: IWorkflowDataUpdate;
-					try {
-						worflowData = JSON.parse(data as string);
-					} catch (error) {
-						this.$showMessage({
-							title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
-							message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
-							type: 'error',
-						});
-						return;
+		onLogout() {
+			this.$router.push({ name: VIEWS.SIGNOUT });
+		},
+		toggleCollapse() {
+			this.uiStore.toggleSidebarMenuCollapse();
+			// When expanding, delay showing some element to ensure smooth animation
+			if (!this.isCollapsed) {
+				setTimeout(() => {
+					this.fullyExpanded = !this.isCollapsed;
+				}, 300);
+			} else {
+				this.fullyExpanded = !this.isCollapsed;
+			}
+		},
+		openUpdatesPanel() {
+			this.uiStore.openModal(VERSIONS_MODAL_KEY);
+		},
+		async handleSelect(key: string) {
+			switch (key) {
+				case 'workflows': {
+					if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+						this.goToRoute({ name: VIEWS.WORKFLOWS });
 					}
-
-					this.$root.$emit('importWorkflowData', { data: worflowData });
-				};
-
-				const input = this.$refs.importFile as HTMLInputElement;
-				if (input !== null && input.files !== null && input.files.length !== 0) {
-					reader.readAsText(input!.files[0]!);
+					break;
 				}
-			},
-			async handleSelect (key: string, keyPath: string) {
-				if (key === 'workflow-open') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
-				} else if (key === 'workflow-import-file') {
-					(this.$refs.importFile as HTMLInputElement).click();
-				} else if (key === 'workflow-import-url') {
-					try {
-						const promptResponse = await this.$prompt(
-							this.$locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
-							this.$locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
-							{
-								confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
-								cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
-								inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
-								inputPattern: /^http[s]?:\/\/.*\.json$/i,
-							},
-						) as MessageBoxInputData;
-
-						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
-					} catch (e) {}
-				} else if (key === 'workflow-delete') {
-					const deleteConfirmed = await this.confirmMessage(
-						this.$locale.baseText(
-							'mainSidebar.confirmMessage.workflowDelete.message',
-							{ interpolate: { workflowName: this.workflowName } },
-						),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-						'warning',
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
-					);
-
-					if (deleteConfirmed === false) {
-						return;
-					}
-
-					try {
-						await this.restApi().deleteWorkflow(this.currentWorkflow);
-					} catch (error) {
-						this.$showError(
-							error,
-							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-						);
-						return;
-					}
-					this.$store.commit('setStateDirty', false);
-					// Reset tab title since workflow is deleted.
-					this.$titleReset();
-					this.$showMessage({
-						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
-						type: 'success',
-					});
-
-					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-				} else if (key === 'workflow-download') {
-					const workflowData = await this.getWorkflowDataToSave();
-
-					const {tags, ...data} = workflowData;
-					if (data.id && typeof data.id === 'string') {
-						data.id = parseInt(data.id, 10);
-					}
-
-					const exportData: IWorkflowToShare = {
-						...data,
-						meta: {
-							instanceId: this.$store.getters.instanceId,
-						},
-						tags: (tags || []).map(tagId => {
-							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
-
-							return tag;
-						}),
-					};
-
-					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-						type: 'application/json;charset=utf-8',
-					});
-
-
-					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
-
-					workflowName = workflowName.replace(/[^a-z0-9]/gi, '_');
-
-					this.$telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-
-					saveAs(blob, workflowName + '.json');
-				} else if (key === 'workflow-save') {
-					const saved = await this.saveCurrentWorkflow();
-					if (saved) this.$store.dispatch('settings/fetchPromptsData');
-				} else if (key === 'workflow-duplicate') {
-					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
-				} else if (key === 'help-about') {
-					this.trackHelpItemClick('about');
-					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
-				} else if (key === 'workflow-settings') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-				} else if (key === 'user') {
-					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
-				} else if (key === 'workflow-new') {
-					const result = this.$store.getters.getStateIsDirty;
-					if(result) {
-						const confirmModal = await this.confirmModal(
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
-							'warning',
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
-							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
-							true,
-						);
-
-						if (confirmModal === MODAL_CONFIRMED) {
-							const saved = await this.saveCurrentWorkflow({}, false);
-							if (saved) this.$store.dispatch('settings/fetchPromptsData');
-
-							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
-								this.$root.$emit('newWorkflow');
-							} else {
-								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							}
-
-							this.$showMessage({
-								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								type: 'success',
-							});
-						} else if (confirmModal === MODAL_CANCEL) {
-							this.$store.commit('setStateDirty', false);
-							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
-								this.$root.$emit('newWorkflow');
-							} else {
-								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							}
-
-							this.$showMessage({
-								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								type: 'success',
-							});
-						} else if (confirmModal === MODAL_CLOSE) {
-							return;
-						}
-					} else {
-						if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-						}
-
-						this.$showMessage({
-							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
-							type: 'success',
-						});
-					}
-					this.$titleReset();
-				} else if (key === 'templates' || key === 'template-new') {
+				case 'templates': {
 					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
-						this.$router.push({ name: VIEWS.TEMPLATES });
+						this.goToRoute({ name: VIEWS.TEMPLATES });
 					}
-				} else if (key === 'credentials-open') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
-				} else if (key === 'credentials-new') {
-					this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
-				} else if (key === 'execution-open-workflow') {
-					if (this.workflowExecution !== null) {
-						this.openWorkflow(this.workflowExecution.workflowId as string);
+					break;
+				}
+				case 'credentials': {
+					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
+						this.goToRoute({ name: VIEWS.CREDENTIALS });
 					}
-				} else if (key === 'executions') {
-					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-				} else if (key === 'settings') {
+					break;
+				}
+				case 'executions': {
+					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
+						this.goToRoute({ name: VIEWS.EXECUTIONS });
+					}
+					break;
+				}
+				case 'settings': {
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
 					if (defaultRoute) {
 						const routeProps = this.$router.resolve({ name: defaultRoute });
-						this.$router.push(routeProps.route.path);
+						if (this.$router.currentRoute.name !== defaultRoute) {
+							this.goToRoute(routeProps.route.path);
+						}
 					}
+					break;
 				}
-			},
-			findFirstAccessibleSettingsRoute() {
-				// Get all settings rotes by filtering them by pageCategory property
-				const settingsRoutes = this.$router.getRoutes().filter(
-					category => category.meta.telemetry &&
-						category.meta.telemetry.pageCategory === 'settings',
-				).map(route => route.name || '');
-				let defaultSettingsRoute = null;
-
-				for (const route of settingsRoutes) {
-					if (this.canUserAccessRouteByName(route)) {
-						defaultSettingsRoute = route;
-						break;
-					}
+				case 'about': {
+					this.trackHelpItemClick('about');
+					this.uiStore.openModal(ABOUT_MODAL_KEY);
+					break;
 				}
-				return defaultSettingsRoute;
-			},
+				case 'quickstart':
+				case 'docs':
+				case 'forum':
+				case 'examples': {
+					this.trackHelpItemClick(key);
+					break;
+				}
+				default:
+					break;
+			}
 		},
-	});
+		goToRoute(route: string | { name: string }) {
+			this.$router.push(route).catch((failure) => {
+				// Catch navigation failures caused by route guards
+				if (!isNavigationFailure(failure)) {
+					console.error(failure);
+				}
+			});
+		},
+		findFirstAccessibleSettingsRoute() {
+			// Get all settings rotes by filtering them by pageCategory property
+			const settingsRoutes = this.$router
+				.getRoutes()
+				.filter(
+					(category) =>
+						category.meta.telemetry && category.meta.telemetry.pageCategory === 'settings',
+				)
+				.map((route) => route.name || '');
+			let defaultSettingsRoute = null;
+
+			for (const route of settingsRoutes) {
+				if (this.canUserAccessRouteByName(route)) {
+					defaultSettingsRoute = route;
+					break;
+				}
+			}
+			return defaultSettingsRoute;
+		},
+		onResize(event: UIEvent) {
+			this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+		},
+		onResizeEnd(event: UIEvent) {
+			const browserWidth = (event.target as Window).outerWidth;
+			this.checkWidthAndAdjustSidebar(browserWidth);
+		},
+		checkWidthAndAdjustSidebar(width: number) {
+			if (width < 900) {
+				this.uiStore.sidebarMenuCollapsed = true;
+				Vue.nextTick(() => {
+					this.fullyExpanded = !this.isCollapsed;
+				});
+			}
+		},
+	},
+});
 </script>
 
-<style lang="scss">
-.sidebar-popper{
-	.el-menu-item {
-		font-size: 0.9em;
-		height: 35px;
-		line-height: 35px;
-		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
+<style lang="scss" module>
+.sideMenu {
+	position: relative;
+	height: 100%;
+	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	transition: width 150ms ease-in-out;
+	width: $sidebar-expanded-width;
+	.logo {
+		height: $header-height;
+		display: flex;
+		align-items: center;
+		padding: var(--spacing-xs);
 
-		.item-title {
-			position: absolute;
-			left: 55px;
-		}
-
-		.svg-inline--fa {
+		img {
 			position: relative;
-			right: -3px;
+			left: 1px;
+			height: 20px;
+		}
+	}
+
+	&.sideMenuCollapsed {
+		width: $sidebar-width;
+
+		.logo img {
+			left: 0;
 		}
 	}
 }
 
-#side-menu {
-	// Menu
-	.el-menu--vertical,
-	.el-menu {
-		border: none;
-		font-size: 14px;
-		--menu-item-hover-fill: var(--color-primary-tint-3);
-
-		.el-menu--collapse {
-			width: 75px;
-		}
-
-		.el-menu--popup,
-		.el-menu--inline {
-			font-size: 0.9em;
-			li.el-menu-item {
-				height: 35px;
-				line-height: 35px;
-				color: $--custom-dialog-text-color;
-			}
-		}
-
-		.el-menu-item,
-		.el-submenu__title {
-			color: $--color-primary;
-			font-size: 1.2em;
-			.el-submenu__icon-arrow {
-				color: $--color-primary;
-				font-weight: 800;
-				font-size: 1em;
-			}
-			.svg-inline--fa {
-				position: relative;
-				right: -3px;
-			}
-			.item-title {
-				position: absolute;
-				left: 56px;
-				font-size: var(--font-size-s);
-			}
-			.item-title-root {
-				position: absolute;
-				left: 60px;
-				top: 1px;
-			}
-		}
-
-		.el-menu--inline {
-			.el-menu-item {
-				padding-left: 30px!important;
-			}
-		}
-
-	}
-
-	.el-menu-item {
-		a {
-			color: var(--color-text-base);
-
-			&.primary-item {
-				color: $--color-primary;
-				vertical-align: baseline;
-			}
-		}
-
-		&.logo-item {
-			background-color: $--color-primary !important;
-			height: $--header-height;
-			line-height: $--header-height;
-			* {
-				vertical-align: middle;
-			}
-
-
-			.icon {
-				position: relative;
-				height: 23px;
-				left: -10px;
-				top: -2px;
-			}
-		}
-	}
-}
-
-.about-icon {
-	margin-left: 5px;
-}
-
-#collapse-change-button {
+.sideMenuCollapseButton {
 	position: absolute;
-	z-index: 10;
-	top: 55px;
-	left: 25px;
-	text-align: right;
-	line-height: 24px;
-	height: 20px;
-	width: 20px;
-	background-color: var(--color-foreground-xlight);
-	border: none;
-	border-radius: 15px;
-
-	-webkit-transition-duration: 0.5s;
-	-moz-transition-duration: 0.5s;
-	-o-transition-duration: 0.5s;
-	transition-duration: 0.5s;
-
-	-webkit-transition-property: -webkit-transform;
-	-moz-transition-property: -moz-transform;
-	-o-transition-property: -o-transform;
-	transition-property: transform;
-
-	overflow: hidden;
-
-	.icon {
-		position: relative;
-		left: -5px;
-		top: -2px;
-	}
-}
-#collapse-change-button:hover {
-	transform: scale(1.1);
-}
-
-.logo-text {
-	position: relative;
-	top: -3px;
-	left: 5px;
-	font-weight: bold;
-	color: var(--color-foreground-xlight);
-	text-decoration: none;
-}
-
-.expanded #collapse-change-button {
-	-webkit-transform: translateX(60px) rotate(180deg);
-	-moz-transform: translateX(60px) rotate(180deg);
-	-o-transform: translateX(60px) rotate(180deg);
-	transform: translateX(60px) rotate(180deg);
-}
-
-#side-menu {
-	position: fixed;
-	height: 100%;
-
-	.el-menu {
-		height: 100%;
-	}
-}
-
-.side-menu-wrapper {
-	height: 100%;
-	width: $--sidebar-width;
-
-	&.expanded {
-		width: $--sidebar-expanded-width;
-	}
-
-	ul {
-		display: flex;
-		flex-direction: column;
-	}
-}
-
-.footer-menu-items {
+	right: -10px;
+	top: 50%;
+	z-index: 999;
 	display: flex;
-	flex-grow: 1;
-	flex-direction: column;
-	justify-content: flex-end;
-	padding-bottom: 32px;
+	justify-content: center;
+	align-items: flex-end;
+	color: var(--color-text-base);
+	background-color: var(--color-foreground-xlight);
+	width: 20px;
+	height: 20px;
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	text-align: center;
+	border-radius: 50%;
 
-	&.logged-in {
-		padding-bottom: 8px;
-	}
-}
-
-.el-menu-item.updates {
-	color: $--sidebar-inactive-color !important;
-	.item-title-root {
-		font-size: 13px;
-		top: 0 !important;
-	}
-
-	&:hover {
-		color: $--sidebar-active-color;
-	}
-
-	.gift-container {
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		height: 100%;
-		width: 100%;
-	}
-}
-
-.el-menu-item.user {
-	position: relative;
-
-	&:hover {
-		background-color: unset;
-	}
-
-	.avatar {
-		top: 25%;
-		left: 18px;
-		position: absolute;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.item-title-root {
+	&::before {
+		display: block;
+		position: relative;
+		left: px;
+		top: -2.5px;
+		transform: rotate(270deg);
+		content: '\e6df';
+		font-family: element-icons;
+		font-size: var(--font-size-2xs);
+		font-weight: bold;
 		color: var(--color-text-base);
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-s);
-		max-width: 130px;
-		overflow: hidden;
-		text-overflow: ellipsis;
+	}
+
+	&.expandedButton {
+		&::before {
+			transform: rotate(90deg);
+			left: 0px;
+		}
+	}
+
+	&:hover {
+		&::before {
+			color: var(--color-primary-shade-1);
+		}
 	}
 }
 
+.updates {
+	display: flex;
+	align-items: center;
+	height: 26px;
+	cursor: pointer;
+
+	svg {
+		color: var(--color-text-base) !important;
+	}
+	span {
+		display: none;
+		&.expanded {
+			display: initial;
+		}
+	}
+
+	&:hover {
+		&,
+		& svg {
+			color: var(--color-text-dark) !important;
+		}
+	}
+}
+
+.userArea {
+	display: flex;
+	padding: var(--spacing-xs);
+	align-items: center;
+	height: 60px;
+	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
+	.userName {
+		display: none;
+		overflow: hidden;
+		width: 100px;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+
+		&.expanded {
+			display: initial;
+		}
+
+		span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	.userActions {
+		display: none;
+
+		&.expanded {
+			display: initial;
+		}
+	}
+}
+
+@media screen and (max-height: 470px) {
+	:global(#help) {
+		display: none;
+	}
+}
 </style>

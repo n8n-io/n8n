@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const incidentOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Get an incident',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all incidents',
-				action: 'Get all incidents',
+				description: 'Get many incidents',
+				action: 'Get many incidents',
 			},
 			{
 				name: 'Update',
@@ -516,9 +516,6 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Resolution',
 				name: 'resolution',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The resolution for this incident if status is set to resolved',
 			},

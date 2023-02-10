@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -46,10 +46,10 @@ export const quoteOperations: INodeProperties[] = [
 				action: 'Get a quote',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all quotes',
-				action: 'Get all quotes',
+				description: 'Get many quotes',
+				action: 'Get many quotes',
 			},
 			{
 				name: 'Update',

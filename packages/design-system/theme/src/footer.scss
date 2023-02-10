@@ -1,8 +1,0 @@
-@use "mixins/mixins";
-@use "./common/var";
-
-@include mixins.b(footer) {
-	padding: var.$footer-padding;
-	box-sizing: border-box;
-	flex-shrink: 0;
-}

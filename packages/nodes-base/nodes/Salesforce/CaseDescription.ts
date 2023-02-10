@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const caseOperations: INodeProperties[] = [
 	{
@@ -37,10 +37,10 @@ export const caseOperations: INodeProperties[] = [
 				action: 'Get a case',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all cases',
-				action: 'Get all cases',
+				description: 'Get many cases',
+				action: 'Get many cases',
 			},
 			{
 				name: 'Get Summary',
@@ -687,9 +687,6 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Comment Body',
 				name: 'commentBody',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'Text of the CaseComment. The maximum size of the comment body is 4,000 bytes. Label is Body.',

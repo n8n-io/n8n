@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -202,7 +202,7 @@ export class NetlifyTrigger implements INodeType {
 		const event = this.getNodeParameter('event') as string;
 		let response = req.body;
 
-		if (simple === true && event === 'submissionCreated') {
+		if (simple && event === 'submissionCreated') {
 			response = response.data;
 		}
 

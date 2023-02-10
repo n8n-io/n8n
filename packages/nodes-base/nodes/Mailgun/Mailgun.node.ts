@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,7 +74,6 @@ export class Mailgun implements INodeType {
 				name: 'text',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				default: '',
@@ -87,6 +85,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				typeOptions: {
 					rows: 5,
+					editor: 'htmlEditor',
 				},
 				default: '',
 				description: 'HTML text message of email',
@@ -173,27 +172,34 @@ export class Mailgun implements INodeType {
 					method: 'POST',
 					formData,
 					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
-					auth: {
-						user: 'api',
-						pass: credentials.apiKey as string,
-					},
 					json: true,
 				};
 
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request(options);
+					responseData = await this.helpers.requestWithAuthentication.call(
+						this,
+						'mailgunApi',
+						options,
+					);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
-				returnData.push({
-					json: responseData,
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: itemIndex } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: itemIndex } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

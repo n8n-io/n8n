@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const meetingOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const meetingOperations: INodeProperties[] = [
 				action: 'Get a meeting',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all meetings',
-				action: 'Get all meetings',
+				description: 'Retrieve many meetings',
+				action: 'Get many meetings',
 			},
 			{
 				name: 'Update',
@@ -55,9 +55,6 @@ export const meetingFields: INodeProperties[] = [
 		displayName: 'Topic',
 		name: 'topic',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -84,9 +81,6 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Meeting agenda',
 			},
@@ -104,6 +98,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password to join the meeting with maximum 10 characters',
 			},
@@ -490,9 +485,6 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Meeting agenda',
 			},
@@ -510,6 +502,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password to join the meeting with maximum 10 characters',
 			},

@@ -1,9 +1,15 @@
 <template>
 	<div>
 		<n8n-input-label :label="label">
-			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy">
+			<div
+				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
+				@click="copy"
+				data-test-id="copy-input"
+			>
 				<span ref="copyInputValue">{{ value }}</span>
-				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
+				<div :class="$style.copyButton">
+					<span>{{ copyButtonText }}</span>
+				</div>
 			</div>
 		</n8n-input-label>
 		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
@@ -12,8 +18,8 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from './mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
 
 export default mixins(copyPaste, showMessage).extend({
 	props: {
@@ -62,14 +68,10 @@ export default mixins(copyPaste, showMessage).extend({
 			});
 		},
 	},
-	mounted() {
-		this.$externalHooks().run('copyInput.mounted', { copyInputValueRef: this.$refs.copyInputValue });
-	},
 });
 </script>
 
 <style lang="scss" module>
-
 .copyText {
 	span {
 		font-family: Monaco, Consolas;
@@ -107,7 +109,7 @@ export default mixins(copyPaste, showMessage).extend({
 
 .collapsed {
 	white-space: nowrap;
-  overflow: hidden;
+	overflow: hidden;
 }
 
 .copyButton {
@@ -133,5 +135,4 @@ export default mixins(copyPaste, showMessage).extend({
 	font-weight: var(--font-weight-regular);
 	word-break: normal;
 }
-
 </style>

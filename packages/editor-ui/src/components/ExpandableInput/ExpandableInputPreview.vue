@@ -12,13 +12,13 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputBase from "./ExpandableInputBase.vue";
+import Vue from 'vue';
+import ExpandableInputBase from './ExpandableInputBase.vue';
 
 export default Vue.extend({
 	components: { ExpandableInputBase },
-	name: "ExpandableInputPreview",
-	props: ["value"],
+	name: 'ExpandableInputPreview',
+	props: ['value'],
 });
 </script>
 
@@ -31,10 +31,10 @@ input:hover {
 }
 
 input[disabled] {
-	color: $--custom-font-black;
+	color: $custom-font-black;
 
 	// override safari colors
-	-webkit-text-fill-color: $--custom-font-black;
+	-webkit-text-fill-color: $custom-font-black;
 	-webkit-opacity: 1;
 }
 </style>

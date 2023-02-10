@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	address,
@@ -44,10 +44,10 @@ export const vendorOperations: INodeProperties[] = [
 				action: 'Get a vendor',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all vendors',
-				action: 'Get all vendors',
+				description: 'Get many vendors',
+				action: 'Get many vendors',
 			},
 			{
 				name: 'Update',

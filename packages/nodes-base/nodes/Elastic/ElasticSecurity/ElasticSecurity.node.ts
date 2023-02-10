@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,8 +10,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	elasticSecurityApiRequest,
@@ -33,14 +33,14 @@ import {
 	connectorOperations,
 } from './descriptions';
 
-import {
+import type {
 	Connector,
 	ConnectorCreatePayload,
 	ConnectorType,
 	ElasticSecurityApiCredentials,
 } from './types';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -164,10 +164,10 @@ export class ElasticSecurity implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -252,7 +252,7 @@ export class ElasticSecurity implements INodeType {
 						const {
 							syncAlerts, // ignored because already set
 							...rest
-						} = this.getNodeParameter('additionalFields', i) as IDataObject;
+						} = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(rest).length) {
 							Object.assign(body, rest);
@@ -322,7 +322,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
@@ -442,7 +442,7 @@ export class ElasticSecurity implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body = {
 							comment: this.getNodeParameter('comment', i),
@@ -454,7 +454,7 @@ export class ElasticSecurity implements INodeType {
 						const endpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
@@ -516,7 +516,7 @@ export class ElasticSecurity implements INodeType {
 						const patchEndpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
@@ -573,18 +573,24 @@ export class ElasticSecurity implements INodeType {
 					}
 				}
 
-				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

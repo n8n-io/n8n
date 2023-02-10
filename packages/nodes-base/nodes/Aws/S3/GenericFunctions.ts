@@ -1,21 +1,15 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
 import { get } from 'lodash';
-
-import { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -26,50 +20,26 @@ export async function awsApiRequest(
 	query: IDataObject = {},
 	headers?: object,
 	option: IDataObject = {},
-	region?: string,
-	// tslint:disable-next-line:no-any
+	_region?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
-
-	const endpoint = new URL(
-		(((credentials.s3Endpoint as string) || '').replace('{region}', credentials.region as string) ||
-			`https://${service}.${credentials.region}.amazonaws.com`) + path,
-	);
-
-	// Sign AWS API request with the user credentials
-	const signOpts = {
-		headers: headers || {},
-		host: endpoint.host,
+	const requestOptions = {
+		qs: {
+			...query,
+			service,
+			path,
+			query,
+		},
 		method,
-		path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`,
 		body,
-	} as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
-
-	sign(signOpts, securityHeaders);
-
-	const options: OptionsWithUri = {
-		headers: signOpts.headers,
-		method,
-		qs: query,
-		uri: endpoint.href,
-		body: signOpts.body,
-	};
+		url: '',
+		headers,
+		//region: credentials?.region as string,
+	} as IHttpRequestOptions;
 
 	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
+		Object.assign(requestOptions, option);
 	}
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(
@@ -82,7 +52,6 @@ export async function awsApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -112,7 +81,6 @@ export async function awsApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -150,7 +118,6 @@ export async function awsApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -192,10 +159,4 @@ export async function awsApiRequestSOAPAllItems(
 	);
 
 	return returnData;
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }

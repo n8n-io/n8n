@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const registrantOperations: INodeProperties[] = [
 	{
@@ -24,9 +24,9 @@ export const registrantOperations: INodeProperties[] = [
 				action: 'Get a registrant',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all registrants',
+				action: 'Get many registrants',
 			},
 		],
 		displayOptions: {

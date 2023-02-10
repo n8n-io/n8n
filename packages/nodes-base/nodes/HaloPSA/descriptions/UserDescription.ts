@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
-				action: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -106,15 +106,13 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description:
 					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
@@ -286,9 +284,6 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

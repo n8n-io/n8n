@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export interface ILineItem {
 	Description?: string;
@@ -20,7 +20,7 @@ export interface IInvoice extends ITenantId {
 	Contact?: IDataObject;
 	Date?: string;
 	DueDate?: string;
-	LineAmountType?: string;
+	LineAmountTypes?: string;
 	InvoiceNumber?: string;
 	Reference?: string;
 	BrandingThemeID?: string;

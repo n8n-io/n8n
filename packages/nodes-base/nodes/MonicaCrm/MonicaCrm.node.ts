@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -42,7 +42,7 @@ import {
 	taskOperations,
 } from './descriptions';
 
-import { LoaderGetResponse, Option } from './types';
+import type { LoaderGetResponse, Option } from './types';
 
 export class MonicaCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -209,10 +209,10 @@ export class MonicaCrm implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -240,7 +240,7 @@ export class MonicaCrm implements INodeType {
 							summary: this.getNodeParameter('summary', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -277,7 +277,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/activities#list-all-the-activities-in-your-account
 
-						const endpoint = `/activities`;
+						const endpoint = '/activities';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -301,7 +301,7 @@ export class MonicaCrm implements INodeType {
 							summary: data.summary,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -310,7 +310,7 @@ export class MonicaCrm implements INodeType {
 						body.happened_at = (body.happened_at as string).split('T')[0];
 
 						if (typeof body.contacts === 'string') {
-							body.contacts = (body.contacts as string).split(',');
+							body.contacts = body.contacts.split(',');
 						}
 
 						const endpoint = `/activities/${activityId}`;
@@ -363,7 +363,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/calls#list-all-the-calls-in-your-account
 
-						const endpoint = `/calls`;
+						const endpoint = '/calls';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -380,7 +380,7 @@ export class MonicaCrm implements INodeType {
 							called_at: data.called_at,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -475,7 +475,7 @@ export class MonicaCrm implements INodeType {
 						// https://www.monicahq.com/api/contacts#list-all-your-contacts
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -738,7 +738,7 @@ export class MonicaCrm implements INodeType {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const endpoint = `/conversations/${conversationId}/messages/${messageId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						const { data } = await monicaCrmApiRequest.call(
 							this,
@@ -747,7 +747,7 @@ export class MonicaCrm implements INodeType {
 						);
 
 						const message = data.messages.filter(
-							(message: IDataObject) => message.id === parseInt(messageId, 10),
+							(entry: IDataObject) => entry.id === parseInt(messageId, 10),
 						)[0];
 
 						const body = {
@@ -821,7 +821,7 @@ export class MonicaCrm implements INodeType {
 
 						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/journal/${journalId}`);
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body = {
 							post: data.post,
@@ -887,7 +887,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/notes#list-all-the-notes-in-your-account
 
-						const endpoint = `/notes`;
+						const endpoint = '/notes';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -898,7 +898,7 @@ export class MonicaCrm implements INodeType {
 
 						const noteId = this.getNodeParameter('noteId', i);
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/notes/${noteId}`);
 
@@ -935,7 +935,7 @@ export class MonicaCrm implements INodeType {
 							title: this.getNodeParameter('title', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -996,7 +996,7 @@ export class MonicaCrm implements INodeType {
 							title: data.title,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -1085,7 +1085,7 @@ export class MonicaCrm implements INodeType {
 							title: this.getNodeParameter('title', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -1120,7 +1120,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/tasks#list-all-the-tasks-of-a-specific-contact
 
-						const endpoint = `/tasks`;
+						const endpoint = '/tasks';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1139,7 +1139,7 @@ export class MonicaCrm implements INodeType {
 							completed: data.completed,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -1150,7 +1150,11 @@ export class MonicaCrm implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 
@@ -1161,11 +1165,14 @@ export class MonicaCrm implements INodeType {
 				responseData = responseData.data;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

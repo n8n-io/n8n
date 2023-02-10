@@ -1,12 +1,6 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeHelpers,
-	toCronExpression,
-	TriggerTime,
-} from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { INodeType, INodeTypeDescription, ITriggerResponse, TriggerTime } from 'n8n-workflow';
+import { NodeHelpers, toCronExpression } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 
@@ -14,16 +8,17 @@ export class Cron implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cron',
 		name: 'cron',
-		icon: 'fa:calendar',
+		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
 		version: 1,
+		hidden: true,
 		description: 'Triggers the workflow at a specific time',
 		eventTriggerDescription: '',
 		activationMessage:
 			'Your cron trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Cron',
-			color: '#00FF00',
+			color: '#29a568',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
@@ -69,7 +64,9 @@ export class Cron implements INodeType {
 		const timezone = this.getTimezone();
 
 		// Start the cron-jobs
-		const cronJobs = cronTimes.map(cronTime => new CronJob(cronTime, executeTrigger, undefined, true, timezone));
+		const cronJobs = cronTimes.map(
+			(cronTime) => new CronJob(cronTime, executeTrigger, undefined, true, timezone),
+		);
 
 		// Stop the cron-jobs
 		async function closeFunction() {

@@ -1,5 +1,11 @@
 <template>
-	<div :class="{'n8n-select': true, [$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
+	<div
+		:class="{
+			'n8n-select': true,
+			[$style.container]: true,
+			[$style.withPrepend]: !!$slots.prepend,
+		}"
+	>
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
@@ -26,10 +32,10 @@
 </template>
 
 <script lang="ts">
-import ElSelect from 'element-ui/lib/select';
+import { Select as ElSelect } from 'element-ui';
 import Vue from 'vue';
 
-interface IProps {
+export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
 	popperClass?: string;
@@ -41,8 +47,7 @@ export default Vue.extend({
 		ElSelect,
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		size: {
 			type: String,
 			default: 'large',
@@ -112,21 +117,21 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const input = this.$refs.innerSelect;
-			if (input) {
-				input.focus();
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
+			if (select) {
+				select.focus();
 			}
 		},
 		blur() {
-			const input = this.$refs.innerSelect;
-			if (input) {
-				input.blur();
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
+			if (select) {
+				select.blur();
 			}
 		},
 		focusOnInput() {
-			const select = (this.$refs.innerSelect) as (Vue | undefined);
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
 			if (select) {
-				const input = select.$refs.input;
+				const input = select.$refs.input as (Vue & HTMLElement) | undefined;
 				if (input) {
 					input.focus();
 				}

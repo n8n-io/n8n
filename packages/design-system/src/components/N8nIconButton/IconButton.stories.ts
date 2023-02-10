@@ -1,7 +1,6 @@
-/* tslint:disable:variable-name */
 import N8nIconButton from './IconButton.vue';
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from "@storybook/vue";
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Icon Button',
@@ -67,11 +66,11 @@ Outline.args = {
 	outline: true,
 };
 
-export const Light = ManyTemplate.bind({});
-Light.args = {
+export const Tertiary = ManyTemplate.bind({});
+Tertiary.args = {
 	icon: 'plus',
 	title: 'my title',
-	type: 'light',
+	type: 'tertiary',
 };
 
 export const Text = ManyTemplate.bind({});

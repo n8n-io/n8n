@@ -1,15 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 // @ts-ignore
-import mysql2 from 'mysql2/promise';
+import type mysql2 from 'mysql2/promise';
 
-import { copyInputItems } from './GenericFunctions';
+import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
+import type { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +32,7 @@ export class MySql implements INodeType {
 			{
 				name: 'mySql',
 				required: true,
+				testedBy: 'mysqlConnectionTest',
 			},
 		],
 		properties: [
@@ -66,9 +71,6 @@ export class MySql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -86,14 +88,33 @@ export class MySql implements INodeType {
 			{
 				displayName: 'Table',
 				name: 'table',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
 				displayOptions: {
 					show: {
 						operation: ['insert'],
 					},
 				},
-				default: '',
-				required: true,
 				description: 'Name of the table in which to insert data to',
 			},
 			{
@@ -162,14 +183,33 @@ export class MySql implements INodeType {
 			{
 				displayName: 'Table',
 				name: 'table',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
 				displayOptions: {
 					show: {
 						operation: ['update'],
 					},
 				},
-				default: '',
-				required: true,
 				description: 'Name of the table in which to update data in',
 			},
 			{
@@ -204,31 +244,39 @@ export class MySql implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async mysqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const connection = await createConnection(credentials);
+					await connection.end();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+		listSearch: {
+			searchTables,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-
-		// Destructuring SSL configuration
-		const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
-			credentials;
-
-		if (ssl) {
-			baseCredentials.ssl = {};
-
-			if (caCertificate) {
-				baseCredentials.ssl.ca = caCertificate;
-			}
-
-			// client certificates might not be required
-			if (clientCertificate || clientPrivateKey) {
-				baseCredentials.ssl.cert = clientCertificate;
-				baseCredentials.ssl.key = clientPrivateKey;
-			}
-		}
-
-		const connection = await mysql2.createConnection(baseCredentials);
+		const connection = await createConnection(credentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
-		let returnItems = [];
+		const operation = this.getNodeParameter('operation', 0);
+		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -236,28 +284,27 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryQueue = items.map((item, index) => {
+				const queryQueue = items.map(async (item, index) => {
 					const rawQuery = this.getNodeParameter('query', index) as string;
 
 					return connection.query(rawQuery);
 				});
 
-				const queryResult = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
-					(collection, result) => {
-						const [rows, fields] = result;
+				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
+					(collection, result, index) => {
+						const [rows] = result;
 
-						if (Array.isArray(rows)) {
-							return collection.concat(rows);
-						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+							{ itemData: { item: index } },
+						);
 
-						collection.push(rows);
+						collection.push(...executionData);
 
 						return collection;
 					},
-					[],
+					[] as INodeExecutionData[],
 				);
-
-				returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
@@ -272,22 +319,22 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const table = this.getNodeParameter('table', 0) as string;
+				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
 				const insertItems = copyInputItems(items, columns);
-				const insertPlaceholder = `(${columns.map((column) => '?').join(',')})`;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
+				const options = this.getNodeParameter('options', 0);
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 
 				const insertSQL = `INSERT ${insertPriority || ''} ${
 					insertIgnore ? 'IGNORE' : ''
 				} INTO ${table}(${columnString}) VALUES ${items
-					.map((item) => insertPlaceholder)
+					.map((_item) => insertPlaceholder)
 					.join(',')};`;
 				const queryItems = insertItems.reduce(
-					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
+					(collection, item) => collection.concat(Object.values(item as any)),
 					[],
 				);
 
@@ -308,7 +355,7 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const table = this.getNodeParameter('table', 0) as string;
+				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
@@ -321,7 +368,7 @@ export class MySql implements INodeType {
 				const updateSQL = `UPDATE ${table} SET ${columns
 					.map((column) => `${column} = ?`)
 					.join(',')} WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map((item) =>
+				const queryQueue = updateItems.map(async (item) =>
 					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
 				);
 				const queryResult = await Promise.all(queryQueue);

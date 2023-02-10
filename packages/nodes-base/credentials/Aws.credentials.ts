@@ -1,4 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
+
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IDataObject,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const regions = [
 	{
@@ -113,13 +123,17 @@ export const regions = [
 	},
 ] as const;
 
-export type AWSRegion = typeof regions[number]['name'];
+export type AWSRegion = (typeof regions)[number]['name'];
 
 export class Aws implements ICredentialType {
 	name = 'aws';
+
 	displayName = 'AWS';
+
 	documentationUrl = 'aws';
+
 	icon = 'file:AWS.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Region',
@@ -259,4 +273,107 @@ export class Aws implements ICredentialType {
 			placeholder: 'https://s3.{region}.amazonaws.com',
 		},
 	];
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		let endpoint: URL;
+		let service = requestOptions.qs?.service as string;
+		let path = requestOptions.qs?.path;
+		const method = requestOptions.method;
+		let body = requestOptions.body;
+		let region = credentials.region;
+		const query = requestOptions.qs?.query as IDataObject;
+		if (!requestOptions.baseURL && !requestOptions.url) {
+			let endpointString: string;
+			if (service === 'lambda' && credentials.lambdaEndpoint) {
+				endpointString = credentials.lambdaEndpoint as string;
+			} else if (service === 'sns' && credentials.snsEndpoint) {
+				endpointString = credentials.snsEndpoint as string;
+			} else if (service === 'sqs' && credentials.sqsEndpoint) {
+				endpointString = credentials.sqsEndpoint as string;
+			} else if (service === 's3' && credentials.s3Endpoint) {
+				endpointString = credentials.s3Endpoint as string;
+			} else if (service === 'ses' && credentials.sesEndpoint) {
+				endpointString = credentials.sesEndpoint as string;
+			} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
+				endpointString = credentials.rekognitionEndpoint as string;
+			} else if (service === 'sqs' && credentials.sqsEndpoint) {
+				endpointString = credentials.sqsEndpoint as string;
+			} else if (service) {
+				endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
+			}
+			endpoint = new URL(
+				endpointString!.replace('{region}', credentials.region as string) + (path as string),
+			);
+		} else {
+			// If no endpoint is set, we try to decompose the path and use the default endpoint
+			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);
+			service = customUrl.hostname.split('.')[0];
+			region = customUrl.hostname.split('.')[1];
+			if (service === 'sts') {
+				try {
+					customUrl.searchParams.set('Action', 'GetCallerIdentity');
+					customUrl.searchParams.set('Version', '2011-06-15');
+				} catch (err) {
+					console.log(err);
+				}
+			}
+			endpoint = customUrl;
+		}
+
+		if (query && Object.keys(query).length !== 0) {
+			Object.keys(query).forEach((key) => {
+				endpoint.searchParams.append(key, query[key] as string);
+			});
+		}
+
+		if (body && Object.keys(body).length === 0) {
+			body = '';
+		}
+
+		path = endpoint.pathname + endpoint.search;
+
+		const signOpts = {
+			...requestOptions,
+			headers: requestOptions.headers ?? {},
+			host: endpoint.host,
+			method,
+			path,
+			body: body !== '' ? body : undefined,
+			region,
+		} as Request;
+
+		const securityHeaders = {
+			accessKeyId: `${credentials.accessKeyId}`.trim(),
+			secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+			sessionToken: credentials.temporaryCredentials
+				? `${credentials.sessionToken}`.trim()
+				: undefined,
+		};
+		try {
+			sign(signOpts, securityHeaders);
+		} catch (err) {
+			console.log(err);
+		}
+		const options: IHttpRequestOptions = {
+			...requestOptions,
+			headers: signOpts.headers,
+			method,
+			url: endpoint.origin + path,
+			body: signOpts.body,
+			qs: undefined, // override since it's already in the url
+		};
+
+		return options;
+	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://sts.{{$credentials.region}}.amazonaws.com',
+			url: '?Action=GetCallerIdentity&Version=2011-06-15',
+			method: 'POST',
+		},
+	};
 }

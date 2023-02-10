@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
 
@@ -73,10 +73,10 @@ export class Pushbullet implements INodeType {
 						action: 'Delete a push',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all pushes',
-						action: 'Get all pushes',
+						description: 'Get many pushes',
+						action: 'Get many pushes',
 					},
 					{
 						name: 'Update',
@@ -372,12 +372,12 @@ export class Pushbullet implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'push') {
@@ -395,7 +395,7 @@ export class Pushbullet implements INodeType {
 
 						if (target !== 'default') {
 							const value = this.getNodeParameter('value', i) as string;
-							body[target as string] = value;
+							body[target] = value;
 						}
 
 						if (['note', 'link'].includes(type)) {
@@ -407,7 +407,7 @@ export class Pushbullet implements INodeType {
 						}
 
 						if (type === 'file') {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -430,7 +430,7 @@ export class Pushbullet implements INodeType {
 								file_name,
 								file_type,
 								file_url,
-							} = await pushbulletApiRequest.call(this, 'POST', `/upload-request`, {
+							} = await pushbulletApiRequest.call(this, 'POST', '/upload-request', {
 								file_name: binaryData.fileName,
 								file_type: binaryData.mimeType,
 							});
@@ -453,13 +453,13 @@ export class Pushbullet implements INodeType {
 							body.file_url = file_url;
 						}
 
-						responseData = await pushbulletApiRequest.call(this, 'POST', `/pushes`, body);
+						responseData = await pushbulletApiRequest.call(this, 'POST', '/pushes', body);
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
@@ -477,7 +477,7 @@ export class Pushbullet implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 
 							responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
 
@@ -503,20 +503,25 @@ export class Pushbullet implements INodeType {
 						});
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

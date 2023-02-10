@@ -1,13 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { writeFile as fsWriteFile } from 'fs/promises';
+import type { Readable } from 'stream';
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,6 +39,22 @@ export class WriteBinaryFile implements INodeType {
 				description:
 					'Name of the binary property which contains the data for the file to be written',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Append',
+						name: 'append',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to append to an existing file',
+					},
+				],
+			},
 		],
 	};
 
@@ -54,9 +67,12 @@ export class WriteBinaryFile implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
+				const options = this.getNodeParameter('options', 0, {});
+
+				const flag = options.append ? 'a' : 'w';
 
 				item = items[itemIndex];
 
@@ -67,8 +83,8 @@ export class WriteBinaryFile implements INodeType {
 						{ itemIndex },
 					);
 				}
-
-				if (item.binary[dataPropertyName] === undefined) {
+				const itemBinaryData = item.binary[dataPropertyName];
+				if (itemBinaryData === undefined) {
 					throw new NodeOperationError(
 						this.getNode(),
 						`The binary property "${dataPropertyName}" does not exist. So no file can be written!`,
@@ -84,13 +100,15 @@ export class WriteBinaryFile implements INodeType {
 				};
 				Object.assign(newItem.json, item.json);
 
-				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-					itemIndex,
-					dataPropertyName,
-				);
+				let fileContent: Buffer | Readable;
+				if (itemBinaryData.id) {
+					fileContent = this.helpers.getBinaryStream(itemBinaryData.id);
+				} else {
+					fileContent = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+				}
 
 				// Write the file to disk
-				await fsWriteFile(fileName, binaryDataBuffer, 'binary');
+				await fsWriteFile(fileName, fileContent, { encoding: 'binary', flag });
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
@@ -102,7 +120,7 @@ export class WriteBinaryFile implements INodeType {
 
 				// Add the file name to data
 
-				(newItem.json as IDataObject).fileName = fileName;
+				newItem.json.fileName = fileName;
 
 				returnData.push(newItem);
 			} catch (error) {

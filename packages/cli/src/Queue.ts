@@ -1,23 +1,39 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import Bull from 'bull';
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { IBullJobData, IBullWebhookResponse } from './Interfaces';
-// eslint-disable-next-line import/no-cycle
-import * as ActiveExecutions from './ActiveExecutions';
-// eslint-disable-next-line import/no-cycle
-import * as WebhookHelpers from './WebhookHelpers';
+import type Bull from 'bull';
+import type { RedisOptions } from 'ioredis';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import config from '@/config';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as WebhookHelpers from '@/WebhookHelpers';
+
+export type Job = Bull.Job<JobData>;
+export type JobQueue = Bull.Queue<JobData>;
+
+export interface JobData {
+	executionId: string;
+	loadStaticData: boolean;
+}
+
+export interface JobResponse {
+	success: boolean;
+}
+
+export interface WebhookResponse {
+	executionId: string;
+	response: IExecuteResponsePromiseData;
+}
 
 export class Queue {
-	private activeExecutions: ActiveExecutions.ActiveExecutions;
+	private jobQueue: JobQueue;
 
-	private jobQueue: Bull.Queue;
+	constructor(private activeExecutions: ActiveExecutions.ActiveExecutions) {}
 
-	constructor() {
-		this.activeExecutions = ActiveExecutions.getInstance();
-
+	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions = config.getEnv('queue.bull.redis');
+		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Bull } = await import('bull');
+
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
@@ -26,7 +42,7 @@ export class Queue {
 		// @ts-ignore
 		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
 
-		this.jobQueue.on('global:progress', (jobId, progress: IBullWebhookResponse) => {
+		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
@@ -35,28 +51,28 @@ export class Queue {
 		});
 	}
 
-	async add(jobData: IBullJobData, jobOptions: object): Promise<Bull.Job> {
+	async add(jobData: JobData, jobOptions: object): Promise<Job> {
 		return this.jobQueue.add(jobData, jobOptions);
 	}
 
-	async getJob(jobId: Bull.JobId): Promise<Bull.Job | null> {
+	async getJob(jobId: Bull.JobId): Promise<Job | null> {
 		return this.jobQueue.getJob(jobId);
 	}
 
-	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Bull.Job[]> {
+	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Job[]> {
 		return this.jobQueue.getJobs(jobTypes);
 	}
 
-	getBullObjectInstance(): Bull.Queue {
+	getBullObjectInstance(): JobQueue {
 		return this.jobQueue;
 	}
 
 	/**
 	 *
-	 * @param job A Bull.Job instance
+	 * @param job A Job instance
 	 * @returns boolean true if we were able to securely stop the job
 	 */
-	async stopJob(job: Bull.Job): Promise<boolean> {
+	async stopJob(job: Job): Promise<boolean> {
 		if (await job.isActive()) {
 			// Job is already running so tell it to stop
 			await job.progress(-1);
@@ -76,9 +92,10 @@ export class Queue {
 
 let activeQueueInstance: Queue | undefined;
 
-export function getInstance(): Queue {
+export async function getInstance(): Promise<Queue> {
 	if (activeQueueInstance === undefined) {
-		activeQueueInstance = new Queue();
+		activeQueueInstance = new Queue(ActiveExecutions.getInstance());
+		await activeQueueInstance.init();
 	}
 
 	return activeQueueInstance;

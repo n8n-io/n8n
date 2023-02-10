@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class DiscourseApi implements ICredentialType {
 	name = 'discourseApi';
+
 	displayName = 'Discourse API';
+
 	documentationUrl = 'discourse';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -23,6 +26,7 @@ export class DiscourseApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

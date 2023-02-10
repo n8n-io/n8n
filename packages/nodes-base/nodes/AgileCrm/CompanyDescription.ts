@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const companyOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all companies',
-				action: 'Get all companies',
+				description: 'Get many companies',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',
@@ -266,9 +266,6 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters (JSON)',
 		name: 'filterJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['company'],

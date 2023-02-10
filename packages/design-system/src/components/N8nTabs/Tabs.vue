@@ -7,13 +7,16 @@
 			<n8n-icon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
-			<div  v-for="option in options"
+			<div
+				v-for="option in options"
 				:key="option.value"
 				:id="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
-					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
+					<template #content>
+						<div v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+					</template>
 					<a
 						v-if="option.href"
 						target="_blank"
@@ -23,7 +26,9 @@
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
+							<span :class="$style.external"
+								><n8n-icon icon="external-link-alt" size="small"
+							/></span>
 						</div>
 					</a>
 
@@ -51,12 +56,13 @@ export default Vue.extend({
 		N8nIcon,
 	},
 	mounted() {
-		const container = this.$refs.tabs;
+		const container = this.$refs.tabs as HTMLDivElement | undefined;
 		if (container) {
-			container.addEventListener('scroll', (e) => {
+			container.addEventListener('scroll', (event: Event) => {
 				const width = container.clientWidth;
 				const scrollWidth = container.scrollWidth;
-				this.scrollPosition = e.srcElement.scrollLeft;
+				this.scrollPosition = (event.target as Element).scrollLeft;
+
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});
 
@@ -73,20 +79,20 @@ export default Vue.extend({
 		}
 	},
 	destroyed() {
-		this.resizeObserver.disconnect();
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect();
+		}
 	},
 	data() {
 		return {
 			scrollPosition: 0,
 			canScrollRight: false,
-			resizeObserver: null,
+			resizeObserver: null as ResizeObserver | null,
 		};
 	},
 	props: {
-		value: {
-		},
-		options: {
-		},
+		value: {},
+		options: {},
 	},
 	methods: {
 		handleTooltipClick(tab: string, event: MouseEvent) {
@@ -102,15 +108,22 @@ export default Vue.extend({
 			this.scroll(50);
 		},
 		scroll(left: number) {
-			const container = this.$refs.tabs;
+			const container = this.$refs.tabs as
+				| (HTMLDivElement & { scrollBy: ScrollByFunction })
+				| undefined;
 			if (container) {
 				container.scrollBy({ left, top: 0, behavior: 'smooth' });
 			}
 		},
 	},
 });
-</script>
 
+type ScrollByFunction = (arg: {
+	left: number;
+	top: number;
+	behavior: 'smooth' | 'instant' | 'auto';
+}) => void;
+</script>
 
 <style lang="scss" module>
 .container {
@@ -134,8 +147,8 @@ export default Vue.extend({
 	}
 
 	/* Hide scrollbar for IE, Edge and Firefox */
-	-ms-overflow-style: none;  /* IE and Edge */
-	scrollbar-width: none;  /* Firefox */
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
 }
 
 .tab {
@@ -198,5 +211,4 @@ export default Vue.extend({
 	composes: button;
 	right: 0;
 }
-
 </style>

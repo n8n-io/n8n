@@ -18,7 +18,7 @@ Breakpoints are noted with a red dot in front of the line, meaning that whenever
 
 ## What if I change the code?
 
-You might need to restart the debugger if you make changes to your code, since the running process will be executing an oudated version of the code.
+You might need to restart the debugger if you make changes to your code, since the running process will be executing an outdated version of the code.
 
 In order to make this process easier you can simply run `npm run watch` in another terminal window, so you don't have to fully build the project. Please note that restarting n8n is still required, but this is much faster.
 

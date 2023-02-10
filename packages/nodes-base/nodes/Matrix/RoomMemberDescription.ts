@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const roomMemberOperations: INodeProperties[] = [
 	{
@@ -13,10 +13,10 @@ export const roomMemberOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all members',
-				action: 'Get all room members',
+				description: 'Get many members',
+				action: 'Get many room members',
 			},
 		],
 		default: 'getAll',

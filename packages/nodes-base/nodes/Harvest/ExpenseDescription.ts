@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 const resource = ['expense'];
 
@@ -33,9 +33,9 @@ export const expenseOperations: INodeProperties[] = [
 				action: 'Get data of an expense',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all expenses',
+				description: 'Get data of many expenses',
 				action: 'Get data of all expenses',
 			},
 			{

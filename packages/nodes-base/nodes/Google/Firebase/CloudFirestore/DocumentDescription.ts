@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const documentOperations: INodeProperties[] = [
 	{
@@ -38,10 +38,10 @@ export const documentOperations: INodeProperties[] = [
 				action: 'Get a document',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all documents from a collection',
-				action: 'Get all documents',
+				description: 'Get many documents from a collection',
+				action: 'Get many documents',
 			},
 			// {
 			// 	name: 'Update',
@@ -613,9 +613,6 @@ export const documentFields: INodeProperties[] = [
 		},
 		description: 'JSON query to execute',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		placeholder:
 			'{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},

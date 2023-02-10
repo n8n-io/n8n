@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const paymentOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const paymentOperations: INodeProperties[] = [
 				action: 'Get a payment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all payments',
-				action: 'Get all payments',
+				description: 'Get data of many payments',
+				action: 'Get many payments',
 			},
 		],
 		default: 'create',
@@ -235,9 +235,6 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 			},

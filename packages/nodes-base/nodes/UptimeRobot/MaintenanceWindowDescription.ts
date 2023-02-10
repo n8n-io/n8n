@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const maintenanceWindowOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 				action: 'Get a maintenance window',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all a maintenance windows',
-				action: 'Get all maintenance windows',
+				description: 'Get many a maintenance windows',
+				action: 'Get many maintenance windows',
 			},
 			{
 				name: 'Update',

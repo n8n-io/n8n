@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	getActionInheritedProperties,
@@ -34,9 +34,9 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all messages',
+				action: 'Get many messages',
 			},
 			{
 				name: 'Update',

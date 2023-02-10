@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const ticketOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const ticketOperations: INodeProperties[] = [
 				action: 'Get a ticket',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all tickets',
-				action: 'Get all tickets',
+				description: 'Get many tickets',
+				action: 'Get many tickets',
 			},
 			{
 				name: 'Update',
@@ -166,9 +166,6 @@ export const ticketFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Description of the ticket',
 			},
@@ -299,9 +296,6 @@ export const ticketFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Description of the ticket',
 			},

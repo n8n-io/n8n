@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -30,10 +30,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
-				action: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -125,6 +125,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		displayOptions: {
@@ -158,9 +159,6 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 				description: 'Description of the user',
@@ -251,6 +249,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password for the user (never included)',
 			},
@@ -264,9 +263,6 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 				description: 'Description of the user',

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { isoCountryCodes } from '../utils/isoCountryCodes';
 
@@ -32,9 +32,9 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all companies',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',

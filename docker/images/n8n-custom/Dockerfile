@@ -1,55 +1,39 @@
+ARG NODE_VERSION=16
+
 # 1. Create an image to build n8n
-FROM node:16-alpine as builder
+FROM n8nio/base:${NODE_VERSION} as builder
 
-# Update everything and install needed dependencies
-USER root
+COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+COPY scripts ./scripts
+COPY packages ./packages
+COPY patches ./patches
 
-# Install all needed dependencies
-RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates git && \
-	npm_config_user=root npm install -g npm@latest run-script-os turbo
+RUN apk add --update libc6-compat jq
+RUN corepack enable && corepack prepare --activate
+RUN chown -R node:node .
+USER node
 
-WORKDIR /data
-
-COPY turbo.json .
-COPY package.json .
-COPY package-lock.json .
-COPY packages/cli/ ./packages/cli/
-COPY packages/core/ ./packages/core/
-COPY packages/design-system/ ./packages/design-system/
-COPY packages/editor-ui/ ./packages/editor-ui/
-COPY packages/nodes-base/ ./packages/nodes-base/
-COPY packages/workflow/ ./packages/workflow/
-RUN rm -rf node_modules packages/*/node_modules packages/*/dist
-
-RUN npm config set legacy-peer-deps true
-RUN npm install --loglevel notice
-RUN npm run build
+RUN pnpm install --frozen-lockfile
+RUN pnpm build
+RUN rm -rf node_modules
+RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
+RUN jq '{name: .name, version: .version}' packages/editor-ui/package.json > editor-ui.tmp; mv editor-ui.tmp packages/editor-ui/package.json
+RUN jq '{name: .name, version: .version}' packages/design-system/package.json > design-system.tmp; mv design-system.tmp packages/design-system/package.json
+RUN NODE_ENV=production pnpm install --prod --no-optional
+RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
+RUN rm -rf packages/@n8n_io/eslint-config packages/editor-ui/src packages/editor-ui/node_modules packages/design-system
+RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/*
 
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
-FROM node:16-alpine
+FROM n8nio/base:${NODE_VERSION}
+COPY --from=builder /home/node /usr/local/lib/node_modules/n8n
+RUN ln -s /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n
+COPY docker/images/n8n-custom/docker-entrypoint.sh /
 
-USER root
-
-RUN apk add --update graphicsmagick tzdata tini su-exec git
-
-WORKDIR /data
-
-# Install all needed dependencies
-RUN npm_config_user=root npm install -g npm@latest full-icu
-
-# Install fonts
-RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
-	update-ms-fonts && \
-	fc-cache -f && \
-	apk del fonts && \
-	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
-
-ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
-
-COPY --from=builder /data ./
-
-COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
+RUN \
+	mkdir .n8n && \
+	chown node:node .n8n
+USER node
+ENV NODE_ENV=production
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
-
-EXPOSE 5678/tcp

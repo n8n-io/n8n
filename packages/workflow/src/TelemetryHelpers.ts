@@ -1,5 +1,4 @@
-/* eslint-disable import/no-cycle */
-import {
+import type {
 	IConnection,
 	INode,
 	INodeNameIndex,
@@ -8,8 +7,8 @@ import {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
-} from '.';
-import { INodeType } from './Interfaces';
+	INodeType,
+} from './Interfaces';
 
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
@@ -172,13 +171,13 @@ export function generateNodesGraph(
 				} catch (_) {
 					nodeItem.domain = getDomainBase(node.parameters.url as string);
 				}
-			} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 2) {
+			} else if (node.type === 'n8n-nodes-base.httpRequest' && [2, 3].includes(node.typeVersion)) {
 				const { authentication } = node.parameters as { authentication: string };
 
 				nodeItem.credential_type = {
 					none: 'none',
 					genericCredentialType: node.parameters.genericAuthType as string,
-					existingCredentialType: node.parameters.nodeCredentialType as string,
+					predefinedCredentialType: node.parameters.nodeCredentialType as string,
 				}[authentication];
 
 				nodeItem.credential_set = node.credentials

@@ -1,17 +1,16 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function linkedInApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	binary?: boolean,
-	headers?: object,
-	// tslint:disable-next-line:no-any
+	_headers?: object,
 ): Promise<any> {
 	const options: OptionsWithUrl = {
 		headers: {
@@ -35,7 +34,7 @@ export async function linkedInApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {
+		return await this.helpers.requestOAuth2.call(this, 'linkedInOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
 	} catch (error) {
@@ -43,7 +42,6 @@ export async function linkedInApiRequest(
 	}
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
