@@ -99,6 +99,7 @@
     "@types/syslog-client": "^1.1.2",
     "@types/uuid": "^8.3.2",
     "@types/validator": "^13.7.0",
+    "@types/ws": "^8.5.4",
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
     "concurrently": "^5.1.0",
@@ -196,6 +197,7 @@
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",
+    "ws": "^8.12.0",
     "yamljs": "^0.3.0"
   }
 }
