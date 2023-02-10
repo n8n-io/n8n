@@ -112,6 +112,8 @@ jobs:
           wait-on-timeout: 120 #
           record: true
           parallel: true # Runs test in parallel using settings above
+          # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
+          # in the same parent workflow
           ci-build-id: '${{ github.sha }}-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.run-env }}-e2e'
           spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
           config-file: /__w/n8n/n8n/cypress.config.js
