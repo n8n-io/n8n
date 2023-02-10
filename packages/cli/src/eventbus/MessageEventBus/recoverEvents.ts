@@ -7,6 +7,7 @@ import type { DateTime } from 'luxon';
 import { InternalHooksManager } from '../../InternalHooksManager';
 import * as Push from '@/Push';
 import type { IPushDataExecutionFinished } from '../../Interfaces';
+import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -162,7 +163,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 				status: 'crashed',
 			});
-			const sendData: IPushDataExecutionFinished = {
+			const pushData: IPushDataExecutionFinished = {
 				executionId,
 				data: {
 					data: executionData,
@@ -175,9 +176,13 @@ export async function recoverExecutionDataFromEventLogMessages(
 				} as unknown as IRun,
 			};
 
+			// calling workflowExecutionCompleted directly because the eventEmitter is not up yet at this point
+			await workflowExecutionCompleted(executionEntry.workflowData, pushData.data);
+
+			// wait for UI to be back up and sent the execution data
 			setTimeout(() => {
 				const pushInstance = Push.getInstance();
-				pushInstance.send('executionFinished', sendData);
+				pushInstance.send('executionFinished', pushData);
 			}, 10000);
 		}
 		return executionData;
