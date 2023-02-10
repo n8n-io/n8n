@@ -3,39 +3,57 @@ name: Test Pull Requests
 on: [pull_request]
 
 jobs:
-  build:
+  e2e-node-16:
+    name: E2E[Electron/Node 16]
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    with:
+      branch: ${{ github.event.pull_request.base.ref }}
+      user: ${{ github.event.inputs.user || 'PR User' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
+      run-env: base:16.18.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+  e2e-node-14:
+    name: E2E[Electron/Node 14]
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    with:
+      branch: ${{ github.event.pull_request.base.ref }}
+      user: ${{ github.event.inputs.user || 'schedule' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
+      run-env: base:14.21.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+
+  lint:
     runs-on: ubuntu-latest
-
-    timeout-minutes: 30
-
-    strategy:
-      matrix:
-        node-version: [14.x, 16.x]
-
+    container:
+      image: cypress/${{ inputs.run-env }}
+      options: --user 1001
     steps:
       - uses: actions/checkout@v3
-
-      - uses: pnpm/action-setup@v2.2.4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          repository: n8n-io/n8n
+          ref: ${{ inputs.branch }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Cache pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages
+          key: ${{ github.sha	}}-base:16.18.1-e2e-modules
 
-      - name: Build
-        run: pnpm build
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
 
-      - name: Test
-        run: pnpm test
+      - name: Echo spec input
+        run: echo ${{ inputs.spec }}
 
-      - name: Test E2E
-        run: |
-          pnpm cypress:install
-          pnpm test:e2e:smoke
 
       - name: Fetch base branch for `git diff`
         run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
