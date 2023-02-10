@@ -1,7 +1,6 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
-/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-floating-promises */
@@ -108,12 +107,12 @@ export class ActiveWorkflowRunner {
 		}
 
 		if (workflowsData.length !== 0) {
-			console.info(' ================================');
-			console.info('   Start Active Workflows:');
-			console.info(' ================================');
+			Logger.info(' ================================');
+			Logger.info('   Start Active Workflows:');
+			Logger.info(' ================================');
 
 			for (const workflowData of workflowsData) {
-				console.log(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+				Logger.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
 				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, {
 					workflowName: workflowData.name,
 					workflowId: workflowData.id,
@@ -124,14 +123,14 @@ export class ActiveWorkflowRunner {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
 					});
-					console.log('     => Started');
+					Logger.info('     => Started');
 				} catch (error) {
 					ErrorReporter.error(error);
-					console.log(
+					Logger.info(
 						'     => ERROR: Workflow could not be activated on first try, keep on trying',
 					);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.log(`               ${error.message}`);
+					Logger.info(`               ${error.message}`);
 					Logger.error(
 						`Issue on intital workflow activation try "${workflowData.name}" (startup)`,
 						{
@@ -482,7 +481,7 @@ export class ActiveWorkflowRunner {
 				try {
 					await this.removeWorkflowWebhooks(workflow.id as string);
 				} catch (error) {
-					console.error(
+					Logger.error(
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
 					);
@@ -651,7 +650,7 @@ export class ActiveWorkflowRunner {
 							.catch(donePromise.reject);
 					});
 				} else {
-					executePromise.catch(console.error);
+					executePromise.catch(Logger.error);
 				}
 			};
 
@@ -708,7 +707,7 @@ export class ActiveWorkflowRunner {
 							.catch(donePromise.reject);
 					});
 				} else {
-					executePromise.catch(console.error);
+					executePromise.catch(Logger.error);
 				}
 			};
 			returnFunctions.emitError = async (error: Error): Promise<void> => {
@@ -985,9 +984,8 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
-				console.log(error);
 				ErrorReporter.error(error);
-				console.error(
+				Logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 				);
