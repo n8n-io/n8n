@@ -64,7 +64,7 @@
     "storybook-addon-themes": "^6.1.0",
     "trim": "^1.0.1",
     "vite": "^4.0.4",
-    "vitest": "^0.27.2",
+    "vitest": "^0.28.4",
     "vue-class-component": "^7.2.6",
     "vue-loader": "^15.10.1",
     "vue-property-decorator": "^9.1.2",

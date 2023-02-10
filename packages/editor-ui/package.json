@@ -112,7 +112,7 @@
     "string-template-parser": "^1.2.6",
     "vite": "4.0.4",
     "vite-plugin-monaco-editor": "^1.0.10",
-    "vitest": "^0.27.2",
+    "vitest": "^0.28.4",
     "vue-tsc": "^1.0.24"
   }
 }
