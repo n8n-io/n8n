@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync } from 'fs';
-import { Credentials, loadClassInIsolation } from 'n8n-core';
+import { readFileSync, readdirSync, mkdtempSync } from 'fs';
+import { BinaryDataManager, Credentials, loadClassInIsolation } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -27,6 +27,8 @@ import {
 import { executeWorkflow } from './ExecuteWorkflow';
 import { WorkflowTestData } from './types';
 import path from 'path';
+import { tmpdir } from 'os';
+import { isEmpty } from 'lodash';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -156,6 +158,17 @@ const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	return knownNodes!;
 };
 
+export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
+	const temporaryDir = mkdtempSync(path.join(tmpdir(), 'n8n'));
+	await BinaryDataManager.init({
+		mode,
+		availableModes: mode,
+		localStoragePath: temporaryDir,
+		binaryDataTTL: 1,
+		persistedBinaryDataTTL: 1,
+	});
+}
+
 export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
 		testData = [testData];
@@ -204,7 +217,11 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 			if (nodeData.data === undefined) {
 				return null;
 			}
-			return nodeData.data.main[0]!.map((entry) => entry.json);
+			return nodeData.data.main[0]!.map((entry) => {
+				if (entry.binary && isEmpty(entry.binary)) delete entry.binary;
+				delete entry.pairedItem;
+				return entry;
+			});
 		});
 		return {
 			nodeName,
@@ -231,6 +248,20 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	expect(result.finished).toEqual(true);
 };
 
+const preparePinData = (pinData: IDataObject) => {
+	const returnData = Object.keys(pinData).reduce(
+		(acc, key) => {
+			const data = pinData[key] as IDataObject[];
+			acc[key] = [data as IDataObject[]];
+			return acc;
+		},
+		{} as {
+			[key: string]: IDataObject[][];
+		},
+	);
+	return returnData;
+};
+
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
@@ -239,16 +270,8 @@ export const workflowToTests = (workflowFiles: string[]) => {
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
-		const nodeData = Object.keys(workflowData.pinData).reduce(
-			(acc, key) => {
-				const data = (workflowData.pinData[key] as IDataObject[]).map((item) => item.json);
-				acc[key] = [data as IDataObject[]];
-				return acc;
-			},
-			{} as {
-				[key: string]: IDataObject[][];
-			},
-		);
+
+		const nodeData = preparePinData(workflowData.pinData);
 
 		delete workflowData.pinData;
 

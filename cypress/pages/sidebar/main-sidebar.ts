@@ -9,6 +9,7 @@ export class MainSidebar extends BasePage {
 		workflows: () => this.getters.menuItem('Workflows'),
 		credentials: () => this.getters.menuItem('Credentials'),
 		executions: () => this.getters.menuItem('Executions'),
+		userMenu: () => cy.getByTestId('main-sidebar-user-menu'),
 	};
 	actions = {
 		goToSettings: () => {
@@ -21,6 +22,13 @@ export class MainSidebar extends BasePage {
 			this.getters.credentials().should('be.visible');
 			cy.get('[data-old-overflow]').should('not.exist');
 			this.getters.credentials().click();
+		},
+		openUserMenu: () => {
+			this.getters.userMenu().find('[role="button"]').last().click();
+		},
+		signout: () => {
+			this.actions.openUserMenu();
+			cy.getByTestId('workflow-menu-item-logout').click();
 		},
 	};
 }
