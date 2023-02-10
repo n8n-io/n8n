@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.180.2",
+  "version": "0.180.3",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -112,7 +112,7 @@
     "string-template-parser": "^1.2.6",
     "vite": "4.0.4",
     "vite-plugin-monaco-editor": "^1.0.10",
-    "vitest": "0.27.2",
+    "vitest": "^0.28.4",
     "vue-tsc": "^1.0.24"
   }
 }

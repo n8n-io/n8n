@@ -158,8 +158,12 @@ const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	return knownNodes!;
 };
 
+export function createTemporaryDir(prefix: string = 'n8n') {
+	return mkdtempSync(path.join(tmpdir(), prefix));
+}
+
 export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
-	const temporaryDir = mkdtempSync(path.join(tmpdir(), 'n8n'));
+	const temporaryDir = createTemporaryDir();
 	await BinaryDataManager.init({
 		mode,
 		availableModes: mode,
@@ -167,6 +171,7 @@ export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'de
 		binaryDataTTL: 1,
 		persistedBinaryDataTTL: 1,
 	});
+	return temporaryDir;
 }
 
 export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
