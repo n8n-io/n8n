@@ -9,12 +9,14 @@
 			.inputLabelDisplayName(parameter, path)}`"
 		:before-close="closeDialog"
 	>
-		<div class="text-editor-wrapper ignore-key-press">
+		<div class="ignore-key-press">
 			<code-node-editor
+				class="text-editor-wrapper"
 				:mode="codeAutocomplete === 'function' ? 'runOnceForAllItems' : 'runOnceForEachItem'"
 				:value="value"
 				:defaultValue="defaultValue"
 				:isReadOnly="readonly"
+				:maxHeight="true"
 				@valueChanged="$emit('valueChanged', $event)"
 			/>
 		</div>
@@ -61,12 +63,11 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 		},
 	},
 });
-
-// TODO: Should style containe "module"?
 </script>
 
-<style module>
-.text-editor-wrapper .cm-scroller {
+<style lang="scss" scoped>
+.text-editor-wrapper {
 	min-height: 30rem;
+	height: 30rem;
 }
 </style>
