@@ -1,5 +1,5 @@
 <template>
-	<div ref="codeNodeEditor" class="ph-no-capture"></div>
+	<div ref="codeNodeEditor" :class="{ [$style['max-height']]: true }" class="ph-no-capture"></div>
 </template>
 
 <script lang="ts">
@@ -14,7 +14,7 @@ import { json } from '@codemirror/lang-json';
 import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './languages/javaScript/linter';
 import { completerExtension } from './languages/javaScript/completer';
-import { CODE_NODE_EDITOR_THEME } from './theme';
+import { codeNodeEditorTheme } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
@@ -30,6 +30,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				['runOnceForAllItems', 'runOnceForEachItem'].includes(value),
 		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		maxHeight: {
 			type: Boolean,
 			default: false,
 		},
@@ -162,31 +166,37 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 		this.isDefault = this.value === this.defaultValue;
 
+		const value = this.value === '' ? this.defaultValue : this.value;
+
 		let editorSettings: EditorStateConfig;
 		if (this.language === 'python') {
 			editorSettings = {
-				doc: this.value === '' ? this.defaultValue : this.value,
+				doc: value,
 				extensions: [
 					...baseExtensions,
 					...stateBasedExtensions,
-					CODE_NODE_EDITOR_THEME,
+					codeNodeEditorTheme({ maxHeight: this.maxHeight }),
 					python(),
-					// this.autocompletionExtension(),
 				],
 			};
 		} else if (this.language === 'json') {
 			editorSettings = {
-				doc: this.value === '' ? this.defaultValue : this.value,
-				extensions: [...baseExtensions, ...stateBasedExtensions, CODE_NODE_EDITOR_THEME, json()],
+				doc: value,
+				extensions: [
+					...baseExtensions,
+					...stateBasedExtensions,
+					codeNodeEditorTheme({ maxHeight: this.maxHeight }),
+					json(),
+				],
 			};
 		} else {
 			editorSettings = {
-				doc: this.value === '' ? this.defaultValue : this.value,
+				doc: value,
 				extensions: [
 					this.linterCompartment.of(this.linterExtension()),
 					...baseExtensions,
 					...stateBasedExtensions,
-					CODE_NODE_EDITOR_THEME,
+					codeNodeEditorTheme({ maxHeight: this.maxHeight }),
 					javascript(),
 					this.autocompletionExtension(),
 				],
@@ -203,4 +213,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 });
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" module>
+.max-height {
+	height: 100%;
+}
+</style>

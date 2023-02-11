@@ -182,6 +182,7 @@
 					<code-node-editor
 						:value="editMode.value"
 						language="json"
+						:maxHeight="true"
 						@valueChanged="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
