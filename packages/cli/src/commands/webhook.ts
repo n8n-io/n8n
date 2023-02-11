@@ -80,6 +80,9 @@ export class Webhook extends BaseCommand {
 	async run() {
 		await new WebhookServer().start();
 		this.logger.info('Webhook listener waiting for requests.');
+
+		// Make sure that the process does not close
+		await new Promise(() => {});
 	}
 
 	async catch(error: Error) {
