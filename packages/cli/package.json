@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.214.3",
+  "version": "0.215.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -99,6 +99,7 @@
     "@types/syslog-client": "^1.1.2",
     "@types/uuid": "^8.3.2",
     "@types/validator": "^13.7.0",
+    "@types/ws": "^8.5.4",
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
     "concurrently": "^5.1.0",
@@ -166,10 +167,10 @@
     "lodash.unset": "^4.5.2",
     "luxon": "^3.1.0",
     "mysql2": "~2.3.3",
-    "n8n-core": "~0.153.0",
-    "n8n-editor-ui": "~0.180.3",
-    "n8n-nodes-base": "~0.212.2",
-    "n8n-workflow": "~0.135.0",
+    "n8n-core": "~0.154.0",
+    "n8n-editor-ui": "~0.181.0",
+    "n8n-nodes-base": "~0.213.0",
+    "n8n-workflow": "~0.136.0",
     "nodemailer": "^6.7.1",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",
@@ -196,6 +197,7 @@
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",
+    "ws": "^8.12.0",
     "yamljs": "^0.3.0"
   }
 }
