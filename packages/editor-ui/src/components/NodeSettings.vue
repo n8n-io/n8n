@@ -166,7 +166,14 @@ import {
 	NodeParameterValue,
 	deepCopy,
 } from 'n8n-workflow';
-import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import {
+	ICredentialsResponse,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+	IUsedCredential,
+	IUser,
+} from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -297,9 +304,16 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		hasForeignCredential(): boolean {
 			return this.foreignCredentials.length > 0;
 		},
+		usedCredentials(): IUsedCredential[] {
+			return Object.values(this.workflowsStore.usedCredentials).filter((credential) => {
+				return Object.values(this.node?.credentials || []).find((nodeCredential) => {
+					return nodeCredential.id === credential.id;
+				});
+			});
+		},
 		credentialOwnerName(): string {
-			const credential = this.node.credentials
-				? Object.values(this.node.credentials).find((credential) => {
+			const credential = this.usedCredentials
+				? Object.values(this.usedCredentials).find((credential) => {
 						return credential.id === this.foreignCredentials[0];
 				  })
 				: undefined;
