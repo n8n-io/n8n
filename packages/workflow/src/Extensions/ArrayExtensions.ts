@@ -1,6 +1,6 @@
 import { ExpressionError, ExpressionExtensionError } from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
-import { compact as oCompact, merge as oMerge } from './ObjectExtensions';
+import { compact as oCompact } from './ObjectExtensions';
 import deepEqual from 'deep-equal';
 
 function first(value: unknown[]): unknown {
@@ -211,6 +211,28 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 	});
 }
 
+function mergeObjects(value: object, extraArgs: unknown[]): unknown {
+	const [other] = extraArgs;
+
+	if (!other) {
+		return value;
+	}
+
+	if (typeof other !== 'object') {
+		throw new ExpressionExtensionError('merge(): expected object arg');
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const newObject: any = { ...value };
+	for (const [key, val] of Object.entries(other)) {
+		if (!(key in newObject)) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+			newObject[key] = val;
+		}
+	}
+	return newObject;
+}
+
 function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	const [others] = extraArgs;
 
@@ -218,7 +240,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 		// If there are no arguments passed, merge all objects within the array
 		const merged = value.reduce((combined, current) => {
 			if (current !== null && typeof current === 'object' && !Array.isArray(current)) {
-				combined = oMerge(combined as object, [current]);
+				combined = mergeObjects(combined as object, [current]);
 			}
 			return combined;
 		}, {});
@@ -235,7 +257,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	for (let i = 0; i < listLength; i++) {
 		if (value[i] !== undefined) {
 			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				merged = Object.assign(merged, oMerge(value[i] as object, [others[i]]));
+				merged = Object.assign(merged, mergeObjects(value[i] as object, [others[i]]));
 			}
 		}
 	}

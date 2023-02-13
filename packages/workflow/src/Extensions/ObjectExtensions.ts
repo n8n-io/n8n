@@ -1,28 +1,6 @@
 import { ExpressionExtensionError } from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 
-export function merge(value: object, extraArgs: unknown[]): unknown {
-	const [other] = extraArgs;
-
-	if (!other) {
-		return value;
-	}
-
-	if (typeof other !== 'object') {
-		throw new ExpressionExtensionError('merge(): expected object arg');
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const newObject: any = { ...value };
-	for (const [key, val] of Object.entries(other)) {
-		if (!(key in newObject)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-			newObject[key] = val;
-		}
-	}
-	return newObject;
-}
-
 function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;
 }
@@ -128,11 +106,6 @@ urlEncode.doc = {
 
 // @TODO_NEXT_PHASE: Surface extensions below which take args
 
-merge.doc = {
-	name: 'merge',
-	returnType: 'object',
-};
-
 hasField.doc = {
 	name: 'hasField',
 	returnType: 'boolean',
@@ -158,7 +131,6 @@ export const objectExtensions: ExtensionMap = {
 	functions: {
 		isEmpty,
 		isNotEmpty,
-		merge,
 		hasField,
 		removeField,
 		removeFieldsContaining,
