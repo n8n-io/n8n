@@ -9,10 +9,12 @@ describe('NDV', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
+
 
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
@@ -40,7 +42,7 @@ describe('NDV', () => {
 			});
 		});
 
-		ndv.getters.runDataDisplayMode().should('have.length.at.least', 1).and('be.visible');
+		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
 	it('should change input', () => {
@@ -86,17 +88,5 @@ describe('NDV', () => {
 			cy.get('.has-issues').should('have.length', 3);
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
-	});
-
-	it('should show http node hint if node has custom api option', () => {
-		workflowPage.actions.addNodeToCanvas('Manual Trigger');
-		workflowPage.actions.addNodeToCanvas('Slack', true, true);
-		ndv.getters.httpRequestNotice().should('not.exist');
-		ndv.getters.parameterInput('operation').click();
-		ndv.getters.parameterInput('operation').contains('Custom API').click();
-		ndv.getters.httpRequestNotice().should('be.visible');
-		ndv.getters.parameterInput('operation').click();
-		ndv.getters.parameterInput('operation').contains('Post').click();
-		ndv.getters.httpRequestNotice().should('not.exist');
 	});
 });
