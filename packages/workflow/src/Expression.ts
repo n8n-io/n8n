@@ -19,7 +19,7 @@ import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { extend, hasExpressionExtension, hasNativeMethod } from './Extensions';
+import { extend, extendOptional, hasExpressionExtension, hasNativeMethod } from './Extensions';
 import type { ExpressionChunk, ExpressionCode } from './Extensions/ExpressionParser';
 import { joinExpression, splitExpression } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
@@ -278,6 +278,7 @@ export class Expression {
 
 		// expression extensions
 		data.extend = extend;
+		data.extendOptional = extendOptional;
 
 		Object.assign(data, extendedFunctions);
 
@@ -377,6 +378,7 @@ export class Expression {
 				}
 
 				let text = output.code;
+
 				// We need to cut off any trailing semicolons. These cause issues
 				// with certain types of expression and cause the whole expression
 				// to fail.

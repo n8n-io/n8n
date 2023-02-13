@@ -13,7 +13,7 @@ import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	isUserManagementDisabled,
+	isUserManagementEnabled,
 	sanitizeUser,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
@@ -94,7 +94,7 @@ export class UsersController {
 	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
 		// TODO: this should be checked in the middleware rather than here
-		if (isUserManagementDisabled()) {
+		if (!isUserManagementEnabled()) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because user management is disabled',
 			);

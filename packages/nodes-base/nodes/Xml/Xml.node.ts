@@ -244,8 +244,7 @@ export class Xml implements INodeType {
 						);
 					}
 
-					// @ts-ignore
-					const json = await parser.parseStringPromise(item.json[dataPropertyName]);
+					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
 					returnData.push({ json });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
