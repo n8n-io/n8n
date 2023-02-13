@@ -258,7 +258,7 @@ export const isNumeric = (value: string) => {
 
 // Try to parse date from string input using workflow timezone
 export const parseDate = (input: string): DateTime | null => {
-	if (!isNumeric) {
+	if (!isNumeric(input)) {
 		const date = new Date(Date.parse(input));
 
 		if (date.toString() !== 'Invalid Date') {
