@@ -1,4 +1,5 @@
-import { IDisplayOptions, INodeProperties, jsonParse } from 'n8n-workflow';
+import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { merge } from 'lodash';
 
