@@ -17,6 +17,7 @@ import os from 'os';
 import { join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
+import type { Server as HttpServer } from 'http';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type { ServeStaticOptions } from 'serve-static';
@@ -1331,7 +1332,7 @@ class Server extends AbstractServer {
 	}
 }
 
-export async function start(): Promise<void> {
+export async function start(): Promise<HttpServer> {
 	const app = new Server();
 	await app.start();
 
@@ -1392,4 +1393,6 @@ export async function start(): Promise<void> {
 	}).then(async (workflow) =>
 		Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 	);
+
+	return app.server;
 }

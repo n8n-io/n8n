@@ -1,4 +1,5 @@
 import { Command, flags } from '@oclif/command';
+import { ExitError } from '@oclif/errors';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
@@ -46,8 +47,9 @@ export class DbRevertMigrationCommand extends Command {
 	}
 
 	protected async finally(error: Error | undefined) {
-		if (this.connection?.isInitialized) await this.connection.destroy();
-
-		this.exit(error ? 1 : 0);
+		if (error instanceof ExitError) {
+			if (this.connection?.isInitialized) await this.connection.destroy();
+			this.exit(error ? 1 : 0);
+		}
 	}
 }

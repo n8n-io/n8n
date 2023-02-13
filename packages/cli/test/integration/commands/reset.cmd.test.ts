@@ -5,14 +5,18 @@ import * as testDb from '../shared/testDb';
 import { mockInstance } from '../shared/utils';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { CredentialTypes } from '@/CredentialTypes';
 import { NodeTypes } from '@/NodeTypes';
+import { PostHogClient } from '@/posthog';
 
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
+	mockInstance(PostHogClient);
 	mockInstance(InternalHooks);
-	mockInstance(LoadNodesAndCredentials);
+	mockInstance(CredentialTypes);
 	mockInstance(NodeTypes);
+	mockInstance(LoadNodesAndCredentials);
 	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();

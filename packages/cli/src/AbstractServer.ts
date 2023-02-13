@@ -31,7 +31,7 @@ import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 const emptyBuffer = Buffer.alloc(0);
 
 export abstract class AbstractServer {
-	protected server: Server;
+	server: Server;
 
 	protected app: express.Application;
 
@@ -398,7 +398,7 @@ export abstract class AbstractServer {
 		);
 	}
 
-	async start(): Promise<void> {
+	async start(): Promise<Server> {
 		const { app, externalHooks, protocol, sslKey, sslCert } = this;
 
 		if (protocol === 'https' && sslKey && sslCert) {
@@ -449,6 +449,8 @@ export abstract class AbstractServer {
 		}
 
 		await externalHooks.run('n8n.ready', [this, config]);
+
+		return this.server;
 	}
 }
 

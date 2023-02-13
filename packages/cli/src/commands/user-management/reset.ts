@@ -91,6 +91,5 @@ export class Reset extends BaseCommand {
 	async catch(error: Error): Promise<void> {
 		this.logger.error('Error resetting database. See log messages for details.');
 		this.logger.error(error.message);
-		this.exit(1);
 	}
 }

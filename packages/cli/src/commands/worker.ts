@@ -294,13 +294,13 @@ export class Worker extends BaseCommand {
 			}
 		});
 
+		const app = express();
+		this.server = http.createServer(app);
+
 		if (config.getEnv('queue.health.active')) {
 			const port = config.getEnv('queue.health.port');
 
-			const app = express();
 			app.disable('x-powered-by');
-
-			const server = http.createServer(app);
 
 			app.get(
 				'/healthz',
@@ -345,11 +345,11 @@ export class Worker extends BaseCommand {
 				},
 			);
 
-			server.listen(port, () => {
+			this.server.listen(port, () => {
 				this.logger.info(`\nn8n worker health check via, port ${port}`);
 			});
 
-			server.on('error', (error: Error & { code: string }) => {
+			this.server.on('error', (error: Error & { code: string }) => {
 				if (error.code === 'EADDRINUSE') {
 					this.logger.error(
 						`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
@@ -358,9 +358,6 @@ export class Worker extends BaseCommand {
 				}
 			});
 		}
-
-		// Make sure that the process does not close
-		await new Promise(() => {});
 	}
 
 	async catch(error: Error) {

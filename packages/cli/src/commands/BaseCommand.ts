@@ -1,6 +1,7 @@
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
+import type { Server } from 'http';
 import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
@@ -33,6 +34,8 @@ export abstract class BaseCommand extends Command {
 	protected nodeTypes: INodeTypes;
 
 	protected userSettings: IUserSettings;
+
+	protected server?: Server;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -91,9 +94,9 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async finally(error: Error | undefined) {
-		if (inTest || this.id === 'start') return;
+		if (inTest || (this.server && !error)) return;
 		if (Db.isInitialized) {
-			await sleep(100); // give any in-flight query some time to finish
+			await sleep(200); // give any in-flight query some time to finish
 			await Db.connection.destroy();
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
