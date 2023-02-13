@@ -13,7 +13,10 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	_guildId: string,
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
 	return returnData;

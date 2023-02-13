@@ -8,6 +8,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { listSearch } from './methods';
+
 import { router } from './actions/router';
 
 import { versionDescription } from './actions/versionDescription';
@@ -21,6 +23,10 @@ export class DiscordV2 implements INodeType {
 			...versionDescription,
 		};
 	}
+
+	methods = {
+		listSearch,
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return router.call(this);
