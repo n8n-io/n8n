@@ -95,7 +95,7 @@ describe('tmpl Expression Parser', () => {
 			);
 		});
 
-		test('Escaped closinging bracket', () => {
+		test('Escaped closing bracket', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
@@ -110,6 +110,62 @@ describe('tmpl Expression Parser', () => {
 				'extend(Math, "floor", [[1, 2, 3, 4].length + 10])',
 			);
 		});
+	});
+
+	describe('Test newer ES syntax', () => {
+		test('Optional chaining transforms', () => {
+			expect(extendTransform('$json.something?.test.funcCall()')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test.funcCall();',
+			);
+
+			expect(extendTransform('$json.something?.test.funcCall()?.somethingElse')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.test.funcCall()) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.somethingElse;',
+			);
+
+			expect(extendTransform('$json.something?.test.funcCall().somethingElse')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test.funcCall().somethingElse;',
+			);
+
+			expect(
+				extendTransform('$json.something?.test.funcCall()?.somethingElse.otherCall()')?.code,
+			).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.something) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.test.funcCall()) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.somethingElse.otherCall();',
+			);
+
+			expect(evaluate('={{ [1, 2, 3, 4]?.sum() }}')).toBe(10);
+		});
+
+		test('Optional chaining transforms on calls', () => {
+			expect(extendTransform('Math.min?.(1)')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = extendOptional(Math, "min")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1(1);',
+			);
+			expect(extendTransform('Math?.min?.(1)')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = Math) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = extendOptional(window.chainValue1, "min")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1(1);',
+			);
+
+			expect(extendTransform('$json.test.test2?.sum()')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.test.test2) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : extend(window.chainValue1, "sum", []);',
+			);
+			expect(extendTransform('$json.test.test2?.sum?.()')?.code).toBe(
+				'window.chainCancelToken1 = ((window.chainValue1 = $json.test.test2) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = extendOptional(window.chainValue1, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1();',
+			);
+
+			expect(evaluate('={{ [1, 2, 3, 4].sum?.() }}')).toBe(10);
+		});
+
+		test('Multiple optional chains in an expression', () => {
+			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code)
+				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+  (window.chainCancelToken1 = ((window.chainValue1 = $json.test) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test2)
+);`);
+
+			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code)
+				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+  (window.chainCancelToken1 = ((window.chainValue1 = extendOptional($json.test, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1())
+);`);
+		});
+
+		expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
 	});
 
 	describe('Non dot extensions', () => {
@@ -153,13 +209,11 @@ describe('tmpl Expression Parser', () => {
 			// If you're implementing sandboxing maybe provide a way to add functions to
 			// sandbox we can check instead?
 			const mockCallback = jest.fn(() => false);
-			// @ts-ignore
-			evaluate('={{ $if("a"==="a", true, $data["cb"]()) }}', [{ cb: mockCallback }]);
+			evaluate('={{ $if("a"==="a", true, $data.cb()) }}', [{ cb: mockCallback }]);
 			expect(mockCallback.mock.calls.length).toEqual(0);
 
-			// @ts-ignore
-			evaluate('={{ $if("a"==="b", true, $data["cb"]()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(0);
+			evaluate('={{ $if("a"==="b", true, $data.cb()) }}', [{ cb: mockCallback }]);
+			expect(mockCallback.mock.calls.length).toEqual(1);
 		});
 
 		test('$not', () => {

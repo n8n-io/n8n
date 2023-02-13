@@ -2,14 +2,18 @@
 import { DateTime } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { parse, visit, types, print } from 'recast';
+import { getOption } from 'recast/lib/util';
+import { parse as esprimaParse } from 'esprima-next';
 
 import { arrayExtensions } from './ArrayExtensions';
 import { dateExtensions } from './DateExtensions';
 import { numberExtensions } from './NumberExtensions';
 import { stringExtensions } from './StringExtensions';
 import { objectExtensions } from './ObjectExtensions';
+import type { ExpressionKind } from 'ast-types/gen/kinds';
 
 const EXPRESSION_EXTENDER = 'extend';
+const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
 
 function isEmpty(value: unknown) {
 	return value === null || value === undefined || !value;
@@ -45,7 +49,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 );
 
 const EXPRESSION_EXTENSION_REGEX = new RegExp(
-	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')}))\\s*\\(`,
+	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
@@ -74,9 +78,37 @@ export const hasNativeMethod = (method: string): boolean => {
 	});
 };
 
+// /**
+//  * recast's types aren't great and we need to use a lot of anys
+//  */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseWithEsprimaNext(source: string, options?: any): any {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+	const ast = esprimaParse(source, {
+		loc: true,
+		locations: true,
+		comment: true,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		range: getOption(options, 'range', false),
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		tolerant: getOption(options, 'tolerant', true),
+		tokens: true,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		jsx: getOption(options, 'jsx', false),
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		sourceType: getOption(options, 'sourceType', 'module'),
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	} as any);
+
+	return ast;
+}
+
 /**
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
+ *
+ * This function also polyfills optional chaining if using extended functions.
  *
  * ```ts
  * 'a'.method('x') // becomes
@@ -88,8 +120,213 @@ export const hasNativeMethod = (method: string): boolean => {
  */
 export const extendTransform = (expression: string): { code: string } | undefined => {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const ast = parse(expression);
+		const ast = parse(expression, { parser: { parse: parseWithEsprimaNext } }) as types.ASTNode;
+
+		let currentChain = 1;
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		visit(ast, {
+			// Polyfill optional chaining
+			visitChainExpression(path) {
+				this.traverse(path);
+				const chainNumber = currentChain;
+				currentChain += 1;
+
+				// This is to match our fork of tmpl
+				const globalIdentifier = types.builders.identifier(
+					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+					// @ts-ignore
+					typeof window !== 'object' ? 'global' : 'window',
+				);
+				const undefinedIdentifier = types.builders.identifier('undefined');
+				const cancelIdentifier = types.builders.identifier(`chainCancelToken${chainNumber}`);
+				const valueIdentifier = types.builders.identifier(`chainValue${chainNumber}`);
+				const cancelMemberExpression = types.builders.memberExpression(
+					globalIdentifier,
+					cancelIdentifier,
+				);
+				const valueMemberExpression = types.builders.memberExpression(
+					globalIdentifier,
+					valueIdentifier,
+				);
+
+				const patchedStack: ExpressionKind[] = [];
+
+				const buildCancelCheckWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.conditionalExpression(
+						types.builders.binaryExpression(
+							'===',
+							cancelMemberExpression,
+							types.builders.booleanLiteral(true),
+						),
+						undefinedIdentifier,
+						node,
+					);
+				};
+
+				const buildValueAssignWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.assignmentExpression('=', valueMemberExpression, node);
+				};
+
+				const buildOptionalWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.binaryExpression(
+						'===',
+						types.builders.logicalExpression(
+							'??',
+							buildValueAssignWrapper(node),
+							undefinedIdentifier,
+						),
+						undefinedIdentifier,
+					);
+				};
+
+				const buildCancelAssignWrapper = (node: ExpressionKind): ExpressionKind => {
+					return types.builders.assignmentExpression('=', cancelMemberExpression, node);
+				};
+
+				let currentNode: ExpressionKind = path.node.expression;
+				let currentPatch: ExpressionKind | null = null;
+				let patchTop: ExpressionKind | null = null;
+				let wrapNextTopInOptionalExtend = false;
+
+				const updatePatch = (toPatch: ExpressionKind, node: ExpressionKind) => {
+					if (toPatch.type === 'MemberExpression' || toPatch.type === 'OptionalMemberExpression') {
+						toPatch.object = node;
+					} else if (
+						toPatch.type === 'CallExpression' ||
+						toPatch.type === 'OptionalCallExpression'
+					) {
+						toPatch.callee = node;
+					}
+				};
+
+				while (true) {
+					if (
+						currentNode.type === 'MemberExpression' ||
+						currentNode.type === 'OptionalMemberExpression' ||
+						currentNode.type === 'CallExpression' ||
+						currentNode.type === 'OptionalCallExpression'
+					) {
+						let patchNode: ExpressionKind;
+						if (
+							currentNode.type === 'MemberExpression' ||
+							currentNode.type === 'OptionalMemberExpression'
+						) {
+							patchNode = types.builders.memberExpression(
+								valueMemberExpression,
+								currentNode.property,
+							);
+						} else {
+							patchNode = types.builders.callExpression(
+								valueMemberExpression,
+								currentNode.arguments,
+							);
+						}
+
+						if (currentPatch) {
+							updatePatch(currentPatch, patchNode);
+						}
+
+						if (!patchTop) {
+							patchTop = patchNode;
+						}
+
+						currentPatch = patchNode;
+
+						if (currentNode.optional) {
+							// Implement polyfill described below
+							if (wrapNextTopInOptionalExtend) {
+								wrapNextTopInOptionalExtend = false;
+								// This shouldn't ever happen
+								if (
+									patchTop.type === 'MemberExpression' &&
+									patchTop.property.type === 'Identifier'
+								) {
+									patchTop = types.builders.callExpression(
+										types.builders.identifier(EXPRESSION_EXTENDER_OPTIONAL),
+										[patchTop.object, types.builders.stringLiteral(patchTop.property.name)],
+									);
+								}
+							}
+
+							patchedStack.push(patchTop);
+							patchTop = null;
+							currentPatch = null;
+
+							// Attempting to optional chain on an extended function. If we don't
+							// polyfill this most calls will always be undefined. Marking that the
+							// next part of the chain should be wrapped in our polyfill.
+							if (
+								(currentNode.type === 'CallExpression' ||
+									currentNode.type === 'OptionalCallExpression') &&
+								(currentNode.callee.type === 'MemberExpression' ||
+									currentNode.callee.type === 'OptionalMemberExpression') &&
+								currentNode.callee.property.type === 'Identifier' &&
+								isExpressionExtension(currentNode.callee.property.name)
+							) {
+								wrapNextTopInOptionalExtend = true;
+							}
+						}
+
+						if (
+							currentNode.type === 'MemberExpression' ||
+							currentNode.type === 'OptionalMemberExpression'
+						) {
+							currentNode = currentNode.object;
+						} else {
+							currentNode = currentNode.callee;
+						}
+					} else {
+						if (currentPatch) {
+							updatePatch(currentPatch, currentNode);
+							if (!patchTop) {
+								patchTop = currentPatch;
+							}
+						}
+
+						if (wrapNextTopInOptionalExtend) {
+							wrapNextTopInOptionalExtend = false;
+							// This shouldn't ever happen
+							if (
+								patchTop?.type === 'MemberExpression' &&
+								patchTop.property.type === 'Identifier'
+							) {
+								patchTop = types.builders.callExpression(
+									types.builders.identifier(EXPRESSION_EXTENDER_OPTIONAL),
+									[patchTop.object, types.builders.stringLiteral(patchTop.property.name)],
+								);
+							}
+						}
+
+						if (patchTop) {
+							patchedStack.push(patchTop);
+						} else {
+							patchedStack.push(currentNode);
+						}
+						break;
+					}
+				}
+
+				patchedStack.reverse();
+
+				for (let i = 0; i < patchedStack.length; i++) {
+					let node = patchedStack[i];
+
+					if (i !== patchedStack.length - 1) {
+						node = buildCancelAssignWrapper(buildOptionalWrapper(node));
+					}
+
+					if (i !== 0) {
+						node = buildCancelCheckWrapper(node);
+					}
+					patchedStack[i] = node;
+				}
+
+				const sequenceNode = types.builders.sequenceExpression(patchedStack);
+
+				path.replace(sequenceNode);
+			},
+		});
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		visit(ast, {
@@ -158,14 +395,14 @@ function isDate(input: unknown): boolean {
 	return d instanceof Date && !isNaN(d.valueOf()) && d.toISOString() === input;
 }
 
-/**
- * Extender function injected by expression extension plugin to allow calls to extensions.
- *
- * ```ts
- * extend(input, "functionName", [...args]);
- * ```
- */
-export function extend(input: unknown, functionName: string, args: unknown[]) {
+interface FoundFunction {
+	type: 'native' | 'extended';
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	function: Function;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
@@ -191,22 +428,38 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const inputAny: any = input;
 		// This is likely a builtin we're implementing for another type
-		// (e.g. toLocaleString). We'll just call it
+		// (e.g. toLocaleString). We'll return that instead
 		if (
 			inputAny &&
 			functionName &&
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			typeof inputAny[functionName] === 'function'
 		) {
-			// I was having weird issues with eslint not finding rules on this line.
-			// Just disabling all eslint rules for now.
-			// eslint-disable-next-line
-			return inputAny[functionName](...args);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			return { type: 'native', function: inputAny[functionName] };
 		}
 
 		// Use a generic version if available
 		foundFunction = genericExtensions[functionName];
 	}
+
+	if (!foundFunction) {
+		return undefined;
+	}
+
+	return { type: 'extended', function: foundFunction };
+}
+
+/**
+ * Extender function injected by expression extension plugin to allow calls to extensions.
+ *
+ * ```ts
+ * extend(input, "functionName", [...args]);
+ * ```
+ */
+export function extend(input: unknown, functionName: string, args: unknown[]) {
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	const foundFunction = findExtendedFunction(input, functionName);
 
 	// No type specific or generic function found. Check to see if
 	// any types have a function with that name. Then throw an error
@@ -232,6 +485,33 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		}
 	}
 
+	if (foundFunction.type === 'native') {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return foundFunction.function.apply(input, args);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	return foundFunction(input, args);
+	return foundFunction.function(input, args);
+}
+
+export function extendOptional(
+	input: unknown,
+	functionName: string,
+	// eslint-disable-next-line @typescript-eslint/ban-types
+): Function | undefined {
+	const foundFunction = findExtendedFunction(input, functionName);
+
+	if (!foundFunction) {
+		return undefined;
+	}
+
+	if (foundFunction.type === 'native') {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return foundFunction.function.bind(input);
+	}
+
+	return (...args: unknown[]) => {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return foundFunction.function(input, args);
+	};
 }

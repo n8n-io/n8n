@@ -16,16 +16,17 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
 			@textInput="onTextInput"
 			@valueChanged="onValueChanged"
-			:data-test-id="`parameter-input-${parameter.name}`"
 		/>
 		<input-hint
 			v-if="expressionOutput"
 			:class="$style.hint"
+			data-test-id="parameter-expression-preview"
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
 		/>

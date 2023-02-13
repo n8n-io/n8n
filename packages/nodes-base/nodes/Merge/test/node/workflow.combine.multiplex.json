@@ -1,0 +1,259 @@
+{
+	"name": "merge tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "9f880c6f-b5e0-4453-b1d7-550beb1febe8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 380]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1, data: 'a', input: 1},\n  {id: 2, data: 'b', input: 1},\n];"
+			},
+			"id": "263d9c7f-32d4-4112-b271-73d09b73809a",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1020, 220]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1, data: 'c', input: 2},\n  {id: 2, data: 'd', input: 2},\n];"
+			},
+			"id": "3defcf5a-ec5e-4d23-a1f6-a99b7362a241",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1040, 540]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {
+					"clashHandling": {
+						"values": {
+							"resolveClash": "addSuffix"
+						}
+					}
+				}
+			},
+			"id": "7120cd6f-29f3-4f5b-aa25-babebd6335d3",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1260, 220]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {
+					"clashHandling": {
+						"values": {
+							"resolveClash": "preferInput1"
+						}
+					}
+				}
+			},
+			"id": "1ec4a466-432d-43f8-b6c0-3cc02cf32f6f",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1260, 360]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {
+					"clashHandling": {
+						"values": {
+							"resolveClash": "preferInput2"
+						}
+					}
+				}
+			},
+			"id": "fb671be6-b476-4302-984f-0c973839581b",
+			"name": "Merge2",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1260, 500]
+		}
+	],
+	"pinData": {
+		"Merge": [
+			{
+				"json": {
+					"id_1": 1,
+					"data_1": "a",
+					"input_1": 1,
+					"id_2": 1,
+					"data_2": "c",
+					"input_2": 2
+				}
+			},
+			{
+				"json": {
+					"id_1": 1,
+					"data_1": "a",
+					"input_1": 1,
+					"id_2": 2,
+					"data_2": "d",
+					"input_2": 2
+				}
+			},
+			{
+				"json": {
+					"id_1": 2,
+					"data_1": "b",
+					"input_1": 1,
+					"id_2": 1,
+					"data_2": "c",
+					"input_2": 2
+				}
+			},
+			{
+				"json": {
+					"id_1": 2,
+					"data_1": "b",
+					"input_1": 1,
+					"id_2": 2,
+					"data_2": "d",
+					"input_2": 2
+				}
+			}
+		],
+		"Merge1": [
+			{
+				"json": {
+					"id": 1,
+					"data": "a",
+					"input": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "b",
+					"input": 1
+				}
+			},
+			{
+				"json": {
+					"id": 1,
+					"data": "a",
+					"input": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "b",
+					"input": 1
+				}
+			}
+		],
+		"Merge2": [
+			{
+				"json": {
+					"id": 1,
+					"data": "c",
+					"input": 2
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "d",
+					"input": 2
+				}
+			},
+			{
+				"json": {
+					"id": 1,
+					"data": "c",
+					"input": 2
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "d",
+					"input": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "0cab5d94-90b7-4024-ad58-af9cafb46a21",
+	"id": "107",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

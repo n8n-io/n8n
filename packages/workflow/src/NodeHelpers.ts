@@ -230,31 +230,29 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-/**
- * Gets special parameters which should be added to nodeTypes depending
- * on their type or configuration
- *
- */
-export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
-	if (nodeType.description.polling === true) {
-		return [
-			{
-				displayName: 'Poll Times',
-				name: 'pollTimes',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Poll Time',
-				},
-				default: { item: [{ mode: 'everyMinute' }] },
-				description: 'Time at which polling should occur',
-				placeholder: 'Add Poll Time',
-				options: cronNodeOptions,
-			},
-		];
-	}
+const specialNodeParameters: INodeProperties[] = [
+	{
+		displayName: 'Poll Times',
+		name: 'pollTimes',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Poll Time',
+		},
+		default: { item: [{ mode: 'everyMinute' }] },
+		description: 'Time at which polling should occur',
+		placeholder: 'Add Poll Time',
+		options: cronNodeOptions,
+	},
+];
 
-	return [];
+/**
+ * Apply special parameters which should be added to nodeTypes depending on their type or configuration
+ */
+export function applySpecialNodeParameters(nodeType: INodeType): void {
+	if (nodeType.description.polling === true) {
+		nodeType.description.properties.unshift(...specialNodeParameters);
+	}
 }
 
 /**
@@ -1397,22 +1395,18 @@ export function getVersionedNodeType(
 	object: IVersionedNodeType | INodeType,
 	version?: number,
 ): INodeType {
-	if (isNodeTypeVersioned(object)) {
-		return (object as IVersionedNodeType).getNodeType(version);
+	if ('nodeVersions' in object) {
+		return object.getNodeType(version);
 	}
-	return object as INodeType;
+	return object;
 }
 
 export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
-	if (isNodeTypeVersioned(object)) {
-		return Object.values((object as IVersionedNodeType).nodeVersions).map((element) => {
+	if ('nodeVersions' in object) {
+		return Object.values(object.nodeVersions).map((element) => {
 			element.description.name = object.description.name;
 			return element;
 		});
 	}
-	return [object as INodeType];
-}
-
-export function isNodeTypeVersioned(object: IVersionedNodeType | INodeType): boolean {
-	return !!('getNodeType' in object);
+	return [object];
 }
