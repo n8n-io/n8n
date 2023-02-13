@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	createDeferredPromise,
+import type { ITriggerFunctions } from 'n8n-core';
+import type {
 	IBinaryData,
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
@@ -15,18 +14,13 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { createDeferredPromise, LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
-import {
-	connect as imapConnect,
-	getParts,
-	ImapSimple,
-	ImapSimpleOptions,
-	Message,
-} from 'imap-simple';
-import { simpleParser, Source as ParserSource } from 'mailparser';
+import type { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import { connect as imapConnect, getParts } from 'imap-simple';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
 
 import _ from 'lodash';
 

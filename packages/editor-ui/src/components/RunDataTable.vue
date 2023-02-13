@@ -170,6 +170,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -315,11 +316,11 @@ export default mixins(externalHooks).extend({
 				return '';
 			}
 
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"] }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column],
+			});
 		},
 		getPathNameFromTarget(el: HTMLElement) {
 			if (!el) {
@@ -343,21 +344,12 @@ export default mixins(externalHooks).extend({
 			if (!this.node) {
 				return '';
 			}
-
-			const expr = path.reduce((accu: string, key: string | number) => {
-				if (typeof key === 'number') {
-					return `${accu}[${key}]`;
-				}
-
-				return `${accu}["${key}"]`;
-			}, '');
 			const column = this.tableData.columns[colIndex];
-
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"]${expr} }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column, ...path],
+			});
 		},
 		isEmpty(value: unknown): boolean {
 			return (

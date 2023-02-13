@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
 
 import * as employee from './employee';
 import * as employeeDocument from './employeeDocument';
 import * as file from './file';
 import * as companyReport from './companyReport';
 
-import { BambooHr } from './Interfaces';
+import type { BambooHr } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();

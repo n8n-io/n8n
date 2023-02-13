@@ -92,6 +92,7 @@ export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
@@ -118,6 +119,7 @@ export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
 export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
+export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
 export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
@@ -174,6 +176,7 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
+export const EMAIL_KEY = 'email';
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -283,7 +286,7 @@ export const HIRING_BANNER = `
                                                         ///////////
                                                           //////
 
-Love n8n? Help us build the future of automation! https://n8n.io/careers
+Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
 `;
 
 export const NODE_TYPE_COUNT_MAPPER = {
@@ -308,10 +311,12 @@ export enum VIEWS {
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
+	SIGNOUT = 'SignoutView',
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
+	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
@@ -381,6 +386,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
@@ -442,6 +448,18 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
+}
+
+export const N8N_SALES_EMAIL = 'sales@n8n.io';
+
+export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
+
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
+export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+export const MAIN_AUTH_FIELD_NAME = 'authentication';
+export const NODE_RESOURCE_FIELD_NAME = 'resource';
 export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';

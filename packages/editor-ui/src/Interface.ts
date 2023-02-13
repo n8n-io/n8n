@@ -1,16 +1,6 @@
+import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
-import {
-	jsPlumbInstance,
-	DragOptions,
-	DropOptions,
-	ElementGroupRef,
-	Endpoint,
-	EndpointOptions,
-	EndpointRectangle,
-	EndpointRectangleOptions,
-	EndpointSpec,
-} from 'jsplumb';
 import {
 	GenericValue,
 	IConnections,
@@ -37,104 +27,14 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IDisplayOptions,
 	IAbstractEventMessage,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import { SignInType } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
-
-declare module 'jsplumb' {
-	interface PaintStyle {
-		stroke?: string;
-		fill?: string;
-		strokeWidth?: number;
-		outlineStroke?: string;
-		outlineWidth?: number;
-	}
-
-	// Extend jsPlumb Anchor interface
-	interface Anchor {
-		lastReturnValue: number[];
-	}
-
-	interface Connection {
-		__meta?: {
-			sourceNodeName: string;
-			sourceOutputIndex: number;
-			targetNodeName: string;
-			targetOutputIndex: number;
-		};
-		canvas?: HTMLElement;
-		connector?: {
-			setTargetEndpoint: (endpoint: Endpoint) => void;
-			resetTargetEndpoint: () => void;
-			bounds: {
-				minX: number;
-				maxX: number;
-				minY: number;
-				maxY: number;
-			};
-		};
-
-		// bind(event: string, (connection: Connection): void;): void;
-		bind(event: string, callback: Function): void;
-		removeOverlay(name: string): void;
-		removeOverlays(): void;
-		setParameter(name: string, value: any): void;
-		setPaintStyle(arg0: PaintStyle): void;
-		addOverlay(arg0: any[]): void;
-		setConnector(arg0: any[]): void;
-		getUuids(): [string, string];
-	}
-
-	interface Endpoint {
-		endpoint: any;
-		elementId: string;
-		__meta?: {
-			nodeName: string;
-			nodeId: string;
-			index: number;
-			totalEndpoints: number;
-		};
-		getUuid(): string;
-		getOverlay(name: string): any;
-		repaint(params?: object): void;
-	}
-
-	interface N8nPlusEndpoint extends Endpoint {
-		setSuccessOutput(message: string): void;
-		clearSuccessOutput(): void;
-	}
-
-	interface Overlay {
-		setVisible(visible: boolean): void;
-		setLocation(location: number): void;
-		canvas?: HTMLElement;
-	}
-
-	interface OnConnectionBindInfo {
-		originalSourceEndpoint: Endpoint;
-		originalTargetEndpoint: Endpoint;
-		getParameters(): { index: number };
-	}
-}
-
-// EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
-export type IEndpointOptions = Omit<EndpointOptions, 'endpoint' | 'dragProxy'> & {
-	endpointStyle: EndpointStyle;
-	endpointHoverStyle: EndpointStyle;
-	endpoint?: EndpointSpec | string;
-	dragAllowedWhenFull?: boolean;
-	dropOptions?: DropOptions & {
-		tolerance: string;
-	};
-	dragProxy?:
-		| string
-		| string[]
-		| EndpointSpec
-		| [EndpointRectangle, EndpointRectangleOptions & { strokeWidth: number }];
-};
 
 export type EndpointStyle = {
 	width?: number;
@@ -147,21 +47,6 @@ export type EndpointStyle = {
 	showOutputLabel?: boolean;
 	size?: string;
 	hoverMessage?: string;
-};
-
-export type IDragOptions = DragOptions & {
-	grid: [number, number];
-	filter: string;
-};
-
-export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'> & {
-	clearDragSelection: () => void;
-	addEndpoint(
-		el: ElementGroupRef,
-		params?: IEndpointOptions,
-		referenceParams?: IEndpointOptions,
-	): Endpoint | Endpoint[];
-	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance;
 };
 
 export interface IUpdateInformation {
@@ -236,7 +121,12 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
+	getBinaryUrl(
+		dataPath: string,
+		mode: 'view' | 'download',
+		fileName?: string,
+		mimeType?: string,
+	): string;
 	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
@@ -619,6 +509,7 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSm?: string[] | null;
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
+	email?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
@@ -642,6 +533,7 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
+	signInType?: SignInType;
 }
 
 export interface IUser extends IUserResponse {
@@ -798,6 +690,7 @@ export interface IN8nUISettings {
 		host: string;
 	};
 	executionMode: string;
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	isNpmAvailable: boolean;
 	publicApi: {
@@ -807,6 +700,10 @@ export interface IN8nUISettings {
 		swaggerUi: {
 			enabled: boolean;
 		};
+	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1082,16 +979,28 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export interface IModalState {
+export type Modals =
+	| {
+			[key: string]: ModalState;
+	  }
+	| {
+			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	  };
+
+export type ModalState = {
 	open: boolean;
 	mode?: string | null;
 	data?: Record<string, unknown>;
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
-}
+};
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type NewCredentialsModal = ModalState & {
+	showAuthSelector?: boolean;
+};
+
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1137,28 +1046,12 @@ export interface NDVState {
 	};
 }
 
-export interface IUiState {
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
-	isPageLoading: boolean;
-	currentView: string;
-	fakeDoorFeatures: IFakeDoor[];
-	nodeViewInitialized: boolean;
-	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
-}
-
 export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
+	modals: Modals;
 	isPageLoading: boolean;
 	currentView: string;
 	mainPanelPosition: number;
@@ -1223,6 +1116,10 @@ export interface ISettingsState {
 		swaggerUi: {
 			enabled: boolean;
 		};
+	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1385,6 +1282,50 @@ export type SchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
+
+export interface ILdapSyncData {
+	id: number;
+	startedAt: string;
+	endedAt: string;
+	created: number;
+	updated: number;
+	disabled: number;
+	scanned: number;
+	status: string;
+	error: string;
+	runMode: string;
+}
+
+export interface ILdapSyncTable {
+	status: string;
+	endedAt: string;
+	runTime: string;
+	runMode: string;
+	details: string;
+}
+
+export interface ILdapConfig {
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: string;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
+}
+
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {
@@ -1403,4 +1344,10 @@ export type UsageState = {
 		};
 		managementToken?: string;
 	};
+};
+
+export type NodeAuthenticationOption = {
+	name: string;
+	value: string;
+	displayOptions?: IDisplayOptions;
 };

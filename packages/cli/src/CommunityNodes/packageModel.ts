@@ -1,4 +1,5 @@
-import { INodeTypeData, INodeTypeNameVersion, LoggerProxy } from 'n8n-workflow';
+import type { INodeTypeData, INodeTypeNameVersion } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';

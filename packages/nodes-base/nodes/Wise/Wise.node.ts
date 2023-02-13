@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -23,15 +23,15 @@ import {
 	transferOperations,
 } from './descriptions';
 
-import {
+import type {
 	BorderlessAccount,
 	ExchangeRateAdditionalFields,
 	Profile,
 	Recipient,
 	StatementAdditionalFields,
 	TransferFilters,
-	wiseApiRequest,
 } from './GenericFunctions';
+import { wiseApiRequest } from './GenericFunctions';
 
 import { omit } from 'lodash';
 

@@ -1,7 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
-import pg from 'pg-promise/typescript/pg-subset';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import type pgPromise from 'pg-promise';
+import type pg from 'pg-promise/typescript/pg-subset';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and

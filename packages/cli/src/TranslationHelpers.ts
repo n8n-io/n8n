@@ -1,6 +1,6 @@
 import { join, dirname } from 'path';
 import { readdir } from 'fs/promises';
-import { Dirent } from 'fs';
+import type { Dirent } from 'fs';
 import { NODES_BASE_DIR } from '@/constants';
 
 const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // e.g. v1, v10

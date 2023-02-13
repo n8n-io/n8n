@@ -1,4 +1,4 @@
-import { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
@@ -11,7 +11,7 @@ import type {
 } from '@/Interfaces';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
-import { ExecutionRequest } from '../requests';
+import type { ExecutionRequest } from '../requests';
 
 export const workflowStatsController = express.Router();
 
@@ -38,7 +38,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 }
 
 /**
- * Initialise Logger if needed
+ * Initialize Logger if needed
  */
 workflowStatsController.use((req, res, next) => {
 	try {

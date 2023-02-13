@@ -50,6 +50,7 @@ import {
 	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
+	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
@@ -194,7 +195,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getNodeById() {
 			return (nodeId: string): INodeUi | undefined =>
-				this.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
+				this.workflow.nodes.find((node: INodeUi) => {
+					return node.id === nodeId;
+				});
 		},
 		nodesIssuesExist(): boolean {
 			for (const node of this.workflow.nodes) {
@@ -258,6 +261,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflows;
 		},
 
+		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
+			this.addWorkflow(workflow);
+			return workflow;
+		},
+
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
 			const workflowsEEStore = useWorkflowsEEStore();
 
@@ -305,7 +315,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		setWorkflowName(data: { newName: string; setStateDirty: boolean }): void {
-			if (data.setStateDirty === true) {
+			if (data.setStateDirty) {
 				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 			}
@@ -522,17 +532,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
-		addConnection(data: { connection: IConnection[]; setStateDirty: boolean }): void {
+		addConnection(data: { connection: IConnection[] }): void {
 			if (data.connection.length !== 2) {
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
 			}
-			const uiStore = useUIStore();
-			if (data.setStateDirty === true) {
-				uiStore.stateIsDirty = true;
-			}
-
 			const sourceData: IConnection = data.connection[0];
 			const destinationData: IConnection = data.connection[1];
 
@@ -616,7 +621,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		removeAllConnections(data: { setStateDirty: boolean }): void {
-			if (data && data.setStateDirty === true) {
+			if (data && data.setStateDirty) {
 				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 			}
@@ -761,7 +766,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-			if (data.setStateDirty === true) {
+			if (data.setStateDirty) {
 				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 			}

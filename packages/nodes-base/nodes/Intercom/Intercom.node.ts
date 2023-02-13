@@ -1,21 +1,20 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { leadFields, leadOperations } from './LeadDescription';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
-import { IAvatar, ILead, ILeadCompany } from './LeadInterface';
+import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
-import { IUser, IUserCompany } from './UserInterface';
+import type { IUser, IUserCompany } from './UserInterface';
 import { companyFields, companyOperations } from './CompanyDescription';
-import { ICompany } from './CompanyInteface';
+import type { ICompany } from './CompanyInteface';
 
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {

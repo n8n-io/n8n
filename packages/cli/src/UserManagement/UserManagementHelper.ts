@@ -1,19 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
-import express from 'express';
+import type express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { PublicUser } from './Interfaces';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
-import { Role } from '@db/entities/Role';
-import { AuthenticatedRequest } from '@/requests';
+import type { PublicUser, WhereClause } from '@/Interfaces';
+import type { User } from '@db/entities/User';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
+import type { Role } from '@db/entities/Role';
+import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
-import { getWebhookBaseUrl } from '../WebhookHelpers';
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
-import { WhereClause } from '@/Interfaces';
 import { RoleService } from '@/role/role.service';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
@@ -37,10 +37,20 @@ export function isEmailSetUp(): boolean {
 }
 
 export function isUserManagementEnabled(): boolean {
-	return (
-		!config.getEnv('userManagement.disabled') ||
-		config.getEnv('userManagement.isInstanceOwnerSetUp')
-	);
+	// This can be simplified but readability is more important here
+
+	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		// Short circuit - if owner is set up, UM cannot be disabled.
+		// Users must reset their instance in order to do so.
+		return true;
+	}
+
+	// UM is disabled for desktop by default
+	if (config.getEnv('deployment.type').startsWith('desktop_')) {
+		return false;
+	}
+
+	return config.getEnv('userManagement.disabled') ? false : true;
 }
 
 export function isSharingEnabled(): boolean {
@@ -48,13 +58,6 @@ export function isSharingEnabled(): boolean {
 	return (
 		isUserManagementEnabled() &&
 		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
-	);
-}
-
-export function isUserManagementDisabled(): boolean {
-	return (
-		config.getEnv('userManagement.disabled') &&
-		!config.getEnv('userManagement.isInstanceOwnerSetUp')
 	);
 }
 
@@ -139,18 +142,27 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		resetPasswordTokenExpiration,
 		updatedAt,
 		apiKey,
-		...sanitizedUser
+		authIdentities,
+		...rest
 	} = user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore
-			delete sanitizedUser[key];
+			delete rest[key];
 		});
+	}
+	const sanitizedUser: PublicUser = {
+		...rest,
+		signInType: 'email',
+	};
+	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+	if (ldapIdentity) {
+		sanitizedUser.signInType = 'ldap';
 	}
 	return sanitizedUser;
 }
 
-export function addInviteLinktoUser(user: PublicUser, inviterId: string): PublicUser {
+export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
 	if (user.isPending) {
 		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
 	}
@@ -168,7 +180,7 @@ export async function getUserById(userId: string): Promise<User> {
 /**
  * Check if a URL contains an auth-excluded endpoint.
  */
-export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
+export function isAuthExcluded(url: string, ignoredEndpoints: Readonly<string[]>): boolean {
 	return !!ignoredEndpoints
 		.filter(Boolean) // skip empty paths
 		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
