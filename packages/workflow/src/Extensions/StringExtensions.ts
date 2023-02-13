@@ -118,7 +118,10 @@ function toDate(value: string): Date {
 	if (date.toString() === 'Invalid Date') {
 		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
 	}
-
+	// If time component is not specified, force 00:00h
+	if (!/:/.test(value)) {
+		date.setHours(0, 0, 0);
+	}
 	return date;
 }
 
