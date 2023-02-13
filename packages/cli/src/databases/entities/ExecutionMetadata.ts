@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
-import type { ExecutionEntity } from './ExecutionEntity';
+import { ExecutionEntity } from './ExecutionEntity';
 
 @Entity()
 export class ExecutionMetadata {
