@@ -1,4 +1,4 @@
-import { INodeUi } from './../Interface';
+import { INodeUi, IUsedCredential } from './../Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -177,7 +177,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 		},
 		getCredentialOwnerName() {
-			return (credential: ICredentialsResponse | undefined): string => {
+			return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
 				return credential?.ownedBy?.firstName
 					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
 					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
