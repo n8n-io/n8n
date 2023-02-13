@@ -6,7 +6,7 @@ export const channelRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'Select the channel to delete by name or ID',
+	description: 'Select the channel by name or ID',
 	modes: [
 		{
 			displayName: 'By Name',
