@@ -3,7 +3,7 @@ import { realpath } from 'fs/promises';
 
 import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import type { NodeTypesClass } from '@/NodeTypes';
-import type { Push } from '@/Push';
+import type { Push } from '@/push';
 
 export const reloadNodesAndCredentials = async (
 	loadNodesAndCredentials: LoadNodesAndCredentialsClass,

@@ -11,6 +11,7 @@ export * from './MessageEventBus';
 export * from './Expression';
 export * from './ExpressionError';
 export * from './NodeErrors';
+export * from './NodeHelpers';
 export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowActivationError';

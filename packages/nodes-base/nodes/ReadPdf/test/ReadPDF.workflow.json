@@ -1,0 +1,64 @@
+{
+	"name": "Read PDF node unit test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0c9db33c-dd15-4088-9d12-b9f3b8f1fa96",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [960, 540]
+		},
+		{
+			"parameters": {},
+			"id": "86abdc3b-206d-4b67-a37f-6b67b6bd3bbc",
+			"name": "Read PDF",
+			"type": "n8n-nodes-base.readPDF",
+			"typeVersion": 1,
+			"position": [1400, 540]
+		},
+		{
+			"parameters": {
+				"filePath": "C:\\Test\\sample.pdf"
+			},
+			"id": "2f6d241e-44a4-4213-b49a-166201946a89",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [1180, 540]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Read PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9802b48d-727a-40ef-ad87-d544a9a648a7",
+	"id": "188",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}
