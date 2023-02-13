@@ -800,7 +800,7 @@ export default mixins(
 	width: 116px !important;
 
 	.node-wrapper--trigger & {
-		border-radius: 32px 8px 8px 32px;
+		border-radius: 36px 8px 8px 36px;
 	}
 }
 

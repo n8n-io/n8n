@@ -194,6 +194,7 @@ import {
 	EnterpriseEditionFeature,
 	POSTHOG_ASSUMPTION_TEST,
 	REGULAR_NODE_FILTER,
+	MANUAL_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -1796,6 +1797,7 @@ export default mixins(
 			options: AddNodeOptions = {},
 			showDetail = true,
 			trackHistory = false,
+			isAutoAdd = false,
 		) {
 			const nodeTypeData: INodeTypeDescription | null =
 				this.nodeTypesStore.getNodeType(nodeTypeName);
@@ -1917,6 +1919,7 @@ export default mixins(
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
+					is_auto_add: isAutoAdd,
 					workflow_id: this.workflowsStore.workflowId,
 					drag_and_drop: options.dragAndDrop,
 				};
@@ -2002,6 +2005,7 @@ export default mixins(
 			options: AddNodeOptions = {},
 			showDetail = true,
 			trackHistory = false,
+			isAutoAdd = false,
 		) {
 			if (!this.editAllowedCheck()) {
 				return;
@@ -2013,7 +2017,13 @@ export default mixins(
 
 			this.historyStore.startRecordingUndo();
 
-			const newNodeData = await this.injectNode(nodeTypeName, options, showDetail, trackHistory);
+			const newNodeData = await this.injectNode(
+				nodeTypeName,
+				options,
+				showDetail,
+				trackHistory,
+				isAutoAdd,
+			);
 			if (!newNodeData) {
 				return;
 			}
@@ -3681,11 +3691,14 @@ export default mixins(
 			dragAndDrop: boolean,
 		) {
 			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
+				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
+				const openNDV = !isManualTrigger && (nodeTypes.length === 1 || index > 0);
 				this.addNode(
 					nodeTypeName,
 					{ position, dragAndDrop },
-					nodeTypes.length === 1 || index > 0,
+					openNDV,
 					true,
+					nodeTypes.length > 1 && index < 1,
 				);
 				if (index === 0) return;
 				// If there's more than one node, we want to connect them
@@ -3701,7 +3714,7 @@ export default mixins(
 								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
 							);
 
-							// Position the added node to the right side of the previsouly added one
+							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [
 								previouslyAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2,
 								previouslyAddedNode.position[1],

@@ -39,7 +39,13 @@
 					<span v-text="activeSubcategoryTitle" />
 				</template>
 			</div>
-			<div v-if="isRootView && $slots.description" :class="$style.description">
+			<div
+				v-if="isRootView && $slots.description"
+				:class="{
+					[$style.description]: true,
+					[$style.descriptionOffset]: isViewNavigated || activeSubcategory,
+				}"
+			>
 				<slot name="description" />
 			</div>
 
@@ -650,6 +656,9 @@ const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state
 .description {
 	padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
 	margin-top: -4px;
+}
+.descriptionOffset {
+	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
 }
 .backButton {
 	background: transparent;

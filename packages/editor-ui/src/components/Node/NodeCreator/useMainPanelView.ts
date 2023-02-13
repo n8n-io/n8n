@@ -43,12 +43,11 @@ export default () => {
 				},
 				{
 					type: 'subcategory',
-					key: FILES_SUBCATEGORY,
+					key: HELPERS_SUBCATEGORY,
 					category: CORE_NODES_CATEGORY,
 					properties: {
-						subcategory: FILES_SUBCATEGORY,
-						icon: 'file-alt',
-						color: '#7D838F',
+						subcategory: HELPERS_SUBCATEGORY,
+						icon: 'toolbox',
 					},
 				},
 				{
@@ -58,17 +57,15 @@ export default () => {
 					properties: {
 						subcategory: FLOWS_CONTROL_SUBCATEGORY,
 						icon: 'code-branch',
-						color: '#7D838F',
 					},
 				},
 				{
 					type: 'subcategory',
-					key: HELPERS_SUBCATEGORY,
+					key: FILES_SUBCATEGORY,
 					category: CORE_NODES_CATEGORY,
 					properties: {
-						subcategory: HELPERS_SUBCATEGORY,
-						icon: 'toolbox',
-						color: '#7D838F',
+						subcategory: FILES_SUBCATEGORY,
+						icon: 'file-alt',
 					},
 				},
 				{
@@ -79,7 +76,6 @@ export default () => {
 							'nodeCreator.triggerHelperPanel.addAnotherTrigger',
 						),
 						icon: 'bolt',
-						color: '#7D838F',
 						withTopBorder: true,
 						description: instance?.proxy.$locale.baseText(
 							'nodeCreator.triggerHelperPanel.addAnotherTriggerDescription',
@@ -118,9 +114,6 @@ export default () => {
 								'nodeCreator.triggerHelperPanel.scheduleTriggerDescription',
 							),
 							icon: 'fa:clock',
-							defaults: {
-								color: '#7D838F',
-							},
 						},
 					},
 				},
@@ -143,9 +136,6 @@ export default () => {
 								icon: 'webhook',
 								fileBuffer: '/static/webhook-icon.svg',
 							},
-							defaults: {
-								color: '#7D838F',
-							},
 						},
 					},
 				},
@@ -164,9 +154,6 @@ export default () => {
 								'nodeCreator.triggerHelperPanel.manualTriggerDescription',
 							),
 							icon: 'fa:mouse-pointer',
-							defaults: {
-								color: '#7D838F',
-							},
 						},
 					},
 				},
@@ -185,9 +172,6 @@ export default () => {
 								'nodeCreator.triggerHelperPanel.workflowTriggerDescription',
 							),
 							icon: 'fa:sign-out-alt',
-							defaults: {
-								color: '#7D838F',
-							},
 						},
 					},
 				},
