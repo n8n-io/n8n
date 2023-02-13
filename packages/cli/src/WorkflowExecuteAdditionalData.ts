@@ -619,6 +619,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						stoppedAt: fullExecutionData.stoppedAt,
 					});
 
+					console.log('got metadata2:', fullRunData.data.resultData.metadata);
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
@@ -626,6 +627,22 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
+
+					try {
+						if (fullRunData.data.resultData.metadata) {
+							for (const [key, value] of Object.entries(fullRunData.data.resultData.metadata)) {
+								console.log(this.executionId, parseInt(this.executionId));
+								await Db.collections.ExecutionMetadata.save({
+									// eslint-disable-next-line @typescript-eslint/no-explicit-any
+									execution: this.executionId as any,
+									key,
+									value,
+								});
+							}
+						}
+					} catch (e) {
+						console.error(e);
+					}
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
@@ -741,6 +758,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						fullExecutionData.workflowId = workflowId;
 					}
 
+					console.log('got metadata:', fullRunData.data.resultData.metadata);
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
@@ -1012,6 +1030,7 @@ async function executeWorkflow(
 			fullExecutionData.workflowId = workflowData.id;
 		}
 
+		console.log('got metadata1:', fullRunData.data.resultData.metadata);
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 		await Db.collections.Execution.update(executionId, executionData as IExecutionFlattedDb);
