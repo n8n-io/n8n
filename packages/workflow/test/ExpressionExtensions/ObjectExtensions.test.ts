@@ -7,21 +7,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{({ test1: 1 }).isEmpty()}}')).toEqual(false);
 		});
 
-		test('.merge should work on an object', () => {
-			expect(evaluate('={{ ({ test1: 1, test2: 2 }).merge({ test2: 3, test3: 3 }) }}')).toEqual({
-				test1: 1,
-				test2: 2,
-				test3: 3,
-			});
-		});
-
-		test('.merge should return whole object for no args', () => {
-			expect(evaluate('={{ ({ test1: 1, test2: 2 }).merge() }}')).toEqual({
-				test1: 1,
-				test2: 2,
-			});
-		});
-
 		test('.hasField should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1 }).hasField("test1") }}')).toEqual(true);
 			expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toEqual(false);
