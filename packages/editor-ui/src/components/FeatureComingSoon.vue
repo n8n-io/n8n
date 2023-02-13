@@ -1,5 +1,5 @@
 <template>
-	<div v-if="this.featureInfo" :class="[$style.container]">
+	<div v-if="featureInfo" :class="[$style.container]">
 		<div v-if="showTitle" class="mb-2xl">
 			<n8n-heading size="2xlarge">
 				{{ $locale.baseText(featureInfo.featureName) }}

@@ -538,7 +538,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
 			}
-
 			const sourceData: IConnection = data.connection[0];
 			const destinationData: IConnection = data.connection[1];
 
