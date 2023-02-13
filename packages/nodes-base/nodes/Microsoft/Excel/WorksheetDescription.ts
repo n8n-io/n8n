@@ -450,7 +450,7 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['updateRange'],
+				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
 				dataMode: ['autoMap', 'define'],
 			},
