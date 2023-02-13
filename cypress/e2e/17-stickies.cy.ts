@@ -68,19 +68,11 @@ describe('Canvas Actions', () => {
 		moveSticky([200, 200]);
 
 		dragRightEdge([200, 200, 160, 240], 100);
-
-		// cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
-		// workflowPage.getters.stickies()
-		// 	.should(($el) => {
-		// 		expect($el).to.have.css('top', '340px');
-		// 		expect($el).to.have.css('left', '400px');
-		// 		expect($el).to.have.css('height', '160px');
-		// 		expect($el).to.have.css('width', '302px');
-		// 	});
+		dragRightEdge([200, 200, 160, 240], -50);
 	});
 
 	// it('expands/shrinks sticky from the left edge', () => {
-	//	addDefaultSticky();
+	// 	addDefaultSticky();
 
 	// 	cy.drag('[data-test-id="sticky"] [data-dir="left"]', [100, 100]);
 	// 	workflowPage.getters.stickies()
