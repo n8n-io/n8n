@@ -801,7 +801,7 @@ export class MicrosoftExcel implements INodeType {
 						extractValue: true,
 					}) as string;
 
-					let range = this.getNodeParameter('range', 0, '') as string;
+					let range = this.getNodeParameter('options.range', 0, '') as string;
 					const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
 					if (dataMode === 'nothing') {

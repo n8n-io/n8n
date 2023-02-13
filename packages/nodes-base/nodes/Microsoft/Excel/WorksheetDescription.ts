@@ -52,7 +52,7 @@ export const worksheetOperations: INodeProperties[] = [
 				action: 'Get worksheet range',
 			},
 			{
-				name: 'Update Range',
+				name: 'Update',
 				value: 'updateRange',
 				description: 'Update worksheet range',
 				action: 'Update worksheet range',
@@ -444,38 +444,38 @@ export const worksheetFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 worksheet:updateRange                      */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Range',
-		name: 'range',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: ['updateRange', 'upsert'],
-				resource: ['worksheet'],
-				dataMode: ['autoMap', 'define'],
-			},
-		},
-		placeholder: 'e.g. A1:B2',
-		default: '',
-		description: 'The sheet range to read the data from specified using a A1-style notation',
-		hint: 'First row must contain column names. Leave blank for entire worksheet.',
-	},
-	{
-		displayName: 'Range',
-		name: 'range',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: ['updateRange'],
-				resource: ['worksheet'],
-				dataMode: ['raw'],
-			},
-		},
-		placeholder: 'e.g. A1:B2',
-		default: '',
-		description: 'The sheet range to read the data from specified using a A1-style notation',
-		hint: 'Leave blank for entire worksheet',
-	},
+	// {
+	// 	displayName: 'Range',
+	// 	name: 'range',
+	// 	type: 'string',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: ['updateRange', 'upsert'],
+	// 			resource: ['worksheet'],
+	// 			dataMode: ['autoMap', 'define'],
+	// 		},
+	// 	},
+	// 	placeholder: 'e.g. A1:B2',
+	// 	default: '',
+	// 	description: 'The sheet range to read the data from specified using a A1-style notation',
+	// 	hint: 'First row must contain column names. Leave blank for entire worksheet.',
+	// },
+	// {
+	// 	displayName: 'Range',
+	// 	name: 'range',
+	// 	type: 'string',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: ['updateRange'],
+	// 			resource: ['worksheet'],
+	// 			dataMode: ['raw'],
+	// 		},
+	// 	},
+	// 	placeholder: 'e.g. A1:B2',
+	// 	default: '',
+	// 	description: 'The sheet range to read the data from specified using a A1-style notation',
+	// 	hint: 'Leave blank for entire worksheet',
+	// },
 	{
 		displayName: 'Data Mode',
 		name: 'dataMode',
@@ -674,6 +674,37 @@ export const worksheetFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/dataMode': ['autoMap', 'define'],
+					},
+				},
+				placeholder: 'e.g. A1:B2',
+				default: '',
+				description: 'The sheet range to read the data from specified using a A1-style notation',
+				hint: 'First row must contain column names. Leave blank for entire worksheet.',
+			},
+			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/dataMode': ['raw'],
+					},
+					hide: {
+						'/operation': ['updateRange'],
+					},
+				},
+				placeholder: 'e.g. A1:B2',
+				default: '',
+				description: 'The sheet range to read the data from specified using a A1-style notation',
+				hint: 'Leave blank for entire worksheet',
+			},
+			{
 				displayName: 'Update All Matches',
 				name: 'updateAll',
 				type: 'boolean',
@@ -685,7 +716,6 @@ export const worksheetFields: INodeProperties[] = [
 			show: {
 				operation: ['updateRange', 'upsert'],
 				resource: ['worksheet'],
-				dataMode: ['autoMap', 'define'],
 			},
 		},
 	},
