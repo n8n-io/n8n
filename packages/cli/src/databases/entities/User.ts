@@ -110,7 +110,7 @@ export class User extends AbstractEntity implements IUser {
 	mfaEnabled?: boolean;
 
 	@Column({ type: String, nullable: true })
-	mfaRecoveryCodes?: string;
+	mfaRecoveryCodes?: string | null;
 
 	/**
 	 * Whether the user is pending setup completion.

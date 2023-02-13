@@ -81,6 +81,7 @@ async function request(config: {
 				throw errorResponseData;
 			}
 
+			console.log('mandadno este error');
 			throw new ResponseError(errorResponseData.message, {
 				errorCode: errorResponseData.code,
 				httpStatusCode: error.response.status,

@@ -616,11 +616,11 @@ class Server extends AbstractServer {
 			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
 		}
 
-        // ----------------------------------------
+		// ----------------------------------------
 		// MFA
 		// ----------------------------------------
 
-        this.app.use(`/${this.restEndpoint}/mfa`, mfaController);
+		this.app.use(`/${this.restEndpoint}/mfa`, mfaController);
 
 		// ----------------------------------------
 		// Workflow

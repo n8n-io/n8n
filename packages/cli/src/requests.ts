@@ -251,6 +251,7 @@ export type LoginRequest = AuthlessRequest<
 		email: string;
 		password: string;
 		mfaToken?: string;
+		mfaRecoveryCode?: string;
 	}
 >;
 

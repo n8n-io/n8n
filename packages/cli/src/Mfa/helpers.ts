@@ -1,4 +1,4 @@
-import { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/User';
 import * as speakeasy from 'speakeasy';
 
 export const validateMfaToken = (user: User, mfaToken: string) => {
@@ -7,4 +7,14 @@ export const validateMfaToken = (user: User, mfaToken: string) => {
 		encoding: 'base32',
 		token: mfaToken,
 	});
+};
+
+export const validateMfaRecoveryCode = (user: User, mfaRecoveryCode: string) => {
+	if (user?.mfaRecoveryCodes) {
+		const recoveryCodes = user.mfaRecoveryCodes.split('|');
+		if (recoveryCodes.includes(mfaRecoveryCode)) {
+			return true;
+		}
+	}
+	return false;
 };

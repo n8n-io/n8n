@@ -93,11 +93,12 @@ export default mixins(showMessage).extend({
 
 				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
-				if (error.message.includes('MFA')) {
+				if (error.errorCode === 998) {
 					this.$router.push({
 						name: VIEWS.MFA,
 						params: { email: values.email, password: values.password },
 					});
+					return;
 				}
 				this.$showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;

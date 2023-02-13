@@ -17,7 +17,7 @@ export function getCurrentUser(context: IRestApiContext): Promise<IUserResponse 
 
 export function login(
 	context: IRestApiContext,
-	params: { email: string; password: string },
+	params: { email: string; password: string; mfaToken?: string; mfaRecoveryToken?: string },
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'POST', '/login', params);
 }

@@ -1,5 +1,5 @@
 import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
-import { disableMfa, enableMfa, getMfaQr, getMfaRecoveryCodes, verifyMfaToken } from '@/api/mfa';
+import { disableMfa, enableMfa, getMfaQr, verifyMfaToken } from '@/api/mfa';
 import {
 	getLdapConfig,
 	getLdapSynchronizations,
@@ -271,7 +271,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			const { apiKey } = await createApiKey(rootStore.getRestApiContext);
 			return apiKey;
 		},
-		async getMfaQr(): Promise<{ qrCode: string; secret: string, recoveryCodes: string[] }> {
+		async getMfaQr(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();
 			return await getMfaQr(rootStore.getRestApiContext);
 		},
