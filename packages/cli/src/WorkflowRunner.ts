@@ -16,7 +16,6 @@ import { BinaryDataManager, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
-	ExecutionStatus,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
@@ -58,7 +57,6 @@ import type { Push } from '@/push';
 import { getPushInstance } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
-import { parse } from 'flatted';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;

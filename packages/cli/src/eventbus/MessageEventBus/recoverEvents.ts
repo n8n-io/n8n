@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { InternalHooksManager } from '../../InternalHooksManager';
-import * as Push from '@/Push';
+import { getPushInstance } from '@/push';
 import type { IPushDataExecutionFinished } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 
@@ -178,8 +178,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 			// wait for UI to be back up and sent the execution data
 			setTimeout(() => {
-				const pushInstance = Push.getInstance();
-				pushInstance.send('executionFinished', pushData);
+				getPushInstance().send('executionFinished', pushData);
 			}, 10000);
 		}
 		return executionData;
