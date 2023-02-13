@@ -9,9 +9,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { IField } from './GenericFunctions';
+import type { IField, ICustomFields, IOperationFunction } from './GenericFunctions';
 import {
-	adjustAddresses,
+	adjustBody,
+	buildQs,
 	getEntityFields,
 	getPicklistOptions,
 	microsoftApiRequest,
@@ -19,12 +20,148 @@ import {
 	sort,
 } from './GenericFunctions';
 
-import { accountFields, accountOperations } from './descriptions';
+import { accountFields, accountOperations, leadFields, leadOperations } from './descriptions';
+import { IExecuteSingleFunctions } from 'n8n-core';
+
+const operations: { [key: string]: IOperationFunction } = {
+	'account:create': async function (
+		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+		index: number,
+	) {
+		// https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/create-entity-web-api
+		const name = this.getNodeParameter('name', index) as string;
+		const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+		const options = this.getNodeParameter('options', index) as IDataObject;
+
+		return microsoftApiRequest.call(
+			this,
+			'POST',
+			'/accounts',
+			adjustBody({
+				name,
+				...additionalFields,
+			}),
+			buildQs({
+				options,
+				requiredReturnFields: ['accountid'],
+			}),
+		);
+	},
+
+	'account:delete': async function (
+		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+		index: number,
+	) {
+		// https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/update-delete-entities-using-web-api#basic-delete
+		const accountId = this.getNodeParameter('accountId', index) as string;
+
+		await microsoftApiRequest.call(this, 'DELETE', `/accounts(${accountId})`);
+
+		return { success: true };
+	},
+
+	'account:get': async function (
+		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+		index: number,
+	) {
+		// https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/retrieve-entity-using-web-api
+		const accountId = this.getNodeParameter('accountId', index) as string;
+		const options = this.getNodeParameter('options', index) as IDataObject;
+
+		return microsoftApiRequest.call(
+			this,
+			'GET',
+			`/accounts(${accountId})`,
+			{},
+			buildQs({
+				options,
+			}),
+		);
+	},
+
+	'account:getAll': async function (
+		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+		index: number,
+	) {
+		// https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
+		const returnAll = this.getNodeParameter('returnAll', index);
+		const options = this.getNodeParameter('options', index) as IDataObject;
+		const filters = this.getNodeParameter('filters', index) as IDataObject;
+		const qs = buildQs({
+			options,
+			filters,
+		});
+
+		if (returnAll) {
+			return microsoftApiRequestAllItems.call(this, 'value', 'GET', '/accounts', {}, qs);
+		}
+
+		const { value } = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/accounts',
+			{},
+			{
+				...qs,
+				$top: this.getNodeParameter('limit', 0),
+			},
+		);
+
+		return value;
+	},
+
+	'account:update': async function (
+		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+		index: number,
+	) {
+		const accountId = this.getNodeParameter('accountId', index) as string;
+		const updateFields = this.getNodeParameter('updateFields', index) as IDataObject;
+		const options = this.getNodeParameter('options', index) as IDataObject;
+
+		return microsoftApiRequest.call(
+			this,
+			'PATCH',
+			`/accounts(${accountId})`,
+			adjustBody({
+				...updateFields,
+			}),
+			buildQs({
+				options,
+				requiredReturnFields: ['accountid'],
+			}),
+		);
+	},
+
+	'lead:create': async function (
+		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+		index: number,
+	) {
+		const additionalFields = this.getNodeParameter('additionalFields', index) as {
+			addresses: { address: [{ [key: string]: any }] };
+		};
+		const customFields = this.getNodeParameter('customFields', index) as ICustomFields;
+		const options = this.getNodeParameter('options', index) as IDataObject;
+
+		return microsoftApiRequest.call(
+			this,
+			'POST',
+			'/leads',
+			adjustBody({
+				...additionalFields,
+				...customFields,
+			}),
+			buildQs({
+				options,
+				requiredReturnFields: ['leadid'],
+			}),
+		);
+	},
+};
 
 export class MicrosoftDynamicsCrm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Dynamics CRM',
-		name: 'microsoftDynamicsCrm',
+		displayName: 'Microsoft Dynamics CRM v2',
+		name: 'microsoftDynamicsCrmV2',
 		icon: 'file:dynamicsCrm.svg',
 		group: ['input'],
 		version: 1,
@@ -52,11 +189,17 @@ export class MicrosoftDynamicsCrm implements INodeType {
 						name: 'Account',
 						value: 'account',
 					},
+					{
+						name: 'Lead',
+						value: 'lead',
+					},
 				],
 				default: 'account',
 			},
 			...accountOperations,
 			...accountFields,
+			...leadOperations,
+			...leadFields,
 		],
 	};
 
@@ -68,7 +211,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			async getAccountRatingCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'accountratingcode');
 			},
-			async getAddressTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getAccountAddressTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'address1_addresstypecode');
 			},
 			async getBusinessTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -80,7 +223,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			async getCustomerTypeCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'customertypecode');
 			},
-			async getIndustryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getAccountIndustryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'industrycode');
 			},
 			async getPaymentTermsCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -96,7 +239,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'preferredappointmenttimecode');
 			},
-			async getPreferredContactMethodCodes(
+			async getAccountPreferredContactMethodCodes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'preferredcontactmethodcode');
@@ -141,6 +284,48 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					}))
 					.sort(sort);
 			},
+			async getLeadAddressTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'address1_addresstypecode');
+			},
+			async getLeadBudgetStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'budgetstatus');
+			},
+			async getLeadIndustryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'industrycode');
+			},
+			async getLeadPreferredContactMethodCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'preferredcontactmethodcode');
+			},
+			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const fields = await getEntityFields.call(this, 'lead');
+				const isSelectable = (field: IField) =>
+					field.IsValidForRead &&
+					field.CanBeSecuredForRead &&
+					field.IsValidODataAttribute &&
+					field.LogicalName !== 'slaid';
+				return fields
+					.filter(isSelectable)
+					.filter((field) => field.DisplayName.UserLocalizedLabel?.Label)
+					.map((field) => ({
+						name: field.DisplayName.UserLocalizedLabel.Label,
+						value: field.LogicalName,
+					}))
+					.sort(sort);
+			},
+			async getBooleanOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return [
+					{
+						name: 'No',
+						value: 1,
+					},
+					{
+						name: 'Yes',
+						value: 0,
+					},
+				];
+			},
 		},
 	};
 
@@ -148,131 +333,16 @@ export class MicrosoftDynamicsCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
-		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		let responseData;
 
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'account') {
-					//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/create-entity-web-api
-					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as {
-							addresses: { address: [{ [key: string]: any }] };
-						};
-						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
+				const operationHandler = operations[`${resource}:${operation}`];
 
-						const body = {
-							name,
-							...additionalFields,
-						};
-
-						if (body?.addresses?.address) {
-							Object.assign(body, adjustAddresses(body.addresses.address));
-							//@ts-ignore
-							delete body?.addresses;
-						}
-
-						if (options.returnFields) {
-							options.returnFields.push('accountid');
-							qs.$select = options.returnFields.join(',');
-						} else {
-							qs.$select = 'accountid';
-						}
-
-						responseData = await microsoftApiRequest.call(this, 'POST', '/accounts', body, qs);
-					}
-
-					if (operation === 'delete') {
-						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/update-delete-entities-using-web-api#basic-delete
-						const accountId = this.getNodeParameter('accountId', i) as string;
-						await microsoftApiRequest.call(this, 'DELETE', `/accounts(${accountId})`, {}, qs);
-						responseData = { success: true };
-					}
-
-					if (operation === 'get') {
-						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/retrieve-entity-using-web-api
-						const accountId = this.getNodeParameter('accountId', i) as string;
-						const options = this.getNodeParameter('options', i);
-						if (options.returnFields) {
-							qs.$select = (options.returnFields as string[]).join(',');
-						}
-						if (options.expandFields) {
-							qs.$expand = (options.expandFields as string[]).join(',');
-						}
-						responseData = await microsoftApiRequest.call(
-							this,
-							'GET',
-							`/accounts(${accountId})`,
-							{},
-							qs,
-						);
-					}
-
-					if (operation === 'getAll') {
-						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
-						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i);
-						const filters = this.getNodeParameter('filters', i);
-						if (options.returnFields) {
-							qs.$select = (options.returnFields as string[]).join(',');
-						}
-						if (options.expandFields) {
-							qs.$expand = (options.expandFields as string[]).join(',');
-						}
-						if (filters.query) {
-							qs.$filter = filters.query as string;
-						}
-						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(
-								this,
-								'value',
-								'GET',
-								'/accounts',
-								{},
-								qs,
-							);
-						} else {
-							qs.$top = this.getNodeParameter('limit', 0);
-							responseData = await microsoftApiRequest.call(this, 'GET', '/accounts', {}, qs);
-							responseData = responseData.value;
-						}
-					}
-
-					if (operation === 'update') {
-						const accountId = this.getNodeParameter('accountId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as {
-							addresses: { address: [{ [key: string]: any }] };
-						};
-						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
-
-						const body = {
-							...updateFields,
-						};
-
-						if (body?.addresses?.address) {
-							Object.assign(body, adjustAddresses(body.addresses.address));
-							//@ts-ignore
-							delete body?.addresses;
-						}
-
-						if (options.returnFields) {
-							options.returnFields.push('accountid');
-							qs.$select = options.returnFields.join(',');
-						} else {
-							qs.$select = 'accountid';
-						}
-
-						responseData = await microsoftApiRequest.call(
-							this,
-							'PATCH',
-							`/accounts(${accountId})`,
-							body,
-							qs,
-						);
-					}
+				if (operationHandler) {
+					responseData = await operationHandler.call(this, i);
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -287,9 +357,12 @@ export class MicrosoftDynamicsCrm implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
+
 					returnData.push(...executionErrorData);
+
 					continue;
 				}
+
 				throw error;
 			}
 		}
