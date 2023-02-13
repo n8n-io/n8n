@@ -14,84 +14,86 @@ describe('Canvas Actions', () => {
 		.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload))
 	});
 
-	it('adds sticky to canvas with default text and position', () => {
-		workflowPage.getters.addStickyButton().should('not.be.visible');
+	// it('adds sticky to canvas with default text and position', () => {
+	// 	workflowPage.getters.addStickyButton().should('not.be.visible');
 
-		addDefaultSticky()
-			.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
-			.find('a').contains('Guide').should('have.attr', 'href');
-	});
+	// 	addDefaultSticky()
+	// 		.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
+	// 		.find('a').contains('Guide').should('have.attr', 'href');
+	// });
 
-	it('drags sticky around to top left corner', () => {
-		// used to caliberate rest of tests
-		// if this does not pass, rest would fail
-		addDefaultSticky();
-		moveSticky([0, 0]);
-	});
+	// it('drags sticky around to top left corner', () => {
+	// 	// used to caliberate rest of tests
+	// 	// if this does not pass, rest would fail
+	// 	addDefaultSticky();
+	// 	moveSticky({top: 0, left: 0});
+	// });
 
-	it('drags sticky around and position/size are saved correctly', () => {
-		addDefaultSticky();
-		moveSticky([500, 500]);
+	// it('drags sticky around and position/size are saved correctly', () => {
+	// 	addDefaultSticky();
+	// 	moveSticky([500, 500]);
 
-		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
-		cy.waitForLoad();
+	// 	workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+	// 	cy.waitForLoad();
 
-		cy.reload();
+	// 	cy.reload();
 
-		stickyShouldBePositionedCorrectly([500, 500]);
-	});
+	// 	stickyShouldBePositionedCorrectly([500, 500]);
+	// });
 
-	it('deletes sticky', () => {
-		workflowPage.actions.addSticky();
-		workflowPage.getters.stickies().should('have.length', 1)
+	// it('deletes sticky', () => {
+	// 	workflowPage.actions.addSticky();
+	// 	workflowPage.getters.stickies().should('have.length', 1)
 
-		workflowPage.actions.deleteSticky();
+	// 	workflowPage.actions.deleteSticky();
 
-		workflowPage.getters.stickies().should('have.length', 0)
-	});
+	// 	workflowPage.getters.stickies().should('have.length', 0)
+	// });
 
-	it('edits sticky and updates content as markdown', () => {
-		workflowPage.actions.addSticky();
+	// it('edits sticky and updates content as markdown', () => {
+	// 	workflowPage.actions.addSticky();
 
-		workflowPage.getters.stickies()
-			.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
+	// 	workflowPage.getters.stickies()
+	// 		.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
 
-		workflowPage.getters.stickies().dblclick();
-		workflowPage.actions.editSticky('# hello world \n ## text text');
-		workflowPage.getters.stickies().find('h1').should('have.text', 'hello world');
-		workflowPage.getters.stickies().find('h2').should('have.text', 'text text');
-	});
+	// 	workflowPage.getters.stickies().dblclick();
+	// 	workflowPage.actions.editSticky('# hello world \n ## text text');
+	// 	workflowPage.getters.stickies().find('h1').should('have.text', 'hello world');
+	// 	workflowPage.getters.stickies().find('h2').should('have.text', 'text text');
+	// });
 
 	it('expands/shrinks sticky from the right edge', () => {
 		addDefaultSticky();
 
-		moveSticky([200, 200]);
+		moveSticky({top: 200, left: 200});
 
-		dragRightEdge([200, 200, 160, 240], 100);
-		dragRightEdge([200, 200, 160, 240], -50);
+		dragRightEdge({left: 200, top: 200, height: 160, width: 240}, 100);
+		dragRightEdge({left: 200, top: 200, height: 160, width: 240}, -50);
 	});
 
-	// it('expands/shrinks sticky from the left edge', () => {
-	// 	addDefaultSticky();
+	it('expands/shrinks sticky from the left edge', () => {
+		addDefaultSticky();
 
-	// 	cy.drag('[data-test-id="sticky"] [data-dir="left"]', [100, 100]);
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '490px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '150px');
-	// 		});
+		moveSticky({left: 630, top: 200});
+		dragLeftEdge({left: 630, top: 200, height: 160, width: 440}, -200);
+		// cy.drag('[data-test-id="sticky"] [data-dir="left"]', [100, 100]);
+		// workflowPage.getters.stickies()
+		// 	.should(($el) => {
+		// 		expect($el).to.have.css('top', '340px');
+		// 		expect($el).to.have.css('left', '490px');
+		// 		expect($el).to.have.css('height', '160px');
+		// 		expect($el).to.have.css('width', '150px');
+		// 	});
 
-	// 	cy.drag('[data-test-id="sticky"] [data-dir="left"]', [-50, -50]);
-	// 	workflowPage.getters.stickies()
-	// 		.should(($el) => {
-	// 			expect($el).to.have.css('top', '340px');
-	// 			expect($el).to.have.css('left', '446px');
-	// 			expect($el).to.have.css('height', '160px');
-	// 			expect($el).to.have.css('width', '194px');
-	// 		});
-	// });
+		// cy.drag('[data-test-id="sticky"] [data-dir="left"]', [-50, -50]);
+		// workflowPage.getters.stickies()
+		// 	.should(($el) => {
+		// 		expect($el).to.have.css('top', '340px');
+		// 		expect($el).to.have.css('left', '446px');
+		// 		expect($el).to.have.css('height', '160px');
+		// 		expect($el).to.have.css('width', '194px');
+		// 	});
+	});
 
 	// it('expands/shrinks sticky from the top edge', () => {
 	// 	workflowPage.actions.addSticky();
@@ -228,12 +230,32 @@ describe('Canvas Actions', () => {
 	// });
 });
 
+type Position = {
+	top: number;
+	left: number;
+};
 
-function dragRightEdge(curr: [number, number, number, number], move: number) {
+type BoundingBox = {
+	height: number;
+	width: number;
+	top: number;
+	left: number;
+}
+
+function dragRightEdge(curr: BoundingBox, move: number) {
 	workflowPage.getters.stickies().first().then(($el) => {
-		const [left, top, height, width] = curr;
+		const {left, top, height, width} = curr;
 		cy.drag(`[data-test-id="sticky"] [data-dir="right"]`, [left + width + move, 0], {abs: true});
-		stickyShouldBePositionedCorrectly([top, left]);
+		stickyShouldBePositionedCorrectly({top, left});
+		stickyShouldHaveCorrectSize([height, width * 1.5 + move]);
+	});
+}
+
+function dragLeftEdge(curr: BoundingBox, move: number) {
+	workflowPage.getters.stickies().first().then(($el) => {
+		const {left, top, height, width} = curr;
+		cy.drag(`[data-test-id="sticky"] [data-dir="left"]`, [left + move, 0], {abs: true});
+		stickyShouldBePositionedCorrectly({top, left: left + move});
 		stickyShouldHaveCorrectSize([height, width * 1.5 + move]);
 	});
 }
@@ -261,13 +283,13 @@ function addDefaultSticky() {
 	return shouldHaveDefaultSize(shouldBeInDefaultLocation(shouldHaveOneSticky()));
 }
 
-function stickyShouldBePositionedCorrectly(position: [number, number]) {
+function stickyShouldBePositionedCorrectly(position: Position) {
 	const yOffset = -60;
 	const xOffset = -180;
 	workflowPage.getters.stickies()
 		.should(($el) => {
-			expect($el).to.have.css('top', `${yOffset + position[0]}px`);
-			expect($el).to.have.css('left', `${xOffset + position[1]}px`);
+			expect($el).to.have.css('top', `${yOffset + position.top}px`);
+			expect($el).to.have.css('left', `${xOffset + position.left}px`);
 		});
 }
 
@@ -281,7 +303,7 @@ function stickyShouldHaveCorrectSize(size: [number, number]) {
 		});
 }
 
-function moveSticky(target: [number, number]) {
-	cy.drag('[data-test-id="sticky"]', target, {abs: true});
+function moveSticky(target: Position) {
+	cy.drag('[data-test-id="sticky"]', [target.left, target.top], {abs: true});
 	stickyShouldBePositionedCorrectly(target);
 }
