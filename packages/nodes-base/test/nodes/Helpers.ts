@@ -158,8 +158,12 @@ const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	return knownNodes!;
 };
 
+export function createTemporaryDir(prefix: string = 'n8n') {
+	return mkdtempSync(path.join(tmpdir(), prefix));
+}
+
 export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
-	const temporaryDir = mkdtempSync(path.join(tmpdir(), 'n8n'));
+	const temporaryDir = createTemporaryDir();
 	await BinaryDataManager.init({
 		mode,
 		availableModes: mode,
@@ -167,6 +171,7 @@ export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'de
 		binaryDataTTL: 1,
 		persistedBinaryDataTTL: 1,
 	});
+	return temporaryDir;
 }
 
 export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
@@ -248,6 +253,20 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	expect(result.finished).toEqual(true);
 };
 
+const preparePinData = (pinData: IDataObject) => {
+	const returnData = Object.keys(pinData).reduce(
+		(acc, key) => {
+			const data = pinData[key] as IDataObject[];
+			acc[key] = [data as IDataObject[]];
+			return acc;
+		},
+		{} as {
+			[key: string]: IDataObject[][];
+		},
+	);
+	return returnData;
+};
+
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
@@ -256,16 +275,8 @@ export const workflowToTests = (workflowFiles: string[]) => {
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
-		const nodeData = Object.keys(workflowData.pinData).reduce(
-			(acc, key) => {
-				const data = workflowData.pinData[key] as IDataObject[];
-				acc[key] = [data as IDataObject[]];
-				return acc;
-			},
-			{} as {
-				[key: string]: IDataObject[][];
-			},
-		);
+
+		const nodeData = preparePinData(workflowData.pinData);
 
 		delete workflowData.pinData;
 

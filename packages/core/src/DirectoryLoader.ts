@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, getVersionedNodeTypeAll, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -133,7 +133,9 @@ export abstract class DirectoryLoader {
 			version: nodeVersion,
 		});
 
-		this.types.nodes.push(tempNode.description);
+		getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
+			this.types.nodes.push(description);
+		});
 	}
 
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
