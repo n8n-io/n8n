@@ -141,13 +141,13 @@ class TestWebhooks {
 				if (sessionId !== undefined) {
 					push.send('testWebhookReceived', { workflowId, executionId }, sessionId);
 				}
-			} finally {
-				// Delete webhook also if an error is thrown
-				if (timeout) clearTimeout(timeout);
-				delete testWebhookData[webhookKey];
+			} catch {}
 
-				await activeWebhooks.removeWorkflow(workflow);
-			}
+			// Delete webhook also if an error is thrown
+			if (timeout) clearTimeout(timeout);
+			delete testWebhookData[webhookKey];
+
+			await activeWebhooks.removeWorkflow(workflow);
 		});
 	}
 
