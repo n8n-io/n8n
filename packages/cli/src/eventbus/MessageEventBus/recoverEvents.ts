@@ -54,9 +54,6 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 			if (!nodeByName) continue;
 
-			if (['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'].includes(nodeByName.type))
-				continue;
-
 			const nodeStartedMessage = messages.find(
 				(message) =>
 					message.eventName === 'n8n.node.started' && message.payload.nodeName === nodeName,

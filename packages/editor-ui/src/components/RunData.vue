@@ -248,7 +248,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-				<slot name="no-output-data"></slot>
+				<slot name="no-output-data">xxx</slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
