@@ -250,12 +250,20 @@ export const getSchema = (input: Optional<Primitives | object>, path = ''): Sche
 	return schema;
 };
 
+export const isNumeric = (value: string) => {
+	if (value.includes(' ')) return false;
+
+	return !isNaN(value as unknown as number) && !isNaN(parseFloat(value));
+}
+
 // Try to parse date from string input using workflow timezone
 export const parseDate = (input: string): DateTime | null => {
-	const date = new Date(Date.parse(input));
+	if (!isNumeric) {
+		const date = new Date(Date.parse(input));
 
-	if (date.toString() !== 'Invalid Date') {
-		return DateTime.fromJSDate(date, { zone: useWorkflowsStore().workflow.settings?.timezone });
+		if (date.toString() !== 'Invalid Date') {
+			return DateTime.fromJSDate(date, { zone: useWorkflowsStore().workflow.settings?.timezone });
+		}
 	}
 	return null;
 }
