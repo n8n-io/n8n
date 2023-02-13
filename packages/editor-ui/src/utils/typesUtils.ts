@@ -254,7 +254,7 @@ export const isNumeric = (value: string) => {
 	if (value.includes(' ')) return false;
 
 	return !isNaN(value as unknown as number) && !isNaN(parseFloat(value));
-}
+};
 
 // Try to parse date from string input using workflow timezone
 export const parseDate = (input: string): DateTime | null => {
@@ -266,4 +266,4 @@ export const parseDate = (input: string): DateTime | null => {
 		}
 	}
 	return null;
-}
+};
