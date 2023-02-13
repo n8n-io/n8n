@@ -101,20 +101,20 @@ class WorkflowRunnerProcess {
 
 		this.startedAt = new Date();
 
+		const userSettings = await UserSettings.prepareUserSettings();
+
 		const loadNodesAndCredentials = LoadNodesAndCredentials();
 		await loadNodesAndCredentials.init();
 
 		const nodeTypes = NodeTypes(loadNodesAndCredentials);
 		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
-
-		// Load the credentials overwrites if any exist
 		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
+		const instanceId = userSettings.instanceId ?? '';
 		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');

@@ -10,7 +10,7 @@ import {
 import config from '@/config';
 import * as Db from '@/Db';
 import * as testDb from '../integration/shared/testDb';
-import { NodeTypes as MockNodeTypes } from './Helpers';
+import { mockNodeTypesData, NodeTypes as MockNodeTypes } from './Helpers';
 import { UserService } from '@/user/user.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
@@ -388,24 +388,4 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 	});
 });
 
-const MOCK_NODE_TYPES_DATA = ['start', 'actionNetwork'].reduce<INodeTypeData>((acc, nodeName) => {
-	return (
-		(acc[`n8n-nodes-base.${nodeName}`] = {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: nodeName,
-					name: nodeName,
-					group: [],
-					description: '',
-					version: 1,
-					defaults: {},
-					inputs: [],
-					outputs: [],
-					properties: [],
-				},
-			},
-		}),
-		acc
-	);
-}, {});
+const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);

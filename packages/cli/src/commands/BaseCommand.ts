@@ -1,59 +1,99 @@
-import { Command } from '@oclif/core';
-import { LoggerProxy } from 'n8n-workflow';
-import type { Logger } from '@/Logger';
+import { Command } from '@oclif/command';
+import { ExitError } from '@oclif/errors';
+import type { INodeTypes } from 'n8n-workflow';
+import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import type { IUserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { getLogger } from '@/Logger';
-import { User } from '@db/entities/User';
+import config from '@/config';
 import * as Db from '@/Db';
+import * as CrashJournal from '@/CrashJournal';
 import { inTest } from '@/constants';
+import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { initErrorHandling } from '@/ErrorReporting';
+import { ExternalHooks } from '@/ExternalHooks';
+import { NodeTypes } from '@/NodeTypes';
+import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { IExternalHooksClass } from '@/Interfaces';
+
+export const UM_FIX_INSTRUCTION =
+	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
 export abstract class BaseCommand extends Command {
-	logger: Logger;
+	protected logger = LoggerProxy.init(getLogger());
 
-	/**
-	 * Lifecycle methods
-	 */
+	protected externalHooks: IExternalHooksClass;
+
+	protected loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+
+	protected nodeTypes: INodeTypes;
+
+	protected userSettings: IUserSettings;
 
 	async init(): Promise<void> {
-		this.logger = getLogger();
-		LoggerProxy.init(this.logger);
+		await initErrorHandling();
 
-		await Db.init();
+		process.once('SIGTERM', async () => this.stopProcess());
+		process.once('SIGINT', async () => this.stopProcess());
+
+		// Make sure the settings exist
+		this.userSettings = await UserSettings.prepareUserSettings();
+
+		this.loadNodesAndCredentials = LoadNodesAndCredentials();
+		await this.loadNodesAndCredentials.init();
+		this.nodeTypes = NodeTypes(this.loadNodesAndCredentials);
+		const credentialTypes = CredentialTypes(this.loadNodesAndCredentials);
+		CredentialsOverwrites(credentialTypes);
+
+		await InternalHooksManager.init(this.userSettings.instanceId ?? '', this.nodeTypes);
+
+		await Db.init().catch(async (error: Error) =>
+			this.exitWithCrash('There was an error initializing DB', error),
+		);
 	}
 
-	async finally(): Promise<void> {
-		if (inTest) return;
-
-		this.exit();
+	protected async stopProcess() {
+		// This needs to be overridden
 	}
 
-	/**
-	 * User Management utils
-	 */
+	protected async initCrashJournal() {
+		await CrashJournal.init();
+	}
 
-	defaultUserProps = {
-		firstName: null,
-		lastName: null,
-		email: null,
-		password: null,
-		resetPasswordToken: null,
-	};
+	protected async exitSuccessFully() {
+		try {
+			await CrashJournal.cleanup();
+		} finally {
+			process.exit();
+		}
+	}
 
-	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'global',
-		});
+	protected async exitWithCrash(message: string, error: unknown) {
+		ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+		await sleep(2000);
+		process.exit(1);
+	}
 
-		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
+	protected async initBinaryManager() {
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		await BinaryDataManager.init(binaryDataConfig, true);
+	}
 
-		if (owner) return owner;
+	protected async initExternalHooks() {
+		this.externalHooks = ExternalHooks();
+		await this.externalHooks.init();
+	}
 
-		const user = new User();
-
-		Object.assign(user, { ...this.defaultUserProps, globalRole });
-
-		await Db.collections.User.save(user);
-
-		return Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
+	async finally(error: Error | undefined) {
+		if (inTest || this.id === 'start') return;
+		if (Db.isInitialized) {
+			await sleep(100); // give any in-flight query some time to finish
+			await Db.connection.destroy();
+		}
+		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
+		this.exit(exitCode);
 	}
 }

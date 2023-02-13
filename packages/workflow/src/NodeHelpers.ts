@@ -1395,22 +1395,18 @@ export function getVersionedNodeType(
 	object: IVersionedNodeType | INodeType,
 	version?: number,
 ): INodeType {
-	if (isNodeTypeVersioned(object)) {
-		return (object as IVersionedNodeType).getNodeType(version);
+	if ('nodeVersions' in object) {
+		return object.getNodeType(version);
 	}
-	return object as INodeType;
+	return object;
 }
 
 export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
-	if (isNodeTypeVersioned(object)) {
-		return Object.values((object as IVersionedNodeType).nodeVersions).map((element) => {
+	if ('nodeVersions' in object) {
+		return Object.values(object.nodeVersions).map((element) => {
 			element.description.name = object.description.name;
 			return element;
 		});
 	}
-	return [object as INodeType];
-}
-
-export function isNodeTypeVersioned(object: IVersionedNodeType | INodeType): boolean {
-	return !!('getNodeType' in object);
+	return [object];
 }

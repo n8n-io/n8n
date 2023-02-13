@@ -12,6 +12,7 @@ interface IResult {
 	};
 	executions: IExecutionResult[];
 }
+
 interface IExecutionResult {
 	workflowId: string;
 	workflowName: string;
@@ -51,14 +52,3 @@ declare module 'json-diff' {
 	}
 	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
 }
-
-type SmtpConfig = {
-	host: string;
-	port: number;
-	secure: boolean;
-	auth: {
-		user: string;
-		pass: string;
-	};
-	sender: string;
-};

@@ -678,6 +678,7 @@ export interface IN8nUISettings {
 		host: string;
 	};
 	executionMode: string;
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	isNpmAvailable: boolean;
 	publicApi: {
