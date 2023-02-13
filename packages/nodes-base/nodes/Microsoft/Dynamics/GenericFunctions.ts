@@ -813,6 +813,21 @@ export function getLeadFields(): INodeProperties[] {
 				'Last name of the primary contact for the lead to make sure the prospect is addressed correctly in sales calls, email, and marketing campaigns',
 		},
 		{
+			displayName: 'Middle Name',
+			name: 'middlename',
+			type: 'string',
+			default: '',
+			description:
+				'The middle name or initial of the primary contact for the lead to make sure the prospect is addressed correctly.',
+		},
+		{
+			displayName: 'Mobile Phone',
+			name: 'mobilephone',
+			type: 'string',
+			default: '',
+			description: 'Mobile phone number for the primary contact for the lead.',
+		},
+		{
 			displayName: 'Number Of Employees',
 			name: 'numberofemployees',
 			type: 'number',
