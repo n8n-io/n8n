@@ -193,6 +193,7 @@ export class Postgres implements INodeType {
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['insert', 'update'],
