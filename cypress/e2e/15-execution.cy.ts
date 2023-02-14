@@ -14,7 +14,7 @@ describe('Workflows',() => {
 		cy.visit('/');
 	});
 
-	let testFileName = 'Manual_waiting_http-request.json';
+	const testFileName = 'Manual_waiting_set.json';
 	it(`should test ${testFileName}`, () => {
 		// Import workflow
 		workflowsPage.getters.newWorkflowButtonCard().click();
@@ -27,6 +27,7 @@ describe('Workflows',() => {
 		workflowPage.getters.stopExecutionWaitingForWebhookButton().should('not.exist');
 
 		// Execute the workflow
+		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
 
 		// Check workflow buttons
@@ -37,18 +38,16 @@ describe('Workflows',() => {
 
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters.canvasNodeByName('Manual').within(() => cy.get('.fa-check')).should('be.visible');
-		workflowPage.getters.canvasNodeByName('Wait').within(() => cy.get('.fa-check', { timeout: 1000 }).should('not.exist'));
-		workflowPage.getters.canvasNodeByName('Wait').within(() => cy.get('.fa-sync-alt', { timeout: 1000 })).should('be.visible');
-		workflowPage.getters.canvasNodeByName('Request').within(() => cy.get('.fa-check', { timeout: 1000 }).should('not.exist'));
+		workflowPage.getters.canvasNodeByName('Wait').within(() => cy.get('.fa-check').should('not.exist'));
+		workflowPage.getters.canvasNodeByName('Wait').within(() => cy.get('.fa-sync-alt')).should('be.visible');
+		workflowPage.getters.canvasNodeByName('Set').within(() => cy.get('.fa-check').should('not.exist'));
 
 		cy.wait(2000);
 
 		// Check canvas nodes after 2nd step (waiting node finished its execution and the http request node is about to start)
 		workflowPage.getters.canvasNodeByName('Manual').within(() => cy.get('.fa-check')).should('be.visible');
 		workflowPage.getters.canvasNodeByName('Wait').within(() => cy.get('.fa-check')).should('be.visible');
-		workflowPage.getters.canvasNodeByName('Request').within(() => cy.get('.fa-check', { timeout: 1000 }).should('not.exist'));
-
-		// TODO: Check if the http request node has started and showing the loading spinner, then later check if it has finished and the checkmark is visible
+		workflowPage.getters.canvasNodeByName('Set').within(() => cy.get('.fa-check')).should('be.visible');
 
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
 		workflowPage.getters.successToast().should('be.visible');
