@@ -13,6 +13,12 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Find',
+				value: 'lookupByEmail',
+				description: 'Find a user with an email address',
+				action: 'Find a user with an email address',
+			},
+			{
 				name: 'Get',
 				value: 'info',
 				description: 'Get information about a user',
@@ -42,6 +48,23 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                user:find                                   */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		placeholder: 'name@email.com',
+		default: '',
+		description: 'An email address belonging to a user in the workspace',
+		displayOptions: {
+			show: {
+				operation: ['lookupByEmail'],
+				resource: ['user'],
+			},
+		},
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                user:info                                   */
 	/* -------------------------------------------------------------------------- */
