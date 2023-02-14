@@ -4,7 +4,7 @@ import { WorkflowPage as WorkflowPageClass, WorkflowsPage } from '../pages';
 const workflowPage = new WorkflowPageClass();
 const workflowsPage = new WorkflowsPage();
 
-describe('Workflows',() => {
+describe('Execution',() => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
@@ -14,11 +14,10 @@ describe('Workflows',() => {
 		cy.visit('/');
 	});
 
-	const testFileName = 'Manual_waiting_set.json';
-	it(`should test ${testFileName}`, () => {
+	it('should test manual workflow', () => {
 		// Import workflow
 		workflowsPage.getters.newWorkflowButtonCard().click();
-		cy.createFixtureWorkflow(testFileName, `${testFileName} ${uuid()}`);
+		cy.createFixtureWorkflow('Manual_waiting_set.json', `Manual waiting set ${uuid()}`);
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
