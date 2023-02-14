@@ -20,17 +20,6 @@ export class WorkflowExecutionsTab extends BasePage {
 		executionPreviewId: () => this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-id"]'),
 	};
 	actions = {
-		prepareExecutions: () => {
-			workflowPage.actions.turnOnManualExecutionSaving();
-			this.actions.createManualExecutions(5);
-			this.actions.toggleNodeEnabled('Error');
-			// Make some failed executions by enabling Code node with syntax error
-			this.actions.createManualExecutions(2);
-			this.actions.toggleNodeEnabled('Error');
-			this.actions.createManualExecutions(4);
-			this.actions.switchToExecutionsTab();
-			cy.waitForLoad();
-		},
 		toggleNodeEnabled: (nodeName: string) => {
 			workflowPage.getters.canvasNodeByName(nodeName).click();
 			cy.get('body').type('d', { force: true });

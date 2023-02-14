@@ -12,7 +12,7 @@ describe('Current Workflow Executions', () => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
-		executionsTab.actions.prepareExecutions();
+		createMockExecutions();
 	});
 
 	it('should render executions tab correctly', () => {
@@ -24,3 +24,17 @@ describe('Current Workflow Executions', () => {
 	});
 
 });
+
+
+const createMockExecutions = () => {
+	workflowPage.actions.turnOnManualExecutionSaving();
+	executionsTab.actions.createManualExecutions(5);
+	// Make some failed executions by enabling Code node with syntax error
+	executionsTab.actions.toggleNodeEnabled('Error');
+	executionsTab.actions.createManualExecutions(2);
+	// Then add some more successful ones
+	executionsTab.actions.toggleNodeEnabled('Error');
+	executionsTab.actions.createManualExecutions(4);
+	executionsTab.actions.switchToExecutionsTab();
+	cy.waitForLoad();
+}
