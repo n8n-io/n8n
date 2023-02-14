@@ -12,7 +12,8 @@ export type UpdateSummary = {
 };
 
 type PrepareOutputConfig = {
-	rawData?: boolean;
+	rawData: boolean;
+	dataProperty?: string;
 	keyRow?: number;
 	firstDataRow?: number;
 	columnsRow?: string[];
@@ -100,13 +101,9 @@ export async function microsoftApiRequestAllItemsSkip(
 export function prepareOutput(
 	this: IExecuteFunctions,
 	responseData: { values: string[][] },
-	config: PrepareOutputConfig = {},
+	config: PrepareOutputConfig,
 ) {
 	const returnData: INodeExecutionData[] = [];
-
-	if (config.rawData === undefined) {
-		config.rawData = this.getNodeParameter('rawData', 0, false);
-	}
 
 	const { rawData, keyRow, firstDataRow, columnsRow, updatedRows } = {
 		keyRow: 0,
@@ -142,9 +139,8 @@ export function prepareOutput(
 			returnData.push(...executionData);
 		}
 	} else {
-		const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+			this.helpers.returnJsonArray({ [config.dataProperty as string]: responseData }),
 			{ itemData: { item: 0 } },
 		);
 

@@ -790,7 +790,18 @@ export class MicrosoftExcel implements INodeType {
 					{ values },
 				);
 
-				returnData.push(...prepareOutput.call(this, responseData, { columnsRow }));
+				const rawDataOutput = this.getNodeParameter(
+					'options.rawDataOutput.values',
+					0,
+					{},
+				) as IDataObject;
+
+				const rawData = rawDataOutput.rawData ? true : false;
+				const dataProperty = rawDataOutput.dataProperty as string;
+
+				returnData.push(
+					...prepareOutput.call(this, responseData, { columnsRow, dataProperty, rawData }),
+				);
 			} else if (operation === 'updateRange' || operation === 'upsert') {
 				try {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
@@ -911,7 +922,18 @@ export class MicrosoftExcel implements INodeType {
 
 					const { updatedRows } = updateSummary;
 
-					returnData.push(...prepareOutput.call(this, responseData, { updatedRows }));
+					const rawDataOutput = this.getNodeParameter(
+						'options.rawDataOutput.values',
+						0,
+						{},
+					) as IDataObject;
+
+					const rawData = rawDataOutput.rawData ? true : false;
+					const dataProperty = rawDataOutput.dataProperty as string;
+
+					returnData.push(
+						...prepareOutput.call(this, responseData, { updatedRows, rawData, dataProperty }),
+					);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -1065,11 +1087,20 @@ export class MicrosoftExcel implements INodeType {
 							if (!rawData) {
 								const keyRow = this.getNodeParameter('keyRow', i) as number;
 								const firstDataRow = this.getNodeParameter('dataStartRow', i) as number;
+								const dataProperty = this.getNodeParameter('dataProperty', i) as string;
 								returnData.push(
-									...prepareOutput.call(this, responseData, { rawData, keyRow, firstDataRow }),
+									...prepareOutput.call(this, responseData, {
+										rawData,
+										keyRow,
+										firstDataRow,
+										dataProperty,
+									}),
 								);
 							} else {
-								returnData.push(...prepareOutput.call(this, responseData, { rawData }));
+								const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+								returnData.push(
+									...prepareOutput.call(this, responseData, { rawData, dataProperty }),
+								);
 							}
 						}
 					} catch (error) {

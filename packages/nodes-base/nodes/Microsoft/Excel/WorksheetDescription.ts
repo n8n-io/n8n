@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { workbookRLC, worksheetRLC } from './CommonDescription';
+import { rawDataOutput, workbookRLC, worksheetRLC } from './CommonDescription';
 
 export const worksheetOperations: INodeProperties[] = [
 	{
@@ -46,7 +46,7 @@ export const worksheetOperations: INodeProperties[] = [
 				action: 'Get worksheets',
 			},
 			{
-				name: 'Get Range',
+				name: 'Read Rows',
 				value: 'getContent',
 				description: 'Get worksheet range',
 				action: 'Get worksheet range',
@@ -180,33 +180,21 @@ export const worksheetFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
-		type: 'boolean',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [rawDataOutput],
 		displayOptions: {
 			show: {
 				operation: ['append'],
 				resource: ['worksheet'],
 			},
-		},
-		default: false,
-		description:
-			'Whether the data should be returned RAW instead of parsed into keys according to their header',
-	},
-	{
-		displayName: 'Data Property',
-		name: 'dataProperty',
-		type: 'string',
-		default: 'data',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['append'],
-				resource: ['worksheet'],
-				rawData: [true],
+			hide: {
+				dataMode: ['nothing'],
 			},
 		},
-		description: 'The name of the property into which to write the RAW data',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                        worksheet: clear                                    */
@@ -444,38 +432,6 @@ export const worksheetFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 worksheet:updateRange                      */
 	/* -------------------------------------------------------------------------- */
-	// {
-	// 	displayName: 'Range',
-	// 	name: 'range',
-	// 	type: 'string',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: ['updateRange', 'upsert'],
-	// 			resource: ['worksheet'],
-	// 			dataMode: ['autoMap', 'define'],
-	// 		},
-	// 	},
-	// 	placeholder: 'e.g. A1:B2',
-	// 	default: '',
-	// 	description: 'The sheet range to read the data from specified using a A1-style notation',
-	// 	hint: 'First row must contain column names. Leave blank for entire worksheet.',
-	// },
-	// {
-	// 	displayName: 'Range',
-	// 	name: 'range',
-	// 	type: 'string',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: ['updateRange'],
-	// 			resource: ['worksheet'],
-	// 			dataMode: ['raw'],
-	// 		},
-	// 	},
-	// 	placeholder: 'e.g. A1:B2',
-	// 	default: '',
-	// 	description: 'The sheet range to read the data from specified using a A1-style notation',
-	// 	hint: 'Leave blank for entire worksheet',
-	// },
 	{
 		displayName: 'Data Mode',
 		name: 'dataMode',
@@ -635,38 +591,6 @@ export const worksheetFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['updateRange', 'upsert'],
-				resource: ['worksheet'],
-			},
-			hide: {
-				dataMode: ['nothing'],
-			},
-		},
-		default: false,
-		description:
-			'Whether the data should be returned RAW instead of parsed into keys according to their header',
-	},
-	{
-		displayName: 'Data Property',
-		name: 'dataProperty',
-		type: 'string',
-		default: 'data',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['updateRange', 'upsert'],
-				resource: ['worksheet'],
-				rawData: [true],
-			},
-		},
-		description: 'The name of the property into which to write the RAW data',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -704,6 +628,7 @@ export const worksheetFields: INodeProperties[] = [
 				description: 'The sheet range to read the data from specified using a A1-style notation',
 				hint: 'Leave blank for entire worksheet',
 			},
+			rawDataOutput,
 			{
 				displayName: 'Update All Matches',
 				name: 'updateAll',

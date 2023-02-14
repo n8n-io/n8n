@@ -96,3 +96,45 @@ export const tableRLC: INodeProperties = {
 		},
 	],
 };
+
+export const rawDataOutput: INodeProperties = {
+	displayName: 'Raw Data Output',
+	name: 'rawDataOutput',
+	type: 'fixedCollection',
+	default: { values: { rawData: false } },
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'RAW Data',
+					name: 'rawData',
+					type: 'boolean',
+					// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
+					default: 0,
+					description:
+						'Whether the data should be returned RAW instead of parsed into keys according to their header',
+				},
+				{
+					displayName: 'Data Property',
+					name: 'dataProperty',
+					type: 'string',
+					default: 'data',
+					required: true,
+					displayOptions: {
+						show: {
+							rawData: [true],
+						},
+					},
+					description: 'The name of the property into which to write the RAW data',
+				},
+			],
+		},
+	],
+	displayOptions: {
+		hide: {
+			'/dataMode': ['nothing'],
+		},
+	},
+};
