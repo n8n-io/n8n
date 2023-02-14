@@ -26,7 +26,7 @@ export class WorkflowPage extends BasePage {
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`
+			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
 		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
@@ -79,7 +79,7 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
-		shareButton: () => cy.getByTestId('workflow-share-button').find('button'),
+		shareButton: () => cy.getByTestId('workflow-share-button'),
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
@@ -155,10 +155,16 @@ export class WorkflowPage extends BasePage {
 		saveWorkflowOnButtonClick: () => {
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
-			this.getters.saveButton().should('contain', 'Saved')
+			this.getters.saveButton().should('contain', 'Saved');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
+		},
+		setWorkflowName: (name: string) => {
+			this.getters.workflowNameInput().should('be.disabled');
+			this.getters.workflowNameInput().parent().click();
+			this.getters.workflowNameInput().should('be.enabled');
+			this.getters.workflowNameInput().clear().type(name).type('{enter}');
 		},
 		activateWorkflow: () => {
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
