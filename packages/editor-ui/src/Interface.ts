@@ -525,7 +525,7 @@ export type IPersonalizationSurveyAnswersV4 = {
 	usageModes?: string[] | null;
 	email?: string | null;
 	role?: string | null;
-	otherRole?: string | null;
+	roleOther?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;

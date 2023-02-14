@@ -268,7 +268,7 @@ export const OTHER_AUTOMATION_GOAL = 'other';
 export const NOT_SURE_YET_GOAL = 'not-sure-yet';
 
 export const ROLE_KEY = 'role';
-export const ROLE_OTHER_KEY = 'otherRole';
+export const ROLE_OTHER_KEY = 'roleOther';
 export const ROLE_BUSINESS_OWNER = 'business-owner';
 export const ROLE_CUSTOMER_SUPPORT = 'customer-support';
 export const ROLE_DATA_SCIENCE = 'data-science';
