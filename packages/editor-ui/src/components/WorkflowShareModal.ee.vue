@@ -38,6 +38,7 @@
 						:users="usersList"
 						:currentUserId="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+						data-test-id="workflow-sharing-modal-users-select"
 						@input="onAddSharee"
 					>
 						<template #prefix>
@@ -108,10 +109,11 @@
 				</n8n-text>
 				<n8n-button
 					v-show="workflowPermissions.updateSharing"
-					@click="onSave"
 					:loading="loading"
 					:disabled="!isDirty"
 					size="medium"
+					data-test-id="workflow-sharing-modal-save-button"
+					@click="onSave"
 				>
 					{{ $locale.baseText('workflows.shareModal.save') }}
 				</n8n-button>
