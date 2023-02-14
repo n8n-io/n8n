@@ -31,6 +31,7 @@ import { MessageEventBusDestinations1671535397530 } from './1671535397530-Messag
 import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
+import { CreateExecutionMetadataTable1674133106779 } from './1674133106779-CreateExecutionMetadataTable';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -65,5 +66,6 @@ export const mysqlMigrations = [
 	MessageEventBusDestinations1671535397530,
 	DeleteExecutionsWithWorkflows1673268682475,
 	CreateLdapEntities1674509946020,
-	PurgeInvalidWorkflowConnections1675940580449
+	PurgeInvalidWorkflowConnections1675940580449,
+	CreateExecutionMetadataTable1674133106779,
 ];
