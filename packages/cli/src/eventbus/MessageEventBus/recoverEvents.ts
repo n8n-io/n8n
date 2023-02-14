@@ -179,7 +179,10 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 			// wait for UI to be back up and send the execution data
 			eventBus.once('editorUiConnected', function handleUiBackUp(sessionId: string) {
-				getPushInstance().send('executionFinished', pushData, sessionId);
+				// add a small timeout to make sure the UI is back up
+				setTimeout(() => {
+					getPushInstance().send('executionFinished', pushData, sessionId);
+				}, 2000);
 			});
 		}
 		return executionData;
