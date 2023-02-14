@@ -1,7 +1,7 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonObject } from 'n8n-workflow';
-import { jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
+import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import type { FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
@@ -336,8 +336,12 @@ export class WorkflowsService {
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
 
+				let message;
+				if (error instanceof NodeApiError) message = error.description;
+				message = message ?? (error as Error).message;
+
 				// Now return the original error for UI to display
-				throw new ResponseHelper.BadRequestError((error as Error).message);
+				throw new ResponseHelper.BadRequestError(message);
 			}
 		}
 
@@ -454,5 +458,22 @@ export class WorkflowsService {
 		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
+	}
+
+	static async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
+		const qb = Db.collections.Workflow.createQueryBuilder('workflow');
+		return qb
+			.update()
+			.set({
+				triggerCount,
+				updatedAt: () => {
+					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+						return 'updatedAt';
+					}
+					return '"updatedAt"';
+				},
+			})
+			.where('id = :id', { id })
+			.execute();
 	}
 }

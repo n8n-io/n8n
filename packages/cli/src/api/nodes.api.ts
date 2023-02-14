@@ -4,7 +4,6 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 import config from '@/config';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 
 import {
@@ -34,6 +33,7 @@ import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
+import { getPushInstance } from '@/push';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -141,7 +141,7 @@ nodesController.post(
 
 		if (!hasLoaded) removePackageFromMissingList(name);
 
-		const pushInstance = Push.getInstance();
+		const pushInstance = getPushInstance();
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -248,7 +248,7 @@ nodesController.delete(
 			throw new ResponseHelper.InternalServerError(message);
 		}
 
-		const pushInstance = Push.getInstance();
+		const pushInstance = getPushInstance();
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -295,7 +295,7 @@ nodesController.patch(
 				previouslyInstalledPackage,
 			);
 
-			const pushInstance = Push.getInstance();
+			const pushInstance = getPushInstance();
 
 			// broadcast to connected frontends that node list has been updated
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
@@ -325,7 +325,7 @@ nodesController.patch(
 			return newInstalledPackage;
 		} catch (error) {
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				const pushInstance = Push.getInstance();
+				const pushInstance = getPushInstance();
 				pushInstance.send('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,

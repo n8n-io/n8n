@@ -24,4 +24,5 @@ export interface ILead {
 	IsUnreadByOwner?: boolean;
 	NumberOfEmployees?: number;
 	MobilePhone?: string;
+	HasOptedOutOfEmail?: boolean;
 }

@@ -9,10 +9,12 @@ describe('NDV', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
+
 
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
@@ -40,7 +42,7 @@ describe('NDV', () => {
 			});
 		});
 
-		ndv.getters.runDataDisplayMode().should('have.length.at.least', 1).and('be.visible');
+		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
 	it('should change input', () => {

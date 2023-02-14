@@ -229,7 +229,7 @@ export const channelFields: INodeProperties[] = [
 				resource: ['channel'],
 			},
 		},
-		description: 'ID of the video',
+		description: 'ID of the channel',
 		default: '',
 	},
 	{

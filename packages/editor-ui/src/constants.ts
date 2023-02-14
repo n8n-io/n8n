@@ -177,6 +177,7 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
+export const EMAIL_KEY = 'email';
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -286,7 +287,7 @@ export const HIRING_BANNER = `
                                                         ///////////
                                                           //////
 
-Love n8n? Help us build the future of automation! https://n8n.io/careers
+Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
 `;
 
 export const NODE_TYPE_COUNT_MAPPER = {
@@ -311,6 +312,7 @@ export enum VIEWS {
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
+	SIGNOUT = 'SignoutView',
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
