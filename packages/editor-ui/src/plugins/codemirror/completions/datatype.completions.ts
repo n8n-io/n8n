@@ -161,7 +161,15 @@ export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
 				const functionNameSpan = document.createElement('span');
 				let functionArgs = '(';
 				if (fn.doc.args) {
-					functionArgs += fn.doc.args.map((arg) => `${arg.name}: ${arg.type}`).join(', ');
+					functionArgs += fn.doc.args
+						.map((arg) => {
+							let argString = `${arg.name}`;
+							if (arg.type) {
+								argString += `: ${arg.type}`;
+							}
+							return argString;
+						})
+						.join(', ');
 				}
 				functionArgs += ')';
 				functionNameSpan.innerHTML = `${fn.doc.name}${functionArgs}`;
