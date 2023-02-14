@@ -15,7 +15,6 @@ export const channelRLC: INodeProperties = {
 			placeholder: 'e.g. my-channel',
 			typeOptions: {
 				searchListMethod: 'channelSearch',
-				searchable: true,
 			},
 		},
 		{
@@ -69,7 +68,6 @@ export const categoryRLC: INodeProperties = {
 			placeholder: 'e.g. my-channel',
 			typeOptions: {
 				searchListMethod: 'categorySearch',
-				searchable: true,
 			},
 		},
 		{
@@ -107,4 +105,52 @@ export const categoryRLC: INodeProperties = {
 			],
 		},
 	],
+};
+
+export const userRLC: INodeProperties = {
+	displayName: 'User',
+	name: 'userId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description: 'Select the user you want to assign a role to',
+	modes: [
+		{
+			displayName: 'By Name',
+			name: 'list',
+			type: 'list',
+			placeholder: 'e.g. DiscordUser',
+			typeOptions: {
+				searchListMethod: 'userSearch',
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 786953432728469534',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[0-9]+',
+						errorMessage: 'Not a valid User ID',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const roleMultiOptions: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+	displayName: 'Role',
+	name: 'role',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getRoles',
+	},
+	required: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+	description: 'Select the roles you want to add to the user',
+	default: [],
 };

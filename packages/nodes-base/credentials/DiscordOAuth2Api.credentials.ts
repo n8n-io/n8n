@@ -43,14 +43,14 @@ export class DiscordOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'identify guilds bot',
+			default: 'identify guilds guilds.join bot',
 			required: true,
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: 'permissions=1494917068848',
+			default: 'permissions=1642758929655',
 		},
 		{
 			displayName: 'Authentication',

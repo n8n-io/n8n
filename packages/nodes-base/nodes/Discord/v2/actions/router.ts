@@ -11,9 +11,9 @@ import type { Discord } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
-	const guildId = (
-		(await discordApiRequest.call(this, 'GET', '/users/@me/guilds')) as IDataObject[]
-	)[0].id as string;
+
+	const guild = (await discordApiRequest.call(this, 'GET', '/users/@me/guilds')) as IDataObject[];
+	const guildId = guild[0].id as string;
 
 	const resource = this.getNodeParameter<Discord>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
@@ -28,7 +28,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			returnData = await channel[googleBigQuery.operation].execute.call(this, guildId);
 			break;
 		case 'message':
-			returnData = await message[googleBigQuery.operation].execute.call(this, guildId);
+			returnData = await message[googleBigQuery.operation].execute.call(this);
 			break;
 		case 'member':
 			returnData = await member[googleBigQuery.operation].execute.call(this, guildId);

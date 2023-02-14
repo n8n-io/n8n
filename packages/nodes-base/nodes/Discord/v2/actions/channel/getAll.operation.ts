@@ -21,11 +21,15 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	try {
-		const response = await discordApiRequest.call(
-			this,
-			'GET',
-			`/guilds/${guildId}/channels?limit=3`,
-		);
+		const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
+		// console.log(
+		// 	await discordApiRequest.call(
+		// 		this,
+		// 		'PUT',
+		// 		`/guilds/${guildId}/members/1074633955950735451`,
+		// 		{},
+		// 	),
+		// );
 
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(response),
@@ -34,6 +38,7 @@ export async function execute(
 
 		returnData.push(...executionData);
 	} catch (error) {
+		console.log(error);
 		if (this.continueOnFail()) {
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),
