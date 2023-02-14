@@ -512,7 +512,23 @@ export type IPersonalizationSurveyAnswersV3 = {
 	email?: string | null;
 };
 
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+export type IPersonalizationSurveyAnswersV4 = {
+	version: 'v4';
+	automationGoalDevops?: string[] | null;
+	automationGoalDevopsOther?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+	email?: string | null;
+	role?: string | null;
+	otherRole?: string | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
