@@ -51,11 +51,14 @@ const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCas
 	replacement: require.resolve(`lodash-es/${name}`),
 }));
 
+const { NODE_ENV } = process.env;
+
 export default mergeConfig(
 	defineConfig({
 		define: {
 			// This causes test to fail but is required for actually running it
-			...(process.env.NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+			...(NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins: [
