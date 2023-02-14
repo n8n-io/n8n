@@ -87,7 +87,7 @@ export const leadFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['lead'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 		options: [

@@ -13,6 +13,7 @@ import type { IField, ICustomFields, IOperationFunction } from './GenericFunctio
 import {
 	adjustBody,
 	buildQs,
+	formatFields,
 	getEntityFields,
 	getPicklistOptions,
 	microsoftApiRequest,
@@ -31,6 +32,7 @@ const operations: { [key: string]: IOperationFunction } = {
 		// https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/create-entity-web-api
 		const name = this.getNodeParameter('name', index) as string;
 		const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+		const customFields = this.getNodeParameter('customFields', index) as ICustomFields;
 		const options = this.getNodeParameter('options', index) as IDataObject;
 
 		return microsoftApiRequest.call(
@@ -40,6 +42,7 @@ const operations: { [key: string]: IOperationFunction } = {
 			adjustBody({
 				name,
 				...additionalFields,
+				...customFields,
 			}),
 			buildQs({
 				options,
@@ -116,6 +119,7 @@ const operations: { [key: string]: IOperationFunction } = {
 	) {
 		const accountId = this.getNodeParameter('accountId', index) as string;
 		const updateFields = this.getNodeParameter('updateFields', index) as IDataObject;
+		const customFields = this.getNodeParameter('customFields', index) as ICustomFields;
 		const options = this.getNodeParameter('options', index) as IDataObject;
 
 		return microsoftApiRequest.call(
@@ -124,6 +128,7 @@ const operations: { [key: string]: IOperationFunction } = {
 			`/accounts(${accountId})`,
 			adjustBody({
 				...updateFields,
+				...customFields,
 			}),
 			buildQs({
 				options,
@@ -136,9 +141,7 @@ const operations: { [key: string]: IOperationFunction } = {
 		this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 		index: number,
 	) {
-		const additionalFields = this.getNodeParameter('additionalFields', index) as {
-			addresses: { address: [{ [key: string]: any }] };
-		};
+		const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 		const customFields = this.getNodeParameter('customFields', index) as ICustomFields;
 		const options = this.getNodeParameter('options', index) as IDataObject;
 
@@ -214,6 +217,16 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			async getAccountAddressTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'address1_addresstypecode');
 			},
+			async getAccountAddressShippingMethodCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'account', 'address1_shippingmethodcode');
+			},
+			async getAccountAddressFreightTermsCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'account', 'address1_freighttermscode');
+			},
 			async getBusinessTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'account', 'businesstypecode');
 			},
@@ -252,19 +265,8 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			},
 			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				const isSelectable = (field: IField) =>
-					field.IsValidForRead &&
-					field.CanBeSecuredForRead &&
-					field.IsValidODataAttribute &&
-					field.LogicalName !== 'slaid';
-				return fields
-					.filter(isSelectable)
-					.filter((field) => field.DisplayName.UserLocalizedLabel?.Label)
-					.map((field) => ({
-						name: field.DisplayName.UserLocalizedLabel.Label,
-						value: field.LogicalName,
-					}))
-					.sort(sort);
+
+				return formatFields(fields);
 			},
 			async getExpandableAccountFields(
 				this: ILoadOptionsFunctions,
@@ -287,11 +289,50 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			async getLeadAddressTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'lead', 'address1_addresstypecode');
 			},
+			async getLeadAddressShippingMethodCodes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'address1_shippingmethodcode');
+			},
 			async getLeadBudgetStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'lead', 'budgetstatus');
 			},
+			async getLeadDecisionMakerOptions(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				return [
+					{
+						name: 'Completed',
+						value: 1,
+					},
+					{
+						name: 'Mark complete',
+						value: 0,
+					},
+				];
+			},
+			async getLeadFollowEmailOptions(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				return [
+					{
+						name: 'Allow',
+						value: 1,
+					},
+					{
+						name: 'Do Not Allow',
+						value: 0,
+					},
+				];
+			},
 			async getLeadIndustryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getPicklistOptions.call(this, 'lead', 'industrycode');
+			},
+			async getLeadQualityCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'leadqualitycode');
+			},
+			async getLeadSourceCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getPicklistOptions.call(this, 'lead', 'leadsourcecode');
 			},
 			async getLeadPreferredContactMethodCodes(
 				this: ILoadOptionsFunctions,
@@ -300,19 +341,20 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			},
 			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'lead');
-				const isSelectable = (field: IField) =>
-					field.IsValidForRead &&
-					field.CanBeSecuredForRead &&
-					field.IsValidODataAttribute &&
-					field.LogicalName !== 'slaid';
-				return fields
-					.filter(isSelectable)
-					.filter((field) => field.DisplayName.UserLocalizedLabel?.Label)
-					.map((field) => ({
-						name: field.DisplayName.UserLocalizedLabel.Label,
-						value: field.LogicalName,
-					}))
-					.sort(sort);
+
+				return formatFields(fields);
+			},
+			async getAllowOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return [
+					{
+						name: 'Do Not Allow',
+						value: 1,
+					},
+					{
+						name: 'Allow',
+						value: 0,
+					},
+				];
 			},
 			async getBooleanOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return [

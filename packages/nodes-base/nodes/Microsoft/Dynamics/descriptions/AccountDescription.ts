@@ -76,6 +76,42 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [...getAccountFields()],
 	},
+	{
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['account'],
+				operation: ['create'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Custom Field',
+				name: 'customFields',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
 	// ----------------------------------------
 	//             account:get
 	// ----------------------------------------
@@ -203,6 +239,42 @@ export const accountFields: INodeProperties[] = [
 			},
 		},
 		options: [...getAccountFields()],
+	},
+	{
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['account'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Custom Field',
+				name: 'customFields',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Options',

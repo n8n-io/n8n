@@ -7,6 +7,41 @@ import { NodeApiError } from 'n8n-workflow';
 
 const addressFields: INodeProperties[] = [
 	{
+		displayName: 'City',
+		name: 'city',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Country',
+		name: 'country',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'County',
+		name: 'county',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Fax',
+		name: 'fax',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Latitude',
+		name: 'latitude',
+		type: 'number',
+		typeOptions: {
+			maxValue: 90,
+			minValue: -90,
+			numberPrecision: 6,
+		},
+		default: '',
+	},
+	{
 		displayName: 'Line1',
 		name: 'line1',
 		type: 'string',
@@ -25,27 +60,14 @@ const addressFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'City',
-		name: 'city',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'State or Province',
-		name: 'stateorprovince',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Country',
-		name: 'country',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'County',
-		name: 'county',
-		type: 'string',
+		displayName: 'Longitude',
+		name: 'longitude',
+		type: 'number',
+		typeOptions: {
+			maxValue: 180,
+			minValue: -180,
+			numberPrecision: 6,
+		},
 		default: '',
 	},
 	{
@@ -53,6 +75,7 @@ const addressFields: INodeProperties[] = [
 		name: 'name',
 		type: 'string',
 		default: '',
+		description: 'Descriptive name for the address, such as Corporate Headquarters.',
 	},
 	{
 		displayName: 'Postal Code',
@@ -67,8 +90,8 @@ const addressFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Primary Contact Name',
-		name: 'primarycontactname',
+		displayName: 'State or Province',
+		name: 'stateorprovince',
 		type: 'string',
 		default: '',
 	},
@@ -91,32 +114,24 @@ const addressFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Fax',
-		name: 'fax',
+		displayName: 'UPS Zone',
+		name: 'upszone',
 		type: 'string',
 		default: '',
+		description:
+			'The UPS zone of the address to make sure shipping charges are calculated correctly and deliveries are made promptly, if shipped by UPS.',
 	},
 	{
-		displayName: 'Latitude',
-		name: 'latitude',
+		displayName: 'UTC Offset',
+		name: 'utcoffset',
 		type: 'number',
 		typeOptions: {
-			maxValue: 90,
-			minValue: -90,
-			numberPrecision: 6,
+			maxValue: 1500,
+			minValue: -1500,
 		},
 		default: '',
-	},
-	{
-		displayName: 'Longitude',
-		name: 'longitude',
-		type: 'number',
-		typeOptions: {
-			maxValue: 180,
-			minValue: -180,
-			numberPrecision: 6,
-		},
-		default: '',
+		description:
+			'The time zone, or UTC offset, for this address so that other people can reference it when they contact someone at this address.',
 	},
 ];
 
@@ -327,6 +342,34 @@ export function getAccountFields(): INodeProperties[] {
 							default: '',
 						},
 						...addressFields,
+						{
+							displayName: 'Freight Terms',
+							name: 'freighttermscode',
+							type: 'options',
+							typeOptions: {
+								loadOptionsMethod: 'getAccountAddressFreightTermsCodes',
+							},
+							default: '',
+							description:
+								'The freight terms for the address to make sure shipping orders are processed correctly. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						},
+						{
+							displayName: 'Primary Contact Name',
+							name: 'primarycontactname',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Shipping Method',
+							name: 'shippingmethodcode',
+							type: 'options',
+							typeOptions: {
+								loadOptionsMethod: 'getAccountAddressShippingMethodCodes',
+							},
+							default: '',
+							description:
+								'Shipping method for deliveries sent to this address. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						},
 					],
 				},
 			],
@@ -455,7 +498,7 @@ export function getAccountFields(): INodeProperties[] {
 				maxValue: 1000000000,
 				minValue: 0,
 			},
-			default: 0,
+			default: '',
 			description:
 				'Number of employees that work at the account for use in marketing segmentation and demographic analysis.',
 		},
@@ -660,6 +703,17 @@ export function getLeadFields(): INodeProperties[] {
 							default: '',
 						},
 						...addressFields,
+						{
+							displayName: 'Shipping Method',
+							name: 'shippingmethodcode',
+							type: 'options',
+							typeOptions: {
+								loadOptionsMethod: 'getLeadAddressShippingMethodCodes',
+							},
+							default: '',
+							description:
+								'Shipping method for deliveries sent to this address. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						},
 					],
 				},
 			],
@@ -702,9 +756,20 @@ export function getLeadFields(): INodeProperties[] {
 			typeOptions: {
 				loadOptionsMethod: 'getBooleanOptions',
 			},
-			default: 0,
+			default: '',
 			description:
 				'Whether the lead confirmed interest in your offerings. This helps in determining the lead quality. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Decision Maker?',
+			name: 'decisionmaker',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getLeadDecisionMakerOptions',
+			},
+			default: '',
+			description:
+				'Whether your notes include information about who makes the purchase decisions at the lead’s company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Description',
@@ -715,7 +780,73 @@ export function getLeadFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Additional information to describe the lead, such as an excerpt from the company’s website.',
+				'Additional information to describe the lead, such as an excerpt from the company’s website. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Do not allow Bulk Emails',
+			name: 'donotbulkemail',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAllowOptions',
+			},
+			default: '',
+			description:
+				'Whether the lead accepts bulk email sent through marketing campaigns or quick campaigns. If Do Not Allow is selected, the lead can be added to marketing lists, but will be excluded from the email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Do not allow Emails',
+			name: 'donotemail',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAllowOptions',
+			},
+			default: '',
+			description:
+				'Whether the lead allows direct email sent from Microsoft Dynamics 365. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Do not allow Faxes',
+			name: 'donotfax',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAllowOptions',
+			},
+			default: '',
+			description:
+				'Whether the lead allows faxes. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Do not allow Phone Calls',
+			name: 'donotphone',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAllowOptions',
+			},
+			default: '',
+			description:
+				'Whether the lead allows phone calls. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Do not allow Mails',
+			name: 'donotpostalmail',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAllowOptions',
+			},
+			default: '',
+			description:
+				'Whether the lead allows direct mail. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Marketing Material',
+			name: 'donotsendmm',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAllowOptions',
+			},
+			default: '',
+			description:
+				'Whether the lead accepts marketing materials, such as brochures or catalogs. Leads that opt out can be excluded from marketing initiatives. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Email Address 1',
@@ -766,7 +897,7 @@ export function getLeadFields(): INodeProperties[] {
 			typeOptions: {
 				loadOptionsMethod: 'getBooleanOptions',
 			},
-			default: 0,
+			default: '',
 			description:
 				'Whether the fit between the lead’s requirements and your offerings was evaluated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		},
@@ -784,6 +915,28 @@ export function getLeadFields(): INodeProperties[] {
 			default: '',
 			description:
 				'First name of the primary contact for the lead to make sure the prospect is addressed correctly in sales calls, email, and marketing campaigns.',
+		},
+		{
+			displayName: 'Follow Email Activity',
+			name: 'followemail',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getLeadFollowEmailOptions',
+			},
+			default: '',
+			description:
+				'Whether to allow following email activity like opens, attachment views and link clicks for emails sent to the lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Import Sequence Number',
+			name: 'importsequencenumber',
+			type: 'number',
+			typeOptions: {
+				maxValue: 2147483647,
+				minValue: -2147483648,
+			},
+			default: '',
+			description: 'Sequence number of the import that created this record.',
 		},
 		{
 			displayName: 'Industry Name or ID',
@@ -835,7 +988,7 @@ export function getLeadFields(): INodeProperties[] {
 				maxValue: 1000000,
 				minValue: 0,
 			},
-			default: 0,
+			default: '',
 			description:
 				'number of employees that work at the company associated with the lead, for use in marketing segmentation and demographic analysis.',
 		},
@@ -849,6 +1002,28 @@ export function getLeadFields(): INodeProperties[] {
 			default: '',
 			description:
 				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		},
+		{
+			displayName: 'Rating',
+			name: 'leadqualitycode',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getLeadQualityCodes',
+			},
+			default: '',
+			description:
+				'Rating value to indicate the lead’s potential to become a customer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Lead Source',
+			name: 'leadsourcecode',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getLeadSourceCodes',
+			},
+			default: '',
+			description:
+				'The primary marketing source that prompted the lead to contact you. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Revenue',
@@ -949,6 +1124,23 @@ export function getLeadFields(): INodeProperties[] {
 }
 
 export const sort = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+
+export const formatFields = (fields: IField[]) => {
+	const isSelectable = (field: IField) =>
+		field.IsValidForRead &&
+		field.CanBeSecuredForRead &&
+		field.IsValidODataAttribute &&
+		field.LogicalName !== 'slaid';
+
+	return fields
+		.filter(isSelectable)
+		.filter((field) => field.DisplayName.UserLocalizedLabel?.Label)
+		.map((field) => ({
+			name: field.DisplayName.UserLocalizedLabel.Label,
+			value: field.LogicalName,
+		}))
+		.sort(sort);
+};
 
 export interface ICustomField {
 	name: string;
