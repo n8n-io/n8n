@@ -8,6 +8,7 @@ import { InternalHooksManager } from '../../InternalHooksManager';
 import { getPushInstance } from '@/push';
 import type { IPushDataExecutionFinished } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
+import { eventBus } from './MessageEventBus';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -176,10 +177,10 @@ export async function recoverExecutionDataFromEventLogMessages(
 			// calling workflowExecutionCompleted directly because the eventEmitter is not up yet at this point
 			await workflowExecutionCompleted(executionEntry.workflowData, pushData.data);
 
-			// wait for UI to be back up and sent the execution data
-			setTimeout(() => {
-				getPushInstance().send('executionFinished', pushData);
-			}, 10000);
+			// wait for UI to be back up and send the execution data
+			eventBus.once('editorUiConnected', function handleUiBackUp(sessionId: string) {
+				getPushInstance().send('executionFinished', pushData, sessionId);
+			});
 		}
 		return executionData;
 	}
