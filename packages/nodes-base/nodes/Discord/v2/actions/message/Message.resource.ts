@@ -22,7 +22,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'Delete',
-				value: 'delete',
+				value: 'deleteMessage',
 				description: 'Delete a message in a channel',
 				action: 'Delete a message in a channel',
 			},

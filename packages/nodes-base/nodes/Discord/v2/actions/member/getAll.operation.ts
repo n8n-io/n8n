@@ -1,20 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { createSimplifyFunction } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
+import { maxResultsNumber, simplifyBoolean } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Max Results',
-		name: 'limit',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 50,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-limit
-		description: 'Maximum number of results. Too many results may slow down the query.',
-	},
+	maxResultsNumber,
 	{
 		displayName: 'After',
 		name: 'after',
@@ -23,13 +15,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. 786953432728469534',
 		description: 'The ID of the user after which to return the members',
 	},
-	{
-		displayName: 'Simplify',
-		name: 'simplify',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
+	simplifyBoolean,
 ];
 
 const displayOptions = {
@@ -47,21 +33,14 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const limit = this.getNodeParameter('limit', 0, 50);
+	const maxResults = this.getNodeParameter('maxResults', 0, 50);
 	const after = this.getNodeParameter('after', 0);
 
-	const qs: IDataObject = { limit };
+	const qs: IDataObject = { limit: maxResults };
 
 	if (after) {
 		qs.after = after;
 	}
-
-	// console.log(
-	// 	await discordApiRequest.call(this, 'POST', `/guilds/${guildId}/roles`, {
-	// 		name: 'test role',
-	// 		permissions: 201326599,
-	// 	}),
-	// );
 
 	try {
 		let response = await discordApiRequest.call(
@@ -75,15 +54,9 @@ export async function execute(
 		const simplify = this.getNodeParameter('simplify', 0, false);
 
 		if (simplify) {
-			const includedFields = ['user', 'roles', 'permissions'];
-			response = (response as IDataObject[]).map((member) => {
-				return Object.keys(member).reduce((acc, key) => {
-					if (includedFields.includes(key)) {
-						acc[key] = member[key];
-					}
-					return acc;
-				}, {} as IDataObject);
-			});
+			const simplifyResponse = createSimplifyFunction(['user', 'roles', 'permissions']);
+
+			response = (response as IDataObject[]).map(simplifyResponse);
 		}
 
 		const executionData = this.helpers.constructExecutionMetaData(

@@ -154,3 +154,32 @@ export const roleMultiOptions: INodeProperties = {
 	description: 'Select the roles you want to add to the user',
 	default: [],
 };
+
+export const maxResultsNumber: INodeProperties = {
+	displayName: 'Max Results',
+	name: 'maxResults',
+	type: 'number',
+	typeOptions: {
+		minValue: 1,
+	},
+	default: 50,
+	description: 'Maximum number of results. Too many results may slow down the query.',
+};
+
+export const messageIdString: INodeProperties = {
+	displayName: 'Message ID',
+	name: 'messageId',
+	type: 'string',
+	default: '',
+	required: true,
+	description: 'The ID of the message',
+	placeholder: 'e.g. 1057576506244726804',
+};
+
+export const simplifyBoolean: INodeProperties = {
+	displayName: 'Simplify',
+	name: 'simplify',
+	type: 'boolean',
+	default: false,
+	description: 'Whether to return a simplified version of the response instead of the raw data',
+};
