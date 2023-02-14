@@ -10,4 +10,5 @@ export type DocMetadata = {
 	description?: string;
 	aliases?: string[];
 	args?: unknown[];
+	docURL?: string;
 };

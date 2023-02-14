@@ -1,13 +1,14 @@
 export const stringMethods = {
 	typeName: 'String',
 	functions: {
-		// @TODO_NEXT_PHASE: Populate below and cover other datatypes
-		// trim: {
-		// 	doc: {
-		// 		name: 'trim',
-		// 		description: 'Removes whitespace from both ends of a string and returns a new string',
-		// 		returnType: 'string',
-		// 	},
-		// },
+		concat: {
+			doc: {
+				name: 'concat',
+				description: 'Concatenates the string arguments to the calling string',
+				docURL:
+					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/concat',
+				returnType: 'string',
+			},
+		},
 	},
 };

@@ -169,7 +169,22 @@ export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
 				header.appendChild(returnTypeSpan);
 
 				tooltipContainer.appendChild(header);
-				tooltipContainer.appendChild(document.createTextNode(fn.doc.description));
+
+				const descriptionBody = document.createElement('div');
+				const descriptionText = document.createElement('p');
+				descriptionText.innerText = fn.doc.description;
+				descriptionBody.appendChild(descriptionText);
+				if (fn.doc.docURL) {
+					const descriptionLink = document.createElement('a');
+					descriptionLink.setAttribute('target', '_blank');
+					descriptionLink.setAttribute('href', fn.doc.docURL);
+					descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
+					descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
+						event.preventDefault();
+					});
+					descriptionBody.appendChild(descriptionLink);
+				}
+				tooltipContainer.appendChild(descriptionBody);
 
 				return tooltipContainer;
 			};
