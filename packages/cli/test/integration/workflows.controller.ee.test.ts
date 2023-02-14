@@ -195,7 +195,7 @@ describe('GET /workflows', () => {
 
 		expect(fetchedWorkflow.sharedWith).not.toBeDefined()
 		expect(fetchedWorkflow.usedCredentials).not.toBeDefined()
-		expect(fetchedWorkflow.nodes).toHaveLength(0)
+		expect(fetchedWorkflow.nodes).not.toBeDefined()
 	});
 });
 

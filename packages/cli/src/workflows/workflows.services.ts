@@ -152,14 +152,7 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = [
-			'id',
-			'name',
-			'active',
-			'createdAt',
-			'updatedAt',
-			'nodes',
-		];
+		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
