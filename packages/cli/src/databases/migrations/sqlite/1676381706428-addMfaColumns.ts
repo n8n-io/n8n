@@ -1,7 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-export class AddMfaColumns1669730543736 implements MigrationInterface {
-	name = 'AddMfaColumns1669730543736';
+
+export class AddMfaColumns1676381706428 implements MigrationInterface {
+	name = 'AddMfaColumns1676381706428';
+
+	transaction = false;
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);

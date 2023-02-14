@@ -28,7 +28,7 @@ import { MessageEventBusDestinations1671535397530 } from './1671535397530-Messag
 import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
-import { AddMfaColumns1669730543736 } from './1669730543736-addMfaColumns';
+import { AddMfaColumns1676381706428 } from './1676381706428-addMfaColumns';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -61,7 +61,7 @@ const sqliteMigrations = [
 	DeleteExecutionsWithWorkflows1673268682475,
 	CreateLdapEntities1674509946020,
 	PurgeInvalidWorkflowConnections1675940580449,
-	AddMfaColumns1669730543736,
+	AddMfaColumns1676381706428,
 ];
 
 export { sqliteMigrations };

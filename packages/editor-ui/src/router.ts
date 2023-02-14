@@ -1,4 +1,6 @@
 import Vue from 'vue';
+import Router, { Route } from 'vue-router';
+import { RouteConfigSingleView } from 'vue-router/types/router';
 
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
@@ -17,12 +19,13 @@ import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
+import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
+import SignoutView from '@/views/SignoutView.vue';
 import MfaSetupView from './views/MfaSetupView.vue';
 import Mfa from './views/MfaView.vue';
-import Router, { Route } from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
@@ -32,12 +35,9 @@ import ExecutionsView from '@/views/ExecutionsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
-import { RouteConfigSingleView } from 'vue-router/types/router';
-import { EnterpriseEditionFeature, VIEWS } from './constants';
+import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
-import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
-import SignoutView from '@/views/SignoutView.vue';
 import { useUsersStore } from './stores/users';
 
 Vue.use(Router);
@@ -347,20 +347,6 @@ const router = new Router({
 				telemetry: {
 					pageCategory: 'auth',
 				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedOut],
-					},
-				},
-			},
-		},
-		{
-			path: '/mfa',
-			name: VIEWS.MFA,
-			components: {
-				default: Mfa,
-			},
-			meta: {
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
