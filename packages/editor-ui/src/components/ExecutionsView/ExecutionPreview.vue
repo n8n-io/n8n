@@ -17,9 +17,10 @@
 		<div
 			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
 			v-if="activeExecution"
+			:data-test-id="`execution-preview-details-${executionId}`"
 		>
 			<div>
-				<n8n-text size="large" color="text-base" :bold="true">{{
+				<n8n-text size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
 					executionUIDetails.startTime
 				}}</n8n-text
 				><br />
@@ -28,9 +29,13 @@
 					size="small"
 					:class="[$style.spinner, 'mr-4xs']"
 				/>
-				<n8n-text size="medium" :class="[$style.status, $style[executionUIDetails.name]]">{{
-					executionUIDetails.label
-				}}</n8n-text>
+				<n8n-text
+					size="medium"
+					:class="[$style.status, $style[executionUIDetails.name]]"
+					data-test-id="execution-preview-label"
+				>
+					{{ executionUIDetails.label }}
+				</n8n-text>
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
@@ -39,7 +44,12 @@
 					}}
 					| ID#{{ activeExecution.id }}
 				</n8n-text>
-				<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="medium">
+				<n8n-text
+					v-else-if="executionUIDetails.name !== 'waiting'"
+					color="text-base"
+					size="medium"
+					data-test-id="execution-preview-id"
+				>
 					{{
 						$locale.baseText('executionDetails.runningTimeFinished', {
 							interpolate: { time: executionUIDetails.runningTime },
@@ -80,6 +90,7 @@
 							type="tertiary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
+							data-test-id="execution-preview-retry-button"
 							@blur="onRetryButtonBlur"
 						/>
 					</span>
@@ -99,6 +110,7 @@
 					icon="trash"
 					size="large"
 					type="tertiary"
+					data-test-id="execution-preview-delete-button"
 					@click="onDeleteExecution"
 				/>
 			</div>
