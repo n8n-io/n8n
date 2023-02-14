@@ -182,7 +182,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
 					getPushInstance().send('executionFinished', pushData, sessionId);
-				}, 2000);
+				}, 1000);
 			});
 		}
 		return executionData;

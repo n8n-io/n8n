@@ -58,7 +58,8 @@ export const pushConnection = mixins(
 	methods: {
 		attemptReconnect() {
 			const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-			if (this.connectRetries > 6 && !this.lostConnection && isWorkflowRunning) {
+			this.clearAllStickyNotifications();
+			if (this.connectRetries > 5 && !this.lostConnection && isWorkflowRunning) {
 				this.lostConnection = true;
 
 				this.workflowsStore.executingNode = null;
@@ -68,6 +69,14 @@ export const pushConnection = mixins(
 					title: this.$locale.baseText('pushConnection.executionFailed'),
 					message: this.$locale.baseText('pushConnection.executionFailed.message'),
 					type: 'error',
+					duration: 0,
+				});
+			} else if (this.connectRetries > 0 && !this.lostConnection && isWorkflowRunning) {
+				this.$showMessage({
+					title: this.$locale.baseText('pushConnectionTracker.connectionLost'),
+					message: this.$locale.baseText('pushConnectionTracker.connectionLost.message'),
+					type: 'warning',
+					// duration: this.connectRetries * 5000 - 1000,
 					duration: 0,
 				});
 			}
@@ -115,6 +124,7 @@ export const pushConnection = mixins(
 			this.connectRetries = 0;
 			this.lostConnection = false;
 			this.rootStore.pushConnectionActive = true;
+			this.clearAllStickyNotifications();
 			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
 		},
 
