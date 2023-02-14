@@ -28,18 +28,88 @@ export class PostgresTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Queue / Topic',
-				name: 'queue',
+				displayName: 'Trigger Mode',
+				name: 'triggerMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Listen and Create Trigger Rule',
+						value: 'createTrigger',
+					},
+					{
+						name: 'Listen to Existing Trigger Rule',
+						value: 'listenTrigger',
+					},
+				],
+				default: 'createTrigger',
+				description:
+					'Listen and Create Trigger Rule: Creates a trigger rule and listens to it. Listen to Existing Trigger Rule: Listens to an channel.',
+			},
+			{
+				displayName: 'Channel Name',
+				name: 'channelName',
 				type: 'string',
 				default: '',
-				placeholder: 'queue-name',
-				description: 'The name of the queue to read from',
+				required: true,
+				displayOptions: {
+					show: {
+						triggerMode: ['listenTrigger'],
+					},
+				},
+			},
+			{
+				displayName: 'Table Name',
+				name: 'tableName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						triggerMode: ['createTrigger'],
+					},
+				},
+			},
+			{
+				displayName: 'Events to Listen To',
+				name: 'firesOn',
+				type: 'options',
+				displayOptions: {
+					show: {
+						triggerMode: ['createTrigger'],
+					},
+				},
+				options: [
+					{
+						name: 'Insert',
+						value: 'INSERT',
+					},
+					{
+						name: 'Update',
+						value: 'UPDATE',
+					},
+					{
+						name: 'Delete',
+						value: 'DELETE',
+					},
+				],
+				default: 'INSERT',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [],
 			},
 		],
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('postgres');
+		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
+		const tableName = this.getNodeParameter('tableName', 0) as string;
+		const firesOn = this.getNodeParameter('firesOn', 0) as string;
 		const pgp = pgPromise();
 
 		const config: IDataObject = {
@@ -60,9 +130,13 @@ export class PostgresTrigger implements INodeType {
 		}
 
 		const db = pgp(config);
+		let channelName;
+		if (triggerMode === 'createTrigger') {
+			db.
+		}
+		channelName = triggerMode === 'createTrigger' ? channelName : this.getNodeParameter('channelName', 0) as string;
 		db.connect({ direct: true })
 			.then(async (connection) => {
-				console.log('Connected to database');
 				connection.client.on('notification', async (data) => {
 					console.log('Received: ', data);
 					this.emit([this.helpers.returnJsonArray([data])]);

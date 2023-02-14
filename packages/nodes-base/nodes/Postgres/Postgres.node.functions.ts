@@ -1,4 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ITriggerFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
@@ -691,4 +691,18 @@ export async function pgUpdateV2(
 		}
 	}
 	throw new Error('multiple, independently or transaction are valid options');
+}
+
+export async function pgTriggerFunction(
+	this: ITriggerFunctions,
+	pgp: pgPromise.IMain<{}, pg.IClient>,
+	db: pgPromise.IDatabase<{}, pg.IClient>,
+	items: INodeExecutionData[],
+	continueOnFail = false,
+): Promise<IDataObject[]> {
+	const tableName = this.getNodeParameter('tableName', 0) as string;
+	const firesOn = this.getNodeParameter('firesOn', 0) as string;
+	await db.query(
+		"CREATE OR REPLACE FUNCTION public.test() RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('new_testevent', row_to_json(new)::text); return null; end; $BODY$;",
+	);
 }
