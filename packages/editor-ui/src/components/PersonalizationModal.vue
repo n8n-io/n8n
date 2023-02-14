@@ -127,6 +127,16 @@ import {
 	AUTOMATION_BENEFICIARY_SELF,
 	AUTOMATION_BENEFICIARY_MY_TEAM,
 	AUTOMATION_BENEFICIARY_OTHER_TEAMS,
+	REPORTED_SOURCE_KEY,
+	REPORTED_SOURCE_GOOGLE,
+	REPORTED_SOURCE_TWITTER,
+	REPORTED_SOURCE_LINKEDIN,
+	REPORTED_SOURCE_YOUTUBE,
+	REPORTED_SOURCE_FRIEND,
+	REPORTED_SOURCE_PODCAST,
+	REPORTED_SOURCE_EVENT,
+	REPORTED_SOURCE_OTHER,
+	REPORTED_SOURCE_OTHER_KEY,
 } from '../constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -420,9 +430,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourAutomationGoal'),
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						const goals = (values as IPersonalizationLatestVersion)[DEVOPS_AUTOMATION_GOAL_KEY];
 						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY] as string;
 						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
 							[ROLE_DEVOPS, ROLE_ENGINEERING, ROLE_IT].includes(role) &&
 							!!goals &&
 							goals.includes(DEVOPS_AUTOMATION_OTHER)
@@ -467,8 +479,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
-						return role === ROLE_SALES_AND_MARKETING;
+						return companyType !== PERSONAL_COMPANY_TYPE && role === ROLE_SALES_AND_MARKETING;
 					},
 				},
 				{
@@ -479,9 +492,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 						),
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
 						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
 						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
 							role === ROLE_SALES_AND_MARKETING &&
 							!!goals &&
 							goals.includes(MARKETING_AUTOMATION_OTHER)
@@ -550,6 +565,58 @@ export default mixins(showMessage, workflowHelpers).extend({
 					shouldDisplay(values): boolean {
 						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType !== PERSONAL_COMPANY_TYPE;
+					},
+				},
+				{
+					name: REPORTED_SOURCE_KEY,
+					properties: {
+						type: 'select',
+						label: this.$locale.baseText('personalizationModal.howDidYouHearAboutN8n'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								label: 'Google',
+								value: REPORTED_SOURCE_GOOGLE,
+							},
+							{
+								label: 'Twitter',
+								value: REPORTED_SOURCE_TWITTER,
+							},
+							{
+								label: 'LinkedIn',
+								value: REPORTED_SOURCE_LINKEDIN,
+							},
+							{
+								label: 'YouTube',
+								value: REPORTED_SOURCE_YOUTUBE,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.friendWordOfMouth'),
+								value: REPORTED_SOURCE_FRIEND,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.podcast'),
+								value: REPORTED_SOURCE_PODCAST,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.event'),
+								value: REPORTED_SOURCE_EVENT,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.otherPleaseSpecify'),
+								value: REPORTED_SOURCE_OTHER,
+							},
+						],
+					},
+				},
+				{
+					name: REPORTED_SOURCE_OTHER_KEY,
+					properties: {
+						placeholder: this.$locale.baseText('personalizationModal.specifyReportedSource'),
+					},
+					shouldDisplay(values): boolean {
+						const reportedSource = (values as IPersonalizationLatestVersion)[REPORTED_SOURCE_KEY];
+						return reportedSource === REPORTED_SOURCE_OTHER;
 					},
 				},
 			];

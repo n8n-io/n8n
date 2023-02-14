@@ -242,6 +242,17 @@ export const USAGE_MODE_CONNECT_TO_DB = 'connect-internal-db';
 export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
 export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
 
+export const REPORTED_SOURCE_KEY = 'reportedSource';
+export const REPORTED_SOURCE_OTHER_KEY = 'reportedSourceOther';
+export const REPORTED_SOURCE_GOOGLE = 'google';
+export const REPORTED_SOURCE_TWITTER = 'twitter';
+export const REPORTED_SOURCE_LINKEDIN = 'linkedin';
+export const REPORTED_SOURCE_YOUTUBE = 'youtube';
+export const REPORTED_SOURCE_FRIEND = 'friend';
+export const REPORTED_SOURCE_PODCAST = 'podcast';
+export const REPORTED_SOURCE_EVENT = 'event';
+export const REPORTED_SOURCE_OTHER = 'other';
+
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
 export const DEVOPS_AUTOMATION_GOAL_KEY = 'automationGoalDevops';
 export const DEVOPS_AUTOMATION_GOAL_OTHER_KEY = 'automationGoalDevopsOther';

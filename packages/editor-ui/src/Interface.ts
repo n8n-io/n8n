@@ -526,6 +526,8 @@ export type IPersonalizationSurveyAnswersV4 = {
 	email?: string | null;
 	role?: string | null;
 	roleOther?: string | null;
+	reportedSource?: string | null;
+	reportedSourceOther?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
