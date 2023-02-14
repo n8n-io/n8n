@@ -17,6 +17,7 @@
 				[$style[size]]: true,
 				[$style.disabled]: disabled,
 			}"
+			:data-test-id="`radio-button-${value}`"
 			@click="$emit('click')"
 		>
 			{{ label }}
