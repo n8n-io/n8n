@@ -57,6 +57,15 @@ describe('Top-level completions', () => {
 		expect(found[0].label).toBe('Math');
 	});
 
+	test('should return Object completion for: {{ O| }}', () => {
+		const found = completions('{{ O| }}');
+
+		if (!found) throw new Error('Expected to find completion');
+
+		expect(found).toHaveLength(1);
+		expect(found[0].label).toBe('Object');
+	});
+
 	test('should return dollar completions for: {{ $| }}', () => {
 		expect(completions('{{ $| }}')).toHaveLength(dollarOptions().length);
 	});
@@ -130,6 +139,17 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
+		test('should return completions for Object methods: {{ Object.values({ abc: 123 }).| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce([123]);
+
+			const found = completions('{{ Object.values({ abc: 123 }).| }}');
+
+			if (!found) throw new Error('Expected to find completion');
+
+			expect(found).toHaveLength(natives('array').length + extensions('array').length);
+		});
+
 		test('should return completions for object literal', () => {
 			const object = { a: 1 };
 
@@ -145,7 +165,7 @@ describe('Resolution-based completions', () => {
 		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
 
-		test('should return bracket-aware completions for: {{ $input.item.json.str.| }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.str.|() }}', () => {
 			resolveParameterSpy.mockReturnValue($input.item.json.str);
 
 			const found = completions('{{ $input.item.json.str.|() }}');
@@ -156,7 +176,7 @@ describe('Resolution-based completions', () => {
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
-		test('should return bracket-aware completions for: {{ $input.item.json.num.| }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.num.|() }}', () => {
 			resolveParameterSpy.mockReturnValue($input.item.json.num);
 
 			const found = completions('{{ $input.item.json.num.|() }}');

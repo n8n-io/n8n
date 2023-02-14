@@ -32,6 +32,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (base === 'DateTime') {
 		options = luxonStaticOptions().map(stripExcessParens(context));
+	} else if (base === 'Object') {
+		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else {
 		let resolved: Resolved;
 
@@ -287,6 +289,24 @@ export const luxonStaticOptions = () => {
 		});
 };
 
+/**
+ * Methods defined on the global `Object`.
+ */
+export const objectGlobalOptions = () => {
+	return ['assign', 'entries', 'keys', 'values'].map((key) => {
+		const option: Completion = {
+			label: key + '()',
+			type: 'function',
+		};
+
+		const info = i18n.globalObject[key];
+
+		if (info) option.info = info;
+
+		return option;
+	});
+};
+
 const regexes = {
 	generalRef: /\$[^$]+\.([^{\s])*/, // $input. or $json. or similar ones
 	selectorRef: /\$\(['"][\S\s]+['"]\)\.([^{\s])*/, // $('nodeName').
@@ -299,6 +319,7 @@ const regexes = {
 
 	mathGlobal: /Math\.([^{\s])*/, // Math.
 	datetimeGlobal: /DateTime\.[^.}]*/, // DateTime.
+	objectGlobal: /Object\.(\w+\(.*\)\.[^{\s]*)?/, // Object. or Object.method(arg).
 };
 
 const DATATYPE_REGEX = new RegExp(

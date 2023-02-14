@@ -506,7 +506,7 @@ export class ActiveCampaign implements INodeType {
 				} else if (resource === 'accountContact') {
 					if (operation === 'create') {
 						// ----------------------------------
-						//         account:create
+						//         accountContact:create
 						// ----------------------------------
 
 						requestMethod = 'POST';
@@ -521,7 +521,7 @@ export class ActiveCampaign implements INodeType {
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						addAdditionalFields(body.account as IDataObject, additionalFields);
+						addAdditionalFields(body.accountContact as IDataObject, additionalFields);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         accountContact:update

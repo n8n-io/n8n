@@ -44,7 +44,6 @@ import type {
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import * as Push from '@/Push';
 import * as Queue from '@/Queue';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -54,16 +53,18 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import type { Push } from '@/push';
+import { getPushInstance } from '@/push';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
 
-	push: Push.Push;
+	push: Push;
 
 	jobQueue: Queue.JobQueue;
 
 	constructor() {
-		this.push = Push.getInstance();
+		this.push = getPushInstance();
 		this.activeExecutions = ActiveExecutions.getInstance();
 	}
 
