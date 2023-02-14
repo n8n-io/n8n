@@ -206,7 +206,7 @@ describe('Execution',() => {
 		workflowPage.getters.canvasNodeByName('Set').within(() => cy.get('.fa-check').should('not.exist'));
 
 		cy.wait(1000);
-		workflowPage.getters.stopExecutionButton().click();
+		workflowPage.getters.stopExecutionWaitingForWebhookButton().click();
 
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters.canvasNodeByName('Webhook').within(() => cy.get('.fa-check')).should('be.visible');
