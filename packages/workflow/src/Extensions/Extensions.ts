@@ -9,6 +9,6 @@ export type DocMetadata = {
 	returnType: string;
 	description?: string;
 	aliases?: string[];
-	args?: unknown[];
+	args?: Array<{ name: string, type: string }>;
 	docURL?: string;
 };

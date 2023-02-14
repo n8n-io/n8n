@@ -15,6 +15,7 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { ExtensionTypeName, FnToDoc, Resolved } from './types';
+import { sanitizeHtml } from '@/utils';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -158,7 +159,12 @@ export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
 				typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
 
 				const functionNameSpan = document.createElement('span');
-				functionNameSpan.innerHTML = fn.doc.name + '()';
+				let functionArgs = '(';
+				if (fn.doc.args) {
+					functionArgs += fn.doc.args.map((arg) => `${arg.name}: ${arg.type}`).join(', ');
+				}
+				functionArgs += ')';
+				functionNameSpan.innerHTML = `${fn.doc.name}${functionArgs}`;
 				functionNameSpan.style.fontWeight = 'var(--font-weight-bold)';
 
 				const returnTypeSpan = document.createElement('span');
@@ -172,7 +178,12 @@ export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
 
 				const descriptionBody = document.createElement('div');
 				const descriptionText = document.createElement('p');
-				descriptionText.innerText = fn.doc.description;
+				descriptionText.style.marginTop = '0';
+				descriptionText.style.lineHeight = '1.1em';
+				descriptionText.style.marginBottom = 'var(--spacing-2xs)';
+				descriptionText.innerHTML = sanitizeHtml(
+					fn.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
+				);
 				descriptionBody.appendChild(descriptionText);
 				if (fn.doc.docURL) {
 					const descriptionLink = document.createElement('a');
