@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.215.1",
+  "version": "0.215.2",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -49,6 +49,7 @@
     "jest-mock": "^29.4.2",
     "nock": "^13.2.9",
     "node-fetch": "^2.6.7",
+    "p-limit": "^3.1.0",
     "prettier": "^2.8.3",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",

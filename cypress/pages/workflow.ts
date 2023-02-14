@@ -103,6 +103,7 @@ export class WorkflowPage extends BasePage {
 			cy.get(
 				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
 			),
+		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 	};
 	actions = {
 		visit: () => {
@@ -229,6 +230,16 @@ export class WorkflowPage extends BasePage {
 				.find('.delete')
 				.first()
 				.click({ force: true });
+		},
+		turnOnManualExecutionSaving: () => {
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters
+				.workflowSettingsSaveManualExecutionsSelect()
+				.find('li:contains("Yes")')
+				.click({ force: true });
+			this.getters.workflowSettingsSaveButton().click();
+			this.getters.successToast().should('exist');
 		},
 	};
 }
