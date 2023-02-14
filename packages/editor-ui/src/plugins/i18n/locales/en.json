@@ -672,7 +672,7 @@
 	"node.discovery.pinData.canvas": "You can pin this output instead of waiting for a test event. Open node to do so.",
 	"node.discovery.pinData.ndv": "You can pin this output instead of waiting for a test event.",
 	"nodeBase.clickToAddNodeOrDragToConnect": "Click to add node<br />or drag to connect",
-	"nodeCreator.actionsCategory.operations": "Operations",
+	"nodeCreator.actionsCategory.actions": "Actions",
 	"nodeCreator.actionsCategory.onNewEvent": "On new {event} event",
 	"nodeCreator.actionsCategory.onEvent": "On {event}",
 	"nodeCreator.actionsCategory.triggers": "Triggers",

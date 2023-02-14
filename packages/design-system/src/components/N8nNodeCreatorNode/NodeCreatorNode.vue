@@ -109,7 +109,7 @@ defineEmits<{
 	font-size: var(--font-size-2xs);
 	line-height: 1rem;
 	font-weight: 400;
-	color: var(--node-creator-description-colo, var(--color-text-base));
+	color: var(--node-creator-description-colos, var(--color-text-base));
 }
 
 .triggerIcon {

@@ -165,6 +165,7 @@ const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => 
 			description: '',
 			iconType: state.activeNodeActions.iconUrl ? 'file' : 'icon',
 			icon,
+			color: state.activeNodeActions.defaults.color,
 		},
 	};
 });
@@ -305,14 +306,6 @@ function onActionSelected(actionCreateElement: INodeCreateElement) {
 	setAddedNodeActionParameters(actionUpdateData, telemetry);
 }
 function addWebHookNode() {
-	const updateData = {
-		name: '',
-		key: HTTP_REQUEST_NODE_TYPE,
-		value: {
-			authentication: 'predefinedCredentialType',
-		},
-	} as IUpdateInformation;
-
 	emit('nodeTypeSelected', [WEBHOOK_NODE_TYPE]);
 }
 

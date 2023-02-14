@@ -32,6 +32,7 @@
 						:type="activeSubcategory.properties.iconType || 'unknown'"
 						:src="activeSubcategory.properties.icon"
 						:name="activeSubcategory.properties.icon"
+						:color="activeSubcategory.properties.color"
 						:circle="false"
 						:showTooltip="false"
 						:size="16"

@@ -79,7 +79,9 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, category: st
 		iconUrl: nodeTypeDescription.iconUrl,
 		icon: nodeTypeDescription.icon,
 		version: [1],
-		defaults: {},
+		defaults: {
+			...nodeTypeDescription.defaults,
+		},
 		inputs: [],
 		outputs: [],
 		properties: [],
@@ -102,10 +104,7 @@ function operationsCategory(
 	);
 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
-		...getNodeTypeBase(
-			nodeTypeDescription,
-			i18n.baseText('nodeCreator.actionsCategory.operations'),
-		),
+		...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.actions')),
 		actionKey: item.value as string,
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
