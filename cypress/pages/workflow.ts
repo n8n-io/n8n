@@ -24,7 +24,7 @@ export class WorkflowPage extends BasePage {
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
-			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
+			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
@@ -143,7 +143,7 @@ export class WorkflowPage extends BasePage {
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
 		openNode: (nodeTypeName: string) => {
-			this.getters.canvasNodeByName(nodeTypeName).dblclick();
+			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();

@@ -1273,7 +1273,6 @@ class Server extends AbstractServer {
 					}
 				});
 			}
-
 			this.app.use(
 				'/',
 				express.static(GENERATED_STATIC_DIR),

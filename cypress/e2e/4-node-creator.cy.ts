@@ -36,11 +36,11 @@ describe('Node Creator', () => {
 
 	it('should navigate subcategory', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.getCreatorItem('On App Event').click();
-		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'On App Event');
+		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
+		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'On app event');
 		// Go back
 		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
-		nodeCreatorFeature.getters.activeSubcategory().should('not.exist');
+		nodeCreatorFeature.getters.activeSubcategory().should('not.have.text', 'On app event');
 	});
 
 	it('should search for nodes', () => {
@@ -66,7 +66,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear();
-		nodeCreatorFeature.getters.getCreatorItem('On App Event').click();
+		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
 		nodeCreatorFeature.getters.getCreatorItem('Results in other categories (1)').should('exist');

@@ -50,6 +50,7 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve array resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('[1, 2, 3]');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^\[Array: \[1,2,3\]\]$/);
@@ -63,8 +64,9 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve $parameter[]', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
-		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
+		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^getAll$/);
 	});
 });

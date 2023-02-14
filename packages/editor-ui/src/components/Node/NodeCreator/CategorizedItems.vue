@@ -53,7 +53,7 @@
 			<search-bar
 				v-if="alwaysShowSearch || isSearchVisible"
 				:key="nodeCreatorStore.selectedView"
-				:value="nodeCreatorStore.itemsFilter"
+				:value="searchFilter"
 				:placeholder="
 					searchPlaceholder
 						? searchPlaceholder
@@ -109,7 +109,6 @@ import {
 	CategoryCreateElement,
 	INodeItemProps,
 } from '@/Interface';
-import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -348,8 +347,10 @@ function trimTriggerNodeName(nodeName: string) {
 	return nodeName.toLowerCase().replace('trigger', '');
 }
 function getFilteredNodes(items: INodeCreateElement[]) {
+	// In order to support the old search we need to remove the 'trigger' part
+	const trimmedFilter = searchFilter.value.toLowerCase().replace('trigger', '');
 	return (
-		sublimeSearch<INodeCreateElement>(searchFilter.value, items, [
+		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
 			{ key: 'properties.nodeType.displayName', weight: 2 },
 			{ key: 'properties.nodeType.codex.alias', weight: 1 },
 		]) || []
