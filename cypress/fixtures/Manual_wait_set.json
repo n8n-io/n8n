@@ -1,5 +1,5 @@
 {
-	"name": "Manual long running",
+	"name": "Manual wait set",
 	"nodes": [
 		{
 			"parameters": {
