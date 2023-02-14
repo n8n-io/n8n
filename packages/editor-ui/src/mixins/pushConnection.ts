@@ -58,7 +58,7 @@ export const pushConnection = mixins(
 	methods: {
 		attemptReconnect() {
 			const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-			if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
+			if (this.connectRetries > 6 && !this.lostConnection && isWorkflowRunning) {
 				this.lostConnection = true;
 
 				this.workflowsStore.executingNode = null;
