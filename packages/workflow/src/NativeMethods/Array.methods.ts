@@ -1,5 +1,18 @@
-export const arrayMethods = {
+import type { NativeDoc } from '@/Extensions/Extensions';
+
+export const arrayMethods: NativeDoc = {
 	typeName: 'Array',
+	properties: {
+		length: {
+			doc: {
+				name: 'length',
+				description: 'Returns the number of elements in the Array.',
+				docURL:
+					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/length',
+				returnType: 'number',
+			},
+		},
+	},
 	functions: {
 		concat: {
 			doc: {
@@ -105,15 +118,6 @@ export const arrayMethods = {
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/join',
 				returnType: 'Array',
 				args: [{ name: 'separator?', type: 'string' }],
-			},
-		},
-		length: {
-			doc: {
-				name: 'length',
-				description: 'Returns the number of elements in the Array.',
-				docURL:
-					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/length',
-				returnType: 'number',
 			},
 		},
 		map: {

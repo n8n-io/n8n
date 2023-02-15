@@ -1,4 +1,4 @@
-import { ExpressionExtensions, NativeMethods, IDataObject } from 'n8n-workflow';
+import { ExpressionExtensions, NativeMethods, IDataObject, DocMetadata } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -16,6 +16,9 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { ExtensionTypeName, FnToDoc, Resolved } from './types';
 import { sanitizeHtml } from '@/utils';
+import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
+
+type AutocompleteOptionType = 'function' | 'keyword';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -112,11 +115,14 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 }
 
 export const natives = (typeName: ExtensionTypeName): Completion[] => {
-	const natives = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
+	const natives: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!natives) return [];
 
-	return toOptions(natives.functions, typeName);
+	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
+	const nativeMethods = toOptions(natives.functions, typeName, 'function');
+
+	return [...nativeProps, ...nativeMethods];
 };
 
 export const extensions = (typeName: ExtensionTypeName) => {
@@ -133,13 +139,17 @@ export const extensions = (typeName: ExtensionTypeName) => {
 	return toOptions(fnToDoc, typeName);
 };
 
-export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
+export const toOptions = (
+	fnToDoc: FnToDoc,
+	typeName: ExtensionTypeName,
+	optionType: AutocompleteOptionType = 'function',
+) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([fnName, fn]) => {
 			const option: Completion = {
-				label: fnName + '()',
-				type: 'function',
+				label: optionType === 'function' ? fnName + '()' : fnName,
+				type: optionType,
 			};
 
 			option.info = () => {
@@ -152,36 +162,10 @@ export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
 				tooltipContainer.style.paddingTop = 'var(--spacing-4xs)';
 				tooltipContainer.style.paddingBottom = 'var(--spacing-4xs)';
 
-				const header = document.createElement('div');
-				header.style.marginBottom = 'var(--spacing-2xs)';
-
-				const typeNameSpan = document.createElement('span');
-				typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
-
-				const functionNameSpan = document.createElement('span');
-				let functionArgs = '(';
-				if (fn.doc.args) {
-					functionArgs += fn.doc.args
-						.map((arg) => {
-							let argString = `${arg.name}`;
-							if (arg.type) {
-								argString += `: ${arg.type}`;
-							}
-							return argString;
-						})
-						.join(', ');
-				}
-				functionArgs += ')';
-				functionNameSpan.innerHTML = `${fn.doc.name}${functionArgs}`;
-				functionNameSpan.style.fontWeight = 'var(--font-weight-bold)';
-
-				const returnTypeSpan = document.createElement('span');
-				returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
-
-				header.appendChild(typeNameSpan);
-				header.appendChild(functionNameSpan);
-				header.appendChild(returnTypeSpan);
-
+				const header =
+					optionType === 'function'
+						? createFunctionHeader(typeName, fn)
+						: createPropHeader(typeName, fn);
 				tooltipContainer.appendChild(header);
 
 				const descriptionBody = document.createElement('div');
@@ -205,11 +189,68 @@ export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
 				}
 				tooltipContainer.appendChild(descriptionBody);
 
-				return tooltipContainer;
+				return optionType === 'function' ? tooltipContainer : null;
 			};
 
 			return option;
 		});
+};
+
+const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefined }) => {
+	const header = document.createElement('div');
+	if (fn.doc) {
+		header.style.marginBottom = 'var(--spacing-2xs)';
+
+		const typeNameSpan = document.createElement('span');
+		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+
+		const functionNameSpan = document.createElement('span');
+		let functionArgs = '(';
+		if (fn.doc.args) {
+			functionArgs += fn.doc.args
+				.map((arg) => {
+					let argString = `${arg.name}`;
+					if (arg.type) {
+						argString += `: ${arg.type}`;
+					}
+					return argString;
+				})
+				.join(', ');
+		}
+		functionArgs += ')';
+		functionNameSpan.innerHTML = `${fn.doc.name}${functionArgs}`;
+		functionNameSpan.style.fontWeight = 'var(--font-weight-bold)';
+
+		const returnTypeSpan = document.createElement('span');
+		returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
+
+		header.appendChild(typeNameSpan);
+		header.appendChild(functionNameSpan);
+		header.appendChild(returnTypeSpan);
+	}
+	return header;
+};
+
+const createPropHeader = (typeName: string, property: { doc?: DocMetadata | undefined }) => {
+	const header = document.createElement('div');
+	if (property.doc) {
+		header.style.marginBottom = 'var(--spacing-2xs)';
+
+		const typeNameSpan = document.createElement('span');
+		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+
+		const propNameSpan = document.createElement('span');
+		propNameSpan.innerText = property.doc.name;
+		propNameSpan.style.fontWeight = 'var(--font-weight-bold)';
+
+		const returnTypeSpan = document.createElement('span');
+		returnTypeSpan.innerHTML = ': ' + property.doc.returnType;
+
+		header.appendChild(typeNameSpan);
+		header.appendChild(propNameSpan);
+		header.appendChild(returnTypeSpan);
+	}
+	return header;
 };
 
 const objectOptions = (toResolve: string, resolved: IDataObject) => {

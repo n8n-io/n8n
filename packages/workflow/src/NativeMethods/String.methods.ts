@@ -1,5 +1,18 @@
-export const stringMethods = {
+import type { NativeDoc } from '@/Extensions/Extensions';
+
+export const stringMethods: NativeDoc = {
 	typeName: 'String',
+	properties: {
+		length: {
+			doc: {
+				name: 'length',
+				description: 'Returns the number of characters in the string.',
+				docURL:
+					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length',
+				returnType: 'number',
+			},
+		},
+	},
 	functions: {
 		concat: {
 			doc: {
@@ -44,15 +57,6 @@ export const stringMethods = {
 					{ name: 'searchString', type: 'string' },
 					{ name: 'position?', type: 'number' },
 				],
-			},
-		},
-		length: {
-			doc: {
-				name: 'length',
-				description: 'Returns the number of characters in the string',
-				docURL:
-					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length',
-				returnType: 'number',
 			},
 		},
 		match: {

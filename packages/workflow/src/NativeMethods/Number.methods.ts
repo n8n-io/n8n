@@ -1,4 +1,6 @@
-export const numberMethods = {
+import { NativeDoc } from "@/Extensions/Extensions";
+
+export const numberMethods: NativeDoc = {
 	typeName: 'Number',
 	functions: {
 		toFixed: {
