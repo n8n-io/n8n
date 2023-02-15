@@ -189,6 +189,7 @@ export const toOptions = (
 				}
 				tooltipContainer.appendChild(descriptionBody);
 
+				// @TODO_NEXT_PHASE: Enable this for native props
 				return optionType === 'function' ? tooltipContainer : null;
 			};
 
