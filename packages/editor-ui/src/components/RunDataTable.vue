@@ -159,7 +159,7 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 import { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/utils';
+import { getPairedItemId, parseDate } from '@/utils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -171,6 +171,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import { DateTime } from 'luxon';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -365,6 +366,10 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
+				const parsedDate = parseDate(value, this.workflowsStore.workflow.settings?.timezone);
+				if (parsedDate) {
+					return parsedDate.toString();
+				}
 				return value.replaceAll('\n', '\\n');
 			}
 
