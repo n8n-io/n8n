@@ -1,5 +1,5 @@
-import type { INodeTypeData, INodeTypeNameVersion } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
+import type { PackageDirectoryLoader } from 'n8n-core';
 import * as Db from '@/Db';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -12,8 +12,9 @@ export async function findInstalledPackage(packageName: string): Promise<Install
 }
 
 export async function isPackageInstalled(packageName: string): Promise<boolean> {
-	const installedPackage = await findInstalledPackage(packageName);
-	return installedPackage !== null;
+	return Db.collections.InstalledPackages.exist({
+		where: { packageName },
+	});
 }
 
 export async function getAllInstalledPackages(): Promise<InstalledPackages[]> {
@@ -27,13 +28,11 @@ export async function removePackageFromDatabase(
 }
 
 export async function persistInstalledPackageData(
-	installedPackageName: string,
-	installedPackageVersion: string,
-	installedNodes: INodeTypeNameVersion[],
-	loadedNodeTypes: INodeTypeData,
-	authorName?: string,
-	authorEmail?: string,
+	packageLoader: PackageDirectoryLoader,
 ): Promise<InstalledPackages> {
+	const { packageJson, nodeTypes, loadedNodes } = packageLoader;
+	const { name: packageName, version: installedVersion, author } = packageJson;
+
 	let installedPackage: InstalledPackages;
 
 	try {
@@ -41,21 +40,21 @@ export async function persistInstalledPackageData(
 			const promises = [];
 
 			const installedPackagePayload = Object.assign(new InstalledPackages(), {
-				packageName: installedPackageName,
-				installedVersion: installedPackageVersion,
-				authorName,
-				authorEmail,
+				packageName,
+				installedVersion,
+				authorName: author?.name,
+				authorEmail: author?.email,
 			});
 			installedPackage = await transactionManager.save<InstalledPackages>(installedPackagePayload);
 			installedPackage.installedNodes = [];
 
 			promises.push(
-				...installedNodes.map(async (loadedNode) => {
+				...loadedNodes.map(async (loadedNode) => {
 					const installedNodePayload = Object.assign(new InstalledNodes(), {
-						name: loadedNodeTypes[loadedNode.name].type.description.displayName,
+						name: nodeTypes[loadedNode.name].type.description.displayName,
 						type: loadedNode.name,
 						latestVersion: loadedNode.version,
-						package: installedPackageName,
+						package: packageName,
 					});
 					installedPackage.installedNodes.push(installedNodePayload);
 					return transactionManager.save<InstalledNodes>(installedNodePayload);
@@ -70,7 +69,7 @@ export async function persistInstalledPackageData(
 		LoggerProxy.error('Failed to save installed packages and nodes', {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			error,
-			packageName: installedPackageName,
+			packageName,
 		});
 		throw error;
 	}
