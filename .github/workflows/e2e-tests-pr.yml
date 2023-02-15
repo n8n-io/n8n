@@ -1,4 +1,5 @@
 name: PR E2E (skip with label skip-e2e)
+run-name: 'E2E tests: ${{ github.event.pull_request.head.ref }}'
 
 on:
   pull_request_review:
@@ -10,13 +11,9 @@ jobs:
   runTests:
     name: 'Run E2E tests'
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
 
-    timeout-minutes: 30
-
-    strategy:
-      matrix:
-        node-version: [16.x]
+    timeout-minutes: 40
 
     steps:
       - name: 'Cancel previous runs'
@@ -24,18 +21,13 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: 'Cancel if PR is not approved'
-        if: github.event.review.state != 'approved'
-        uses: andymckay/cancel-action@0.2
-
       - uses: actions/checkout@v3
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 16.x
           cache: 'pnpm'
 
       - name: Install dependencies
