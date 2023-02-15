@@ -105,6 +105,12 @@ export const starFields: INodeProperties[] = [
 				placeholder: 'C0122KQ70S7E',
 			},
 			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: '#general',
+			},
+			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
