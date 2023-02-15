@@ -18,7 +18,6 @@ import { EECredentialsService as EECredentials } from '../credentials/credential
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
-import type { WorkflowWithSharingsAndCredentials } from './workflows.types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -206,10 +205,8 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
 
-		return workflows.map((workflow: WorkflowWithSharingsAndCredentials) => {
-			EEWorkflows.addOwnerAndSharings(workflow);
-			delete workflow.sharedWith;
-			delete workflow.usedCredentials;
+		return workflows.map((workflow) => {
+			EEWorkflows.addOwnerId(workflow);
 			return workflow;
 		});
 	}),

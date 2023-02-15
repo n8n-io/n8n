@@ -17,6 +17,7 @@ import type {
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { NodeOperationError } from 'n8n-workflow';
+import {WorkflowForList} from "./workflows.types";
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async getWorkflowIdsForUser(user: User) {
@@ -85,6 +86,21 @@ export class EEWorkflowsService extends WorkflowsService {
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
+	}
+
+	static addOwnerId(workflow: WorkflowForList): void {
+		workflow.ownedBy = null;
+
+		workflow.shared?.forEach(({ user, role }) => {
+			const { id } = user;
+
+			if (role.name === 'owner') {
+				workflow.ownedBy = { id };
+				return;
+			}
+		});
+
+		delete workflow.shared;
 	}
 
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {

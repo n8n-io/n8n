@@ -188,9 +188,6 @@ describe('GET /workflows', () => {
 		expect(response.statusCode).toBe(200);
 		expect(fetchedWorkflow.ownedBy).toMatchObject({
 			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
 		});
 
 		expect(fetchedWorkflow.sharedWith).not.toBeDefined()

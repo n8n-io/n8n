@@ -114,7 +114,10 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
+	static async getMany(
+		user: User,
+		rawFilter: string,
+	): Promise<Array<Omit<WorkflowEntity, 'nodes'>>> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits

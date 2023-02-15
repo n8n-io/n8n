@@ -9,6 +9,11 @@ export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity,
 	shared?: SharedWorkflow[];
 }
 
+export interface WorkflowForList
+	extends Omit<WorkflowWithSharingsAndCredentials, 'ownedBy' | 'nodes'> {
+	ownedBy?: Partial<IUser> | null;
+}
+
 export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
