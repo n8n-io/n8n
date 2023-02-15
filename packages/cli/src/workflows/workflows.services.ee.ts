@@ -5,6 +5,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleService } from '@/role/role.service';
@@ -88,9 +89,11 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerId(workflow: WorkflowForList): void {
-		const owner = workflow.shared?.find(({ role }) => role.name === 'owner')?.user;
-		workflow.ownedBy = owner ? { id: owner.id } : null;
+	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role): void {
+		const ownerId = workflow.shared?.find(
+			({ roleId }) => String(roleId) === workflowOwnerRole.id,
+		)?.userId;
+		workflow.ownedBy = ownerId ? { id: ownerId } : null;
 		delete workflow.shared;
 	}
 

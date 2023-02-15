@@ -203,10 +203,16 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
+		const [workflows, workflowOwnerRole] = await Promise.all([
+			EEWorkflows.getMany(req.user, req.query.filter),
+			Db.collections.Role.findOneOrFail({
+				select: ['id'],
+				where: { name: 'owner', scope: 'workflow' },
+			}),
+		]);
 
 		return workflows.map((workflow) => {
-			EEWorkflows.addOwnerId(workflow);
+			EEWorkflows.addOwnerId(workflow, workflowOwnerRole);
 			return workflow;
 		});
 	}),
