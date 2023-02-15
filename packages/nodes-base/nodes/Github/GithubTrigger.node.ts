@@ -9,6 +9,7 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
+import { getRepositories, getUsers } from './SearchFunctions';
 
 export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -73,20 +74,111 @@ export class GithubTrigger implements INodeType {
 			{
 				displayName: 'Repository Owner',
 				name: 'owner',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				placeholder: 'n8n-io',
-				description: 'Owner of the repsitory',
+				modes: [
+					{
+						displayName: 'Repository Owner',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an owner...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+							searchFilterRequired: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n-io',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_a-zA-Z0-9]+',
+									errorMessage: 'Not a valid Github Owner Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$value}}',
+					},
+				],
 			},
 			{
 				displayName: 'Repository Name',
 				name: 'repository',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				placeholder: 'n8n',
-				description: 'The name of the repsitory',
+				modes: [
+					{
+						displayName: 'Repository Name',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Repository...',
+						typeOptions: {
+							searchListMethod: 'getRepositories',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io/n8n',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github Repository URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_.0-9a-zA-Z]+',
+									errorMessage: 'Not a valid Github Repository Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$parameter["owner"]}}/{{$value}}',
+					},
+				],
 			},
 			{
 				displayName: 'Events',
@@ -343,7 +435,6 @@ export class GithubTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -355,8 +446,10 @@ export class GithubTrigger implements INodeType {
 				}
 
 				// Webhook got created before so check if it still exists
-				const owner = this.getNodeParameter('owner') as string;
-				const repository = this.getNodeParameter('repository') as string;
+				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+				const repository = this.getNodeParameter('repository', '', {
+					extractValue: true,
+				}) as string;
 				const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 
 				try {
@@ -373,7 +466,6 @@ export class GithubTrigger implements INodeType {
 					// Some error occured
 					throw error;
 				}
-
 				// If it did not error then the webhook exists
 				return true;
 			},
@@ -387,8 +479,10 @@ export class GithubTrigger implements INodeType {
 					);
 				}
 
-				const owner = this.getNodeParameter('owner') as string;
-				const repository = this.getNodeParameter('repository') as string;
+				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+				const repository = this.getNodeParameter('repository', '', {
+					extractValue: true,
+				}) as string;
 				const events = this.getNodeParameter('events', []);
 
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
@@ -455,8 +549,10 @@ export class GithubTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const owner = this.getNodeParameter('owner') as string;
-					const repository = this.getNodeParameter('repository') as string;
+					const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+					const repository = this.getNodeParameter('repository', '', {
+						extractValue: true,
+					}) as string;
 					const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 					const body = {};
 
@@ -474,6 +570,13 @@ export class GithubTrigger implements INodeType {
 
 				return true;
 			},
+		},
+	};
+
+	methods = {
+		listSearch: {
+			getUsers,
+			getRepositories,
 		},
 	};
 
