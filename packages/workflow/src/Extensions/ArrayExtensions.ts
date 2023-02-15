@@ -23,7 +23,6 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionError('arguments must be passed to pluck');
 	}
-	// const fieldsToPluck = extraArgs;
 	if (!extraArgs || extraArgs.length === 0) {
 		return value;
 	}
