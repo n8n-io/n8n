@@ -15,8 +15,8 @@ export const reloadNodesAndCredentials = async (
 	// eslint-disable-next-line import/no-extraneous-dependencies
 	const { watch } = await import('chokidar');
 
-	Object.entries(loadNodesAndCredentials.loaders).forEach(async ([dir, loader]) => {
-		const realModulePath = path.join(await realpath(dir), path.sep);
+	Object.values(loadNodesAndCredentials.loaders).forEach(async (loader) => {
+		const realModulePath = path.join(await realpath(loader.directory), path.sep);
 		const reloader = debounce(async () => {
 			const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
 				filePath.startsWith(realModulePath),
