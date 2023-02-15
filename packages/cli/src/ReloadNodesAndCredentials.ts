@@ -1,5 +1,5 @@
 import path from 'path';
-import { realpath } from 'fs/promises';
+import { realpath, access } from 'fs/promises';
 
 import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import type { NodeTypesClass } from '@/NodeTypes';
@@ -16,6 +16,13 @@ export const reloadNodesAndCredentials = async (
 	const { watch } = await import('chokidar');
 
 	Object.values(loadNodesAndCredentials.loaders).forEach(async (loader) => {
+		try {
+			await access(loader.directory);
+		} catch {
+			// If directory doesn't exist, there is nothing to watch
+			return;
+		}
+
 		const realModulePath = path.join(await realpath(loader.directory), path.sep);
 		const reloader = debounce(async () => {
 			const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
