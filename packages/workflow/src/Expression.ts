@@ -60,11 +60,21 @@ export class Expression {
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 
-		if (DateTime.isDateTime(value) && value.invalidReason !== null) {
+		if (value instanceof DateTime && value.invalidReason !== null) {
 			throw new Error('invalid DateTime');
 		}
 
-		const result = JSON.stringify(value)
+		let result = '';
+		if (value instanceof Date) {
+			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
+			result = DateTime.fromJSDate(value, {
+				zone: this.workflow.settings.timezone?.toString() ?? 'default',
+			}).toISO();
+		} else {
+			result = JSON.stringify(value);
+		}
+
+		result = result
 			.replace(/,"/g, ', "') // spacing for
 			.replace(/":/g, '": '); // readability
 
