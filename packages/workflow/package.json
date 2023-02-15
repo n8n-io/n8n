@@ -41,6 +41,7 @@
   "devDependencies": {
     "@n8n_io/eslint-config": "",
     "@types/crypto-js": "^4.1.1",
+    "@types/deep-equal": "^1.0.1",
     "@types/express": "^4.17.6",
     "@types/jmespath": "^0.15.0",
     "@types/lodash.get": "^4.4.6",
@@ -54,6 +55,7 @@
     "@n8n_io/riot-tmpl": "^2.0.0",
     "ast-types": "0.15.2",
     "crypto-js": "^4.1.1",
+    "deep-equal": "^2.2.0",
     "esprima-next": "5.8.4",
     "jmespath": "^0.16.0",
     "js-base64": "^3.7.2",

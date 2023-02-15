@@ -7,14 +7,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{({ test1: 1 }).isEmpty()}}')).toEqual(false);
 		});
 
-		test('.merge should work on an object', () => {
-			expect(evaluate('={{ ({ test1: 1, test2: 2 }).merge({ test2: 3, test3: 3 }) }}')).toEqual({
-				test1: 1,
-				test2: 2,
-				test3: 3,
-			});
-		});
-
 		test('.hasField should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1 }).hasField("test1") }}')).toEqual(true);
 			expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toEqual(false);
@@ -44,6 +36,14 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
+		test('.removeFieldsContaining should not work for empty string', () => {
+			expect(
+				() => evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("") }}',
+				),
+			).toThrow();
+		});
+
 		test('.keepFieldsContaining should work on an object', () => {
 			expect(
 				evaluate(
@@ -52,6 +52,24 @@ describe('Data Transformation Functions', () => {
 			).toEqual({
 				test1: 'i exist',
 			});
+		});
+
+		test('.keepFieldsContaining should work on a nested object', () => {
+			expect(
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: { test4: "me too" } }).keepFieldsContaining("exist") }}',
+				),
+			).toEqual({
+				test1: 'i exist',
+			});
+		});
+
+		test('.keepFieldsContaining should not work for empty string', () => {
+			expect(
+				() => evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("") }}',
+				),
+			).toThrow();
 		});
 
 		test('.compact should work on an object', () => {

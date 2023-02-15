@@ -113,12 +113,15 @@ function removeTags(value: string): string {
 }
 
 function toDate(value: string): Date {
-	const date = new Date(value.toString());
+	const date = new Date(Date.parse(value));
 
 	if (date.toString() === 'Invalid Date') {
 		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
 	}
-
+	// If time component is not specified, force 00:00h
+	if (!/:/.test(value)) {
+		date.setHours(0, 0, 0);
+	}
 	return date;
 }
 
