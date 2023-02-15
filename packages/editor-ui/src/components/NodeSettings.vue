@@ -82,7 +82,7 @@
 				v-if="hasForeignCredential"
 				:content="
 					$locale.baseText('nodeSettings.hasForeignCredential', {
-						interpolate: { owner: workflowOwnerName },
+						interpolate: { owner: credentialOwnerName },
 					})
 				"
 			/>
@@ -166,7 +166,14 @@ import {
 	NodeParameterValue,
 	deepCopy,
 } from 'n8n-workflow';
-import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import {
+	ICredentialsResponse,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+	IUsedCredential,
+	IUser,
+} from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -197,6 +204,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useHistoryStore } from '@/stores/history';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -215,6 +223,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
+			useCredentialsStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
@@ -292,6 +301,25 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
 		},
+		hasForeignCredential(): boolean {
+			return this.foreignCredentials.length > 0;
+		},
+		usedCredentials(): IUsedCredential[] {
+			return Object.values(this.workflowsStore.usedCredentials).filter((credential) => {
+				return Object.values(this.node?.credentials || []).find((nodeCredential) => {
+					return nodeCredential.id === credential.id;
+				});
+			});
+		},
+		credentialOwnerName(): string {
+			const credential = this.usedCredentials
+				? Object.values(this.usedCredentials).find((credential) => {
+						return credential.id === this.foreignCredentials[0];
+				  })
+				: undefined;
+
+			return this.credentialsStore.getCredentialOwnerName(credential);
+		},
 	},
 	props: {
 		eventBus: {},
@@ -308,9 +336,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			type: Boolean,
 			default: false,
 		},
-		hasForeignCredential: {
-			type: Boolean,
-			default: false,
+		foreignCredentials: {
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
 		blockUI: {
 			type: Boolean,

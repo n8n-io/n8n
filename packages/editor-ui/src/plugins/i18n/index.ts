@@ -368,6 +368,13 @@ export class I18nClass {
 		'$workflow.name': this.baseText('codeNodeEditor.completer.$workflow.name'),
 	};
 
+	globalObject: Record<string, string | undefined> = {
+		assign: this.baseText('codeNodeEditor.completer.globalObject.assign'),
+		entries: this.baseText('codeNodeEditor.completer.globalObject.entries'),
+		keys: this.baseText('codeNodeEditor.completer.globalObject.keys'),
+		values: this.baseText('codeNodeEditor.completer.globalObject.values'),
+	};
+
 	luxonInstance: Record<string, string | undefined> = {
 		// getters
 		isValid: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isValid'),

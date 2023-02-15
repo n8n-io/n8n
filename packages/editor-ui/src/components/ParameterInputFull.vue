@@ -256,7 +256,7 @@ export default mixins(showMessage).extend({
 					) {
 						updatedValue = `${prevValue} ${data}`;
 					} else if (prevValue && ['string', 'json'].includes(this.parameter.type)) {
-						updatedValue = `=${prevValue} ${data}`;
+						updatedValue = prevValue === '=' ? `=${data}` : `=${prevValue} ${data}`;
 					} else {
 						updatedValue = `=${data}`;
 					}
