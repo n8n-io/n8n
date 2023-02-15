@@ -163,8 +163,8 @@ const operations: { [key: string]: IOperationFunction } = {
 
 export class MicrosoftDynamicsCrm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Dynamics CRM v2',
-		name: 'microsoftDynamicsCrmV2',
+		displayName: 'Microsoft Dynamics CRM',
+		name: 'microsoftDynamicsCrm',
 		icon: 'file:dynamicsCrm.svg',
 		group: ['input'],
 		version: 1,
