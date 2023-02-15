@@ -560,7 +560,13 @@ export type IPushData =
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
-	| PushDataNodeDescriptionUpdated;
+	| PushDataNodeDescriptionUpdated
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -606,6 +612,10 @@ type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };
+
+export interface IPushDataExecutionRecovered {
+	executionId: string;
+}
 
 export interface IPushDataExecutionFinished {
 	data: IRun;

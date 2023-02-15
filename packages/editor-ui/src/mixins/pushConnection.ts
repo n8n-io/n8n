@@ -1,4 +1,9 @@
-import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IPushData } from '@/Interface';
+import {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IPushData,
+	IPushDataExecutionFinished,
+} from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -10,6 +15,8 @@ import {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
+	IRun,
+	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
 	TelemetryHelpers,
@@ -25,6 +32,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useSettingsStore } from '@/stores/settings';
+import { parse } from 'flatted';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -185,7 +193,7 @@ export const pushConnection = mixins(
 		/**
 		 * Process a newly received message
 		 */
-		pushMessageReceived(event: Event, isRetry?: boolean): boolean {
+		async pushMessageReceived(event: Event, isRetry?: boolean): Promise<boolean> {
 			const retryAttempts = 5;
 			let receivedData: IPushData;
 			try {
@@ -228,10 +236,58 @@ export const pushConnection = mixins(
 				}
 			}
 
-			if (receivedData.type === 'executionFinished') {
+			// recovered execution data is handled like executionFinished data, however for security reasons
+			// we need to fetch the data from the server again rather than push it to all clients
+			let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
+			if (receivedData.type === 'executionRecovered') {
+				const recoveredExecutionId = receivedData.data?.executionId;
+				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
+				if (isWorkflowRunning && this.workflowsStore.activeExecutionId === recoveredExecutionId) {
+					// pull execution data for the recovered execution from the server
+					const executionData = await this.workflowsStore.fetchExecutionDataById(
+						this.workflowsStore.activeExecutionId,
+					);
+					if (executionData?.data) {
+						// data comes in as 'flatten' object, so we need to parse it
+						executionData.data = parse(
+							executionData.data as unknown as string,
+						) as IRunExecutionData;
+						const iRunExecutionData: IRunExecutionData = {
+							startData: executionData.data?.startData,
+							resultData: executionData.data?.resultData ?? { runData: {} },
+							executionData: executionData.data?.executionData,
+						};
+						const iRun: IRun = {
+							data: iRunExecutionData,
+							finished: executionData.finished,
+							mode: executionData.mode,
+							waitTill: executionData.data?.waitTill,
+							startedAt: executionData.startedAt,
+							stoppedAt: executionData.stoppedAt,
+							status: 'crashed',
+						};
+						if (executionData.data) {
+							recoveredPushData = {
+								executionId: executionData.id,
+								data: iRun,
+							};
+						}
+					}
+				}
+			}
+
+			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 				// The workflow finished executing
-				const pushData = receivedData.data;
-				this.workflowsStore.finishActiveExecution(pushData);
+				let pushData: IPushDataExecutionFinished;
+				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
+					pushData = recoveredPushData as IPushDataExecutionFinished;
+				} else {
+					pushData = receivedData.data as IPushDataExecutionFinished;
+				}
+
+				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+					this.workflowsStore.finishActiveExecution(pushData);
+				}
 
 				if (!this.uiStore.isActionActive('workflowRunning')) {
 					// No workflow is running so ignore the messages

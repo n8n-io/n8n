@@ -6,7 +6,7 @@ import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses'
 import type { DateTime } from 'luxon';
 import { InternalHooksManager } from '../../InternalHooksManager';
 import { getPushInstance } from '@/push';
-import type { IPushDataExecutionFinished } from '../../Interfaces';
+import type { IPushDataExecutionRecovered } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
 
@@ -161,27 +161,26 @@ export async function recoverExecutionDataFromEventLogMessages(
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 				status: 'crashed',
 			});
-			const pushData: IPushDataExecutionFinished = {
-				executionId,
-				data: {
-					data: executionData,
-					finished: false,
-					mode: executionEntry.mode,
-					waitTill: executionEntry.waitTill ?? undefined,
-					startedAt: executionEntry.startedAt,
-					stoppedAt: lastNodeRunTimestamp?.toJSDate(),
-					status: 'crashed',
-				} as unknown as IRun,
+			const iRunData: IRun = {
+				data: executionData,
+				finished: false,
+				mode: executionEntry.mode,
+				waitTill: executionEntry.waitTill ?? undefined,
+				startedAt: executionEntry.startedAt,
+				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
+				status: 'crashed',
 			};
 
 			// calling workflowExecutionCompleted directly because the eventEmitter is not up yet at this point
-			await workflowExecutionCompleted(executionEntry.workflowData, pushData.data);
+			await workflowExecutionCompleted(executionEntry.workflowData, iRunData);
 
 			// wait for UI to be back up and send the execution data
-			eventBus.once('editorUiConnected', function handleUiBackUp(sessionId: string) {
+			eventBus.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					getPushInstance().send('executionFinished', pushData, sessionId);
+					getPushInstance().send('executionRecovered', {
+						executionId,
+					} as IPushDataExecutionRecovered);
 				}, 1000);
 			});
 		}

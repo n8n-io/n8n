@@ -367,7 +367,13 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -416,6 +422,9 @@ export interface IPushDataExecutionStarted {
 	retryOf?: string;
 	workflowId: string;
 	workflowName?: string;
+}
+export interface IPushDataExecutionRecovered {
+	executionId: string;
 }
 
 export interface IPushDataExecutionFinished {
