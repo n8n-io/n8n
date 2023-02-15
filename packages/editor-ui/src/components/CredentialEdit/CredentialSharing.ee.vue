@@ -61,6 +61,7 @@
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				data-test-id="credential-sharing-modal-users-select"
 				@input="onAddSharee"
 			>
 				<template #prefix>
@@ -136,7 +137,7 @@ export default mixins(showMessage).extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 	},
 	methods: {
