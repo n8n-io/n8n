@@ -1,0 +1,284 @@
+// Vitest Snapshot v1
+
+exports[`PersonalizationModal.vue > should render correctly 1`] = `
+"<transition-stub name=\\"dialog-fade\\" data-test-id=\\"personalization-form\\" class=\\"dialog-wrapper\\" style=\\"z-index: 2001;\\">
+  <div class=\\"el-dialog__wrapper\\">
+    <div role=\\"dialog\\" aria-modal=\\"true\\" aria-label=\\"dialog\\" class=\\"el-dialog\\" style=\\"margin-top: 15vh; width: 460px;\\">
+      <div class=\\"el-dialog__header\\">
+        <div class=\\"centerTitle\\">
+          <div>
+            <h1 class=\\"n8n-heading size-xlarge regular\\">Customize n8n to you</h1>
+          </div>
+          <div class=\\"subtitle\\">
+            <h3 class=\\"n8n-heading text-light size-small regular\\">These questions help us tailor n8n to you</h3>
+          </div>
+        </div>
+        <!---->
+      </div>
+      <div class=\\"el-dialog__body\\">
+        <div class=\\"modal-content\\">
+          <div class=\\"container\\">
+            <div>
+              <div class=\\"grid\\">
+                <div class=\\"\\">
+                  <div class=\\"container\\" data-test-id=\\"companyType\\"><label for=\\"companyType\\" class=\\"inputLabel heading medium\\">
+                      <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> What best describes your company? <!----></span></div>
+                      <!---->
+                      <!---->
+                      <!---->
+                    </label>
+                    <div class=\\"\\">
+                      <div class=\\"n8n-select container\\" name=\\"companyType\\">
+                        <!---->
+                        <div class=\\"el-select el-select--large\\">
+                          <!---->
+                          <div class=\\"el-input el-input--large el-input--suffix\\">
+                            <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"Select...\\" class=\\"el-input__inner\\">
+                            <!----><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-select__caret el-input__icon el-icon-arrow-up\\"></i><!----><!----><!----><!----><!----></span>
+                            <!----></span>
+                            <!---->
+                            <!---->
+                          </div>
+                          <transition-stub name=\\"el-zoom-in-top\\">
+                            <div class=\\"el-select-dropdown el-popper\\" style=\\"display: none;\\">
+                              <div class=\\"el-scrollbar\\" style=\\"\\">
+                                <div class=\\"el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default\\">
+                                  <ul class=\\"el-scrollbar__view el-select-dropdown__list\\">
+                                    <!---->
+                                    <li class=\\"el-select-dropdown__item\\"><span>Software as a service</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Ecommerce</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Marketing agency / consultancy</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Systems integrator / Automation agency</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Education</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Other</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>I'm not using n8n for work</span></li>
+                                  </ul>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-horizontal\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateX(0%); webkit-transform: translateX(0%);\\"></div>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-vertical\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateY(0%); webkit-transform: translateY(0%);\\"></div>
+                                </div>
+                              </div>
+                              <!---->
+                            </div>
+                          </transition-stub>
+                        </div>
+                      </div>
+                    </div>
+                    <!---->
+                  </div>
+                </div>
+                <div class=\\"mt-undefined\\">
+                  <div class=\\"container\\" data-test-id=\\"role\\"><label for=\\"role\\" class=\\"inputLabel heading medium\\">
+                      <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> Which role best describes you? <!----></span></div>
+                      <!---->
+                      <!---->
+                      <!---->
+                    </label>
+                    <div class=\\"\\">
+                      <div class=\\"n8n-select container\\" name=\\"role\\">
+                        <!---->
+                        <div class=\\"el-select el-select--large\\">
+                          <!---->
+                          <div class=\\"el-input el-input--large el-input--suffix\\">
+                            <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"Select...\\" class=\\"el-input__inner\\">
+                            <!----><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-select__caret el-input__icon el-icon-arrow-up\\"></i><!----><!----><!----><!----><!----></span>
+                            <!----></span>
+                            <!---->
+                            <!---->
+                          </div>
+                          <transition-stub name=\\"el-zoom-in-top\\">
+                            <div class=\\"el-select-dropdown el-popper\\" style=\\"display: none;\\">
+                              <div class=\\"el-scrollbar\\" style=\\"\\">
+                                <div class=\\"el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default\\">
+                                  <ul class=\\"el-scrollbar__view el-select-dropdown__list\\">
+                                    <!---->
+                                    <li class=\\"el-select-dropdown__item\\"><span>Business Owner</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Customer support</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Data Science</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Devops</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>IT</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Engineering</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Sales and Marketing</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Security</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Other (please specify)</span></li>
+                                  </ul>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-horizontal\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateX(0%); webkit-transform: translateX(0%);\\"></div>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-vertical\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateY(0%); webkit-transform: translateY(0%);\\"></div>
+                                </div>
+                              </div>
+                              <!---->
+                            </div>
+                          </transition-stub>
+                        </div>
+                      </div>
+                    </div>
+                    <!---->
+                  </div>
+                </div>
+                <div class=\\"mt-undefined\\">
+                  <div class=\\"container\\" data-test-id=\\"automationBeneficiary\\"><label for=\\"automationBeneficiary\\" class=\\"inputLabel heading medium\\">
+                      <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> Who will your automations mainly be for? <!----></span></div>
+                      <!---->
+                      <!---->
+                      <!---->
+                    </label>
+                    <div class=\\"\\">
+                      <div class=\\"n8n-select container\\" name=\\"automationBeneficiary\\">
+                        <!---->
+                        <div class=\\"el-select el-select--large\\">
+                          <!---->
+                          <div class=\\"el-input el-input--large el-input--suffix\\">
+                            <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"Select...\\" class=\\"el-input__inner\\">
+                            <!----><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-select__caret el-input__icon el-icon-arrow-up\\"></i><!----><!----><!----><!----><!----></span>
+                            <!----></span>
+                            <!---->
+                            <!---->
+                          </div>
+                          <transition-stub name=\\"el-zoom-in-top\\">
+                            <div class=\\"el-select-dropdown el-popper\\" style=\\"display: none;\\">
+                              <div class=\\"el-scrollbar\\" style=\\"\\">
+                                <div class=\\"el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default\\">
+                                  <ul class=\\"el-scrollbar__view el-select-dropdown__list\\">
+                                    <!---->
+                                    <li class=\\"el-select-dropdown__item\\"><span>Myself</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>My team</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Other teams</span></li>
+                                  </ul>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-horizontal\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateX(0%); webkit-transform: translateX(0%);\\"></div>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-vertical\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateY(0%); webkit-transform: translateY(0%);\\"></div>
+                                </div>
+                              </div>
+                              <!---->
+                            </div>
+                          </transition-stub>
+                        </div>
+                      </div>
+                    </div>
+                    <!---->
+                  </div>
+                </div>
+                <div class=\\"mt-undefined\\">
+                  <div class=\\"container\\" data-test-id=\\"companySize\\"><label for=\\"companySize\\" class=\\"inputLabel heading medium\\">
+                      <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> How big is your company? <!----></span></div>
+                      <!---->
+                      <!---->
+                      <!---->
+                    </label>
+                    <div class=\\"\\">
+                      <div class=\\"n8n-select container\\" name=\\"companySize\\">
+                        <!---->
+                        <div class=\\"el-select el-select--large\\">
+                          <!---->
+                          <div class=\\"el-input el-input--large el-input--suffix\\">
+                            <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"Select...\\" class=\\"el-input__inner\\">
+                            <!----><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-select__caret el-input__icon el-icon-arrow-up\\"></i><!----><!----><!----><!----><!----></span>
+                            <!----></span>
+                            <!---->
+                            <!---->
+                          </div>
+                          <transition-stub name=\\"el-zoom-in-top\\">
+                            <div class=\\"el-select-dropdown el-popper\\" style=\\"display: none;\\">
+                              <div class=\\"el-scrollbar\\" style=\\"\\">
+                                <div class=\\"el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default\\">
+                                  <ul class=\\"el-scrollbar__view el-select-dropdown__list\\">
+                                    <!---->
+                                    <li class=\\"el-select-dropdown__item\\"><span>Less than 20 people</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>20-99 people</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>100-499 people</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>500-999 people</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>1000+ people</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>I'm not using n8n for work</span></li>
+                                  </ul>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-horizontal\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateX(0%); webkit-transform: translateX(0%);\\"></div>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-vertical\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateY(0%); webkit-transform: translateY(0%);\\"></div>
+                                </div>
+                              </div>
+                              <!---->
+                            </div>
+                          </transition-stub>
+                        </div>
+                      </div>
+                    </div>
+                    <!---->
+                  </div>
+                </div>
+                <div class=\\"mt-undefined\\">
+                  <div class=\\"container\\" data-test-id=\\"reportedSource\\"><label for=\\"reportedSource\\" class=\\"inputLabel heading medium\\">
+                      <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> How did you hear about n8n? <!----></span></div>
+                      <!---->
+                      <!---->
+                      <!---->
+                    </label>
+                    <div class=\\"\\">
+                      <div class=\\"n8n-select container\\" name=\\"reportedSource\\">
+                        <!---->
+                        <div class=\\"el-select el-select--large\\">
+                          <!---->
+                          <div class=\\"el-input el-input--large el-input--suffix\\">
+                            <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"Select...\\" class=\\"el-input__inner\\">
+                            <!----><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-select__caret el-input__icon el-icon-arrow-up\\"></i><!----><!----><!----><!----><!----></span>
+                            <!----></span>
+                            <!---->
+                            <!---->
+                          </div>
+                          <transition-stub name=\\"el-zoom-in-top\\">
+                            <div class=\\"el-select-dropdown el-popper\\" style=\\"display: none;\\">
+                              <div class=\\"el-scrollbar\\" style=\\"\\">
+                                <div class=\\"el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default\\">
+                                  <ul class=\\"el-scrollbar__view el-select-dropdown__list\\">
+                                    <!---->
+                                    <li class=\\"el-select-dropdown__item\\"><span>Google</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Twitter</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>LinkedIn</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>YouTube</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Friend / Word of mouth</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Podcast</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Event</span></li>
+                                    <li class=\\"el-select-dropdown__item\\"><span>Other (please specify)</span></li>
+                                  </ul>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-horizontal\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateX(0%); webkit-transform: translateX(0%);\\"></div>
+                                </div>
+                                <div class=\\"el-scrollbar__bar is-vertical\\">
+                                  <div class=\\"el-scrollbar__thumb\\" style=\\"transform: translateY(0%); webkit-transform: translateY(0%);\\"></div>
+                                </div>
+                              </div>
+                              <!---->
+                            </div>
+                          </transition-stub>
+                        </div>
+                      </div>
+                    </div>
+                    <!---->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class=\\"footer\\">
+          <div><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium float-right\\">
+              <!----><span>Continue</span></button></div>
+        </div>
+      </div>
+      <!---->
+    </div>
+  </div>
+</transition-stub>"
+`;
