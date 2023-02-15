@@ -11,7 +11,7 @@ export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity,
 
 export interface WorkflowForList
 	extends Omit<WorkflowWithSharingsAndCredentials, 'ownedBy' | 'nodes'> {
-	ownedBy?: Partial<IUser> | null;
+	ownedBy?: Pick<IUser, 'id'> | null;
 }
 
 export interface CredentialUsedByWorkflow {

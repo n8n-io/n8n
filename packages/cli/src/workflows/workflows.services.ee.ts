@@ -89,17 +89,8 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static addOwnerId(workflow: WorkflowForList): void {
-		workflow.ownedBy = null;
-
-		workflow.shared?.forEach(({ user, role }) => {
-			const { id } = user;
-
-			if (role.name === 'owner') {
-				workflow.ownedBy = { id };
-				return;
-			}
-		});
-
+		const owner = workflow.shared?.find(({ role }) => role.name === 'owner')?.user;
+		workflow.ownedBy = owner ? { id: owner.id } : null;
 		delete workflow.shared;
 	}
 
