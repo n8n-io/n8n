@@ -253,7 +253,7 @@ export class Telemetry {
 
 			script.type = 'text/javascript';
 			script.async = !0;
-			script.src = 'https://cdn.rudderlabs.com/v1/rudder-analytics.min.js';
+			script.src = 'https://rs.n8n.io/v1/rudder-analytics.min.js';
 
 			const element: Element = document.getElementsByTagName('script')[0];
 
