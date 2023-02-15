@@ -8,7 +8,7 @@ export type NativeDoc = {
 	typeName: string;
 	properties?: Record<string, { doc?: DocMetadata }>;
 	functions: Record<string, { doc?: DocMetadata }>;
-}
+};
 
 export type DocMetadata = {
 	name: string;
