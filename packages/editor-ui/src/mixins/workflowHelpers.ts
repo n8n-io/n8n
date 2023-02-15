@@ -82,6 +82,7 @@ export function resolveParameter(
 
 	const inputName = 'main';
 	const activeNode = useNDVStore().activeNode;
+
 	const workflow = getCurrentWorkflow();
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);

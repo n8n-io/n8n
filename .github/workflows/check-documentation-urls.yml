@@ -4,10 +4,12 @@ on:
   push:
     tags:
       - n8n@*
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
-  build:
+  check-docs-urls:
     runs-on: ubuntu-latest
 
     timeout-minutes: 5
@@ -23,7 +25,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Build nodes-base
         run: pnpm --filter n8n-workflow --filter=n8n-core --filter=n8n-nodes-base build

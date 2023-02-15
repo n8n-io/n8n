@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-
+import { ExpressionExtensionError } from './../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 
 function format(value: number, extraArgs: unknown[]): string {
@@ -13,31 +13,17 @@ function format(value: number, extraArgs: unknown[]): string {
 	return new Intl.NumberFormat(locales, config).format(value);
 }
 
-function isBlank(value: number): boolean {
-	return typeof value !== 'number';
-}
-
-function isPresent(value: number): boolean {
-	return !isBlank(value);
-}
-
-function random(value: number): number {
-	return Math.floor(Math.random() * value);
-}
-
-function isTrue(value: number) {
-	return value === 1;
-}
-
-function isFalse(value: number) {
-	return value === 0;
-}
-
 function isEven(value: number) {
+	if (!Number.isInteger(value)) {
+		throw new ExpressionExtensionError('isEven() is only callable on integers');
+	}
 	return value % 2 === 0;
 }
 
 function isOdd(value: number) {
+	if (!Number.isInteger(value)) {
+		throw new ExpressionExtensionError('isOdd() is only callable on integers');
+	}
 	return Math.abs(value) % 2 === 1;
 }
 
@@ -54,19 +40,49 @@ function round(value: number, extraArgs: number[]) {
 	return +value.toFixed(decimalPlaces);
 }
 
+ceil.doc = {
+	name: 'ceil',
+	description: 'Rounds up a number to a whole number',
+	returnType: 'number',
+};
+
+floor.doc = {
+	name: 'floor',
+	description: 'Rounds down a number to a whole number',
+	returnType: 'number',
+};
+
+isEven.doc = {
+	name: 'isEven',
+	description: 'Returns true if the number is even. Only works on whole numbers.',
+	returnType: 'boolean',
+};
+
+isOdd.doc = {
+	name: 'isOdd',
+	description: 'Returns true if the number is odd. Only works on whole numbers.',
+	returnType: 'boolean',
+};
+
+// @TODO_NEXT_PHASE: Surface extensions below which take args
+
+format.doc = {
+	name: 'format',
+	returnType: 'string',
+};
+
+round.doc = {
+	name: 'round',
+	returnType: 'number',
+};
+
 export const numberExtensions: ExtensionMap = {
 	typeName: 'Number',
 	functions: {
 		ceil,
 		floor,
 		format,
-		random,
 		round,
-		isBlank,
-		isPresent,
-		isTrue,
-		isNotTrue: isFalse,
-		isFalse,
 		isEven,
 		isOdd,
 	},

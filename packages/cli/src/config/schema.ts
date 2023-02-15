@@ -925,6 +925,15 @@ export const schema = {
 		},
 	},
 
+	push: {
+		backend: {
+			format: ['sse', 'websocket'] as const,
+			default: 'sse',
+			env: 'N8N_PUSH_BACKEND',
+			doc: 'Backend to use for push notifications',
+		},
+	},
+
 	binaryDataManager: {
 		availableModes: {
 			format: String,
@@ -980,6 +989,17 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+		},
+	},
+
+	ldap: {
+		loginEnabled: {
+			format: Boolean,
+			default: false,
+		},
+		loginLabel: {
+			format: String,
+			default: '',
 		},
 	},
 
