@@ -19,6 +19,26 @@ export async function channelSearch(this: ILoadOptionsFunctions): Promise<INodeL
 	};
 }
 
+export async function textChannelSearch(
+	this: ILoadOptionsFunctions,
+): Promise<INodeListSearchResult> {
+	const guildId = (
+		(await discordApiRequest.call(this, 'GET', '/users/@me/guilds')) as IDataObject[]
+	)[0].id as string;
+
+	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
+
+	return {
+		results: (response as IDataObject[])
+			.filter((cannel) => ![2, 4].includes(cannel.type as number)) // Only text channels
+			.map((channel) => ({
+				name: channel.name as string,
+				value: channel.id as string,
+				url: `https://discord.com/channels/${guildId}/${channel.id}`,
+			})),
+	};
+}
+
 export async function categorySearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const guildId = (
 		(await discordApiRequest.call(this, 'GET', '/users/@me/guilds')) as IDataObject[]
@@ -66,7 +86,7 @@ export async function userSearch(
 
 	return {
 		results: (response as Array<{ user: IDataObject }>).map(({ user }) => ({
-			name: user.username as string,
+			name: `${user.username}#${user.discriminator}`,
 			value: user.id as string,
 		})),
 		paginationToken: lastUserId,

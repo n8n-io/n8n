@@ -28,7 +28,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			returnData = await channel[googleBigQuery.operation].execute.call(this, guildId);
 			break;
 		case 'message':
-			returnData = await message[googleBigQuery.operation].execute.call(this);
+			returnData = await message[googleBigQuery.operation].execute.call(this, guildId);
 			break;
 		case 'member':
 			returnData = await member[googleBigQuery.operation].execute.call(this, guildId);
