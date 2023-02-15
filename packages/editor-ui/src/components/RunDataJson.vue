@@ -211,7 +211,7 @@ export default mixins(externalHooks).extend({
 		},
 		getContent(value: unknown): string {
 			if (isString(value)) {
-				const parsedDate = parseDate(value);
+				const parsedDate = parseDate(value, this.workflowsStore.workflow.settings?.timezone);
 				return parsedDate ? parsedDate.toString() : `"${value}"`;
 			}
 			return JSON.stringify(value);

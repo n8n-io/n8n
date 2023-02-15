@@ -23,15 +23,15 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionError('arguments must be passed to pluck');
 	}
-	const fieldsToPluck = extraArgs;
-	if (!fieldsToPluck || fieldsToPluck.length === 0) {
+	// const fieldsToPluck = extraArgs;
+	if (!extraArgs || extraArgs.length === 0) {
 		return value;
 	}
 	const plucked = value.reduce<unknown[]>((pluckedFromObject, current) => {
 		if (current && typeof current === 'object') {
 			const p: unknown[] = [];
 			Object.keys(current).forEach((k) => {
-				fieldsToPluck.forEach((field: string) => {
+				extraArgs.forEach((field: string) => {
 					if (current && field === k) {
 						p.push((current as { [key: string]: unknown })[k]);
 					}
@@ -56,8 +56,13 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		return value.reduce<unknown[]>((l, v) => {
 			if (typeof v === 'object' && v !== null && extraArgs.every((i) => i in v)) {
 				const alreadySeen = l.find((i) =>
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
-					extraArgs.every((j) => deepEqual((i as any)[j], (v as any)[j])),
+					extraArgs.every((j) =>
+						deepEqual(
+							(i as Record<string, unknown>)[j],
+							(v as Record<string, unknown>, { strict: true })[j],
+							{ strict: true },
+						),
+					),
 				);
 				if (!alreadySeen) {
 					l.push(v);
@@ -67,8 +72,7 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		}, []);
 	}
 	return value.reduce<unknown[]>((l, v) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		if (l.findIndex((i) => deepEqual(i, v)) === -1) {
+		if (l.findIndex((i) => deepEqual(i, v, { strict: true })) === -1) {
 			l.push(v);
 		}
 		return l;
@@ -211,7 +215,7 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 	});
 }
 
-function mergeObjects(value: object, extraArgs: unknown[]): unknown {
+function mergeObjects(value: Record<string, unknown>, extraArgs: unknown[]): unknown {
 	const [other] = extraArgs;
 
 	if (!other) {
@@ -222,11 +226,9 @@ function mergeObjects(value: object, extraArgs: unknown[]): unknown {
 		throw new ExpressionExtensionError('merge(): expected object arg');
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const newObject: any = { ...value };
+	const newObject = { ...value };
 	for (const [key, val] of Object.entries(other)) {
 		if (!(key in newObject)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			newObject[key] = val;
 		}
 	}
@@ -240,7 +242,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 		// If there are no arguments passed, merge all objects within the array
 		const merged = value.reduce((combined, current) => {
 			if (current !== null && typeof current === 'object' && !Array.isArray(current)) {
-				combined = mergeObjects(combined as object, [current]);
+				combined = mergeObjects(combined as Record<string, unknown>, [current]);
 			}
 			return combined;
 		}, {});
@@ -257,7 +259,10 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	for (let i = 0; i < listLength; i++) {
 		if (value[i] !== undefined) {
 			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				merged = Object.assign(merged, mergeObjects(value[i] as object, [others[i]]));
+				merged = Object.assign(
+					merged,
+					mergeObjects(value[i] as Record<string, unknown>, [others[i]]),
+				);
 			}
 		}
 	}
@@ -272,7 +277,7 @@ function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		if (newArr.findIndex((w) => deepEqual(w, v)) === -1) {
+		if (newArr.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -288,8 +293,7 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		if (others.findIndex((w) => deepEqual(w, v)) === -1) {
+		if (others.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -305,14 +309,13 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		if (others.findIndex((w) => deepEqual(w, v)) !== -1) {
+		if (others.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
 			newArr.push(v);
 		}
 	}
 	for (const v of others) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		if (value.findIndex((w) => deepEqual(w, v)) !== -1) {
+		if (value.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
 			newArr.push(v);
 		}
 	}

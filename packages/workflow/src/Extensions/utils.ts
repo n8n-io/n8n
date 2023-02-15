@@ -14,8 +14,6 @@ export const convertToDateTime = (value: string | Date | DateTime): DateTime | u
 		converted = DateTime.fromJSDate(value);
 	} else if (DateTime.isDateTime(value)) {
 		converted = value;
-	} else {
-		converted = undefined;
 	}
 	return converted;
 };

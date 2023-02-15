@@ -366,7 +366,7 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
-				const parsedDate = parseDate(value);
+				const parsedDate = parseDate(value, this.workflowsStore.workflow.settings?.timezone);
 				if (parsedDate) {
 					return parsedDate.toString();
 				}
