@@ -5,6 +5,7 @@ import config from '@/config';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
+export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
 export type JobQueue = Bull.Queue<JobData>;
 
@@ -55,7 +56,7 @@ export class Queue {
 		return this.jobQueue.add(jobData, jobOptions);
 	}
 
-	async getJob(jobId: Bull.JobId): Promise<Job | null> {
+	async getJob(jobId: JobId): Promise<Job | null> {
 		return this.jobQueue.getJob(jobId);
 	}
 
