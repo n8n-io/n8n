@@ -73,13 +73,14 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { convertPath, executionDataToJson, isString, shorten } from '@/utils';
+import { parseDate, executionDataToJson, isString, shorten } from '@/utils';
 import { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -149,7 +150,7 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
 		},
@@ -209,7 +210,11 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		getContent(value: unknown): string {
-			return isString(value) ? `"${value}"` : JSON.stringify(value);
+			if (isString(value)) {
+				const parsedDate = parseDate(value, this.workflowsStore.workflow.settings?.timezone);
+				return parsedDate ? parsedDate.toString() : `"${value}"`;
+			}
+			return JSON.stringify(value);
 		},
 		getListItemName(path: string): string {
 			return path.replace(/^(\["?\d"?]\.?)/g, '');
