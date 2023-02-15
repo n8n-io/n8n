@@ -24,6 +24,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useSettingsStore } from '@/stores/settings';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -34,7 +35,7 @@ export const pushConnection = mixins(
 ).extend({
 	data() {
 		return {
-			eventSource: null as EventSource | null,
+			pushSource: null as WebSocket | EventSource | null,
 			reconnectTimeout: null as NodeJS.Timeout | null,
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ event: Event; retriesLeft: number }>,
@@ -43,92 +44,99 @@ export const pushConnection = mixins(
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useWorkflowsStore,
+			useSettingsStore,
+		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
 		},
 	},
 	methods: {
-		pushAutomaticReconnect(): void {
-			if (this.reconnectTimeout !== null) {
-				return;
+		attemptReconnect() {
+			const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
+			if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
+				this.lostConnection = true;
+
+				this.workflowsStore.executingNode = null;
+				this.uiStore.removeActiveAction('workflowRunning');
+
+				this.$showMessage({
+					title: this.$locale.baseText('pushConnection.executionFailed'),
+					message: this.$locale.baseText('pushConnection.executionFailed.message'),
+					type: 'error',
+					duration: 0,
+				});
 			}
 
-			this.reconnectTimeout = setTimeout(() => {
-				this.connectRetries++;
-				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-				if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
-					this.lostConnection = true;
-
-					this.workflowsStore.executingNode = null;
-					this.uiStore.removeActiveAction('workflowRunning');
-
-					this.$showMessage({
-						title: this.$locale.baseText('pushConnection.executionFailed'),
-						message: this.$locale.baseText('pushConnection.executionFailed.message'),
-						type: 'error',
-						duration: 0,
-					});
-				}
-				this.pushConnect();
-			}, 3000);
+			this.pushConnect();
 		},
 
 		/**
-		 * Connect to server to receive data via EventSource
+		 * Connect to server to receive data via a WebSocket or EventSource
 		 */
 		pushConnect(): void {
-			// Make sure existing event-source instances get
-			// always removed that we do not end up with multiple ones
+			// always close the previous connection so that we do not end up with multiple connections
 			this.pushDisconnect();
 
-			const connectionUrl = `${this.rootStore.getRestUrl}/push?sessionId=${this.sessionId}`;
+			if (this.reconnectTimeout) {
+				clearTimeout(this.reconnectTimeout);
+				this.reconnectTimeout = null;
+			}
 
-			this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
-			this.eventSource.addEventListener('message', this.pushMessageReceived, false);
+			const useWebSockets = this.settingsStore.pushBackend === 'websocket';
 
-			this.eventSource.addEventListener(
-				'open',
-				() => {
-					this.connectRetries = 0;
-					this.lostConnection = false;
+			const { getRestUrl: restUrl } = this.rootStore;
+			const url = `/push?sessionId=${this.sessionId}`;
 
-					this.rootStore.pushConnectionActive = true;
-					if (this.reconnectTimeout !== null) {
-						clearTimeout(this.reconnectTimeout);
-						this.reconnectTimeout = null;
-					}
-				},
+			if (useWebSockets) {
+				const { protocol, host } = window.location;
+				const baseUrl = restUrl.startsWith('http')
+					? restUrl.replace(/^http/, 'ws')
+					: `${protocol === 'https:' ? 'wss' : 'ws'}://${host + restUrl}`;
+				this.pushSource = new WebSocket(`${baseUrl}${url}`);
+			} else {
+				this.pushSource = new EventSource(`${restUrl}${url}`, { withCredentials: true });
+			}
+
+			this.pushSource.addEventListener('open', this.onConnectionSuccess, false);
+			this.pushSource.addEventListener('message', this.pushMessageReceived, false);
+			this.pushSource.addEventListener(
+				useWebSockets ? 'close' : 'error',
+				this.onConnectionError,
 				false,
 			);
+		},
 
-			this.eventSource.addEventListener(
-				'error',
-				() => {
-					this.pushDisconnect();
+		onConnectionSuccess() {
+			this.connectRetries = 0;
+			this.lostConnection = false;
+			this.rootStore.pushConnectionActive = true;
+			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
+		},
 
-					if (this.reconnectTimeout !== null) {
-						clearTimeout(this.reconnectTimeout);
-						this.reconnectTimeout = null;
-					}
-
-					this.rootStore.pushConnectionActive = false;
-					this.pushAutomaticReconnect();
-				},
-				false,
-			);
+		onConnectionError() {
+			this.pushDisconnect();
+			this.connectRetries++;
+			this.reconnectTimeout = setTimeout(this.attemptReconnect, this.connectRetries * 5000);
 		},
 
 		/**
 		 * Close connection to server
 		 */
 		pushDisconnect(): void {
-			if (this.eventSource !== null) {
-				this.eventSource.close();
-				this.eventSource = null;
-
-				this.rootStore.pushConnectionActive = false;
+			if (this.pushSource !== null) {
+				this.pushSource.removeEventListener('error', this.onConnectionError);
+				this.pushSource.removeEventListener('close', this.onConnectionError);
+				this.pushSource.removeEventListener('message', this.pushMessageReceived);
+				if (this.pushSource.readyState < 2) this.pushSource.close();
+				this.pushSource = null;
 			}
+
+			this.rootStore.pushConnectionActive = false;
 		},
 
 		/**
@@ -136,7 +144,6 @@ export const pushConnection = mixins(
 		 * the REST API so we do not know yet what execution ID
 		 * is currently active. So internally resend the message
 		 * a few more times
-		 *
 		 */
 		queuePushMessage(event: Event, retryAttempts: number) {
 			this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
@@ -178,9 +185,6 @@ export const pushConnection = mixins(
 
 		/**
 		 * Process a newly received message
-		 *
-		 * @param {Event} event The event data with the message data
-		 * @param {boolean} [isRetry] If it is a retry
 		 */
 		pushMessageReceived(event: Event, isRetry?: boolean): boolean {
 			const retryAttempts = 5;
