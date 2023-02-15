@@ -141,12 +141,7 @@ import {
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import {
-	IFormInputs,
-	IPersonalizationLatestVersion,
-	IPersonalizationSurveyAnswersV3,
-	IUser,
-} from '@/Interface';
+import { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import Vue from 'vue';
 import { getAccountAge } from '@/utils';
 import { GenericValue } from 'n8n-workflow';
