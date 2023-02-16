@@ -192,7 +192,7 @@ oauth2CredentialController.get(
 						req.query,
 					)}`,
 				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
 			}
 
 			let state;
@@ -205,7 +205,7 @@ oauth2CredentialController.get(
 				const errorResponse = new ResponseHelper.ServiceUnavailableError(
 					'Invalid state format returned',
 				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
 			}
 
 			const credential = await getCredentialWithoutUser(state.cid);
@@ -218,7 +218,7 @@ oauth2CredentialController.get(
 				const errorResponse = new ResponseHelper.NotFoundError(
 					RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
 			}
 
 			let encryptionKey: string;
@@ -257,7 +257,7 @@ oauth2CredentialController.get(
 				const errorResponse = new ResponseHelper.NotFoundError(
 					'The OAuth2 callback state is invalid!',
 				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
 			}
 
 			let options = {};
@@ -302,7 +302,7 @@ oauth2CredentialController.get(
 					credentialId: state.cid,
 				});
 				const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
