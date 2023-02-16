@@ -8,7 +8,7 @@ import type {
 } from 'n8n-core';
 
 import type { IDataObject } from 'n8n-workflow';
-import { sleep, NodeApiError } from 'n8n-workflow';
+import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
 
 import type FormData from 'form-data';
 
@@ -68,7 +68,7 @@ export async function discordApiMultiPartRequest(
 		const resetAfter = Number(response.headers['x-ratelimit-reset-after']) * 1000;
 		await sleep(resetAfter || 1200);
 
-		return response.body;
+		return jsonParse<IDataObject[]>(response.body);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
