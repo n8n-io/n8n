@@ -700,7 +700,11 @@ export async function pgTriggerFunction(
 	const tableName = this.getNodeParameter('tableName', 0) as string;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-	const functionName = additionalFields.functionName || 'n8n_trigger_function()';
+	let functionName = (additionalFields.functionName as string) || 'n8n_trigger_function()';
+	if (!functionName.includes('()')) {
+		functionName = functionName.concat('()');
+		console.log(functionName);
+	}
 	const triggerName = additionalFields.triggerName || 'n8n_trigger';
 	const channelName = additionalFields.channelName || 'n8n_channel';
 	const replaceIfExists = additionalFields.replaceIfExists || false;

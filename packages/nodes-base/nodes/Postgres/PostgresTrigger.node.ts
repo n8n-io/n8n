@@ -171,7 +171,6 @@ export class PostgresTrigger implements INodeType {
 		db.connect({ direct: true })
 			.then(async (connection) => {
 				connection.client.on('notification', async (data) => {
-					console.log('Received: ', data);
 					this.emit([this.helpers.returnJsonArray([data])]);
 				});
 				return connection.none(`LISTEN ${channelName}`);
