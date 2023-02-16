@@ -154,25 +154,20 @@ export const toOptions = (
 
 			option.info = () => {
 				const tooltipContainer = document.createElement('div');
+				tooltipContainer.classList.add('autocomplete-info-container');
 
 				if (!fn.doc?.description) return null;
-
-				tooltipContainer.style.display = 'flex';
-				tooltipContainer.style.flexDirection = 'column';
-				tooltipContainer.style.paddingTop = 'var(--spacing-4xs)';
-				tooltipContainer.style.paddingBottom = 'var(--spacing-4xs)';
 
 				const header =
 					optionType === 'function'
 						? createFunctionHeader(typeName, fn)
 						: createPropHeader(typeName, fn);
+				header.classList.add('autocomplete-info-header');
 				tooltipContainer.appendChild(header);
 
 				const descriptionBody = document.createElement('div');
+				descriptionBody.classList.add('autocomplete-info-description');
 				const descriptionText = document.createElement('p');
-				descriptionText.style.marginTop = '0';
-				descriptionText.style.lineHeight = '1.1em';
-				descriptionText.style.marginBottom = 'var(--spacing-2xs)';
 				descriptionText.innerHTML = sanitizeHtml(
 					fn.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
 				);
@@ -183,14 +178,16 @@ export const toOptions = (
 					descriptionLink.setAttribute('href', fn.doc.docURL);
 					descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
 					descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
+						// This will prevent documentation popup closing before click
+						// event gets to links
 						event.preventDefault();
 					});
+					descriptionLink.classList.add('autocomplete-info-doc-link');
 					descriptionBody.appendChild(descriptionLink);
 				}
 				tooltipContainer.appendChild(descriptionBody);
 
-				// @TODO_NEXT_PHASE: Enable this for native props
-				return optionType === 'function' ? tooltipContainer : null;
+				return tooltipContainer;
 			};
 
 			return option;
@@ -200,12 +197,12 @@ export const toOptions = (
 const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefined }) => {
 	const header = document.createElement('div');
 	if (fn.doc) {
-		header.style.marginBottom = 'var(--spacing-2xs)';
-
 		const typeNameSpan = document.createElement('span');
 		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
 
 		const functionNameSpan = document.createElement('span');
+		functionNameSpan.classList.add('autocomplete-info-name');
+		functionNameSpan.innerHTML = `${fn.doc.name}`;
 		let functionArgs = '(';
 		if (fn.doc.args) {
 			functionArgs += fn.doc.args
@@ -219,14 +216,16 @@ const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefi
 				.join(', ');
 		}
 		functionArgs += ')';
-		functionNameSpan.innerHTML = `${fn.doc.name}${functionArgs}`;
-		functionNameSpan.style.fontWeight = 'var(--font-weight-bold)';
+		const argsSpan = document.createElement('span');
+		argsSpan.classList.add('autocomplete-info-name-args');
+		argsSpan.innerText = functionArgs;
 
 		const returnTypeSpan = document.createElement('span');
 		returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
 
 		header.appendChild(typeNameSpan);
 		header.appendChild(functionNameSpan);
+		header.appendChild(argsSpan);
 		header.appendChild(returnTypeSpan);
 	}
 	return header;
@@ -235,14 +234,12 @@ const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefi
 const createPropHeader = (typeName: string, property: { doc?: DocMetadata | undefined }) => {
 	const header = document.createElement('div');
 	if (property.doc) {
-		header.style.marginBottom = 'var(--spacing-2xs)';
-
 		const typeNameSpan = document.createElement('span');
 		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
 
 		const propNameSpan = document.createElement('span');
+		propNameSpan.classList.add('autocomplete-info-name');
 		propNameSpan.innerText = property.doc.name;
-		propNameSpan.style.fontWeight = 'var(--font-weight-bold)';
 
 		const returnTypeSpan = document.createElement('span');
 		returnTypeSpan.innerHTML = ': ' + property.doc.returnType;

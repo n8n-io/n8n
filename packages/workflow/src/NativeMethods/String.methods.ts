@@ -48,7 +48,7 @@ export const stringMethods: NativeDoc = {
 		},
 		lastIndexOf: {
 			doc: {
-				name: 'indexOf',
+				name: 'lastIndexOf',
 				description: 'Returns the index of the last occurrence of `searchString`',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf',
