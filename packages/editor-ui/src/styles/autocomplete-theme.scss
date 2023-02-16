@@ -1,5 +1,5 @@
 .cm-tooltip-autocomplete {
-	background-color: white !important;
+	background-color: var(--color-background-xlight) !important;
 
 	li .cm-completionLabel {
 		color: var(--color-success);
@@ -7,7 +7,7 @@
 }
 
 .ͼ2 .cm-tooltip-autocomplete ul li[aria-selected] .cm-completionLabel {
-	color: white !important;
+	color: var(--color-text-xlight) !important;
 	font-weight: 600;
 }
 
@@ -18,7 +18,7 @@
 }
 
 .cm-completionInfo {
-	background-color: white !important;
+	background-color: var(--color-background-xlight) !important;
 
 	.autocomplete-info-header {
 		color: var(--color-text-dark);
