@@ -4,6 +4,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import * as message from './message/Message.resource';
 import * as channel from './channel/Channel.resource';
 import * as member from './member/Member.resource';
+import { guildRLC } from './common.description';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',
@@ -25,6 +26,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		guildRLC,
 		{
 			displayName: 'Resource',
 			name: 'resource',

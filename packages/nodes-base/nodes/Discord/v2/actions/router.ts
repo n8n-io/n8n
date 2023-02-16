@@ -1,8 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { discordApiRequest } from '../transport';
 
 import * as message from './message/Message.resource';
 import * as channel from './channel/Channel.resource';
@@ -12,8 +10,9 @@ import type { Discord } from './node.type';
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
 
-	const guild = (await discordApiRequest.call(this, 'GET', '/users/@me/guilds')) as IDataObject[];
-	const guildId = guild[0].id as string;
+	const guildId = this.getNodeParameter('guildId', 0, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const resource = this.getNodeParameter<Discord>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
