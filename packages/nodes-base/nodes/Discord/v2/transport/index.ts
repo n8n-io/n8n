@@ -35,8 +35,14 @@ export async function discordApiRequest(
 	try {
 		const response = await this.helpers.request({ ...options, resolveWithFullResponse: true });
 
-		const resetAfter = Number(response.headers['x-ratelimit-reset-after']) * 1000;
-		await sleep(resetAfter || 1200);
+		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
+		const remaining = Number(response.headers['x-ratelimit-remaining']);
+
+		if (remaining === 0) {
+			await sleep(resetAfter);
+		} else {
+			await sleep(20); //prevent excing global rate limit of 50 requests per second
+		}
 
 		return response.body;
 	} catch (error) {
@@ -65,8 +71,14 @@ export async function discordApiMultiPartRequest(
 	try {
 		const response = await this.helpers.request({ ...options, resolveWithFullResponse: true });
 
-		const resetAfter = Number(response.headers['x-ratelimit-reset-after']) * 1000;
-		await sleep(resetAfter || 1200);
+		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
+		const remaining = Number(response.headers['x-ratelimit-remaining']);
+
+		if (remaining === 0) {
+			await sleep(resetAfter);
+		} else {
+			await sleep(20); //prevent excing global rate limit of 50 requests per second
+		}
 
 		return jsonParse<IDataObject[]>(response.body);
 	} catch (error) {
