@@ -11,6 +11,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { getFileSha, githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
 
 import { snakeCase } from 'change-case';
+import { getRepositories, getUsers } from './SearchFunctions';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
@@ -385,31 +386,122 @@ export class Github implements INodeType {
 			{
 				displayName: 'Repository Owner',
 				name: 'owner',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
+				modes: [
+					{
+						displayName: 'Repository Owner',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an owner...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+							searchFilterRequired: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n-io',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_a-zA-Z0-9]+',
+									errorMessage: 'Not a valid Github Owner Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$value}}',
+					},
+				],
 				displayOptions: {
 					hide: {
 						operation: ['invite'],
 					},
 				},
-				placeholder: 'n8n-io',
-				description: 'Owner of the repository',
 			},
 			{
 				displayName: 'Repository Name',
 				name: 'repository',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
+				modes: [
+					{
+						displayName: 'Repository Name',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Repository...',
+						typeOptions: {
+							searchListMethod: 'getRepositories',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io/n8n',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github Repository URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_.0-9a-zA-Z]+',
+									errorMessage: 'Not a valid Github Repository Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$parameter["owner"]}}/{{$value}}',
+					},
+				],
 				displayOptions: {
 					hide: {
 						resource: ['user', 'organization'],
 						operation: ['getRepositories'],
 					},
 				},
-				placeholder: 'n8n',
-				description: 'The name of the repository',
 			},
 
 			// ----------------------------------
@@ -1601,6 +1693,13 @@ export class Github implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			getUsers,
+			getRepositories,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -1667,7 +1766,7 @@ export class Github implements INodeType {
 				let owner = '';
 				if (fullOperation !== 'user:invite') {
 					// Request the parameters which almost all operations need
-					owner = this.getNodeParameter('owner', i) as string;
+					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
 
 				let repository = '';
@@ -1676,7 +1775,7 @@ export class Github implements INodeType {
 					fullOperation !== 'user:invite' &&
 					fullOperation !== 'organization:getRepositories'
 				) {
-					repository = this.getNodeParameter('repository', i) as string;
+					repository = this.getNodeParameter('repository', i, '', { extractValue: true }) as string;
 				}
 
 				if (resource === 'file') {
