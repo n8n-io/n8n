@@ -187,12 +187,7 @@ oauth2CredentialController.get(
 			const { code, state: stateEncoded } = req.query;
 
 			if (!code || !stateEncoded) {
-				const errorResponse = new ResponseHelper.ServiceUnavailableError(
-					`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
-						req.query,
-					)}`,
-				);
-				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
+				return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.html'));
 			}
 
 			let state;
@@ -202,10 +197,7 @@ oauth2CredentialController.get(
 					token: string;
 				};
 			} catch (error) {
-				const errorResponse = new ResponseHelper.ServiceUnavailableError(
-					'Invalid state format returned',
-				);
-				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
+				return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.html'));
 			}
 
 			const credential = await getCredentialWithoutUser(state.cid);
@@ -215,10 +207,7 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.NotFoundError(
-					RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-				);
-				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
+				return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.html'));
 			}
 
 			let encryptionKey: string;
@@ -254,10 +243,7 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.NotFoundError(
-					'The OAuth2 callback state is invalid!',
-				);
-				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
+				return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.html'));
 			}
 
 			let options = {};
@@ -301,8 +287,7 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
-				return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-error-callback.html'));
+				return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.html'));
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
@@ -337,7 +322,7 @@ oauth2CredentialController.get(
 		} catch (error) {
 			// Error response
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			return ResponseHelper.sendErrorResponse(res, error);
+			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.html'));
 		}
 	},
 );
