@@ -480,6 +480,10 @@ export class I18nClass {
 		invalid: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid'),
 		isDateTime: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime'),
 	};
+
+	autocompleteUIValues: Record<string, string | undefined> = {
+		docLinkLabel: this.baseText('expressionEdit.learnMore'),
+	};
 }
 
 export const i18nInstance = new VueI18n({
