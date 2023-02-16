@@ -133,6 +133,7 @@
 					"
 					:loading="stopExecutionInProgress"
 					@click.stop="stopExecution"
+					data-test-id="stop-execution-button"
 				/>
 
 				<n8n-icon-button
@@ -143,6 +144,7 @@
 					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
 					type="secondary"
 					@click.stop="stopWaitingForWebhook"
+					data-test-id="stop-execution-waiting-for-webhook-button"
 				/>
 
 				<n8n-icon-button
@@ -151,6 +153,7 @@
 					icon="trash"
 					size="large"
 					@click.stop="clearExecutionData"
+					data-test-id="clear-execution-data-button"
 				/>
 			</div>
 		</div>
