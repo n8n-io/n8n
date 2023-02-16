@@ -65,16 +65,6 @@ export const pushConnection = mixins(
 	},
 	methods: {
 		attemptReconnect() {
-			const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-			this.clearAllStickyNotifications();
-			if (this.connectRetries > 0 && !this.lostConnection && isWorkflowRunning) {
-				this.$showMessage({
-					title: this.$locale.baseText('pushConnectionTracker.connectionLost'),
-					message: this.$locale.baseText('pushConnectionTracker.connectionLost.message'),
-					type: 'warning',
-					duration: 0,
-				});
-			}
 			this.pushConnect();
 		},
 
@@ -257,6 +247,17 @@ export const pushConnection = mixins(
 							resultData: executionData.data?.resultData ?? { runData: {} },
 							executionData: executionData.data?.executionData,
 						};
+						if (
+							this.workflowsStore.workflowExecutionData?.workflowId === executionData.workflowId
+						) {
+							const activeRunData =
+								this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+							if (activeRunData) {
+								for (const key of Object.keys(activeRunData)) {
+									iRunExecutionData.resultData.runData[key] = activeRunData[key];
+								}
+							}
+						}
 						const iRun: IRun = {
 							data: iRunExecutionData,
 							finished: executionData.finished,
