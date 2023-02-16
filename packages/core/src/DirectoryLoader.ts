@@ -45,7 +45,7 @@ export abstract class DirectoryLoader {
 	types: Types = { nodes: [], credentials: [] };
 
 	constructor(
-		protected readonly directory: string,
+		readonly directory: string,
 		protected readonly excludeNodes: string[] = [],
 		protected readonly includeNodes: string[] = [],
 	) {}
