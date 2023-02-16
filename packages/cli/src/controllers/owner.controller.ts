@@ -72,9 +72,9 @@ export class OwnerController {
 	 * and enable `isInstanceOwnerSetUp` setting.
 	 */
 	@Post('/setup')
-	async promoteOwner(req: OwnerRequest.Post, res: Response) {
+	async setupOwner(req: OwnerRequest.Post, res: Response) {
 		const { email, firstName, lastName, password } = req.body;
-		const { id: userId } = req.user;
+		const { id: userId, globalRole } = req.user;
 
 		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
@@ -83,7 +83,7 @@ export class OwnerController {
 					userId,
 				},
 			);
-			throw new BadRequestError('Invalid request');
+			throw new BadRequestError('Instance owner already setup');
 		}
 
 		if (!email || !validator.isEmail(email)) {
@@ -104,12 +104,8 @@ export class OwnerController {
 			throw new BadRequestError('First and last names are mandatory');
 		}
 
-		let owner = await this.userRepository.findOne({
-			relations: ['globalRole'],
-			where: { id: userId },
-		});
-
-		if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {
+		// TODO: This check should be in a middleware outside this class
+		if (globalRole.scope === 'global' && globalRole.name !== 'owner') {
 			this.logger.debug(
 				'Request to claim instance ownership failed because user shell does not exist or has wrong role!',
 				{
@@ -118,6 +114,8 @@ export class OwnerController {
 			);
 			throw new BadRequestError('Invalid request');
 		}
+
+		let owner = req.user;
 
 		Object.assign(owner, {
 			email,
@@ -130,7 +128,7 @@ export class OwnerController {
 
 		owner = await this.userRepository.save(owner);
 
-		this.logger.info('Owner was set up successfully', { userId: req.user.id });
+		this.logger.info('Owner was set up successfully', { userId });
 
 		await this.settingsRepository.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
@@ -139,7 +137,7 @@ export class OwnerController {
 
 		this.config.set('userManagement.isInstanceOwnerSetUp', true);
 
-		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId: req.user.id });
+		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId });
 
 		await issueCookie(res, owner);
 
