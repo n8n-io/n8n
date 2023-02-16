@@ -38,7 +38,7 @@ export class PostgresTrigger implements INodeType {
 						value: 'createTrigger',
 					},
 					{
-						name: 'Listen to Existing Trigger Rule',
+						name: 'Listen to Channel',
 						value: 'listenTrigger',
 					},
 				],
@@ -101,6 +101,11 @@ export class PostgresTrigger implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
+				displayOptions: {
+					show: {
+						triggerMode: ['createTrigger'],
+					},
+				},
 				options: [
 					{
 						displayName: 'Channel Name',
@@ -135,6 +140,7 @@ export class PostgresTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('postgres');
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
+		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 		const pgp = pgPromise();
 
 		const config: IDataObject = {
@@ -155,22 +161,20 @@ export class PostgresTrigger implements INodeType {
 		}
 
 		const db = pgp(config);
-		let channelName;
 		if (triggerMode === 'createTrigger') {
-			channelName = await pgTriggerFunction.call(this, db);
+			await pgTriggerFunction.call(this, db);
 		}
-		channelName =
+		const channelName =
 			triggerMode === 'createTrigger'
-				? channelName
+				? additionalFields.channelName || 'n8n_channel'
 				: (this.getNodeParameter('channelName', 0) as string);
-		console.log('channelName', channelName);
 		db.connect({ direct: true })
 			.then(async (connection) => {
 				connection.client.on('notification', async (data) => {
 					console.log('Received: ', data);
 					this.emit([this.helpers.returnJsonArray([data])]);
 				});
-				return connection.none('LISTEN new_testevent');
+				return connection.none(`LISTEN ${channelName}`);
 			})
 			.catch(function (error) {
 				console.error('Error:', error);
