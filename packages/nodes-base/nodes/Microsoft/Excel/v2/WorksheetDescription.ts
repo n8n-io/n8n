@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { rawDataOutput, workbookRLC, worksheetRLC } from './CommonDescription';
+import { workbookRLC, worksheetRLC } from './CommonDescription';
 
 export const worksheetOperations: INodeProperties[] = [
 	{
@@ -185,7 +185,30 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [rawDataOutput],
+		options: [
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
+				default: 0,
+				description:
+					'Whether the data should be returned RAW instead of parsed into keys according to their header',
+			},
+			{
+				displayName: 'Data Property',
+				name: 'dataProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
+				description: 'The name of the property into which to write the RAW data',
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['append'],
@@ -322,112 +345,96 @@ export const worksheetFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 worksheet:getContent                       */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Range',
-		name: 'range',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-		},
-		placeholder: 'e.g. A1:B2',
-		default: '',
-		description: 'The sheet range to read the data from specified using a A1-style notation',
-		hint: 'Leave blank to return entire worksheet',
-	},
-	{
-		displayName: 'RAW Data',
-		name: 'rawData',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-		},
-		default: false,
-		description:
-			'Whether the data should be returned RAW instead of parsed into keys according to their header',
-	},
-	{
-		displayName: 'Data Property',
-		name: 'dataProperty',
-		type: 'string',
-		default: 'data',
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-				rawData: [true],
-			},
-		},
-		description: 'The name of the property into which to write the RAW data',
-	},
-	{
-		displayName: 'Header Row',
-		name: 'keyRow',
-		type: 'number',
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-			hide: {
-				rawData: [true],
-			},
-		},
-		default: 0,
-		hint: 'Index of the row which contains the column names',
-		description: "Relative to the set 'Range', first row index is 0",
-	},
-	{
-		displayName: 'First Data Row',
-		name: 'dataStartRow',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 1,
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-			hide: {
-				rawData: [true],
-			},
-		},
-		hint: 'Index of first row which contains the actual data',
-		description: "Relative to the set 'Range', first row index is 0",
-	},
 
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-				rawData: [true],
-			},
-		},
 		options: [
+			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'string',
+				placeholder: 'e.g. A1:B2',
+				default: '',
+				description: 'The sheet range to read the data from specified using a A1-style notation',
+				hint: 'Leave blank to return entire worksheet',
+			},
+			{
+				displayName: 'Header Row',
+				name: 'keyRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				displayOptions: {
+					hide: {
+						rawData: [true],
+					},
+				},
+				default: 0,
+				hint: 'Index of the row which contains the column names',
+				description: "Relative to the set 'Range', first row index is 0",
+			},
+			{
+				displayName: 'First Data Row',
+				name: 'dataStartRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 1,
+				displayOptions: {
+					hide: {
+						rawData: [true],
+					},
+				},
+				hint: 'Index of first row which contains the actual data',
+				description: "Relative to the set 'Range', first row index is 0",
+			},
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
+				default: 0,
+				description:
+					'Whether the data should be returned RAW instead of parsed into keys according to their header',
+			},
+			{
+				displayName: 'Data Property',
+				name: 'dataProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
+				description: 'The name of the property into which to write the RAW data',
+			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
 				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
 			},
 		],
+		displayOptions: {
+			show: {
+				operation: ['getContent'],
+				resource: ['worksheet'],
+			},
+		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 worksheet:updateRange                      */
@@ -628,7 +635,28 @@ export const worksheetFields: INodeProperties[] = [
 				description: 'The sheet range to read the data from specified using a A1-style notation',
 				hint: 'Leave blank for entire worksheet',
 			},
-			rawDataOutput,
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
+				default: 0,
+				description:
+					'Whether the data should be returned RAW instead of parsed into keys according to their header',
+			},
+			{
+				displayName: 'Data Property',
+				name: 'dataProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
+				description: 'The name of the property into which to write the RAW data',
+			},
 			{
 				displayName: 'Update All Matches',
 				name: 'updateAll',
