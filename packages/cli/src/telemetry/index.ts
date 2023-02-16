@@ -60,7 +60,9 @@ export class Telemetry {
 
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { PostHog } = await import('posthog-node');
-			this.postHog = new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'));
+			this.postHog = new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'), {
+				host: config.getEnv('diagnostics.config.posthog.apiHost'),
+			});
 
 			this.startPulse();
 		}
