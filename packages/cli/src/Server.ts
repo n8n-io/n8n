@@ -146,6 +146,7 @@ import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { isSamlEnabled } from './Saml/helpers';
+import { samlController } from './Saml/routes/saml.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -476,6 +477,14 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		if (isLdapEnabled()) {
 			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
+		}
+
+		// ----------------------------------------
+		// SAML
+		// ----------------------------------------
+		console.log('isSamlEnabled', isSamlEnabled());
+		if (isSamlEnabled()) {
+			this.app.use(`/${this.restEndpoint}/sso`, samlController);
 		}
 
 		// Returns parameter values which normally get loaded from an external API or
