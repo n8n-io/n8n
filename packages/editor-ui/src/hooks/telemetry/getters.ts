@@ -1,17 +1,10 @@
-import { useWebhooksStore } from '@/stores/webhooks';
-import {
-	deepCopy,
-	INodeParameters,
-	INodeType,
-	INodeTypeDescription,
-	ITelemetryTrackProperties,
-} from 'n8n-workflow';
+import { deepCopy, GenericValue, INodeParameters, ITelemetryTrackProperties } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
-import type { TelemetryEventData } from '@/hooks/telemetry';
+import type { TelemetryEventData } from '@/hooks/types';
 import { IStartRunData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { INode } from 'n8n-workflow/src';
-import {hooksTelemetryTrack} from "@/hooks/telemetry";
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export interface UserSavedCredentialsEventData {
 	credential_type: string;
@@ -20,16 +13,17 @@ export interface UserSavedCredentialsEventData {
 }
 
 export const getUserSavedCredentialsEventData = (meta: UserSavedCredentialsEventData) => {
-	const store = useWebhooksStore();
+	const rootStore = useRootStore();
+	const workflowsStore = useWorkflowsStore();
 
 	return {
 		eventName: 'User saved credentials',
 		properties: {
-			instance_id: store.instanceId,
+			instance_id: rootStore.instanceId,
 			credential_type: meta.credential_type,
 			credential_id: meta.credential_id,
-			workflow_id: store.workflowId,
-			node_type: store.activeNode?.name,
+			workflow_id: workflowsStore.workflowId,
+			node_type: workflowsStore.activeNode?.name,
 			is_new: meta.is_new,
 			// is_complete: true,
 			// is_valid: true,
@@ -39,14 +33,14 @@ export const getUserSavedCredentialsEventData = (meta: UserSavedCredentialsEvent
 };
 
 export const getOpenWorkflowSettingsEventData = (): TelemetryEventData => {
-	const store = useWebhooksStore();
+	const workflowsStore = useWorkflowsStore();
 
 	return {
 		eventName: 'User opened workflow settings',
 		properties: {
-			workflow_id: store.workflowId,
-			workflow_name: store.workflowName,
-			current_settings: deepCopy(store.workflowSettings),
+			workflow_id: workflowsStore.workflowId,
+			workflow_name: workflowsStore.workflowName,
+			current_settings: deepCopy(workflowsStore.workflowSettings),
 		},
 	};
 };
@@ -58,14 +52,14 @@ export interface UpdatedWorkflowSettingsEventData {
 export const getUpdatedWorkflowSettingsEventData = (
 	meta: UpdatedWorkflowSettingsEventData,
 ): TelemetryEventData => {
-	const store = useWebhooksStore();
+	const workflowsStore = useWorkflowsStore();
 
 	return {
 		eventName: 'User updated workflow settings',
 		properties: {
-			workflow_id: store.workflowId,
-			workflow_name: store.workflowName,
-			new_settings: deepCopy(store.workflowSettings),
+			workflow_id: workflowsStore.workflowId,
+			workflow_name: workflowsStore.workflowName,
+			new_settings: deepCopy(workflowsStore.workflowSettings),
 			old_settings: meta.oldSettings,
 		},
 	};
@@ -151,7 +145,7 @@ export const getExpressionEditorEventsData = (
 
 export interface AuthenticationModalEventData {
 	parameterPath: string;
-	oldNodeParameters: Record<string, unknown>;
+	oldNodeParameters: Record<string, GenericValue>;
 	parameters: INodeParameters[];
 	newValue: string;
 }
@@ -228,35 +222,35 @@ export const getExecutionFinishedEventData = (
 
 	if (meta.runDataExecutedStartData.destinationNode) {
 		eventData.eventName = 'Node execution finished';
-		eventData.properties.node_type = store.getNodeByName(meta.nodeName)?.type.split('.')[1];
-		eventData.properties.node_name = meta.nodeName;
+		eventData.properties!.node_type = store.getNodeByName(meta.nodeName)?.type.split('.')[1];
+		eventData.properties!.node_name = meta.nodeName;
 	} else {
 		eventData.eventName = 'Manual workflow execution finished';
-		eventData.properties.workflow_id = store.workflowId;
-		eventData.properties.workflow_name = store.workflowName;
+		eventData.properties!.workflow_id = store.workflowId;
+		eventData.properties!.workflow_name = store.workflowName;
 	}
 
 	if (meta.errorMessage || meta.resultDataError) {
-		eventData.properties.status = 'failed';
-		eventData.properties.error_message =
+		eventData.properties!.status = 'failed';
+		eventData.properties!.error_message =
 			(meta.resultDataError && meta.resultDataError.message) || '';
-		eventData.properties.error_stack = (meta.resultDataError && meta.resultDataError.stack) || '';
-		eventData.properties.error_ui_message = meta.errorMessage || '';
-		eventData.properties.error_timestamp = new Date();
+		eventData.properties!.error_stack = (meta.resultDataError && meta.resultDataError.stack) || '';
+		eventData.properties!.error_ui_message = meta.errorMessage || '';
+		eventData.properties!.error_timestamp = new Date();
 
 		if (meta.resultDataError && meta.resultDataError.node) {
-			eventData.properties.error_node =
+			eventData.properties!.error_node =
 				typeof meta.resultDataError.node === 'string'
 					? meta.resultDataError.node
 					: meta.resultDataError.node.name;
 		} else {
-			eventData.properties.error_node = meta.nodeName;
+			eventData.properties!.error_node = meta.nodeName;
 		}
 	} else {
-		eventData.properties.status = 'success';
+		eventData.properties!.status = 'success';
 		if (meta.runDataExecutedStartData.destinationNode) {
 			// Node execution finished
-			eventData.properties.items_count = meta.itemsCount || 0;
+			eventData.properties!.items_count = meta.itemsCount || 0;
 		}
 	}
 	return eventData;
@@ -271,7 +265,7 @@ export interface NodeRemovedEventData {
 }
 
 export const getNodeRemovedEventData = (meta: NodeRemovedEventData): TelemetryEventData => {
-	const store = useWebhooksStore();
+	const workflowsStore = useWorkflowsStore();
 
 	return {
 		eventName: 'User removed node from workflow canvas',
@@ -279,7 +273,7 @@ export const getNodeRemovedEventData = (meta: NodeRemovedEventData): TelemetryEv
 			node_name: meta.node.name,
 			node_type: meta.node.type,
 			node_disabled: meta.node.disabled,
-			workflow_id: store.workflowId,
+			workflow_id: workflowsStore.workflowId,
 		},
 	};
 };
@@ -355,4 +349,4 @@ export const getExecutionStartedEventData = (
 	}
 
 	return eventData;
-}
+};

@@ -24,8 +24,6 @@ import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { useWebhooksStore } from './stores/webhooks';
-
 Vue.config.productionTip = false;
 
 Vue.use(TelemetryPlugin);
@@ -42,7 +40,7 @@ new Vue({
 }).$mount('#app');
 
 router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	runExternalHook('main.routeChange', { from, to });
 });
 
 if (!import.meta.env.PROD) {

@@ -42,8 +42,8 @@ describe('Telemetry', () => {
 		telemetry = new Telemetry(instanceId);
 		(telemetry as any).rudderStack = {
 			flush: () => {},
-			identify: () => {},
-			track: () => {},
+			hooksPosthogIdentify: () => {},
+			hooksPosthogTrack: () => {},
 		};
 	});
 

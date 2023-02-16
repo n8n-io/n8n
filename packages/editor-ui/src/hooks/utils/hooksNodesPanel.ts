@@ -2,7 +2,7 @@ export const nodesPanelSession = {
 	sessionId: '',
 	data: {
 		nodeFilter: '',
-		resultsNodes: [],
+		resultsNodes: [] as string[],
 		filterMode: 'Regular',
 	},
 };

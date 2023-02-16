@@ -1,4 +1,3 @@
-import { useWebhooksStore } from '@/stores/webhooks';
 import { hooksAddAdminIcon, hooksAddFakeDoorFeatures } from '@/hooks/utils';
 import {
 	getAuthenticationModalEventData,
@@ -36,8 +35,9 @@ import {
 	nodesPanelSession,
 } from '@/hooks/utils/hooksNodesPanel';
 import type { Route } from 'vue-router/types/router';
+import { ExternalHooks } from '@/mixins/externalHooks';
 
-const externalHooks = {
+export const n8nCloudHooks: ExternalHooks = {
 	parameterInput: {
 		mount: [
 			(meta: { inputFieldRef: { $el: HTMLElement }; parameter: { name: string } }) => {
@@ -57,18 +57,16 @@ const externalHooks = {
 			},
 		],
 	},
-	nodeCreator: {
-		searchBar: {
-			mount: [
-				(meta: { inputRef: HTMLElement }) => {
-					if (!meta.inputRef) {
-						return;
-					}
+	nodeCreatorSearchBar: {
+		mount: [
+			(meta: { inputRef: HTMLElement }) => {
+				if (!meta.inputRef) {
+					return;
+				}
 
-					meta.inputRef.classList.value = meta.inputRef.classList.value + ' data-hj-allow';
-				},
-			],
-		},
+				meta.inputRef.classList.value = meta.inputRef.classList.value + ' data-hj-allow';
+			},
+		],
 	},
 	app: {
 		mount: [
@@ -180,9 +178,7 @@ const externalHooks = {
 	},
 	credentialsList: {
 		mounted: [
-			(meta) => {
-				const store = useWebhooksStore();
-
+			() => {
 				const eventData = {
 					eventName: 'User opened global Credentials panel',
 				};
@@ -192,7 +188,7 @@ const externalHooks = {
 			},
 		],
 		dialogVisibleChanged: [
-			function (meta) {
+			(meta: { dialogVisible: boolean }) => {
 				if (meta.dialogVisible) {
 					const eventData = {
 						eventName: 'User opened global Credentials panel',
@@ -249,7 +245,7 @@ const externalHooks = {
 
 				const eventData = getNodeEditingFinishedEventData(ndvStore.activeNode);
 				if (eventData) {
-					eventData.properties.workflow_id = workflowsStore.workflowId;
+					eventData.properties!.workflow_id = workflowsStore.workflowId;
 				}
 
 				if (eventData) {
@@ -260,7 +256,7 @@ const externalHooks = {
 	},
 	executionsList: {
 		openDialog: [
-			function () {
+			() => {
 				const eventData = {
 					eventName: 'User opened Executions log',
 				};
@@ -272,9 +268,7 @@ const externalHooks = {
 	},
 	showMessage: {
 		showError: [
-			function (meta) {
-				const store = useWebhooksStore();
-
+			(meta: { title: string; message: string; errorMessage: string }) => {
 				const eventData = {
 					eventName: 'Instance FE emitted error',
 					properties: {
@@ -294,11 +288,11 @@ const externalHooks = {
 				const eventData = getInsertedItemFromExpEditorEventData(meta);
 
 				if (meta.selectedItem.variable.startsWith('Object.keys')) {
-					eventData.properties.variable_type = 'Keys';
+					eventData.properties!.variable_type = 'Keys';
 				} else if (meta.selectedItem.variable.startsWith('Object.values')) {
-					eventData.properties.variable_type = 'Values';
+					eventData.properties!.variable_type = 'Values';
 				} else {
-					eventData.properties.variable_type = 'Raw value';
+					eventData.properties!.variable_type = 'Raw value';
 				}
 
 				hooksTelemetryTrack(eventData);
@@ -342,11 +336,12 @@ const externalHooks = {
 			},
 		],
 		credentialSelected: [
-			function (meta) {
+			(meta: { updateInformation: { properties: { credentials: Record<string, string> } } }) => {
 				const creds = Object.keys(meta.updateInformation.properties.credentials || {});
 				if (creds.length < 1) {
 					return;
 				}
+
 				const eventData = {
 					eventName: 'User selected credential from node modal',
 					properties: {
@@ -368,9 +363,7 @@ const externalHooks = {
 			},
 		],
 		runError: [
-			function (meta) {
-				const store = useWebhooksStore();
-
+			(meta: { errorMessages: string[]; nodeName: string }) => {
 				const eventData = {
 					eventName: meta.nodeName
 						? 'Node execution finished'
@@ -417,7 +410,7 @@ const externalHooks = {
 	},
 	workflow: {
 		activeChange: [
-			function (meta) {
+			(meta: { active: boolean; workflowId: string }) => {
 				const eventData = {
 					eventName: (meta.active && 'User activated workflow') || 'User deactivated workflow',
 					properties: {
@@ -447,7 +440,7 @@ const externalHooks = {
 			},
 		],
 		afterUpdate: [
-			function (meta) {
+			(meta: { workflowData: { id: string; workflowName: string; nodes: INode[] } }) => {
 				const eventData = {
 					eventName: 'User saved workflow',
 					properties: {
@@ -491,7 +484,7 @@ const externalHooks = {
 			},
 		],
 		selectedTypeChanged: [
-			function (meta) {
+			(meta: { oldValue: string; newValue: string }) => {
 				const eventData = {
 					eventName: 'User changed nodes panel filter',
 					properties: {
@@ -506,7 +499,11 @@ const externalHooks = {
 			},
 		],
 		nodeFilterChanged: [
-			function (meta) {
+			(meta: {
+				newValue: string;
+				oldValue: string;
+				filteredNodes: Array<{ name: string; key: string }>;
+			}) => {
 				if (meta.newValue.length === 0 && nodesPanelSession.data.nodeFilter.length > 0) {
 					const eventData = hooksGenerateNodesPanelEvent();
 
@@ -528,14 +525,3 @@ const externalHooks = {
 		],
 	},
 };
-
-window.n8nExternalHooks = window.n8nExternalHooks || {};
-
-Object.keys(externalHooks).forEach((hookKey) => {
-	window.n8nExternalHooks[hookKey] = window.n8nExternalHooks[hookKey] || {};
-	Object.keys(externalHooks[hookKey]).forEach((hookMethod) => {
-		window.n8nExternalHooks[hookKey][hookMethod] =
-			window.n8nExternalHooks[hookKey][hookMethod] || [];
-		window.n8nExternalHooks[hookKey][hookMethod].push(...externalHooks[hookKey][hookMethod]);
-	});
-});

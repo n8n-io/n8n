@@ -46,6 +46,7 @@ import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
 import { historyHelper } from '@/mixins/history';
+import { extendExternalHooks } from '@/mixins/externalHooks';
 
 export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',
@@ -94,6 +95,19 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 				throw e;
 			}
 		},
+		async initHooks(): Promise<void> {
+			if (this.settingsStore.isCloudDeployment) {
+				import('./hooks/cloud').then(({ n8nCloudHooks }) => {
+					extendExternalHooks(n8nCloudHooks);
+				});
+			}
+
+			if (this.settingsStore.isTelemetryEnabled) {
+				import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
+					extendExternalHooks(n8nPosthogHooks);
+				});
+			}
+		},
 		async loginWithCookie(): Promise<void> {
 			try {
 				await this.usersStore.loginWithCookie();
@@ -114,6 +128,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
+			await this.initHooks();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {

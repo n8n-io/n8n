@@ -1,4 +1,5 @@
 import type { Telemetry } from '.';
+import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 declare module 'vue/types/vue' {
 	interface Vue {
@@ -10,8 +11,26 @@ declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
 		posthog: {
+			people: {
+				set(metadata: Record<string, unknown>): void;
+			};
+			feature_flags: {
+				getFlags(): Record<string, unknown>;
+			};
+			identify(name: string, traits: { instance_id: string }): void;
+			reset(): void;
+			track(name: string, properties?: ITelemetryTrackProperties): void;
+			register(metadata: Record<string, unknown>): void;
+			capture(name: string, properties?: ITelemetryTrackProperties): void;
 			isFeatureEnabled(flagName: string): boolean;
 			getFeatureFlag(flagName: string): boolean | string;
+			reloadFeatureFlags(): void;
+		};
+		featureFlag: {
+			getAll(): Record<string, unknown>;
+			reload(): void;
+			get(flagName: string): boolean | string;
+			isEnabled(flagName: string): boolean | undefined;
 		};
 	}
 }

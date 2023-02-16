@@ -1,7 +1,8 @@
-import { useWebhooksStore } from '@/stores/webhooks';
+import { useUIStore } from '@/stores/ui';
 
-export const compileFakeDoorFeatures = (store: ReturnType<typeof useWebhooksStore>) => {
-	const fakeDoorFeatures = store.getFakeDoorFeatures.map((feature) => Object.assign({}, feature));
+export function compileFakeDoorFeatures() {
+	const store = useUIStore();
+	const fakeDoorFeatures = store.fakeDoorFeatures.map((feature) => Object.assign({}, feature));
 	const environmentsFeature = fakeDoorFeatures.find((feature) => feature.id === 'environments');
 	const loggingFeature = fakeDoorFeatures.find((feature) => feature.id === 'logging');
 
@@ -17,10 +18,10 @@ export const compileFakeDoorFeatures = (store: ReturnType<typeof useWebhooksStor
 	}
 
 	return fakeDoorFeatures;
-};
+}
 
 export const hooksAddFakeDoorFeatures = () => {
-	const store = useWebhooksStore();
+	const store = useUIStore();
 
-	store.setFakeDoorFeatures(compileFakeDoorFeatures(store));
+	store.fakeDoorFeatures = compileFakeDoorFeatures();
 };

@@ -1,4 +1,6 @@
-import { useWebhooksStore } from '@/stores/webhooks';
+import { useUIStore } from '@/stores/ui';
+import { IMenuItem } from 'n8n-design-system/types';
+import { useUsersStore } from '@/stores/users';
 
 let adminIconAdded = false;
 
@@ -7,13 +9,14 @@ export const hooksAddAdminIcon = () => {
 		return;
 	}
 
-	const store = useWebhooksStore();
+	const uiStore = useUIStore();
+	const usersStore = useUsersStore();
 
-	if (store.globalRoleName && store.globalRoleName !== 'owner') {
+	if (usersStore.globalRoleName && usersStore.globalRoleName !== 'owner') {
 		return;
 	}
 
-	store.addSidebarMenuItems([
+	const menuItems: IMenuItem[] = [
 		{
 			id: 'admin',
 			type: 'link',
@@ -25,7 +28,7 @@ export const hooksAddAdminIcon = () => {
 				newWindow: false,
 			},
 		},
-	]);
-
+	];
+	uiStore.sidebarMenuItems = uiStore.sidebarMenuItems.concat(menuItems);
 	adminIconAdded = true;
 };

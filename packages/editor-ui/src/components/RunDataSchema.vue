@@ -4,7 +4,6 @@ import { INodeUi, Schema } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv';
-import { useWebhooksStore } from '@/stores/webhooks';
 import { runExternalHook } from '@/mixins/externalHooks';
 import { telemetry } from '@/plugins/telemetry';
 import { IDataObject } from 'n8n-workflow';
@@ -27,7 +26,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
-const webhooksStore = useWebhooksStore();
 
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
@@ -63,7 +61,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+		runExternalHook('runDataJson.onDragEnd', telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
