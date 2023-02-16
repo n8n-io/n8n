@@ -44,7 +44,7 @@ export class PostgresTrigger implements INodeType {
 				],
 				default: 'createTrigger',
 				description:
-					'Listen and Create Trigger Rule: Creates a trigger rule and listens to it. Listen to Existing Trigger Rule: Listens to an channel.',
+					'Listen and Create Trigger Rule: Creates a trigger rule and listens to it. Listen to Channel: Listens to an channel.',
 			},
 			{
 				displayName: 'Channel Name',
@@ -52,6 +52,8 @@ export class PostgresTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
+				placeholder: 'n8n_channel',
+				description: 'Name of the channel to listen to',
 				displayOptions: {
 					show: {
 						triggerMode: ['listenTrigger'],
@@ -64,6 +66,7 @@ export class PostgresTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
+				description: 'Name of the table to listen to',
 				displayOptions: {
 					show: {
 						triggerMode: ['createTrigger'],
@@ -111,26 +114,33 @@ export class PostgresTrigger implements INodeType {
 						displayName: 'Channel Name',
 						name: 'channelName',
 						type: 'string',
-						default: 'n8n_channel',
+						placeholder: 'n8n_channel',
+						description: 'Name of the channel to listen to',
+						default: '',
 					},
 
 					{
 						displayName: 'Function Name',
 						name: 'functionName',
 						type: 'string',
-						default: 'n8n_trigger_function()',
+						description: 'Name of the function to create',
+						placeholder: 'n8n_trigger_function()',
+						default: '',
 					},
 					{
 						displayName: 'Replace if Exists',
 						name: 'replaceIfExists',
 						type: 'boolean',
+						description: 'Whether a function and a trigger with the same name exists, replace it',
 						default: false,
 					},
 					{
 						displayName: 'Trigger Name',
 						name: 'triggerName',
 						type: 'string',
-						default: 'n8n_trigger',
+						description: 'Name of the trigger to create',
+						placeholder: 'n8n_trigger',
+						default: '',
 					},
 				],
 			},
