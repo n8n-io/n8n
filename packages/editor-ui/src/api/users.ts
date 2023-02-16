@@ -26,11 +26,17 @@ export async function logout(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/logout');
 }
 
+export function preOwnerSetup(
+	context: IRestApiContext,
+): Promise<{ credentials: number; workflows: number }> {
+	return makeRestApiRequest(context, 'GET', '/owner/pre-setup');
+}
+
 export function setupOwner(
 	context: IRestApiContext,
 	params: { firstName: string; lastName: string; email: string; password: string },
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'POST', '/owner', params as unknown as IDataObject);
+	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
 }
 
 export function skipOwnerSetup(context: IRestApiContext): Promise<void> {

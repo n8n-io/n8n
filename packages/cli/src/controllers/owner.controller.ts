@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
-import { Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
 import {
 	hashPassword,
@@ -13,9 +13,10 @@ import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type { IDatabaseCollections, IInternalHooksClass, ICredentialsDb } from '@/Interfaces';
 import type { Settings } from '@db/entities/Settings';
 import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 @RestController('/owner')
 export class OwnerController {
@@ -29,6 +30,10 @@ export class OwnerController {
 
 	private readonly settingsRepository: Repository<Settings>;
 
+	private readonly credentialsRepository: Repository<ICredentialsDb>;
+
+	private readonly workflowsRepository: Repository<WorkflowEntity>;
+
 	constructor({
 		config,
 		logger,
@@ -38,20 +43,35 @@ export class OwnerController {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
+		repositories: Pick<IDatabaseCollections, 'User' | 'Settings' | 'Credentials' | 'Workflow'>;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.settingsRepository = repositories.Settings;
+		this.credentialsRepository = repositories.Credentials;
+		this.workflowsRepository = repositories.Workflow;
+	}
+
+	@Get('/pre-setup')
+	async preSetup(): Promise<{ credentials: number; workflows: number }> {
+		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+			throw new BadRequestError('Instance owner already setup');
+		}
+
+		const [credentials, workflows] = await Promise.all([
+			this.credentialsRepository.countBy({}),
+			this.workflowsRepository.countBy({}),
+		]);
+		return { credentials, workflows };
 	}
 
 	/**
 	 * Promote a shell into the owner of the n8n instance,
 	 * and enable `isInstanceOwnerSetUp` setting.
 	 */
-	@Post('/')
+	@Post('/setup')
 	async promoteOwner(req: OwnerRequest.Post, res: Response) {
 		const { email, firstName, lastName, password } = req.body;
 		const { id: userId } = req.user;

@@ -8,6 +8,7 @@ import {
 	login,
 	loginCurrentUser,
 	logout,
+	preOwnerSetup,
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
@@ -168,6 +169,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
+		},
+		async preOwnerSetup() {
+			return preOwnerSetup(useRootStore().getRestApiContext);
 		},
 		async createOwner(params: {
 			firstName: string;
