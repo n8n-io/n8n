@@ -6,6 +6,7 @@ import type {
 	ITriggerResponse,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
+import { pgTriggerFunction } from './Postgres.node.functions';
 
 export class PostgresTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -100,7 +101,33 @@ export class PostgresTrigger implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
-				options: [],
+				options: [
+					{
+						displayName: 'Channel Name',
+						name: 'channelName',
+						type: 'string',
+						default: 'n8n_channel',
+					},
+
+					{
+						displayName: 'Function Name',
+						name: 'functionName',
+						type: 'string',
+						default: 'n8n_trigger_function()',
+					},
+					{
+						displayName: 'Replace if Exists',
+						name: 'replaceIfExists',
+						type: 'boolean',
+						default: false,
+					},
+					{
+						displayName: 'Trigger Name',
+						name: 'triggerName',
+						type: 'string',
+						default: 'n8n_trigger',
+					},
+				],
 			},
 		],
 	};
@@ -108,8 +135,6 @@ export class PostgresTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('postgres');
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
-		const tableName = this.getNodeParameter('tableName', 0) as string;
-		const firesOn = this.getNodeParameter('firesOn', 0) as string;
 		const pgp = pgPromise();
 
 		const config: IDataObject = {
@@ -132,9 +157,13 @@ export class PostgresTrigger implements INodeType {
 		const db = pgp(config);
 		let channelName;
 		if (triggerMode === 'createTrigger') {
-			db.
+			channelName = await pgTriggerFunction.call(this, db);
 		}
-		channelName = triggerMode === 'createTrigger' ? channelName : this.getNodeParameter('channelName', 0) as string;
+		channelName =
+			triggerMode === 'createTrigger'
+				? channelName
+				: (this.getNodeParameter('channelName', 0) as string);
+		console.log('channelName', channelName);
 		db.connect({ direct: true })
 			.then(async (connection) => {
 				connection.client.on('notification', async (data) => {

@@ -695,14 +695,39 @@ export async function pgUpdateV2(
 
 export async function pgTriggerFunction(
 	this: ITriggerFunctions,
-	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-	items: INodeExecutionData[],
-	continueOnFail = false,
 ): Promise<IDataObject[]> {
 	const tableName = this.getNodeParameter('tableName', 0) as string;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
-	await db.query(
-		"CREATE OR REPLACE FUNCTION public.test() RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('new_testevent', row_to_json(new)::text); return null; end; $BODY$;",
-	);
+	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const functionName = additionalFields.functionName || 'n8n_trigger_function()';
+	const triggerName = additionalFields.triggerName || 'n8n_trigger';
+	const channelName = additionalFields.channelName || 'n8n_channel';
+	const replaceIfExists = additionalFields.replaceIfExists || false;
+	const returnData: IDataObject[] = [];
+	try {
+		if (replaceIfExists) {
+			await db.any(
+				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
+				[functionName, channelName],
+			);
+			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, tableName]);
+			await db.any(
+				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
+				[tableName, functionName, firesOn, triggerName],
+			);
+		} else {
+			await db.any(
+				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
+				[functionName, channelName],
+			);
+			await db.any(
+				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
+				[tableName, functionName, firesOn, triggerName],
+			);
+		}
+	} catch (err) {
+		console.log(err);
+	}
+	return returnData;
 }
