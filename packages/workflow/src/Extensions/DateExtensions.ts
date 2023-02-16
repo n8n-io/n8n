@@ -1,8 +1,10 @@
+import { ExpressionExtensionError } from './../ExpressionError';
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 import { DateTime } from 'luxon';
 import type { DateTimeUnit, DurationLike, DurationObjectUnits, LocaleOptions } from 'luxon';
 import type { ExtensionMap } from './Extensions';
+import { convertToDateTime } from './utils';
 
 type DurationUnit =
 	| 'milliseconds'
@@ -82,11 +84,8 @@ function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
 	if (isDateTime(date)) {
 		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 	}
-	let datetime = DateTime.fromJSDate(date);
-	if (date.getTimezoneOffset() === 0) {
-		datetime = datetime.setZone('UTC');
-	}
-	return datetime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
+	const dateTime = DateTime.fromJSDate(date);
+	return dateTime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 }
 
 function endOfMonth(date: Date | DateTime): Date {
@@ -97,7 +96,7 @@ function endOfMonth(date: Date | DateTime): Date {
 }
 
 function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
-	let [part] = extraArgs;
+	let [part = 'week'] = extraArgs;
 	let date = inputDate;
 	if (isDateTime(date)) {
 		date = date.toJSDate();
@@ -126,10 +125,22 @@ function format(date: Date | DateTime, extraArgs: unknown[]): string {
 	return DateTime.fromJSDate(date).toFormat(dateFormat, { ...localeOpts });
 }
 
-function isBetween(date: Date | DateTime, extraArgs: unknown[]): boolean {
-	const [first, second] = extraArgs as string[];
-	const firstDate = new Date(first);
-	const secondDate = new Date(second);
+function isBetween(
+	date: Date | DateTime,
+	extraArgs: Array<string | Date | DateTime>,
+): boolean | undefined {
+	if (extraArgs.length !== 2) {
+		throw new ExpressionExtensionError('isBetween(): expected exactly two args');
+	}
+
+	const [first, second] = extraArgs;
+
+	const firstDate = convertToDateTime(first);
+	const secondDate = convertToDateTime(second);
+
+	if (!firstDate || !secondDate) {
+		return;
+	}
 
 	if (firstDate > secondDate) {
 		return secondDate < date && date < firstDate;
