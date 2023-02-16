@@ -1,3 +1,28 @@
+# [0.216.0](https://github.com/n8n-io/n8n/compare/n8n@0.215.2...n8n@0.216.0) (2023-02-16)
+
+
+### Bug Fixes
+
+* **Bubble Node:** Fix pagination issue when returning all objects ([#5483](https://github.com/n8n-io/n8n/issues/5483)) ([1a20fd9](https://github.com/n8n-io/n8n/commit/1a20fd9f46495e32508d74dbb9ccaaa0f6194a07))
+* **core:** Fix data transformation function that are reported not to work properly ([#5338](https://github.com/n8n-io/n8n/issues/5338)) ([0cf45bc](https://github.com/n8n-io/n8n/commit/0cf45bc4c862c7544e69af4981d4607bf0b530e3))
+* **core:** Remove unnecessary info from `GET /workflows` response ([#5311](https://github.com/n8n-io/n8n/issues/5311)) ([a2c6ea9](https://github.com/n8n-io/n8n/commit/a2c6ea9e110e51debf137707b52eb7fedbc0032b))
+* **HTTP Request Node:** Ignore empty body for auto detect json ([#5215](https://github.com/n8n-io/n8n/issues/5215)) ([af70337](https://github.com/n8n-io/n8n/commit/af703371fc96dcfdd8f418201d3880f124cfcfc4))
+
+
+### Features
+
+* Add workflow and credential sharing access e2e tests ([#5463](https://github.com/n8n-io/n8n/issues/5463)) ([246189f](https://github.com/n8n-io/n8n/commit/246189f6dae2ce96dabd900ce0a192de731cc6aa))
+* **editor:** Add correct credential owner contact details for readonly credentials ([#5208](https://github.com/n8n-io/n8n/issues/5208)) ([36108f8](https://github.com/n8n-io/n8n/commit/36108f82a1c1657c3959225d0635255668bf0af6))
+* **editor:** Add most important native props and methods to autocomplete ([#5486](https://github.com/n8n-io/n8n/issues/5486)) ([6592d14](https://github.com/n8n-io/n8n/commit/6592d144d1fb680b34240ce57a6615b06de5cde5))
+* **editor:** Update to personalization survey v4 ([#5474](https://github.com/n8n-io/n8n/issues/5474)) ([6265f3a](https://github.com/n8n-io/n8n/commit/6265f3a27a076f6c3c24d0fb323e44c471d85b23))
+* **Github Node:** Use resource locator component ([#5489](https://github.com/n8n-io/n8n/issues/5489)) ([00ac4c3](https://github.com/n8n-io/n8n/commit/00ac4c308a4d96a0f93401402dd92bbbd087f082))
+* **Github Trigger Node:** Use resource locator component ([#5253](https://github.com/n8n-io/n8n/issues/5253)) ([a3d8fac](https://github.com/n8n-io/n8n/commit/a3d8fac73a8a93d6b7f769e1386276e34066a1b7))
+* **Notion Node:** Add icon support for page and database page creation ([#5468](https://github.com/n8n-io/n8n/issues/5468)) ([71cba06](https://github.com/n8n-io/n8n/commit/71cba06b7c1ee8ed42a4dacc2d8114df119339dc))
+* **Slack Node:** Add support for manually inputting a channel name ([#5488](https://github.com/n8n-io/n8n/issues/5488)) ([7954ed3](https://github.com/n8n-io/n8n/commit/7954ed3cfbd4d8d0611c0cc51385b49cc80282a6))
+* Update telemetry api endpoints ([#5482](https://github.com/n8n-io/n8n/issues/5482)) ([3de49e8](https://github.com/n8n-io/n8n/commit/3de49e8f7894e628b722e2a0c62e8739b1de6be9))
+
+
+
 ## [0.215.2](https://github.com/n8n-io/n8n/compare/n8n@0.215.1...n8n@0.215.2) (2023-02-14)
 
 
