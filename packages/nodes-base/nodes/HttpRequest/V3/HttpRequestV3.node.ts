@@ -1347,8 +1347,17 @@ export class HttpRequestV3 implements INodeType {
 				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
+					const neverError = this.getNodeParameter(
+						'options.response.response.neverError',
+						0,
+						false,
+					) as boolean;
 					const data = Buffer.from(response.body).toString();
-					response.body = !data ? undefined : jsonParse(data);
+					response.body = jsonParse(data, {
+						...(neverError
+							? { fallbackValue: {} }
+							: { errorMessage: 'Invalid JSON in response body' }),
+					});
 				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
