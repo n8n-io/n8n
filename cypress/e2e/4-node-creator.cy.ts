@@ -2,6 +2,7 @@ import { NodeCreator } from '../pages/features/node-creator';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { NDV } from '../pages/ndv';
 
 const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
@@ -9,6 +10,7 @@ const firstName = randFirstName();
 const lastName = randLastName();
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
+const NDVModal = new NDV();
 
 describe('Node Creator', () => {
 	before(() => {
@@ -75,36 +77,40 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 	});
 
-	describe('node creator panels', () => {
-		beforeEach(() => {
-			nodeCreatorFeature.getters.canvasAddButton().click();
-			WorkflowPage.actions.addNodeToCanvas('Manual', false);
+	it('should check correct view panels', () => {
+		nodeCreatorFeature.getters.canvasAddButton().click();
+		WorkflowPage.actions.addNodeToCanvas('Manual', false);
 
-			nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
-			nodeCreatorFeature.getters.nodeCreator().should('not.exist');
+		nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
+		nodeCreatorFeature.getters.nodeCreator().should('not.exist');
 
-			// TODO: Replace once we have canvas feature utils
-			cy.get('div').contains('Add first step').should('be.hidden');
-		});
+		// TODO: Replace once we have canvas feature utils
+		cy.get('div').contains('Add first step').should('be.hidden');
+		nodeCreatorFeature.actions.openNodeCreator()
+		nodeCreatorFeature.getters
+			.nodeCreator()
+			.contains('What happens next?')
+			.should('be.visible');
 
-		it('should check correct view panels', () => {
-			nodeCreatorFeature.actions.openNodeCreator()
+			nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
+			nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+			nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
+			nodeCreatorFeature.getters.activeSubcategory().find('button').click();
 			nodeCreatorFeature.getters
 				.nodeCreator()
 				.contains('What happens next?')
 				.should('be.visible');
-
-				nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
-				nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
-				nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
-				nodeCreatorFeature.getters.activeSubcategory().find('button').click();
-				nodeCreatorFeature.getters
-					.nodeCreator()
-					.contains('What happens next?')
-					.should('be.visible');
-		});
-
 	});
+
+	it('should add node to canvas from actions panel', () => {
+		const editImageNode = 'Edit Image';
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type(editImageNode);
+		nodeCreatorFeature.getters.getCreatorItem(editImageNode).click();
+		nodeCreatorFeature.getters.activeSubcategory().should('have.text', editImageNode);
+		nodeCreatorFeature.getters.getCreatorItem('Crop Image').click();
+		NDVModal.getters.parameterInput('operation').should('contain.text', 'Crop');
+	})
 
 	it('should render and select community node', () => {
 		cy.intercept('GET', '/types/nodes.json').as('nodesIntercept');
