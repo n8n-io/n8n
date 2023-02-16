@@ -1,5 +1,4 @@
 import { NodeCreator } from '../pages/features/node-creator';
-import { INodeTypeDescription } from 'n8n-workflow';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
@@ -107,92 +106,47 @@ describe('Node Creator', () => {
 
 	});
 
+	it('should render and select community node', () => {
+		cy.intercept('GET', '/types/nodes.json').as('nodesIntercept');
+		cy.wait('@nodesIntercept').then(() => {
+			const customNode = 'E2E Node';
 
-	// it('check if all nodes are rendered', () => {
-	// 	cy.wait('@nodesIntercept').then((interception) => {
-	// 		const nodes = interception.response?.body as INodeTypeDescription[];
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type(customNode);
 
-	// 		const categorizedNodes = nodeCreatorFeature.actions.categorizeNodes(nodes);
-	// 		nodeCreatorFeature.actions.openNodeCreator();
-	// 		nodeCreatorFeature.actions.selectTab('All');
+			nodeCreatorFeature.getters
+				.getCreatorItem(customNode)
+				.findChildByTestId('node-creator-item-tooltip')
+				.should('exist');
+			nodeCreatorFeature.actions.selectNode(customNode);
 
-	// 		const categories = Object.keys(categorizedNodes);
-	// 		categories.forEach((category: string) => {
-	// 			// Core Nodes contains subcategories which we'll test separately
-	// 			if (category === 'Core Nodes') return;
+			// TODO: Replace once we have canvas feature utils
+			cy.get('.data-display .node-name').contains(customNode).should('exist');
 
-	// 			nodeCreatorFeature.actions.toggleCategory(category);
+			const nodeParameters = () => cy.getByTestId('node-parameters');
+			const firstParameter = () => nodeParameters().find('.parameter-item').eq(0);
+			const secondParameter = () => nodeParameters().find('.parameter-item').eq(1);
 
-	// 			// Check if all nodes are present
-	// 			nodeCreatorFeature.getters.nodeItemName().then(($elements) => {
-	// 				const visibleNodes: string[] = [];
-	// 				$elements.each((_, element) => {
-	// 					visibleNodes.push(element.textContent?.trim() || '');
-	// 				});
-	// 				const visibleCategoryNodes = (categorizedNodes[category] as INodeTypeDescription[])
-	// 					.filter((node) => !node.hidden)
-	// 					.map((node) => node.displayName?.trim());
-
-	// 				cy.wrap(visibleCategoryNodes).each((categoryNode: string) => {
-	// 					expect(visibleNodes).to.include(categoryNode);
-	// 				});
-	// 			});
-
-	// 			nodeCreatorFeature.actions.toggleCategory(category);
-	// 		});
-	// 	});
-	// });
-
-	// it('should render and select community node', () => {
-	// 	cy.intercept('GET', '/types/nodes.json').as('nodesIntercept');
-	// 	cy.wait('@nodesIntercept').then(() => {
-	// 		const customCategory = 'Custom Category';
-	// 		const customNode = 'E2E Node';
-	// 		const customNodeDescription = 'Demonstrate rendering of node';
-
-	// 		nodeCreatorFeature.actions.openNodeCreator();
-	// 		nodeCreatorFeature.actions.selectTab('All');
-
-	// 		nodeCreatorFeature.getters.getCreatorItem(customCategory).should('exist');
-
-	// 		nodeCreatorFeature.actions.toggleCategory(customCategory);
-	// 		nodeCreatorFeature.getters
-	// 			.getCreatorItem(customNode)
-	// 			.findChildByTestId('node-creator-item-tooltip')
-	// 			.should('exist');
-	// 		nodeCreatorFeature.getters
-	// 			.getCreatorItem(customNode)
-	// 			.contains(customNodeDescription)
-	// 			.should('exist');
-	// 		nodeCreatorFeature.actions.selectNode(customNode);
-
-	// 		// TODO: Replace once we have canvas feature utils
-	// 		cy.get('.data-display .node-name').contains(customNode).should('exist');
-
-	// 		const nodeParameters = () => cy.getByTestId('node-parameters');
-	// 		const firstParameter = () => nodeParameters().find('.parameter-item').eq(0);
-	// 		const secondParameter = () => nodeParameters().find('.parameter-item').eq(1);
-
-	// 		// Check correct fields are rendered
-	// 		nodeParameters().should('exist');
-	// 		// Test property text input
-	// 		firstParameter().contains('Test property').should('exist');
-	// 		firstParameter().find('input.el-input__inner').should('have.value', 'Some default');
-	// 		// Resource select input
-	// 		secondParameter().find('label').contains('Resource').should('exist');
-	// 		secondParameter().find('input.el-input__inner').should('have.value', 'option2');
-	// 		secondParameter().find('.el-select').click();
-	// 		secondParameter().find('.el-select-dropdown__list').should('exist');
-	// 		// Check if all options are rendered and select the fourth one
-	// 		secondParameter().find('.el-select-dropdown__list').children().should('have.length', 4);
-	// 		secondParameter()
-	// 			.find('.el-select-dropdown__list')
-	// 			.children()
-	// 			.eq(3)
-	// 			.contains('option4')
-	// 			.should('exist')
-	// 			.click();
-	// 		secondParameter().find('input.el-input__inner').should('have.value', 'option4');
-	// 	});
-	// });
+			// Check correct fields are rendered
+			nodeParameters().should('exist');
+			// Test property text input
+			firstParameter().contains('Test property').should('exist');
+			firstParameter().find('input.el-input__inner').should('have.value', 'Some default');
+			// Resource select input
+			secondParameter().find('label').contains('Resource').should('exist');
+			secondParameter().find('input.el-input__inner').should('have.value', 'option2');
+			secondParameter().find('.el-select').click();
+			secondParameter().find('.el-select-dropdown__list').should('exist');
+			// Check if all options are rendered and select the fourth one
+			secondParameter().find('.el-select-dropdown__list').children().should('have.length', 4);
+			secondParameter()
+				.find('.el-select-dropdown__list')
+				.children()
+				.eq(3)
+				.contains('option4')
+				.should('exist')
+				.click();
+			secondParameter().find('input.el-input__inner').should('have.value', 'option4');
+		});
+	});
 });

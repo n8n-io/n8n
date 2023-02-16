@@ -96,6 +96,7 @@ describe('Canvas Actions', () => {
 
 	it('should add merge node and test connections', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 2; i++) {
 			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
 			WorkflowPage.getters.nodeViewBackground().click(600 + i * 100, 200, { force: true });
@@ -138,6 +139,7 @@ describe('Canvas Actions', () => {
 
 	it('should add nodes and check execution success', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 3; i++) {
 			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
 		}
@@ -235,6 +237,7 @@ describe('Canvas Actions', () => {
 
 	it('should move node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
@@ -316,6 +319,7 @@ describe('Canvas Actions', () => {
 
 	it('should select nodes using arrow keys', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		cy.get('body').type('{leftArrow}');
@@ -326,6 +330,7 @@ describe('Canvas Actions', () => {
 
 	it('should select nodes using shift and arrow keys', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		cy.get('body').type('{shift}', { release: false }).type('{leftArrow}');
@@ -334,6 +339,7 @@ describe('Canvas Actions', () => {
 
 	it('should delete connections by pressing the delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().realHover();
 		cy.get('.connection-actions .delete').first().click({ force: true });
@@ -342,6 +348,7 @@ describe('Canvas Actions', () => {
 
 	it('should delete a connection by moving it away from endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.drag(WorkflowPage.getters.getEndpointSelector('input', CODE_NODE_NAME), [0, -100]);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
@@ -349,6 +356,7 @@ describe('Canvas Actions', () => {
 
 	it('should disable node by pressing the disable button', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters
 			.canvasNodes()
@@ -360,6 +368,7 @@ describe('Canvas Actions', () => {
 
 	it('should disable node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
@@ -368,6 +377,7 @@ describe('Canvas Actions', () => {
 
 	it('should disable multiple nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
@@ -389,6 +399,7 @@ describe('Canvas Actions', () => {
 
 	it('should duplicate node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters
 			.canvasNodes()
