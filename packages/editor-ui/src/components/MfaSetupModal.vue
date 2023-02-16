@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		width="500px"
-		title="Multi-factor Authentication Setup"
+		title="Setup Authenticator app [1/2]"
 		:eventBus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY"
 		:center="true"
@@ -9,24 +9,24 @@
 		<template #content>
 			<div v-if="!showRecoveryCodes" :class="$style.container">
 				<div :class="$style.textContainer">
-					<n8n-text size="large" :bold="true">1. Scan this barcode with your app.</n8n-text>
-				</div>
-				<div :class="$style.qrContainer">
-					<qrcode-vue :value="qrCode" size="200" level="H" />
-				</div>
-				<div :class="$style.testing">
-					<CopyInput
-						label="Secret:"
-						:value="secret"
-						:copy-button-text="$locale.baseText('generic.clickToCopy')"
-						toast-title="Secret copied to clipboard"
-						@copy="onCopy"
-					/>
-				</div>
-				<div :class="$style.textContainer">
-					<n8n-text size="large" :bold="true">2. Enter six-digits from the application.</n8n-text>
+					<n8n-text size="large" color="text-dark" :bold="true">1. Scan the QR code</n8n-text>
 				</div>
 				<div>
+					<n8n-text size="medium" :bold="false"
+						>Use an authenticator app from your phone to scan. If you can't scan the QR code, enter
+						<a @click="onCopySecretToClipboard">this text code</a> instead.
+						<span style="display: none" ref="codeSecret">{{ secret }}</span>
+					</n8n-text>
+				</div>
+				<div :class="$style.qrContainer">
+					<qrcode-vue :value="qrCode" size="150" level="H" />
+				</div>
+				<div :class="$style.textContainer">
+					<n8n-text size="large" color="text-dark" :bold="true"
+						>2. Verify the code from the app</n8n-text
+					>
+				</div>
+				<div :class="$style.form">
 					<n8n-form-inputs
 						v-if="formInputs"
 						:inputs="formInputs"
@@ -100,15 +100,17 @@ import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
 import { useSettingsStore } from '@/stores/settings';
 import CopyInput from '@/components/CopyInput.vue';
+import { copyPaste } from '@/mixins/copyPaste';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, copyPaste).extend({
 	name: 'MfaSetupModal',
 	components: {
 		Modal,
 		QrcodeVue,
 		CopyInput,
+		copyPaste,
 	},
 	data() {
 		return {
@@ -136,9 +138,17 @@ export default mixins(showMessage).extend({
 		closeDialog(): void {
 			this.modalBus.$emit('close');
 		},
-		// onInput(input: { value: string }) {
-		// 	this.hasAnyChanges = true;
-		// },
+		onInput(input: { value: string }) {
+			this.hasAnyChanges = true;
+		},
+		onCopySecretToClipboard() {
+			this.copyToClipboard((this.$refs.codeSecret as HTMLInputElement).innerHTML);
+			this.$showToast({
+				title: 'Code copied to clipboard',
+				message: 'Enter the code in your authenticator app',
+				type: 'success',
+			});
+		},
 		async onSubmit(form: { authenticatorCode: string }) {
 			try {
 				await this.settingsStore.verifyMfaToken({ token: form.authenticatorCode });
@@ -193,9 +203,10 @@ export default mixins(showMessage).extend({
 			}
 
 			if (/\D/.test(value)) {
+				console.log('entre aqui');
 				this.readyToSubmit = false;
 				return {
-					messageKey: 'Code must be only numbers',
+					messageKey: 'mfa.setup.invalidCode',
 				};
 			}
 
@@ -216,7 +227,8 @@ export default mixins(showMessage).extend({
 				name: 'authenticatorCode',
 				initialValue: '',
 				properties: {
-					label: 'Code',
+					showRequiredAsterisk: false,
+					label: 'Code from authenticator app',
 					maxlength: 6,
 					placeholder: 'XXXXXX',
 					required: true,
@@ -252,8 +264,11 @@ export default mixins(showMessage).extend({
 		margin-bottom: 0;
 	}
 }
+
 .textContainer {
-	text-align: justify;
+	text-align: left;
+	margin: 0px;
+	margin-bottom: 5px;
 }
 
 .formContainer {
@@ -261,7 +276,6 @@ export default mixins(showMessage).extend({
 }
 
 .qrContainer {
-	text-align: center;
 }
 
 .headerContainer {
@@ -286,5 +300,16 @@ export default mixins(showMessage).extend({
 	margin-bottom: 10px;
 	height: 1px;
 	background: grey;
+}
+
+.form:first-child span {
+	color: var(--color-text-base);
+	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size-s);
+}
+
+.form input {
+	width: 50%;
+	height: 30px;
 }
 </style>
