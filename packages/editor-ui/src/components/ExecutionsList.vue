@@ -1,41 +1,19 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
-			<div :class="$style.filters">
-				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
-				<n8n-select
-					:class="$style.filterItem"
-					v-model="filter.workflowId"
-					:placeholder="$locale.baseText('executionsList.selectWorkflow')"
-					size="medium"
-					filterable
-					@change="handleFilterChanged"
-				>
-					<div class="ph-no-capture">
-						<n8n-option
-							v-for="item in workflows"
-							:key="item.id"
-							:label="item.name"
-							:value="item.id"
-						/>
-					</div>
-				</n8n-select>
-				<n8n-select
-					:class="$style.filterItem"
-					v-model="filter.status"
-					:placeholder="$locale.baseText('executionsList.selectStatus')"
-					size="medium"
-					filterable
-					@change="handleFilterChanged"
-				>
-					<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id" />
-				</n8n-select>
-				<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
-					{{ $locale.baseText('executionsList.autoRefresh') }}
-				</el-checkbox>
+			<div :class="$style.execListHeader">
+				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
+				<div :class="$style.execListHeaderControls">
+					<el-checkbox v-model="autoRefresh" class="mr-l" @change="handleAutoRefreshToggle">
+						{{ $locale.baseText('executionsList.autoRefresh') }}
+					</el-checkbox>
+					<execution-filter
+						:workflows="workflows"
+						:filter="filter"
+						@filterChanged="onFilterChanged"
+					/>
+				</div>
 			</div>
-
 			<table :class="$style.execTable">
 				<thead>
 					<tr>
@@ -251,6 +229,7 @@
 import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { restApi } from '@/mixins/restApi';
@@ -280,6 +259,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		components: {
 			ExecutionTime,
 			WorkflowActivator,
+			ExecutionFilter,
 		},
 		data() {
 			return {
@@ -327,30 +307,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		},
 		computed: {
 			...mapStores(useUIStore, useWorkflowsStore),
-			statuses() {
-				return [
-					{
-						id: 'ALL',
-						name: this.$locale.baseText('executionsList.anyStatus'),
-					},
-					{
-						id: 'error',
-						name: this.$locale.baseText('executionsList.error'),
-					},
-					{
-						id: 'running',
-						name: this.$locale.baseText('executionsList.running'),
-					},
-					{
-						id: 'success',
-						name: this.$locale.baseText('executionsList.success'),
-					},
-					{
-						id: 'waiting',
-						name: this.$locale.baseText('executionsList.waiting'),
-					},
-				];
-			},
 			activeExecutions(): IExecutionsCurrentSummaryExtended[] {
 				return this.workflowsStore.activeExecutions;
 			},
@@ -532,7 +488,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.checkAll = false;
 				this.handleCheckAllChange();
 			},
-			handleFilterChanged() {
+			onFilterChanged(filter: { status: string; workflowId: string }) {
+				this.filter = filter;
 				this.refreshData();
 			},
 			handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
@@ -940,6 +897,19 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	@media (min-width: 1200px) {
 		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 	}
+}
+
+.execListHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing-s);
+}
+
+.execListHeaderControls {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
 }
 
 .selectionOptions {
