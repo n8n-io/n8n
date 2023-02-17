@@ -1,13 +1,13 @@
 import {
 	changePassword,
 	deleteUser,
-	getCurrentUser,
 	getInviteLink,
 	getUsers,
 	inviteUsers,
 	login,
 	loginCurrentUser,
 	logout,
+	preOwnerSetup,
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
@@ -139,16 +139,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			}
 			Vue.set(this.currentUser, 'personalizationAnswers', answers);
 		},
-		async getCurrentUser(): Promise<IUserResponse | null> {
-			const rootStore = useRootStore();
-			const user = await getCurrentUser(rootStore.getRestApiContext);
-			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
-			}
-
-			return user;
-		},
 		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await loginCurrentUser(rootStore.getRestApiContext);
@@ -181,6 +171,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
+		},
+		async preOwnerSetup() {
+			return preOwnerSetup(useRootStore().getRestApiContext);
 		},
 		async createOwner(params: {
 			firstName: string;

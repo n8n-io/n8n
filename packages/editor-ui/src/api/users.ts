@@ -6,14 +6,10 @@ import {
 	IUserResponse,
 } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<CurrentUserResponse | null> {
 	return makeRestApiRequest(context, 'GET', '/login');
-}
-
-export function getCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {
-	return makeRestApiRequest(context, 'GET', '/me');
 }
 
 export function login(
@@ -27,11 +23,17 @@ export async function logout(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/logout');
 }
 
+export function preOwnerSetup(
+	context: IRestApiContext,
+): Promise<{ credentials: number; workflows: number }> {
+	return makeRestApiRequest(context, 'GET', '/owner/pre-setup');
+}
+
 export function setupOwner(
 	context: IRestApiContext,
 	params: { firstName: string; lastName: string; email: string; password: string },
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'POST', '/owner', params as unknown as IDataObject);
+	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
 }
 
 export function skipOwnerSetup(context: IRestApiContext): Promise<void> {

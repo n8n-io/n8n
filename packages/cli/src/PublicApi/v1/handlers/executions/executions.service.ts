@@ -4,7 +4,7 @@ import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
 
 import * as Db from '@/Db';
 import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';
-import type { ExecutionStatus } from '@/PublicApi/types';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | null,

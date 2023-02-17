@@ -53,7 +53,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-const SURVEY_VERSION = 'v3';
+const SURVEY_VERSION = 'v4';
 
 import {
 	COMPANY_SIZE_100_499,
@@ -78,19 +78,7 @@ import {
 	PHYSICAL_RETAIL_OR_SERVICES,
 	REAL_ESTATE_OR_CONSTRUCTION,
 	TELECOMS_INDUSTRY,
-	AUTOMATION_GOAL_KEY,
-	CUSTOMER_INTEGRATIONS_GOAL,
-	CUSTOMER_SUPPORT_GOAL,
-	ENGINEERING_GOAL,
-	FINANCE_ACCOUNTING_GOAL,
-	HR_GOAL,
-	OPERATIONS_GOAL,
-	PRODUCT_GOAL,
-	SALES_MARKETING_GOAL,
-	SECURITY_GOAL,
 	OTHER_AUTOMATION_GOAL,
-	NOT_SURE_YET_GOAL,
-	AUTOMATION_GOAL_OTHER_KEY,
 	COMPANY_TYPE_KEY,
 	EMAIL_KEY,
 	SAAS_COMPANY_TYPE,
@@ -114,20 +102,46 @@ import {
 	MARKETING_AUTOMATION_DATA_SYNCHING,
 	MARKETING_AUTOMATION_OTHER,
 	OTHER_MARKETING_AUTOMATION_GOAL_KEY,
-	USAGE_MODE_KEY,
-	USAGE_MODE_MANIPULATE_FILES,
-	USAGE_MODE_BUILD_BE_SERVICES,
-	USAGE_MODE_CONNECT_TO_DB,
+	ROLE_KEY,
+	ROLE_BUSINESS_OWNER,
+	ROLE_CUSTOMER_SUPPORT,
+	ROLE_ENGINEERING,
+	ROLE_DATA_SCIENCE,
+	ROLE_DEVOPS,
+	ROLE_IT,
+	ROLE_SALES_AND_MARKETING,
+	ROLE_SECURITY,
+	ROLE_OTHER,
+	ROLE_OTHER_KEY,
+	DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
+	DEVOPS_AUTOMATION_GOAL_KEY,
+	DEVOPS_AUTOMATION_OTHER,
+	DEVOPS_AUTOMATION_CI_CD_GOAL,
+	DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL,
+	DEVOPS_AUTOMATION_DATA_SYNCING_GOAL,
+	DEVOPS_INCIDENT_RESPONSE_GOAL,
+	DEVOPS_MONITORING_AND_ALERTING_GOAL,
+	DEVOPS_REPORTING_GOAL,
+	DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL,
+	AUTOMATION_BENEFICIARY_KEY,
+	AUTOMATION_BENEFICIARY_SELF,
+	AUTOMATION_BENEFICIARY_MY_TEAM,
+	AUTOMATION_BENEFICIARY_OTHER_TEAMS,
+	REPORTED_SOURCE_KEY,
+	REPORTED_SOURCE_GOOGLE,
+	REPORTED_SOURCE_TWITTER,
+	REPORTED_SOURCE_LINKEDIN,
+	REPORTED_SOURCE_YOUTUBE,
+	REPORTED_SOURCE_FRIEND,
+	REPORTED_SOURCE_PODCAST,
+	REPORTED_SOURCE_EVENT,
+	REPORTED_SOURCE_OTHER,
+	REPORTED_SOURCE_OTHER_KEY,
 } from '../constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import {
-	IFormInputs,
-	IPersonalizationLatestVersion,
-	IPersonalizationSurveyAnswersV3,
-	IUser,
-} from '@/Interface';
+import { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import Vue from 'vue';
 import { getAccountAge } from '@/utils';
 import { GenericValue } from 'n8n-workflow';
@@ -293,55 +307,47 @@ export default mixins(showMessage, workflowHelpers).extend({
 					},
 				},
 				{
-					name: AUTOMATION_GOAL_KEY,
+					name: ROLE_KEY,
 					properties: {
 						type: 'select',
-						label: this.$locale.baseText('personalizationModal.whatAreYouLookingToAutomate'),
+						label: this.$locale.baseText('personalizationModal.whichRoleBestDescribesYou'),
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
 							{
-								value: CUSTOMER_INTEGRATIONS_GOAL,
-								label: this.$locale.baseText('personalizationModal.customerIntegrations'),
+								value: ROLE_BUSINESS_OWNER,
+								label: this.$locale.baseText('personalizationModal.businessOwner'),
 							},
 							{
-								value: CUSTOMER_SUPPORT_GOAL,
+								value: ROLE_CUSTOMER_SUPPORT,
 								label: this.$locale.baseText('personalizationModal.customerSupport'),
 							},
 							{
-								value: ENGINEERING_GOAL,
-								label: this.$locale.baseText('personalizationModal.engineeringOrDevops'),
+								value: ROLE_DATA_SCIENCE,
+								label: this.$locale.baseText('personalizationModal.dataScience'),
 							},
 							{
-								value: FINANCE_ACCOUNTING_GOAL,
-								label: this.$locale.baseText('personalizationModal.financeOrAccounting'),
+								value: ROLE_DEVOPS,
+								label: this.$locale.baseText('personalizationModal.devops'),
 							},
 							{
-								value: HR_GOAL,
-								label: this.$locale.baseText('personalizationModal.hr'),
+								value: ROLE_IT,
+								label: this.$locale.baseText('personalizationModal.it'),
 							},
 							{
-								value: OPERATIONS_GOAL,
-								label: this.$locale.baseText('personalizationModal.operations'),
+								value: ROLE_ENGINEERING,
+								label: this.$locale.baseText('personalizationModal.engineering'),
 							},
 							{
-								value: PRODUCT_GOAL,
-								label: this.$locale.baseText('personalizationModal.product'),
-							},
-							{
-								value: SALES_MARKETING_GOAL,
+								value: ROLE_SALES_AND_MARKETING,
 								label: this.$locale.baseText('personalizationModal.salesAndMarketing'),
 							},
 							{
-								value: SECURITY_GOAL,
+								value: ROLE_SECURITY,
 								label: this.$locale.baseText('personalizationModal.security'),
 							},
 							{
-								value: OTHER_AUTOMATION_GOAL,
+								value: ROLE_OTHER,
 								label: this.$locale.baseText('personalizationModal.otherPleaseSpecify'),
-							},
-							{
-								value: NOT_SURE_YET_GOAL,
-								label: this.$locale.baseText('personalizationModal.notSureYet'),
 							},
 						],
 					},
@@ -351,15 +357,82 @@ export default mixins(showMessage, workflowHelpers).extend({
 					},
 				},
 				{
-					name: AUTOMATION_GOAL_OTHER_KEY,
+					name: ROLE_OTHER_KEY,
+					properties: {
+						placeholder: this.$locale.baseText('personalizationModal.specifyYourRole'),
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE && role === ROLE_OTHER;
+					},
+				},
+				{
+					name: DEVOPS_AUTOMATION_GOAL_KEY,
+					properties: {
+						type: 'multi-select',
+						label: this.$locale.baseText('personalizationModal.whatAreYouLookingToAutomate'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								value: DEVOPS_AUTOMATION_CI_CD_GOAL,
+								label: this.$locale.baseText('personalizationModal.cicd'),
+							},
+							{
+								value: DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL,
+								label: this.$locale.baseText(
+									'personalizationModal.cloudInfrastructureOrchestration',
+								),
+							},
+							{
+								value: DEVOPS_AUTOMATION_DATA_SYNCING_GOAL,
+								label: this.$locale.baseText('personalizationModal.dataSynching'),
+							},
+							{
+								value: DEVOPS_INCIDENT_RESPONSE_GOAL,
+								label: this.$locale.baseText('personalizationModal.incidentResponse'),
+							},
+							{
+								value: DEVOPS_MONITORING_AND_ALERTING_GOAL,
+								label: this.$locale.baseText('personalizationModal.monitoringAndAlerting'),
+							},
+							{
+								value: DEVOPS_REPORTING_GOAL,
+								label: this.$locale.baseText('personalizationModal.reporting'),
+							},
+							{
+								value: DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL,
+								label: this.$locale.baseText('personalizationModal.ticketingSystemsIntegrations'),
+							},
+							{
+								value: OTHER_AUTOMATION_GOAL,
+								label: this.$locale.baseText('personalizationModal.other'),
+							},
+						],
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY] as string;
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
+							[ROLE_DEVOPS, ROLE_ENGINEERING, ROLE_IT].includes(role)
+						);
+					},
+				},
+				{
+					name: DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
 					properties: {
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourAutomationGoal'),
 					},
 					shouldDisplay(values): boolean {
 						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
-						const automationGoal = (values as IPersonalizationLatestVersion)[AUTOMATION_GOAL_KEY];
+						const goals = (values as IPersonalizationLatestVersion)[DEVOPS_AUTOMATION_GOAL_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY] as string;
 						return (
-							companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL
+							companyType !== PERSONAL_COMPANY_TYPE &&
+							[ROLE_DEVOPS, ROLE_ENGINEERING, ROLE_IT].includes(role) &&
+							!!goals &&
+							goals.includes(DEVOPS_AUTOMATION_OTHER)
 						);
 					},
 				},
@@ -401,8 +474,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const goal = (values as IPersonalizationLatestVersion)[AUTOMATION_GOAL_KEY];
-						return goal === SALES_MARKETING_GOAL;
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE && role === ROLE_SALES_AND_MARKETING;
 					},
 				},
 				{
@@ -413,30 +487,41 @@ export default mixins(showMessage, workflowHelpers).extend({
 						),
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
-						return !!goals && goals.includes(MARKETING_AUTOMATION_OTHER);
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
+							role === ROLE_SALES_AND_MARKETING &&
+							!!goals &&
+							goals.includes(MARKETING_AUTOMATION_OTHER)
+						);
 					},
 				},
 				{
-					name: USAGE_MODE_KEY,
+					name: AUTOMATION_BENEFICIARY_KEY,
 					properties: {
-						type: 'multi-select',
-						label: this.$locale.baseText('personalizationModal.specifyUsageMode'),
+						type: 'select',
+						label: this.$locale.baseText('personalizationModal.specifyAutomationBeneficiary'),
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
 							{
-								label: this.$locale.baseText('personalizationModal.connectToInternalDB'),
-								value: USAGE_MODE_CONNECT_TO_DB,
+								label: this.$locale.baseText('personalizationModal.myself'),
+								value: AUTOMATION_BENEFICIARY_SELF,
 							},
 							{
-								label: this.$locale.baseText('personalizationModal.buildBackendServices'),
-								value: USAGE_MODE_BUILD_BE_SERVICES,
+								label: this.$locale.baseText('personalizationModal.myTeam'),
+								value: AUTOMATION_BENEFICIARY_MY_TEAM,
 							},
 							{
-								label: this.$locale.baseText('personalizationModal.manipulateFiles'),
-								value: USAGE_MODE_MANIPULATE_FILES,
+								label: this.$locale.baseText('personalizationModal.otherTeams'),
+								value: AUTOMATION_BENEFICIARY_OTHER_TEAMS,
 							},
 						],
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE;
 					},
 				},
 				{
@@ -477,6 +562,58 @@ export default mixins(showMessage, workflowHelpers).extend({
 						return companyType !== PERSONAL_COMPANY_TYPE;
 					},
 				},
+				{
+					name: REPORTED_SOURCE_KEY,
+					properties: {
+						type: 'select',
+						label: this.$locale.baseText('personalizationModal.howDidYouHearAboutN8n'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								label: 'Google',
+								value: REPORTED_SOURCE_GOOGLE,
+							},
+							{
+								label: 'Twitter',
+								value: REPORTED_SOURCE_TWITTER,
+							},
+							{
+								label: 'LinkedIn',
+								value: REPORTED_SOURCE_LINKEDIN,
+							},
+							{
+								label: 'YouTube',
+								value: REPORTED_SOURCE_YOUTUBE,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.friendWordOfMouth'),
+								value: REPORTED_SOURCE_FRIEND,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.podcast'),
+								value: REPORTED_SOURCE_PODCAST,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.event'),
+								value: REPORTED_SOURCE_EVENT,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.otherPleaseSpecify'),
+								value: REPORTED_SOURCE_OTHER,
+							},
+						],
+					},
+				},
+				{
+					name: REPORTED_SOURCE_OTHER_KEY,
+					properties: {
+						placeholder: this.$locale.baseText('personalizationModal.specifyReportedSource'),
+					},
+					shouldDisplay(values): boolean {
+						const reportedSource = (values as IPersonalizationLatestVersion)[REPORTED_SOURCE_KEY];
+						return reportedSource === REPORTED_SOURCE_OTHER;
+					},
+				},
 			];
 
 			return survey;
@@ -502,9 +639,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
-				await this.usersStore.submitPersonalizationSurvey(
-					survey as IPersonalizationSurveyAnswersV3,
-				);
+				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();

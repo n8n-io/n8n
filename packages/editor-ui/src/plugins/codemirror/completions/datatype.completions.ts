@@ -1,4 +1,4 @@
-import { ExpressionExtensions, NativeMethods, IDataObject } from 'n8n-workflow';
+import { ExpressionExtensions, NativeMethods, IDataObject, DocMetadata } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -15,6 +15,10 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { ExtensionTypeName, FnToDoc, Resolved } from './types';
+import { sanitizeHtml } from '@/utils';
+import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
+
+type AutocompleteOptionType = 'function' | 'keyword';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -111,11 +115,14 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 }
 
 export const natives = (typeName: ExtensionTypeName): Completion[] => {
-	const natives = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
+	const natives: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!natives) return [];
 
-	return toOptions(natives.functions, typeName);
+	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
+	const nativeMethods = toOptions(natives.functions, typeName, 'function');
+
+	return [...nativeProps, ...nativeMethods];
 };
 
 export const extensions = (typeName: ExtensionTypeName) => {
@@ -132,50 +139,116 @@ export const extensions = (typeName: ExtensionTypeName) => {
 	return toOptions(fnToDoc, typeName);
 };
 
-export const toOptions = (fnToDoc: FnToDoc, typeName: ExtensionTypeName) => {
+export const toOptions = (
+	fnToDoc: FnToDoc,
+	typeName: ExtensionTypeName,
+	optionType: AutocompleteOptionType = 'function',
+) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([fnName, fn]) => {
 			const option: Completion = {
-				label: fnName + '()',
-				type: 'function',
+				label: optionType === 'function' ? fnName + '()' : fnName,
+				type: optionType,
 			};
 
 			option.info = () => {
 				const tooltipContainer = document.createElement('div');
+				tooltipContainer.classList.add('autocomplete-info-container');
 
 				if (!fn.doc?.description) return null;
 
-				tooltipContainer.style.display = 'flex';
-				tooltipContainer.style.flexDirection = 'column';
-				tooltipContainer.style.paddingTop = 'var(--spacing-4xs)';
-				tooltipContainer.style.paddingBottom = 'var(--spacing-4xs)';
-
-				const header = document.createElement('div');
-				header.style.marginBottom = 'var(--spacing-2xs)';
-
-				const typeNameSpan = document.createElement('span');
-				typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
-
-				const functionNameSpan = document.createElement('span');
-				functionNameSpan.innerHTML = fn.doc.name + '()';
-				functionNameSpan.style.fontWeight = 'var(--font-weight-bold)';
-
-				const returnTypeSpan = document.createElement('span');
-				returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
-
-				header.appendChild(typeNameSpan);
-				header.appendChild(functionNameSpan);
-				header.appendChild(returnTypeSpan);
-
+				const header =
+					optionType === 'function'
+						? createFunctionHeader(typeName, fn)
+						: createPropHeader(typeName, fn);
+				header.classList.add('autocomplete-info-header');
 				tooltipContainer.appendChild(header);
-				tooltipContainer.appendChild(document.createTextNode(fn.doc.description));
+
+				const descriptionBody = document.createElement('div');
+				descriptionBody.classList.add('autocomplete-info-description');
+				const descriptionText = document.createElement('p');
+				descriptionText.innerHTML = sanitizeHtml(
+					fn.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
+				);
+				descriptionBody.appendChild(descriptionText);
+				if (fn.doc.docURL) {
+					const descriptionLink = document.createElement('a');
+					descriptionLink.setAttribute('target', '_blank');
+					descriptionLink.setAttribute('href', fn.doc.docURL);
+					descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
+					descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
+						// This will prevent documentation popup closing before click
+						// event gets to links
+						event.preventDefault();
+					});
+					descriptionLink.classList.add('autocomplete-info-doc-link');
+					descriptionBody.appendChild(descriptionLink);
+				}
+				tooltipContainer.appendChild(descriptionBody);
 
 				return tooltipContainer;
 			};
 
 			return option;
 		});
+};
+
+const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefined }) => {
+	const header = document.createElement('div');
+	if (fn.doc) {
+		const typeNameSpan = document.createElement('span');
+		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+
+		const functionNameSpan = document.createElement('span');
+		functionNameSpan.classList.add('autocomplete-info-name');
+		functionNameSpan.innerHTML = `${fn.doc.name}`;
+		let functionArgs = '(';
+		if (fn.doc.args) {
+			functionArgs += fn.doc.args
+				.map((arg) => {
+					let argString = `${arg.name}`;
+					if (arg.type) {
+						argString += `: ${arg.type}`;
+					}
+					return argString;
+				})
+				.join(', ');
+		}
+		functionArgs += ')';
+		const argsSpan = document.createElement('span');
+		argsSpan.classList.add('autocomplete-info-name-args');
+		argsSpan.innerText = functionArgs;
+
+		const returnTypeSpan = document.createElement('span');
+		returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
+
+		header.appendChild(typeNameSpan);
+		header.appendChild(functionNameSpan);
+		header.appendChild(argsSpan);
+		header.appendChild(returnTypeSpan);
+	}
+	return header;
+};
+
+const createPropHeader = (typeName: string, property: { doc?: DocMetadata | undefined }) => {
+	const header = document.createElement('div');
+	if (property.doc) {
+		const typeNameSpan = document.createElement('span');
+		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+
+		const propNameSpan = document.createElement('span');
+		propNameSpan.classList.add('autocomplete-info-name');
+		propNameSpan.innerText = property.doc.name;
+
+		const returnTypeSpan = document.createElement('span');
+		returnTypeSpan.innerHTML = ': ' + property.doc.returnType;
+
+		header.appendChild(typeNameSpan);
+		header.appendChild(propNameSpan);
+		header.appendChild(returnTypeSpan);
+	}
+	return header;
 };
 
 const objectOptions = (toResolve: string, resolved: IDataObject) => {

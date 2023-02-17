@@ -232,13 +232,40 @@ export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
 
 export const CODING_SKILL_KEY = 'codingSkill';
 
+export const AUTOMATION_BENEFICIARY_KEY = 'automationBeneficiary';
+export const AUTOMATION_BENEFICIARY_SELF = 'myself';
+export const AUTOMATION_BENEFICIARY_MY_TEAM = 'my-team';
+export const AUTOMATION_BENEFICIARY_OTHER_TEAMS = 'other-teams';
+
 export const USAGE_MODE_KEY = 'usageModes';
 export const USAGE_MODE_CONNECT_TO_DB = 'connect-internal-db';
 export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
 export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
 
+export const REPORTED_SOURCE_KEY = 'reportedSource';
+export const REPORTED_SOURCE_OTHER_KEY = 'reportedSourceOther';
+export const REPORTED_SOURCE_GOOGLE = 'google';
+export const REPORTED_SOURCE_TWITTER = 'twitter';
+export const REPORTED_SOURCE_LINKEDIN = 'linkedin';
+export const REPORTED_SOURCE_YOUTUBE = 'youtube';
+export const REPORTED_SOURCE_FRIEND = 'friend';
+export const REPORTED_SOURCE_PODCAST = 'podcast';
+export const REPORTED_SOURCE_EVENT = 'event';
+export const REPORTED_SOURCE_OTHER = 'other';
+
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
-export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
+export const DEVOPS_AUTOMATION_GOAL_KEY = 'automationGoalDevops';
+export const DEVOPS_AUTOMATION_GOAL_OTHER_KEY = 'automationGoalDevopsOther';
+export const DEVOPS_AUTOMATION_OTHER = 'other';
+export const DEVOPS_AUTOMATION_CI_CD_GOAL = 'ci-cd';
+export const DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL =
+	'cloud-infrastructure-orchestration';
+export const DEVOPS_AUTOMATION_DATA_SYNCING_GOAL = 'data-syncing';
+export const DEVOPS_INCIDENT_RESPONSE_GOAL = 'incident-response';
+export const DEVOPS_MONITORING_AND_ALERTING_GOAL = 'monitoring-alerting';
+export const DEVOPS_REPORTING_GOAL = 'reporting';
+export const DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL = 'ticketing-systems-integrations';
+
 export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
 export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
 export const ENGINEERING_GOAL = 'engineering';
@@ -250,6 +277,18 @@ export const SALES_MARKETING_GOAL = 'sales-marketing';
 export const SECURITY_GOAL = 'security';
 export const OTHER_AUTOMATION_GOAL = 'other';
 export const NOT_SURE_YET_GOAL = 'not-sure-yet';
+
+export const ROLE_KEY = 'role';
+export const ROLE_OTHER_KEY = 'roleOther';
+export const ROLE_BUSINESS_OWNER = 'business-owner';
+export const ROLE_CUSTOMER_SUPPORT = 'customer-support';
+export const ROLE_DATA_SCIENCE = 'data-science';
+export const ROLE_DEVOPS = 'devops';
+export const ROLE_IT = 'it';
+export const ROLE_ENGINEERING = 'engineering';
+export const ROLE_SALES_AND_MARKETING = 'sales-and-marketing';
+export const ROLE_SECURITY = 'security';
+export const ROLE_OTHER = 'other';
 
 /** END OF PERSONALIZATION SURVEY */
 

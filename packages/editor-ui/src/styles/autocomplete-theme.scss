@@ -1,0 +1,45 @@
+.cm-tooltip-autocomplete {
+	background-color: var(--color-background-xlight) !important;
+
+	li .cm-completionLabel {
+		color: var(--color-success);
+	}
+}
+
+.ͼ2 .cm-tooltip-autocomplete ul li[aria-selected] .cm-completionLabel {
+	color: var(--color-text-xlight) !important;
+	font-weight: 600;
+}
+
+.autocomplete-info-container {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing-4xs) 0;
+}
+
+.cm-completionInfo {
+	background-color: var(--color-background-xlight) !important;
+
+	.autocomplete-info-header {
+		color: var(--color-text-dark);
+		line-height: var(--font-line-height-compact);
+		margin-bottom: var(--spacing-2xs);
+	}
+
+	.autocomplete-info-name {
+		color: var(--color-success);
+		font-weight: var(--font-weight-bold);
+	}
+
+	.autocomplete-info-description {
+		code {
+			background-color: var(--color-background-base);
+			padding: 0 2px;
+		}
+		p {
+			line-height: var(--font-line-height-compact);
+			margin-top: 0;
+			margin-bottom: var(--spacing-4xs);
+		}
+	}
+}
