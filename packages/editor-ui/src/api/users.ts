@@ -1,4 +1,5 @@
 import {
+	CurrentUserResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
@@ -7,7 +8,7 @@ import {
 import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 
-export function loginCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {
+export function loginCurrentUser(context: IRestApiContext): Promise<CurrentUserResponse | null> {
 	return makeRestApiRequest(context, 'GET', '/login');
 }
 
@@ -18,7 +19,7 @@ export function getCurrentUser(context: IRestApiContext): Promise<IUserResponse 
 export function login(
 	context: IRestApiContext,
 	params: { email: string; password: string },
-): Promise<IUserResponse> {
+): Promise<CurrentUserResponse> {
 	return makeRestApiRequest(context, 'POST', '/login', params);
 }
 

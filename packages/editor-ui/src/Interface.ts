@@ -566,6 +566,10 @@ export interface IUserResponse {
 	signInType?: SignInType;
 }
 
+export interface CurrentUserResponse extends IUserResponse {
+	featureFlags?: FeatureFlags;
+}
+
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
@@ -718,6 +722,14 @@ export interface IN8nUISettings {
 	templates: {
 		enabled: boolean;
 		host: string;
+	};
+	posthog: {
+		enabled: boolean;
+		apiHost: string;	
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;	
 	};
 	executionMode: string;
 	pushBackend: 'sse' | 'websocket';
