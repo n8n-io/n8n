@@ -3,16 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
-import { eventBus } from '../MessageEventBus/MessageEventBus';
+import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
-import type { EventMessageTypes } from '../EventMessageClasses';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -34,8 +33,8 @@ export class MessageEventBusDestinationSentry
 
 	sentryClient?: Sentry.NodeClient;
 
-	constructor(options: MessageEventBusDestinationSentryOptions) {
-		super(options);
+	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationSentryOptions) {
+		super(eventBusInstance, options);
 		this.label = options.label ?? 'Sentry DSN';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.sentry;
 		this.dsn = options.dsn;
@@ -54,7 +53,8 @@ export class MessageEventBusDestinationSentry
 		});
 	}
 
-	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
+	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
+		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (!this.sentryClient) return sendResult;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
@@ -84,11 +84,12 @@ export class MessageEventBusDestinationSentry
 			);
 
 			if (sentryResult) {
-				eventBus.confirmSent(msg, { id: this.id, name: this.label });
+				// eventBus.confirmSent(msg, { id: this.id, name: this.label });
+				confirmCallback(msg, { id: this.id, name: this.label });
 				sendResult = true;
 			}
 		} catch (error) {
-			console.log(error);
+			if (error.message) LoggerProxy.debug(error.message as string);
 		}
 		return sendResult;
 	}
@@ -104,6 +105,7 @@ export class MessageEventBusDestinationSentry
 	}
 
 	static deserialize(
+		eventBusInstance: MessageEventBus,
 		data: MessageEventBusDestinationOptions,
 	): MessageEventBusDestinationSentry | null {
 		if (
@@ -111,7 +113,7 @@ export class MessageEventBusDestinationSentry
 			data.__type === MessageEventBusDestinationTypeNames.sentry &&
 			isMessageEventBusDestinationSentryOptions(data)
 		) {
-			return new MessageEventBusDestinationSentry(data);
+			return new MessageEventBusDestinationSentry(eventBusInstance, data);
 		}
 		return null;
 	}
