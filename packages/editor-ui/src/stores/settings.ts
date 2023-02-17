@@ -333,3 +333,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 	},
 });
+
+export { useUsersStore };

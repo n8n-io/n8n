@@ -3,45 +3,48 @@
 		<div :class="$style.logoContainer">
 			<Logo />
 		</div>
-		<div :class="$style.headerContainer">
-			<n8n-heading v-if="showRecoveryCodeForm" tag="h2" size="xlarge" color="text-dark"
-				>Enter MFA Recovery Code</n8n-heading
-			>
-			<n8n-heading v-else tag="h2" size="xlarge" color="text-dark">Enter MFA Token</n8n-heading>
-		</div>
-		<div :class="$style.formContainer">
-			<n8n-form-inputs
-				v-if="formInputs"
-				:inputs="formInputs"
-				:eventBus="formBus"
-				@input="onInput"
-				@ready="onReadyToSubmit"
-				@submit="onSubmit"
-			/>
-		</div>
-		<div>
-			<n8n-info-tip v-if="!showRecoveryCodeForm"
-				>Don't have your mobile device?
-				<a @click="OnRecoveryCodeClick">Enter a recovery code</a></n8n-info-tip
-			>
-		</div>
-		<div>
-			<n8n-button
-				float="right"
-				label="Submit"
-				size="large"
-				:disabled="!hasAnyChanges || !readyToSubmit"
-				@click="onSaveClick"
-			/>
-			<n8n-button
-				v-if="showRecoveryCodeForm"
-				float="left"
-				label="Back"
-				size="large"
-				type="secondary"
-				@click="onBackClick"
-			/>
-		</div>
+		<n8n-card>
+			<div :class="$style.headerContainer">
+				<n8n-heading v-if="showRecoveryCodeForm" tag="h2" size="xlarge" color="text-dark"
+					>Two-factor authentication</n8n-heading
+				>
+				<n8n-heading v-else tag="h2" size="xlarge" color="text-dark"
+					>Two-factor authentication</n8n-heading
+				>
+			</div>
+			<br />
+			<br />
+
+			<div :class="$style.formContainer">
+				<n8n-form-inputs
+					v-if="formInputs"
+					:inputs="formInputs"
+					:eventBus="formBus"
+					@input="onInput"
+					@ready="onReadyToSubmit"
+					@submit="onSubmit"
+				/>
+			</div>
+			<div>
+				<n8n-info-tip v-if="!showRecoveryCodeForm"
+					>Don't have your auth device?
+					<a @click="OnRecoveryCodeClick">Enter a recovery code</a></n8n-info-tip
+				>
+			</div>
+			<br />
+			<br />
+
+			<div>
+				<n8n-button
+					float="right"
+					label="Continue"
+					size="large"
+					:disabled="!hasAnyChanges || !readyToSubmit"
+					@click="onSaveClick"
+				/>
+				<n8n-button float="left" label="Back" size="large" type="tertiary" @click="onBackClick" />
+			</div>
+		</n8n-card>
 	</div>
 </template>
 
@@ -74,8 +77,9 @@ export default mixins(showMessage).extend({
 				name: 'token',
 				initialValue: '',
 				properties: {
-					label: 'Token',
-					maxlength: 20,
+					label: 'Two-factor code',
+					placeholder: 'e.g. 123456',
+					maxlength: 6,
 					required: true,
 					capitalize: true,
 				},
@@ -105,6 +109,7 @@ export default mixins(showMessage).extend({
 					initialValue: '',
 					properties: {
 						label: 'Recovery Code',
+						placeholder: 'e.g c79f9c02-7b2e-44...',
 						maxlength: 36,
 						required: true,
 						capitalize: true,
@@ -113,26 +118,30 @@ export default mixins(showMessage).extend({
 			];
 		},
 		onBackClick() {
-			this.showRecoveryCodeForm = false;
-			this.formInputs = [
-				{
-					name: 'token',
-					initialValue: '',
-					properties: {
-						label: 'Token',
-						maxlength: 20,
-						required: true,
-						capitalize: true,
+			if (!this.showRecoveryCodeForm) {
+				this.$router.push({ name: VIEWS.SIGNIN });
+			} else {
+				this.showRecoveryCodeForm = false;
+				this.formInputs = [
+					{
+						name: 'token',
+						initialValue: '',
+						properties: {
+							label: 'Two-factor code',
+							placeholder: 'e.g. 123456',
+							maxlength: 6,
+							required: true,
+							capitalize: true,
+						},
 					},
-				},
-			];
+				];
+			}
 		},
 		onInput() {
 			console.log('on input');
 			this.hasAnyChanges = true;
 		},
 		onReadyToSubmit(ready: boolean) {
-			console.log(ready);
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: { token: string; recoveryCode: string }) {

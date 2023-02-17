@@ -1676,8 +1676,10 @@
 	"settings.mfa.title": "Multi-factor Authentication",
 	"settings.mfa.updateConfiguration": "MFA configuration updated",
 	"settings.mfa.invalidAuthenticatorCode": "Invalid authenticator code",
-	"settings.personal.enableMfa": "Add MFA to account",
+	"settings.personal.enableMfa": "Enable 2FA",
 	"settings.personal.disableMfa": "Remove MFA to account",
 	"mfa.setup.invalidAuthenticatorCode": "{code} is not a valid number",
-	"mfa.setup.invalidCode": "Two factor code failed. Please try again."
+	"mfa.setup.invalidCode": "Two factor code failed. Please try again.",
+	"mfa.infobox.disabled": "Two factor authentication is not yet enabled.",
+	"mfa.infobox.enabled": "Two factor authentication is currently enabled."
 }

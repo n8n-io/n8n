@@ -31,38 +31,55 @@
 					@submit="onSubmit"
 				/>
 			</div>
+			<div v-if="!signInWithLdap">
+				<div :class="$style.sectionHeader">
+					<n8n-heading size="large">{{
+						$locale.baseText('settings.personal.security')
+					}}</n8n-heading>
+				</div>
+				<div>
+					<n8n-input-label :label="$locale.baseText('auth.password')"> </n8n-input-label>
+					<n8n-button
+						:class="$style.button"
+						@click="openPasswordModal"
+						type="tertiary"
+						data-test-id="change-password-link"
+						:label="$locale.baseText('auth.changePassword')"
+					></n8n-button>
+				</div>
+			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">Multi-factor Authentication</n8n-heading>
+					<n8n-input-label label="Two-factor authentication (2FA)"> </n8n-input-label>
+					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
+						{{
+							mfaDisabled
+								? $locale.baseText('mfa.infobox.disabled')
+								: $locale.baseText('mfa.infobox.enabled')
+						}}
+						<n8n-link :to="MfaDocsUrl" size="small">
+							{{ $locale.baseText('generic.learnMore') }}
+						</n8n-link>
+					</n8n-info-tip>
 				</div>
 				<div v-if="mfaDisabled">
 					<n8n-button
+						:class="$style.button"
 						float="left"
+						type="tertiary"
 						:label="$locale.baseText('settings.personal.enableMfa')"
-						size="small"
 						@click="onMfaEnableClick"
 					/>
 				</div>
 				<div v-else>
 					<n8n-button
+						:class="$style.disableMfaButton"
 						float="left"
+						type="tertiary"
 						:label="$locale.baseText('settings.personal.disableMfa')"
-						size="small"
 						@click="onMfaDisableClick"
 					/>
 				</div>
-			</div>
-		</div>
-		<div v-if="!signInWithLdap">
-			<div :class="$style.sectionHeader">
-				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
-			</div>
-			<div>
-				<n8n-input-label :label="$locale.baseText('auth.password')">
-					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
-						$locale.baseText('auth.changePassword')
-					}}</n8n-link>
-				</n8n-input-label>
 			</div>
 		</div>
 		<div>
@@ -80,7 +97,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY, MFA_SETUP_MODAL_KEY, SignInType, VIEWS } from '@/constants';
+import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
@@ -154,6 +171,9 @@ export default mixins(showMessage).extend({
 		mfaDisabled(): boolean {
 			return !this.usersStore.mfaEnabled;
 		},
+		MfaDocsUrl(): string {
+			return MFA_DOCS_URL;
+		},
 	},
 	methods: {
 		onInput() {
@@ -193,23 +213,14 @@ export default mixins(showMessage).extend({
 			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
 		},
 		async onMfaDisableClick() {
-			const mfaDisableConfirmation = await this.confirmMessage(
-				'Are you sure you want to disable MFA? This will make your account less secure.',
-				'Disabling Multi-factor authentication?',
-				null,
-				'Yes, disable it',
-			);
-
-			if (mfaDisableConfirmation) {
-				const settingStore = useSettingsStore();
-				await settingStore.disabledMfa();
-				this.$showToast({
-					title: 'Multi-factor Authentication',
-					message: 'Succefully disabled',
-					type: 'success',
-					duration: 0,
-				});
-			}
+			const settingStore = useSettingsStore();
+			await settingStore.disabledMfa();
+			this.$showToast({
+				title: 'Two-factor authentication disabled',
+				message: 'You will no longer need your authenticator app when signing in',
+				type: 'success',
+				duration: 0,
+			});
 		},
 	},
 });
@@ -227,7 +238,6 @@ export default mixins(showMessage).extend({
 	display: flex;
 	align-items: center;
 	white-space: nowrap;
-
 	*:first-child {
 		flex-grow: 1;
 	}
@@ -251,6 +261,18 @@ export default mixins(showMessage).extend({
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
+}
+
+.disableMfaButton {
+	--button-color: #f45959;
+	font-weight: var(--font-weight-bold) !important;
+	line-height: 16px;
+	font-size: 12px;
+}
+
+.button {
+	font-size: 12px;
+	font-weight: var(--font-weight-bold) !important;
 }
 
 .sectionHeader {

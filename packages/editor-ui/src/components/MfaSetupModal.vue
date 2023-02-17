@@ -1,7 +1,9 @@
 <template>
 	<Modal
 		width="500px"
-		title="Setup Authenticator app [1/2]"
+		:title="
+			!showRecoveryCodes ? 'Setup Authenticator app [1/2]' : 'Download your recovery codes [2/2]'
+		"
 		:eventBus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY"
 		:center="true"
@@ -14,7 +16,7 @@
 				<div>
 					<n8n-text size="medium" :bold="false"
 						>Use an authenticator app from your phone to scan. If you can't scan the QR code, enter
-						<a @click="onCopySecretToClipboard">this text code</a> instead.
+						<a :class="$style.secret" @click="onCopySecretToClipboard">this text code</a> instead.
 						<span style="display: none" ref="codeSecret">{{ secret }}</span>
 					</n8n-text>
 				</div>
@@ -26,36 +28,46 @@
 						>2. Verify the code from the app</n8n-text
 					>
 				</div>
-				<div :class="$style.form">
-					<n8n-form-inputs
-						v-if="formInputs"
-						:inputs="formInputs"
-						:eventBus="formBus"
-						@submit="onSubmit"
-					/>
-				</div>
-			</div>
-			<div v-if="showRecoveryCodes" :class="$style.container">
-				<div :class="$style.textContainer">
-					<n8n-text size="large" :bold="false"
-						>With two-factor authentication enabled for your account, you'll need these recovery
-						codes if you ever lose your device. Without your device or a recovery code, you'll have
-						to contact n8n support to recover your account.</n8n-text
-					>
-				</div>
-				<div :class="$style.recoveryCodes">
-					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<n8n-text size="large" :class="$style.recoveryCode" :bold="true">{{
-							recoveryCode
-						}}</n8n-text>
+				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
+					<n8n-input-label :class="$style.labelTooltip" label="Code from authenticator app">
+						<n8n-input
+							v-model="authenticatorCode"
+							type="text"
+							:maxlength="6"
+							placeholder="XXXXXX"
+							@input="onInput"
+							:required="true"
+						/>
+					</n8n-input-label>
+					<div :class="[$style.infoText, 'mt-4xs']">
+						<span size="small" v-text="infoTextErrorMessage"></span>
 					</div>
 				</div>
+			</div>
+			<div v-else :class="$style.container">
+				<div :class="$style.textContainer">
+					<n8n-text size="medium" :bold="false"
+						>You can use recovery codes as a second factor to authenticate in case you lose access
+						to your device.</n8n-text
+					>
+					<br />
+					<br />
+				</div>
+				<div :class="$style.recoveryCodesContainer">
+					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
+						<n8n-text size="large" :class="$style.recoveryCode">{{ recoveryCode }}</n8n-text>
+					</div>
+				</div>
+				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
+					Keep your recovery codes somewhere safe. if you lose your device and your recovery codes,
+					you will <n8n-text :class="$style.loseAccessText"> lose access to you account. </n8n-text>
+				</n8n-info-tip>
 				<div>
 					<n8n-button
-						type="success"
-						icon="file-download"
+						type="primary"
+						icon="download"
 						float="right"
-						label="Download"
+						label="Download recovery codes"
 						@click="onDownloadClick"
 					/>
 				</div>
@@ -63,7 +75,6 @@
 		</template>
 		<template #footer>
 			<div v-if="showRecoveryCodes">
-				<div :class="$style.separator"></div>
 				<div>
 					<n8n-button
 						float="right"
@@ -73,7 +84,7 @@
 					/>
 				</div>
 			</div>
-			<div v-if="!showRecoveryCodes">
+			<div v-else>
 				<div>
 					<n8n-button
 						float="right"
@@ -94,7 +105,7 @@ import Modal from './Modal.vue';
 import { MFA_SETUP_MODAL_KEY, VIEWS } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { IFormInputs, INodeUi, Validatable } from '@/Interface';
+import { INodeUi, Validatable } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
@@ -118,14 +129,13 @@ export default mixins(showMessage, copyPaste).extend({
 			MFA_SETUP_MODAL_KEY,
 			secret: '',
 			qrCode: '',
-			hasAnyChanges: false,
-			formBus: new Vue(),
-			formInputs: null as null | IFormInputs,
 			readyToSubmit: false,
+			formBus: new Vue(),
 			showRecoveryCodes: false,
 			recoveryCodes: [] as string[],
 			recoveryCodesDownloaded: false,
 			authenticatorCode: '',
+			infoTextErrorMessage: '',
 		};
 	},
 	computed: {
@@ -138,8 +148,20 @@ export default mixins(showMessage, copyPaste).extend({
 		closeDialog(): void {
 			this.modalBus.$emit('close');
 		},
-		onInput(input: { value: string }) {
-			this.hasAnyChanges = true;
+		onInput(value: string) {
+			if (value.length !== 6) {
+				this.infoTextErrorMessage = '';
+				return;
+			}
+			this.settingsStore
+				.verifyMfaToken({ token: value })
+				.then(() => {
+					this.showRecoveryCodes = true;
+					this.authenticatorCode = value;
+				})
+				.catch(() => {
+					this.infoTextErrorMessage = this.$locale.baseText('mfa.setup.invalidCode');
+				});
 		},
 		onCopySecretToClipboard() {
 			this.copyToClipboard((this.$refs.codeSecret as HTMLInputElement).innerHTML);
@@ -179,11 +201,10 @@ export default mixins(showMessage, copyPaste).extend({
 			try {
 				await this.settingsStore.enableMfa();
 				this.closeDialog();
-				this.$showToast({
-					title: 'Multi-factor Authentication',
-					message: 'Succefully enabled',
+				this.$showMessage({
 					type: 'success',
-					duration: 0,
+					message: 'Two-factor authentication enabled',
+					title: '',
 				});
 			} catch (e) {}
 		},
@@ -197,51 +218,9 @@ export default mixins(showMessage, copyPaste).extend({
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			}
 		},
-		validateMfaCode(value: Validatable) {
-			if (typeof value !== 'string') {
-				return false;
-			}
-
-			if (/\D/.test(value)) {
-				console.log('entre aqui');
-				this.readyToSubmit = false;
-				return {
-					messageKey: 'mfa.setup.invalidCode',
-				};
-			}
-
-			if (value.length !== 6) {
-				this.readyToSubmit = false;
-				return false;
-			}
-
-			this.readyToSubmit = true;
-			return null;
-		},
 		onCopy() {},
 	},
 	async mounted() {
-		console.log('montando');
-		this.formInputs = [
-			{
-				name: 'authenticatorCode',
-				initialValue: '',
-				properties: {
-					showRequiredAsterisk: false,
-					label: 'Code from authenticator app',
-					maxlength: 6,
-					placeholder: 'XXXXXX',
-					required: true,
-					validateOnBlur: true,
-					validationRules: [{ name: 'MFA_CODE_VALIDATOR' }],
-					validators: {
-						MFA_CODE_VALIDATOR: {
-							validate: this.validateMfaCode,
-						},
-					},
-				},
-			},
-		];
 		await this.getMfaQr();
 	},
 });
@@ -271,6 +250,11 @@ export default mixins(showMessage, copyPaste).extend({
 	margin-bottom: 5px;
 }
 
+.textContainer span {
+	font-size: 14px;
+	font-weight: var(--font-weight-regular);
+}
+
 .formContainer {
 	padding-bottom: var(--spacing-xl);
 }
@@ -282,8 +266,8 @@ export default mixins(showMessage, copyPaste).extend({
 	text-align: center;
 }
 
-.recoveryCodes {
-	height: 200px;
+.recoveryCodesContainer {
+	height: 159px;
 	display: flex;
 	flex-direction: column;
 	background-color: var(--color-background-base);
@@ -294,12 +278,14 @@ export default mixins(showMessage, copyPaste).extend({
 	align-content: normal;
 	padding-top: 10px;
 	padding-bottom: 10px;
+	gap: 10px;
 }
 
-.separator {
-	margin-bottom: 10px;
-	height: 1px;
-	background: grey;
+.recoveryCodesContainer span {
+	font-size: 14px;
+	font-weight: var(--font-weight-regular);
+	line-height: 19px;
+	color: #7d7d87;
 }
 
 .form:first-child span {
@@ -311,5 +297,27 @@ export default mixins(showMessage, copyPaste).extend({
 .form input {
 	width: 50%;
 	height: 30px;
+}
+
+.secret {
+	font-weight: var(--font-weight-bold);
+}
+
+.loseAccessText {
+	color: #f45959;
+	font-weight: var(--font-weight-bold) !important;
+	line-height: 16px;
+	font-size: 12px;
+}
+
+.error {
+	span:last-child {
+		color: var(--color-danger);
+		font-size: var(--font-size-2xs);
+	}
+
+	input {
+		border-color: var(--color-danger);
+	}
 }
 </style>

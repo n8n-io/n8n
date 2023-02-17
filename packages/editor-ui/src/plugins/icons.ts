@@ -48,7 +48,6 @@ import {
 	faFile,
 	faFileArchive,
 	faFileCode,
-	faFileDownload,
 	faFileExport,
 	faFileImport,
 	faFilePdf,
@@ -122,6 +121,7 @@ import {
 	faVideo,
 	faTree,
 	faStickyNote as faSolidStickyNote,
+	faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -178,7 +178,7 @@ addIcon(faExchangeAlt);
 addIcon(faFile);
 addIcon(faFileArchive);
 addIcon(faFileCode);
-addIcon(faFileDownload);
+addIcon(faDownload);
 addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
