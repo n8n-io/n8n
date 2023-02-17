@@ -148,6 +148,8 @@ import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
 import { samlController } from './Saml/routes/saml.controller.ee';
+import { samlEnabledMiddleware } from './Saml/middleware/samlEnabledMiddleware';
+import { samlControllerPublic } from './Saml/routes/saml.controller-public.ee';
 
 const exec = promisify(callbackExec);
 
@@ -483,9 +485,15 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
-		if (isSamlEnabled()) {
-			this.app.use(`/${this.restEndpoint}/sso`, samlController);
-		}
+
+		// public SAML endpoints
+		this.app.use(`/${this.restEndpoint}/sso`, samlControllerPublic);
+
+		// licensed SAML endpoints
+		this.app.use(samlEnabledMiddleware);
+		this.app.use(`/${this.restEndpoint}/sso`, samlController);
+
+		// ----------------------------------------
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically

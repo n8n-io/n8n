@@ -3,6 +3,10 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getIdentityProviderInstance } from '../identityProvider.ee';
 import { getServiceProviderInstance } from '../serviceProvider.ee';
 
+/**
+ * SSO Endpoints that are protected by the checkFeaturesMiddleware and will
+ */
+
 export const samlController = express.Router();
 
 /**
@@ -21,14 +25,6 @@ samlController.post('/acs', async (req: express.Request, res: express.Response) 
 		// TODO:SAML: fetch mapped attributes from parsedSamlResponse.extract.attributes and create or login user
 	}
 	return res.status(200).json({});
-});
-
-/**
- * GET /sso/metadata
- * Return Service Provider metadata
- */
-samlController.get('/metadata', async (req: express.Request, res: express.Response) => {
-	return res.header('Content-Type', 'text/xml').send(getServiceProviderInstance().getMetadata());
 });
 
 /**
