@@ -5,31 +5,41 @@
 		</div>
 		<n8n-card>
 			<div :class="$style.headerContainer">
-				<n8n-heading v-if="showRecoveryCodeForm" tag="h2" size="xlarge" color="text-dark"
-					>Two-factor authentication</n8n-heading
-				>
-				<n8n-heading v-else tag="h2" size="xlarge" color="text-dark"
-					>Two-factor authentication</n8n-heading
-				>
+				<n8n-heading size="xlarge" color="text-dark">{{
+					showRecoveryCodeForm
+						? $locale.baseText('mfa.recovery.modal.title')
+						: $locale.baseText('mfa.code.modal.title')
+				}}</n8n-heading>
 			</div>
 			<br />
 			<br />
 
-			<div :class="$style.formContainer">
+			<div :class="[$style.formContainer, formError ? $style.formError : '']">
 				<n8n-form-inputs
 					v-if="formInputs"
 					:inputs="formInputs"
 					:eventBus="formBus"
 					@input="onInput"
-					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
 			</div>
 			<div>
-				<n8n-info-tip v-if="!showRecoveryCodeForm"
-					>Don't have your auth device?
-					<a @click="OnRecoveryCodeClick">Enter a recovery code</a></n8n-info-tip
+				<n8n-info-tip :bold="false" v-if="!showRecoveryCodeForm && !formError"
+					>{{ $locale.baseText('mfa.code.input.info') }}
+					<a @click="OnRecoveryCodeClick">{{
+						$locale.baseText('mfa.code.input.info.action')
+					}}</a></n8n-info-tip
 				>
+				<n8n-text color="danger" v-if="formError" size="small"
+					>{{ formError }}
+					<a
+						v-if="!showRecoveryCodeForm"
+						@click="OnRecoveryCodeClick"
+						:class="$style.recoveryCodeLink"
+					>
+						{{ $locale.baseText('mfa.recovery.input.info.action') }}</a
+					>
+				</n8n-text>
 			</div>
 			<br />
 			<br />
@@ -37,12 +47,22 @@
 			<div>
 				<n8n-button
 					float="right"
-					label="Continue"
+					:label="
+						showRecoveryCodeForm
+							? $locale.baseText('mfa.recovery.button.verify')
+							: $locale.baseText('mfa.code.button.continue')
+					"
 					size="large"
-					:disabled="!hasAnyChanges || !readyToSubmit"
+					:disabled="!hasAnyChanges"
 					@click="onSaveClick"
 				/>
-				<n8n-button float="left" label="Back" size="large" type="tertiary" @click="onBackClick" />
+				<n8n-button
+					float="left"
+					:label="$locale.baseText('mfa.button.back')"
+					size="large"
+					type="tertiary"
+					@click="onBackClick"
+				/>
 			</div>
 		</n8n-card>
 	</div>
@@ -68,7 +88,6 @@ export default mixins(showMessage).extend({
 		Logo,
 	},
 	async mounted() {
-		console.log('montando');
 		const { email, password } = this.$route.params;
 		this.email = email;
 		this.password = password;
@@ -77,11 +96,11 @@ export default mixins(showMessage).extend({
 				name: 'token',
 				initialValue: '',
 				properties: {
-					label: 'Two-factor code',
-					placeholder: 'e.g. 123456',
+					label: this.$locale.baseText('mfa.code.input.label'),
+					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
 					maxlength: 6,
-					required: true,
 					capitalize: true,
+					validateOnBlur: false,
 				},
 			},
 		];
@@ -93,8 +112,8 @@ export default mixins(showMessage).extend({
 			hasAnyChanges: false,
 			formBus: new Vue(),
 			formInputs: null as null | IFormInputs,
-			readyToSubmit: false,
 			showRecoveryCodeForm: false,
+			formError: '',
 		};
 	},
 	computed: {
@@ -102,17 +121,19 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		OnRecoveryCodeClick() {
+			this.formError = '';
 			this.showRecoveryCodeForm = true;
+			this.hasAnyChanges = false;
 			this.formInputs = [
 				{
 					name: 'recoveryCode',
 					initialValue: '',
 					properties: {
-						label: 'Recovery Code',
-						placeholder: 'e.g c79f9c02-7b2e-44...',
+						label: this.$locale.baseText('mfa.recovery.input.label'),
+						placeholder: this.$locale.baseText('mfa.recovery.input.placeholder'),
 						maxlength: 36,
-						required: true,
 						capitalize: true,
+						validateOnBlur: false,
 					},
 				},
 			];
@@ -122,27 +143,28 @@ export default mixins(showMessage).extend({
 				this.$router.push({ name: VIEWS.SIGNIN });
 			} else {
 				this.showRecoveryCodeForm = false;
+				this.hasAnyChanges = true;
 				this.formInputs = [
 					{
 						name: 'token',
 						initialValue: '',
 						properties: {
-							label: 'Two-factor code',
-							placeholder: 'e.g. 123456',
+							label: this.$locale.baseText('mfa.code.input.label'),
+							placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
 							maxlength: 6,
-							required: true,
 							capitalize: true,
 						},
 					},
 				];
 			}
 		},
-		onInput() {
-			console.log('on input');
-			this.hasAnyChanges = true;
-		},
-		onReadyToSubmit(ready: boolean) {
-			this.readyToSubmit = ready;
+		onInput({ value, name }: { name: string; value: string }) {
+			const inputValidLength = name === 'token' ? 6 : 36;
+			if (value.length === inputValidLength) {
+				this.hasAnyChanges = true;
+				return;
+			}
+			this.hasAnyChanges = false;
 		},
 		async onSubmit(form: { token: string; recoveryCode: string }) {
 			try {
@@ -153,9 +175,12 @@ export default mixins(showMessage).extend({
 					mfaRecoveryCode: form.recoveryCode,
 				});
 			} catch (error) {
-				console.log('mfa error loginwithcred');
-				this.$router.push({ name: VIEWS.SIGNIN });
+				this.formError = !this.showRecoveryCodeForm
+					? this.$locale.baseText('mfa.code.invalid')
+					: this.$locale.baseText('mfa.recovery.invalid');
+				return;
 			}
+
 			this.clearAllStickyNotifications();
 
 			if (typeof this.$route.query.redirect === 'string') {
@@ -215,8 +240,14 @@ body {
 	text-align: center;
 }
 
+.formError input {
+	border-color: #f45959;
+}
+
+.recoveryCodeLink {
+	text-decoration: underline;
+}
 .formContainer {
-	margin-bottom: 5px;
 	padding-bottom: 5px;
 }
 </style>

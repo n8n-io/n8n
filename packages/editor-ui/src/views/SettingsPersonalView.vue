@@ -49,7 +49,7 @@
 				</div>
 			</div>
 			<div>
-				<div :class="$style.sectionHeader">
+				<div :class="$style.mfaSection">
 					<n8n-input-label label="Two-factor authentication (2FA)"> </n8n-input-label>
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{
@@ -57,7 +57,7 @@
 								? $locale.baseText('mfa.infobox.disabled')
 								: $locale.baseText('mfa.infobox.enabled')
 						}}
-						<n8n-link :to="MfaDocsUrl" size="small">
+						<n8n-link :to="MfaDocsUrl" size="small" bold="true">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
@@ -266,13 +266,16 @@ export default mixins(showMessage).extend({
 .disableMfaButton {
 	--button-color: #f45959;
 	font-weight: var(--font-weight-bold) !important;
-	line-height: 16px;
-	font-size: 12px;
+	margin-top: 8px;
 }
 
 .button {
 	font-size: 12px;
 	font-weight: var(--font-weight-bold) !important;
+}
+
+.mfaSection {
+	margin-top: var(--spacing-s);
 }
 
 .sectionHeader {

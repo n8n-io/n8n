@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		width="500px"
+		width="460px"
 		:title="
 			!showRecoveryCodes ? 'Setup Authenticator app [1/2]' : 'Download your recovery codes [2/2]'
 		"
@@ -29,12 +29,17 @@
 					>
 				</div>
 				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
-					<n8n-input-label :class="$style.labelTooltip" label="Code from authenticator app">
+					<n8n-input-label
+						size="medium"
+						:bold="false"
+						:class="$style.labelTooltip"
+						label="Code from authenticator app"
+					>
 						<n8n-input
 							v-model="authenticatorCode"
 							type="text"
 							:maxlength="6"
-							placeholder="XXXXXX"
+							placeholder="e.g. 123456"
 							@input="onInput"
 							:required="true"
 						/>
@@ -45,22 +50,23 @@
 				</div>
 			</div>
 			<div v-else :class="$style.container">
-				<div :class="$style.textContainer">
+				<div>
 					<n8n-text size="medium" :bold="false"
 						>You can use recovery codes as a second factor to authenticate in case you lose access
 						to your device.</n8n-text
 					>
-					<br />
-					<br />
 				</div>
 				<div :class="$style.recoveryCodesContainer">
 					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<n8n-text size="large" :class="$style.recoveryCode">{{ recoveryCode }}</n8n-text>
+						<n8n-text size="medium">{{ recoveryCode }}</n8n-text>
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 					Keep your recovery codes somewhere safe. if you lose your device and your recovery codes,
-					you will <n8n-text :class="$style.loseAccessText"> lose access to you account. </n8n-text>
+					you will
+					<n8n-text size="small" bold="true" :class="$style.loseAccessText">
+						lose access to you account.
+					</n8n-text>
 				</n8n-info-tip>
 				<div>
 					<n8n-button
@@ -236,36 +242,25 @@ export default mixins(showMessage, copyPaste).extend({
 .notice {
 	margin: 0;
 }
-
 .container > * {
 	margin-bottom: var(--spacing-s);
 	&:last-child {
 		margin-bottom: 0;
 	}
 }
-
 .textContainer {
 	text-align: left;
 	margin: 0px;
 	margin-bottom: 5px;
 }
 
-.textContainer span {
-	font-size: 14px;
-	font-weight: var(--font-weight-regular);
-}
-
 .formContainer {
 	padding-bottom: var(--spacing-xl);
-}
-
-.qrContainer {
 }
 
 .headerContainer {
 	text-align: center;
 }
-
 .recoveryCodesContainer {
 	height: 159px;
 	display: flex;
@@ -279,10 +274,11 @@ export default mixins(showMessage, copyPaste).extend({
 	padding-top: 10px;
 	padding-bottom: 10px;
 	gap: 10px;
+	margin-bottom: 3px;
 }
 
 .recoveryCodesContainer span {
-	font-size: 14px;
+	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
 	line-height: 19px;
 	color: #7d7d87;
@@ -293,31 +289,26 @@ export default mixins(showMessage, copyPaste).extend({
 	font-weight: var(--font-weight-regular);
 	font-size: var(--font-size-s);
 }
-
 .form input {
 	width: 50%;
 	height: 30px;
 }
-
 .secret {
+	color: var(--color-primary);
 	font-weight: var(--font-weight-bold);
 }
 
 .loseAccessText {
 	color: #f45959;
-	font-weight: var(--font-weight-bold) !important;
-	line-height: 16px;
-	font-size: 12px;
 }
 
 .error {
-	span:last-child {
-		color: var(--color-danger);
-		font-size: var(--font-size-2xs);
-	}
-
 	input {
-		border-color: var(--color-danger);
+		border-color: #f45959;
 	}
+}
+.error > div > span {
+	color: #f45959;
+	font-size: var(--font-size-2xs);
 }
 </style>
