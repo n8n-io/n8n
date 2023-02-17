@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../../utils/utilities';
 
 export const guildRLC: INodeProperties = {
 	displayName: 'Server',
@@ -290,4 +291,173 @@ export const simplifyBoolean: INodeProperties = {
 	type: 'boolean',
 	default: false,
 	description: 'Whether to return a simplified version of the response instead of the raw data',
+};
+
+// embeds -----------------------------------------------------------------------------------------
+const embedFields: INodeProperties[] = [
+	{
+		displayName: 'Author',
+		name: 'author',
+		type: 'string',
+		default: '',
+		description: 'The name of the author',
+		placeholder: 'e.g. John Doe',
+	},
+	{
+		displayName: 'Color',
+		name: 'color',
+		// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
+		type: 'string',
+		default: '',
+		description: 'Color code of the embed',
+		placeholder: 'e.g. 12123432',
+	},
+	{
+		displayName: 'Description',
+		name: 'description',
+		type: 'string',
+		default: '',
+		description: 'The description of embed',
+		placeholder: 'e.g. My description',
+		typeOptions: {
+			rows: 2,
+		},
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		default: '',
+		description: 'The time displayed at the bottom of the embed. Provide in ISO8601 format.',
+		placeholder: 'e.g. 2023-02-08 09:30:26',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		description: 'The title of embed',
+		placeholder: "e.g. Embed's title",
+	},
+	{
+		displayName: 'URL',
+		name: 'url',
+		type: 'string',
+		default: '',
+		description: 'The URL where you want to link the embed to',
+		placeholder: 'e.g. https://discord.com/',
+	},
+	{
+		displayName: 'URL Image',
+		name: 'image',
+		type: 'string',
+		default: '',
+		description: 'Source URL of image (only supports http(s) and attachments)',
+		placeholder: 'e.g. https://example.com/image.png',
+	},
+	{
+		displayName: 'URL Thumbnail',
+		name: 'thumbnail',
+		type: 'string',
+		default: '',
+		description: 'Source URL of thumbnail (only supports http(s) and attachments)',
+		placeholder: 'e.g. https://example.com/image.png',
+	},
+	{
+		displayName: 'URL Video',
+		name: 'video',
+		type: 'string',
+		default: '',
+		description: 'Source URL of video',
+		placeholder: 'e.g. https://example.com/video.mp4',
+	},
+];
+
+const embedFieldsDescription = updateDisplayOptions(
+	{
+		show: {
+			inputMethod: ['fields'],
+		},
+	},
+	embedFields,
+);
+
+export const embedsFixedCollection: INodeProperties = {
+	displayName: 'Embeds',
+	name: 'embeds',
+	type: 'fixedCollection',
+	placeholder: 'Add Embeds',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: [],
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'Input Method',
+					name: 'inputMethod',
+					type: 'options',
+					options: [
+						{
+							name: 'Enter Fields',
+							value: 'fields',
+						},
+						{
+							name: 'Raw JSON',
+							value: 'json',
+						},
+					],
+					default: 'json',
+				},
+				{
+					displayName: 'JSON',
+					name: 'json',
+					type: 'json',
+					default: [],
+					typeOptions: {
+						rows: 2,
+					},
+					displayOptions: {
+						show: {
+							inputMethod: ['json'],
+						},
+					},
+				},
+				...embedFieldsDescription,
+			],
+		},
+	],
+};
+
+// -------------------------------------------------------------------------------------------
+
+export const filesFixedCollection: INodeProperties = {
+	displayName: 'Files',
+	name: 'files',
+	type: 'fixedCollection',
+	placeholder: 'Add Files',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: [],
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'Input Data Field Name',
+					name: 'inputFieldName',
+					type: 'string',
+					default: 'data',
+					description: 'The contents of the file being sent with the message',
+					placeholder: 'e.g. data',
+					hint: 'The name of the input field containing the binary file data to be sent',
+				},
+			],
+		},
+	],
 };
