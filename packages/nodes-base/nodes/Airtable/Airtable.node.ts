@@ -186,7 +186,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
-				requiresDataPath: 'multiple',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						addAllFields: [false],
@@ -293,7 +293,7 @@ export class Airtable implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
-						requiresDataPath: 'multiple',
+						requiresDataPath: 'single',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Field',
@@ -422,7 +422,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
-				requiresDataPath: 'multiple',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						updateAllFields: [false],
@@ -465,7 +465,7 @@ export class Airtable implements INodeType {
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
 						type: 'string',
-						requiresDataPath: 'multiple',
+						requiresDataPath: 'single',
 						displayOptions: {
 							show: {
 								'/operation': ['update'],
