@@ -13,6 +13,7 @@ import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type { PublicUser, IDatabaseCollections, IInternalHooksClass, CurrentUser } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import PostHogClient from '@/telemetry/posthog';
 
 @RestController()
 export class AuthController {
@@ -24,21 +25,26 @@ export class AuthController {
 
 	private readonly userRepository: Repository<User>;
 
+	private readonly postHog?: PostHogClient;
+
 	constructor({
 		config,
 		logger,
 		internalHooks,
 		repositories,
+		postHog,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		postHog?: PostHogClient;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
+		this.postHog = postHog;
 	}
 
 	/**
@@ -103,7 +109,9 @@ export class AuthController {
 
 		await issueCookie(res, user);
 		const currentUser: CurrentUser = sanitizeUser(user);
-
+		if (this.postHog) {
+			currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser.id);
+		}
 		return currentUser;
 	}
 

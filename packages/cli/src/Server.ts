@@ -145,6 +145,7 @@ import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
+import PostHogClient from './telemetry/posthog';
 
 const exec = promisify(callbackExec);
 
@@ -164,6 +165,8 @@ class Server extends AbstractServer {
 	nodeTypes: NodeTypesClass;
 
 	credentialTypes: ICredentialTypes;
+
+	postHog: PostHogClient;
 
 	push: Push;
 
@@ -343,7 +346,7 @@ class Server extends AbstractServer {
 		const mailer = getMailerInstance();
 
 		const controllers = [
-			new AuthController({ config, internalHooks, repositories, logger }),
+			new AuthController({ config, internalHooks, repositories, logger, postHog: this.postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
