@@ -1,4 +1,5 @@
 import express from 'express';
+import { LoggerProxy } from 'n8n-workflow';
 import { getIdentityProviderInstance } from '../identityProvider.ee';
 import { getServiceProviderInstance } from '../serviceProvider.ee';
 
@@ -15,7 +16,8 @@ samlController.post('/acs', async (req: express.Request, res: express.Response) 
 		req,
 	);
 	if (parsedSamlResponse) {
-		console.log('parsedSamlResponse: ', parsedSamlResponse.extract);
+		// TODO: remove, but keep for manual testing for now
+		LoggerProxy.debug(JSON.stringify(parsedSamlResponse.extract));
 		// TODO:SAML: fetch mapped attributes from parsedSamlResponse.extract.attributes and create or login user
 	}
 	return res.status(200).json({});
@@ -39,6 +41,6 @@ samlController.get('/spinitsso-redirect', async (req: express.Request, res: expr
 		'redirect',
 	);
 	// TODO: remove, but keep for manual testing for now
-	console.log(loginRequest.context);
+	LoggerProxy.debug(JSON.stringify(loginRequest));
 	return res.redirect(loginRequest.context);
 });

@@ -482,7 +482,6 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
-		console.log('isSamlEnabled', isSamlEnabled());
 		if (isSamlEnabled()) {
 			this.app.use(`/${this.restEndpoint}/sso`, samlController);
 		}
