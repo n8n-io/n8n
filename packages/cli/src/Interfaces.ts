@@ -20,6 +20,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	FeatureFlags,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -830,6 +831,10 @@ export interface PublicUser {
 	signInType: AuthProviderType;
 	disabled: boolean;
 	inviteAcceptUrl?: string;
+}
+
+export interface CurrentUser extends PublicUser {
+	featureFlags?: FeatureFlags;
 }
 
 export interface N8nApp {

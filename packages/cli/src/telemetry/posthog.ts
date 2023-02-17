@@ -1,5 +1,5 @@
 import type { PostHog } from 'posthog-node';
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { getLogger, Logger } from '@/Logger';
@@ -50,6 +50,14 @@ export default class PostHogClient {
 			sendFeatureFlags: true,
 			...payload,
 		});
+	}
+
+	async getFeatureFlags(userId: string): Promise<FeatureFlags> {
+		if (!this.postHog) return Promise.resolve({});
+
+		const fullId = [this.instanceId, userId].join('#');
+
+		return this.postHog.getAllFlags(fullId);
 	}
 
 	async isFeatureFlagEnabled(

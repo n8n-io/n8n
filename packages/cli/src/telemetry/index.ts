@@ -37,7 +37,7 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string) {}
+	constructor(private instanceId: string, private posthog?: PostHogClient) {}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');

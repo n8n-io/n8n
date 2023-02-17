@@ -11,7 +11,7 @@ import { LoginRequest, UserRequest } from '@/requests';
 import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
-import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser, IDatabaseCollections, IInternalHooksClass, CurrentUser } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 
 @RestController()
@@ -66,7 +66,7 @@ export class AuthController {
 	 * Manually check the `n8n-auth` cookie.
 	 */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<PublicUser> {
+	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
 		// Manually check the existing cookie.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
@@ -102,7 +102,9 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return sanitizeUser(user);
+		const currentUser: CurrentUser = sanitizeUser(user);
+
+		return currentUser;
 	}
 
 	/**
