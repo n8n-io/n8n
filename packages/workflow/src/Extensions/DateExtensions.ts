@@ -221,41 +221,65 @@ isWeekend.doc = {
 	description: 'Checks if the Date falls on a Saturday or Sunday',
 };
 
-// @TODO_NEXT_PHASE: Surface extensions below which take args
-
 beginningOf.doc = {
 	name: 'beginningOf',
+	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
 	returnType: 'Date',
+	args: [{ name: 'unit?', type: 'DurationUnit' }],
 };
 
 extract.doc = {
 	name: 'extract',
+	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
 	returnType: 'number',
+	args: [{ name: 'datePart?', type: 'DurationUnit' }],
 };
 
 format.doc = {
 	name: 'format',
-	returnType: '(?)',
+	description: 'Formats a Date in the given structure.',
+	returnType: 'string',
+	args: [{ name: 'fmt', type: 'TimeFormat' }],
 };
 
 isBetween.doc = {
 	name: 'isBetween',
+	description: 'Checks if a Date is between two given dates.',
 	returnType: 'boolean',
+	args: [
+		{ name: 'date1', type: 'Date|string' },
+		{ name: 'date2', type: 'Date|string' },
+	],
 };
 
 isInLast.doc = {
 	name: 'isInLast',
+	description: 'Checks if a Date is within a given time period. Default unit is `minute`.',
 	returnType: 'boolean',
+	args: [
+		{ name: 'n', type: 'number' },
+		{ name: 'unit?', type: 'DurationUnit' },
+	],
 };
 
 minus.doc = {
 	name: 'minus',
+	description: 'Subtracts a given time period from a Date. Default unit is `minute`.',
 	returnType: 'Date',
+	args: [
+		{ name: 'n', type: 'number' },
+		{ name: 'unit?', type: 'DurationUnit' },
+	],
 };
 
 plus.doc = {
 	name: 'plus',
+	description: 'Adds a given time period to a Date. Default unit is `minute`.',
 	returnType: 'Date',
+	args: [
+		{ name: 'n', type: 'number' },
+		{ name: 'unit?', type: 'DurationUnit' },
+	],
 };
 
 export const dateExtensions: ExtensionMap = {

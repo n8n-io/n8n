@@ -104,26 +104,32 @@ urlEncode.doc = {
 	returnType: 'string',
 };
 
-// @TODO_NEXT_PHASE: Surface extensions below which take args
-
 hasField.doc = {
 	name: 'hasField',
+	description: 'Checks if the Object has a given field. Only top-level keys are supported.',
 	returnType: 'boolean',
+	args: [{ name: 'fieldName', type: 'string' }],
 };
 
 removeField.doc = {
 	name: 'removeField',
+	description: 'Removes a given field from the Object. Only top-level fields are supported.',
 	returnType: 'object',
+	args: [{ name: 'key', type: 'string' }],
 };
 
 removeFieldsContaining.doc = {
 	name: 'removeFieldsContaining',
+	description: 'Removes fields with a given value from the Object. Only top-level values are supported',
 	returnType: 'object',
+	args: [{ name: 'value', type: 'string' }],
 };
 
 keepFieldsContaining.doc = {
 	name: 'keepFieldsContaining',
+	description: 'Removes fields that do not match the given value from the Object.',
 	returnType: 'object',
+	args: [{ name: 'value', type: 'string' }],
 };
 
 export const objectExtensions: ExtensionMap = {

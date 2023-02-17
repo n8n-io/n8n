@@ -131,8 +131,6 @@ export const extensions = (typeName: ExtensionTypeName) => {
 	if (!extensions) return [];
 
 	const fnToDoc = Object.entries(extensions.functions).reduce<FnToDoc>((acc, [fnName, fn]) => {
-		if (fn.length !== 1) return acc; // @TODO_NEXT_PHASE: Remove to allow extensions which take args
-
 		return { ...acc, [fnName]: { doc: fn.doc } };
 	}, {});
 

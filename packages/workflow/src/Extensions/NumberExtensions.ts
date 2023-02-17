@@ -64,16 +64,23 @@ isOdd.doc = {
 	returnType: 'boolean',
 };
 
-// @TODO_NEXT_PHASE: Surface extensions below which take args
-
 format.doc = {
 	name: 'format',
+	description:
+		'Returns a formatted string of a number based on the given `LanguageCode` and `FormatOptions`. When no arguments are given, transforms the number in a like format `1.234`',
 	returnType: 'string',
+	args: [
+		{ name: 'locales?', type: 'LanguageCode' },
+		{ name: 'options?', type: 'FormatOptions' },
+	],
 };
 
 round.doc = {
 	name: 'round',
+	description:
+		'Returns the value of a number rounded to the nearest whole number. Defaults to 0 decimal places if no argument is given.',
 	returnType: 'number',
+	args: [{ name: 'decimalPlaces?', type: 'number' }],
 };
 
 export const numberExtensions: ExtensionMap = {

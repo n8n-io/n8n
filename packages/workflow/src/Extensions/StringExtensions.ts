@@ -315,6 +315,7 @@ toInt.doc = {
 	name: 'toInt',
 	description: 'Converts a string to an integer',
 	returnType: 'number',
+	args: [{ name: 'radix?', type: 'number' }],
 	aliases: ['toWholeNumber'],
 };
 
@@ -410,21 +411,11 @@ extractUrl.doc = {
 	returnType: 'string',
 };
 
-// @TODO_NEXT_PHASE: Surface extensions below which take args
-
 hash.doc = {
 	name: 'hash',
+	description: 'Returns a string hashed with the given algorithm. Default algorithm is `md5`',
 	returnType: 'string',
-};
-
-urlEncode.doc = {
-	name: 'urlEncode',
-	returnType: 'string',
-};
-
-quote.doc = {
-	name: 'quote',
-	returnType: 'string',
+	args: [{ name: 'algo?', type: 'Algorithm' }],
 };
 
 export const stringExtensions: ExtensionMap = {

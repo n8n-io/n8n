@@ -381,46 +381,80 @@ sum.doc = {
 	returnType: 'number',
 };
 
-// @TODO_NEXT_PHASE: Surface extensions below which take args
-
 chunk.doc = {
 	name: 'chunk',
+	description: 'Splits arrays into chunks with a length of `size`.',
 	returnType: 'array',
+	args: [{ name: 'size', type: 'number' }],
 };
 
 difference.doc = {
 	name: 'difference',
+	description:
+		'Compares two arrays. Returns all elements in the base array that aren’t present in `arr`.',
 	returnType: 'array',
+	args: [{ name: 'arr', type: 'Array' }],
 };
 
 intersection.doc = {
 	name: 'intersection',
+	description:
+		'Compares two arrays. Returns all elements in the base array that are present in `arr`.',
 	returnType: 'array',
+	args: [{ name: 'arr', type: 'Array' }],
 };
 
 merge.doc = {
 	name: 'merge',
+	description:
+		'Merges two Object-arrays into one array by merging the key-value pairs of each element.',
 	returnType: 'array',
+	args: [{ name: 'arr', type: 'Array' }],
 };
 
 pluck.doc = {
 	name: 'pluck',
+	description: 'Returns an array of Objects where the key is equal the given `fieldName`s.',
 	returnType: 'array',
+	args: [
+		{ name: 'fieldName1', type: 'string' },
+		{ name: 'fieldName1?', type: 'string' },
+		{ name: '...' },
+		{ name: 'fieldNameN?', type: 'string' },
+	],
 };
 
 renameKeys.doc = {
 	name: 'renameKeys',
+	description: 'Renames all matching keys in the array.',
 	returnType: 'array',
+	args: [
+		{ name: 'from1', type: 'string' },
+		{ name: 'to1', type: 'string' },
+		{ name: 'from2?', type: 'string' },
+		{ name: 'to2?', type: 'string' },
+		{ name: '...' },
+		{ name: 'fromN?', type: 'string' },
+		{ name: 'toN?', type: 'string' },
+	],
 };
 
 smartJoin.doc = {
 	name: 'smartJoin',
+	description:
+		'Operates on an array of objects where each object contains key-value pairs. Creates a new object containing key-value pairs, where the key is the value of the first pair, and the value is the value of the second pair. Removes non-matching and empty values and trims any whitespace before joining.',
 	returnType: 'array',
+	args: [
+		{ name: 'keyField', type: 'string' },
+		{ name: 'nameField', type: 'string' },
+	],
 };
 
 union.doc = {
 	name: 'union',
+	description: 'Concatenates two arrays and then removes duplicates.',
 	returnType: 'array',
+	args: [{ name: 'arr', type: 'Array' }],
 };
 
 unique.doc = {
