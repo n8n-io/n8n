@@ -63,8 +63,7 @@ export default class PostHogClient {
 
 		return this.postHog.getAllFlags(fullId, {
 			personProperties: {
-				// @ts-ignore
-				created_at_timestamp: user.createdAt.getTime(),
+				created_at_timestamp: user.createdAt.getTime().toString(),
 			},
 		});
 	}
