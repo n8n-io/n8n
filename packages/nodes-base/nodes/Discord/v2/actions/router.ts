@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import * as message from './message/Message.resource';
@@ -14,8 +14,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter<Discord>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
-	const guild = this.getNodeParameter('guildId', 0, {}) as IDataObject;
-	const guildId = guild.value as string;
+	let guildId = '';
+
+	if (resource !== 'webhook') {
+		guildId = this.getNodeParameter('guildId', 0, {}, { extractValue: true }) as string;
+	}
 
 	const googleBigQuery = {
 		resource,
