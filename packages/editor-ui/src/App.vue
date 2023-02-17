@@ -46,7 +46,6 @@ import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
 import { historyHelper } from '@/mixins/history';
-import { usePostHog } from '@/stores/posthog';
 
 export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',
@@ -192,8 +191,6 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 
 		this.trackPage();
 		this.$externalHooks().run('app.mount');
-
-		usePostHog().init(this.$telemetry);
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();

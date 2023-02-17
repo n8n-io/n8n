@@ -295,7 +295,7 @@ import {
 	ready,
 } from '@jsplumb/browser-ui';
 import { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
-import { usePostHog } from '@/stores/posthog';
+import { usePostHogStore } from '@/stores/posthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2446,7 +2446,7 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
+			if (usePostHogStore().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
