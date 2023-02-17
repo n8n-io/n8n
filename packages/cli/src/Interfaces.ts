@@ -506,6 +506,7 @@ export interface IN8nUISettings {
 	enterprise: {
 		sharing: boolean;
 		ldap: boolean;
+		saml: boolean;
 		logStreaming: boolean;
 	};
 	hideUsagePage: boolean;

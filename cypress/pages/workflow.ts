@@ -26,7 +26,7 @@ export class WorkflowPage extends BasePage {
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`
+			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
 		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
@@ -79,7 +79,7 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
-		shareButton: () => cy.getByTestId('workflow-share-button').find('button'),
+		shareButton: () => cy.getByTestId('workflow-share-button'),
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
@@ -90,6 +90,9 @@ export class WorkflowPage extends BasePage {
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
 		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
+		clearExecutionDataButton: () => cy.getByTestId('clear-execution-data-button'),
+		stopExecutionButton: () => cy.getByTestId('stop-execution-button'),
+		stopExecutionWaitingForWebhookButton: () => cy.getByTestId('stop-execution-waiting-for-webhook-button'),
 		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
 		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
@@ -103,6 +106,7 @@ export class WorkflowPage extends BasePage {
 			cy.get(
 				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
 			),
+		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 	};
 	actions = {
 		visit: () => {
@@ -154,10 +158,16 @@ export class WorkflowPage extends BasePage {
 		saveWorkflowOnButtonClick: () => {
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
-			this.getters.saveButton().should('contain', 'Saved')
+			this.getters.saveButton().should('contain', 'Saved');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
+		},
+		setWorkflowName: (name: string) => {
+			this.getters.workflowNameInput().should('be.disabled');
+			this.getters.workflowNameInput().parent().click();
+			this.getters.workflowNameInput().should('be.enabled');
+			this.getters.workflowNameInput().clear().type(name).type('{enter}');
 		},
 		activateWorkflow: () => {
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
@@ -229,6 +239,16 @@ export class WorkflowPage extends BasePage {
 				.find('.delete')
 				.first()
 				.click({ force: true });
+		},
+		turnOnManualExecutionSaving: () => {
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters
+				.workflowSettingsSaveManualExecutionsSelect()
+				.find('li:contains("Yes")')
+				.click({ force: true });
+			this.getters.workflowSettingsSaveButton().click();
+			this.getters.successToast().should('exist');
 		},
 	};
 }

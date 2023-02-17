@@ -1,18 +1,32 @@
 <template>
-	<div :class="['executions-sidebar', $style.container]" ref="container">
+	<div
+		:class="['executions-sidebar', $style.container]"
+		ref="container"
+		data-test-id="executions-sidebar"
+	>
 		<div :class="$style.heading">
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
 		</div>
 		<div :class="$style.controls">
-			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{
-				$locale.baseText('executionsList.autoRefresh')
-			}}</el-checkbox>
+			<el-checkbox
+				v-model="autoRefresh"
+				@change="onAutoRefreshToggle"
+				data-test-id="auto-refresh-checkbox"
+			>
+				{{ $locale.baseText('executionsList.autoRefresh') }}
+			</el-checkbox>
 			<n8n-popover trigger="click">
 				<template #reference>
 					<div :class="$style.filterButton">
-						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
+						<n8n-button
+							icon="filter"
+							type="tertiary"
+							size="medium"
+							:active="statusFilterApplied"
+							data-test-id="executions-filter-button"
+						>
 							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
 							{{ $locale.baseText('executionsList.filters') }}
 						</n8n-button>
@@ -33,6 +47,7 @@
 							ref="typeInput"
 							:class="$style['type-input']"
 							:placeholder="$locale.baseText('generic.any')"
+							data-test-id="execution-status-select"
 							@change="onFilterChange"
 						>
 							<n8n-option
@@ -40,6 +55,7 @@
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
+								:data-test-id="`execution-status-${item.id}`"
 							>
 							</n8n-option>
 						</n8n-select>
@@ -60,7 +76,12 @@
 				</n8n-link>
 			</n8n-info-tip>
 		</div>
-		<div :class="$style.executionList" ref="executionList" @scroll="loadMore(20)">
+		<div
+			:class="$style.executionList"
+			ref="executionList"
+			data-test-id="current-executions-list"
+			@scroll="loadMore(20)"
+		>
 			<div v-if="loading" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
@@ -77,6 +98,7 @@
 				:key="execution.id"
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
+				:data-test-id="`execution-details-${execution.id}`"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>

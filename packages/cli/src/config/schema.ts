@@ -985,6 +985,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			saml: {
+				format: Boolean,
+				default: false,
+			},
 			logStreaming: {
 				format: Boolean,
 				default: false,
@@ -1039,7 +1043,7 @@ export const schema = {
 				apiHost: {
 					doc: 'API host for PostHog',
 					format: String,
-					default: 'https://app.posthog.com',
+					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
 				disableSessionRecording: {

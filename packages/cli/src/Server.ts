@@ -146,6 +146,7 @@ import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { eventBus } from './eventbus';
+import { isSamlEnabled } from './Saml/helpers';
 
 const exec = promisify(callbackExec);
 
@@ -276,6 +277,7 @@ class Server extends AbstractServer {
 			enterprise: {
 				sharing: false,
 				ldap: false,
+				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
@@ -304,6 +306,7 @@ class Server extends AbstractServer {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
+			saml: isSamlEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -1271,18 +1274,23 @@ class Server extends AbstractServer {
 				},
 			};
 
-			for (const [dir, loader] of Object.entries(this.loadNodesAndCredentials.loaders)) {
-				const pathPrefix = `/icons/${loader.packageName}`;
-				this.app.use(`${pathPrefix}/*/*.(svg|png)`, async (req, res) => {
-					const filePath = pathResolve(dir, req.originalUrl.substring(pathPrefix.length + 1));
+			this.app.use('/icons/:packageName/*/*.(svg|png)', async (req, res) => {
+				const { packageName } = req.params;
+				const loader = this.loadNodesAndCredentials.loaders[packageName];
+				if (loader) {
+					const pathPrefix = `/icons/${packageName}/`;
+					const filePath = pathResolve(
+						loader.directory,
+						req.originalUrl.substring(pathPrefix.length),
+					);
 					try {
 						await fsAccess(filePath);
-						res.sendFile(filePath);
-					} catch {
-						res.sendStatus(404);
-					}
-				});
-			}
+						return res.sendFile(filePath);
+					} catch {}
+				}
+
+				res.sendStatus(404);
+			});
 
 			this.app.use(
 				'/',
