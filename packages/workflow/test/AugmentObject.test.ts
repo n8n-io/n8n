@@ -1,8 +1,193 @@
 import type { IDataObject } from '@/Interfaces';
-import { augmentObject } from '@/AugmentObject';
+import { augmentArray, augmentObject } from '@/AugmentObject';
 import { deepCopy } from '@/utils';
 
 describe('AugmentObject', () => {
+	describe('augmentArray', () => {
+		test('should work with arrays', () => {
+			const originalObject = [1, 2, 3, 4];
+			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+
+			const augmentedObject = augmentArray(originalObject);
+
+			expect(augmentedObject.push(5)).toEqual(5);
+			expect(augmentedObject).toEqual([1, 2, 3, 4, 5]);
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.pop()).toEqual(5);
+			expect(augmentedObject).toEqual([1, 2, 3, 4]);
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.shift()).toEqual(1);
+			expect(augmentedObject).toEqual([2, 3, 4]);
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.unshift(1)).toEqual(4);
+			expect(augmentedObject).toEqual([1, 2, 3, 4]);
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.splice(1, 1)).toEqual([2]);
+			expect(augmentedObject).toEqual([1, 3, 4]);
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.slice(1)).toEqual([3, 4]);
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.reverse()).toEqual([4, 3, 1]);
+			expect(originalObject).toEqual(copyOriginal);
+		});
+
+		test('should work with arrays on any level', () => {
+			const originalObject = {
+				a: {
+					b: {
+						c: [
+							{
+								a3: {
+									b3: {
+										c3: '03',
+									},
+								},
+								aa3: '01',
+							},
+							{
+								a3: {
+									b3: {
+										c3: '13',
+									},
+								},
+								aa3: '11',
+							},
+						],
+					},
+				},
+				aa: [
+					{
+						a3: {
+							b3: '2',
+						},
+						aa3: '1',
+					},
+				],
+			};
+			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+
+			const augmentedObject = augmentObject(originalObject);
+
+			// On first level
+			augmentedObject.aa[0].a3.b3 = '22';
+			expect(augmentedObject.aa[0].a3.b3).toEqual('22');
+			expect(originalObject.aa[0].a3.b3).toEqual('2');
+
+			// Make sure that also array operations as push and length work as expected
+			// On lower levels
+			augmentedObject.a.b.c[0].a3!.b3.c3 = '033';
+			expect(augmentedObject.a.b.c[0].a3!.b3.c3).toEqual('033');
+			expect(originalObject.a.b.c[0].a3!.b3.c3).toEqual('03');
+
+			augmentedObject.a.b.c[1].a3!.b3.c3 = '133';
+			expect(augmentedObject.a.b.c[1].a3!.b3.c3).toEqual('133');
+			expect(originalObject.a.b.c[1].a3!.b3.c3).toEqual('13');
+
+			augmentedObject.a.b.c.push({
+				a3: {
+					b3: {
+						c3: '23',
+					},
+				},
+				aa3: '21',
+			});
+			augmentedObject.a.b.c[2].a3.b3.c3 = '233';
+			expect(augmentedObject.a.b.c[2].a3.b3.c3).toEqual('233');
+
+			augmentedObject.a.b.c[2].a3.b3.c3 = '2333';
+			expect(augmentedObject.a.b.c[2].a3.b3.c3).toEqual('2333');
+
+			expect(originalObject).toEqual(copyOriginal);
+
+			expect(augmentedObject.a.b.c.length).toEqual(3);
+
+			expect(augmentedObject.aa).toEqual([
+				{
+					a3: {
+						b3: '22',
+					},
+					aa3: '1',
+				},
+			]);
+
+			expect(augmentedObject.a.b.c).toEqual([
+				{
+					a3: {
+						b3: {
+							c3: '033',
+						},
+					},
+					aa3: '01',
+				},
+				{
+					a3: {
+						b3: {
+							c3: '133',
+						},
+					},
+					aa3: '11',
+				},
+				{
+					a3: {
+						b3: {
+							c3: '2333',
+						},
+					},
+					aa3: '21',
+				},
+			]);
+
+			expect(augmentedObject).toEqual({
+				a: {
+					b: {
+						c: [
+							{
+								a3: {
+									b3: {
+										c3: '033',
+									},
+								},
+								aa3: '01',
+							},
+							{
+								a3: {
+									b3: {
+										c3: '133',
+									},
+								},
+								aa3: '11',
+							},
+							{
+								a3: {
+									b3: {
+										c3: '2333',
+									},
+								},
+								aa3: '21',
+							},
+						],
+					},
+				},
+				aa: [
+					{
+						a3: {
+							b3: '22',
+						},
+						aa3: '1',
+					},
+				],
+			});
+
+			expect(originalObject).toEqual(copyOriginal);
+		});
+	});
+
 	describe('augmentObject', () => {
 		test('should work with simple values on first level', () => {
 			const originalObject: IDataObject = {
@@ -58,18 +243,13 @@ describe('AugmentObject', () => {
 
 			const augmentedObject = augmentObject(originalObject);
 
-			// @ts-ignore
-			augmentedObject.a!.bb = '92';
+			augmentedObject.a.bb = '92';
 			expect(originalObject.a.bb).toEqual('2');
-			// @ts-ignore
 			expect(augmentedObject.a!.bb!).toEqual('92');
 
-			// @ts-ignore
 			augmentedObject.a!.b!.cc = '93';
 			expect(originalObject.a.b.cc).toEqual('3');
-			// @ts-ignore
 			expect(augmentedObject.a!.b!.cc).toEqual('93');
-			// expect(augmentedObject[1]).toEqual(911);
 
 			// @ts-ignore
 			augmentedObject.a!.b!.ccc = {
@@ -321,9 +501,6 @@ describe('AugmentObject', () => {
 				copiedObject.a.b.c.d.e.f++;
 			}
 			const timeCopied = new Date().getTime() - startTime;
-
-			console.log('timeAugmented', timeAugmented);
-			console.log('timeCopied', timeCopied);
 
 			expect(timeAugmented).toBeLessThan(timeCopied);
 		});

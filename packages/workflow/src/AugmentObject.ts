@@ -1,7 +1,70 @@
 import type { IDataObject } from './Interfaces';
+import util from 'util';
 
 export function augmentArray<T>(data: T[]): T[] {
-	return new Proxy(data, {});
+	let newData: unknown[] | undefined = undefined;
+
+	function getData(): unknown[] {
+		if (newData === undefined) {
+			newData = [...data];
+		}
+		return newData;
+	}
+
+	return new Proxy(data, {
+		deleteProperty(target, key) {
+			return Reflect.deleteProperty(getData(), key);
+		},
+		get(target, key, receiver): unknown {
+			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
+
+			if (typeof value === 'object') {
+				if (util.types.isProxy(value)) {
+					return Reflect.get(newData as unknown[], key);
+				}
+
+				newData = getData();
+
+				if (Array.isArray(value)) {
+					Reflect.set(newData, key, augmentArray(value));
+				} else {
+					// eslint-disable-next-line @typescript-eslint/no-use-before-define
+					Reflect.set(newData, key, augmentObject(value as IDataObject));
+				}
+
+				return Reflect.get(newData, key);
+			}
+
+			return value;
+		},
+		getOwnPropertyDescriptor(target, key) {
+			if (newData === undefined) {
+				return Reflect.getOwnPropertyDescriptor(target, key);
+			}
+
+			if (key === 'length') {
+				return Reflect.getOwnPropertyDescriptor(newData, key);
+			}
+			return { configurable: true, enumerable: true };
+		},
+		has(target, key) {
+			return Reflect.has(newData !== undefined ? newData : target, key);
+		},
+		ownKeys(target) {
+			return Reflect.ownKeys(newData !== undefined ? newData : target);
+		},
+		set(target, key: string, newValue: unknown) {
+			if (typeof newValue === 'object') {
+				// Always proxy all objects. Like that we can check in get simply if it
+				// is a proxy and it does then not matter if it was already there from the
+				// beginning and it got proxied at some point or set later and so theoretically
+				// does not have to get proxied
+				newValue = new Proxy(newValue as object, {});
+			}
+
+			return Reflect.set(getData(), key, newValue);
+		},
+	});
 }
 
 export function augmentObject<T extends object>(data: T): T {
