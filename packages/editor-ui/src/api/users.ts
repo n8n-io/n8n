@@ -5,14 +5,10 @@ import {
 	IUserResponse,
 } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {
 	return makeRestApiRequest(context, 'GET', '/login');
-}
-
-export function getCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {
-	return makeRestApiRequest(context, 'GET', '/me');
 }
 
 export function login(

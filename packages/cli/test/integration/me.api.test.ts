@@ -40,39 +40,6 @@ afterAll(async () => {
 });
 
 describe('Owner shell', () => {
-	test('GET /me should return sanitized owner shell', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-
-		const response = await authAgent(ownerShell).get('/me');
-
-		expect(response.statusCode).toBe(200);
-
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			personalizationAnswers,
-			globalRole,
-			password,
-			resetPasswordToken,
-			isPending,
-			apiKey,
-		} = response.body.data;
-
-		expect(validator.isUUID(id)).toBe(true);
-		expect(email).toBeNull();
-		expect(firstName).toBeNull();
-		expect(lastName).toBeNull();
-		expect(personalizationAnswers).toBeNull();
-		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
-		expect(isPending).toBe(true);
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
-		expect(apiKey).toBeUndefined();
-	});
-
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 		const authOwnerShellAgent = authAgent(ownerShell);
@@ -232,39 +199,6 @@ describe('Member', () => {
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: JSON.stringify(true) },
 		);
-	});
-
-	test('GET /me should return sanitized member', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-
-		const response = await authAgent(member).get('/me');
-
-		expect(response.statusCode).toBe(200);
-
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			personalizationAnswers,
-			globalRole,
-			password,
-			resetPasswordToken,
-			isPending,
-			apiKey,
-		} = response.body.data;
-
-		expect(validator.isUUID(id)).toBe(true);
-		expect(email).toBe(member.email);
-		expect(firstName).toBe(member.firstName);
-		expect(lastName).toBe(member.lastName);
-		expect(personalizationAnswers).toBeNull();
-		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
-		expect(isPending).toBe(false);
-		expect(globalRole.name).toBe('member');
-		expect(globalRole.scope).toBe('global');
-		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -431,39 +365,6 @@ describe('Member', () => {
 describe('Owner', () => {
 	beforeEach(async () => {
 		config.set('userManagement.isInstanceOwnerSetUp', true);
-	});
-
-	test('GET /me should return sanitized owner', async () => {
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-		const response = await authAgent(owner).get('/me');
-
-		expect(response.statusCode).toBe(200);
-
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			personalizationAnswers,
-			globalRole,
-			password,
-			resetPasswordToken,
-			isPending,
-			apiKey,
-		} = response.body.data;
-
-		expect(validator.isUUID(id)).toBe(true);
-		expect(email).toBe(owner.email);
-		expect(firstName).toBe(owner.firstName);
-		expect(lastName).toBe(owner.lastName);
-		expect(personalizationAnswers).toBeNull();
-		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
-		expect(isPending).toBe(false);
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
-		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
