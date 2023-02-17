@@ -31,7 +31,7 @@ export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
 	'PATCH /me',
 	'PATCH /me/password',
 	'POST /me/survey',
-	'POST /owner',
+	'POST /owner/setup',
 	'GET /non-existent',
 ];
 
@@ -42,7 +42,8 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
-	'POST /owner',
+	'POST /owner/pre-setup',
+	'POST /owner/setup',
 	'POST /owner/skip-setup',
 ];
 
