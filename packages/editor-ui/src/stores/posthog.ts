@@ -36,23 +36,9 @@ export const usePostHog = defineStore('posthog', () => {
 			const instanceId = rootStore.instanceId;
 			const user = usersStore.currentUser;
 			const traits: Record<string, string> = { instance_id: instanceId };
-			if (user && user.createdAt instanceof Date) {
-				traits.joined_at = user.createdAt.toISOString();
-			} else if (user && typeof user.createdAt === 'string') {
-				traits.joined_at = user.createdAt;
-			}
 
 			// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 			let id = user ? `${instanceId}#${user.id}` : instanceId;
-
-			const urlSearchParams = new URLSearchParams(window.location.search);
-			const params = Object.fromEntries(urlSearchParams.entries());
-
-			const cachedId = params['posthog-id'];
-			if (cachedId) {
-				id = cachedId;
-			}
-			console.log('identify', id, traits);
 			window.posthog?.identify(id, traits);
 		} catch (e) { }
 	};
@@ -61,7 +47,7 @@ export const usePostHog = defineStore('posthog', () => {
 		// todo replace with vars
 		// todo add bootstrap values
 		// todo test login/logout behavior
-		window.posthog?.init("phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo", { api_host: "https://ph.n8n.io", autocapture: false, disable_session_recording: true, debug: false });
+		window.posthog?.init("phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo", { api_host: "https://ph.n8n.io", autocapture: false, disable_session_recording: false, debug: true });
 		telemetry.value = tracking;
 		identify();
 		reloadFeatureFlags();
