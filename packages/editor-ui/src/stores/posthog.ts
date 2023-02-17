@@ -31,9 +31,9 @@ export const usePostHogStore = defineStore('posthog', () => {
 
 		// todo check why Date is used there
 		if (user && user.createdAt instanceof Date) {
-			traits.created_at_time = user.createdAt.getTime().toString();
+			traits.created_at_time = user.createdAt.getTime();
 		} else if (user && typeof user.createdAt === 'string') {
-			traits.created_at_time = new Date(user.createdAt).getTime().toString();
+			traits.created_at_time = new Date(user.createdAt).getTime();
 		}
 
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
