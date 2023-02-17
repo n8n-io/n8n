@@ -16,13 +16,6 @@ export const usePostHog = defineStore('posthog', () => {
 		window.posthog?.reset();
 	};
 
-	const reloadFeatureFlags = () => {
-		try {
-			console.log('reload');
-			window.posthog?.reloadFeatureFlags();
-		} catch (e) { }
-	};
-
 	const getVariant = (experiment: string): string | boolean | undefined => {
 		return featureFlags.value[experiment];
 	};
@@ -57,7 +50,6 @@ export const usePostHog = defineStore('posthog', () => {
 		window.posthog?.init("phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo", { api_host: "https://ph.n8n.io", autocapture: false, disable_session_recording: false, debug: true });
 		telemetry.value = tracking;
 		identify();
-		reloadFeatureFlags();
 
 		window.posthog?.onFeatureFlags((flags: string[], map: Record<string, string | boolean>) => {
 			featureFlags.value = map;
@@ -88,7 +80,6 @@ export const usePostHog = defineStore('posthog', () => {
 				onLogout();
 			}
 			identify();
-			reloadFeatureFlags();
 		},
 	);
 
