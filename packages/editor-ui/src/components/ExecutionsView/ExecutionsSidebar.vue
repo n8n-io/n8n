@@ -17,64 +17,7 @@
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<n8n-popover trigger="click">
-				<template #reference>
-					<div :class="$style.filterButton">
-						<n8n-button
-							icon="filter"
-							type="tertiary"
-							size="medium"
-							:active="statusFilterApplied"
-							data-test-id="executions-filter-button"
-						>
-							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
-							{{ $locale.baseText('executionsList.filters') }}
-						</n8n-button>
-					</div>
-				</template>
-				<div :class="$style['filters-dropdown']">
-					<div class="mb-s">
-						<n8n-input-label
-							:label="$locale.baseText('executions.ExecutionStatus')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs"
-						/>
-						<n8n-select
-							v-model="filter.status"
-							size="small"
-							ref="typeInput"
-							:class="$style['type-input']"
-							:placeholder="$locale.baseText('generic.any')"
-							data-test-id="execution-status-select"
-							@change="onFilterChange"
-						>
-							<n8n-option
-								v-for="item in executionStatuses"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id"
-								:data-test-id="`execution-status-${item.id}`"
-							>
-							</n8n-option>
-						</n8n-select>
-					</div>
-					<div :class="[$style.filterMessage, 'mt-s']" v-if="statusFilterApplied">
-						<n8n-link @click="resetFilters">
-							{{ $locale.baseText('generic.reset') }}
-						</n8n-link>
-					</div>
-				</div>
-			</n8n-popover>
-		</div>
-		<div v-show="statusFilterApplied" class="mb-xs">
-			<n8n-info-tip :bold="false">
-				{{ $locale.baseText('generic.filtersApplied') }}
-				<n8n-link @click="resetFilters" size="small">
-					{{ $locale.baseText('generic.resetAllFilters') }}
-				</n8n-link>
-			</n8n-info-tip>
+			<execution-filter :filter="filter" @filterChanged="onFilterChanged" />
 		</div>
 		<div
 			:class="$style.executionList"
@@ -87,7 +30,7 @@
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			</div>
-			<div v-if="executions.length === 0 && statusFilterApplied" :class="$style.noResultsContainer">
+			<div v-if="executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
@@ -115,8 +58,8 @@
 <script lang="ts">
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '../../constants';
-import { range as _range } from 'lodash';
 import { IExecutionsSummary } from '@/Interface';
 import { Route } from 'vue-router';
 import Vue from 'vue';
@@ -130,6 +73,7 @@ export default Vue.extend({
 	components: {
 		ExecutionCard,
 		ExecutionsInfoAccordion,
+		ExecutionFilter,
 	},
 	props: {
 		executions: {
@@ -157,9 +101,6 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		statusFilterApplied(): boolean {
-			return this.filter.status !== '';
-		},
 		executionStatuses(): Array<{ id: string; name: string }> {
 			return [
 				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
@@ -216,7 +157,8 @@ export default Vue.extend({
 		onRefresh(): void {
 			this.$emit('refresh');
 		},
-		onFilterChange(): void {
+		onFilterChanged(filter: { status: string; workflowId: string }) {
+			this.filter = filter;
 			this.$emit('filterUpdated', this.prepareFilter());
 		},
 		reloadExecutions(): void {

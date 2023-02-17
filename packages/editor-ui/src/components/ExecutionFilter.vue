@@ -18,7 +18,10 @@ const emit = defineEmits<{
 }>();
 
 const statusFilterApplied = computed(() => {
-	return props.filter.status !== 'ALL' || props.filter.workflowId !== 'ALL';
+	return (
+		(props.filter.status !== 'ALL' && props.filter.status !== '') ||
+		(props.workflows?.length && props.filter.workflowId !== 'ALL' && props.filter.workflowId !== '')
+	);
 });
 
 const statuses = computed(() => [
@@ -119,6 +122,7 @@ const onFilterReset = () => {
 					</n8n-select>
 				</div>
 				<n8n-button
+					v-if="statusFilterApplied"
 					:class="$style.executionResetButton"
 					@click="onFilterReset"
 					size="large"
