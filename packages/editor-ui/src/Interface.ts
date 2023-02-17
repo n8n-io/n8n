@@ -50,7 +50,7 @@ declare global {
 			): void;
 			reset(resetDeviceId?: boolean): void;
 			onFeatureFlags(
-				callback: (keys: string[], map: Record<string, boolean | string>) => void,
+				callback: (keys: string[], map: FeatureFlags) => void,
 			): void;
 			reloadFeatureFlags(): void;
 			init(key: string, options?: {

@@ -1,4 +1,4 @@
-import { watch } from 'vue';
+import { ref, Ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -9,13 +9,14 @@ export const usePostHogStore = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
+	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 
 	const onLogout = () => {
 		window.posthog?.reset();
 	};
 
 	const getVariant = (experiment: string): string | boolean | undefined => {
-		return window.posthog?.getFeatureFlag(experiment);
+		return featureFlags.value?.[experiment];
 	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
@@ -41,7 +42,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		} catch (e) { }
 	};
 
-	const init = (featureFlags: FeatureFlags) => {
+	const init = (bootstrapped: FeatureFlags) => {
 		const config = settingsStore.settings.posthog;
 		if (!config.enabled) {
 			return;
@@ -51,6 +52,8 @@ export const usePostHogStore = defineStore('posthog', () => {
 		if (!userId) {
 			return;
 		}
+
+		featureFlags.value = bootstrapped;
 
 		const instanceId = rootStore.instanceId;
 		const distinctId = `${instanceId}#${userId}`;
@@ -62,14 +65,14 @@ export const usePostHogStore = defineStore('posthog', () => {
 			debug: config.debug,
 			bootstrap: {
 				distinctId,
-				featureFlags,
+				featureFlags: bootstrapped,
 			},
 		});
 
 		identify();
 
-		window.posthog?.onFeatureFlags((flags: string[], map: Record<string, string | boolean>) => {
-			console.log('resolved flags', JSON.stringify(map));
+		window.posthog?.onFeatureFlags((flags: string[], map: FeatureFlags) => {
+			featureFlags.value = map;
 		});
 	};
 
