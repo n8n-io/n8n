@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { createSimplifyFunction } from '../../helpers/utils';
+import { createSimplifyFunction, parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
 import { channelRLC, maxResultsNumber, simplifyBoolean } from '../common.description';
 
@@ -59,15 +59,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			returnData.push(...executionData);
 		} catch (error) {
+			const err = parseDiscordError.call(this, error);
+
 			if (this.continueOnFail()) {
-				const executionErrorData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: error.message }),
-					{ itemData: { item: i } },
-				);
-				returnData.push(...executionErrorData);
+				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}
-			throw error;
+
+			throw err;
 		}
 	}
 

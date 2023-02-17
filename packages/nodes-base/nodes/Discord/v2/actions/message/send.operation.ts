@@ -12,6 +12,7 @@ import { textChannelRLC, userRLC } from '../common.description';
 
 import FormData from 'form-data';
 import { isEmpty } from 'lodash';
+import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
 
 const embedFields: INodeProperties[] = [
 	{
@@ -449,7 +450,7 @@ export async function execute(
 
 			let response: IDataObject[] = [];
 
-			if (files.length) {
+			if (files?.length) {
 				const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, i);
 
 				response = await discordApiMultiPartRequest.call(
@@ -474,15 +475,14 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
+			const err = parseDiscordError.call(this, error);
+
 			if (this.continueOnFail()) {
-				const executionErrorData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: error.message }),
-					{ itemData: { item: i } },
-				);
-				returnData.push(...executionErrorData);
+				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}
-			throw error;
+
+			throw err;
 		}
 	}
 
