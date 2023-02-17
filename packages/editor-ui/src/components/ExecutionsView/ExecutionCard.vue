@@ -46,7 +46,7 @@
 					>
 						{{
 							$locale.baseText('executionDetails.runningTimeFinished', {
-								interpolate: { time: executionUIDetails.runningTime },
+								interpolate: { time: executionUIDetails?.runningTime },
 							})
 						}}
 					</n8n-text>
@@ -191,7 +191,8 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 		}
 	}
 
-	&.error {
+	&.error,
+	&.crashed {
 		&,
 		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);

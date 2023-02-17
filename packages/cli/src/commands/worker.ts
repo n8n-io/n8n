@@ -5,7 +5,7 @@ import type PCancelable from 'p-cancelable';
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
-import type { IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
 import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -188,6 +188,11 @@ export class Worker extends BaseCommand {
 		];
 
 		additionalData.executionId = executionId;
+
+		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
+			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
+			LoggerProxy.debug(`Queued worker execution status for ${executionId} is "${status}"`);
+		};
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;

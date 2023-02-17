@@ -11,7 +11,7 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { LessThanOrEqual } from 'typeorm';
+import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import config from '@/config';
@@ -57,6 +57,7 @@ export class WaitTrackerClass {
 			select: ['id', 'waitTill'],
 			where: {
 				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				status: Not('crashed'),
 			},
 			order: {
 				waitTill: 'ASC',
@@ -127,10 +128,13 @@ export class WaitTrackerClass {
 
 		fullExecutionData.stoppedAt = new Date();
 		fullExecutionData.waitTill = undefined;
+		fullExecutionData.status = 'canceled';
 
 		await Db.collections.Execution.update(
 			executionId,
-			ResponseHelper.flattenExecutionData(fullExecutionData),
+			ResponseHelper.flattenExecutionData({
+				...fullExecutionData,
+			}),
 		);
 
 		return {

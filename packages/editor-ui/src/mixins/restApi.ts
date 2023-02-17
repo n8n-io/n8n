@@ -27,6 +27,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 import { mapStores } from 'pinia';
