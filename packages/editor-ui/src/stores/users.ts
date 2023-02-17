@@ -1,7 +1,6 @@
 import {
 	changePassword,
 	deleteUser,
-	getCurrentUser,
 	getInviteLink,
 	getUsers,
 	inviteUsers,
@@ -137,16 +136,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return;
 			}
 			Vue.set(this.currentUser, 'personalizationAnswers', answers);
-		},
-		async getCurrentUser(): Promise<IUserResponse | null> {
-			const rootStore = useRootStore();
-			const user = await getCurrentUser(rootStore.getRestApiContext);
-			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
-			}
-
-			return user;
 		},
 		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();
