@@ -51,6 +51,8 @@ export class AuthController {
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
+		// TODO:SAML: only handle currently activated authentication method
+		// TODO:SAML: handle SAML login
 		const user =
 			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
 

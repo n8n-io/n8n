@@ -121,6 +121,7 @@ export const setupAuthMiddlewares = (
 			return;
 		}
 		// Not owner and user exists. We now protect restricted urls.
+		// TODO:SAML - add saml endpoints to restricted urls
 		const postRestrictedUrls = [
 			`/${restEndpoint}/users`,
 			`/${restEndpoint}/owner`,

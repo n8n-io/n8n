@@ -51,7 +51,7 @@ export const sampleSPMetadata = `
  entityID="http://localhost:5678/rest/sso/metadata">
     <SPSSODescriptor WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
         <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
-        <AssertionConsumerService isDefault="true" index="0" Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:5678/rest/sso/acs"/>
+        <AssertionConsumerService isDefault="true" index="0" Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://192.168.178.20:5678/rest/sso/acs"/>
     </SPSSODescriptor>
 </EntityDescriptor>
 `;
