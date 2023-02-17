@@ -45,7 +45,7 @@ declare global {
 			getFeatureFlag(flagName: string): boolean | string;
 			identify(
 				id: string,
-				userProperties?: Record<string, string>,
+				userProperties?: Record<string, string | number>,
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset(resetDeviceId?: boolean): void;

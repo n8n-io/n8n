@@ -10,6 +10,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
+	const initialized: Ref<boolean> = ref(false);
 
 	const onLogout = () => {
 		window.posthog?.reset();
@@ -24,22 +25,21 @@ export const usePostHogStore = defineStore('posthog', () => {
 	};
 
 	const identify = () => {
-		try {
-			const instanceId = rootStore.instanceId;
-			const user = usersStore.currentUser;
-			const traits: Record<string, string> = { instance_id: instanceId };
+		const instanceId = rootStore.instanceId;
+		const user = usersStore.currentUser;
+		const traits: Record<string, string | number> = { instance_id: instanceId };
 
-			// todo check why Date is used there
-			if (user && user.createdAt instanceof Date) {
-				traits.created_at_time = user.createdAt.getTime().toString();
-			} else if (user && typeof user.createdAt === 'string') {
-				traits.created_at_time = new Date(user.createdAt).getTime().toString();
-			}
+		// todo check why Date is used there
+		if (user && user.createdAt instanceof Date) {
+			traits.created_at_time = user.createdAt.getTime().toString();
+		} else if (user && typeof user.createdAt === 'string') {
+			traits.created_at_time = new Date(user.createdAt).getTime().toString();
+		}
 
-			// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
-			let id = user ? `${instanceId}#${user.id}` : instanceId;
-			window.posthog?.identify(id, traits);
-		} catch (e) { }
+		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
+		let id = user ? `${instanceId}#${user.id}` : instanceId;
+		console.log('identify', id, traits);
+		window.posthog?.identify(id, traits);
 	};
 
 	const init = (bootstrapped: FeatureFlags) => {
@@ -70,10 +70,13 @@ export const usePostHogStore = defineStore('posthog', () => {
 		});
 
 		identify();
+		if (!initialized.value) {
+			window.posthog?.onFeatureFlags((flags: string[], map: FeatureFlags) => {
+				featureFlags.value = map;
+			});
+		}
 
-		window.posthog?.onFeatureFlags((flags: string[], map: FeatureFlags) => {
-			featureFlags.value = map;
-		});
+		initialized.value = true;
 	};
 
 	// window.addEventListener('beforeunload', (e) => {
