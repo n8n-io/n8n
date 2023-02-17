@@ -20,7 +20,7 @@ export const usePostHog = defineStore('posthog', () => {
 		try {
 			console.log('reload');
 			window.posthog?.reloadFeatureFlags();
-		} catch (e) {}
+		} catch (e) { }
 	};
 
 	const getVariant = (experiment: string): string | boolean | undefined => {
@@ -54,10 +54,14 @@ export const usePostHog = defineStore('posthog', () => {
 			}
 			console.log('identify', id, traits);
 			window.posthog?.identify(id, traits);
-		} catch (e) {}
+		} catch (e) { }
 	};
 
 	const init = (tracking: Telemetry) => {
+		// todo replace with vars
+		// todo add bootstrap values
+		// todo test login/logout behavior
+		window.posthog?.init("phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo", { api_host: "https://ph.n8n.io", autocapture: false, disable_session_recording: true, debug: false });
 		telemetry.value = tracking;
 		identify();
 		reloadFeatureFlags();

@@ -29,6 +29,7 @@ import {
 	INodeActionTypeDescription,
 	IDisplayOptions,
 	IAbstractEventMessage,
+	FeatureFlags,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
@@ -51,6 +52,16 @@ declare global {
 				callback: (keys: string[], map: Record<string, boolean | string>) => void,
 			): void;
 			reloadFeatureFlags(): void;
+			init(key: string, options?: {
+				api_host?: string;
+				autocapture?: boolean;
+				disable_session_recording?: boolean;
+				debug?: boolean;
+				bootstrap?: {
+					distinctId: string;
+					featureFlags: FeatureFlags;
+				}
+			}): void;
 		};
 	}
 }

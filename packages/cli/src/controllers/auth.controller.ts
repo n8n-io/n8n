@@ -62,6 +62,7 @@ export class AuthController {
 
 		if (user) {
 			await issueCookie(res, user);
+			// todo add posthog feature flags
 			return sanitizeUser(user);
 		}
 
@@ -72,6 +73,7 @@ export class AuthController {
 	 * Manually check the `n8n-auth` cookie.
 	 */
 	@Get('/login')
+	// todo test sign up, account setup
 	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
 		// Manually check the existing cookie.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -84,6 +86,7 @@ export class AuthController {
 				user = await resolveJwt(cookieContents);
 				const currentUser: CurrentUser = sanitizeUser(user);
 				if (this.postHog) {
+					// todo add timeout try/catch
 					currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser);
 				}
 				return currentUser;
