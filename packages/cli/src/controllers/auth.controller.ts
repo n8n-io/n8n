@@ -84,7 +84,7 @@ export class AuthController {
 				user = await resolveJwt(cookieContents);
 				const currentUser: CurrentUser = sanitizeUser(user);
 				if (this.postHog) {
-					currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser.id);
+					currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser);
 				}
 				return currentUser;
 			} catch (error) {
@@ -114,7 +114,7 @@ export class AuthController {
 		await issueCookie(res, user);
 		const currentUser: CurrentUser = sanitizeUser(user);
 		if (this.postHog) {
-			currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser.id);
+			currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser);
 		}
 		return currentUser;
 	}

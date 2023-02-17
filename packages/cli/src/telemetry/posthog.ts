@@ -3,6 +3,7 @@ import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { getLogger, Logger } from '@/Logger';
+import { PublicUser } from '..';
 
 export default class PostHogClient {
 	private postHog?: PostHog;
@@ -55,12 +56,17 @@ export default class PostHogClient {
 		});
 	}
 
-	async getFeatureFlags(userId: string): Promise<FeatureFlags> {
+	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
 		if (!this.postHog) return Promise.resolve({});
 
-		const fullId = [this.instanceId, userId].join('#');
+		const fullId = [this.instanceId, user.id].join('#');
 
-		return this.postHog.getAllFlags(fullId);
+		return this.postHog.getAllFlags(fullId, {
+			personProperties: {
+				created_at_test: 'test',
+			},
+			onlyEvaluateLocally: true,
+		});
 	}
 
 	async isFeatureFlagEnabled(
