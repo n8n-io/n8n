@@ -1,12 +1,8 @@
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="
-			!submitted
-				? $locale.baseText('personalizationModal.customizeN8n')
-				: $locale.baseText('personalizationModal.thanks')
-		"
-		:subtitle="!submitted ? $locale.baseText('personalizationModal.theseQuestionsHelpUs') : ''"
+		:title="$locale.baseText('personalizationModal.customizeN8n')"
+		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
 		:centerTitle="true"
 		:showClose="false"
 		:eventBus="modalBus"
@@ -17,11 +13,7 @@
 		@enter="onSave"
 	>
 		<template #content>
-			<div v-if="submitted" :class="$style.submittedContainer">
-				<img :class="$style.demoImage" :src="rootStore.baseUrl + 'suggestednodes.png'" />
-				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
-			</div>
-			<div :class="$style.container" v-else>
+			<div :class="$style.container">
 				<n8n-form-inputs
 					:inputs="survey"
 					:columnView="true"
@@ -33,16 +25,9 @@
 		<template #footer>
 			<div>
 				<n8n-button
-					v-if="submitted"
-					@click="closeDialog"
-					:label="$locale.baseText('personalizationModal.getStarted')"
-					float="right"
-				/>
-				<n8n-button
-					v-else
 					@click="onSave"
 					:loading="isSaving"
-					:label="$locale.baseText('personalizationModal.continue')"
+					:label="$locale.baseText('personalizationModal.getStarted')"
 					float="right"
 				/>
 			</div>
@@ -156,7 +141,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 	name: 'PersonalizationModal',
 	data() {
 		return {
-			submitted: false,
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
@@ -646,12 +630,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 				}
 
 				await this.fetchOnboardingPrompt();
-				this.submitted = true;
 			} catch (e) {
 				this.$showError(e, 'Error while submitting results');
 			}
 
 			this.$data.isSaving = false;
+			this.closeDialog();
 		},
 		async fetchOnboardingPrompt() {
 			if (
@@ -694,18 +678,5 @@ export default mixins(showMessage, workflowHelpers).extend({
 	section > div:not(:last-child) {
 		margin-bottom: var(--spacing-m);
 	}
-}
-
-.submittedContainer {
-	* {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-
-.demoImage {
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
-	width: 100%;
-	height: 140px;
 }
 </style>
