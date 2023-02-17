@@ -121,7 +121,7 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 				};
 			}
 
-			return embedReturnData.filter;
+			return embedReturnData;
 		})
 		.filter((embed) => !isEmpty(embed));
 }
