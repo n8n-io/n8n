@@ -25,26 +25,11 @@ const statusFilterApplied = computed(() => {
 });
 
 const statuses = computed(() => [
-	{
-		id: 'ALL',
-		name: locale.baseText('executionsList.anyStatus'),
-	},
-	{
-		id: 'error',
-		name: locale.baseText('executionsList.error'),
-	},
-	{
-		id: 'running',
-		name: locale.baseText('executionsList.running'),
-	},
-	{
-		id: 'success',
-		name: locale.baseText('executionsList.success'),
-	},
-	{
-		id: 'waiting',
-		name: locale.baseText('executionsList.waiting'),
-	},
+	{ id: 'ALL', name: locale.baseText('executionsList.anyStatus') },
+	{ id: 'error', name: locale.baseText('executionsList.error') },
+	{ id: 'running', name: locale.baseText('executionsList.running') },
+	{ id: 'success', name: locale.baseText('executionsList.success') },
+	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
 const onFilterWorkflowIdChange = (value: string) => {

@@ -59,7 +59,7 @@
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import { VIEWS } from '../../constants';
+import { VIEWS } from '@/constants';
 import { IExecutionsSummary } from '@/Interface';
 import { Route } from 'vue-router';
 import Vue from 'vue';
@@ -101,14 +101,6 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		executionStatuses(): Array<{ id: string; name: string }> {
-			return [
-				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
-				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
-				{ id: 'success', name: this.$locale.baseText('executionsList.success') },
-				{ id: 'waiting', name: this.$locale.baseText('executionsList.waiting') },
-			];
-		},
 	},
 	watch: {
 		$route(to: Route, from: Route) {
