@@ -2869,7 +2869,9 @@ export default mixins(
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 
-									if (!output || !output.total) {
+									if (output.isArtificalRecoveredEventItem) {
+										NodeViewUtils.recoveredConnection(connection);
+									} else if ((!output || !output.total) && !output.isArtificalRecoveredEventItem) {
 										NodeViewUtils.resetConnection(connection);
 									} else {
 										NodeViewUtils.addConnectionOutputSuccess(connection, output);

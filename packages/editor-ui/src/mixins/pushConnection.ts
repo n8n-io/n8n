@@ -1,4 +1,9 @@
-import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IPushData } from '@/Interface';
+import {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IPushData,
+	IPushDataExecutionFinished,
+} from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -10,6 +15,8 @@ import {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
+	IRun,
+	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
 	TelemetryHelpers,
@@ -25,6 +32,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useSettingsStore } from '@/stores/settings';
+import { parse } from 'flatted';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -57,21 +65,6 @@ export const pushConnection = mixins(
 	},
 	methods: {
 		attemptReconnect() {
-			const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-			if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
-				this.lostConnection = true;
-
-				this.workflowsStore.executingNode = null;
-				this.uiStore.removeActiveAction('workflowRunning');
-
-				this.$showMessage({
-					title: this.$locale.baseText('pushConnection.executionFailed'),
-					message: this.$locale.baseText('pushConnection.executionFailed.message'),
-					type: 'error',
-					duration: 0,
-				});
-			}
-
 			this.pushConnect();
 		},
 
@@ -115,13 +108,17 @@ export const pushConnection = mixins(
 			this.connectRetries = 0;
 			this.lostConnection = false;
 			this.rootStore.pushConnectionActive = true;
+			this.clearAllStickyNotifications();
 			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
 		},
 
 		onConnectionError() {
 			this.pushDisconnect();
 			this.connectRetries++;
-			this.reconnectTimeout = setTimeout(this.attemptReconnect, this.connectRetries * 5000);
+			this.reconnectTimeout = setTimeout(
+				this.attemptReconnect,
+				Math.min(this.connectRetries * 3000, 30000), // maximum 30 seconds backoff
+			);
 		},
 
 		/**
@@ -186,7 +183,7 @@ export const pushConnection = mixins(
 		/**
 		 * Process a newly received message
 		 */
-		pushMessageReceived(event: Event, isRetry?: boolean): boolean {
+		async pushMessageReceived(event: Event, isRetry?: boolean): Promise<boolean> {
 			const retryAttempts = 5;
 			let receivedData: IPushData;
 			try {
@@ -229,11 +226,81 @@ export const pushConnection = mixins(
 				}
 			}
 
-			if (receivedData.type === 'executionFinished') {
-				// The workflow finished executing
-				const pushData = receivedData.data;
+			// recovered execution data is handled like executionFinished data, however for security reasons
+			// we need to fetch the data from the server again rather than push it to all clients
+			let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
+			if (receivedData.type === 'executionRecovered') {
+				const recoveredExecutionId = receivedData.data?.executionId;
+				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
+				if (isWorkflowRunning && this.workflowsStore.activeExecutionId === recoveredExecutionId) {
+					// pull execution data for the recovered execution from the server
+					const executionData = await this.workflowsStore.fetchExecutionDataById(
+						this.workflowsStore.activeExecutionId,
+					);
+					if (executionData?.data) {
+						// data comes in as 'flatten' object, so we need to parse it
+						executionData.data = parse(
+							executionData.data as unknown as string,
+						) as IRunExecutionData;
+						const iRunExecutionData: IRunExecutionData = {
+							startData: executionData.data?.startData,
+							resultData: executionData.data?.resultData ?? { runData: {} },
+							executionData: executionData.data?.executionData,
+						};
+						if (
+							this.workflowsStore.workflowExecutionData?.workflowId === executionData.workflowId
+						) {
+							const activeRunData =
+								this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+							if (activeRunData) {
+								for (const key of Object.keys(activeRunData)) {
+									iRunExecutionData.resultData.runData[key] = activeRunData[key];
+								}
+							}
+						}
+						const iRun: IRun = {
+							data: iRunExecutionData,
+							finished: executionData.finished,
+							mode: executionData.mode,
+							waitTill: executionData.data?.waitTill,
+							startedAt: executionData.startedAt,
+							stoppedAt: executionData.stoppedAt,
+							status: 'crashed',
+						};
+						if (executionData.data) {
+							recoveredPushData = {
+								executionId: executionData.id,
+								data: iRun,
+							};
+						}
+					}
+				}
+			}
 
-				this.workflowsStore.finishActiveExecution(pushData);
+			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
+				// The workflow finished executing
+				let pushData: IPushDataExecutionFinished;
+				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
+					pushData = recoveredPushData as IPushDataExecutionFinished;
+				} else {
+					pushData = receivedData.data as IPushDataExecutionFinished;
+				}
+
+				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+					const activeRunData =
+						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+					if (activeRunData) {
+						for (const key of Object.keys(activeRunData)) {
+							if (
+								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
+									.isArtificalRecoveredEventItem === true &&
+								activeRunData[key].length > 0
+							)
+								pushData.data.data.resultData.runData[key] = activeRunData[key];
+						}
+					}
+					this.workflowsStore.finishActiveExecution(pushData);
+				}
 
 				if (!this.uiStore.isActionActive('workflowRunning')) {
 					// No workflow is running so ignore the messages
@@ -251,7 +318,13 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+
+				if (pushData.data.status === 'crashed') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'pushConnection.executionFailed.message',
+					);
+				}
 
 				const lineNumber =
 					runDataExecuted &&

@@ -21,7 +21,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions } from 'typeorm';
-import { In } from 'typeorm';
+import { Not, In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { RequestOptions } from 'oauth-1.0a';
@@ -45,6 +45,8 @@ import type {
 	ITelemetrySettings,
 	WorkflowExecuteMode,
 	ICredentialTypes,
+	ExecutionStatus,
+	IExecutionsSummary,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
@@ -109,7 +111,6 @@ import type {
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IExecutionsSummary,
 	IN8nUISettings,
 } from '@/Interfaces';
 import * as ActiveExecutions from '@/ActiveExecutions';
@@ -130,7 +131,6 @@ import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { eventBus } from '@/eventbus';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
@@ -145,6 +145,8 @@ import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
+import { eventBus } from './eventbus';
+import { isSamlEnabled } from './Saml/helpers';
 
 const exec = promisify(callbackExec);
 
@@ -275,6 +277,7 @@ class Server extends AbstractServer {
 			enterprise: {
 				sharing: false,
 				ldap: false,
+				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
@@ -303,6 +306,7 @@ class Server extends AbstractServer {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
+			saml: isSamlEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -977,10 +981,11 @@ class Server extends AbstractServer {
 						if (!currentlyRunningExecutionIds.length) return [];
 
 						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
-							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
+							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 							order: { id: 'DESC' },
 							where: {
 								id: In(currentlyRunningExecutionIds),
+								status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
 							},
 						};
 
@@ -989,9 +994,15 @@ class Server extends AbstractServer {
 						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const { workflowId } = jsonParse<any>(req.query.filter);
+							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
 								Object.assign(findOptions.where!, { workflowId });
+							}
+							if (status) {
+								Object.assign(findOptions.where!, { status: In(status) });
+							}
+							if (finished) {
+								Object.assign(findOptions.where!, { finished });
 							}
 						} else {
 							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
@@ -1008,6 +1019,8 @@ class Server extends AbstractServer {
 								mode: execution.mode,
 								retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
 								startedAt: new Date(execution.startedAt),
+								status: execution.status ?? null,
+								stoppedAt: execution.stoppedAt ?? null,
 							} as IExecutionsSummary;
 						});
 					}
