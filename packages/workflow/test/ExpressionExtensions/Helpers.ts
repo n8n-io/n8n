@@ -18,6 +18,9 @@ export const workflow = new Workflow({
 	connections: {},
 	active: false,
 	nodeTypes,
+	settings: {
+		timezone: TEST_TIMEZONE,
+	}
 });
 export const expression = new Expression(workflow);
 

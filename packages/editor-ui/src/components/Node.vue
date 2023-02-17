@@ -34,7 +34,7 @@
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
-					<div v-else-if="waiting" class="waiting">
+					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
 						<n8n-tooltip placement="bottom">
 							<template #content>
 								<div v-text="waiting"></div>
@@ -45,6 +45,9 @@
 					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
 						<font-awesome-icon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
+					<span v-else-if="nodeExecutionStatus === 'unknown'">
+						<!-- Do nothing, unknown means the node never executed -->
 					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
 						<font-awesome-icon icon="check" />
@@ -136,7 +139,10 @@
 				</div>
 			</div>
 			<div
-				:class="{ 'disabled-linethrough': true, success: workflowDataItems > 0 }"
+				:class="{
+					'disabled-linethrough': true,
+					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
+				}"
 				v-if="showDisabledLinethrough"
 			></div>
 		</div>
@@ -228,8 +234,13 @@ export default mixins(
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
 		hasIssues(): boolean {
+			if (
+				this.nodeExecutionStatus &&
+				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
+			)
+				return true;
 			if (this.hasPinData) return false;
-			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
+			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
 			return false;
@@ -303,12 +314,31 @@ export default mixins(
 				executing: this.isExecuting,
 			};
 		},
-		nodeIssues(): string[] {
-			if (this.data.issues === undefined) {
-				return [];
+		nodeExecutionStatus(): string {
+			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
+			if (nodeExecutionRunData) {
+				return nodeExecutionRunData[0].executionStatus ?? '';
 			}
-
-			return NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
+			return '';
+		},
+		nodeIssues(): string[] {
+			const issues: string[] = [];
+			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
+			if (nodeExecutionRunData) {
+				nodeExecutionRunData.forEach((executionRunData) => {
+					if (executionRunData.error) {
+						issues.push(
+							`${executionRunData.error.message}${
+								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
+							}`,
+						);
+					}
+				});
+			}
+			if (this.data?.issues !== undefined) {
+				issues.push(...NodeHelpers.nodeIssuesToString(this.data.issues, this.data));
+			}
+			return issues;
 		},
 		nodeDisabledIcon(): string {
 			if (this.data.disabled === false) {
@@ -387,6 +417,8 @@ export default mixins(
 					borderColor = getStyleTokenValue('--color-danger');
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
+				} else if (this.nodeExecutionStatus === 'unknown') {
+					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
 				}

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-
+import { ExpressionExtensionError } from './../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 
 function format(value: number, extraArgs: unknown[]): string {
@@ -14,10 +14,16 @@ function format(value: number, extraArgs: unknown[]): string {
 }
 
 function isEven(value: number) {
+	if (!Number.isInteger(value)) {
+		throw new ExpressionExtensionError('isEven() is only callable on integers');
+	}
 	return value % 2 === 0;
 }
 
 function isOdd(value: number) {
+	if (!Number.isInteger(value)) {
+		throw new ExpressionExtensionError('isOdd() is only callable on integers');
+	}
 	return Math.abs(value) % 2 === 1;
 }
 

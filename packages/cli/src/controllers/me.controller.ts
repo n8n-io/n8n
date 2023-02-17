@@ -50,14 +50,6 @@ export class MeController {
 	}
 
 	/**
-	 * Return the logged-in user.
-	 */
-	@Get('/')
-	async getCurrentUser(req: AuthenticatedRequest): Promise<PublicUser> {
-		return sanitizeUser(req.user);
-	}
-
-	/**
 	 * Update the logged-in user's settings, except password.
 	 */
 	@Patch('/')

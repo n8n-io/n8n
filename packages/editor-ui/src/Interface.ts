@@ -28,6 +28,7 @@ import {
 	NodeParameterValueType,
 	INodeActionTypeDescription,
 	IDisplayOptions,
+	IExecutionsSummary,
 	IAbstractEventMessage,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
@@ -352,19 +353,6 @@ export interface IExecutionsStopData {
 	stoppedAt: Date;
 }
 
-export interface IExecutionsSummary {
-	id: string;
-	mode: WorkflowExecuteMode;
-	finished?: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
-}
-
 export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
 	filters?: IDataObject;
@@ -379,7 +367,13 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -428,6 +422,9 @@ export interface IPushDataExecutionStarted {
 	retryOf?: string;
 	workflowId: string;
 	workflowName?: string;
+}
+export interface IPushDataExecutionRecovered {
+	executionId: string;
 }
 
 export interface IPushDataExecutionFinished {
@@ -512,7 +509,25 @@ export type IPersonalizationSurveyAnswersV3 = {
 	email?: string | null;
 };
 
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+export type IPersonalizationSurveyAnswersV4 = {
+	version: 'v4';
+	automationGoalDevops?: string[] | null;
+	automationGoalDevopsOther?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+	email?: string | null;
+	role?: string | null;
+	roleOther?: string | null;
+	reportedSource?: string | null;
+	reportedSourceOther?: string | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
@@ -690,6 +705,7 @@ export interface IN8nUISettings {
 		host: string;
 	};
 	executionMode: string;
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	isNpmAvailable: boolean;
 	publicApi: {

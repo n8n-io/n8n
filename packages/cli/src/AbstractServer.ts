@@ -30,6 +30,8 @@ import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 const emptyBuffer = Buffer.alloc(0);
 
 export abstract class AbstractServer {
+	protected server: Server;
+
 	protected app: express.Application;
 
 	protected externalHooks: IExternalHooksClass;
@@ -73,7 +75,7 @@ export abstract class AbstractServer {
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 	}
 
-	private async setupCommonMiddlewares() {
+	private async setupErrorHandlers() {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
@@ -82,6 +84,10 @@ export abstract class AbstractServer {
 		} = await import('@sentry/node');
 		app.use(requestHandler());
 		app.use(errorHandler());
+	}
+
+	private async setupCommonMiddlewares() {
+		const { app } = this;
 
 		// Compress the response data
 		app.use(compression());
@@ -146,6 +152,8 @@ export abstract class AbstractServer {
 	private setupDevMiddlewares() {
 		this.app.use(corsMiddleware);
 	}
+
+	protected setupPushServer() {}
 
 	private async setupHealthCheck() {
 		this.app.use((req, res, next) => {
@@ -392,10 +400,9 @@ export abstract class AbstractServer {
 	async start(): Promise<void> {
 		const { app, externalHooks, protocol, sslKey, sslCert } = this;
 
-		let server: Server;
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
-			server = https.createServer(
+			this.server = https.createServer(
 				{
 					key: await readFile(this.sslKey, 'utf8'),
 					cert: await readFile(this.sslCert, 'utf8'),
@@ -404,13 +411,13 @@ export abstract class AbstractServer {
 			);
 		} else {
 			const http = await import('http');
-			server = http.createServer(app);
+			this.server = http.createServer(app);
 		}
 
 		const PORT = config.getEnv('port');
 		const ADDRESS = config.getEnv('listen_address');
 
-		server.on('error', (error: Error & { code: string }) => {
+		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				console.log(
 					`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
@@ -419,8 +426,10 @@ export abstract class AbstractServer {
 			}
 		});
 
-		await new Promise<void>((resolve) => server.listen(PORT, ADDRESS, () => resolve()));
+		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
 
+		await this.setupErrorHandlers();
+		this.setupPushServer();
 		await this.setupCommonMiddlewares();
 		if (inDevelopment) {
 			this.setupDevMiddlewares();

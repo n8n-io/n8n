@@ -59,7 +59,7 @@ export async function slackApiRequest(
 				}'`,
 				{
 					description:
-						'Hint: Upgrate to the Slack plan that includes the funcionality you want to use.',
+						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
 				},
 			);
 		} else if (response.error === 'missing_scope') {
