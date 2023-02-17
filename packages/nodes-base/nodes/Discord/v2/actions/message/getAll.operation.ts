@@ -12,6 +12,9 @@ const displayOptions = {
 		resource: ['message'],
 		operation: ['getAll'],
 	},
+	hide: {
+		authentication: ['webhook'],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);

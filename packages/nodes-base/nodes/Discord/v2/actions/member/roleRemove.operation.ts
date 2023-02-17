@@ -12,6 +12,9 @@ const displayOptions = {
 		resource: ['member'],
 		operation: ['roleRemove'],
 	},
+	hide: {
+		authentication: ['webhook'],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);

@@ -8,7 +8,6 @@ import type {
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
-import { textChannelRLC, userRLC } from '../common.description';
 
 import FormData from 'form-data';
 import { isEmpty } from 'lodash';
@@ -104,38 +103,12 @@ export const embedFieldsDescription = updateDisplayOptions(
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Send To',
-		name: 'sendTo',
-		type: 'options',
-		options: [
-			{
-				name: 'User',
-				value: 'user',
-			},
-			{
-				name: 'Channel',
-				value: 'channel',
-			},
-		],
-		default: 'channel',
-		description: 'Send message to a channel or DM to a user',
-	},
-
-	{
-		...userRLC,
-		displayOptions: {
-			show: {
-				sendTo: ['user'],
-			},
-		},
-	},
-	{
-		...textChannelRLC,
-		displayOptions: {
-			show: {
-				sendTo: ['channel'],
-			},
-		},
+		displayName: 'Webhook URL',
+		name: 'webhookUri',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
 	},
 	{
 		displayName: 'Content',
@@ -157,6 +130,14 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Avatar URL',
+				name: 'avatar_url',
+				type: 'string',
+				default: '',
+				description: 'Override the default avatar of the webhook',
+				placeholder: 'e.g. https://example.com/image.png',
+			},
+			{
 				displayName: 'Flags',
 				name: 'flags',
 				type: 'multiOptions',
@@ -175,19 +156,27 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Message Reference ID',
-				name: 'message_reference',
-				type: 'string',
-				default: '',
-				description: 'Fill this to make your message a reply',
-				placeholder: 'e.g. 1059467601836773386',
-			},
-			{
 				displayName: 'Text-to-Speech (TTS)',
 				name: 'tts',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to have a bot reading the message directly in the channel',
+			},
+			{
+				displayName: 'Username',
+				name: 'username',
+				type: 'string',
+				default: '',
+				description: 'Override the default username of the webhook',
+				placeholder: 'e.g. My Username',
+			},
+			{
+				displayName: 'Wait',
+				name: 'wait',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether waits for server confirmation of message send before response, and returns the created message body',
 			},
 		],
 	},
@@ -271,17 +260,15 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['message'],
-		operation: ['send'],
-	},
-	hide: {
+		resource: ['webhook'],
+		operation: ['sendLegacy'],
 		authentication: ['webhook'],
 	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-function prepareOptions(options: IDataObject, guildId: string) {
+function prepareOptions(options: IDataObject, guildId?: string) {
 	if (options.flags) {
 		if ((options.flags as string[]).length === 2) {
 			options.flags = (1 << 2) + (1 << 12);
@@ -399,21 +386,28 @@ async function prepareMultiPartForm(
 	return multiPartBody;
 }
 
-export async function execute(
-	this: IExecuteFunctions,
-	guildId: string,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
 		const content = this.getNodeParameter('content', i) as string;
-		const options = prepareOptions(this.getNodeParameter('options', i, {}), guildId);
+		const options = prepareOptions(this.getNodeParameter('options', i, {}));
 
 		const embeds = (this.getNodeParameter('embeds', i, undefined) as IDataObject)
 			?.values as IDataObject[];
 		const files = (this.getNodeParameter('files', i, undefined) as IDataObject)
 			?.values as IDataObject[];
+
+		let qs: IDataObject | undefined = undefined;
+
+		if (options.wait) {
+			qs = {
+				wait: options.wait,
+			};
+
+			delete options.wait;
+		}
 
 		const body: IDataObject = {
 			content,
@@ -425,31 +419,7 @@ export async function execute(
 		}
 
 		try {
-			const sendTo = this.getNodeParameter('sendTo', i) as string;
-
-			let channelId = '';
-
-			if (sendTo === 'user') {
-				const userId = this.getNodeParameter('userId', i, undefined, {
-					extractValue: true,
-				}) as string;
-
-				channelId = (
-					(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
-						recipient_id: userId,
-					})) as IDataObject
-				).id as string;
-			}
-
-			if (sendTo === 'channel') {
-				channelId = this.getNodeParameter('channelId', i, undefined, {
-					extractValue: true,
-				}) as string;
-			}
-
-			if (!channelId) {
-				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
-			}
+			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
 
 			let response: IDataObject[] = [];
 
@@ -459,16 +429,12 @@ export async function execute(
 				response = await discordApiMultiPartRequest.call(
 					this,
 					'POST',
-					`/channels/${channelId}/messages`,
+					'',
 					multiPartBody,
+					webhookUri,
 				);
 			} else {
-				response = await discordApiRequest.call(
-					this,
-					'POST',
-					`/channels/${channelId}/messages`,
-					body,
-				);
+				response = await discordApiRequest.call(this, 'POST', '', body, qs, webhookUri);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

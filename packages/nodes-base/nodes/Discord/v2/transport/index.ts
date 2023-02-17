@@ -18,17 +18,21 @@ export async function discordApiRequest(
 	endpoint: string,
 	body?: IDataObject,
 	qs?: IDataObject,
+	webhookUri?: string,
 ) {
-	const credentials = await this.getCredentials('discordOAuth2Api');
+	const headers: IDataObject = {};
+
+	if (!webhookUri) {
+		const credentials = await this.getCredentials('discordOAuth2Api');
+		headers.Authorization = `Bot ${credentials.botToken}`;
+	}
 
 	const options: OptionsWithUrl = {
-		headers: {
-			Authorization: `Bot ${credentials.botToken}`,
-		},
+		headers,
 		method,
 		qs,
 		body,
-		url: `https://discord.com/api/v10/${endpoint}`,
+		url: webhookUri || `https://discord.com/api/v10/${endpoint}`,
 		json: true,
 	};
 
@@ -44,7 +48,7 @@ export async function discordApiRequest(
 			await sleep(20); //prevent excing global rate limit of 50 requests per second
 		}
 
-		return response.body;
+		return response.body || { success: true };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -55,17 +59,22 @@ export async function discordApiMultiPartRequest(
 	method: string,
 	endpoint: string,
 	formData: FormData,
+	webhookUri?: string,
 ) {
-	const credentials = await this.getCredentials('discordOAuth2Api');
+	const headers: IDataObject = {
+		'content-type': 'multipart/form-data; charset=utf-8',
+	};
+
+	if (!webhookUri) {
+		const credentials = await this.getCredentials('discordOAuth2Api');
+		headers.Authorization = `Bot ${credentials.botToken}`;
+	}
 
 	const options: OptionsWithUrl = {
-		headers: {
-			Authorization: `Bot ${credentials.botToken}`,
-			'content-type': 'multipart/form-data; charset=utf-8',
-		},
+		headers,
 		method,
 		formData,
-		url: `https://discord.com/api/v10/${endpoint}`,
+		url: webhookUri || `https://discord.com/api/v10/${endpoint}`,
 	};
 
 	try {

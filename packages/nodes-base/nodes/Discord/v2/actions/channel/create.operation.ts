@@ -130,6 +130,9 @@ const displayOptions = {
 		resource: ['channel'],
 		operation: ['create'],
 	},
+	hide: {
+		authentication: ['webhook'],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);

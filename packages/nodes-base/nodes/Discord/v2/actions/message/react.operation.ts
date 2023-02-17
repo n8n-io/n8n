@@ -25,6 +25,9 @@ const displayOptions = {
 		resource: ['message'],
 		operation: ['react'],
 	},
+	hide: {
+		authentication: ['webhook'],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);

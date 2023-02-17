@@ -4,6 +4,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import * as message from './message/Message.resource';
 import * as channel from './channel/Channel.resource';
 import * as member from './member/Member.resource';
+import * as webhook from './webhook/Webhook.resource';
 import { guildRLC } from './common.description';
 
 export const versionDescription: INodeTypeDescription = {
@@ -23,10 +24,64 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'discordOAuth2Api',
 			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
+		{
+			name: 'discordWebhookApi',
+			displayOptions: {
+				show: {
+					authentication: ['webhook'],
+				},
+			},
 		},
 	],
 	properties: [
-		guildRLC,
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'OAuth2',
+					value: 'oAuth2',
+				},
+				{
+					name: 'Webhook',
+					value: 'webhook',
+				},
+			],
+			default: 'oAuth2',
+		},
+		{
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Webhook',
+					value: 'webhook',
+				},
+			],
+			default: 'webhook',
+			displayOptions: {
+				show: {
+					authentication: ['webhook'],
+				},
+			},
+		},
+		{
+			...guildRLC,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
 		{
 			displayName: 'Resource',
 			name: 'resource',
@@ -47,9 +102,16 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'channel',
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
 		},
+
 		...message.description,
 		...channel.description,
 		...member.description,
+		...webhook.description,
 	],
 };

@@ -23,6 +23,9 @@ const displayOptions = {
 		resource: ['member'],
 		operation: ['getAll'],
 	},
+	hide: {
+		authentication: ['webhook'],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);

@@ -12,6 +12,9 @@ const displayOptions = {
 		resource: ['channel'],
 		operation: ['deleteChannel'],
 	},
+	hide: {
+		authentication: ['webhook'],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
