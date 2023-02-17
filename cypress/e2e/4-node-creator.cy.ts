@@ -1,13 +1,16 @@
 import { NodeCreator } from '../pages/features/node-creator';
-import { INodeTypeDescription } from 'n8n-workflow';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { NDV } from '../pages/ndv';
 
 const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
 const nodeCreatorFeature = new NodeCreator();
+const WorkflowPage = new WorkflowPageClass();
+const NDVModal = new NDV();
 
 describe('Node Creator', () => {
 	before(() => {
@@ -27,30 +30,22 @@ describe('Node Creator', () => {
 
 		nodeCreatorFeature.getters
 			.nodeCreator()
-			.contains('When should this workflow run?')
+			.contains('Select a trigger')
 			.should('be.visible');
 
-		nodeCreatorFeature.getters.nodeCreatorTabs().should('not.exist');
-	});
-
-	it('should see all tabs when opening via plus button', () => {
-		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.nodeCreatorTabs().should('exist');
-		nodeCreatorFeature.getters.selectedTab().should('have.text', 'Trigger');
 	});
 
 	it('should navigate subcategory', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.getCreatorItem('On App Event').click();
-		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'On App Event');
+		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
+		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'On app event');
 		// Go back
 		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
-		nodeCreatorFeature.getters.activeSubcategory().should('not.exist');
+		nodeCreatorFeature.getters.activeSubcategory().should('not.have.text', 'On app event');
 	});
 
 	it('should search for nodes', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.selectedTab().should('have.text', 'Trigger');
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
@@ -72,91 +67,62 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear();
-		nodeCreatorFeature.getters.getCreatorItem('On App Event').click();
+		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
-		nodeCreatorFeature.getters
-			.noResults()
-			.should('exist')
-			.should('contain.text', 'To see all results, click here');
-
-		nodeCreatorFeature.getters.noResults().contains('click here').click();
-		nodeCreatorFeature.getters.nodeCreatorTabs().should('exist');
+		nodeCreatorFeature.getters.getCreatorItem('Results in other categories (1)').should('exist');
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
 		nodeCreatorFeature.getters.getCreatorItem('Edit Image').should('exist');
-		nodeCreatorFeature.getters.selectedTab().should('have.text', 'All');
-		nodeCreatorFeature.getters.searchBar().find('button').click();
-		nodeCreatorFeature.getters.searchBar().find('input').should('be.empty');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image123123');
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 	});
 
-	it('should add manual trigger node', () => {
+	it('should check correct view panels', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
-		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
-
-		// TODO: Replace once we have canvas feature utils
-		cy.get('span').contains('Back to canvas').click();
+		WorkflowPage.actions.addNodeToCanvas('Manual', false);
 
 		nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
 		nodeCreatorFeature.getters.nodeCreator().should('not.exist');
 
 		// TODO: Replace once we have canvas feature utils
-		cy.get('div').contains('Add first step').should('exist');
+		cy.get('div').contains('Add first step').should('be.hidden');
+		nodeCreatorFeature.actions.openNodeCreator()
+		nodeCreatorFeature.getters
+			.nodeCreator()
+			.contains('What happens next?')
+			.should('be.visible');
+
+			nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
+			nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+			nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
+			nodeCreatorFeature.getters.activeSubcategory().find('button').click();
+			nodeCreatorFeature.getters
+				.nodeCreator()
+				.contains('What happens next?')
+				.should('be.visible');
 	});
-	it('check if non-core nodes are rendered', () => {
-		cy.wait('@nodesIntercept').then((interception) => {
-			const nodes = interception.response?.body as INodeTypeDescription[];
 
-			const categorizedNodes = nodeCreatorFeature.actions.categorizeNodes(nodes);
-			nodeCreatorFeature.actions.openNodeCreator();
-			nodeCreatorFeature.actions.selectTab('All');
-
-			const categories = Object.keys(categorizedNodes);
-			categories.forEach((category: string) => {
-				// Core Nodes contains subcategories which we'll test separately
-				if (category === 'Core Nodes') return;
-
-				nodeCreatorFeature.actions.toggleCategory(category);
-
-				// Check if all nodes are present
-				nodeCreatorFeature.getters.nodeItemName().then(($elements) => {
-					const visibleNodes: string[] = [];
-					$elements.each((_, element) => {
-						visibleNodes.push(element.textContent?.trim() || '');
-					});
-					const visibleCategoryNodes = (categorizedNodes[category] as INodeTypeDescription[])
-						.filter((node) => !node.hidden)
-						.map((node) => node.displayName?.trim());
-
-					cy.wrap(visibleCategoryNodes).each((categoryNode: string) => {
-						expect(visibleNodes).to.include(categoryNode);
-					});
-				});
-
-				nodeCreatorFeature.actions.toggleCategory(category);
-			});
-		});
-	});
+	it('should add node to canvas from actions panel', () => {
+		const editImageNode = 'Edit Image';
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type(editImageNode);
+		nodeCreatorFeature.getters.getCreatorItem(editImageNode).click();
+		nodeCreatorFeature.getters.activeSubcategory().should('have.text', editImageNode);
+		nodeCreatorFeature.getters.getCreatorItem('Crop Image').click();
+		NDVModal.getters.parameterInput('operation').should('contain.text', 'Crop');
+	})
 
 	it('should render and select community node', () => {
 		cy.intercept('GET', '/types/nodes.json').as('nodesIntercept');
 		cy.wait('@nodesIntercept').then(() => {
-			const customCategory = 'Custom Category';
 			const customNode = 'E2E Node';
-			const customNodeDescription = 'Demonstrate rendering of node';
 
 			nodeCreatorFeature.actions.openNodeCreator();
-			nodeCreatorFeature.actions.selectTab('All');
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type(customNode);
 
-			nodeCreatorFeature.getters.getCreatorItem(customCategory).should('exist');
-
-			nodeCreatorFeature.actions.toggleCategory(customCategory);
 			nodeCreatorFeature.getters
 				.getCreatorItem(customNode)
 				.findChildByTestId('node-creator-item-tooltip')
-				.should('exist');
-			nodeCreatorFeature.getters
-				.getCreatorItem(customNode)
-				.contains(customNodeDescription)
 				.should('exist');
 			nodeCreatorFeature.actions.selectNode(customNode);
 
