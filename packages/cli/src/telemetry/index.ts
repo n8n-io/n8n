@@ -59,7 +59,7 @@ export class Telemetry {
 			this.rudderStack = new RudderStack(key, url, { logLevel });
 
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			this.postHog = new PostHogClient(this.instanceId);
+			this.postHog = new PostHogClient();
 
 			this.startPulse();
 		}
