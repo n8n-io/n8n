@@ -200,17 +200,17 @@ tests of all packages.
 
 To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then
 
-1. Bump versions of packages that have changed or have depndencies that have changed
+1. Bump versions of packages that have changed or have dependencies that have changed
 2. Update the Changelog
 3. Create a new branch called `release/${VERSION}`, and
 4. Create a new pull-request to track any further changes that need to be included in this release
 
 Once ready to release, simply merge the pull-request.
-This triggers [another workflow](ttps://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will
+This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will
 
 1. Build and publish the packages that have a new version in this release
-2. Merge the squashed release commit back into `master`
-3. Create a new tag, and GitHub release from squashed release commit
+2. Create a new tag, and GitHub release from squashed release commit
+3. Merge the squashed release commit back into `master`
 
 ## Create custom nodes
 
