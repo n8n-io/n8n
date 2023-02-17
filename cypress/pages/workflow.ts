@@ -24,7 +24,7 @@ export class WorkflowPage extends BasePage {
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
-			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
+			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
@@ -124,6 +124,7 @@ export class WorkflowPage extends BasePage {
 			nodeDisplayName: string,
 			plusButtonClick = true,
 			preventNdvClose?: boolean,
+			action?: string,
 		) => {
 			if (plusButtonClick) {
 				this.getters.nodeCreatorPlusButton().click();
@@ -131,11 +132,21 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
+			cy.wait(500)
+			cy.get('body').then((body) => {
+				if(body.find('[data-test-id=node-creator]').length > 0) {
+					if(action) {
+						cy.contains(action).click()
+					} else {
+						cy.getByTestId('item-iterator-item').eq(1).click()
+					}
+				}
+			})
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
 		openNode: (nodeTypeName: string) => {
-			this.getters.canvasNodeByName(nodeTypeName).dblclick();
+			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
