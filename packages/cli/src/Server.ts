@@ -179,6 +179,7 @@ class Server extends AbstractServer {
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
+		this.postHog = new PostHogClient();
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
@@ -377,6 +378,7 @@ class Server extends AbstractServer {
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
 		await this.initLicense();
+		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');

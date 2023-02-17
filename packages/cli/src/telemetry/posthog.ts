@@ -9,9 +9,12 @@ export default class PostHogClient {
 	
 	private logger?: Logger;
 
-	constructor(private instanceId: string) {}
+	private instanceId?: string;
 
-	async init() {
+	constructor() {}
+
+	async init(instanceId: string) {
+		this.instanceId = instanceId;
 		const enabled = config.getEnv('diagnostics.enabled');
 		if (!enabled) {
 			return;

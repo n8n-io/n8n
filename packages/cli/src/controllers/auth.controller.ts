@@ -82,7 +82,11 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				return sanitizeUser(user);
+				const currentUser: CurrentUser = sanitizeUser(user);
+				if (this.postHog) {
+					currentUser.featureFlags = await this.postHog.getFeatureFlags(currentUser.id);
+				}
+				return currentUser;
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
