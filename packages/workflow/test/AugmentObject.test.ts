@@ -5,35 +5,35 @@ import { deepCopy } from '@/utils';
 describe('AugmentObject', () => {
 	describe('augmentArray', () => {
 		test('should work with arrays', () => {
-			const originalObject = [1, 2, 3, 4];
+			const originalObject = [1, 2, 3, 4, null];
 			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
 
 			const augmentedObject = augmentArray(originalObject);
 
-			expect(augmentedObject.push(5)).toEqual(5);
-			expect(augmentedObject).toEqual([1, 2, 3, 4, 5]);
+			expect(augmentedObject.push(5)).toEqual(6);
+			expect(augmentedObject).toEqual([1, 2, 3, 4, null, 5]);
 			expect(originalObject).toEqual(copyOriginal);
 
 			expect(augmentedObject.pop()).toEqual(5);
-			expect(augmentedObject).toEqual([1, 2, 3, 4]);
+			expect(augmentedObject).toEqual([1, 2, 3, 4, null]);
 			expect(originalObject).toEqual(copyOriginal);
 
 			expect(augmentedObject.shift()).toEqual(1);
-			expect(augmentedObject).toEqual([2, 3, 4]);
+			expect(augmentedObject).toEqual([2, 3, 4, null]);
 			expect(originalObject).toEqual(copyOriginal);
 
-			expect(augmentedObject.unshift(1)).toEqual(4);
-			expect(augmentedObject).toEqual([1, 2, 3, 4]);
+			expect(augmentedObject.unshift(1)).toEqual(5);
+			expect(augmentedObject).toEqual([1, 2, 3, 4, null]);
 			expect(originalObject).toEqual(copyOriginal);
 
 			expect(augmentedObject.splice(1, 1)).toEqual([2]);
-			expect(augmentedObject).toEqual([1, 3, 4]);
+			expect(augmentedObject).toEqual([1, 3, 4, null]);
 			expect(originalObject).toEqual(copyOriginal);
 
-			expect(augmentedObject.slice(1)).toEqual([3, 4]);
+			expect(augmentedObject.slice(1)).toEqual([3, 4, null]);
 			expect(originalObject).toEqual(copyOriginal);
 
-			expect(augmentedObject.reverse()).toEqual([4, 3, 1]);
+			expect(augmentedObject.reverse()).toEqual([null, 4, 3, 1]);
 			expect(originalObject).toEqual(copyOriginal);
 		});
 
@@ -45,7 +45,7 @@ describe('AugmentObject', () => {
 							{
 								a3: {
 									b3: {
-										c3: '03',
+										c3: '03' as string | null,
 									},
 								},
 								aa3: '01',
@@ -103,6 +103,9 @@ describe('AugmentObject', () => {
 			augmentedObject.a.b.c[2].a3.b3.c3 = '2333';
 			expect(augmentedObject.a.b.c[2].a3.b3.c3).toEqual('2333');
 
+			augmentedObject.a.b.c[2].a3.b3.c3 = null;
+			expect(augmentedObject.a.b.c[2].a3.b3.c3).toEqual(null);
+
 			expect(originalObject).toEqual(copyOriginal);
 
 			expect(augmentedObject.a.b.c.length).toEqual(3);
@@ -136,7 +139,7 @@ describe('AugmentObject', () => {
 				{
 					a3: {
 						b3: {
-							c3: '2333',
+							c3: null,
 						},
 					},
 					aa3: '21',
@@ -166,7 +169,7 @@ describe('AugmentObject', () => {
 							{
 								a3: {
 									b3: {
-										c3: '2333',
+										c3: null,
 									},
 								},
 								aa3: '21',
@@ -285,6 +288,7 @@ describe('AugmentObject', () => {
 				a: {
 					b: {
 						cc: '3',
+						c2: null,
 					},
 					bb: '2',
 				},
@@ -297,6 +301,7 @@ describe('AugmentObject', () => {
 			augmentedObject.a = { new: 'NEW' };
 			expect(originalObject.a).toEqual({
 				b: {
+					c2: null,
 					cc: '3',
 				},
 				bb: '2',

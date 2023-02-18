@@ -28,7 +28,7 @@ import type {
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
-import { augmentObject } from './AugmentObject';
+import { augmentArray, augmentObject } from './AugmentObject';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -102,7 +102,7 @@ export class WorkflowDataProxy {
 			: runExecutionData;
 
 		this.connectionInputData = isScriptingNode(activeNodeName, workflow)
-			? augmentObject(connectionInputData)
+			? augmentArray(connectionInputData)
 			: connectionInputData;
 
 		this.defaultReturnRunIndex = defaultReturnRunIndex;

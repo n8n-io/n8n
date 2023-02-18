@@ -19,8 +19,8 @@ export function augmentArray<T>(data: T[]): T[] {
 			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
 
 			if (typeof value === 'object') {
-				if (util.types.isProxy(value)) {
-					return Reflect.get(newData as unknown[], key);
+				if (value === null || util.types.isProxy(value)) {
+					return value;
 				}
 
 				newData = getData();
@@ -54,12 +54,12 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Reflect.ownKeys(newData !== undefined ? newData : target);
 		},
 		set(target, key: string, newValue: unknown) {
-			if (typeof newValue === 'object') {
+			if (newValue !== null && typeof newValue === 'object') {
 				// Always proxy all objects. Like that we can check in get simply if it
 				// is a proxy and it does then not matter if it was already there from the
 				// beginning and it got proxied at some point or set later and so theoretically
 				// does not have to get proxied
-				newValue = new Proxy(newValue as object, {});
+				newValue = new Proxy(newValue, {});
 			}
 
 			return Reflect.set(getData(), key, newValue);
@@ -77,14 +77,14 @@ export function augmentObject<T extends object>(data: T): T {
 				return undefined;
 			}
 
-			if (newData[key as string]) {
+			if (newData[key as string] !== undefined) {
 				return newData[key as string];
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const value = Reflect.get(target, key, receiver);
 
-			if (typeof value === 'object') {
+			if (value !== null && typeof value === 'object') {
 				if (Array.isArray(value)) {
 					newData[key as string] = augmentArray(value);
 				} else {
