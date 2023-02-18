@@ -12,8 +12,7 @@ describe('Data pinning', () => {
 	});
 
 	it('Should be able to pin node output', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
-		workflowPage.getters.canvasNodes().first().dblclick();
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true});
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
@@ -21,7 +20,9 @@ describe('Data pinning', () => {
 		ndv.actions.execute();
 
 		ndv.getters.outputDataContainer().should('be.visible');
-		ndv.getters.outputDataContainer().get('table').should('be.visible');
+		// We hover over the table to get rid of the pinning tooltip which would overlay the table
+		// slightly and cause the test to fail
+		ndv.getters.outputDataContainer().get('table').realHover().should('be.visible');
 		ndv.getters.outputTableRows().should('have.length', 2);
 		ndv.getters.outputTableHeaders().should('have.length.at.least', 10);
 		ndv.getters.outputTableHeaders().first().should('include.text', 'timestamp');
@@ -42,8 +43,7 @@ describe('Data pinning', () => {
 	});
 
 	it('Should be be able to set pinned data', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
-		workflowPage.getters.canvasNodes().first().dblclick();
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true});
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
