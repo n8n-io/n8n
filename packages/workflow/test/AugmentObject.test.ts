@@ -497,13 +497,18 @@ describe('AugmentObject', () => {
 			let startTime = new Date().getTime();
 			for (let i = 0; i < iterations; i++) {
 				const augmentedObject = augmentObject(originalObject);
-				augmentedObject.a.b.c.d.e.f++;
+				for (let i = 0; i < 5000; i++) {
+					augmentedObject.a!.b.c.d.e.f++;
+				}
 			}
 			const timeAugmented = new Date().getTime() - startTime;
 
+			startTime = new Date().getTime();
 			for (let i = 0; i < iterations; i++) {
 				const copiedObject = deepCopy(originalObject);
-				copiedObject.a.b.c.d.e.f++;
+				for (let i = 0; i < 5000; i++) {
+					copiedObject.a!.b.c.d.e.f++;
+				}
 			}
 			const timeCopied = new Date().getTime() - startTime;
 
