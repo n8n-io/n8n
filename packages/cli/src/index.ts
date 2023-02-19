@@ -13,7 +13,6 @@ export * from './WorkflowCredentials';
 export * from './WorkflowRunner';
 
 import * as ActiveExecutions from './ActiveExecutions';
-import * as ActiveWorkflowRunner from './ActiveWorkflowRunner';
 import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
 import * as ResponseHelper from './ResponseHelper';
@@ -26,7 +25,6 @@ import * as WorkflowHelpers from './WorkflowHelpers';
 
 export {
 	ActiveExecutions,
-	ActiveWorkflowRunner,
 	Db,
 	GenericHelpers,
 	ResponseHelper,

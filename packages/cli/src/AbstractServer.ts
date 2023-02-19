@@ -1,3 +1,4 @@
+import { Container, Inject } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import type { Url } from 'url';
@@ -12,7 +13,7 @@ import type { WebhookHttpMethod } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -36,7 +37,7 @@ export abstract class AbstractServer {
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected protocol: string;
 
@@ -72,7 +73,7 @@ export abstract class AbstractServer {
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
 		this.externalHooks = ExternalHooks();
-		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	}
 
 	private async setupErrorHandlers() {

@@ -8,6 +8,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
+import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -68,6 +70,7 @@ import { START_NODES } from './constants';
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
+@Service()
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
 
@@ -1011,14 +1014,4 @@ export class ActiveWorkflowRunner {
 
 		throw new Error('The "activeWorkflows" instance did not get initialized yet.');
 	}
-}
-
-let workflowRunnerInstance: ActiveWorkflowRunner | undefined;
-
-export function getInstance(): ActiveWorkflowRunner {
-	if (workflowRunnerInstance === undefined) {
-		workflowRunnerInstance = new ActiveWorkflowRunner();
-	}
-
-	return workflowRunnerInstance;
 }

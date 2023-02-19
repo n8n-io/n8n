@@ -1,9 +1,9 @@
 import type express from 'express';
-
+import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -182,7 +182,7 @@ export = {
 			await replaceInvalidCredentials(updateData);
 			addNodeIds(updateData);
 
-			const workflowRunner = ActiveWorkflowRunner.getInstance();
+			const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 			if (sharedWorkflow.workflow.active) {
 				// When workflow gets saved always remove it as the triggers could have been
@@ -231,7 +231,7 @@ export = {
 
 			if (!sharedWorkflow.workflow.active) {
 				try {
-					await ActiveWorkflowRunner.getInstance().add(sharedWorkflow.workflowId, 'activate');
+					await Container.get(ActiveWorkflowRunner).add(sharedWorkflow.workflowId, 'activate');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -263,7 +263,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const workflowRunner = ActiveWorkflowRunner.getInstance();
+			const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 			if (sharedWorkflow.workflow.active) {
 				await workflowRunner.remove(sharedWorkflow.workflowId);

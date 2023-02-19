@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
@@ -32,7 +33,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { NodeTypes } from '@/NodeTypes';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
@@ -214,7 +215,7 @@ export async function initTestServer({
 							externalHooks,
 							internalHooks,
 							repositories,
-							activeWorkflowRunner: ActiveWorkflowRunner.getInstance(),
+							activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 							logger,
 						}),
 					);
@@ -257,8 +258,8 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.ActiveWorkflowRunner> {
-	const workflowRunner = ActiveWorkflowRunner.getInstance();
+export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	workflowRunner.init();
 	return workflowRunner;
 }

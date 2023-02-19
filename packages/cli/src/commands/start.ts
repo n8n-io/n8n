@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import Container, { Inject, Service } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -17,7 +18,7 @@ import { createHash } from 'crypto';
 import config from '@/config';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -34,8 +35,6 @@ import { BaseCommand } from './BaseCommand';
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
 const pipeline = promisify(stream.pipeline);
-
-let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -63,6 +62,8 @@ export class Start extends BaseCommand {
 		}),
 	};
 
+	protected activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
 	/**
 	 * Opens the UI in browser
 	 */
@@ -87,7 +88,7 @@ export class Start extends BaseCommand {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
+			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
 			await this.externalHooks.run('n8n.stop', []);
 
@@ -105,8 +106,8 @@ export class Start extends BaseCommand {
 			);
 
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
-				removePromises.push(activeWorkflowRunner.removeAll());
+			if (!skipWebhookDeregistration) {
+				removePromises.push(this.activeWorkflowRunner.removeAll());
 			}
 
 			// Remove all test webhooks
@@ -344,8 +345,7 @@ export class Start extends BaseCommand {
 		await Server.start();
 
 		// Start to get active workflows and run their triggers
-		activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-		await activeWorkflowRunner.init();
+		await this.activeWorkflowRunner.init();
 
 		WaitTracker();
 
@@ -393,6 +393,7 @@ export class Start extends BaseCommand {
 	}
 
 	async catch(error: Error) {
+		console.log(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }

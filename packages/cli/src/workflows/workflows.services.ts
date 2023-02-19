@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
@@ -5,7 +6,7 @@ import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm'
 import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -241,7 +242,7 @@ export class WorkflowsService {
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
 			// changed and so the changes would not take effect
-			await ActiveWorkflowRunner.getInstance().remove(workflowId);
+			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
 		if (workflow.settings) {
@@ -326,7 +327,7 @@ export class WorkflowsService {
 			// When the workflow is supposed to be active add it again
 			try {
 				await ExternalHooks().run('workflow.activate', [updatedWorkflow]);
-				await ActiveWorkflowRunner.getInstance().add(
+				await Container.get(ActiveWorkflowRunner).add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
 				);
@@ -454,7 +455,7 @@ export class WorkflowsService {
 
 		if (sharedWorkflow.workflow.active) {
 			// deactivate before deleting
-			await ActiveWorkflowRunner.getInstance().remove(workflowId);
+			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
 		await Db.collections.Workflow.delete(workflowId);
