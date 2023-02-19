@@ -2,12 +2,12 @@ import path from 'path';
 import { realpath, access } from 'fs/promises';
 
 import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { NodeTypesClass } from '@/NodeTypes';
+import type { NodeTypes } from '@/NodeTypes';
 import type { Push } from '@/push';
 
 export const reloadNodesAndCredentials = async (
 	loadNodesAndCredentials: LoadNodesAndCredentials,
-	nodeTypes: NodeTypesClass,
+	nodeTypes: NodeTypes,
 	push: Push,
 ) => {
 	// eslint-disable-next-line import/no-extraneous-dependencies

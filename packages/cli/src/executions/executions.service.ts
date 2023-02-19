@@ -34,6 +34,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
+import Container from 'typedi';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -446,7 +447,7 @@ export class ExecutionsService {
 			}
 
 			data.workflowData = workflowData;
-			const nodeTypes = NodeTypes();
+			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
 				id: workflowData.id as string,
 				name: workflowData.name,

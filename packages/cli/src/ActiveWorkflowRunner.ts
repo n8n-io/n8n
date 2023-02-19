@@ -271,7 +271,7 @@ export class ActiveWorkflowRunner {
 			);
 		}
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 		const workflow = new Workflow({
 			id: webhook.workflowId,
 			name: workflowData.name,
@@ -514,7 +514,7 @@ export class ActiveWorkflowRunner {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
 		}
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 		const workflow = new Workflow({
 			id: workflowId,
 			name: workflowData.name,
@@ -782,7 +782,7 @@ export class ActiveWorkflowRunner {
 			if (!workflowData) {
 				throw new Error(`Could not find workflow with id "${workflowId}".`);
 			}
-			const nodeTypes = NodeTypes();
+			const nodeTypes = Container.get(NodeTypes);
 			workflowInstance = new Workflow({
 				id: workflowId,
 				name: workflowData.name,

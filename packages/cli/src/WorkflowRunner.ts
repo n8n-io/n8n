@@ -242,7 +242,7 @@ export class WorkflowRunner {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`

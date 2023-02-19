@@ -1,4 +1,4 @@
-import { Container, Inject } from 'typedi';
+import { Container } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import type { Url } from 'url';

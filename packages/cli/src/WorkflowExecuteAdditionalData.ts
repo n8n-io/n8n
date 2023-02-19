@@ -927,7 +927,7 @@ async function executeWorkflow(
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
-	const nodeTypes = NodeTypes();
+	const nodeTypes = Container.get(NodeTypes);
 
 	const workflowData =
 		options.loadedWorkflowData ??

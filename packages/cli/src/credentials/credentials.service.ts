@@ -280,7 +280,7 @@ export class CredentialsService {
 	): ICredentialDataDecryptedObject {
 		const copiedData = deepCopy(data);
 
-		const credTypes = CredentialTypes();
+		const credTypes = Container.get(CredentialTypes);
 		let credType: ICredentialType;
 		try {
 			credType = credTypes.getByName(credential.type);

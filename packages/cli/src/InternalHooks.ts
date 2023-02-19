@@ -29,7 +29,7 @@ import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import * as Db from '@/Db';
 import { Service } from 'typedi';
-import { NodeTypesClass } from './NodeTypes';
+import { NodeTypes } from './NodeTypes';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -51,7 +51,7 @@ function userToPayload(user: User): {
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
 
-	constructor(private telemetry: Telemetry, private nodeTypes: NodeTypesClass) {}
+	constructor(private telemetry: Telemetry, private nodeTypes: NodeTypes) {}
 
 	async init(instanceId: string) {
 		this.instanceId = instanceId;

@@ -1,7 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
 
-import { ICredentialTypes, LoggerProxy, NodeOperationError, Workflow } from 'n8n-workflow';
+import {
+	ICredentialTypes,
+	INodesAndCredentials,
+	LoggerProxy,
+	NodeOperationError,
+	Workflow,
+} from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -10,8 +16,6 @@ import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { Role } from '@/databases/entities/Role';
 import { User } from '@/databases/entities/User';
 import { getLogger } from '@/Logger';
-import { NodeTypes } from '@/NodeTypes';
-import { CredentialTypes } from '@/CredentialTypes';
 import { randomEmail, randomName } from '../integration/shared/random';
 import * as Helpers from './Helpers';
 import { WorkflowExecuteAdditionalData } from '@/index';
@@ -19,6 +23,8 @@ import { WorkflowExecuteAdditionalData } from '@/index';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
 import { ExternalHooks } from '@/ExternalHooks';
+import Container from 'typedi';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 /**
  * TODO:
@@ -135,22 +141,15 @@ describe('ActiveWorkflowRunner', () => {
 
 	beforeAll(async () => {
 		LoggerProxy.init(getLogger());
-		NodeTypes({
+		const nodesAndCredentials: INodesAndCredentials = {
 			loaded: {
 				nodes: MOCK_NODE_TYPES_DATA,
 				credentials: {},
 			},
 			known: { nodes: {}, credentials: {} },
 			credentialTypes: {} as ICredentialTypes,
-		});
-		CredentialTypes({
-			loaded: {
-				nodes: MOCK_NODE_TYPES_DATA,
-				credentials: {},
-			},
-			known: { nodes: {}, credentials: {} },
-			credentialTypes: {} as ICredentialTypes,
-		});
+		};
+		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
 	});
 
 	beforeEach(() => {

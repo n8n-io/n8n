@@ -121,7 +121,6 @@ import {
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { NodeTypesClass } from '@/NodeTypes';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WaitTrackerClass } from '@/WaitTracker';
@@ -163,7 +162,7 @@ class Server extends AbstractServer {
 
 	loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	nodeTypes: NodeTypesClass;
+	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
 
@@ -172,9 +171,9 @@ class Server extends AbstractServer {
 	constructor() {
 		super();
 
-		this.nodeTypes = NodeTypes();
-		this.credentialTypes = CredentialTypes();
 		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		this.credentialTypes = Container.get(CredentialTypes);
+		this.nodeTypes = Container.get(NodeTypes);
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();

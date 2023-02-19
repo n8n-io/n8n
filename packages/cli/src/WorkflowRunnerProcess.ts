@@ -41,7 +41,7 @@ import type {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
-import { NodeTypes, NodeTypesClass } from '@/NodeTypes';
+import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -107,15 +107,14 @@ class WorkflowRunnerProcess {
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.init();
 
-		const nodeTypes = NodeTypes(loadNodesAndCredentials);
-		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+		const nodeTypes = Container.get(NodeTypes);
+		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
-		Container.set(NodeTypesClass, nodeTypes);
 		const instanceId = userSettings.instanceId ?? '';
 		await Container.get(InternalHooks).init(instanceId);
 

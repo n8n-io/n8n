@@ -109,6 +109,7 @@
     "mock-jwks": "^1.0.9",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",
+    "ts-essentials": "^7.0.3",
     "tsc-alias": "^1.8.2",
     "tsconfig-paths": "^4.1.2"
   },

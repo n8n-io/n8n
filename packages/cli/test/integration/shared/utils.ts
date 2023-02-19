@@ -31,7 +31,7 @@ import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { NodeTypes, NodeTypesClass } from '@/NodeTypes';
+import { NodeTypes } from '@/NodeTypes';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -75,23 +75,25 @@ import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
-import { Telemetry } from '@/telemetry';
 import { mock } from 'jest-mock-extended';
+import { DeepPartial } from 'ts-essentials';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+
+export const mockInstance = <T>(
+	ctor: new (...args: any[]) => T,
+	data: DeepPartial<T> | undefined = undefined,
+) => {
+	const instance = mock<T>(data);
+	Container.set(ctor, instance);
+	return instance;
+};
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
 	credentialTypes: {} as ICredentialTypes,
 };
-
-const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
-CredentialTypes(loadNodesAndCredentials);
-
-export const mockInstance = <T>(ctor: new (...args: any[]) => T) => {
-	const instance = mock<T>();
-	Container.set(ctor, instance);
-	return instance;
-};
+Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -117,9 +119,8 @@ export async function initTestServer({
 	LoggerProxy.init(logger);
 
 	// Pre-requisite: Mock the telemetry module before calling.
-	Container.set(Telemetry, new Telemetry());
-	Container.set(NodeTypesClass, mockNodeTypes);
-	await Container.get(InternalHooks).init('test-instance-id');
+	// mockInstance(Telemetry);
+	mockInstance(InternalHooks);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -310,7 +311,7 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	loadNodesAndCredentials.loaded.credentials = {
+	Container.get(LoadNodesAndCredentials).loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
@@ -329,7 +330,7 @@ export async function initLdapManager(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	loadNodesAndCredentials.loaded.nodes = {
+	Container.get(LoadNodesAndCredentials).loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {

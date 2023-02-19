@@ -92,7 +92,7 @@ export class WorkflowsService {
 			nodes: workflow.nodes,
 			connections: workflow.connections,
 			active: workflow.active,
-			nodeTypes: NodeTypes(),
+			nodeTypes: Container.get(NodeTypes),
 		}).getParentNodes(startNodeName);
 
 		let checkNodeName = '';
@@ -384,7 +384,7 @@ export class WorkflowsService {
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 				active: false,
-				nodeTypes: NodeTypes(),
+				nodeTypes: Container.get(NodeTypes),
 				staticData: undefined,
 				settings: workflowData.settings,
 			});

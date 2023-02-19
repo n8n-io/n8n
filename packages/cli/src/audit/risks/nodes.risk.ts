@@ -33,7 +33,8 @@ async function getCommunityNodeDetails() {
 async function getCustomNodeDetails() {
 	const customNodeTypes: Risk.CustomNodeDetails[] = [];
 
-	for (const customDir of Container.get(LoadNodesAndCredentials).getCustomDirectories()) {
+	const nodesAndCredentials = Container.get(LoadNodesAndCredentials);
+	for (const customDir of nodesAndCredentials.getCustomDirectories()) {
 		const customNodeFiles = await glob('**/*.node.js', { cwd: customDir, absolute: true });
 
 		for (const nodeFile of customNodeFiles) {
