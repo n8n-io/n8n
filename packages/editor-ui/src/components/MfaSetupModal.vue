@@ -2,7 +2,9 @@
 	<Modal
 		width="460px"
 		:title="
-			!showRecoveryCodes ? 'Setup Authenticator app [1/2]' : 'Download your recovery codes [2/2]'
+			!showRecoveryCodes
+				? $locale.baseText('mfa.setup.step1.title')
+				: $locale.baseText('mfa.setup.step2.title')
 		"
 		:eventBus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY"
@@ -11,12 +13,17 @@
 		<template #content>
 			<div v-if="!showRecoveryCodes" :class="$style.container">
 				<div :class="$style.textContainer">
-					<n8n-text size="large" color="text-dark" :bold="true">1. Scan the QR code</n8n-text>
+					<n8n-text size="large" color="text-dark" :bold="true">{{
+						$locale.baseText('mfa.setup.step1.instruction1.title')
+					}}</n8n-text>
 				</div>
 				<div>
 					<n8n-text size="medium" :bold="false"
-						>Use an authenticator app from your phone to scan. If you can't scan the QR code, enter
-						<a :class="$style.secret" @click="onCopySecretToClipboard">this text code</a> instead.
+						>{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle').split('|')[0] }}
+						<a :class="$style.secret" @click="onCopySecretToClipboard">{{
+							$locale.baseText('mfa.setup.step1.instruction1.subtitle').split('|')[1]
+						}}</a>
+						{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle').split('|')[2] }}
 						<span style="display: none" ref="codeSecret">{{ secret }}</span>
 					</n8n-text>
 				</div>
@@ -24,22 +31,22 @@
 					<qrcode-vue :value="qrCode" size="150" level="H" />
 				</div>
 				<div :class="$style.textContainer">
-					<n8n-text size="large" color="text-dark" :bold="true"
-						>2. Verify the code from the app</n8n-text
-					>
+					<n8n-text size="large" color="text-dark" :bold="true">{{
+						$locale.baseText('mfa.setup.step1.instruction2.title')
+					}}</n8n-text>
 				</div>
 				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
 					<n8n-input-label
 						size="medium"
 						:bold="false"
 						:class="$style.labelTooltip"
-						label="Code from authenticator app"
+						:label="$locale.baseText('mfa.setup.step1.input.label')"
 					>
 						<n8n-input
 							v-model="authenticatorCode"
 							type="text"
 							:maxlength="6"
-							placeholder="e.g. 123456"
+							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
 							@input="onInput"
 							:required="true"
 						/>
@@ -51,10 +58,9 @@
 			</div>
 			<div v-else :class="$style.container">
 				<div>
-					<n8n-text size="medium" :bold="false"
-						>You can use recovery codes as a second factor to authenticate in case you lose access
-						to your device.</n8n-text
-					>
+					<n8n-text size="medium" :bold="false">{{
+						$locale.baseText('mfa.setup.step2.description')
+					}}</n8n-text>
 				</div>
 				<div :class="$style.recoveryCodesContainer">
 					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
@@ -73,7 +79,7 @@
 						type="primary"
 						icon="download"
 						float="right"
-						label="Download recovery codes"
+						:label="$locale.baseText('mfa.setup.step2.button.download')"
 						@click="onDownloadClick"
 					/>
 				</div>
@@ -85,7 +91,7 @@
 					<n8n-button
 						float="right"
 						:disabled="!recoveryCodesDownloaded"
-						label="I have saved my recovery codes"
+						:label="$locale.baseText('mfa.setup.step2.button.save')"
 						@click="onSetupClick"
 					/>
 				</div>
@@ -94,7 +100,7 @@
 				<div>
 					<n8n-button
 						float="right"
-						label="Continue"
+						:label="$locale.baseText('mfa.setup.step1.button.continue')"
 						size="large"
 						:disabled="!readyToSubmit"
 						@click="onSaveClick"
@@ -108,10 +114,10 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { MFA_SETUP_MODAL_KEY, VIEWS } from '../constants';
+import { MFA_SETUP_MODAL_KEY } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { INodeUi, Validatable } from '@/Interface';
+import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
@@ -172,8 +178,8 @@ export default mixins(showMessage, copyPaste).extend({
 		onCopySecretToClipboard() {
 			this.copyToClipboard((this.$refs.codeSecret as HTMLInputElement).innerHTML);
 			this.$showToast({
-				title: 'Code copied to clipboard',
-				message: 'Enter the code in your authenticator app',
+				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
+				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
 				type: 'success',
 			});
 		},
@@ -209,7 +215,7 @@ export default mixins(showMessage, copyPaste).extend({
 				this.closeDialog();
 				this.$showMessage({
 					type: 'success',
-					message: 'Two-factor authentication enabled',
+					message: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.message'),
 					title: '',
 				});
 			} catch (e) {}

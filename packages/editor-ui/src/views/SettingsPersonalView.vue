@@ -50,24 +50,25 @@
 			</div>
 			<div>
 				<div :class="$style.mfaSection">
-					<n8n-input-label label="Two-factor authentication (2FA)"> </n8n-input-label>
+					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')">
+					</n8n-input-label>
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{
 							mfaDisabled
-								? $locale.baseText('mfa.infobox.disabled')
-								: $locale.baseText('mfa.infobox.enabled')
+								? $locale.baseText('settings.personal.mfa.button.disabled.infobox')
+								: $locale.baseText('settings.personal.mfa.infobox.enabled.infobox')
 						}}
 						<n8n-link :to="MfaDocsUrl" size="small" bold="true">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
 				</div>
-				<div v-if="mfaDisabled">
+				<div :class="$style.mfaButtonContainer" v-if="mfaDisabled">
 					<n8n-button
 						:class="$style.button"
 						float="left"
 						type="tertiary"
-						:label="$locale.baseText('settings.personal.enableMfa')"
+						:label="$locale.baseText('settings.personal.mfa.button.enabled')"
 						@click="onMfaEnableClick"
 					/>
 				</div>
@@ -76,7 +77,7 @@
 						:class="$style.disableMfaButton"
 						float="left"
 						type="tertiary"
-						:label="$locale.baseText('settings.personal.disableMfa')"
+						:label="$locale.baseText('settings.personal.mfa.button.disabled')"
 						@click="onMfaDisableClick"
 					/>
 				</div>
@@ -216,8 +217,8 @@ export default mixins(showMessage).extend({
 			const settingStore = useSettingsStore();
 			await settingStore.disabledMfa();
 			this.$showToast({
-				title: 'Two-factor authentication disabled',
-				message: 'You will no longer need your authenticator app when signing in',
+				title: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+				message: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.message'),
 				type: 'success',
 				duration: 0,
 			});
@@ -281,5 +282,9 @@ export default mixins(showMessage).extend({
 .sectionHeader {
 	margin-bottom: var(--spacing-s);
 	margin-top: var(--spacing-s);
+}
+
+.mfaButtonContainer {
+	margin-top: var(--spacing-2xs);
 }
 </style>
