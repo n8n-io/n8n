@@ -54,6 +54,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { getLicense } from './License';
+import Container from 'typedi';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -111,7 +112,7 @@ class WorkflowRunnerProcess {
 		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
 		const instanceId = userSettings.instanceId ?? '';

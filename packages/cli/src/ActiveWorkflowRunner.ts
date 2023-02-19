@@ -9,7 +9,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -72,7 +72,7 @@ const WEBHOOK_PROD_UNREGISTERED_HINT =
 
 @Service()
 export class ActiveWorkflowRunner {
-	private activeWorkflows: ActiveWorkflows | null = null;
+	private activeWorkflows = new ActiveWorkflows();
 
 	private activationErrors: {
 		[key: string]: IActivationError;
@@ -82,9 +82,7 @@ export class ActiveWorkflowRunner {
 		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
-	constructor() {
-		this.activeWorkflows = new ActiveWorkflows();
-	}
+	constructor(private externalHooks: ExternalHooks) {}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async init() {
@@ -136,7 +134,7 @@ export class ActiveWorkflowRunner {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.info(`               ${error.message}`);
 					Logger.error(
-						`Issue on intital workflow activation try "${workflowData.name}" (startup)`,
+						`Issue on initial workflow activation try "${workflowData.name}" (startup)`,
 						{
 							workflowName: workflowData.name,
 							workflowId: workflowData.id,
@@ -151,21 +149,18 @@ export class ActiveWorkflowRunner {
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
 		}
-		const externalHooks = ExternalHooks();
-		await externalHooks.run('activeWorkflows.initialized', []);
+
+		await this.externalHooks.run('activeWorkflows.initialized', []);
 	}
 
 	/**
 	 * Removes all the currently active workflows
-	 *
 	 */
 	async removeAll(): Promise<void> {
 		let activeWorkflowIds: string[] = [];
 		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
-		if (this.activeWorkflows !== null) {
-			activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
-		}
+		activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
 
 		const activeWorkflows = await this.getActiveWorkflows();
 		activeWorkflowIds = [
@@ -186,7 +181,6 @@ export class ActiveWorkflowRunner {
 
 	/**
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
-	 *
 	 */
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -195,11 +189,6 @@ export class ActiveWorkflowRunner {
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
-		if (this.activeWorkflows === null) {
-			throw new ResponseHelper.NotFoundError(
-				'The "activeWorkflows" instance did not get initialized yet.',
-			);
-		}
 
 		// Reset request parameters
 		req.params = {};
@@ -485,6 +474,7 @@ export class ActiveWorkflowRunner {
 				try {
 					await this.removeWorkflowWebhooks(workflow.id as string);
 				} catch (error) {
+					ErrorReporter.error(error);
 					Logger.error(
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
@@ -726,7 +716,7 @@ export class ActiveWorkflowRunner {
 
 				// Remove the workflow as "active"
 
-				await this.activeWorkflows?.remove(workflowData.id);
+				await this.activeWorkflows.remove(workflowData.id);
 				this.activationErrors[workflowData.id] = {
 					time: new Date().getTime(),
 					error: {
@@ -780,10 +770,6 @@ export class ActiveWorkflowRunner {
 		activation: WorkflowActivateMode,
 		workflowData?: IWorkflowDb,
 	): Promise<void> {
-		if (this.activeWorkflows === null) {
-			throw new Error('The "activeWorkflows" instance did not get initialized yet.');
-		}
-
 		let workflowInstance: Workflow;
 		try {
 			if (workflowData === undefined) {
@@ -981,37 +967,31 @@ export class ActiveWorkflowRunner {
 	 */
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string): Promise<void> {
-		if (this.activeWorkflows !== null) {
-			// Remove all the webhooks of the workflow
-			try {
-				await this.removeWorkflowWebhooks(workflowId);
-			} catch (error) {
-				ErrorReporter.error(error);
-				Logger.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
-				);
-			}
-
-			if (this.activationErrors[workflowId] !== undefined) {
-				// If there were any activation errors delete them
-				delete this.activationErrors[workflowId];
-			}
-
-			if (this.queuedWorkflowActivations[workflowId] !== undefined) {
-				this.removeQueuedWorkflowActivation(workflowId);
-			}
-
-			// if it's active in memory then it's a trigger
-			// so remove from list of actives workflows
-			if (this.activeWorkflows.isActive(workflowId)) {
-				await this.activeWorkflows.remove(workflowId);
-				Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
-			}
-
-			return;
+		// Remove all the webhooks of the workflow
+		try {
+			await this.removeWorkflowWebhooks(workflowId);
+		} catch (error) {
+			ErrorReporter.error(error);
+			Logger.error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
+			);
 		}
 
-		throw new Error('The "activeWorkflows" instance did not get initialized yet.');
+		if (this.activationErrors[workflowId] !== undefined) {
+			// If there were any activation errors delete them
+			delete this.activationErrors[workflowId];
+		}
+
+		if (this.queuedWorkflowActivations[workflowId] !== undefined) {
+			this.removeQueuedWorkflowActivation(workflowId);
+		}
+
+		// if it's active in memory then it's a trigger
+		// so remove from list of actives workflows
+		if (this.activeWorkflows.isActive(workflowId)) {
+			await this.activeWorkflows.remove(workflowId);
+			Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
+		}
 	}
 }

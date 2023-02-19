@@ -237,7 +237,7 @@ export class WorkflowsService {
 
 		WorkflowHelpers.addNodeIds(workflow);
 
-		await ExternalHooks().run('workflow.update', [workflow]);
+		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
@@ -320,13 +320,13 @@ export class WorkflowsService {
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.afterUpdate', [updatedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await ExternalHooks().run('workflow.activate', [updatedWorkflow]);
+				await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
 				await Container.get(ActiveWorkflowRunner).add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
@@ -437,7 +437,7 @@ export class WorkflowsService {
 	}
 
 	static async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		await ExternalHooks().run('workflow.delete', [workflowId]);
+		await Container.get(ExternalHooks).run('workflow.delete', [workflowId]);
 
 		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 			relations: ['workflow', 'role'],
@@ -461,7 +461,7 @@ export class WorkflowsService {
 		await Db.collections.Workflow.delete(workflowId);
 
 		void InternalHooksManager.getInstance().onWorkflowDeleted(user, workflowId, false);
-		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
+		await Container.get(ExternalHooks).run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
 	}

@@ -70,6 +70,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
+import Container from 'typedi';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -389,7 +390,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 }
 
 export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
-	const externalHooks = ExternalHooks();
+	const externalHooks = Container.get(ExternalHooks);
 
 	return {
 		workflowExecuteBefore: [
@@ -923,7 +924,7 @@ async function executeWorkflow(
 		parentWorkflowSettings?: IWorkflowSettings;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
-	const externalHooks = ExternalHooks();
+	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
 	const nodeTypes = NodeTypes();

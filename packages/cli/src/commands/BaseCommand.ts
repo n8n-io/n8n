@@ -18,6 +18,7 @@ import { NodeTypes } from '@/NodeTypes';
 import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
+import Container from 'typedi';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -83,7 +84,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async initExternalHooks() {
-		this.externalHooks = ExternalHooks();
+		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
 	}
 

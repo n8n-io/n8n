@@ -18,6 +18,7 @@ import { EECredentialsService as EECredentials } from '../credentials/credential
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
+import Container from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -126,7 +127,7 @@ EEWorkflowController.post(
 
 		await validateEntity(newWorkflow);
 
-		await ExternalHooks().run('workflow.create', [newWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -190,7 +191,7 @@ EEWorkflowController.post(
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;

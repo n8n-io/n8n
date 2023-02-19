@@ -72,7 +72,7 @@ export abstract class AbstractServer {
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
-		this.externalHooks = ExternalHooks();
+		this.externalHooks = Container.get(ExternalHooks);
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	}
 

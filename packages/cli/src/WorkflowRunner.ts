@@ -57,6 +57,7 @@ import type { Push } from '@/push';
 import { getPushInstance } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
+import Container from 'typedi';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -191,7 +192,7 @@ export class WorkflowRunner {
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		postExecutePromise
 			.then(async (executionData) => {
 				void InternalHooksManager.getInstance().onWorkflowPostExecute(

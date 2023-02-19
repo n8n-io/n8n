@@ -134,7 +134,7 @@ export async function initTestServer({
 		endpointGroups.includes('users') ||
 		endpointGroups.includes('passwordReset')
 	) {
-		testServer.externalHooks = ExternalHooks();
+		testServer.externalHooks = Container.get(ExternalHooks);
 	}
 
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
@@ -164,7 +164,7 @@ export async function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		const internalHooks = InternalHooksManager.getInstance();
 		const mailer = UserManagementMailer.getInstance();
 		const repositories = Db.collections;

@@ -50,7 +50,7 @@ export = {
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
-			await ExternalHooks().run('workflow.afterCreate', [createdWorkflow]);
+			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
 			void InternalHooksManager.getInstance().onWorkflowCreated(req.user, createdWorkflow, true);
 
 			return res.json(createdWorkflow);
@@ -210,7 +210,7 @@ export = {
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
 
-			await ExternalHooks().run('workflow.afterUpdate', [updateData]);
+			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			void InternalHooksManager.getInstance().onWorkflowSaved(req.user, updateData, true);
 
 			return res.json(updatedWorkflow);

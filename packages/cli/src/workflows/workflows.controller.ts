@@ -24,6 +24,7 @@ import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
+import Container from 'typedi';
 
 export const workflowsController = express.Router();
 
@@ -57,7 +58,7 @@ workflowsController.post(
 
 		await validateEntity(newWorkflow);
 
-		await ExternalHooks().run('workflow.create', [newWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -106,7 +107,7 @@ workflowsController.post(
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;
