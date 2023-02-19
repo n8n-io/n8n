@@ -43,6 +43,7 @@ import {
 } from 'n8n-workflow';
 
 import pick from 'lodash.pick';
+import type { FindOptionsWhere } from 'typeorm';
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
@@ -210,7 +211,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		const toPrune: any[] = [{ stoppedAt: LessThanOrEqual(utcDate) }];
+		const toPrune: FindOptionsWhere<IExecutionFlattedDb> = { stoppedAt: LessThanOrEqual(utcDate) };
 
 		if (maxCount > 0) {
 			const executions = await Db.collections.Execution.find({
@@ -221,9 +222,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			});
 
 			if (executions[0]) {
-				toPrune.push({
-					id: LessThanOrEqual(executions[0].id),
-				});
+				toPrune.id = LessThanOrEqual(executions[0].id);
 			}
 		}
 
