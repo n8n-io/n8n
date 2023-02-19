@@ -11,14 +11,14 @@ import * as CrashJournal from '@/CrashJournal';
 import { inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes, NodeTypesClass } from '@/NodeTypes';
 import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
 import Container from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -49,7 +49,9 @@ export abstract class BaseCommand extends Command {
 		const credentialTypes = CredentialTypes(this.loadNodesAndCredentials);
 		CredentialsOverwrites(credentialTypes);
 
-		await InternalHooksManager.init(this.userSettings.instanceId ?? '', this.nodeTypes);
+		Container.set(NodeTypesClass, this.nodeTypes);
+		const instanceId = this.userSettings.instanceId ?? '';
+		await Container.get(InternalHooks).init(instanceId);
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),

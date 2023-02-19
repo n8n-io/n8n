@@ -31,8 +31,7 @@ import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes, NodeTypesClass } from '@/NodeTypes';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -75,6 +74,8 @@ import * as testDb from '../shared/testDb';
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
+import { InternalHooks } from '@/InternalHooks';
+import { Telemetry } from '@/telemetry';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
@@ -109,7 +110,9 @@ export async function initTestServer({
 	LoggerProxy.init(logger);
 
 	// Pre-requisite: Mock the telemetry module before calling.
-	await InternalHooksManager.init('test-instance-id', mockNodeTypes);
+	Container.set(Telemetry, new Telemetry());
+	Container.set(NodeTypesClass, mockNodeTypes);
+	await Container.get(InternalHooks).init('test-instance-id');
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -165,7 +168,7 @@ export async function initTestServer({
 
 	if (functionEndpoints.length) {
 		const externalHooks = Container.get(ExternalHooks);
-		const internalHooks = InternalHooksManager.getInstance();
+		const internalHooks = Container.get(InternalHooks);
 		const mailer = UserManagementMailer.getInstance();
 		const repositories = Db.collections;
 

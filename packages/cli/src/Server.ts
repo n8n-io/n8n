@@ -56,7 +56,6 @@ import history from 'connect-history-api-fallback';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { getCredentialTranslationPath } from '@/TranslationHelpers';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
@@ -147,6 +146,8 @@ import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
+import Container from 'typedi';
+import { InternalHooks } from './InternalHooks';
 
 const exec = promisify(callbackExec);
 
@@ -343,7 +344,7 @@ class Server extends AbstractServer {
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
 
 		const logger = LoggerProxy;
-		const internalHooks = InternalHooksManager.getInstance();
+		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
 
 		const controllers = [
@@ -1200,9 +1201,7 @@ class Server extends AbstractServer {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
-						req.headers.sessionid as string,
-					);
+					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
 
 					return this.getSettingsForFrontend();
 				},
@@ -1373,6 +1372,6 @@ export async function start(): Promise<void> {
 		order: { createdAt: 'ASC' },
 		where: {},
 	}).then(async (workflow) =>
-		InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+		Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 	);
 }

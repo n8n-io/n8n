@@ -49,7 +49,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
@@ -58,6 +57,7 @@ import { getPushInstance } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import Container from 'typedi';
+import { InternalHooks } from './InternalHooks';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -131,7 +131,7 @@ export class WorkflowRunner {
 
 			const executionFlattedData = await Db.collections.Execution.findOneBy({ id: executionId });
 
-			void InternalHooksManager.getInstance().onWorkflowCrashed(
+			void Container.get(InternalHooks).onWorkflowCrashed(
 				executionId,
 				executionMode,
 				executionFlattedData?.workflowData,
@@ -188,14 +188,14 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
-		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
+		void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		const externalHooks = Container.get(ExternalHooks);
 		postExecutePromise
 			.then(async (executionData) => {
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId!,
 					data.workflowData,
 					executionData,

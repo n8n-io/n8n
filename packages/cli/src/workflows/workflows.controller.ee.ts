@@ -1,7 +1,6 @@
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
@@ -19,6 +18,7 @@ import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
 import Container from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -76,7 +76,7 @@ EEWorkflowController.put(
 			}
 		});
 
-		void InternalHooksManager.getInstance().onWorkflowSharingUpdate(
+		void Container.get(InternalHooks).onWorkflowSharingUpdate(
 			workflowId,
 			req.user.id,
 			shareWithIds,
@@ -192,7 +192,7 @@ EEWorkflowController.post(
 		}
 
 		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
+		void Container.get(InternalHooks).onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;
 	}),

@@ -2,7 +2,6 @@ import express from 'express';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 
@@ -34,6 +33,8 @@ import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
 import { getPushInstance } from '@/push';
+import Container from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -123,7 +124,7 @@ nodesController.post(
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
+			void Container.get(InternalHooks).onCommunityPackageInstallFinished({
 				user: req.user,
 				input_string: name,
 				package_name: parsed.packageName,
@@ -151,7 +152,7 @@ nodesController.post(
 			});
 		});
 
-		void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
+		void Container.get(InternalHooks).onCommunityPackageInstallFinished({
 			user: req.user,
 			input_string: name,
 			package_name: parsed.packageName,
@@ -258,7 +259,7 @@ nodesController.delete(
 			});
 		});
 
-		void InternalHooksManager.getInstance().onCommunityPackageDeleteFinished({
+		void Container.get(InternalHooks).onCommunityPackageDeleteFinished({
 			user: req.user,
 			package_name: name,
 			package_version: installedPackage.installedVersion,
@@ -312,7 +313,7 @@ nodesController.patch(
 				});
 			});
 
-			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
+			void Container.get(InternalHooks).onCommunityPackageUpdateFinished({
 				user: req.user,
 				package_name: name,
 				package_version_current: previouslyInstalledPackage.installedVersion,

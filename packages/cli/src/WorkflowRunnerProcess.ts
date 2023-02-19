@@ -41,7 +41,7 @@ import type {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes, NodeTypesClass } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -49,12 +49,12 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { getLogger } from '@/Logger';
 
 import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { getLicense } from './License';
 import Container from 'typedi';
+import { InternalHooks } from './InternalHooks';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -115,8 +115,9 @@ class WorkflowRunnerProcess {
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
+		Container.set(NodeTypesClass, nodeTypes);
 		const instanceId = userSettings.instanceId ?? '';
-		await InternalHooksManager.init(instanceId, nodeTypes);
+		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
@@ -230,7 +231,7 @@ class WorkflowRunnerProcess {
 				};
 			});
 
-			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId || '', runData);
 
 			let result: IRun;
 			try {
@@ -251,7 +252,7 @@ class WorkflowRunnerProcess {
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
 				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId,
 					workflowData,
 					result,

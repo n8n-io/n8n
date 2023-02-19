@@ -6,7 +6,6 @@ import { In } from 'typeorm';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
@@ -29,6 +28,7 @@ import {
 	parseTagNames,
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
+import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	createWorkflow: [
@@ -51,7 +51,7 @@ export = {
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			void InternalHooksManager.getInstance().onWorkflowCreated(req.user, createdWorkflow, true);
+			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
 
 			return res.json(createdWorkflow);
 		},
@@ -84,7 +84,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void InternalHooksManager.getInstance().onUserRetrievedWorkflow({
+			void Container.get(InternalHooks).onUserRetrievedWorkflow({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -145,7 +145,7 @@ export = {
 				count = await getWorkflowsCount(query);
 			}
 
-			void InternalHooksManager.getInstance().onUserRetrievedAllWorkflows({
+			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -211,7 +211,7 @@ export = {
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
-			void InternalHooksManager.getInstance().onWorkflowSaved(req.user, updateData, true);
+			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 
 			return res.json(updatedWorkflow);
 		},

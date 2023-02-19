@@ -13,7 +13,8 @@ import { authorize, validCursor } from '../../shared/middlewares/global.middlewa
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooksManager } from '@/InternalHooksManager';
+import Container from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	deleteExecution: [
@@ -66,7 +67,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void InternalHooksManager.getInstance().onUserRetrievedExecution({
+			void Container.get(InternalHooks).onUserRetrievedExecution({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -116,7 +117,7 @@ export = {
 
 			const count = await getExecutionsCount(filters);
 
-			void InternalHooksManager.getInstance().onUserRetrievedAllExecutions({
+			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
 				user_id: req.user.id,
 				public_api: true,
 			});

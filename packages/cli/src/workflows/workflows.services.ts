@@ -8,7 +8,6 @@ import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
@@ -27,6 +26,7 @@ import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
+import { InternalHooks } from '@/InternalHooks';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -321,7 +321,7 @@ export class WorkflowsService {
 		}
 
 		await Container.get(ExternalHooks).run('workflow.afterUpdate', [updatedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowSaved(user, updatedWorkflow, false);
+		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
@@ -460,7 +460,7 @@ export class WorkflowsService {
 
 		await Db.collections.Workflow.delete(workflowId);
 
-		void InternalHooksManager.getInstance().onWorkflowDeleted(user, workflowId, false);
+		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await Container.get(ExternalHooks).run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import Container, { Inject, Service } from 'typedi';
+import Container from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -21,7 +21,6 @@ import * as ActiveExecutions from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as Server from '@/Server';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker } from '@/WaitTracker';
@@ -31,6 +30,7 @@ import { createPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
+import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -99,7 +99,7 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
-			await InternalHooksManager.getInstance().onN8nStop();
+			await Container.get(InternalHooks).onN8nStop();
 
 			const skipWebhookDeregistration = config.getEnv(
 				'endpoints.skipWebhooksDeregistrationOnShutdown',

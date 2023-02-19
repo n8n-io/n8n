@@ -10,6 +10,7 @@ import { getLogger } from '@/Logger';
 import { getLicense } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
+import { Service } from 'typedi';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -28,7 +29,10 @@ interface IExecutionsBuffer {
 	};
 }
 
+@Service()
 export class Telemetry {
+	private instanceId: string;
+
 	private rudderStack?: RudderStack;
 
 	private postHog?: PostHog;
@@ -37,7 +41,9 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string) {}
+	setInstanceId(instanceId: string) {
+		this.instanceId = instanceId;
+	}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
