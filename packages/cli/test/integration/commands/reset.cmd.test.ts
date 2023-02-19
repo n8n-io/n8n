@@ -2,10 +2,13 @@ import * as Db from '@/Db';
 import { Reset } from '@/commands/user-management/reset';
 import type { Role } from '@db/entities/Role';
 import * as testDb from '../shared/testDb';
+import { mockInstance } from '../shared/utils';
+import { InternalHooks } from '@/InternalHooks';
 
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
+	mockInstance(InternalHooks);
 	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();

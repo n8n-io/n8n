@@ -5,14 +5,10 @@ import { Db } from '@/index';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { getLogger } from '@/Logger';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
-import { mock } from 'jest-mock-extended';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
+import { mockInstance } from '../integration/shared/utils';
 
 const FAKE_USER_ID = 'abcde-fghij';
-
-const internalHooks = mock<InternalHooks>();
-Container.set(InternalHooks, internalHooks);
 
 jest.mock('@/Db', () => {
 	return {
@@ -29,6 +25,8 @@ jest.spyOn(UserManagementHelper, 'getWorkflowOwner').mockImplementation(async (_
 });
 
 describe('Events', () => {
+	const internalHooks = mockInstance(InternalHooks);
+
 	beforeAll(() => {
 		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');

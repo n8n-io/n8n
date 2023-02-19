@@ -14,7 +14,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes, NodeTypesClass } from '@/NodeTypes';
-import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
 import Container from 'typedi';
@@ -28,7 +27,7 @@ export abstract class BaseCommand extends Command {
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+	protected loadNodesAndCredentials: LoadNodesAndCredentials;
 
 	protected nodeTypes: INodeTypes;
 
@@ -43,7 +42,7 @@ export abstract class BaseCommand extends Command {
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
 
-		this.loadNodesAndCredentials = LoadNodesAndCredentials();
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await this.loadNodesAndCredentials.init();
 		this.nodeTypes = NodeTypes(this.loadNodesAndCredentials);
 		const credentialTypes = CredentialTypes(this.loadNodesAndCredentials);

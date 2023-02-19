@@ -1,12 +1,12 @@
 import path from 'path';
 import { realpath, access } from 'fs/promises';
 
-import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
+import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { NodeTypesClass } from '@/NodeTypes';
 import type { Push } from '@/push';
 
 export const reloadNodesAndCredentials = async (
-	loadNodesAndCredentials: LoadNodesAndCredentialsClass,
+	loadNodesAndCredentials: LoadNodesAndCredentials,
 	nodeTypes: NodeTypesClass,
 	push: Push,
 ) => {

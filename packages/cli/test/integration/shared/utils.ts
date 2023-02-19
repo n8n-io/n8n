@@ -76,6 +76,7 @@ import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
 import { Telemetry } from '@/telemetry';
+import { mock } from 'jest-mock-extended';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
@@ -85,6 +86,12 @@ const loadNodesAndCredentials: INodesAndCredentials = {
 
 const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
 CredentialTypes(loadNodesAndCredentials);
+
+export const mockInstance = <T>(ctor: new (...args: any[]) => T) => {
+	const instance = mock<T>();
+	Container.set(ctor, instance);
+	return instance;
+};
 
 /**
  * Initialize a test server.

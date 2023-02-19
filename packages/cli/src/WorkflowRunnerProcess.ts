@@ -104,7 +104,7 @@ class WorkflowRunnerProcess {
 
 		const userSettings = await UserSettings.prepareUserSettings();
 
-		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.init();
 
 		const nodeTypes = NodeTypes(loadNodesAndCredentials);

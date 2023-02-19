@@ -117,7 +117,7 @@ nodesController.post(
 		let installedPackage: InstalledPackages;
 
 		try {
-			installedPackage = await LoadNodesAndCredentials().loadNpmModule(
+			installedPackage = await Container.get(LoadNodesAndCredentials).loadNpmModule(
 				parsed.packageName,
 				parsed.version,
 			);
@@ -239,7 +239,7 @@ nodesController.delete(
 		}
 
 		try {
-			await LoadNodesAndCredentials().removeNpmModule(name, installedPackage);
+			await Container.get(LoadNodesAndCredentials).removeNpmModule(name, installedPackage);
 		} catch (error) {
 			const message = [
 				`Error removing package "${name}"`,
@@ -291,7 +291,7 @@ nodesController.patch(
 		}
 
 		try {
-			const newInstalledPackage = await LoadNodesAndCredentials().updateNpmModule(
+			const newInstalledPackage = await Container.get(LoadNodesAndCredentials).updateNpmModule(
 				parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
 			);

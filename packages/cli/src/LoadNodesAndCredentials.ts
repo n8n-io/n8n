@@ -36,8 +36,10 @@ import {
 	removePackageFromDatabase,
 } from '@/CommunityNodes/packageModel';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { Service } from 'typedi';
 
-export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
+@Service()
+export class LoadNodesAndCredentials implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -419,15 +421,4 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 		throw new Error('Could not find "node_modules" folder!');
 	}
-}
-
-let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function LoadNodesAndCredentials(): LoadNodesAndCredentialsClass {
-	if (packagesInformationInstance === undefined) {
-		packagesInformationInstance = new LoadNodesAndCredentialsClass();
-	}
-
-	return packagesInformationInstance;
 }
