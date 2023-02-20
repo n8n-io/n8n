@@ -6,7 +6,7 @@ import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { PublicUser, WhereClause } from '@/Interfaces';
+import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
@@ -15,6 +15,7 @@ import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
 import { RoleService } from '@/role/role.service';
+import PostHogClient from '@/telemetry/posthog';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
@@ -160,6 +161,14 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		sanitizedUser.signInType = 'ldap';
 	}
 	return sanitizedUser;
+}
+
+export async function withFeatureFlags(postHog: PostHogClient | undefined, user: CurrentUser): Promise<CurrentUser> {
+	if (postHog) {
+		user.featureFlags = await postHog.getFeatureFlags(user);
+	}
+
+	return user;
 }
 
 export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {

@@ -357,6 +357,7 @@ class Server extends AbstractServer {
 		const logger = LoggerProxy;
 		const internalHooks = InternalHooksManager.getInstance();
 		const mailer = getMailerInstance();
+		const postHog = this.postHog;
 
 		const controllers = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog: this.postHog }),
@@ -371,6 +372,7 @@ class Server extends AbstractServer {
 				repositories,
 				activeWorkflowRunner,
 				logger,
+				postHog,
 			}),
 		];
 		controllers.forEach((controller) => registerController(app, config, controller));
