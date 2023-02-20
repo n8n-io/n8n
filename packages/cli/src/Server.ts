@@ -57,7 +57,6 @@ import history from 'connect-history-api-fallback';
 import config from '@/config';
 import * as Queue from '@/Queue';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { getCredentialTranslationPath } from '@/TranslationHelpers';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
@@ -589,6 +588,7 @@ class Server extends AbstractServer {
 			),
 		);
 
+		const credsPath = pathJoin(NODES_BASE_DIR, 'dist', 'credentials');
 		this.app.get(
 			`/${this.restEndpoint}/credential-translation`,
 			ResponseHelper.send(
@@ -596,10 +596,18 @@ class Server extends AbstractServer {
 					req: express.Request & { query: { credentialType: string } },
 					res: express.Response,
 				): Promise<object | null> => {
-					const translationPath = getCredentialTranslationPath({
-						locale: this.frontendSettings.defaultLocale,
-						credentialType: req.query.credentialType,
-					});
+					const { credentialType } = req.query;
+
+					if (!this.credentialTypes.recognizes(credentialType))
+						throw new ResponseHelper.BadRequestError(`Invalid Credential type ${credentialType}`);
+
+					const { defaultLocale } = this.frontendSettings;
+					const translationPath = pathJoin(
+						credsPath,
+						'translations',
+						defaultLocale,
+						`${credentialType}.json`,
+					);
 
 					try {
 						return require(translationPath);
