@@ -68,6 +68,7 @@ export class UsersController {
 		repositories,
 		activeWorkflowRunner,
 		mailer,
+		postHog,
 	}: {
 		config: Config;
 		logger: ILogger;
@@ -91,7 +92,7 @@ export class UsersController {
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
 		this.mailer = mailer;
-		this.postHog = this.postHog;
+		this.postHog = postHog;
 	}
 
 	/**
