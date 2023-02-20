@@ -27,7 +27,7 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+> = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
 	user: User;
 	mailer?: UserManagementMailer.UserManagementMailer;
 	globalMemberRole?: Role;

@@ -1,7 +1,7 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import type { FindOptionsWhere, UpdateResult } from 'typeorm';
+import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
@@ -25,12 +25,12 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
+import type { WorkflowForList } from '@/workflows/workflows.types';
 
-export interface IGetWorkflowsQueryFilter {
-	id?: string;
-	name?: string;
-	active?: boolean;
-}
+export type IGetWorkflowsQueryFilter = Pick<
+	FindOptionsWhere<WorkflowEntity>,
+	'id' | 'name' | 'active'
+>;
 
 const schemaGetWorkflowsQueryFilter = {
 	$id: '/IGetWorkflowsQueryFilter',
@@ -114,7 +114,7 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
+	static async getMany(user: User, rawFilter: string): Promise<WorkflowForList[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -122,7 +122,7 @@ export class WorkflowsService {
 			return [];
 		}
 
-		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
+		let filter: IGetWorkflowsQueryFilter = {};
 		if (rawFilter) {
 			try {
 				const filterJson: JsonObject = jsonParse(rawFilter);
@@ -152,31 +152,32 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = [
-			'id',
-			'name',
-			'active',
-			'createdAt',
-			'updatedAt',
-			'nodes',
-		];
+		const select: FindOptionsSelect<WorkflowEntity> = {
+			id: true,
+			name: true,
+			active: true,
+			createdAt: true,
+			updatedAt: true,
+		};
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
+			select.tags = { name: true };
 		}
 
 		if (isSharingEnabled()) {
-			relations.push('shared', 'shared.user', 'shared.role');
+			relations.push('shared');
+			select.shared = { userId: true, roleId: true };
+			select.versionId = true;
 		}
 
+		filter.id = In(sharedWorkflowIds);
 		return Db.collections.Workflow.find({
-			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
+			select,
 			relations,
-			where: {
-				id: In(sharedWorkflowIds),
-				...filter,
-			},
+			where: filter,
+			order: { updatedAt: 'DESC' },
 		});
 	}
 

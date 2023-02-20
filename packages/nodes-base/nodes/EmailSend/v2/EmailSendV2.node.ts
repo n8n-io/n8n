@@ -54,6 +54,7 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Send',
 					value: 'send',
+					action: 'Send an Email',
 				},
 			],
 		},

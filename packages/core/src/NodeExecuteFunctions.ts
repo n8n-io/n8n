@@ -2292,6 +2292,9 @@ export function getExecuteFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
+				if (additionalData.setExecutionStatus) {
+					additionalData.setExecutionStatus('waiting');
+				}
 			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
