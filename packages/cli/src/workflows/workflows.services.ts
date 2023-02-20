@@ -332,7 +332,11 @@ export class WorkflowsService {
 				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				await Db.collections.Workflow.update(workflowId, { active: false });
+				// and revert the versionId change so UI remains consistent
+				await Db.collections.Workflow.update(workflowId, {
+					active: false,
+					versionId: shared.workflow.versionId,
+				});
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
