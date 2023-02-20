@@ -32,8 +32,8 @@ import {
 	IAbstractEventMessage,
 	FeatureFlags,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
+import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
@@ -800,13 +800,15 @@ export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
 	key?: string;
+	iconType: string;
 	icon?: string;
 	defaults?: INodeParameters;
-	iconData?: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
+}
+export interface ViewItemProps {
+	withTopBorder: boolean;
+	title: string;
+	description: string;
+	icon: string;
 }
 
 export interface INodeItemProps {
@@ -821,10 +823,11 @@ export interface IActionItemProps {
 
 export interface ICategoryItemProps {
 	expanded: boolean;
+	category: string;
+	name: string;
 }
 
 export interface CreateElementBase {
-	category: string;
 	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
@@ -832,6 +835,7 @@ export interface CreateElementBase {
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
+	category?: string[];
 	properties: INodeItemProps;
 }
 
@@ -844,9 +848,14 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
 	properties: ISubcategoryItemProps;
 }
+export interface ViewCreateElement extends CreateElementBase {
+	type: 'view';
+	properties: ViewItemProps;
+}
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
+	category: string;
 	properties: IActionItemProps;
 }
 
@@ -854,6 +863,7 @@ export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| ViewCreateElement
 	| ActionCreateElement;
 
 export interface ICategoriesWithNodes {
@@ -1152,13 +1162,13 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
+export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showTabs: boolean;
 	showScrim: boolean;
-	selectedType: INodeFilterType;
+	rootViewHistory: INodeFilterType[];
+	selectedView: INodeFilterType;
 }
 
 export interface ISettingsState {
