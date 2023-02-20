@@ -1,13 +1,14 @@
 import type express from 'express';
 import * as Db from '@/Db';
-import type { User } from '../databases/entities/User';
+import { User } from '@/databases/entities/User';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 import { LoggerProxy } from 'n8n-workflow';
-import { AuthError } from '../ResponseHelper';
+import { AuthError } from '@/ResponseHelper';
 import { getIdentityProviderInstance } from './identityProvider.ee';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
-import { isSsoJustInTimeProvisioningEnabled } from './helpers';
+import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -40,8 +41,8 @@ export class SamlService {
 			getIdentityProviderInstance(),
 			'redirect',
 		);
-		// TODO:SAML: remove, but keep for manual testing for now
-		LoggerProxy.debug(JSON.stringify(loginRequest));
+		//TODO:SAML: debug logging
+		LoggerProxy.debug(loginRequest.context);
 		return loginRequest.context;
 	}
 
@@ -78,16 +79,13 @@ export class SamlService {
 						attributes,
 						onboardingRequired: true,
 					};
-					// TODO:SAML: redirect to user details page
 				}
 			} else {
 				// New users to be created JIT based on SAML attributes
 				if (isSsoJustInTimeProvisioningEnabled()) {
-					console.log('// TODO:SAML: create user');
-					// TODO:SAML: create user
-					// TODO:SAML: redirect to details page
+					const newUser = await this.createUserFromSamlAttributes(attributes);
 					return {
-						authenticatedUser: undefined,
+						authenticatedUser: newUser,
 						attributes,
 						onboardingRequired: true,
 					};
@@ -95,6 +93,48 @@ export class SamlService {
 			}
 		}
 		return undefined;
+	}
+
+	async createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+		const user = new User();
+		const authIdentity = new AuthIdentity();
+		user.email = attributes.email;
+		user.firstName = attributes.firstName;
+		user.lastName = attributes.lastName;
+		authIdentity.providerId = attributes.userPrincipalName;
+		authIdentity.providerType = 'saml';
+		authIdentity.user = user;
+		const resultAuthIdentity = await Db.collections.AuthIdentity.save(authIdentity);
+		if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
+		user.authIdentities = [authIdentity];
+		const resultUser = await Db.collections.User.save(user);
+		if (!resultUser) throw new AuthError('Could not create User');
+		return resultUser;
+	}
+
+	async updateUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+		if (!attributes.email) throw new AuthError('Email is required to update user');
+		const user = await Db.collections.User.findOne({
+			where: { email: attributes.email },
+			relations: ['globalRole', 'authIdentities'],
+		});
+		if (!user) throw new AuthError('User not found');
+		let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
+		if (!samlAuthIdentity) {
+			samlAuthIdentity = new AuthIdentity();
+			samlAuthIdentity.providerId = attributes.userPrincipalName;
+			samlAuthIdentity.providerType = 'saml';
+			samlAuthIdentity.user = user;
+			user.authIdentities.push(samlAuthIdentity);
+		} else {
+			samlAuthIdentity.providerId = attributes.userPrincipalName;
+		}
+		await Db.collections.AuthIdentity.save(samlAuthIdentity);
+		user.firstName = attributes.firstName;
+		user.lastName = attributes.lastName;
+		const resultUser = await Db.collections.User.save(user);
+		if (!resultUser) throw new AuthError('Could not create User');
+		return resultUser;
 	}
 
 	async getAttributesFromLoginResponse(req: express.Request): Promise<SamlUserAttributes> {

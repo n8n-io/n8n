@@ -1008,6 +1008,11 @@ export const schema = {
 			default: false,
 			doc: 'Whether to automatically create users when they login via SSO.',
 		},
+		redirectLoginToSso: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
+		},
 		saml: {
 			enabled: {
 				format: Boolean,

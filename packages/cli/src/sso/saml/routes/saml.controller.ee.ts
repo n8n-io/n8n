@@ -4,6 +4,7 @@ import { AuthError } from '@/ResponseHelper';
 import { samlEnabledMiddleware } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { LoggerProxy } from 'n8n-workflow';
+import { SamlUrls } from '../constants';
 
 /**
  * SSO Endpoints that are protected by samlEnabledMiddleware require
@@ -14,10 +15,10 @@ export const samlController = express.Router();
 samlController.use(samlEnabledMiddleware);
 
 /**
- * POST /sso/acs
+ * POST /sso/saml/acs
  * Assertion Consumer Service endpoint
  */
-samlController.post('/acs', async (req: express.Request, res: express.Response) => {
+samlController.post(SamlUrls.acs, async (req: express.Request, res: express.Response) => {
 	const loginResult = await SamlService.getInstance().handleSamlLogin(req);
 	if (loginResult) {
 		if (loginResult.authenticatedUser && !loginResult.onboardingRequired) {
@@ -33,10 +34,10 @@ samlController.post('/acs', async (req: express.Request, res: express.Response) 
 });
 
 /**
- * GET /sso/spinitsso-redirect
+ * GET /sso/saml/initsso
  * Access URL for implementing SP-init SSO
  */
-samlController.get('/spinitsso', async (req: express.Request, res: express.Response) => {
+samlController.get(SamlUrls.initSSO, async (req: express.Request, res: express.Response) => {
 	const url = SamlService.getInstance().getRedirectLoginRequestUrl();
 	if (url) {
 		return res.redirect(url);

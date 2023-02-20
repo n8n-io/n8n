@@ -146,9 +146,9 @@ import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { eventBus } from './eventbus';
-import { isSamlLicensed } from './Saml/helpers';
-import { samlController } from './Saml/routes/saml.controller.ee';
-import { samlControllerPublic } from './Saml/routes/saml.controller-public.ee';
+import { isSamlLicensed } from './sso/saml/samlHelpers';
+import { samlController } from './sso/saml/routes/saml.controller.ee';
+import { samlControllerPublic } from './sso/saml/routes/saml.controller-public.ee';
 
 const exec = promisify(callbackExec);
 
@@ -486,10 +486,10 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 
 		// public SAML endpoints
-		this.app.use(`/${this.restEndpoint}/sso`, samlControllerPublic);
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
 
 		// licensed SAML endpoints
-		this.app.use(`/${this.restEndpoint}/sso`, samlController);
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlController);
 
 		// ----------------------------------------
 

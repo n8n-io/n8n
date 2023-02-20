@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import { isSamlCurrentAuthenticationMethod, isSamlEnabled, isSamlLicensed } from '../helpers';
+import { isSamlCurrentAuthenticationMethod } from '../../ssoHelpers';
+import { isSamlEnabled, isSamlLicensed } from '../samlHelpers';
 
 export const samlEnabledMiddleware: RequestHandler = (req, res, next) => {
 	if (isSamlEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod()) {
