@@ -210,6 +210,10 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
 			}
+
+			if (user.featureFlags) {
+				usePostHogStore().init(user.featureFlags);
+			}
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();

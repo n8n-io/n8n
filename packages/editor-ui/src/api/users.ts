@@ -56,7 +56,7 @@ export function signup(
 		lastName: string;
 		password: string;
 	},
-): Promise<IUserResponse> {
+): Promise<CurrentUserResponse> {
 	const { inviteeId, ...props } = params;
 	return makeRestApiRequest(
 		context,
