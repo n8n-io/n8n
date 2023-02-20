@@ -1,11 +1,11 @@
 import type { PostHog } from 'posthog-node';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import config from '@/config';
-import { PublicUser } from '..';
+import type { PublicUser } from '..';
 
 export default class PostHogClient {
 	private postHog?: PostHog;
-	
+
 	private instanceId?: string;
 
 	constructor() {}
@@ -31,17 +31,11 @@ export default class PostHogClient {
 
 	async stop(): Promise<void> {
 		if (this.postHog) {
-			return await this.postHog.shutdown();
+			return this.postHog.shutdown();
 		}
 	}
 
-	track(
-		payload: {
-			userId: string;
-			event: string;
-			properties: ITelemetryTrackProperties;	
-		}
-	): void {
+	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
 		this.postHog?.capture({
 			distinctId: payload.userId,
 			sendFeatureFlags: true,

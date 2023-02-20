@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import PostHogClient from '../posthog';
+import type PostHogClient from '../posthog';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
@@ -182,9 +182,7 @@ export class Telemetry {
 				};
 
 				if (withPostHog) {
-					this.postHog?.track(
-						payload,
-					);
+					this.postHog?.track(payload);
 				}
 
 				return this.rudderStack.track(payload, resolve);

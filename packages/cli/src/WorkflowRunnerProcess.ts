@@ -115,7 +115,6 @@ class WorkflowRunnerProcess {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-
 		const instanceId = userSettings.instanceId ?? '';
 
 		const postHog = new PostHogClient();

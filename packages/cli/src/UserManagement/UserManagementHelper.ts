@@ -15,7 +15,7 @@ import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
 import { RoleService } from '@/role/role.service';
-import PostHogClient from '@/posthog';
+import type PostHogClient from '@/posthog';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
@@ -163,7 +163,10 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	return sanitizedUser;
 }
 
-export async function withFeatureFlags(postHog: PostHogClient | undefined, user: CurrentUser): Promise<CurrentUser> {
+export async function withFeatureFlags(
+	postHog: PostHogClient | undefined,
+	user: CurrentUser,
+): Promise<CurrentUser> {
 	if (!postHog) {
 		return user;
 	}

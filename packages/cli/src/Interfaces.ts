@@ -478,11 +478,11 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	posthog: {
 		enabled: boolean;
-		apiHost: string;	
+		apiHost: string;
 		apiKey: string;
 		autocapture: boolean;
 		disableSessionRecording: boolean;
-		debug: boolean;	
+		debug: boolean;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
