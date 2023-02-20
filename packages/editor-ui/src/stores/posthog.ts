@@ -18,7 +18,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
 	const onLogout = () => {
-		window.posthog?.reset();
+		window.posthog?.reset?.();
 		featureFlags.value = null;
 		trackedDemoExp.value = {};
 	};
@@ -45,7 +45,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 		let id = user ? `${instanceId}#${user.id}` : instanceId;
-		window.posthog?.identify(id, traits);
+		window.posthog?.identify?.(id, traits);
 	};
 
 	const init = (bootstrapped?: FeatureFlags) => {
@@ -85,7 +85,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 
 		identify();
 		if (!initialized.value) {
-			window.posthog?.onFeatureFlags((flags: string[], map: FeatureFlags) => {
+			window.posthog?.onFeatureFlags?.((flags: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
 			});
 		}

@@ -41,18 +41,6 @@ export * from 'n8n-design-system/types';
 declare global {
 	interface Window {
 		posthog?: {
-			isFeatureEnabled(flagName: string): boolean;
-			getFeatureFlag(flagName: string): boolean | string;
-			identify(
-				id: string,
-				userProperties?: Record<string, string | number>,
-				userPropertiesOnce?: Record<string, string>,
-			): void;
-			reset(resetDeviceId?: boolean): void;
-			onFeatureFlags(
-				callback: (keys: string[], map: FeatureFlags) => void,
-			): void;
-			reloadFeatureFlags(): void;
 			init(key: string, options?: {
 				api_host?: string;
 				autocapture?: boolean;
@@ -63,6 +51,18 @@ declare global {
 					featureFlags: FeatureFlags;
 				}
 			}): void;
+			isFeatureEnabled?(flagName: string): boolean;
+			getFeatureFlag?(flagName: string): boolean | string;
+			identify?(
+				id: string,
+				userProperties?: Record<string, string | number>,
+				userPropertiesOnce?: Record<string, string>,
+			): void;
+			reset?(resetDeviceId?: boolean): void;
+			onFeatureFlags?(
+				callback: (keys: string[], map: FeatureFlags) => void,
+			): void;
+			reloadFeatureFlags?(): void;
 		};
 	}
 }
