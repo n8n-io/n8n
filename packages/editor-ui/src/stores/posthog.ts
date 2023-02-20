@@ -38,7 +38,6 @@ export const usePostHogStore = defineStore('posthog', () => {
 
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 		let id = user ? `${instanceId}#${user.id}` : instanceId;
-		console.log('identify', id, traits);
 		window.posthog?.identify(id, traits);
 	};
 
@@ -88,7 +87,6 @@ export const usePostHogStore = defineStore('posthog', () => {
 	// 	const isDemo = variant === ASSUMPTION_EXPERIMENT.demo;
 	// 	const isVideo = variant === ASSUMPTION_EXPERIMENT.video;
 
-	// 	console.log(`track ${variant}`);
 	// 	telemetry.value?.track('User is part of experiment', {
 	// 		name: 'edu_001',
 	// 		variant: isDemo ? 'demo' : isVideo ? 'video' : 'control',
