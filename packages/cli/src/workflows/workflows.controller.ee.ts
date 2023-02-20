@@ -17,7 +17,7 @@ import { EECredentialsService as EECredentials } from '../credentials/credential
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

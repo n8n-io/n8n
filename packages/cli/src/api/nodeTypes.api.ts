@@ -8,7 +8,7 @@ import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getNodeTranslationPath } from '@/TranslationHelpers';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export const nodeTypesController = express.Router();
 

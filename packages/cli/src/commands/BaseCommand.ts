@@ -16,7 +16,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export const UM_FIX_INSTRUCTION =

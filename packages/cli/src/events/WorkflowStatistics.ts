@@ -3,7 +3,7 @@ import * as Db from '@/Db';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { QueryFailedError } from 'typeorm';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export async function workflowExecutionCompleted(

@@ -16,7 +16,7 @@ import * as TagHelpers from '@/TagHelpers';
 import { validateEntity } from '@/GenericHelpers';
 import { TagEntity } from '@db/entities/TagEntity';
 import type { TagsRequest } from '@/requests';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export const tagsController = express.Router();
 

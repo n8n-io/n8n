@@ -30,7 +30,7 @@ import type { OAuthRequest } from '@/requests';
 import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export const oauth2CredentialController = express.Router();
 

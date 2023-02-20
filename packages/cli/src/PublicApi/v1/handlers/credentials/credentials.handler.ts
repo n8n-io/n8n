@@ -19,7 +19,7 @@ import {
 	saveCredential,
 	toJsonSchema,
 } from './credentials.service';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export = {
 	createCredential: [

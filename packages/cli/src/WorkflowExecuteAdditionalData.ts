@@ -69,7 +69,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');

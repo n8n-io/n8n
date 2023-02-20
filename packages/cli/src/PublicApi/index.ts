@@ -14,7 +14,7 @@ import type { JsonObject } from 'swagger-ui-express';
 import config from '@/config';
 import * as Db from '@/Db';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 async function createApiRouter(

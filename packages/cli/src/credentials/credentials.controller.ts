@@ -13,7 +13,7 @@ import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialRequest } from '@/requests';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export const credentialsController = express.Router();

@@ -5,7 +5,7 @@ import type { LdapConfiguration } from '../types';
 import pick from 'lodash.pick';
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '../constants';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export const ldapController = express.Router();
 

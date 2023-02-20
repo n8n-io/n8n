@@ -4,7 +4,6 @@ export * from './CredentialTypes';
 export * from './CredentialsOverwrites';
 export * from './Interfaces';
 export * from './NodeTypes';
-export * from './WaitTracker';
 export * from './WaitingWebhooks';
 export * from './WorkflowCredentials';
 export * from './WorkflowRunner';

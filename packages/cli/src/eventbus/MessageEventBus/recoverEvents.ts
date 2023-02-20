@@ -8,7 +8,7 @@ import { getPushInstance } from '@/push';
 import type { IPushDataExecutionRecovered } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export async function recoverExecutionDataFromEventLogMessages(

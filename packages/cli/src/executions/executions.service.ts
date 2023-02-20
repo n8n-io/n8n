@@ -34,7 +34,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;

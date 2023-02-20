@@ -4,7 +4,7 @@ import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;

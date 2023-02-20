@@ -53,7 +53,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 const mockNode = {
 	name: '',

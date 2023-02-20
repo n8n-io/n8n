@@ -7,7 +7,7 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import type { CredentialRequest } from '../../../types';
 import { toJsonSchema } from './credentials.service';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export const validCredentialType = (
 	req: CredentialRequest.Create,

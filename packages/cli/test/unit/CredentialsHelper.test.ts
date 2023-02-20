@@ -12,7 +12,7 @@ import {
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Helpers from './Helpers';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 

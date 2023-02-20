@@ -13,7 +13,7 @@ import { NodeTypes } from '@/NodeTypes';
 import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export class WaitingWebhooks {
 	async executeWebhook(

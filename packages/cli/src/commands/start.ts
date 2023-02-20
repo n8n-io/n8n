@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import Container from 'typedi';
+import { Container } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -23,7 +23,6 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as Server from '@/Server';
 import * as TestWebhooks from '@/TestWebhooks';
-import { WaitTracker } from '@/WaitTracker';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
@@ -346,8 +345,6 @@ export class Start extends BaseCommand {
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
-
-		WaitTracker();
 
 		await handleLdapInit();
 

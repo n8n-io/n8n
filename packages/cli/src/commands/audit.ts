@@ -4,7 +4,7 @@ import { RISK_CATEGORIES } from '@/audit/constants';
 import config from '@/config';
 import type { Risk } from '@/audit/types';
 import { BaseCommand } from './BaseCommand';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export class SecurityAudit extends BaseCommand {

@@ -123,7 +123,6 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { WaitTrackerClass } from '@/WaitTracker';
 import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -144,7 +143,7 @@ import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 
 const exec = promisify(callbackExec);
@@ -152,7 +151,7 @@ const exec = promisify(callbackExec);
 class Server extends AbstractServer {
 	endpointPresetCredentials: string;
 
-	waitTracker: WaitTrackerClass;
+	waitTracker: WaitTracker;
 
 	activeExecutionsInstance: ActiveExecutions;
 
@@ -176,7 +175,7 @@ class Server extends AbstractServer {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
-		this.waitTracker = WaitTracker();
+		this.waitTracker = Container.get(WaitTracker);
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');

@@ -16,7 +16,7 @@ import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 const re = /\d+/;
 

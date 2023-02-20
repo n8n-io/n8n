@@ -24,7 +24,7 @@ import {
 import type { ConnectionSecurity, LdapConfig } from './types';
 import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { getLicense } from '@/License';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 /**

@@ -13,7 +13,7 @@ import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';

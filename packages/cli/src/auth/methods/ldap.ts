@@ -12,7 +12,7 @@ import {
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export const handleLdapLogin = async (
 	loginId: string,

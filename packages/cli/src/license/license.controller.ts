@@ -10,7 +10,7 @@ import { LicenseService } from './License.service';
 import { getLicense } from '@/License';
 import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export const licenseController = express.Router();

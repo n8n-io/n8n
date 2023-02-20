@@ -8,7 +8,7 @@ import type { User } from '@db/entities/User';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });

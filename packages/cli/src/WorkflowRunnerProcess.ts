@@ -53,7 +53,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { getLicense } from './License';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 
 class WorkflowRunnerProcess {

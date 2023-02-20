@@ -4,7 +4,7 @@ import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
 import { BaseCommand } from './BaseCommand';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';

@@ -56,7 +56,7 @@ import type { Push } from '@/push';
 import { getPushInstance } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 
 export class WorkflowRunner {

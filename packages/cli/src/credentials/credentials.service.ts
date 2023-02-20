@@ -24,7 +24,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 export class CredentialsService {
 	static async get(

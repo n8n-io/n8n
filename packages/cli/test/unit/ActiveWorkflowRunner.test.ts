@@ -23,7 +23,7 @@ import { WorkflowExecuteAdditionalData } from '@/index';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
 import { ExternalHooks } from '@/ExternalHooks';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 /**

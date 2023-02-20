@@ -25,9 +25,10 @@ import type {
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import Container from 'typedi';
+import { Container, Service } from 'typedi';
 
-export class WaitTrackerClass {
+@Service()
+export class WaitTracker {
 	activeExecutionsInstance: ActiveExecutions;
 
 	private waitingExecutions: {
@@ -189,14 +190,4 @@ export class WaitTrackerClass {
 			);
 		});
 	}
-}
-
-let waitTrackerInstance: WaitTrackerClass | undefined;
-
-export function WaitTracker(): WaitTrackerClass {
-	if (waitTrackerInstance === undefined) {
-		waitTrackerInstance = new WaitTrackerClass();
-	}
-
-	return waitTrackerInstance;
 }

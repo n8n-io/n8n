@@ -12,7 +12,7 @@ import {
 } from '@/audit/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 async function getCommunityNodeDetails() {
 	const installedPackages = await getAllInstalledPackages();
