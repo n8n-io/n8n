@@ -1,15 +1,11 @@
 import type { PostHog } from 'posthog-node';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
-import { getLogger, Logger } from '@/Logger';
 import { PublicUser } from '..';
 
 export default class PostHogClient {
 	private postHog?: PostHog;
 	
-	private logger?: Logger;
-
 	private instanceId?: string;
 
 	constructor() {}
@@ -20,9 +16,6 @@ export default class PostHogClient {
 		if (!enabled) {
 			return;
 		}
-
-		this.logger = getLogger();
-		LoggerProxy.init(this.logger);
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { PostHog } = await import('posthog-node');
@@ -68,16 +61,5 @@ export default class PostHogClient {
 				created_at_timestamp: user.createdAt.getTime().toString(),
 			},
 		});
-	}
-
-	async isFeatureFlagEnabled(
-		featureFlagName: string,
-		{ user_id: userId }: ITelemetryTrackProperties = {},
-	): Promise<boolean | undefined> {
-		if (!this.postHog) return Promise.resolve(false);
-
-		const fullId = [this.instanceId, userId].join('#');
-
-		return this.postHog.isFeatureEnabled(featureFlagName, fullId);
 	}
 }
