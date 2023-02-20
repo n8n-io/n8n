@@ -4,16 +4,22 @@ import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from './settings';
 import { FeatureFlags } from 'n8n-workflow';
+import { EXPERIMENTS_TO_TRACK } from '@/constants';
+import { useTelemetryStore } from './telemetry';
 
 export const usePostHogStore = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
+	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
+
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const initialized: Ref<boolean> = ref(false);
+	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
 	const onLogout = () => {
 		window.posthog?.reset();
+		featureFlags.value = null;
 	};
 
 	const getVariant = (experiment: string): string | boolean | undefined => {
@@ -86,20 +92,35 @@ export const usePostHogStore = defineStore('posthog', () => {
 		initialized.value = true;
 	};
 
-	// window.addEventListener('beforeunload', (e) => {
-	// 	const variant = getVariant(ASSUMPTION_EXPERIMENT.name);
-	// 	if (typeof variant !== 'string') {
-	// 		return;
-	// 	}
+	const trackExperiment = (name: string) => {
+		const curr = featureFlags.value;
+		const prev = trackedDemoExp.value;
 
-	// 	const isDemo = variant === ASSUMPTION_EXPERIMENT.demo;
-	// 	const isVideo = variant === ASSUMPTION_EXPERIMENT.video;
+		if (!curr || curr[name] === undefined) {
+			return;
+		}
 
-	// 	telemetry.value?.track('User is part of experiment', {
-	// 		name: 'edu_001',
-	// 		variant: isDemo ? 'demo' : isVideo ? 'video' : 'control',
-	// 	});
-	// });
+		if (curr[name] === prev[name]) {
+			return;
+		}
+
+		const variant = curr[name];
+		telemetryStore.track('User is part of experiment', {
+			name,
+			variant,
+		});
+
+		trackedDemoExp.value[name] = variant;
+	}
+
+	watch(
+		() => featureFlags.value,
+		() => {
+			setTimeout(() => {
+				EXPERIMENTS_TO_TRACK.forEach(trackExperiment);
+			}, 0);
+		}
+	);
 
 	watch(
 		() => usersStore.currentUserId,

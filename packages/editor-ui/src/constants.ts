@@ -513,3 +513,5 @@ export const ASSUMPTION_EXPERIMENT = {
 	demo: 'assumption-demo',
 	video: 'assumption-video',
 };
+
+export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name];
