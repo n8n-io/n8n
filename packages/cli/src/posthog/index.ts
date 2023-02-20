@@ -3,7 +3,7 @@ import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import config from '@/config';
 import type { PublicUser } from '..';
 
-export default class PostHogClient {
+export class PostHogClient {
 	private postHog?: PostHog;
 
 	private instanceId?: string;

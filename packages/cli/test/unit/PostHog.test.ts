@@ -1,5 +1,5 @@
 import { PostHog } from 'posthog-node';
-import PostHogClient from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import config from '@/config';
 
 jest.mock('posthog-node');

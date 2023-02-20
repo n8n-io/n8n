@@ -1,7 +1,7 @@
 import type { INodeTypes } from 'n8n-workflow';
 import { InternalHooksClass } from '@/InternalHooks';
 import { Telemetry } from '@/telemetry';
-import type PostHogClient from './posthog';
+import type { PostHogClient } from './posthog';
 
 export class InternalHooksManager {
 	private static internalHooksInstance: InternalHooksClass;

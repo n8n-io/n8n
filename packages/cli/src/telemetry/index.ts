@@ -129,8 +129,8 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
-		return new Promise<void>((resolve) => {
-			this.postHog.stop();
+		return new Promise<void>(async (resolve) => {
+			await this.postHog.stop();
 
 			if (this.rudderStack) {
 				this.rudderStack.flush(resolve);

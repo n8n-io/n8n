@@ -15,7 +15,7 @@ import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
 import { RoleService } from '@/role/role.service';
-import type PostHogClient from '@/posthog';
+import type { PostHogClient } from '@/posthog';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });

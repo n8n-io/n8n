@@ -18,7 +18,7 @@ import type {
 	CurrentUser,
 } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
-import type PostHogClient from '@/posthog';
+import type { PostHogClient } from '@/posthog';
 
 @RestController()
 export class AuthController {

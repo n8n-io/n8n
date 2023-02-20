@@ -1,7 +1,7 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
 import { flushPromises } from './Helpers';
-import PostHogClient from '@/posthog';
+import { PostHogClient } from '@/posthog';
 
 jest.unmock('@/telemetry');
 jest.mock('@/license/License.service', () => {

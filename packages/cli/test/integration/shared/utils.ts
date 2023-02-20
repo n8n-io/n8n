@@ -74,7 +74,7 @@ import * as testDb from '../shared/testDb';
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
-import PostHogClient from '@/posthog';
+import { PostHogClient } from '@/posthog';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },

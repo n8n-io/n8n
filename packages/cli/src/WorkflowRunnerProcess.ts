@@ -54,7 +54,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { getLicense } from './License';
-import PostHogClient from './posthog';
+import { PostHogClient } from './posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -118,7 +118,7 @@ class WorkflowRunnerProcess {
 		const instanceId = userSettings.instanceId ?? '';
 
 		const postHog = new PostHogClient();
-		postHog.init(instanceId);
+		await postHog.init(instanceId);
 
 		await InternalHooksManager.init(instanceId, nodeTypes, postHog);
 
