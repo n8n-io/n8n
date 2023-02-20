@@ -48,7 +48,7 @@ import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
@@ -957,7 +957,7 @@ async function executeWorkflow(
 		executionId =
 			options.parentExecutionId !== undefined
 				? options.parentExecutionId
-				: await ActiveExecutions.getInstance().add(runData);
+				: await Container.get(ActiveExecutions).add(runData);
 	}
 
 	void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId || '', runData);
@@ -1073,11 +1073,11 @@ async function executeWorkflow(
 	if (data.finished === true) {
 		// Workflow did finish successfully
 
-		ActiveExecutions.getInstance().remove(executionId, data);
+		Container.get(ActiveExecutions).remove(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	ActiveExecutions.getInstance().remove(executionId, data);
+	Container.get(ActiveExecutions).remove(executionId, data);
 	// Workflow did fail
 	const { error } = data.data.resultData;
 	// eslint-disable-next-line @typescript-eslint/no-throw-literal
@@ -1093,7 +1093,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 		return;
 	}
 	Logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
-	ActiveExecutions.getInstance()
+	Container.get(ActiveExecutions)
 		.setStatus(this.executionId, status)
 		.catch((error) => {
 			Logger.debug(`Setting execution status "${status}" failed: ${error.message}`);

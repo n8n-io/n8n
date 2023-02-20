@@ -33,7 +33,7 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -60,7 +60,7 @@ import Container from 'typedi';
 import { InternalHooks } from './InternalHooks';
 
 export class WorkflowRunner {
-	activeExecutions: ActiveExecutions.ActiveExecutions;
+	activeExecutions: ActiveExecutions;
 
 	push: Push;
 
@@ -68,7 +68,7 @@ export class WorkflowRunner {
 
 	constructor() {
 		this.push = getPushInstance();
-		this.activeExecutions = ActiveExecutions.getInstance();
+		this.activeExecutions = Container.get(ActiveExecutions);
 	}
 
 	/**

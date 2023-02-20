@@ -8,7 +8,7 @@ import {
 	deleteExecution,
 	getExecutionsCount,
 } from './executions.service';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
@@ -96,7 +96,7 @@ export = {
 			}
 
 			// get running workflows so we exclude them from the result
-			const runningExecutionsIds = ActiveExecutions.getInstance()
+			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id);
 

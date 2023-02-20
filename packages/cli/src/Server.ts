@@ -112,7 +112,7 @@ import type {
 	IExecutionsStopData,
 	IN8nUISettings,
 } from '@/Interfaces';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
@@ -154,7 +154,7 @@ class Server extends AbstractServer {
 
 	waitTracker: WaitTrackerClass;
 
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+	activeExecutionsInstance: ActiveExecutions;
 
 	frontendSettings: IN8nUISettings;
 
@@ -175,7 +175,7 @@ class Server extends AbstractServer {
 		this.credentialTypes = Container.get(CredentialTypes);
 		this.nodeTypes = Container.get(NodeTypes);
 
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 		this.waitTracker = WaitTracker();
 
 		this.presetCredentialsLoaded = false;

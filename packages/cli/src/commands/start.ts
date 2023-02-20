@@ -17,7 +17,7 @@ import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
@@ -117,7 +117,7 @@ export class Start extends BaseCommand {
 			await Promise.all(removePromises);
 
 			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = ActiveExecutions.getInstance();
+			const activeExecutionsInstance = Container.get(ActiveExecutions);
 			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
 			let count = 0;

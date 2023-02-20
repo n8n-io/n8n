@@ -57,7 +57,7 @@ import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
 import { NodeTypes } from '@/NodeTypes';
@@ -638,7 +638,7 @@ export class ActiveWorkflowRunner {
 
 				if (donePromise) {
 					executePromise.then((executionId) => {
-						ActiveExecutions.getInstance()
+						Container.get(ActiveExecutions)
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
 							.catch(donePromise.reject);
@@ -695,7 +695,7 @@ export class ActiveWorkflowRunner {
 
 				if (donePromise) {
 					executePromise.then((executionId) => {
-						ActiveExecutions.getInstance()
+						Container.get(ActiveExecutions)
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
 							.catch(donePromise.reject);

@@ -17,7 +17,7 @@ import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
@@ -25,9 +25,10 @@ import type {
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import Container from 'typedi';
 
 export class WaitTrackerClass {
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+	activeExecutionsInstance: ActiveExecutions;
 
 	private waitingExecutions: {
 		[key: string]: {
@@ -39,7 +40,7 @@ export class WaitTrackerClass {
 	mainTimer: NodeJS.Timeout;
 
 	constructor() {
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {

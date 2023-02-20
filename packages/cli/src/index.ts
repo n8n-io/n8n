@@ -9,7 +9,7 @@ export * from './WaitingWebhooks';
 export * from './WorkflowCredentials';
 export * from './WorkflowRunner';
 
-import * as ActiveExecutions from './ActiveExecutions';
+import { ActiveExecutions } from './ActiveExecutions';
 import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
 import * as ResponseHelper from './ResponseHelper';
