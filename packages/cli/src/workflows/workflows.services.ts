@@ -22,7 +22,7 @@ import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import * as TestWebhooks from '@/TestWebhooks';
+import { TestWebhooks } from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
@@ -391,7 +391,7 @@ export class WorkflowsService {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
+			const needsWebhook = await Container.get(TestWebhooks).needsWebhookData(
 				workflowData,
 				workflow,
 				additionalData,

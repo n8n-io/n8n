@@ -24,7 +24,7 @@ import {
 	ServiceUnavailableError,
 } from '@/ResponseHelper';
 import { corsMiddleware } from '@/middlewares';
-import * as TestWebhooks from '@/TestWebhooks';
+import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 
@@ -339,7 +339,7 @@ export abstract class AbstractServer {
 	// ----------------------------------------
 	protected setupTestWebhookEndpoint() {
 		const endpoint = this.endpointWebhookTest;
-		const testWebhooks = TestWebhooks.getInstance();
+		const testWebhooks = Container.get(TestWebhooks);
 
 		// Register all test webhook requests (for testing via the UI)
 		this.app.all(`/${endpoint}/*`, async (req, res) => {

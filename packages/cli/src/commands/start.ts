@@ -22,7 +22,7 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as Server from '@/Server';
-import * as TestWebhooks from '@/TestWebhooks';
+import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
@@ -110,7 +110,7 @@ export class Start extends BaseCommand {
 			}
 
 			// Remove all test webhooks
-			const testWebhooks = TestWebhooks.getInstance();
+			const testWebhooks = Container.get(TestWebhooks);
 			removePromises.push(testWebhooks.removeAll());
 
 			await Promise.all(removePromises);
