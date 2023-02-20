@@ -62,7 +62,7 @@ export class AuthController {
 
 		if (user) {
 			await issueCookie(res, user);
-			return await withFeatureFlags(this.postHog, sanitizeUser(user));
+			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
 
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
@@ -108,7 +108,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return await withFeatureFlags(this.postHog, sanitizeUser(user));
+		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
 
 	/**

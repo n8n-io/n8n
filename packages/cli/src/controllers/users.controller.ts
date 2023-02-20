@@ -334,7 +334,7 @@ export class UsersController {
 		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return await withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
+		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
 	}
 
 	@Get('/')
