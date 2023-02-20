@@ -1,9 +1,13 @@
+import { LICENSE_FEATURES } from '../../constants';
+
 export class SamlUrls {
 	static readonly initSSO = '/initsso';
 
 	static readonly acs = '/acs';
 
 	static readonly metadata = '/metadata';
+
+	static readonly config = '/config';
 
 	static readonly signup = ''; // TODO:SAML: implement signup
 }
@@ -17,8 +21,12 @@ export class SamlEndpoints {
 
 	static readonly metadata = samlRoot + '/metadata';
 
+	static readonly config = samlRoot + '/config';
+
 	static readonly signup = ''; // TODO:SAML: implement signup
 }
+
+export const SAML_PREFERENCES_DB_KEY = LICENSE_FEATURES.SAML.replace(/:/g, '.');
 
 export const sampleIPMetadata = `
 <md:EntityDescriptor xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"

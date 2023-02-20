@@ -17,6 +17,7 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import type { Repository } from 'typeorm';
 import type { User } from '@db/entities/User';
+import { SamlUrls } from '../sso/saml/constants';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -95,7 +96,9 @@ export const setupAuthMiddlewares = (
 			req.url.startsWith(`/${restEndpoint}/change-password`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`) ||
-			req.url.startsWith(`/${restEndpoint}/sso`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml/${SamlUrls.metadata}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml/${SamlUrls.initSSO}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml/${SamlUrls.acs}`) ||
 			isAuthExcluded(req.url, ignoredEndpoints)
 		) {
 			return next();
@@ -121,7 +124,6 @@ export const setupAuthMiddlewares = (
 			return;
 		}
 		// Not owner and user exists. We now protect restricted urls.
-		// TODO:SAML - add saml endpoints to restricted urls
 		const postRestrictedUrls = [
 			`/${restEndpoint}/users`,
 			`/${restEndpoint}/owner`,

@@ -2,13 +2,15 @@ import type express from 'express';
 import * as Db from '@/Db';
 import { User } from '@/databases/entities/User';
 import { AuthIdentity } from '@/databases/entities/AuthIdentity';
-import { LoggerProxy } from 'n8n-workflow';
+import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError } from '@/ResponseHelper';
 import { getIdentityProviderInstance } from './identityProvider.ee';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
+import type { SamlPreferences } from './types/samlPreferences';
+import { SAML_PREFERENCES_DB_KEY } from './constants';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -29,11 +31,28 @@ export class SamlService {
 		this._attributeMapping = mapping;
 	}
 
+	private _metadata = '';
+
+	public get metadata(): string {
+		return this._metadata;
+	}
+
+	public set metadata(metadata: string) {
+		this._metadata = metadata;
+	}
+
 	static getInstance(): SamlService {
 		if (!SamlService.instance) {
 			SamlService.instance = new SamlService();
+			SamlService.instance.init().catch(() => {
+				LoggerProxy.error('Error initializing SAML service');
+			});
 		}
 		return SamlService.instance;
+	}
+
+	async init(): Promise<void> {
+		await this.loadSamlPreferences();
 	}
 
 	getRedirectLoginRequestUrl(): string {
@@ -54,7 +73,7 @@ export class SamlService {
 		  }
 		| undefined
 	> {
-		const attributes = await SamlService.getInstance().getAttributesFromLoginResponse(req);
+		const attributes = await this.getAttributesFromLoginResponse(req);
 		if (attributes.email) {
 			const user = await Db.collections.User.findOne({
 				where: { email: attributes.email },
@@ -93,6 +112,57 @@ export class SamlService {
 			}
 		}
 		return undefined;
+	}
+
+	async getSamlPreferences(): Promise<SamlPreferences> {
+		return {
+			mapping: this.attributeMapping,
+			metadata: this.metadata,
+		};
+	}
+
+	async setSamlPreferences(prefs: SamlPreferences): Promise<void> {
+		this.attributeMapping = prefs.mapping;
+		this.metadata = prefs.metadata;
+		await this.saveSamlPreferences();
+	}
+
+	async loadSamlPreferences(): Promise<SamlPreferences | undefined> {
+		const samlPreferences = await Db.collections.Settings.findOne({
+			where: { key: SAML_PREFERENCES_DB_KEY },
+		});
+		if (samlPreferences) {
+			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
+			if (prefs) {
+				this.attributeMapping = prefs.mapping;
+				this.metadata = prefs.metadata;
+			}
+			return prefs;
+		}
+		return;
+	}
+
+	async saveSamlPreferences(): Promise<void> {
+		const samlPreferences = await Db.collections.Settings.findOne({
+			where: { key: SAML_PREFERENCES_DB_KEY },
+		});
+		if (samlPreferences) {
+			samlPreferences.value = JSON.stringify({
+				mapping: this.attributeMapping,
+				metadata: this.metadata,
+			});
+			samlPreferences.loadOnStartup = true;
+			await Db.collections.Settings.save(samlPreferences);
+		} else {
+			await Db.collections.Settings.save({
+				key: SAML_PREFERENCES_DB_KEY,
+				value: JSON.stringify({
+					mapping: this.attributeMapping,
+					metadata: this.metadata,
+				}),
+				loadOnStartup: true,
+			});
+		}
 	}
 
 	async createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
