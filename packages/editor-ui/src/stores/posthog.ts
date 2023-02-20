@@ -84,11 +84,6 @@ export const usePostHogStore = defineStore('posthog', () => {
 		window.posthog?.init(config.apiKey, options);
 
 		identify();
-		if (!initialized.value) {
-			window.posthog?.onFeatureFlags?.((flags: string[], map: FeatureFlags) => {
-				featureFlags.value = map;
-			});
-		}
 
 		initialized.value = true;
 	};
