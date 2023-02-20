@@ -145,7 +145,7 @@ import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
-import PostHogClient from './telemetry/posthog';
+import PostHogClient from './posthog';
 import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
 

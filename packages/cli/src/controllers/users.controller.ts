@@ -34,7 +34,7 @@ import type {
 } from '@/Interfaces';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import PostHogClient from '@/telemetry/posthog';
+import PostHogClient from '@/posthog';
 
 @RestController('/users')
 export class UsersController {
