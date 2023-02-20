@@ -336,10 +336,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						name: this.$locale.baseText('executionsList.error'),
 					},
 					{
-						id: 'crashed',
-						name: this.$locale.baseText('executionsList.error'),
-					},
-					{
 						id: 'new',
 						name: this.$locale.baseText('executionsList.new'),
 					},
@@ -403,9 +399,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				switch (this.filter.status as ExecutionStatus) {
 					case 'waiting':
 						queryFilter.status = ['waiting'];
-						break;
-					case 'crashed':
-						queryFilter.status = ['crashed'];
 						break;
 					case 'new':
 						queryFilter.status = ['new'];

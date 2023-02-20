@@ -71,7 +71,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-view',
+	name: 'executions-list',
 	components: {
 		ExecutionsSidebar,
 	},
