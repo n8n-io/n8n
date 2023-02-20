@@ -41,7 +41,11 @@ export const usePostHogStore = defineStore('posthog', () => {
 		window.posthog?.identify(id, traits);
 	};
 
-	const init = (bootstrapped: FeatureFlags) => {
+	const init = (bootstrapped?: FeatureFlags) => {
+		if (!window.posthog) {
+			return;
+		}
+
 		const config = settingsStore.settings.posthog;
 		if (!config.enabled) {
 			return;
@@ -52,21 +56,25 @@ export const usePostHogStore = defineStore('posthog', () => {
 			return;
 		}
 
-		featureFlags.value = bootstrapped;
-
 		const instanceId = rootStore.instanceId;
 		const distinctId = `${instanceId}#${userId}`;
 
-		window.posthog?.init(config.apiKey, {
+		const options: Parameters<typeof window.posthog.init>[1] = {
 			api_host: config.apiHost,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
-			debug: config.debug,
-			bootstrap: {
+			debug: config.debug
+		};
+
+		if (bootstrapped) {
+			featureFlags.value = bootstrapped;
+			options.bootstrap = {
 				distinctId,
 				featureFlags: bootstrapped,
-			},
-		});
+			};
+		}
+
+		window.posthog?.init(config.apiKey, options);
 
 		identify();
 		if (!initialized.value) {
