@@ -524,6 +524,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User retrieved all workflows', userRetrievedData);
 	}
 
+	async onUserRetrievedAllTags(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all tags', userRetrievedData);
+	}
+
 	async onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({

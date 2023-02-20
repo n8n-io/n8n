@@ -62,6 +62,19 @@ export declare namespace ExecutionRequest {
 	type Delete = Get;
 }
 
+export declare namespace TagRequest {
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+		}
+	>;
+}
+
 export declare namespace CredentialTypeRequest {
 	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
 }

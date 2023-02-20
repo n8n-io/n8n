@@ -24,6 +24,8 @@ tags:
     description: Operations about workflows
   - name: Credential
     description: Operations about credentials
+  - name: Tags
+    description: Operations about tags
 
 paths:
   /audit:
@@ -38,6 +40,8 @@ paths:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /tags:
+    $ref: './handlers/tags/spec/paths/tags.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
