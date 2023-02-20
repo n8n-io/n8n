@@ -22,8 +22,13 @@
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
 			>
-				<i class="trigger-icon">
-					<font-awesome-icon icon="bolt" size="lg" v-if="isTriggerNode" />
+				<i class="trigger-icon" v-if="isTriggerNode">
+					<n8n-tooltip placement="bottom">
+						<template #content>
+							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+						</template>
+						<font-awesome-icon icon="bolt" size="lg" />
+					</n8n-tooltip>
 				</i>
 				<div
 					v-if="!data.disabled"
