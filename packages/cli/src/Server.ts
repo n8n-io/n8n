@@ -87,6 +87,7 @@ import {
 	MeController,
 	OwnerController,
 	PasswordResetController,
+	TranslationController,
 	UsersController,
 } from '@/controllers';
 
@@ -350,6 +351,7 @@ class Server extends AbstractServer {
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
 				mailer,
@@ -584,57 +586,6 @@ class Server extends AbstractServer {
 					}
 
 					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		const credsPath = pathJoin(NODES_BASE_DIR, 'dist', 'credentials');
-		this.app.get(
-			`/${this.restEndpoint}/credential-translation`,
-			ResponseHelper.send(
-				async (
-					req: express.Request & { query: { credentialType: string } },
-					res: express.Response,
-				): Promise<object | null> => {
-					const { credentialType } = req.query;
-
-					if (!this.credentialTypes.recognizes(credentialType))
-						throw new ResponseHelper.BadRequestError(`Invalid Credential type ${credentialType}`);
-
-					const { defaultLocale } = this.frontendSettings;
-					const translationPath = pathJoin(
-						credsPath,
-						'translations',
-						defaultLocale,
-						`${credentialType}.json`,
-					);
-
-					try {
-						return require(translationPath);
-					} catch (error) {
-						return null;
-					}
-				},
-			),
-		);
-
-		// Returns node information based on node names and versions
-		const headersPath = pathJoin(NODES_BASE_DIR, 'dist', 'nodes', 'headers');
-		this.app.get(
-			`/${this.restEndpoint}/node-translation-headers`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<object | void> => {
-					try {
-						await fsAccess(`${headersPath}.js`);
-					} catch (_) {
-						return; // no headers available
-					}
-
-					try {
-						return require(headersPath);
-					} catch (error) {
-						res.status(500).send('Failed to load headers file');
-					}
 				},
 			),
 		);
