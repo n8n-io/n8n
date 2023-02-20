@@ -1,6 +1,12 @@
-import type { IExecuteFunctions, ITriggerFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import type pgPromise from 'pg-promise';
+import type { IExecuteFunctions, ILoadOptionsFunctions, ITriggerFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
+	JsonObject,
+} from 'n8n-workflow';
+import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
 /**
@@ -732,6 +738,70 @@ export async function pgTriggerFunction(
 		}
 	} catch (err) {
 		console.log(err);
+		throw new Error(err);
 	}
 	return returnData;
+}
+
+export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+	const credentials = await this.getCredentials('postgres');
+	const pgp = pgPromise();
+
+	const config: IDataObject = {
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+	};
+
+	if (credentials.allowUnauthorizedCerts === true) {
+		config.ssl = {
+			rejectUnauthorized: false,
+		};
+	} else {
+		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+		config.sslmode = (credentials.ssl as string) || 'disable';
+	}
+	const db = pgp(config);
+	const schemaList = await db.any('SELECT schema_name FROM information_schema.schemata');
+	const results: INodeListSearchItems[] = schemaList.map((s) => ({
+		name: s.schema_name as string,
+		value: s.schema_name as string,
+	}));
+	return { results };
+}
+
+export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+	const credentials = await this.getCredentials('postgres');
+	const schema = this.getNodeParameter('schema', 0) as string;
+	console.log(schema);
+	const pgp = pgPromise();
+
+	const config: IDataObject = {
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+	};
+
+	if (credentials.allowUnauthorizedCerts === true) {
+		config.ssl = {
+			rejectUnauthorized: false,
+		};
+	} else {
+		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+		config.sslmode = (credentials.ssl as string) || 'disable';
+	}
+	const db = pgp(config);
+	const tableList = await db.any(
+		'SELECT table_name FROM information_schema.tables WHERE table_schema = $1',
+		[schema],
+	);
+	const results: INodeListSearchItems[] = tableList.map((s) => ({
+		name: s.schema_name as string,
+		value: s.schema_name as string,
+	}));
+	return { results };
 }
