@@ -9,9 +9,12 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data mapping', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
 

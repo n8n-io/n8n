@@ -5,7 +5,7 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('HTTP Request node', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});

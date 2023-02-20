@@ -5,10 +5,13 @@ const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
-describe('Execution',() => {
-	beforeEach(() => {
+describe('Execution', () => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		cy.visit('/');
 	});
 

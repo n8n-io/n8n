@@ -91,9 +91,12 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 };
 
 describe('Webhook Trigger node', async () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
 

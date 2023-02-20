@@ -4,9 +4,12 @@ const wf = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data transformation expressions', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		wf.actions.visit();
 		cy.waitForLoad();
 

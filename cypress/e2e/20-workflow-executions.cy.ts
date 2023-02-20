@@ -9,6 +9,9 @@ describe('Current Workflow Executions', () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);

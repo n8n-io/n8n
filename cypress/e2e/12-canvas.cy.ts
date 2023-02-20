@@ -21,9 +21,12 @@ const ZOOM_OUT_X2_FACTOR = 0.64;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Actions', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		cy.waitForLoad();
 	});
