@@ -14,11 +14,18 @@ type EntryMatches = {
 
 type CompareFunction = <T, U>(a: T, b: U) => boolean;
 
+const processNullishValueFunction = (version: number) => {
+	if (version === 2) {
+		return <T>(value: T) => (value === undefined ? null : value);
+	}
+	return <T>(value: T) => value || null;
+};
+
 function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
-	resolve: string,
+	options: IDataObject,
 	skipFields: string[],
 	isEntriesEqual: CompareFunction,
 ) {
@@ -46,20 +53,28 @@ function compareItems(
 	const skipped: IDataObject = {};
 
 	differentKeys.forEach((key) => {
-		switch (resolve) {
+		const processNullishValue = processNullishValueFunction(options.version as number);
+
+		switch (options.resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] || null;
+				different[key] = processNullishValue(item1.json[key]);
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] || null;
+				different[key] = processNullishValue(item2.json[key]);
 				break;
 			default:
-				const input1 = item1.json[key] || null;
-				const input2 = item2.json[key] || null;
+				const input1 = processNullishValue(item1.json[key]);
+				const input2 = processNullishValue(item2.json[key]);
+
+				let [firstInputName, secondInputName] = ['input1', 'input2'];
+				if (options.nodeVersion === 2) {
+					[firstInputName, secondInputName] = ['inputA', 'inputB'];
+				}
+
 				if (skipFields.includes(key)) {
-					skipped[key] = { input1, input2 };
+					skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
 				} else {
-					different[key] = { input1, input2 };
+					different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
 				}
 		}
 	});
@@ -370,7 +385,7 @@ export function findMatches(
 								entryMatches.entry,
 								match,
 								fieldsToMatch,
-								options.resolve as string,
+								options,
 								skipFields,
 								isEntriesEqual,
 							),
