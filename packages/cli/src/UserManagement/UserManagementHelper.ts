@@ -164,11 +164,25 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 }
 
 export async function withFeatureFlags(postHog: PostHogClient | undefined, user: CurrentUser): Promise<CurrentUser> {
-	if (postHog) {
-		user.featureFlags = await postHog.getFeatureFlags(user);
+	if (!postHog) {
+		return user;
 	}
 
-	return user;
+	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
+	// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
+	const timeoutPromise = new Promise<CurrentUser>((resolve) => {
+		setTimeout(() => {
+			resolve(user);
+		}, 1500);
+	});
+
+	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
+		user.featureFlags = await postHog.getFeatureFlags(user);
+
+		resolve(user);
+	});
+
+	return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
