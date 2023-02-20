@@ -10,7 +10,7 @@ export class N8nTrigger implements INodeType {
 		icon: 'file:n8nTrigger.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle events from your n8n instance',
+		description: 'Handle events and perform actions on your n8n instance',
 		eventTriggerDescription: '',
 		mockManualExecution: true,
 		defaults: {

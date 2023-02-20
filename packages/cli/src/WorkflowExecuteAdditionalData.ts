@@ -33,6 +33,7 @@ import type {
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -42,6 +43,7 @@ import {
 } from 'n8n-workflow';
 
 import pick from 'lodash.pick';
+import type { FindOptionsWhere } from 'typeorm';
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
@@ -201,6 +203,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		throttling = true;
 		const timeout = config.getEnv('executions.pruneDataTimeout'); // in seconds
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
@@ -208,7 +211,21 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		const toPrune = { stoppedAt: LessThanOrEqual(utcDate) };
+		const toPrune: FindOptionsWhere<IExecutionFlattedDb> = { stoppedAt: LessThanOrEqual(utcDate) };
+
+		if (maxCount > 0) {
+			const executions = await Db.collections.Execution.find({
+				select: ['id'],
+				skip: maxCount,
+				take: 1,
+				order: { id: 'DESC' },
+			});
+
+			if (executions[0]) {
+				toPrune.id = LessThanOrEqual(executions[0].id);
+			}
+		}
+
 		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
 			const executions = isBinaryModeDefaultMode
@@ -335,16 +352,22 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				// Clone the object except the runData. That one is not supposed
 				// to be send. Because that data got send piece by piece after
 				// each node which finished executing
-				const pushRunData = {
-					...fullRunData,
-					data: {
-						...fullRunData.data,
-						resultData: {
-							...fullRunData.data.resultData,
-							runData: {},
+				// Edit: we now DO send the runData to the UI if mode=manual so that it shows the point of crashes
+				let pushRunData;
+				if (fullRunData.mode === 'manual') {
+					pushRunData = fullRunData;
+				} else {
+					pushRunData = {
+						...fullRunData,
+						data: {
+							...fullRunData.data,
+							resultData: {
+								...fullRunData.data.resultData,
+								runData: {},
+							},
 						},
-					},
-				};
+					};
+				}
 
 				// Push data to editor-ui once workflow finished
 				Logger.debug(`Save execution progress to database for execution ID ${executionId} `, {
@@ -444,6 +467,8 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					// Set last executed node so that it may resume on failure
 					fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
+
+					fullExecutionData.status = 'running';
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
@@ -600,6 +625,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: pristineWorkflowData,
 						waitTill: fullRunData.waitTill,
+						status: fullRunData.status,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -726,7 +752,11 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
-					const workflowDidSucceed = !fullRunData.data.resultData.error;
+					const workflowHasCrashed = fullRunData.status === 'crashed';
+					const workflowDidSucceed = !fullRunData.data.resultData.error && !workflowHasCrashed;
+					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
+					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
+
 					if (!workflowDidSucceed) {
 						executeErrorWorkflow(
 							this.workflowData,
@@ -745,6 +775,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
 						waitTill: fullRunData.data.waitTill,
+						status: workflowStatusFinal,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -763,6 +794,11 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
+
+					// For reasons(tm) the execution status is not updated correctly in the first update, so has to be written again (tbd)
+					await Db.collections.Execution.update(this.executionId, {
+						status: executionData.status,
+					});
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
@@ -1010,6 +1046,7 @@ async function executeWorkflow(
 			mode: 'integrated',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
+			status: 'error',
 		};
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
@@ -1021,6 +1058,7 @@ async function executeWorkflow(
 			finished: fullRunData.finished ? fullRunData.finished : false,
 			startedAt: fullRunData.startedAt,
 			stoppedAt: fullRunData.stoppedAt,
+			status: fullRunData.status,
 			workflowData,
 		};
 		if (workflowData.id) {
@@ -1061,6 +1099,19 @@ async function executeWorkflow(
 		...error,
 		stack: error!.stack,
 	};
+}
+
+export function setExecutionStatus(status: ExecutionStatus) {
+	if (this.executionId === undefined) {
+		Logger.debug(`Setting execution status "${status}" failed because executionId is undefined`);
+		return;
+	}
+	Logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
+	ActiveExecutions.getInstance()
+		.setStatus(this.executionId, status)
+		.catch((error) => {
+			Logger.debug(`Setting execution status "${status}" failed: ${error.message}`);
+		});
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1116,6 +1167,7 @@ export async function getBase(
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		setExecutionStatus,
 	};
 }
 

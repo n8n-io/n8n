@@ -3,7 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import type { IDataObject, IWorkflowBase, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IWorkflowBase,
+	JsonObject,
+	ExecutionStatus,
+	IRunExecutionData,
+	NodeOperationError,
+	IExecutionsSummary,
+} from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOptionsWhere, FindOperator } from 'typeorm';
 import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Not, Raw } from 'typeorm';
@@ -25,6 +33,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
+import { parse } from 'flatted';
 import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
@@ -34,6 +43,7 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
+	status?: ExecutionStatus[];
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
@@ -50,6 +60,10 @@ const schemaGetExecutionsQueryFilter = {
 		mode: { type: 'string' },
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
+		status: {
+			type: 'array',
+			items: { type: 'string' },
+		},
 		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
@@ -243,7 +257,16 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const findWhere: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = {
+			workflowId: In(sharedWorkflowIds),
+		};
+		if (filter?.status) {
+			Object.assign(findWhere, { status: In(filter.status) });
+			delete filter.status; // remove status from filter so it does not get applied twice
+		}
+		if (filter?.finished) {
+			Object.assign(findWhere, { finished: filter.finished });
+		}
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -324,7 +347,42 @@ export class ExecutionsService {
 			metadata,
 		);
 
-		const formattedExecutions = executions.map((execution) => {
+		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
+			// inject potential node execution errors into the execution response
+			const nodeExecutionStatus = {};
+			let lastNodeExecuted;
+			let executionError;
+			try {
+				const data = parse(execution.data) as IRunExecutionData;
+				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
+				executionError = data?.resultData?.error;
+				if (data?.resultData?.runData) {
+					for (const key of Object.keys(data.resultData.runData)) {
+						const errors = data.resultData.runData[key]
+							?.filter((taskdata) => taskdata.error?.name)
+							?.map((taskdata) => {
+								if (taskdata.error?.name === 'NodeOperationError') {
+									return {
+										name: (taskdata.error as NodeOperationError).name,
+										message: (taskdata.error as NodeOperationError).message,
+										description: (taskdata.error as NodeOperationError).description,
+									};
+								} else {
+									return {
+										name: taskdata.error?.name,
+									};
+								}
+							});
+						Object.assign(nodeExecutionStatus, {
+							[key]: {
+								executionStatus: data.resultData.runData[key][0].executionStatus,
+								errors,
+								data: data.resultData.runData[key][0].data ?? undefined,
+							},
+						});
+					}
+				}
+			} catch {}
 			return {
 				id: execution.id,
 				finished: execution.finished,
@@ -336,9 +394,12 @@ export class ExecutionsService {
 				stoppedAt: execution.stoppedAt,
 				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
-			};
+				status: execution.status,
+				lastNodeExecuted,
+				executionError,
+				nodeExecutionStatus,
+			} as IExecutionsSummary;
 		});
-
 		return {
 			count,
 			results: formattedExecutions,

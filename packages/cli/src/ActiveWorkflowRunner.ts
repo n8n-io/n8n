@@ -760,6 +760,7 @@ export class ActiveWorkflowRunner {
 			mode,
 			startedAt: new Date(),
 			stoppedAt: new Date(),
+			status: 'running',
 		};
 
 		WorkflowExecuteAdditionalData.executeErrorWorkflow(workflowData, fullRunData, mode);

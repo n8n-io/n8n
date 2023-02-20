@@ -29,6 +29,7 @@ import { MessageEventBusDestinations1671535397530 } from './1671535397530-Messag
 import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
+import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
 import { CreateExecutionMetadataTable1674133106778 } from './1674133106778-CreateExecutionMetadataTable';
 
 export const postgresMigrations = [
@@ -62,6 +63,8 @@ export const postgresMigrations = [
 	MessageEventBusDestinations1671535397530,
 	DeleteExecutionsWithWorkflows1673268682475,
 	CreateLdapEntities1674509946020,
+	PurgeInvalidWorkflowConnections1675940580449,
+	AddStatusToExecutions1674138566000,
 	PurgeInvalidWorkflowConnections1675940580449,
 	CreateExecutionMetadataTable1674133106778,
 ];
