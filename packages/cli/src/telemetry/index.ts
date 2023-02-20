@@ -31,13 +31,13 @@ interface IExecutionsBuffer {
 export class Telemetry {
 	private rudderStack?: RudderStack;
 
-	private postHog?: PostHogClient;
+	private postHog: PostHogClient;
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string, private posthog?: PostHogClient) {}
+	constructor(private instanceId: string, private posthog: PostHogClient) {}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
@@ -135,7 +135,7 @@ export class Telemetry {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
 		return new Promise<void>((resolve) => {
-			this.postHog?.stop();
+			this.postHog.stop();
 
 			if (this.rudderStack) {
 				this.rudderStack.flush(resolve);
