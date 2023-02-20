@@ -25,6 +25,8 @@ import { mock } from 'jest-mock-extended';
 import { ExternalHooks } from '@/ExternalHooks';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { mockInstance } from '../integration/shared/utils';
+import { Push } from '@/push';
 
 /**
  * TODO:
@@ -150,6 +152,7 @@ describe('ActiveWorkflowRunner', () => {
 			credentialTypes: {} as ICredentialTypes,
 		};
 		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
+		mockInstance(Push);
 	});
 
 	beforeEach(() => {

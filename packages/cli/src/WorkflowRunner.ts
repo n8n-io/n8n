@@ -52,8 +52,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import type { Push } from '@/push';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
@@ -67,7 +66,7 @@ export class WorkflowRunner {
 	jobQueue: Queue.JobQueue;
 
 	constructor() {
-		this.push = getPushInstance();
+		this.push = Container.get(Push);
 		this.activeExecutions = Container.get(ActiveExecutions);
 	}
 

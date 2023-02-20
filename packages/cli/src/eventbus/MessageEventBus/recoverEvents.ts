@@ -4,7 +4,7 @@ import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import type { IPushDataExecutionRecovered } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
@@ -182,7 +182,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 			eventBus.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					getPushInstance().send('executionRecovered', {
+					Container.get(Push).send('executionRecovered', {
 						executionId,
 					} as IPushDataExecutionRecovered);
 				}, 1000);

@@ -32,7 +32,7 @@ import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
@@ -142,7 +142,7 @@ nodesController.post(
 
 		if (!hasLoaded) removePackageFromMissingList(name);
 
-		const pushInstance = getPushInstance();
+		const pushInstance = Container.get(Push);
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -249,7 +249,7 @@ nodesController.delete(
 			throw new ResponseHelper.InternalServerError(message);
 		}
 
-		const pushInstance = getPushInstance();
+		const pushInstance = Container.get(Push);
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -296,7 +296,7 @@ nodesController.patch(
 				previouslyInstalledPackage,
 			);
 
-			const pushInstance = getPushInstance();
+			const pushInstance = Container.get(Push);
 
 			// broadcast to connected frontends that node list has been updated
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
@@ -326,7 +326,7 @@ nodesController.patch(
 			return newInstalledPackage;
 		} catch (error) {
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,

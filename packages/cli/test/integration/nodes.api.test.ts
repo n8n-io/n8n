@@ -21,9 +21,11 @@ import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import { NodeTypes } from '@/NodeTypes';
+import { Push } from '@/push';
 
 const mockLoadNodesAndCredentials = utils.mockInstance(LoadNodesAndCredentials);
 utils.mockInstance(NodeTypes);
+utils.mockInstance(Push);
 
 jest.mock('@/CommunityNodes/helpers', () => {
 	return {

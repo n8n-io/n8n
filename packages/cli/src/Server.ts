@@ -131,8 +131,7 @@ import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
-import type { Push } from '@/push';
-import { getPushInstance, setupPushServer, setupPushHandler } from '@/push';
+import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
 import { ldapController } from './Ldap/routes/ldap.controller.ee';
@@ -180,7 +179,7 @@ class Server extends AbstractServer {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		this.push = getPushInstance();
+		this.push = Container.get(Push);
 
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);

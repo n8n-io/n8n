@@ -61,7 +61,7 @@ import type {
 	IWorkflowErrorData,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -281,7 +281,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, sessionId);
 			},
 		],
@@ -299,7 +299,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, sessionId);
 			},
 		],
@@ -316,7 +316,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (sessionId === undefined) {
 					return;
 				}
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send(
 					'executionStarted',
 					{
@@ -382,7 +382,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					retryOf,
 				};
 
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('executionFinished', sendData, sessionId);
 			},
 		],
@@ -1109,7 +1109,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 
 	// Push data to session which started workflow
 	try {
-		const pushInstance = getPushInstance();
+		const pushInstance = Container.get(Push);
 		pushInstance.send(
 			'sendConsoleMessage',
 			{

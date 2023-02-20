@@ -14,10 +14,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
-import type { Push } from '@/push';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { Container } from 'typedi';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
@@ -291,7 +291,7 @@ let testWebhooksInstance: TestWebhooks | undefined;
 
 export function getInstance(): TestWebhooks {
 	if (testWebhooksInstance === undefined) {
-		testWebhooksInstance = new TestWebhooks(new ActiveWebhooks(), getPushInstance());
+		testWebhooksInstance = new TestWebhooks(new ActiveWebhooks(), Container.get(Push));
 	}
 
 	return testWebhooksInstance;
