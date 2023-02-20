@@ -112,6 +112,20 @@ describe('Node Creator', () => {
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Crop');
 	})
 
+	it('should search through actions and confirm added action', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('ftp');
+		nodeCreatorFeature.getters.searchBar().find('input').realPress('{rightarrow}');
+		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'FTP');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('file');
+		// Navigate to rename action which should be the 4th item
+		nodeCreatorFeature.getters.searchBar().find('input').realPress('{downarrow}');
+		nodeCreatorFeature.getters.searchBar().find('input').realPress('{downarrow}');
+		nodeCreatorFeature.getters.searchBar().find('input').realPress('{downarrow}');
+		nodeCreatorFeature.getters.searchBar().find('input').realPress('{rightarrow}');
+		NDVModal.getters.parameterInput('operation').should('contain.text', 'Rename');
+	})
+
 	it('should render and select community node', () => {
 		cy.intercept('GET', '/types/nodes.json').as('nodesIntercept');
 		cy.wait('@nodesIntercept').then(() => {
