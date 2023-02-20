@@ -20,6 +20,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 	const onLogout = () => {
 		window.posthog?.reset();
 		featureFlags.value = null;
+		trackedDemoExp.value = {};
 	};
 
 	const getVariant = (experiment: string): string | boolean | undefined => {
