@@ -101,6 +101,15 @@ export const fuzzyCompare = (useFuzzyCompare: boolean) => {
 			return isEqual(item1, item2);
 		}
 
+		//Null, 0 and "0" treated as equal
+		if (isNull(item1) && (isNull(item2) || item2 === 0 || item2 === '0')) {
+			return true;
+		}
+
+		if (isNull(item2) && (isNull(item1) || item1 === 0 || item1 === '0')) {
+			return true;
+		}
+
 		//Null, empty strings, empty arrays all treated as the same
 		if (isFalsy(item1) && isFalsy(item2)) return true;
 

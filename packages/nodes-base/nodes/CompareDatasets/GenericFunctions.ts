@@ -54,7 +54,7 @@ function compareItems(
 	const skipped: IDataObject = {};
 
 	differentKeys.forEach((key) => {
-		const processNullishValue = processNullishValueFunction(options.version as number);
+		const processNullishValue = processNullishValueFunction(options.nodeVersion as number);
 
 		switch (options.resolve) {
 			case 'preferInput1':
