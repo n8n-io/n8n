@@ -1,5 +1,5 @@
-import { WorkflowPage } from "../pages";
-import { WorkflowExecutionsTab } from "../pages/workflow-executions-tab";
+import { WorkflowPage } from '../pages';
+import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
@@ -23,11 +23,13 @@ describe('Current Workflow Executions', () => {
 		executionsTab.getters.executionListItems().should('have.length', 11);
 		executionsTab.getters.successfulExecutionListItems().should('have.length', 9);
 		executionsTab.getters.failedExecutionListItems().should('have.length', 2);
-		executionsTab.getters.executionListItems().first().invoke('attr','class').should('match', /_active_/);
+		executionsTab.getters
+			.executionListItems()
+			.first()
+			.invoke('attr', 'class')
+			.should('match', /_active_/);
 	});
-
 });
-
 
 const createMockExecutions = () => {
 	workflowPage.actions.turnOnManualExecutionSaving();
@@ -40,4 +42,4 @@ const createMockExecutions = () => {
 	executionsTab.actions.createManualExecutions(4);
 	executionsTab.actions.switchToExecutionsTab();
 	cy.waitForLoad();
-}
+};

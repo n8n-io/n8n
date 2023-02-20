@@ -15,7 +15,9 @@ describe('Data transformation expressions', () => {
 
 		cy.window()
 			// @ts-ignore
-			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload));
+			.then(
+				(win) => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload),
+			);
 	});
 
 	it('$json + native string methods', () => {
@@ -29,7 +31,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible')
+		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
@@ -44,7 +46,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible')
+		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
@@ -59,7 +61,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible')
+		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
@@ -74,7 +76,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible')
+		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
@@ -89,7 +91,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible')
+		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
