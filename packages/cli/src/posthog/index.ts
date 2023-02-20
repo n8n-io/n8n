@@ -8,8 +8,6 @@ export class PostHogClient {
 
 	private instanceId?: string;
 
-	constructor() {}
-
 	async init(instanceId: string) {
 		this.instanceId = instanceId;
 		const enabled = config.getEnv('diagnostics.enabled');
