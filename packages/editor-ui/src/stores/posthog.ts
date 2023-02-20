@@ -44,7 +44,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		}
 
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
-		let id = user ? `${instanceId}#${user.id}` : instanceId;
+		const id = user ? `${instanceId}#${user.id}` : instanceId;
 		window.posthog?.identify?.(id, traits);
 	};
 
@@ -70,7 +70,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 			api_host: config.apiHost,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
-			debug: config.debug
+			debug: config.debug,
 		};
 
 		if (bootstrapped) {
@@ -107,7 +107,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
-	}
+	};
 
 	watch(
 		() => featureFlags.value,
@@ -115,7 +115,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 			setTimeout(() => {
 				EXPERIMENTS_TO_TRACK.forEach(trackExperiment);
 			}, 0);
-		}
+		},
 	);
 
 	watch(

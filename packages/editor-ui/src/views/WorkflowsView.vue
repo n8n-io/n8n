@@ -184,7 +184,10 @@ export default mixins(showMessage, debounceHelper).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
-			return usePostHogStore().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
+			return usePostHogStore().isVariantEnabled(
+				ASSUMPTION_EXPERIMENT.name,
+				ASSUMPTION_EXPERIMENT.demo,
+			);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [

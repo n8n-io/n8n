@@ -41,17 +41,20 @@ export * from 'n8n-design-system/types';
 declare global {
 	interface Window {
 		posthog?: {
-			init(key: string, options?: {
-				api_host?: string;
-				autocapture?: boolean;
-				disable_session_recording?: boolean;
-				debug?: boolean;
-				bootstrap?: {
-					distinctId?: string;
-					isIdentifiedID?: boolean;
-					featureFlags: FeatureFlags;
-				}
-			}): void;
+			init(
+				key: string,
+				options?: {
+					api_host?: string;
+					autocapture?: boolean;
+					disable_session_recording?: boolean;
+					debug?: boolean;
+					bootstrap?: {
+						distinctId?: string;
+						isIdentifiedID?: boolean;
+						featureFlags: FeatureFlags;
+					};
+				},
+			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
 			identify?(
@@ -60,9 +63,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
-			onFeatureFlags?(
-				callback: (keys: string[], map: FeatureFlags) => void,
-			): void;
+			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 		};
 	}
@@ -741,11 +742,11 @@ export interface IN8nUISettings {
 	};
 	posthog: {
 		enabled: boolean;
-		apiHost: string;	
+		apiHost: string;
 		apiKey: string;
 		autocapture: boolean;
 		disableSessionRecording: boolean;
-		debug: boolean;	
+		debug: boolean;
 	};
 	executionMode: string;
 	pushBackend: 'sse' | 'websocket';
