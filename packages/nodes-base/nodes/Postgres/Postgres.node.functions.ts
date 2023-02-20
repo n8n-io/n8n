@@ -4,6 +4,8 @@ import type {
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodeListSearchResult,
+	INodeParameterResourceLocator,
+	IResourceLocatorResult,
 	JsonObject,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
@@ -703,13 +705,14 @@ export async function pgTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 ): Promise<IDataObject[]> {
-	const tableName = this.getNodeParameter('tableName', 0) as string;
+	const tableName = this.getNodeParameter('tableName', 0) as INodeParameterResourceLocator;
+	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
+	const target = (schema.value as string) + '.' + (tableName.value as string);
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	let functionName = (additionalFields.functionName as string) || 'n8n_trigger_function()';
 	if (!functionName.includes('()')) {
 		functionName = functionName.concat('()');
-		console.log(functionName);
 	}
 	const triggerName = additionalFields.triggerName || 'n8n_trigger';
 	const channelName = additionalFields.channelName || 'n8n_channel';
@@ -718,22 +721,22 @@ export async function pgTriggerFunction(
 	try {
 		if (replaceIfExists) {
 			await db.any(
-				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
+				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', concat(row_to_json(new)::text, TG_OP::text)); return null; end; $BODY$;",
 				[functionName, channelName],
 			);
-			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, tableName]);
+			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
 			await db.any(
 				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[tableName, functionName, firesOn, triggerName],
+				[target, functionName, firesOn, triggerName],
 			);
 		} else {
 			await db.any(
-				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
+				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text + TG_OP::text); return null; end; $BODY$;",
 				[functionName, channelName],
 			);
 			await db.any(
 				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[tableName, functionName, firesOn, triggerName],
+				[target, functionName, firesOn, triggerName],
 			);
 		}
 	} catch (err) {
@@ -769,13 +772,13 @@ export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.schema_name as string,
 		value: s.schema_name as string,
 	}));
+	pgp.end();
 	return { results };
 }
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('postgres');
-	const schema = this.getNodeParameter('schema', 0) as string;
-	console.log(schema);
+	const schema = this.getNodeParameter('schema', 0) as IDataObject;
 	const pgp = pgPromise();
 
 	const config: IDataObject = {
@@ -795,13 +798,19 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		config.sslmode = (credentials.ssl as string) || 'disable';
 	}
 	const db = pgp(config);
-	const tableList = await db.any(
-		'SELECT table_name FROM information_schema.tables WHERE table_schema = $1',
-		[schema],
-	);
+	let tableList = [];
+	try {
+		tableList = await db.any(
+			'SELECT table_name FROM information_schema.tables WHERE table_schema = $1',
+			[schema.value],
+		);
+	} catch (error) {
+		throw new Error(error);
+	}
 	const results: INodeListSearchItems[] = tableList.map((s) => ({
-		name: s.schema_name as string,
-		value: s.schema_name as string,
+		name: s.table_name as string,
+		value: s.table_name as string,
 	}));
+	pgp.end();
 	return { results };
 }

@@ -6,7 +6,7 @@ import type {
 	ITriggerResponse,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
-import { searchSchema, searchTables } from './Postgres.node.functions';
+import { pgTriggerFunction, searchSchema, searchTables } from './Postgres.node.functions';
 
 export class PostgresTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,7 +48,7 @@ export class PostgresTrigger implements INodeType {
 			},
 			{
 				displayName: 'Schema Name',
-				name: 'schemaName',
+				name: 'schema',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'public' },
 				required: true,
@@ -60,7 +60,6 @@ export class PostgresTrigger implements INodeType {
 						placeholder: 'Select a schema',
 						typeOptions: {
 							searchListMethod: 'searchSchema',
-							searchable: true,
 							searchFilterRequired: false,
 						},
 					},
@@ -69,6 +68,36 @@ export class PostgresTrigger implements INodeType {
 						name: 'name',
 						type: 'string',
 						placeholder: 'e.g. public',
+					},
+				],
+			},
+			{
+				displayName: 'Table Name',
+				name: 'tableName',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				displayOptions: {
+					show: {
+						triggerMode: ['createTrigger'],
+					},
+				},
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a table',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. table_name',
 					},
 				],
 			},
@@ -83,19 +112,6 @@ export class PostgresTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						triggerMode: ['listenTrigger'],
-					},
-				},
-			},
-			{
-				displayName: 'Table Name',
-				name: 'tableName',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Name of the table to listen to',
-				displayOptions: {
-					show: {
-						triggerMode: ['createTrigger'],
 					},
 				},
 			},
@@ -205,7 +221,7 @@ export class PostgresTrigger implements INodeType {
 
 		const db = pgp(config);
 		if (triggerMode === 'createTrigger') {
-			//	await pgTriggerFunction.call(this, db);
+			await pgTriggerFunction.call(this, db);
 		}
 		const channelName =
 			triggerMode === 'createTrigger'
