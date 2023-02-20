@@ -203,7 +203,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		throttling = true;
 		const timeout = config.getEnv('executions.pruneDataTimeout'); // in seconds
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataCountMax');
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
