@@ -9,21 +9,18 @@ import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { badPasswords } from '../shared/testData';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
 	const externalHooks = mock<IExternalHooksClass>();
 	const internalHooks = mock<IInternalHooksClass>();
 	const userRepository = mock<Repository<User>>();
-
-	let controller: MeController;
-	beforeAll(() => {
-		controller = new MeController({
-			logger,
-			externalHooks,
-			internalHooks,
-			repositories: { User: userRepository },
-		});
+	const controller = new MeController({
+		logger,
+		externalHooks,
+		internalHooks,
+		repositories: { User: userRepository },
 	});
 
 	describe('updateCurrentUser', () => {
@@ -88,12 +85,7 @@ describe('MeController', () => {
 		});
 
 		describe('should throw if newPassword is not valid', () => {
-			Object.entries({
-				pass: 'Password must be 8 to 64 characters long. Password must contain at least 1 number. Password must contain at least 1 uppercase letter.',
-				password:
-					'Password must contain at least 1 number. Password must contain at least 1 uppercase letter.',
-				password1: 'Password must contain at least 1 uppercase letter.',
-			}).forEach(([newPassword, errorMessage]) => {
+			Object.entries(badPasswords).forEach(([newPassword, errorMessage]) => {
 				it(newPassword, async () => {
 					const req = mock<MeRequest.Password>({
 						user: mock({ password: passwordHash }),

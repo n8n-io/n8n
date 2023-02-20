@@ -9,7 +9,6 @@ import {
 import {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IExecutionsSummary,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -28,6 +27,7 @@ import {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IExecutionsSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -36,7 +36,9 @@ import {
 	INodeIssueData,
 	INodeParameters,
 	IPinData,
+	IRun,
 	IRunData,
+	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
 	NodeHelpers,
@@ -446,6 +448,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		setWorkflowExecutionData(workflowResultData: IExecutionResponse | null): void {
 			this.workflowExecutionData = workflowResultData;
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
+		},
+
+		setWorkflowExecutionRunData(workflowResultData: IRunExecutionData): void {
+			if (this.workflowExecutionData) this.workflowExecutionData.data = workflowResultData;
 		},
 
 		setWorkflowSettings(workflowSettings: IWorkflowSettings): void {
@@ -921,6 +927,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
+			if (finishedActiveExecution.data) {
+				this.setWorkflowExecutionRunData(
+					finishedActiveExecution.data as unknown as IRunExecutionData,
+				);
+			}
 		},
 
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {

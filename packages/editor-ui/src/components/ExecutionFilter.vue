@@ -27,6 +27,8 @@ const statusFilterApplied = computed(() => {
 const statuses = computed(() => [
 	{ id: 'ALL', name: locale.baseText('executionsList.anyStatus') },
 	{ id: 'error', name: locale.baseText('executionsList.error') },
+	{ id: 'crashed', name: locale.baseText('executionsList.error') },
+	{ id: 'new', name: locale.baseText('executionsList.new') },
 	{ id: 'running', name: locale.baseText('executionsList.running') },
 	{ id: 'success', name: locale.baseText('executionsList.success') },
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },

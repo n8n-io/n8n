@@ -28,9 +28,9 @@ export default mixins(showMessage, restApi).extend({
 		AuthView,
 	},
 	async mounted() {
-		const getAllCredentialsPromise = this.getAllCredentials();
-		const getAllWorkflowsPromise = this.getAllWorkflows();
-		await Promise.all([getAllCredentialsPromise, getAllWorkflowsPromise]);
+		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
+		this.credentialsCount = credentials;
+		this.workflowsCount = workflows;
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -102,14 +102,6 @@ export default mixins(showMessage, restApi).extend({
 		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
 	},
 	methods: {
-		async getAllCredentials() {
-			const credentials = await this.credentialsStore.fetchAllCredentials();
-			this.credentialsCount = credentials.length;
-		},
-		async getAllWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
-			this.workflowsCount = workflows.length;
-		},
 		async confirmSetupOrGoBack(): Promise<boolean> {
 			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
 				return true;

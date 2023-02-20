@@ -618,10 +618,10 @@ export class ExecuteBatch extends BaseCommand {
 					const resultError = data.data.resultData.error;
 					if (resultError) {
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						executionResult.error = resultError.hasOwnProperty('description')
-							? // @ts-ignore
-							  resultError.description
-							: resultError.message;
+						executionResult.error =
+							resultError.hasOwnProperty('description') && resultError.description !== null
+								? resultError.description
+								: resultError.message;
 						if (data.data.resultData.lastNodeExecuted !== undefined) {
 							executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
 						}
