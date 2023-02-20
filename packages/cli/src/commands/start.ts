@@ -26,7 +26,7 @@ import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker } from '@/WaitTracker';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { handleLdapInit } from '@/Ldap/helpers';
-import { createPostHogLoadingScript } from '@/telemetry/scripts';
+import { getPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
@@ -155,15 +155,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (config.getEnv('diagnostics.enabled')) {
-			const phLoadingScript = createPostHogLoadingScript({
-				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-				autocapture: false,
-				disableSessionRecording: config.getEnv(
-					'diagnostics.config.posthog.disableSessionRecording',
-				),
-				debug: config.getEnv('logs.level') === 'debug',
-			});
+			const phLoadingScript = getPostHogLoadingScript();
 
 			scriptsString += phLoadingScript;
 		}
