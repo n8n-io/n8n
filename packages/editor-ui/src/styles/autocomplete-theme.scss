@@ -1,3 +1,9 @@
+.cm-completionIcon-extension-function, .cm-completionIcon-native-function {
+	&::after {
+		content: 'ƒ';
+	}
+}
+
 .cm-tooltip-autocomplete {
 	background-color: var(--color-background-xlight) !important;
 

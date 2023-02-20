@@ -14,11 +14,10 @@ import {
 	stripExcessParens,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { ExtensionTypeName, FnToDoc, Resolved } from './types';
+import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import { sanitizeHtml } from '@/utils';
 import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
-
-type AutocompleteOptionType = 'function' | 'keyword';
+import { isFunctionOption } from './typeGuards';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -59,7 +58,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	if (options.length === 0) return null;
 
 	if (tail !== '') {
-		options = options.filter((o) => prefixMatch(o.label, tail));
+		console.log(options.filter((o) => o.label.startsWith(tail)));
+		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
 	}
 
 	return {
@@ -120,7 +120,7 @@ export const natives = (typeName: ExtensionTypeName): Completion[] => {
 	if (!natives) return [];
 
 	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
-	const nativeMethods = toOptions(natives.functions, typeName, 'function');
+	const nativeMethods = toOptions(natives.functions, typeName, 'native-function');
 
 	return [...nativeProps, ...nativeMethods];
 };
@@ -134,19 +134,19 @@ export const extensions = (typeName: ExtensionTypeName) => {
 		return { ...acc, [fnName]: { doc: fn.doc } };
 	}, {});
 
-	return toOptions(fnToDoc, typeName);
+	return toOptions(fnToDoc, typeName, 'extension-function');
 };
 
 export const toOptions = (
 	fnToDoc: FnToDoc,
 	typeName: ExtensionTypeName,
-	optionType: AutocompleteOptionType = 'function',
+	optionType: AutocompleteOptionType = 'native-function',
 ) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([fnName, fn]) => {
 			const option: Completion = {
-				label: optionType === 'function' ? fnName + '()' : fnName,
+				label: isFunctionOption(optionType) ? fnName + '()' : fnName,
 				type: optionType,
 			};
 
@@ -156,10 +156,9 @@ export const toOptions = (
 
 				if (!fn.doc?.description) return null;
 
-				const header =
-					optionType === 'function'
-						? createFunctionHeader(typeName, fn)
-						: createPropHeader(typeName, fn);
+				const header = isFunctionOption(optionType)
+					? createFunctionHeader(typeName, fn)
+					: createPropHeader(typeName, fn);
 				header.classList.add('autocomplete-info-header');
 				tooltipContainer.appendChild(header);
 
