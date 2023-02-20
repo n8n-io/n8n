@@ -31,13 +31,11 @@ interface IExecutionsBuffer {
 export class Telemetry {
 	private rudderStack?: RudderStack;
 
-	private postHog: PostHogClient;
-
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string, private posthog: PostHogClient) {}
+	constructor(private instanceId: string, private postHog: PostHogClient) {}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
@@ -57,9 +55,6 @@ export class Telemetry {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			this.rudderStack = new RudderStack(key, url, { logLevel });
-
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			this.postHog = new PostHogClient();
 
 			this.startPulse();
 		}
