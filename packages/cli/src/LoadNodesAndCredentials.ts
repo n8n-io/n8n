@@ -31,10 +31,6 @@ import {
 	CUSTOM_API_CALL_NAME,
 	inTest,
 } from '@/constants';
-import {
-	persistInstalledPackageData,
-	removePackageFromDatabase,
-} from '@/CommunityNodes/packageModel';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { Service } from 'typedi';
 
@@ -204,6 +200,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
+				const { persistInstalledPackageData } = await import('@/CommunityNodes/packageModel');
 				const installedPackage = await persistInstalledPackageData(loader);
 				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
@@ -231,6 +228,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		await executeCommand(command);
 
+		const { removePackageFromDatabase } = await import('@/CommunityNodes/packageModel');
 		await removePackageFromDatabase(installedPackage);
 
 		if (packageName in this.loaders) {
@@ -266,6 +264,9 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
+				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
+					'@/CommunityNodes/packageModel'
+				);
 				await removePackageFromDatabase(installedPackage);
 				const newlyInstalledPackage = await persistInstalledPackageData(loader);
 				await this.postProcessLoaders();

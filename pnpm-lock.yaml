@@ -21,6 +21,9 @@ patchedDependencies:
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
+  typedi@0.10.0:
+    hash: syy565ld7euwcedfbmx53j2qc4
+    path: patches/typedi@0.10.0.patch
 
 importers:
 

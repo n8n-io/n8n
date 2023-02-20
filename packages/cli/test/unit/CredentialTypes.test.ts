@@ -1,6 +1,5 @@
 import type { ICredentialTypes, INodesAndCredentials } from 'n8n-workflow';
 import { CredentialTypes } from '@/CredentialTypes';
-import { mock } from 'jest-mock-extended';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 

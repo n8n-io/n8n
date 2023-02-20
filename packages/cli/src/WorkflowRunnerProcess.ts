@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
+import 'reflect-metadata';
 import type { IProcessMessage } from 'n8n-core';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
@@ -509,6 +510,8 @@ process.on('message', async (message: IProcessMessage) => {
 			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
+		workflowRunner.logger.error(error.message);
+
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
 			...error,
