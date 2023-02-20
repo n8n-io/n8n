@@ -20,6 +20,8 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	ExecutionStatus,
+	IExecutionsSummary,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -153,6 +155,7 @@ export interface IExecutionBase {
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
+	status: ExecutionStatus;
 }
 
 // Data in regular format with references
@@ -188,6 +191,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	data: string;
 	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -222,25 +226,13 @@ export interface IExecutionsStopData {
 	stoppedAt?: Date;
 }
 
-export interface IExecutionsSummary {
-	id: string;
-	finished?: boolean;
-	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
-}
-
 export interface IExecutionsCurrentSummary {
 	id: string;
 	retryOf?: string;
 	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
+	status?: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
@@ -256,6 +248,7 @@ export interface IExecutingWorkflowData {
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
+	status: ExecutionStatus;
 }
 
 export interface IExternalHooks {
@@ -513,6 +506,7 @@ export interface IN8nUISettings {
 	enterprise: {
 		sharing: boolean;
 		ldap: boolean;
+		saml: boolean;
 		logStreaming: boolean;
 	};
 	hideUsagePage: boolean;
@@ -567,7 +561,13 @@ export type IPushData =
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
-	| PushDataNodeDescriptionUpdated;
+	| PushDataNodeDescriptionUpdated
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -613,6 +613,10 @@ type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };
+
+export interface IPushDataExecutionRecovered {
+	executionId: string;
+}
 
 export interface IPushDataExecutionFinished {
 	data: IRun;

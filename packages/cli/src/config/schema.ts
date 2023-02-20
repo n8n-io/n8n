@@ -325,6 +325,16 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
 		},
+
+		// Additional pruning option to delete executions if total count exceeds the configured max.
+		// Deletes the oldest entries first
+		// Default is 0 = No limit
+		pruneDataMaxCount: {
+			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			format: Number,
+			default: 0,
+			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
+		},
 	},
 
 	queue: {
@@ -985,6 +995,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			saml: {
+				format: Boolean,
+				default: false,
+			},
 			logStreaming: {
 				format: Boolean,
 				default: false,
@@ -1039,7 +1053,7 @@ export const schema = {
 				apiHost: {
 					doc: 'API host for PostHog',
 					format: String,
-					default: 'https://app.posthog.com',
+					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
 				disableSessionRecording: {
@@ -1146,7 +1160,7 @@ export const schema = {
 			maxFileSizeInKB: {
 				doc: 'Maximum size of an event log file before a new one is started.',
 				format: Number,
-				default: 102400, // 100MB
+				default: 10240, // 10MB
 				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
 			},
 			logBaseName: {

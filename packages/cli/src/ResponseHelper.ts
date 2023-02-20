@@ -228,6 +228,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		workflowId: fullExecutionData.workflowId,
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		workflowData: fullExecutionData.workflowData!,
+		status: fullExecutionData.status,
 	};
 
 	if (fullExecutionData.id !== undefined) {
@@ -261,6 +262,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
+		status: fullExecutionData.status,
 	};
 
 	return returnData;

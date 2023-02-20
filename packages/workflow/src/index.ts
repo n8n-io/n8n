@@ -8,6 +8,7 @@ export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './MessageEventBus';
+export * from './ExecutionStatus';
 export * from './Expression';
 export * from './ExpressionError';
 export * from './NodeErrors';

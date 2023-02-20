@@ -1,8 +1,12 @@
-import { WorkflowPage, NDV, CanvasNode } from '../pages';
+import {
+	MANUAL_TRIGGER_NODE_NAME,
+	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+	SCHEDULE_TRIGGER_NODE_NAME,
+} from './../constants';
+import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
-const canvasNode = new CanvasNode();
 
 describe('Data mapping', () => {
 	beforeEach(() => {
@@ -20,7 +24,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
-		canvasNode.actions.openNode('Set');
+		workflowPage.actions.openNode('Set');
 		ndv.actions.executePrevious();
 		ndv.actions.switchInputMode('Table');
 		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
@@ -42,7 +46,7 @@ describe('Data mapping', () => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
 
-		canvasNode.actions.openNode('Set');
+		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('Table');
 		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
 
@@ -87,7 +91,7 @@ describe('Data mapping', () => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
 
-		canvasNode.actions.openNode('Set');
+		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('JSON');
 
 		ndv.getters.inputDataContainer().should('exist').find('.json-data')
@@ -115,7 +119,7 @@ describe('Data mapping', () => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
 
-		canvasNode.actions.openNode('Set');
+		workflowPage.actions.openNode('Set');
 		ndv.actions.clearParameterInput('value');
 		cy.get('body').type('{esc}');
 
@@ -142,22 +146,22 @@ describe('Data mapping', () => {
 
 	it('maps expressions from previous nodes', () => {
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
-		canvasNode.actions.openNode('Set1');
+		workflowPage.actions.openNode('Set1');
 
-		ndv.actions.selectInputNode('Schedule Trigger');
+		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
 
 		ndv.getters.inputDataContainer()
 			.find('span').contains('count')
 			.realMouseDown();
 
 		ndv.actions.mapToParameter('value');
-		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', `{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }}`);
 		ndv.getters.parameterExpressionPreview('value')
 			.should('not.exist');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.mapDataFromHeader(1, 'value');
-		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $node["Schedule Trigger"].json.input[0].count }} {{ $node["Schedule Trigger"].json.input }}');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', `{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }} {{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input }}`);
 		ndv.getters.parameterExpressionPreview('value')
 			.should('not.exist');
 
@@ -175,8 +179,9 @@ describe('Data mapping', () => {
 	});
 
 	it('maps keys to path', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger', {keepNdvOpen: true});
-
+		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		workflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		workflowPage.actions.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		ndv.actions.setPinnedData([
 			{
 				input: [
@@ -201,7 +206,7 @@ describe('Data mapping', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.addNodeToCanvas('Item Lists');
-		canvasNode.actions.openNode('Item Lists');
+		workflowPage.actions.openNode('Item Lists');
 
 		ndv.getters.parameterInput('operation')
 			.click()
