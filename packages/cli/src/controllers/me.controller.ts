@@ -1,4 +1,5 @@
 import validator from 'validator';
+import { plainToInstance } from 'class-transformer';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import {
 	compareHash,
@@ -7,13 +8,13 @@ import {
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
 import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
-import { AuthenticatedRequest, MeRequest } from '@/requests';
+import { AuthenticatedRequest, MeRequest, UserUpdatePayload } from '@/requests';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -53,38 +54,40 @@ export class MeController {
 	 * Update the logged-in user's settings, except password.
 	 */
 	@Patch('/')
-	async updateCurrentUser(req: MeRequest.Settings, res: Response): Promise<PublicUser> {
-		const { email } = req.body;
+	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
+		const { id: userId, email: currentEmail } = req.user;
+		const payload = plainToInstance(UserUpdatePayload, req.body);
+
+		const { email } = payload;
 		if (!email) {
 			this.logger.debug('Request to update user email failed because of missing email in payload', {
-				userId: req.user.id,
-				payload: req.body,
+				userId,
+				payload,
 			});
 			throw new BadRequestError('Email is mandatory');
 		}
 
 		if (!validator.isEmail(email)) {
 			this.logger.debug('Request to update user email failed because of invalid email in payload', {
-				userId: req.user.id,
+				userId,
 				invalidEmail: email,
 			});
 			throw new BadRequestError('Invalid email address');
 		}
 
-		const { email: currentEmail } = req.user;
-		const newUser = new User();
+		await validateEntity(payload);
 
-		Object.assign(newUser, req.user, req.body);
+		await this.userRepository.update(userId, payload);
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: { globalRole: true },
+		});
 
-		await validateEntity(newUser);
-
-		const user = await this.userRepository.save(newUser);
-
-		this.logger.info('User updated successfully', { userId: user.id });
+		this.logger.info('User updated successfully', { userId });
 
 		await issueCookie(res, user);
 
-		const updatedKeys = Object.keys(req.body);
+		const updatedKeys = Object.keys(payload);
 		void this.internalHooks.onUserUpdate({
 			user,
 			fields_changed: updatedKeys,
