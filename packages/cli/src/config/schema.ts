@@ -803,6 +803,12 @@ export const schema = {
 				},
 			},
 		},
+		authenticationMethod: {
+			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
+			format: String,
+			default: 'email',
+			env: 'N8N_AUTHENTICATION_METHOD',
+		},
 	},
 
 	externalFrontendHooksUrls: {
@@ -996,6 +1002,22 @@ export const schema = {
 		},
 	},
 
+	sso: {
+		justInTimeProvisioning: {
+			format: Boolean,
+			default: false,
+			doc: 'Whether to automatically create users when they login via SSO.',
+		},
+		saml: {
+			enabled: {
+				format: Boolean,
+				default: true, // TODO: change to false
+				doc: 'Whether to enable SAML SSO.',
+			},
+		},
+	},
+
+	// TODO: move into sso settings
 	ldap: {
 		loginEnabled: {
 			format: Boolean,

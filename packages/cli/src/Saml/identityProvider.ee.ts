@@ -1,11 +1,12 @@
-import * as saml from 'samlify';
+import type { IdentityProviderInstance } from 'samlify';
+import { IdentityProvider } from 'samlify';
 import { sampleIPMetadata } from './constants';
 
-let identityProviderInstance: saml.IdentityProviderInstance | undefined;
+let identityProviderInstance: IdentityProviderInstance | undefined;
 
-export function getIdentityProviderInstance(): saml.IdentityProviderInstance {
+export function getIdentityProviderInstance(): IdentityProviderInstance {
 	if (identityProviderInstance === undefined) {
-		identityProviderInstance = saml.IdentityProvider({
+		identityProviderInstance = IdentityProvider({
 			metadata: sampleIPMetadata,
 		});
 	}

@@ -1,10 +1,15 @@
 import type { RequestHandler } from 'express';
-import { isSamlEnabled } from '../helpers';
+import { LoggerProxy } from 'n8n-workflow';
+import { isSamlCurrentAuthenticationMethod, isSamlEnabled, isSamlLicensed } from '../helpers';
 
 export const samlEnabledMiddleware: RequestHandler = (req, res, next) => {
-	if (isSamlEnabled()) {
+	if (isSamlEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod()) {
 		next();
 	} else {
-		res.status(403).json({ status: 'error', message: 'Unauthorized' });
+		//TODO:SAML: remove this debug log
+		LoggerProxy.debug(
+			`SAML middleware denial: isSamlEnabled: ${isSamlEnabled().toString()} // isSamlLicensed: ${isSamlLicensed().toString()} // isSamlCurrentAuthenticationMethod: ${isSamlCurrentAuthenticationMethod().toString()}`,
+		);
+		res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
 };

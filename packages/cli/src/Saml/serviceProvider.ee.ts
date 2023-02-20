@@ -1,9 +1,10 @@
-import * as saml from 'samlify';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import type { ServiceProviderInstance } from 'samlify';
+import { ServiceProvider, setSchemaValidator } from 'samlify';
 
-let serviceProviderInstance: saml.ServiceProviderInstance | undefined;
+let serviceProviderInstance: ServiceProviderInstance | undefined;
 
-saml.setSchemaValidator({
+setSchemaValidator({
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	validate: async (response: string) => {
 		// TODO:SAML: implment validation
@@ -25,9 +26,9 @@ const metadata = `
 </EntityDescriptor>
 `;
 
-export function getServiceProviderInstance(): saml.ServiceProviderInstance {
+export function getServiceProviderInstance(): ServiceProviderInstance {
 	if (serviceProviderInstance === undefined) {
-		serviceProviderInstance = saml.ServiceProvider({
+		serviceProviderInstance = ServiceProvider({
 			metadata,
 		});
 	}
