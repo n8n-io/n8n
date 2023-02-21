@@ -343,24 +343,7 @@ export const luxonInstanceOptions = () => {
 		.map(([key, descriptor]) => {
 			const isFunction = typeof descriptor.value === 'function';
 			const optionType = isFunction ? 'native-function' : 'keyword';
-
-			const option: Completion = {
-				label: isFunction ? key + '()' : key,
-				type: optionType,
-			};
-
-			let doc: DocMetadata | undefined;
-			if (Object.hasOwn(luxonInstanceDocs.properties, key)) {
-				doc = luxonInstanceDocs.properties[key].doc;
-			} else if (Object.hasOwn(luxonInstanceDocs.functions, key)) {
-				doc = luxonInstanceDocs.functions[key].doc;
-			}
-			// TODO: Rework this:
-			if (doc) {
-				doc.description = i18n.luxonInstance[key];
-			}
-			option.info = createCompletionOption('DateTime', key, optionType, { doc }).info;
-			return option;
+			return createLuxonAutocompleteOption(key, optionType, luxonInstanceDocs, i18n.luxonInstance);
 		});
 };
 
@@ -374,24 +357,37 @@ export const luxonStaticOptions = () => {
 		.filter((key) => !SKIP.has(key) && !key.includes('_'))
 		.sort((a, b) => a.localeCompare(b))
 		.map((key) => {
-			const option: Completion = {
-				label: key + '()',
-				type: 'native-function',
-			};
-
-			let doc: DocMetadata | undefined;
-			if (Object.hasOwn(luxonStaticDocs.properties, key)) {
-				doc = luxonStaticDocs.properties[key].doc;
-			} else if (Object.hasOwn(luxonStaticDocs.functions, key)) {
-				doc = luxonStaticDocs.functions[key].doc;
-			}
-			// TODO: Rework this:
-			if (doc) {
-				doc.description = i18n.luxonStatic[key];
-			}
-			option.info = createCompletionOption('DateTime', key, 'native-function', { doc }).info;
-			return option;
+			return createLuxonAutocompleteOption(
+				key,
+				'native-function',
+				luxonStaticDocs,
+				i18n.luxonStatic,
+			);
 		});
+};
+
+const createLuxonAutocompleteOption = (
+	name: string,
+	type: AutocompleteOptionType,
+	docDefinition: NativeDoc,
+	translations: Record<string, string | undefined>,
+): Completion => {
+	const option: Completion = {
+		label: isFunctionOption(type) ? name + '()' : name,
+		type,
+	};
+
+	let doc: DocMetadata | undefined;
+	if (docDefinition.properties && Object.hasOwn(docDefinition.properties, name)) {
+		doc = docDefinition.properties[name].doc;
+	} else if (Object.hasOwn(docDefinition.functions, name)) {
+		doc = docDefinition.functions[name].doc;
+	}
+	option.info = createCompletionOption('DateTime', name, type, {
+		// Add translated description
+		doc: { ...doc, description: translations[name] } as DocMetadata,
+	}).info;
+	return option;
 };
 
 /**

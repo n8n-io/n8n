@@ -1,6 +1,7 @@
-import { i18n } from '@/plugins/i18n';
 import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
 
+// Autocomplete documentation definition for DateTime instance props and methods
+// Descriptions are added dynamically so they can be localized
 export const luxonInstanceDocs: Required<NativeDoc> = {
 	typeName: 'DateTime',
 	properties: {
