@@ -18,9 +18,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
 import { FindManyOptions, QueryFailedError } from 'typeorm';
-import {
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
 import * as ResponseHelper from '@/ResponseHelper';
 
 export = {

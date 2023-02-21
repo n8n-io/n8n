@@ -31,9 +31,6 @@ import {
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import * as TagHelpers from '@/TagHelpers';
-import {
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
 
 export = {
 	createWorkflow: [
@@ -313,8 +310,6 @@ export = {
 		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			let newTags = req.body.map(newTag => newTag.id);
-
-			Logger.info("New tags: " + newTags)
 
 			if (config.getEnv('workflowTagsDisabled')) {
 				return res.status(406).json({ message: 'Workflow Tags Disabled' });
