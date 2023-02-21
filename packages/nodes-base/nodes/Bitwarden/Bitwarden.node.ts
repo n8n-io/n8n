@@ -33,7 +33,7 @@ import type {
 } from './descriptions/MemberDescription';
 import { memberFields, memberOperations } from './descriptions/MemberDescription';
 
-import { isEmpty, partialRight } from 'lodash';
+import { isEmpty, partialRight } from 'lodash-es';
 
 export class Bitwarden implements INodeType {
 	description: INodeTypeDescription = {

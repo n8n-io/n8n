@@ -9,7 +9,23 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import _ from 'lodash';
+import {
+	set,
+	concat,
+	split,
+	every,
+	toString,
+	toNumber,
+	isString,
+	compact,
+	first,
+	last,
+	clone,
+	some,
+	isArray,
+	trim,
+	escapeRegExp,
+} from 'lodash-es';
 
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -21,7 +37,7 @@ export async function koBoToolboxApiRequest(
 	const returnAll = !!option.returnAll;
 	if (returnAll) {
 		// Override manual pagination options
-		_.set(option, 'qs.limit', 3000);
+		set(option, 'qs.limit', 3000);
 		// Don't pass this custom param to helpers.httpRequest
 		delete option.returnAll;
 	}
@@ -49,7 +65,7 @@ export async function koBoToolboxApiRequest(
 			options,
 		);
 		// Append or set results
-		results = response.results ? _.concat(results || [], response.results) : response;
+		results = response.results ? concat(results || [], response.results) : response;
 		if (returnAll && response.next) {
 			options.url = response.next;
 		} else {
@@ -76,30 +92,30 @@ export async function koBoToolboxRawRequest(
 function parseGeoPoint(geoPoint: string): null | number[] {
 	// Check if it looks like a "lat lon z precision" flat string e.g. "-1.931161 30.079811 0 0" (lat, lon, elevation, precision)
 	// NOTE: we are discarding the elevation and precision values since they're not (well) supported in GeoJSON
-	const coordinates = _.split(geoPoint, ' ');
+	const coordinates = split(geoPoint, ' ');
 	if (
 		coordinates.length >= 2 &&
-		_.every(coordinates, (coord) => coord && /^-?\d+(?:\.\d+)?$/.test(_.toString(coord)))
+		every(coordinates, (coord) => coord && /^-?\d+(?:\.\d+)?$/.test(toString(coord)))
 	) {
 		// NOTE: GeoJSON uses lon, lat, while most common systems use lat, lon order!
-		return [_.toNumber(coordinates[1]), _.toNumber(coordinates[0])];
+		return [toNumber(coordinates[1]), toNumber(coordinates[0])];
 	}
 	return null;
 }
 
 export function parseStringList(value: string): string[] {
-	return _.split(_.toString(value), /[\s,]+/);
+	return split(toString(value), /[\s,]+/);
 }
 
 const matchWildcard = (value: string, pattern: string): boolean => {
-	const regex = new RegExp(`^${_.escapeRegExp(pattern).replace('\\*', '.*')}$`);
+	const regex = new RegExp(`^${escapeRegExp(pattern).replace('\\*', '.*')}$`);
 	return regex.test(value);
 };
 
 const formatValue = (value: any, format: string): any => {
-	if (_.isString(value)) {
+	if (isString(value)) {
 		// Sanitize value
-		value = _.toString(value);
+		value = toString(value);
 
 		// Parse geoPoints
 		const geoPoint = parseGeoPoint(value);
@@ -114,11 +130,11 @@ const formatValue = (value: any, format: string): any => {
 		const points = value.split(';');
 		if (points.length >= 2 && /^[-\d\.\s;]+$/.test(value)) {
 			// Using the GeoJSON format as per https://geojson.org/
-			const coordinates = _.compact(points.map(parseGeoPoint));
+			const coordinates = compact(points.map(parseGeoPoint));
 			// Only return if all values are properly parsed
 			if (coordinates.length === points.length) {
 				// If the shape is closed, declare it as Polygon, otherwise as LineString
-				if (_.first(points) === _.last(points)) {
+				if (first(points) === last(points)) {
 					return {
 						type: 'Polygon',
 						coordinates: [coordinates],
@@ -131,12 +147,12 @@ const formatValue = (value: any, format: string): any => {
 
 		// Parse numbers
 		if ('number' === format) {
-			return _.toNumber(value);
+			return toNumber(value);
 		}
 
 		// Split multi-select
 		if ('multiSelect' === format) {
-			return _.split(_.toString(value), ' ');
+			return split(toString(value), ' ');
 		}
 	}
 
@@ -152,29 +168,29 @@ export function formatSubmission(
 	const response = {} as IDataObject;
 
 	for (const key of Object.keys(submission)) {
-		let value = _.clone(submission[key]);
+		let value = clone(submission[key]);
 		// Sanitize key names: split by group, trim _
 		const sanitizedKey = key
 			.split('/')
-			.map((k) => _.trim(k, ' _'))
+			.map((k) => trim(k, ' _'))
 			.join('.');
 		const leafKey = sanitizedKey.split('.').pop() || '';
 		let format = 'string';
-		if (_.some(numberMasks, (mask) => matchWildcard(leafKey, mask))) {
+		if (some(numberMasks, (mask) => matchWildcard(leafKey, mask))) {
 			format = 'number';
 		}
-		if (_.some(selectMasks, (mask) => matchWildcard(leafKey, mask))) {
+		if (some(selectMasks, (mask) => matchWildcard(leafKey, mask))) {
 			format = 'multiSelect';
 		}
 
 		value = formatValue(value, format);
 
-		_.set(response, sanitizedKey, value);
+		set(response, sanitizedKey, value);
 	}
 
 	// Reformat _geolocation
 	if (
-		_.isArray(response.geolocation) &&
+		isArray(response.geolocation) &&
 		response.geolocation.length === 2 &&
 		response.geolocation[0] &&
 		response.geolocation[1]
@@ -210,7 +226,7 @@ export async function downloadAttachments(
 		for (const [index, attachment] of attachmentList.entries()) {
 			// look for the question name linked to this attachment
 			const fileName = attachment.filename;
-			const sanitizedFileName = _.toString(fileName).replace(/_[^_]+(?=\.\w+)/, ''); // strip suffix
+			const sanitizedFileName = toString(fileName).replace(/_[^_]+(?=\.\w+)/, ''); // strip suffix
 
 			let relatedQuestion = null;
 			if ('question' === options.binaryNamingScheme) {
@@ -218,7 +234,7 @@ export async function downloadAttachments(
 					// The logic to map attachments to question is sometimes ambiguous:
 					// - If the attachment is linked to a question, the question's value is the same as the attachment's filename (with spaces replaced by underscores)
 					// - BUT sometimes the attachment's filename has an extra suffix, e.g. "My_Picture_0OdlaKJ.jpg", would map to the question "picture": "My Picture.jpg"
-					const sanitizedQuestionValue = _.toString(submission[question]).replace(/\s/g, '_'); // replace spaces with underscores
+					const sanitizedQuestionValue = toString(submission[question]).replace(/\s/g, '_'); // replace spaces with underscores
 					if (sanitizedFileName === sanitizedQuestionValue) {
 						relatedQuestion = question;
 						// Just use the first match...

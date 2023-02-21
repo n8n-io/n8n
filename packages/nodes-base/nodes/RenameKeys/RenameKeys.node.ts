@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import { get, set, unset } from 'lodash';
+import { get, set, unset } from 'lodash-es';
 
 interface IRenameKey {
 	currentKey: string;

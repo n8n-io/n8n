@@ -22,7 +22,7 @@ import { connect as imapConnect, getParts } from 'imap-simple';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
 
-import _ from 'lodash';
+import { isEmpty, find } from 'lodash-es';
 
 export async function parseRawEmail(
 	this: ITriggerFunctions,
@@ -241,7 +241,7 @@ export class EmailReadImapV1 implements INodeType {
 					if (credentials.secure) {
 						tlsOptions.servername = credentials.host as string;
 					}
-					if (!_.isEmpty(tlsOptions)) {
+					if (!isEmpty(tlsOptions)) {
 						config.imap.tlsOptions = tlsOptions;
 					}
 					const conn = imapConnect(config).then(async (entry) => {
@@ -385,7 +385,7 @@ export class EmailReadImapV1 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: '' });
+					const part = find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -474,7 +474,7 @@ export class EmailReadImapV1 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: 'TEXT' });
+					const part = find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -569,7 +569,7 @@ export class EmailReadImapV1 implements INodeType {
 				tlsOptions.servername = credentials.host as string;
 			}
 
-			if (!_.isEmpty(tlsOptions)) {
+			if (!isEmpty(tlsOptions)) {
 				config.imap.tlsOptions = tlsOptions;
 			}
 

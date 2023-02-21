@@ -48,7 +48,7 @@ import {
 
 import { capitalCase } from 'change-case';
 
-import { isEmpty } from 'lodash';
+import { isEmpty } from 'lodash-es';
 
 import type { QuickBooksOAuth2Credentials, TransactionFields } from './types';
 

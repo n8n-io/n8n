@@ -12,7 +12,7 @@ import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.int
 
 import { capitalCase } from 'change-case';
 
-import { omit, pickBy } from 'lodash';
+import { omit, pickBy } from 'lodash-es';
 
 import type { OptionsWithUri } from 'request';
 

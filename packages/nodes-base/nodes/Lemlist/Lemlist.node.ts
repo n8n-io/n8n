@@ -23,7 +23,7 @@ import {
 
 import { lemlistApiRequest, lemlistApiRequestAllItems } from './GenericFunctions';
 
-import { isEmpty, omit } from 'lodash';
+import { isEmpty, omit } from 'lodash-es';
 
 export class Lemlist implements INodeType {
 	description: INodeTypeDescription = {

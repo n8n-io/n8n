@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 type AggregationType =
 	| 'append'

@@ -9,7 +9,7 @@ import type {
 
 import type { IDataObject } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,

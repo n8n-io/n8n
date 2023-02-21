@@ -1,4 +1,4 @@
-import { set } from 'lodash';
+import { set } from 'lodash-es';
 
 import type { IExecuteFunctions } from 'n8n-core';
 

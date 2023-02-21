@@ -4,7 +4,7 @@ import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
-import { flow, omit } from 'lodash';
+import { flow, omit } from 'lodash-es';
 
 import type {
 	AllFieldsUi,

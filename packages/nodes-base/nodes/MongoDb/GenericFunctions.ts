@@ -9,7 +9,7 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
-import { get, set } from 'lodash';
+import { get, set } from 'lodash-es';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string

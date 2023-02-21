@@ -739,7 +739,6 @@
     "@types/gm": "^1.25.0",
     "@types/imap-simple": "^4.2.0",
     "@types/jsonwebtoken": "^9.0.1",
-    "@types/lodash.set": "^4.3.6",
     "@types/lossless-json": "^1.0.0",
     "@types/mailparser": "^2.7.3",
     "@types/mime-types": "^2.1.0",
@@ -758,6 +757,7 @@
     "@types/xml2js": "^0.4.3",
     "eslint-plugin-n8n-nodes-base": "^1.12.0",
     "gulp": "^4.0.0",
+    "lodash-es": "^4.17.21",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
@@ -785,9 +785,6 @@
     "js-nacl": "^1.4.0",
     "jsonwebtoken": "^9.0.0",
     "kafkajs": "^1.14.0",
-    "lodash.get": "^4.4.2",
-    "lodash.set": "^4.3.2",
-    "lodash.unset": "^4.5.2",
     "lossless-json": "^1.0.4",
     "luxon": "^3.1.0",
     "mailparser": "^3.2.0",

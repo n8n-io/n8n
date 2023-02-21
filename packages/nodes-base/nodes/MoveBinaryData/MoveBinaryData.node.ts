@@ -1,4 +1,4 @@
-import { get, set, unset } from 'lodash';
+import { get, set, unset } from 'lodash-es';
 import prettyBytes from 'pretty-bytes';
 
 import type { IExecuteFunctions } from 'n8n-core';

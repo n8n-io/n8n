@@ -1,4 +1,4 @@
-import { mergeWith } from 'lodash';
+import { mergeWith } from 'lodash-es';
 
 import type { IExecuteFunctions } from 'n8n-core';
 

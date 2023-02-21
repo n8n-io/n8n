@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import { set } from 'lodash-es';
 
 import moment from 'moment-timezone';
 

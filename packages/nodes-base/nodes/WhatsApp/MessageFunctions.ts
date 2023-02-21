@@ -1,4 +1,4 @@
-import set from 'lodash.set';
+import { set } from 'lodash-es';
 import { BinaryDataManager } from 'n8n-core';
 import type {
 	IDataObject,

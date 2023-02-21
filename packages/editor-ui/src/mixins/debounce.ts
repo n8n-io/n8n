@@ -1,4 +1,4 @@
-import { debounce } from 'lodash';
+import { debounce } from 'camelCase';
 import Vue from 'vue';
 
 export const debounceHelper = Vue.extend({

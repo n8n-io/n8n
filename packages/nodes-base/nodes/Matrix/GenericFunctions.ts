@@ -5,7 +5,6 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(

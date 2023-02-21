@@ -3,7 +3,7 @@ import { apiRequest } from './v2/transport';
 import type { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 
 import * as XLSX from 'xlsx';
-import { isEqual, zip } from 'lodash';
+import { isEqual, zip } from 'lodash-es';
 
 export const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 

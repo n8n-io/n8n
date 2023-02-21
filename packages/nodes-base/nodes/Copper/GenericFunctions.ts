@@ -13,7 +13,7 @@ import type {
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { flow, omit } from 'lodash';
+import { flow, omit } from 'lodash-es';
 
 import type {
 	AddressFixedCollection,

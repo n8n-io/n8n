@@ -5,7 +5,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
-import { flow } from 'lodash';
+import { flow } from 'lodash-es';
 
 import type { Zammad } from './types';
 
