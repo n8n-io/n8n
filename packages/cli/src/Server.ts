@@ -145,6 +145,7 @@ import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
+import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
 
@@ -167,6 +168,8 @@ class Server extends AbstractServer {
 
 	credentialTypes: ICredentialTypes;
 
+	postHog: PostHogClient;
+
 	push: Push;
 
 	constructor() {
@@ -178,6 +181,7 @@ class Server extends AbstractServer {
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
+		this.postHog = new PostHogClient();
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
@@ -232,6 +236,16 @@ class Server extends AbstractServer {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
+			posthog: {
+				enabled: config.getEnv('diagnostics.enabled'),
+				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				autocapture: false,
+				disableSessionRecording: config.getEnv(
+					'diagnostics.config.posthog.disableSessionRecording',
+				),
+				debug: config.getEnv('logs.level') === 'debug',
+			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
@@ -345,9 +359,10 @@ class Server extends AbstractServer {
 		const logger = LoggerProxy;
 		const internalHooks = InternalHooksManager.getInstance();
 		const mailer = getMailerInstance();
+		const postHog = this.postHog;
 
 		const controllers = [
-			new AuthController({ config, internalHooks, repositories, logger }),
+			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
@@ -359,6 +374,7 @@ class Server extends AbstractServer {
 				repositories,
 				activeWorkflowRunner,
 				logger,
+				postHog,
 			}),
 		];
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -378,6 +394,7 @@ class Server extends AbstractServer {
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
 		await this.initLicense();
+		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
