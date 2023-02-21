@@ -88,9 +88,7 @@ export default mixins(
 		hidePreview(): boolean {
 			const activeNotPresent =
 				this.filterApplied &&
-				(this.executions as IExecutionsSummary[]).find(
-					(ex) => ex.id === this.activeExecution.id,
-				) === undefined;
+				!(this.executions as IExecutionsSummary[]).find((ex) => ex.id === this.activeExecution?.id);
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
