@@ -1,6 +1,7 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
 import { flushPromises } from './Helpers';
+import { PostHogClient } from '@/posthog';
 
 jest.unmock('@/telemetry');
 jest.mock('@/license/License.service', () => {
@@ -10,6 +11,7 @@ jest.mock('@/license/License.service', () => {
 		},
 	};
 });
+jest.mock('@/posthog');
 
 describe('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
@@ -39,7 +41,11 @@ describe('Telemetry', () => {
 
 	beforeEach(() => {
 		spyTrack.mockClear();
-		telemetry = new Telemetry(instanceId);
+
+		const postHog = new PostHogClient();
+		postHog.init(instanceId);
+
+		telemetry = new Telemetry(instanceId, postHog);
 		(telemetry as any).rudderStack = {
 			flush: () => {},
 			identify: () => {},
