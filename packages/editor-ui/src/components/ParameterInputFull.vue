@@ -89,8 +89,9 @@ import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } 
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import { externalHooks } from '@/mixins/externalHooks';
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, externalHooks).extend({
 	name: 'parameter-input-full',
 	components: {
 		ParameterOptions,
@@ -326,6 +327,8 @@ export default mixins(showMessage).extend({
 							hasExpressionMapping(prevValue),
 						success: true,
 					});
+
+					this.$externalHooks().run('parameterInputFull.mappedData');
 				}
 				this.forceShowExpression = false;
 			}, 200);

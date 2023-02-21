@@ -515,7 +515,7 @@ export const ASSUMPTION_EXPERIMENT = {
 };
 
 export const ONBOARDING_EXPERIMENT = {
-	name: 'onboarding-checklist',
+	name: 'checklist_001',
 	control: 'control',
 	variant: 'variant',
 };
