@@ -1,3 +1,4 @@
+import { Service } from 'typedi';
 import type {
 	IWebhookData,
 	WebhookHttpMethod,
@@ -6,8 +7,9 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import * as NodeExecuteFunctions from 'n8n-core';
 
+@Service()
 export class ActiveWebhooks {
 	private workflowWebhooks: {
 		[key: string]: IWebhookData[];

@@ -48,7 +48,7 @@ import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
@@ -60,9 +60,8 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 } from '@/Interfaces';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { NodeTypes } from '@/NodeTypes';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -70,6 +69,8 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -280,7 +281,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, sessionId);
 			},
 		],
@@ -298,7 +299,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, sessionId);
 			},
 		],
@@ -315,7 +316,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (sessionId === undefined) {
 					return;
 				}
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send(
 					'executionStarted',
 					{
@@ -381,7 +382,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					retryOf,
 				};
 
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('executionFinished', sendData, sessionId);
 			},
 		],
@@ -389,7 +390,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 }
 
 export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
-	const externalHooks = ExternalHooks();
+	const externalHooks = Container.get(ExternalHooks);
 
 	return {
 		workflowExecuteBefore: [
@@ -923,10 +924,10 @@ async function executeWorkflow(
 		parentWorkflowSettings?: IWorkflowSettings;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
-	const externalHooks = ExternalHooks();
+	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
-	const nodeTypes = NodeTypes();
+	const nodeTypes = Container.get(NodeTypes);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -956,10 +957,10 @@ async function executeWorkflow(
 		executionId =
 			options.parentExecutionId !== undefined
 				? options.parentExecutionId
-				: await ActiveExecutions.getInstance().add(runData);
+				: await Container.get(ActiveExecutions).add(runData);
 	}
 
-	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+	void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId || '', runData);
 
 	let data;
 	try {
@@ -1062,7 +1063,7 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void InternalHooksManager.getInstance().onWorkflowPostExecute(
+	void Container.get(InternalHooks).onWorkflowPostExecute(
 		executionId,
 		workflowData,
 		data,
@@ -1072,11 +1073,11 @@ async function executeWorkflow(
 	if (data.finished === true) {
 		// Workflow did finish successfully
 
-		ActiveExecutions.getInstance().remove(executionId, data);
+		Container.get(ActiveExecutions).remove(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	ActiveExecutions.getInstance().remove(executionId, data);
+	Container.get(ActiveExecutions).remove(executionId, data);
 	// Workflow did fail
 	const { error } = data.data.resultData;
 	// eslint-disable-next-line @typescript-eslint/no-throw-literal
@@ -1092,7 +1093,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 		return;
 	}
 	Logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
-	ActiveExecutions.getInstance()
+	Container.get(ActiveExecutions)
 		.setStatus(this.executionId, status)
 		.catch((error) => {
 			Logger.debug(`Setting execution status "${status}" failed: ${error.message}`);
@@ -1108,7 +1109,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 
 	// Push data to session which started workflow
 	try {
-		const pushInstance = getPushInstance();
+		const pushInstance = Container.get(Push);
 		pushInstance.send(
 			'sendConsoleMessage',
 			{
@@ -1229,7 +1230,7 @@ export function getWorkflowHooksWorkerMain(
 		this: WorkflowHooks,
 		nodeName: string,
 	): Promise<void> {
-		void InternalHooksManager.getInstance().onNodeBeforeExecute(
+		void Container.get(InternalHooks).onNodeBeforeExecute(
 			this.executionId,
 			this.workflowData,
 			nodeName,
@@ -1239,7 +1240,7 @@ export function getWorkflowHooksWorkerMain(
 		this: WorkflowHooks,
 		nodeName: string,
 	): Promise<void> {
-		void InternalHooksManager.getInstance().onNodePostExecute(
+		void Container.get(InternalHooks).onNodePostExecute(
 			this.executionId,
 			this.workflowData,
 			nodeName,
@@ -1281,7 +1282,7 @@ export function getWorkflowHooksMain(
 		this: WorkflowHooks,
 		nodeName: string,
 	): Promise<void> {
-		void InternalHooksManager.getInstance().onNodeBeforeExecute(
+		void Container.get(InternalHooks).onNodeBeforeExecute(
 			this.executionId,
 			this.workflowData,
 			nodeName,
@@ -1292,7 +1293,7 @@ export function getWorkflowHooksMain(
 		this: WorkflowHooks,
 		nodeName: string,
 	): Promise<void> {
-		void InternalHooksManager.getInstance().onNodePostExecute(
+		void Container.get(InternalHooks).onNodePostExecute(
 			this.executionId,
 			this.workflowData,
 			nodeName,
