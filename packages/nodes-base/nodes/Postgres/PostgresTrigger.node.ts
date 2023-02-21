@@ -52,6 +52,11 @@ export class PostgresTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'public' },
 				required: true,
+				displayOptions: {
+					show: {
+						triggerMode: ['createTrigger'],
+					},
+				},
 				modes: [
 					{
 						displayName: 'From List',
