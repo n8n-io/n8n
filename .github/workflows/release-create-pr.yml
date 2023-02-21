@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       base-branch:
-        description: 'The branch to create this release PR from.'
+        description: 'The branch, tag, or commit to create this release PR from.'
         required: true
         default: 'master'
 
@@ -36,7 +36,8 @@ jobs:
 
       - name: Push the base branch
         run: |
-          git push -f origin ${{ github.event.inputs.base-branch }}:"release/${{ github.event.inputs.release-type }}"
+          git checkout -b "release/${{ github.event.inputs.release-type }}"
+          git push -f origin "release/${{ github.event.inputs.release-type }}"
 
       - uses: pnpm/action-setup@v2.2.4
       - uses: actions/setup-node@v3
