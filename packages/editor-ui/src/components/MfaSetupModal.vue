@@ -217,8 +217,7 @@ export default mixins(showMessage, copyPaste).extend({
 				this.closeDialog();
 				this.$showMessage({
 					type: 'success',
-					message: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.message'),
-					title: '',
+					title: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.message'),
 				});
 			} catch (e) {}
 		},
