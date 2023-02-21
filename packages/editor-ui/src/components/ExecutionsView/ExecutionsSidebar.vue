@@ -161,7 +161,6 @@ export default Vue.extend({
 		},
 		executionStatuses(): Array<{ id: string; name: string }> {
 			return [
-				{ id: 'new', name: this.$locale.baseText('executionsList.new') },
 				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
 				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
 				{ id: 'success', name: this.$locale.baseText('executionsList.success') },

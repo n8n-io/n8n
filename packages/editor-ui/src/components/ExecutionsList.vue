@@ -336,10 +336,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						name: this.$locale.baseText('executionsList.error'),
 					},
 					{
-						id: 'new',
-						name: this.$locale.baseText('executionsList.new'),
-					},
-					{
 						id: 'running',
 						name: this.$locale.baseText('executionsList.running'),
 					},
@@ -399,9 +395,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				switch (this.filter.status as ExecutionStatus) {
 					case 'waiting':
 						queryFilter.status = ['waiting'];
-						break;
-					case 'new':
-						queryFilter.status = ['new'];
 						break;
 					case 'error':
 						queryFilter.status = ['failed', 'crashed', 'error'];
@@ -806,8 +799,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 			},
 			getStatus(execution: IExecutionsSummary): ExecutionStatus {
-				if (execution.status) return execution.status;
-				else {
+				if (execution.status) {
+					return execution.status;
+				} else {
 					// this should not happen but just in case
 					let status: ExecutionStatus = 'unknown';
 					if (execution.waitTill) {
@@ -836,7 +830,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else if (status === 'crashed') {
 					text = this.$locale.baseText('executionsList.error');
 				} else if (status === 'new') {
-					text = this.$locale.baseText('executionsList.new');
+					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'success') {
@@ -858,7 +852,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else if (status === 'crashed') {
 					path = 'executionsList.statusText';
 				} else if (status === 'new') {
-					path = 'executionsList.statusNew';
+					path = 'executionsList.statusRunning';
 				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
 				} else if (status === 'success') {
@@ -1011,11 +1005,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 
+	.crashed &,
+	.error &,
 	.failed & {
-		color: var(--color-danger);
-	}
-
-	.crashed & {
 		color: var(--color-danger);
 	}
 
@@ -1027,6 +1019,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		font-weight: var(--font-weight-normal);
 	}
 
+	.new &,
 	.running & {
 		color: var(--color-warning);
 	}
