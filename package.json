@@ -34,10 +34,10 @@
     "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
-    "n8n": "*"
+    "n8n": "workspace:*"
   },
   "devDependencies": {
-    "@n8n_io/eslint-config": "*",
+    "@n8n_io/eslint-config": "workspace:*",
     "@ngneat/falso": "^6.1.0",
     "@types/jest": "^29.2.2",
     "@types/supertest": "^2.0.12",

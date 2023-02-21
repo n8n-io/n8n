@@ -1,0 +1,69 @@
+name: 'Release: Create Pull Request'
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The branch to create this release PR from.'
+        required: true
+        default: 'master'
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: choice
+        default: 'minor'
+        options:
+          - patch
+          - minor
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.base-branch }}
+
+      - name: Push the base branch
+        run: |
+          git push -f origin ${{ github.event.inputs.base-branch }}:"release/${{ github.event.inputs.release-type }}"
+
+      - uses: pnpm/action-setup@v2.2.4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+      - run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Bump package versions
+        run: |
+          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> $GITHUB_ENV
+          pnpm i --lockfile-only
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release-type }}
+
+      - name: Generate Changelog
+        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -t n8n@
+
+      - name: Push the release branch, and Create the PR
+        uses: peter-evans/create-pull-request@v4
+        with:
+          base: 'release/${{ github.event.inputs.release-type }}'
+          branch: 'release/${{ env.NEXT_RELEASE }}'
+          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          delete-branch: true
+          labels: 'release'
+          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          # 'TODO: add generated changelog to the body. create a script to generate custom changelog'
+          body: ''
+
+      # TODO: post PR link to slack
