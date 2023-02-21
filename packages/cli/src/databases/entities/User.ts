@@ -122,4 +122,12 @@ export class User extends AbstractEntity implements IUser {
 	computeIsPending(): void {
 		this.isPending = this.password === null;
 	}
+
+	hasRecoveryCodesLeft: boolean;
+
+	@AfterLoad()
+	@AfterUpdate()
+	computeHasRecoveryCodesLeft(): void {
+		this.hasRecoveryCodesLeft = !!this.mfaRecoveryCodes.length;
+	}
 }

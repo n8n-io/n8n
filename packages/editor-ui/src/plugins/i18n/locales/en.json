@@ -1724,5 +1724,7 @@
 	"settings.personal.mfa.button.enabled": "Enable 2FA",
 	"settings.personal.mfa.button.disabled": "Disable two-factor authentication",
 	"settings.personal.mfa.toast.disabledMfa.title": "Two-factor authentication disabled",
-	"settings.personal.mfa.toast.disabledMfa.message": "You will no longer need your authenticator app when signing in"
+	"settings.personal.mfa.toast.disabledMfa.message": "You will no longer need your authenticator app when signing in",
+	"settings.mfa.toast.noRecoveryCodeLeft.title": "No 2FA recovery codes remaining",
+	"settings.mfa.toast.noRecoveryCodeLeft.message": "You have used all of your recovery codes. Disable then re-enable two-factor authentication to generate new codes. <a href='/settings/personal' target='_blank' >Open settings</a>"
 }

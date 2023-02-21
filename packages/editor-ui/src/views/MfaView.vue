@@ -174,14 +174,28 @@ export default mixins(showMessage).extend({
 					mfaToken: form.token,
 					mfaRecoveryCode: form.recoveryCode,
 				});
+
+				if (this.usersStore.currentUser) {
+					const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
+
+					console.log('mfa enablwd', mfaEnabled);
+					console.log('hasRecoveryCodesLeft', hasRecoveryCodesLeft);
+
+					if (mfaEnabled && !hasRecoveryCodesLeft) {
+						this.$showToast({
+							title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
+							message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
+							type: 'info',
+							duration: 0,
+						});
+					}
+				}
 			} catch (error) {
 				this.formError = !this.showRecoveryCodeForm
 					? this.$locale.baseText('mfa.code.invalid')
 					: this.$locale.baseText('mfa.recovery.invalid');
 				return;
 			}
-
-			this.clearAllStickyNotifications();
 
 			if (typeof this.$route.query.redirect === 'string') {
 				const redirect = decodeURIComponent(this.$route.query.redirect);

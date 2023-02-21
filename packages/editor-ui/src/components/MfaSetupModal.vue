@@ -270,7 +270,7 @@ export default mixins(showMessage, copyPaste).extend({
 	text-align: center;
 }
 .recoveryCodesContainer {
-	height: 159px;
+	height: 140px;
 	display: flex;
 	flex-direction: column;
 	background-color: var(--color-background-base);
@@ -283,6 +283,7 @@ export default mixins(showMessage, copyPaste).extend({
 	padding-bottom: 10px;
 	gap: 10px;
 	margin-bottom: 3px;
+	overflow-y: scroll;
 }
 
 .recoveryCodesContainer span {

@@ -59,7 +59,7 @@ export class AuthController {
 			if (user.mfaEnabled) {
 				const isMFATokenValid =
 					this.validateMfaToken(user, mfaToken) ||
-					this.validateMfaRecoveryCode(user, mfaRecoveryCode);
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
 				// console.log('valid mFA TOKEN', user, mfaToken, isMFATokenValid);
 				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
@@ -193,7 +193,21 @@ export class AuthController {
 		});
 	}
 
-	private validateMfaRecoveryCode(user: User, mfaRecoveryCode: string) {
-		return user.mfaRecoveryCodes.includes(mfaRecoveryCode);
+	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode: string) {
+		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
+		if (index === -1) return false;
+
+		if (user.mfaRecoveryCodes.length === 1) {
+			user.hasRecoveryCodesLeft = false;
+		}
+
+		// remove used recovery code
+		user.mfaRecoveryCodes.splice(index, 1);
+
+		await this.userRepository.update(user.id, {
+			mfaRecoveryCodes: user.mfaRecoveryCodes,
+		});
+
+		return true;
 	}
 }

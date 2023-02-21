@@ -16,7 +16,7 @@ export class MFAController {
 	async getQRCode(req: AuthenticatedRequest) {
 		const { email, id } = req.user;
 
-		const codes = Array.from(Array(5)).map(() => uuid());
+		const codes = Array.from(Array(10)).map(() => uuid());
 		const { base32, otpauth_url } = speakeasy.generateSecret({
 			issuer,
 			name: email,

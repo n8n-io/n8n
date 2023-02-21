@@ -143,6 +143,8 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		updatedAt,
 		apiKey,
 		authIdentities,
+		mfaSecret,
+		mfaRecoveryCodes,
 		...rest
 	} = user;
 	if (withoutKeys) {
@@ -159,6 +161,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	if (ldapIdentity) {
 		sanitizedUser.signInType = 'ldap';
 	}
+
 	return sanitizedUser;
 }
 
