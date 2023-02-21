@@ -8,12 +8,18 @@ export class MigrateExecutionStatus1676996103000 implements MigrationInterface {
 		logMigrationStart(this.name);
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(`
-UPDATE "${tablePrefix}execution_entity" SET "status" = 'waiting' WHERE "status" IS NULL AND "waitTill" IS NOT NULL;
-UPDATE "${tablePrefix}execution_entity" SET "status" = 'failed' WHERE "status" IS NULL AND "finished"=false AND "stoppedAt" IS NOT NULL;
-UPDATE "${tablePrefix}execution_entity" SET "status" = 'success' WHERE "status" IS NULL AND "finished"=true AND "stoppedAt" IS NOT NULL;
-UPDATE "${tablePrefix}execution_entity" SET "status" = 'crashed' WHERE "status" IS NULL;
-`);
+		await queryRunner.query(
+			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'waiting' WHERE "status" IS NULL AND "waitTill" IS NOT NULL;`,
+		);
+		await queryRunner.query(
+			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'failed' WHERE "status" IS NULL AND "finished"=false AND "stoppedAt" IS NOT NULL;`,
+		);
+		await queryRunner.query(
+			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'success' WHERE "status" IS NULL AND "finished"=true AND "stoppedAt" IS NOT NULL;`,
+		);
+		await queryRunner.query(
+			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'crashed' WHERE "status" IS NULL;`,
+		);
 
 		logMigrationEnd(this.name);
 	}
