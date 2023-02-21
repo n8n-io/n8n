@@ -8,6 +8,7 @@ export class ReadBinaryFile implements INodeType {
 		icon: 'fa:file-import',
 		group: ['input'],
 		version: 1,
+		hidden: true,
 		description: 'Reads a binary file from disk',
 		defaults: {
 			name: 'Read Binary File',

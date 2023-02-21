@@ -663,6 +663,7 @@
 	"ndv.pinData.error.tooLarge.description": "You can pin at most 12MB of output per workflow.",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
+	"node.thisIsATriggerNode": "This is a Trigger node. <a target=\"_blank\" href=\"https://docs.n8n.io/workflows/components/nodes/\">Learn more</a>",
 	"node.activateDeactivateNode": "Activate/Deactivate Node",
 	"node.deleteNode": "Delete Node",
 	"node.disabled": "Disabled",
