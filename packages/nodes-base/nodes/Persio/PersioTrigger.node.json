@@ -1,0 +1,23 @@
+{
+	"node": "n8n-nodes-base.PersioTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Analytics", "Development", "Sales", "Marketing", "Data"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/persio"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.persiotrigger/"
+			}
+		],
+		"generic": [
+			{
+				"url": "https://persio.io/"
+			}
+		]
+	}
+}
