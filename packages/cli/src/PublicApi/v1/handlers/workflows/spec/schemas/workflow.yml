@@ -45,5 +45,5 @@ properties:
   tags:
     type: array
     items:
-      $ref: './tag.yml'
+      $ref: '../../../tags/spec/schemas/tag.yml'
     readOnly: true

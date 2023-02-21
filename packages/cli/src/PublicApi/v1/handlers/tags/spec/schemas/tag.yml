@@ -1,7 +1,20 @@
 type: object
+additionalProperties: false
+required:
+  - name
 properties:
   id:
     type: number
-    example: 1000
+    readOnly: true
+    example: 12
   name:
     type: string
+    example: Production
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true

@@ -1,6 +1,6 @@
 import type express from 'express';
 
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { FindManyOptions, FindOptionsWhere, QueryFailedError } from 'typeorm';
 import { In } from 'typeorm';
 
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -27,8 +27,13 @@ import {
 	createWorkflow,
 	getWorkflowIdsViaTags,
 	parseTagNames,
+	updateTags,
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
+import * as TagHelpers from '@/TagHelpers';
+import {
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
 
 export = {
 	createWorkflow: [
@@ -277,6 +282,63 @@ export = {
 
 			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
+		},
+	],
+	getWorkflowTags: [
+		authorize(['owner', 'member']),
+		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+
+			if (config.getEnv('workflowTagsDisabled')) {
+				return res.status(406).json({ message: 'Workflow Tags Disabled' });
+			}
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow he does not own
+				// or workflow does not exist
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const tablePrefix = config.getEnv('database.tablePrefix');
+			const tags = await TagHelpers.getRelations(id, tablePrefix);
+
+			return res.json(tags);
+		},
+	],
+	updateWorkflowTags: [
+		authorize(['owner', 'member']),
+		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			let newTags = req.body.map(newTag => newTag.id);
+
+			Logger.info("New tags: " + newTags)
+
+			if (config.getEnv('workflowTagsDisabled')) {
+				return res.status(406).json({ message: 'Workflow Tags Disabled' });
+			}
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow he does not own
+				// or workflow does not exist
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			let tags;
+			try {
+				tags = await updateTags(id, newTags);
+			} catch (error) {
+				if (error instanceof QueryFailedError && error.message.includes("SQLITE_CONSTRAINT")) {
+					return res.status(404).json({ message: 'Some tags not found' });
+				} else {
+					throw error;
+				}
+			}
+
+			return res.json(tags);
 		},
 	],
 };

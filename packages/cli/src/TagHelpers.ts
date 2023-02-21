@@ -89,6 +89,26 @@ export async function removeRelations(workflowId: string, tablePrefix: string) {
 		.execute();
 }
 
+/**
+ * Retrieve all tags of a workflow.
+ */
+export async function getRelations(workflowId: string, tablePrefix: string) {
+	return getConnection()
+		.createQueryBuilder()
+		.select(`${tablePrefix}tag_entity.id`, 'id')
+		.addSelect(`${tablePrefix}tag_entity.name`, 'name')
+		.addSelect(`${tablePrefix}tag_entity.createdAt`, 'createdAt')
+		.addSelect(`${tablePrefix}tag_entity.updatedAt`, 'updatedAt')
+		.from(`${tablePrefix}tag_entity`, 'tag_entity')
+		.leftJoin(
+			`${tablePrefix}workflows_tags`,
+			'workflows_tags',
+			`${tablePrefix}workflows_tags.tagId = tag_entity.id`,
+		)
+		.where('workflows_tags.workflowId = :id', { id: workflowId })
+		.execute();
+}
+
 const createTag = async (transactionManager: EntityManager, name: string): Promise<TagEntity> => {
 	const tag = new TagEntity();
 	tag.name = name;

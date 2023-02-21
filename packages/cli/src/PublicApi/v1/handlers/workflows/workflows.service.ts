@@ -148,3 +148,40 @@ export function getStartNode(): INode {
 export function parseTagNames(tags: string): string[] {
 	return tags.split(',').map((tag) => tag.trim());
 }
+
+export async function updateTags(
+	workflowId: string,
+	newTags: string[],
+): Promise<any> {
+	const tablePrefix = config.getEnv('database.tablePrefix');
+	return Db.transaction(async (transactionManager) => {
+		await transactionManager.connection
+			.createQueryBuilder()
+			.delete()
+			.from(`${tablePrefix}workflows_tags`)
+			.where('workflowId = :id', { id: workflowId })
+			.execute();
+		
+		await transactionManager.connection
+			.createQueryBuilder()
+			.insert()
+			.into(`${tablePrefix}workflows_tags`)
+			.values(newTags.map((tagId) => ({ workflowId, tagId })))
+			.execute();
+		
+		return await transactionManager.connection
+			.createQueryBuilder()
+			.select(`${tablePrefix}tag_entity.id`, 'id')
+			.addSelect(`${tablePrefix}tag_entity.name`, 'name')
+			.addSelect(`${tablePrefix}tag_entity.createdAt`, 'createdAt')
+			.addSelect(`${tablePrefix}tag_entity.updatedAt`, 'updatedAt')
+			.from(`${tablePrefix}tag_entity`, 'tag_entity')
+			.leftJoin(
+				`${tablePrefix}workflows_tags`,
+				'workflows_tags',
+				`${tablePrefix}workflows_tags.tagId = tag_entity.id`,
+			)
+			.where('workflows_tags.workflowId = :id', { id: workflowId })
+			.execute();
+	});
+}

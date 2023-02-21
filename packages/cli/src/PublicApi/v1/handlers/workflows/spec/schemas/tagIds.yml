@@ -1,0 +1,10 @@
+type: array
+items:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+  properties:
+    id:
+      type: number
+      example: 12
