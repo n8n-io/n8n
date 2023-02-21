@@ -74,6 +74,7 @@ import * as testDb from '../shared/testDb';
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
+import { PostHogClient } from '@/posthog';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
@@ -107,8 +108,11 @@ export async function initTestServer({
 	const logger = getLogger();
 	LoggerProxy.init(logger);
 
+	const postHog = new PostHogClient();
+	postHog.init('test-instance-id');
+
 	// Pre-requisite: Mock the telemetry module before calling.
-	await InternalHooksManager.init('test-instance-id', mockNodeTypes);
+	await InternalHooksManager.init('test-instance-id', mockNodeTypes, postHog);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));

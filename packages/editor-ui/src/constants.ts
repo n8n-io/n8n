@@ -506,4 +506,18 @@ export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
-export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';
+
+export const ASSUMPTION_EXPERIMENT = {
+	name: 'adore-assumption-tests-1',
+	control: 'control',
+	demo: 'assumption-demo',
+	video: 'assumption-video',
+};
+
+export const ONBOARDING_EXPERIMENT = {
+	name: 'onboarding-checklist',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
