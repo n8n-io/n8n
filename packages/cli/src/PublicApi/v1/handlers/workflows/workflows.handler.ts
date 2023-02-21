@@ -288,7 +288,7 @@ export = {
 			const { id } = req.params;
 
 			if (config.getEnv('workflowTagsDisabled')) {
-				return res.status(406).json({ message: 'Workflow Tags Disabled' });
+				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
@@ -312,7 +312,7 @@ export = {
 			let newTags = req.body.map(newTag => newTag.id);
 
 			if (config.getEnv('workflowTagsDisabled')) {
-				return res.status(406).json({ message: 'Workflow Tags Disabled' });
+				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);

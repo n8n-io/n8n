@@ -13,7 +13,7 @@ post:
           $ref: '../schemas/tag.yml'
     required: true
   responses:
-    '200':
+    '201':
       description: A tag object
       content:
         application/json:
@@ -21,6 +21,8 @@ post:
             $ref: '../schemas/tag.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
@@ -42,5 +44,3 @@ get:
             $ref: '../schemas/tagList.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '404':
-      $ref: '../../../../shared/spec/responses/notFound.yml'

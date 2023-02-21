@@ -36,6 +36,8 @@ delete:
             $ref: '../schemas/tag.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
@@ -67,3 +69,5 @@ put:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

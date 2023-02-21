@@ -46,7 +46,7 @@ export = {
 
 			await ExternalHooks().run('tag.afterCreate', [tag]);
 
-			return res.json(tag);
+			return res.status(201).json(tag);
 		},
 	],
 	updateTag: [
@@ -93,10 +93,7 @@ export = {
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === true &&
 				req.user.globalRole.name !== 'owner'
 			) {
-				throw new ResponseHelper.UnauthorizedError(
-					'You are not allowed to perform this action',
-					'Only owners can remove tags',
-				);
+				return res.status(403).json({ message: 'You are not allowed to perform this action. Only owners can remove tags' });
 			}
 			
 			const { id } = req.params;

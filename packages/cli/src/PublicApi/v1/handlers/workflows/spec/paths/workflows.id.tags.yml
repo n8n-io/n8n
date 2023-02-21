@@ -14,6 +14,8 @@ get:
         application/json:
           schema:
             $ref: '../schemas/workflowTags.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
@@ -35,12 +37,14 @@ put:
             $ref: '../schemas/tagIds.yml'
     required: true
   responses:
-    '201':
+    '200':
       description: List of tags after add the tag
       content:
         application/json:
           schema:
             $ref: '../schemas/workflowTags.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
