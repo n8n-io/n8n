@@ -20,7 +20,6 @@ import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
-import MfaSetupView from './views/MfaSetupView.vue';
 import Mfa from './views/MfaView.vue';
 import Router, { Route } from 'vue-router';
 
@@ -661,23 +660,6 @@ const router = new Router({
 					},
 				},
 			],
-		},
-		{
-			path: '/mfa-setup',
-			name: VIEWS.MFA_SETUP,
-			components: {
-				default: MfaSetupView,
-			},
-			meta: {
-				permissions: {
-					allow: {
-						shouldAllow: () => {
-							const usersStore = useUsersStore();
-							return usersStore.mfaEnabled === false;
-						},
-					},
-				},
-			},
 		},
 		{
 			path: '/mfa',
