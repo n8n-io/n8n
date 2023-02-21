@@ -33,6 +33,7 @@ import {
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
+	FileNotFoundError,
 } from 'n8n-core';
 
 import type {
@@ -1149,21 +1150,26 @@ class Server extends AbstractServer {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				const binaryDataManager = BinaryDataManager.getInstance();
-				const binaryPath = binaryDataManager.getBinaryPath(identifier);
-				let { mode, fileName, mimeType } = req.query;
-				if (!fileName || !mimeType) {
-					try {
-						const metadata = await binaryDataManager.getBinaryMetadata(identifier);
-						fileName = metadata.fileName;
-						mimeType = metadata.mimeType;
-						res.setHeader('Content-Length', metadata.fileSize);
-					} catch {}
+				try {
+					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					let { mode, fileName, mimeType } = req.query;
+					if (!fileName || !mimeType) {
+						try {
+							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							fileName = metadata.fileName;
+							mimeType = metadata.mimeType;
+							res.setHeader('Content-Length', metadata.fileSize);
+						} catch {}
+					}
+					if (mimeType) res.setHeader('Content-Type', mimeType);
+					if (mode === 'download') {
+						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+					}
+					res.sendFile(binaryPath);
+				} catch (error) {
+					if (error instanceof FileNotFoundError) res.writeHead(404).end();
+					else throw error;
 				}
-				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (mode === 'download') {
-					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-				}
-				res.sendFile(binaryPath);
 			},
 		);
 
