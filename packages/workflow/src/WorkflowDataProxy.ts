@@ -806,6 +806,18 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
+						if (itemPreviousNode.name === 'n8n-nodes-base.postgres') {
+							throw createExpressionError('Invalid expression', {
+								messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+								functionality: 'pairedItem',
+								functionOverrides: {
+									description: `To fetch the data from other nodes that this expression needs, more information is needed from the node  ‘<strong>${destinationNodeName}</strong>’ To fix this, add the 'Mode' option to that node and set it to 'Independently'`,
+									message: 'Invalid code',
+								},
+								description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${destinationNodeName}</strong>’ To fix this, add the 'Mode' option to that node and set it to 'Independently'`,
+								type: 'multiple matches',
+							});
+						}
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
 							functionality: 'pairedItem',
