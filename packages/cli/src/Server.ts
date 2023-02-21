@@ -1047,6 +1047,7 @@ class Server extends AbstractServer {
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
+							status: data.status,
 						});
 					}
 

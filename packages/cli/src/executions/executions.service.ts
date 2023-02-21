@@ -258,6 +258,7 @@ export class ExecutionsService {
 				'execution.startedAt',
 				'execution.stoppedAt',
 				'execution.workflowData',
+				'execution.status',
 			])
 			.orderBy('id', 'DESC')
 			.take(limit)
