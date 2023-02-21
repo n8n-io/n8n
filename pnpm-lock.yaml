@@ -21,6 +21,9 @@ patchedDependencies:
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
+  typedi@0.10.0:
+    hash: syy565ld7euwcedfbmx53j2qc4
+    path: patches/typedi@0.10.0.patch
 
 importers:
 
@@ -227,6 +230,7 @@ importers:
       posthog-node: ^2.2.2
       prom-client: ^13.1.0
       psl: ^1.8.0
+      reflect-metadata: ^0.1.13
       replacestream: ^4.0.3
       run-script-os: ^1.0.7
       semver: ^7.3.8
@@ -236,8 +240,10 @@ importers:
       sse-channel: ^4.0.0
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
+      ts-essentials: ^7.0.3
       tsc-alias: ^1.8.2
       tsconfig-paths: ^4.1.2
+      typedi: ^0.10.0
       typeorm: ^0.3.12
       uuid: ^8.3.2
       validator: 13.7.0
@@ -320,6 +326,7 @@ importers:
       posthog-node: 2.2.2
       prom-client: 13.2.0
       psl: 1.9.0
+      reflect-metadata: 0.1.13
       replacestream: 4.0.3
       semver: 7.3.8
       shelljs: 0.8.5
@@ -328,6 +335,7 @@ importers:
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
+      typedi: 0.10.0
       typeorm: 0.3.12_pgelcv6ef3switkrteavpif3pq
       uuid: 8.3.2
       validator: 13.7.0
@@ -381,6 +389,7 @@ importers:
       mock-jwks: 1.0.9_nock@13.2.9
       nodemon: 2.0.20
       run-script-os: 1.1.6
+      ts-essentials: 7.0.3_typescript@4.9.4
       tsc-alias: 1.8.2
       tsconfig-paths: 4.1.2
 
@@ -19490,6 +19499,10 @@ packages:
 
   /typedarray/0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
+
+  /typedi/0.10.0:
+    resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
+    dev: false
 
   /typeorm/0.3.12_pgelcv6ef3switkrteavpif3pq:
     resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}

@@ -15,7 +15,7 @@ import type {
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator, FindOptionsWhere } from 'typeorm';
 import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
@@ -34,6 +34,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
+import { Container } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 
 interface IGetExecutionsQueryFilter {
@@ -203,7 +204,7 @@ export class ExecutionsService {
 
 		// We may have manual executions even with queue so we must account for these.
 		executingWorkflowIds.push(
-			...ActiveExecutions.getInstance()
+			...Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id),
 		);
@@ -460,7 +461,7 @@ export class ExecutionsService {
 			}
 
 			data.workflowData = workflowData;
-			const nodeTypes = NodeTypes();
+			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
 				id: workflowData.id as string,
 				name: workflowData.name,
@@ -495,7 +496,7 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData = await ActiveExecutions.getInstance().getPostExecutePromise(
+		const executionData = await Container.get(ActiveExecutions).getPostExecutePromise(
 			retriedExecutionId,
 		);
 

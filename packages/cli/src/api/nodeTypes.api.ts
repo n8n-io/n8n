@@ -8,6 +8,7 @@ import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getNodeTranslationPath } from '@/TranslationHelpers';
+import { Container } from 'typedi';
 
 export const nodeTypesController = express.Router();
 
@@ -21,7 +22,7 @@ nodeTypesController.post(
 
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-				const { description } = NodeTypes().getByNameAndVersion(name, version);
+				const { description } = Container.get(NodeTypes).getByNameAndVersion(name, version);
 				acc.push(description);
 				return acc;
 			}, []);
@@ -32,7 +33,7 @@ nodeTypesController.post(
 			version: number,
 			nodeTypes: INodeTypeDescription[],
 		) {
-			const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
+			const { description, sourcePath } = Container.get(NodeTypes).getWithSourcePath(name, version);
 			const translationPath = await getNodeTranslationPath({
 				nodeSourcePath: sourcePath,
 				longNodeType: description.name,

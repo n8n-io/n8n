@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.216.0",
+  "version": "0.216.1",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -109,6 +109,7 @@
     "mock-jwks": "^1.0.9",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",
+    "ts-essentials": "^7.0.3",
     "tsc-alias": "^1.8.2",
     "tsconfig-paths": "^4.1.2"
   },
@@ -188,6 +189,7 @@
     "posthog-node": "^2.2.2",
     "prom-client": "^13.1.0",
     "psl": "^1.8.0",
+    "reflect-metadata": "^0.1.13",
     "replacestream": "^4.0.3",
     "semver": "^7.3.8",
     "shelljs": "^0.8.5",
@@ -196,6 +198,7 @@
     "sse-channel": "^4.0.0",
     "swagger-ui-express": "^4.3.0",
     "syslog-client": "^1.1.1",
+    "typedi": "^0.10.0",
     "typeorm": "^0.3.12",
     "uuid": "^8.3.2",
     "validator": "13.7.0",

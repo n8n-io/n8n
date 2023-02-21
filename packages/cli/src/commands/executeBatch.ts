@@ -7,7 +7,7 @@ import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash.pick';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -16,6 +16,7 @@ import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
+import { Container } from 'typedi';
 
 const re = /\d+/;
 
@@ -101,7 +102,7 @@ export class ExecuteBatch extends BaseCommand {
 		}
 
 		ExecuteBatch.cancelled = true;
-		const activeExecutionsInstance = ActiveExecutions.getInstance();
+		const activeExecutionsInstance = Container.get(ActiveExecutions);
 		const stopPromises = activeExecutionsInstance
 			.getActiveExecutions()
 			.map(async (execution) => activeExecutionsInstance.stopExecution(execution.id));
@@ -597,7 +598,7 @@ export class ExecuteBatch extends BaseCommand {
 				const workflowRunner = new WorkflowRunner();
 				const executionId = await workflowRunner.run(runData);
 
-				const activeExecutions = ActiveExecutions.getInstance();
+				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);
 				if (gotCancel || ExecuteBatch.cancelled) {
 					clearTimeout(timeoutTimer);
