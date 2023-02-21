@@ -79,7 +79,8 @@
       "qqjs>globby": "^11.1.0"
     },
     "patchedDependencies": {
-      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
+      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
+      "typedi@0.10.0": "patches/typedi@0.10.0.patch"
     }
   }
 }
