@@ -58,7 +58,6 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	if (options.length === 0) return null;
 
 	if (tail !== '') {
-		console.log(options.filter((o) => o.label.startsWith(tail)));
 		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
 	}
 
@@ -103,7 +102,6 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 
 			return arrayMethods.filter((m) => !NUMBER_ONLY_ARRAY_EXTENSIONS.has(m.label));
 		}
-
 		return arrayMethods;
 	}
 
@@ -145,50 +143,61 @@ export const toOptions = (
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([fnName, fn]) => {
-			const option: Completion = {
-				label: isFunctionOption(optionType) ? fnName + '()' : fnName,
-				type: optionType,
-			};
-
-			option.info = () => {
-				const tooltipContainer = document.createElement('div');
-				tooltipContainer.classList.add('autocomplete-info-container');
-
-				if (!fn.doc?.description) return null;
-
-				const header = isFunctionOption(optionType)
-					? createFunctionHeader(typeName, fn)
-					: createPropHeader(typeName, fn);
-				header.classList.add('autocomplete-info-header');
-				tooltipContainer.appendChild(header);
-
-				const descriptionBody = document.createElement('div');
-				descriptionBody.classList.add('autocomplete-info-description');
-				const descriptionText = document.createElement('p');
-				descriptionText.innerHTML = sanitizeHtml(
-					fn.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-				);
-				descriptionBody.appendChild(descriptionText);
-				if (fn.doc.docURL) {
-					const descriptionLink = document.createElement('a');
-					descriptionLink.setAttribute('target', '_blank');
-					descriptionLink.setAttribute('href', fn.doc.docURL);
-					descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
-					descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
-						// This will prevent documentation popup closing before click
-						// event gets to links
-						event.preventDefault();
-					});
-					descriptionLink.classList.add('autocomplete-info-doc-link');
-					descriptionBody.appendChild(descriptionLink);
-				}
-				tooltipContainer.appendChild(descriptionBody);
-
-				return tooltipContainer;
-			};
-
-			return option;
+			return createCompletionOption(typeName, fnName, optionType, fn);
 		});
+};
+
+const createCompletionOption = (
+	typeName: string,
+	name: string,
+	optionType: AutocompleteOptionType,
+	docInfo: { doc?: DocMetadata | undefined },
+): Completion => {
+	const option: Completion = {
+		label: isFunctionOption(optionType) ? name + '()' : name,
+		type: optionType,
+	};
+
+	option.info = () => {
+		const tooltipContainer = document.createElement('div');
+		tooltipContainer.classList.add('autocomplete-info-container');
+
+		if (!docInfo.doc) return null;
+
+		const header = isFunctionOption(optionType)
+			? createFunctionHeader(typeName, docInfo)
+			: createPropHeader(typeName, docInfo);
+		header.classList.add('autocomplete-info-header');
+		tooltipContainer.appendChild(header);
+
+		if (docInfo.doc.description) {
+			const descriptionBody = document.createElement('div');
+			descriptionBody.classList.add('autocomplete-info-description');
+			const descriptionText = document.createElement('p');
+			descriptionText.innerHTML = sanitizeHtml(
+				docInfo.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
+			);
+			descriptionBody.appendChild(descriptionText);
+			if (docInfo.doc.docURL) {
+				const descriptionLink = document.createElement('a');
+				descriptionLink.setAttribute('target', '_blank');
+				descriptionLink.setAttribute('href', docInfo.doc.docURL);
+				descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
+				descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
+					// This will prevent documentation popup closing before click
+					// event gets to links
+					event.preventDefault();
+				});
+				descriptionLink.classList.add('autocomplete-info-doc-link');
+				descriptionBody.appendChild(descriptionLink);
+			}
+			tooltipContainer.appendChild(descriptionBody);
+		}
+
+		return tooltipContainer;
+	};
+
+	return option;
 };
 
 const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefined }) => {
@@ -282,9 +291,19 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 			};
 
 			const infoKey = [name, key].join('.');
-			const info = i18n.proxyVars[infoKey];
-
-			if (info) option.info = info;
+			const info = createCompletionOption(
+				'Object',
+				key,
+				isFunction ? 'native-function' : 'keyword',
+				{
+					doc: {
+						name: key,
+						returnType: typeof resolved[key],
+						description: i18n.proxyVars[infoKey],
+					},
+				},
+			);
+			option.info = info.info;
 
 			return option;
 		});
