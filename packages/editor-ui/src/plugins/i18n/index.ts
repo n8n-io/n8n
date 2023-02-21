@@ -483,6 +483,21 @@ export class I18nClass {
 		fromSQL: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSQL'),
 		invalid: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid'),
 		isDateTime: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime'),
+		expandFormat: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.expandFormat',
+		),
+		fromFormatExplain: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormatExplain',
+		),
+		fromString: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromString'),
+		fromStringExplain: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromStringExplain',
+		),
+		max: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.max'),
+		min: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.min'),
+		parseFormatForOpts: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.parseFormatForOpts',
+		),
 	};
 
 	autocompleteUIValues: Record<string, string | undefined> = {
