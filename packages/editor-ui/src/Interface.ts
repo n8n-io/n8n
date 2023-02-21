@@ -100,7 +100,7 @@ export interface IExternalHooks {
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
+	getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
 		filter: object,
 		limit: number,

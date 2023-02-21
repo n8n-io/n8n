@@ -40,6 +40,7 @@ import {
 	IWorkflowDb,
 } from '@/Interface';
 import {
+	ExecutionStatus,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -106,6 +107,31 @@ export default mixins(
 		},
 		totalFinishedExecutionsCount(): number {
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
+		},
+		requestFilter(): IDataObject {
+			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
+			if (this.filter.status === 'waiting') {
+				requestFilter.waitTill = true;
+			} else if (this.filter.status !== '') {
+				requestFilter.finished = this.filter.status === 'success';
+			}
+
+			switch (this.filter.status as ExecutionStatus) {
+				case 'waiting':
+					requestFilter.status = ['waiting'];
+					break;
+				case 'error':
+					requestFilter.status = ['failed', 'crashed', 'error'];
+					break;
+				case 'success':
+					requestFilter.status = ['success'];
+					break;
+				case 'running':
+					requestFilter.status = ['running'];
+					break;
+			}
+
+			return requestFilter;
 		},
 	},
 	watch: {
@@ -211,15 +237,9 @@ export default mixins(
 				lastId = lastItem.id;
 			}
 
-			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
-			if (this.filter.status === 'waiting') {
-				requestFilter.waitTill = true;
-			} else if (this.filter.status !== '') {
-				requestFilter.finished = this.filter.status === 'success';
-			}
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(requestFilter, limit, lastId);
+				data = await this.restApi().getPastExecutions(this.requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
 				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
@@ -390,7 +410,7 @@ export default mixins(
 				return [];
 			}
 			try {
-				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
 				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 					this.$showMessage(
