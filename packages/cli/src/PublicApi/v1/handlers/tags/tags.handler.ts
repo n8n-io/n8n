@@ -18,7 +18,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
 import { FindManyOptions, QueryFailedError } from 'typeorm';
-import * as ResponseHelper from '@/ResponseHelper';
 
 export = {
 	createTag: [
