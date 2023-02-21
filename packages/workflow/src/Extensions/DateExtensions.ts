@@ -1,15 +1,10 @@
+import { ExpressionExtensionError } from './../ExpressionError';
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import type {
-	DateTimeFormatOptions,
-	DateTimeUnit,
-	Duration,
-	DurationLike,
-	DurationObjectUnits,
-	LocaleOptions,
-} from 'luxon';
 import { DateTime } from 'luxon';
+import type { DateTimeUnit, DurationLike, DurationObjectUnits, LocaleOptions } from 'luxon';
 import type { ExtensionMap } from './Extensions';
+import { convertToDateTime } from './utils';
 
 type DurationUnit =
 	| 'milliseconds'
@@ -23,6 +18,7 @@ type DurationUnit =
 	| 'years';
 type DatePart =
 	| 'day'
+	| 'week'
 	| 'month'
 	| 'year'
 	| 'hour'
@@ -88,11 +84,8 @@ function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
 	if (isDateTime(date)) {
 		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 	}
-	let datetime = DateTime.fromJSDate(date);
-	if (date.getTimezoneOffset() === 0) {
-		datetime = datetime.setZone('UTC');
-	}
-	return datetime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
+	const dateTime = DateTime.fromJSDate(date);
+	return dateTime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 }
 
 function endOfMonth(date: Date | DateTime): Date {
@@ -103,7 +96,7 @@ function endOfMonth(date: Date | DateTime): Date {
 }
 
 function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
-	const [part] = extraArgs;
+	let [part = 'week'] = extraArgs;
 	let date = inputDate;
 	if (isDateTime(date)) {
 		date = date.toJSDate();
@@ -117,6 +110,10 @@ function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Da
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
 	}
 
+	if (part === 'week') {
+		part = 'weekNumber';
+	}
+
 	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
 }
 
@@ -128,10 +125,22 @@ function format(date: Date | DateTime, extraArgs: unknown[]): string {
 	return DateTime.fromJSDate(date).toFormat(dateFormat, { ...localeOpts });
 }
 
-function isBetween(date: Date | DateTime, extraArgs: unknown[]): boolean {
-	const [first, second] = extraArgs as string[];
-	const firstDate = new Date(first);
-	const secondDate = new Date(second);
+function isBetween(
+	date: Date | DateTime,
+	extraArgs: Array<string | Date | DateTime>,
+): boolean | undefined {
+	if (extraArgs.length !== 2) {
+		throw new ExpressionExtensionError('isBetween(): expected exactly two args');
+	}
+
+	const [first, second] = extraArgs;
+
+	const firstDate = convertToDateTime(first);
+	const secondDate = convertToDateTime(second);
+
+	if (!firstDate || !secondDate) {
+		return;
+	}
 
 	if (firstDate > secondDate) {
 		return secondDate < date && date < firstDate;
@@ -194,73 +203,60 @@ function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
 	return DateTime.fromJSDate(date).plus(generateDurationObject(durationValue, unit)).toJSDate();
 }
 
-function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
-	const [locale, dateFormat = { timeStyle: 'short', dateStyle: 'short' }] = extraArgs as [
-		string | undefined,
-		DateTimeFormatOptions,
-	];
+endOfMonth.doc = {
+	name: 'endOfMonth',
+	returnType: 'Date',
+	description: 'Transforms a date to the last possible moment that lies within the month',
+};
 
-	if (isDateTime(date)) {
-		return date.toLocaleString(dateFormat, { locale });
-	}
-	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
-}
+isDst.doc = {
+	name: 'isDst',
+	returnType: 'boolean',
+	description: 'Checks if a Date is within Daylight Savings Time',
+};
 
-function toTimeFromNow(date: Date | DateTime): string {
-	let diffObj: Duration;
-	if (isDateTime(date)) {
-		diffObj = date.diffNow();
-	} else {
-		diffObj = DateTime.fromJSDate(date).diffNow();
-	}
+isWeekend.doc = {
+	name: 'isWeekend',
+	returnType: 'boolean',
+	description: 'Checks if the Date falls on a Saturday or Sunday',
+};
 
-	const as = (unit: DurationUnit) => {
-		return Math.round(Math.abs(diffObj.as(unit)));
-	};
+// @TODO_NEXT_PHASE: Surface extensions below which take args
 
-	if (as('years')) {
-		return `${as('years')} years ago`;
-	}
-	if (as('months')) {
-		return `${as('months')} months ago`;
-	}
-	if (as('weeks')) {
-		return `${as('weeks')} weeks ago`;
-	}
-	if (as('days')) {
-		return `${as('days')} days ago`;
-	}
-	if (as('hours')) {
-		return `${as('hours')} hours ago`;
-	}
-	if (as('minutes')) {
-		return `${as('minutes')} minutes ago`;
-	}
-	if (as('seconds') && as('seconds') > 10) {
-		return `${as('seconds')} seconds ago`;
-	}
-	return 'just now';
-}
+beginningOf.doc = {
+	name: 'beginningOf',
+	returnType: 'Date',
+};
 
-function timeTo(date: Date | DateTime, extraArgs: unknown[]): Duration {
-	const [diff = new Date().toISOString(), unit = 'seconds'] = extraArgs as [string, DurationUnit];
-	const diffDate = new Date(diff);
-	if (isDateTime(date)) {
-		return date.diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
-	}
-	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
-}
+extract.doc = {
+	name: 'extract',
+	returnType: 'number',
+};
 
-function toDate(date: Date | DateTime) {
-	if (isDateTime(date)) {
-		return date.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-	}
-	let datetime = DateTime.fromJSDate(date);
-	if (date.getTimezoneOffset() === 0) {
-		datetime = datetime.setZone('UTC');
-	}
-	return datetime.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-}
+format.doc = {
+	name: 'format',
+	returnType: '(?)',
+};
+
+isBetween.doc = {
+	name: 'isBetween',
+	returnType: 'boolean',
+};
+
+isInLast.doc = {
+	name: 'isInLast',
+	returnType: 'boolean',
+};
+
+minus.doc = {
+	name: 'minus',
+	returnType: 'Date',
+};
+
+plus.doc = {
+	name: 'plus',
+	returnType: 'Date',
+};
 
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
@@ -274,10 +270,6 @@ export const dateExtensions: ExtensionMap = {
 		isWeekend,
 		minus,
 		plus,
-		toTimeFromNow,
-		timeTo,
 		format,
-		toLocaleString,
-		toDate,
 	},
 };

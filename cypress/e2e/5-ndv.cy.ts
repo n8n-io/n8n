@@ -9,13 +9,15 @@ describe('NDV', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
+
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.getters.canvasNodes().first().dblclick();
 		ndv.getters.container().should('be.visible');
 		ndv.getters.backToCanvas().click();
@@ -40,7 +42,7 @@ describe('NDV', () => {
 			});
 		});
 
-		ndv.getters.runDataDisplayMode().should('have.length.at.least', 1).and('be.visible');
+		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
 	it('should change input', () => {
@@ -65,8 +67,8 @@ describe('NDV', () => {
 	});
 
 	it('should show validation errors only after blur or re-opening of NDV', () => {
-		workflowPage.actions.addNodeToCanvas('Manual Trigger');
-		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Read data from a table');
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();

@@ -14,11 +14,12 @@
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { workflowId: currentWorkflow, executionId: execution.id },
 			}"
+			:data-test-execution-status="executionUIDetails.name"
 		>
 			<div :class="$style.description">
-				<n8n-text color="text-dark" :bold="true" size="medium">{{
-					executionUIDetails.startTime
-				}}</n8n-text>
+				<n8n-text color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
+					{{ executionUIDetails.startTime }}
+				</n8n-text>
 				<div :class="$style.executionStatus">
 					<n8n-spinner
 						v-if="executionUIDetails.name === 'running'"
@@ -45,7 +46,7 @@
 					>
 						{{
 							$locale.baseText('executionDetails.runningTimeFinished', {
-								interpolate: { time: executionUIDetails.runningTime },
+								interpolate: { time: executionUIDetails?.runningTime },
 							})
 						}}
 					</n8n-text>
@@ -62,6 +63,7 @@
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					activatorIcon="redo"
+					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
 				<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
@@ -189,7 +191,8 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 		}
 	}
 
-	&.error {
+	&.error,
+	&.crashed {
 		&,
 		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);

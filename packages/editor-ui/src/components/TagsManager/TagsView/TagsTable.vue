@@ -90,12 +90,14 @@
 							:title="$locale.baseText('tagsTable.editTag')"
 							@click.stop="enableUpdate(scope.row)"
 							icon="pen"
+							data-test-id="edit-tag-button"
 						/>
 						<n8n-icon-button
 							v-if="scope.row.canDelete"
 							:title="$locale.baseText('tagsTable.deleteTag')"
 							@click.stop="enableDelete(scope.row)"
 							icon="trash"
+							data-test-id="delete-tag-button"
 						/>
 					</div>
 				</transition>

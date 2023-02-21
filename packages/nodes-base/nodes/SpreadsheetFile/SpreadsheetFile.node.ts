@@ -45,7 +45,7 @@ export class SpreadsheetFile implements INodeType {
 		icon: 'fa:table',
 		group: ['transform'],
 		version: 1,
-		description: 'Reads and writes data from a spreadsheet file',
+		description: 'Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc',
 		defaults: {
 			name: 'Spreadsheet File',
 			color: '#2244FF',
@@ -69,7 +69,7 @@ export class SpreadsheetFile implements INodeType {
 						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
-						action: 'Write the workflow data to a spreadsheet file',
+						action: 'Write data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
