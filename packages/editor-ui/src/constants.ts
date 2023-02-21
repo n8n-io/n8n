@@ -514,4 +514,10 @@ export const ASSUMPTION_EXPERIMENT = {
 	video: 'assumption-video',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name];
+export const ONBOARDING_EXPERIMENT = {
+	name: 'onboarding-checklist',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
