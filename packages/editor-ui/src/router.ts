@@ -354,20 +354,6 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/mfa',
-			name: VIEWS.MFA,
-			components: {
-				default: Mfa,
-			},
-			meta: {
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedOut],
-					},
-				},
-			},
-		},
-		{
 			path: '/signup',
 			name: VIEWS.SIGNUP,
 			components: {
