@@ -18,6 +18,7 @@ import { NodeTypes } from '@/NodeTypes';
 import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
+import { PostHogClient } from '@/posthog';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -48,7 +49,11 @@ export abstract class BaseCommand extends Command {
 		const credentialTypes = CredentialTypes(this.loadNodesAndCredentials);
 		CredentialsOverwrites(credentialTypes);
 
-		await InternalHooksManager.init(this.userSettings.instanceId ?? '', this.nodeTypes);
+		const instanceId = this.userSettings.instanceId ?? '';
+		const postHog = new PostHogClient();
+		await postHog.init(instanceId);
+
+		await InternalHooksManager.init(instanceId, this.nodeTypes, postHog);
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
