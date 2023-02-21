@@ -106,7 +106,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
-		runExternalHook('posthog.featureFlags.changed', useWebhooksStore(), {
+		runExternalHook('posthog.featureFlagsUpdated', useWebhooksStore(), {
 			name,
 			variant,
 		});
