@@ -44,7 +44,11 @@ export class MFAController {
 	@Delete('/disable')
 	async disableMFA(req: AuthenticatedRequest) {
 		const { id } = req.user;
-		await this.userRepository.update(id, { mfaEnabled: false, mfaSecret: null });
+		await this.userRepository.update(id, {
+			mfaEnabled: false,
+			mfaSecret: null,
+			mfaRecoveryCodes: [],
+		});
 	}
 
 	@Post('/verify')
