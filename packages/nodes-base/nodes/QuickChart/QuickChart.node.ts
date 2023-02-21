@@ -36,18 +36,6 @@ export class QuickChart implements INodeType {
 				description: 'The type of chart to create',
 			},
 			{
-				displayName: 'Horizontal',
-				name: 'horizontal',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the chart should use its Y axis horizontal',
-				displayOptions: {
-					show: {
-						chartType: HORIZONTAL_CHARTS,
-					},
-				},
-			},
-			{
 				displayName: 'Add Labels',
 				name: 'labelsMode',
 				type: 'options',
@@ -186,6 +174,18 @@ export class QuickChart implements INodeType {
 						description: 'Height of the chart',
 					},
 					{
+						displayName: 'Horizontal',
+						name: 'horizontal',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the chart should use its Y axis horizontal',
+						displayOptions: {
+							show: {
+								'/chartType': HORIZONTAL_CHARTS,
+							},
+						},
+					},
+					{
 						displayName: 'Width',
 						name: 'width',
 						type: 'number',
@@ -314,7 +314,7 @@ export class QuickChart implements INodeType {
 		let chartType = this.getNodeParameter('chartType', 0) as string;
 
 		if (HORIZONTAL_CHARTS.includes(chartType)) {
-			const horizontal = this.getNodeParameter('horizontal', 0) as boolean;
+			const horizontal = this.getNodeParameter('chartOptions.horizontal', 0, false) as boolean;
 			if (horizontal) {
 				chartType =
 					'horizontal' + chartType[0].toUpperCase() + chartType.substring(1, chartType.length);
