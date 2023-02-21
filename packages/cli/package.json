@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.216.0",
+  "version": "0.216.1",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -127,6 +127,7 @@
     "callsites": "^3.1.0",
     "change-case": "^4.1.1",
     "class-validator": "^0.14.0",
+    "class-transformer": "^0.5.1",
     "client-oauth2": "^4.2.5",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^1.6.0",
