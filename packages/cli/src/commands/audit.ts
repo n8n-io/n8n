@@ -1,10 +1,11 @@
 import { flags } from '@oclif/command';
 import { audit } from '@/audit';
 import { RISK_CATEGORIES } from '@/audit/constants';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import config from '@/config';
 import type { Risk } from '@/audit/types';
 import { BaseCommand } from './BaseCommand';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -56,7 +57,7 @@ export class SecurityAudit extends BaseCommand {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
 
-		void InternalHooksManager.getInstance().onAuditGeneratedViaCli();
+		void Container.get(InternalHooks).onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {
