@@ -112,7 +112,9 @@ export class QuickChart implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'The name of the output field to put the binary file data in',
+				description:
+					'The binary data will be displayed in the Output panel on the right, under the Binary tab',
+				hint: 'The name of the output field to put the binary file data in',
 			},
 			{
 				displayName: 'Chart Options',
