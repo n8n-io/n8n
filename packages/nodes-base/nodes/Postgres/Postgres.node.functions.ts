@@ -740,10 +740,6 @@ export async function pgTriggerFunction(
 			);
 		}
 	} catch (err) {
-		console.log(
-			`function "${functionName.replace('()', '')}" already exists with same argument types`,
-		);
-		console.log(err.message);
 		if (
 			err.message.includes(
 				`function "${functionName.replace('()', '')}" already exists with same argument types`,
