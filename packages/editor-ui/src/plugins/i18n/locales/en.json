@@ -1711,6 +1711,7 @@
 	"mfa.setup.step1.instruction1.subtitle": "Use an authenticator app from your phone to scan. If you can't scan the QR code, enter | this text code | instead.",
 	"mfa.setup.step1.instruction2.title": "2. Verify the code from the app",
 	"mfa.setup.step2.description": "You can use recovery codes as a second factor to authenticate in case you lose access to your device.",
+	"mfa.setup.step2.infobox.description": "Keep your recovery codes somewhere safe. if you lose your device and your recovery codes, you will | lose access to you account.",
 	"mfa.setup.step2.button.download": "Download recovery codes",
 	"mfa.setup.step2.button.save": "I have saved my recovery codes",
 	"mfa.setup.step1.button.continue": "Continue",

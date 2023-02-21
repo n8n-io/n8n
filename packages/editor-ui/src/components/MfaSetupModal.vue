@@ -69,10 +69,9 @@
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					Keep your recovery codes somewhere safe. if you lose your device and your recovery codes,
-					you will
-					<n8n-text size="small" bold="true" :class="$style.loseAccessText">
-						lose access to you account.
+					{{ $locale.baseText('mfa.setup.step2.infobox.description').split('|')[0] }}
+					<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
+						{{ $locale.baseText('mfa.setup.step2.infobox.description').split('|')[1] }}
 					</n8n-text>
 				</n8n-info-tip>
 				<div>
@@ -144,7 +143,7 @@ export default mixins(showMessage, copyPaste).extend({
 			qrCode: '',
 			readyToSubmit: false,
 			formBus: new Vue(),
-			showRecoveryCodes: false,
+			showRecoveryCodes: true,
 			recoveryCodes: [] as string[],
 			recoveryCodesDownloaded: false,
 			authenticatorCode: '',
