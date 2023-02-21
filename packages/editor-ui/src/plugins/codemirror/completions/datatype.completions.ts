@@ -207,10 +207,12 @@ const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefi
 	if (fn.doc) {
 		const typeNameSpan = document.createElement('span');
 		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+		header.appendChild(typeNameSpan);
 
 		const functionNameSpan = document.createElement('span');
 		functionNameSpan.classList.add('autocomplete-info-name');
 		functionNameSpan.innerHTML = `${fn.doc.name}`;
+		header.appendChild(functionNameSpan);
 		let functionArgs = '(';
 		if (fn.doc.args) {
 			functionArgs += fn.doc.args
@@ -227,14 +229,12 @@ const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefi
 		const argsSpan = document.createElement('span');
 		argsSpan.classList.add('autocomplete-info-name-args');
 		argsSpan.innerText = functionArgs;
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
-
-		header.appendChild(typeNameSpan);
-		header.appendChild(functionNameSpan);
 		header.appendChild(argsSpan);
-		header.appendChild(returnTypeSpan);
+		if (fn.doc.returnType) {
+			const returnTypeSpan = document.createElement('span');
+			returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
+			header.appendChild(returnTypeSpan);
+		}
 	}
 	return header;
 };
@@ -382,6 +382,16 @@ const createLuxonAutocompleteOption = (
 		doc = docDefinition.properties[name].doc;
 	} else if (Object.hasOwn(docDefinition.functions, name)) {
 		doc = docDefinition.functions[name].doc;
+	} else {
+		// Use inferred/default values if docs are still not updated
+		// This should happen when our doc specification becomes
+		// out-od-date with Luxon implementation
+		const optionType = typeof DateTime.prototype[name as keyof DateTime];
+		doc = {
+			name,
+			returnType: !optionType || optionType === 'undefined' ? '' : optionType,
+			docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetime',
+		};
 	}
 	option.info = createCompletionOption('DateTime', name, type, {
 		// Add translated description
