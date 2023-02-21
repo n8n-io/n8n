@@ -9,48 +9,51 @@ import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { badPasswords } from '../shared/testData';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
 	const externalHooks = mock<IExternalHooksClass>();
 	const internalHooks = mock<IInternalHooksClass>();
 	const userRepository = mock<Repository<User>>();
-
-	let controller: MeController;
-	beforeAll(() => {
-		controller = new MeController({
-			logger,
-			externalHooks,
-			internalHooks,
-			repositories: { User: userRepository },
-		});
+	const controller = new MeController({
+		logger,
+		externalHooks,
+		internalHooks,
+		repositories: { User: userRepository },
 	});
 
 	describe('updateCurrentUser', () => {
 		it('should throw BadRequestError if email is missing in the payload', async () => {
-			const req = mock<MeRequest.Settings>({});
+			const req = mock<MeRequest.UserUpdate>({});
 			expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
 				new BadRequestError('Email is mandatory'),
 			);
 		});
 
 		it('should throw BadRequestError if email is invalid', async () => {
-			const req = mock<MeRequest.Settings>({ body: { email: 'invalid-email' } });
+			const req = mock<MeRequest.UserUpdate>({ body: { email: 'invalid-email' } });
 			expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
 				new BadRequestError('Invalid email address'),
 			);
 		});
 
 		it('should update the user in the DB, and issue a new cookie', async () => {
-			const req = mock<MeRequest.Settings>({
-				user: mock({ id: '123', password: 'password', authIdentities: [] }),
-				body: { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' },
+			const user = mock<User>({
+				id: '123',
+				password: 'password',
+				authIdentities: [],
+				globalRoleId: '1',
 			});
+			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userRepository.save.calledWith(anyObject()).mockResolvedValue(req.user);
+			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.updateCurrentUser(req, res);
+
+			expect(userRepository.update).toHaveBeenCalled();
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
@@ -58,9 +61,37 @@ describe('MeController', () => {
 			expect(cookieOptions.value.sameSite).toBe('lax');
 
 			expect(externalHooks.run).toHaveBeenCalledWith('user.profile.update', [
-				req.user.email,
+				user.email,
 				anyObject(),
 			]);
+		});
+
+		it('should not allow updating any other fields on a user besides email and name', async () => {
+			const user = mock<User>({
+				id: '123',
+				password: 'password',
+				authIdentities: [],
+				globalRoleId: '1',
+			});
+			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			const res = mock<Response>();
+			userRepository.findOneOrFail.mockResolvedValue(user);
+			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+
+			// Add invalid data to the request payload
+			Object.assign(reqBody, { id: '0', globalRoleId: '42' });
+
+			await controller.updateCurrentUser(req, res);
+
+			expect(userRepository.update).toHaveBeenCalled();
+
+			const updatedUser = userRepository.update.mock.calls[0][1];
+			expect(updatedUser.email).toBe(reqBody.email);
+			expect(updatedUser.firstName).toBe(reqBody.firstName);
+			expect(updatedUser.lastName).toBe(reqBody.lastName);
+			expect(updatedUser.id).not.toBe('0');
+			expect(updatedUser.globalRoleId).not.toBe('42');
 		});
 	});
 
@@ -88,12 +119,7 @@ describe('MeController', () => {
 		});
 
 		describe('should throw if newPassword is not valid', () => {
-			Object.entries({
-				pass: 'Password must be 8 to 64 characters long. Password must contain at least 1 number. Password must contain at least 1 uppercase letter.',
-				password:
-					'Password must contain at least 1 number. Password must contain at least 1 uppercase letter.',
-				password1: 'Password must contain at least 1 uppercase letter.',
-			}).forEach(([newPassword, errorMessage]) => {
+			Object.entries(badPasswords).forEach(([newPassword, errorMessage]) => {
 				it(newPassword, async () => {
 					const req = mock<MeRequest.Password>({
 						user: mock({ password: passwordHash }),

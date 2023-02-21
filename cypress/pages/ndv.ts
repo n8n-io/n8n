@@ -19,7 +19,7 @@ export class NDV extends BasePage {
 		digital: () => cy.getByTestId('ndv-run-data-display-mode'),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.monaco-editor'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.monaco-editor[role=code]'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		savePinnedDataButton: () => this.getters.runDataPaneHeader().find('button').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
@@ -71,10 +71,9 @@ export class NDV extends BasePage {
 		setPinnedData: (data: object) => {
 			this.getters.editPinnedDataButton().click();
 
-			const editor = this.getters.pinnedDataEditor();
-			editor.click();
-			editor.type(`{selectall}{backspace}`);
-			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
+			this.getters.pinnedDataEditor().click();
+			this.getters.pinnedDataEditor().type(`{selectall}{backspace}`);
+			this.getters.pinnedDataEditor().type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
 
 			this.actions.savePinnedData();
 		},

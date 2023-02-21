@@ -54,6 +54,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { getLicense } from './License';
+import { PostHogClient } from './posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -115,7 +116,11 @@ class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = userSettings.instanceId ?? '';
-		await InternalHooksManager.init(instanceId, nodeTypes);
+
+		const postHog = new PostHogClient();
+		await postHog.init(instanceId);
+
+		await InternalHooksManager.init(instanceId, nodeTypes, postHog);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
@@ -181,6 +186,9 @@ class WorkflowRunnerProcess {
 
 		additionalData.executionId = inputData.executionId;
 
+		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+			executionId: inputData.executionId,
+		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		additionalData.sendMessageToUI = async (source: string, message: any) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
@@ -487,6 +495,7 @@ process.on('message', async (message: IProcessMessage) => {
 						: ('own' as WorkflowExecuteMode),
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
+					status: 'canceled',
 				};
 
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises

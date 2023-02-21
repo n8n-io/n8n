@@ -1,5 +1,5 @@
 import type express from 'express';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
@@ -10,8 +10,6 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 
 import type { Risk } from '@/audit/types';
-
-export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
 export type AuthlessRequest<
 	RouteParams = {},
