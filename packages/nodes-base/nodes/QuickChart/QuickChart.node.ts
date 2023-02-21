@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { CHART_TYPE_OPTIONS, HORIZONTAL_CHARTS, ITEM_STYLE_CHARTS } from './constants';
 import type { IDataset } from './types';
@@ -47,7 +48,23 @@ export class QuickChart implements INodeType {
 				},
 			},
 			{
-				displayName: 'X Labels',
+				displayName: 'Add Labels',
+				name: 'labelsMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Manually',
+						value: 'manually',
+					},
+					{
+						name: 'From Array',
+						value: 'array',
+					},
+				],
+				default: 'manually',
+			},
+			{
+				displayName: 'Labels',
 				name: 'labelsUi',
 				type: 'fixedCollection',
 				typeOptions: {
@@ -56,7 +73,7 @@ export class QuickChart implements INodeType {
 				},
 				default: {},
 				required: true,
-				description: 'Labels to use for the X Axis of the chart',
+				description: 'Labels to use in the chart',
 				placeholder: 'Add Label',
 				options: [
 					{
@@ -72,6 +89,25 @@ export class QuickChart implements INodeType {
 						],
 					},
 				],
+				displayOptions: {
+					show: {
+						labelsMode: ['manually'],
+					},
+				},
+			},
+			{
+				displayName: 'Labels Array',
+				name: 'labelsArray',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'e.g. ["Berlin", "Paris", "Rome", "New York"]',
+				displayOptions: {
+					show: {
+						labelsMode: ['array'],
+					},
+				},
+				description: 'The array of labels to be used in the chart',
 			},
 			{
 				displayName: 'Data',
@@ -287,15 +323,31 @@ export class QuickChart implements INodeType {
 
 		// tslint:disable-next-line:no-any
 		const labels: string[] = [];
-		const labelsUi = this.getNodeParameter('labelsUi.labelsValues', 0, []) as IDataObject[];
+		const labelsMode = this.getNodeParameter('labelsMode', 0) as string;
 
-		if (labelsUi.length) {
-			for (const labelValue of labelsUi as [{ label: string[] | string }]) {
-				if (Array.isArray(labelValue.label)) {
-					labels?.push(...labelValue.label);
-				} else {
-					labels?.push(labelValue.label);
+		if (labelsMode === 'manually') {
+			const labelsUi = this.getNodeParameter('labelsUi.labelsValues', 0, []) as IDataObject[];
+			if (labelsUi.length) {
+				for (const labelValue of labelsUi as [{ label: string[] | string }]) {
+					if (Array.isArray(labelValue.label)) {
+						labels?.push(...labelValue.label);
+					} else {
+						labels?.push(labelValue.label);
+					}
 				}
+			}
+		} else {
+			const labelsArray = this.getNodeParameter('labelsArray', 0, '') as string;
+			if (Array.isArray(labelsArray)) {
+				labels.push(...labelsArray);
+			} else {
+				const labelsArrayParsed = jsonParse(labelsArray, {
+					errorMessage: 'Labels Array is not a valid array',
+				});
+				if (!Array.isArray(labelsArrayParsed)) {
+					throw new NodeOperationError(this.getNode(), 'Labels Array is not a valid array');
+				}
+				labels.push(...labelsArrayParsed);
 			}
 		}
 
