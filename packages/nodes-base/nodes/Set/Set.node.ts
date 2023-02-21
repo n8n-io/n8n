@@ -52,6 +52,7 @@ export class Set implements INodeType {
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
+								requiresDataPath: 'single',
 								default: 'propertyName',
 								description:
 									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
@@ -75,6 +76,7 @@ export class Set implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: 'propertyName',
+								requiresDataPath: 'single',
 								description:
 									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
@@ -96,6 +98,7 @@ export class Set implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: 'propertyName',
+								requiresDataPath: 'single',
 								description:
 									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
