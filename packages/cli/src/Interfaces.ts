@@ -22,6 +22,7 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	IExecutionsSummary,
+	FeatureFlags,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -475,6 +476,14 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
+	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
@@ -834,6 +843,10 @@ export interface PublicUser {
 	signInType: AuthProviderType;
 	disabled: boolean;
 	inviteAcceptUrl?: string;
+}
+
+export interface CurrentUser extends PublicUser {
+	featureFlags?: FeatureFlags;
 }
 
 export interface N8nApp {
