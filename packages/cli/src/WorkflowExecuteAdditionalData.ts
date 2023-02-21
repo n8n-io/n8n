@@ -43,6 +43,7 @@ import {
 } from 'n8n-workflow';
 
 import pick from 'lodash.pick';
+import type { FindOptionsWhere } from 'typeorm';
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
@@ -202,6 +203,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		throttling = true;
 		const timeout = config.getEnv('executions.pruneDataTimeout'); // in seconds
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
@@ -209,7 +211,21 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		const toPrune = { stoppedAt: LessThanOrEqual(utcDate) };
+		const toPrune: FindOptionsWhere<IExecutionFlattedDb> = { stoppedAt: LessThanOrEqual(utcDate) };
+
+		if (maxCount > 0) {
+			const executions = await Db.collections.Execution.find({
+				select: ['id'],
+				skip: maxCount,
+				take: 1,
+				order: { id: 'DESC' },
+			});
+
+			if (executions[0]) {
+				toPrune.id = LessThanOrEqual(executions[0].id);
+			}
+		}
+
 		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
 			const executions = isBinaryModeDefaultMode
