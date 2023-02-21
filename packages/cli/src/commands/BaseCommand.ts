@@ -1,5 +1,6 @@
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
+import { Container } from 'typedi';
 import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
@@ -16,8 +17,8 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -49,6 +50,7 @@ export abstract class BaseCommand extends Command {
 		CredentialsOverwrites(credentialTypes);
 
 		const instanceId = this.userSettings.instanceId ?? '';
+		await Container.get(PostHogClient).init(instanceId);
 		await Container.get(InternalHooks).init(instanceId);
 
 		await Db.init().catch(async (error: Error) =>

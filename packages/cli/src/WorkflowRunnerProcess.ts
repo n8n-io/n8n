@@ -8,6 +8,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
 import 'reflect-metadata';
+import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
@@ -54,8 +55,8 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { getLicense } from './License';
-import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { PostHogClient } from './posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -117,6 +118,7 @@ class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = userSettings.instanceId ?? '';
+		await Container.get(PostHogClient).init(instanceId);
 		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');

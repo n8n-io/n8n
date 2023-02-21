@@ -166,6 +166,7 @@ importers:
       callsites: ^3.1.0
       change-case: ^4.1.1
       chokidar: 3.5.2
+      class-transformer: ^0.5.1
       class-validator: ^0.14.0
       client-oauth2: ^4.2.5
       compression: ^1.7.4
@@ -265,6 +266,7 @@ importers:
       bull: 4.10.2
       callsites: 3.1.0
       change-case: 4.1.2
+      class-transformer: 0.5.1
       class-validator: 0.14.0
       client-oauth2: 4.3.3
       compression: 1.7.4
@@ -8097,6 +8099,10 @@ packages:
 
   /clamp/1.0.1:
     resolution: {integrity: sha512-kgMuFyE78OC6Dyu3Dy7vcx4uy97EIbVxJB/B0eJ3bUNAkwdNcxYzgKltnyADiYwsR7SEqkkUPsEUT//OVS6XMA==}
+    dev: false
+
+  /class-transformer/0.5.1:
+    resolution: {integrity: sha512-SQa1Ws6hUbfC98vKGxZH3KFY0Y1lm5Zm0SY8XX9zbK7FJCyVEac3ATW0RIpwzW+oOfmHE5PMPufDG9hCfoEOMw==}
     dev: false
 
   /class-utils/0.3.6:

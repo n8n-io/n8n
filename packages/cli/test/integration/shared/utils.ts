@@ -26,6 +26,8 @@ import {
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import { mock } from 'jest-mock-extended';
+import { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -75,9 +77,8 @@ import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
-import { mock } from 'jest-mock-extended';
-import { DeepPartial } from 'ts-essentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { PostHogClient } from '@/posthog';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -118,9 +119,9 @@ export async function initTestServer({
 	const logger = getLogger();
 	LoggerProxy.init(logger);
 
-	// Pre-requisite: Mock the telemetry module before calling.
-	// mockInstance(Telemetry);
+	// Mock all telemetry.
 	mockInstance(InternalHooks);
+	mockInstance(PostHogClient);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));

@@ -14,6 +14,7 @@ export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { eventEmitter, NodeExecuteFunctions, UserSettings };
+export * from './errors';
 
 declare module 'http' {
 	export interface IncomingMessage {
