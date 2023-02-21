@@ -34,7 +34,7 @@ import {
 
 import { restApi } from '@/mixins/restApi';
 
-import { get } from 'camelCase';
+import { get } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { isObjectLiteral } from '@/utils';
