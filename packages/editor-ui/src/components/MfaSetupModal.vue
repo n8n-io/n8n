@@ -9,6 +9,7 @@
 		:eventBus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY"
 		:center="true"
+		:loading="loadingQrCode"
 	>
 		<template #content>
 			<div v-if="!showRecoveryCodes" :class="$style.container">
@@ -148,6 +149,7 @@ export default mixins(showMessage, copyPaste).extend({
 			recoveryCodesDownloaded: false,
 			authenticatorCode: '',
 			infoTextErrorMessage: '',
+			loadingQrCode: true,
 		};
 	},
 	computed: {
@@ -226,6 +228,7 @@ export default mixins(showMessage, copyPaste).extend({
 				this.qrCode = qrCode;
 				this.secret = secret;
 				this.recoveryCodes = recoveryCodes;
+				this.loadingQrCode = false;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			}
