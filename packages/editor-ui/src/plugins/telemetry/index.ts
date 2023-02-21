@@ -6,6 +6,7 @@ import type { INodeCreateElement } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useTelemetryStore } from '@/stores/telemetry';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: Route }>;
@@ -60,6 +61,7 @@ export class Telemetry {
 			configUrl: 'https://api-rs.n8n.io',
 			...logging,
 		});
+		useTelemetryStore().init(this);
 
 		this.identify(instanceId, userId, versionCli);
 
