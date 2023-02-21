@@ -138,6 +138,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { usePostHogStore } from '@/stores/posthog';
+import { useCredentialsStore } from '@/stores/credentials';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -170,7 +171,13 @@ export default mixins(showMessage, debounceHelper).extend({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+			useCredentialsStore,
+		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -228,10 +235,12 @@ export default mixins(showMessage, debounceHelper).extend({
 		async initialize() {
 			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 
-			return await Promise.all([
+			await Promise.all([
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+
+			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
