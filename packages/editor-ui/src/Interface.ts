@@ -102,7 +102,7 @@ export interface IRestApi {
 	getActivationError(id: string): Promise<IActivationError | undefined>;
 	getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
-		filter: object,
+		filter: IDataObject,
 		limit: number,
 		lastId?: string,
 		firstId?: string,

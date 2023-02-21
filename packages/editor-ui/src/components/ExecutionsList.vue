@@ -355,10 +355,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			combinedExecutions(): IExecutionsSummary[] {
 				const returnData: IExecutionsSummary[] = [];
 
-				if (['ALL', 'running', 'new'].includes(this.filter.status)) {
+				if (['ALL', 'running'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
 				}
-				if (['ALL', 'error', 'crashed', 'success', 'waiting'].includes(this.filter.status)) {
+				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
 				return returnData;
@@ -397,7 +397,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						queryFilter.status = ['waiting'];
 						break;
 					case 'error':
-						queryFilter.status = ['failed', 'crashed', 'error'];
+						queryFilter.status = ['failed', 'crashed'];
 						break;
 					case 'success':
 						queryFilter.status = ['success'];
@@ -1006,7 +1006,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	font-weight: var(--font-weight-bold);
 
 	.crashed &,
-	.error &,
 	.failed & {
 		color: var(--color-danger);
 	}
