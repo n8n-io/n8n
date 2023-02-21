@@ -1,0 +1,330 @@
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
+import type { UpdateSummary } from '../../helpers/interfaces';
+import { prepareOutput, updateByAutoMaping, updateByDefinedValues } from '../../helpers/utils';
+import { microsoftApiRequest, updateOrUpsertRange } from '../../transport';
+import { workbookRLC, worksheetRLC } from '../common.descriptions';
+
+const properties: INodeProperties[] = [
+	workbookRLC,
+	worksheetRLC,
+	{
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		default: 'define',
+		options: [
+			{
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMap',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Map Each Column Below',
+				value: 'define',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Do not send anything',
+			},
+		],
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column to match on',
+		name: 'columnToMatchOn',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['worksheet.value', 'workbook.value', 'range'],
+			loadOptionsMethod: 'getWorksheetColumnRow',
+		},
+		default: '',
+		hint: "Used to find the correct row to update. Doesn't get changed.",
+		displayOptions: {
+			show: {
+				dataMode: ['autoMap', 'define'],
+			},
+		},
+	},
+	{
+		displayName: 'Value of Column to Match On',
+		name: 'valueToMatchOn',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				dataMode: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Values to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				dataMode: ['define'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'values',
+				values: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: ['columnToMatchOn'],
+							loadOptionsMethod: 'getWorksheetColumnRowSkipColumnToMatchOn',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/dataMode': ['autoMap', 'define'],
+					},
+				},
+				placeholder: 'e.g. A1:B2',
+				default: '',
+				description: 'The sheet range to read the data from specified using a A1-style notation',
+				hint: 'First row must contain column names. Leave blank for entire worksheet.',
+			},
+			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/dataMode': ['raw'],
+					},
+					hide: {
+						'/operation': ['updateRange'],
+					},
+				},
+				placeholder: 'e.g. A1:B2',
+				default: '',
+				description: 'The sheet range to read the data from specified using a A1-style notation',
+				hint: 'Leave blank for entire worksheet',
+			},
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
+				default: 0,
+				description:
+					'Whether the data should be returned RAW instead of parsed into keys according to their header',
+			},
+			{
+				displayName: 'Data Property',
+				name: 'dataProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
+				description: 'The name of the property into which to write the RAW data',
+			},
+			{
+				displayName: 'Update All Matches',
+				name: 'updateAll',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to update all matching rows or just the first match',
+			},
+		],
+	},
+];
+
+const displayOptions = {
+	show: {
+		resource: ['worksheet'],
+		operation: ['upsert'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+export async function execute(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const returnData: INodeExecutionData[] = [];
+
+	try {
+		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
+			extractValue: true,
+		}) as string;
+
+		const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
+			extractValue: true,
+		}) as string;
+
+		let range = this.getNodeParameter('options.range', 0, '') as string;
+		const dataMode = this.getNodeParameter('dataMode', 0) as string;
+
+		if (dataMode === 'nothing') {
+			returnData.push(...this.helpers.returnJsonArray(returnData));
+		}
+
+		let worksheetData: IDataObject = {};
+
+		if (range && dataMode !== 'raw') {
+			worksheetData = await microsoftApiRequest.call(
+				this,
+				'PATCH',
+				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+			);
+		}
+
+		//get used range if range not provided; if 'raw' mode fetch only address information
+		if (range === '') {
+			const query: IDataObject = {};
+			if (dataMode === 'raw') {
+				query.select = 'address';
+			}
+
+			worksheetData = await microsoftApiRequest.call(
+				this,
+				'GET',
+				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+				undefined,
+				query,
+			);
+
+			range = (worksheetData.address as string).split('!')[1];
+		}
+
+		let responseData;
+		if (dataMode === 'raw') {
+			const data = this.getNodeParameter('data', 0);
+
+			const values = processJsonInput(data, 'Data') as string[][];
+
+			responseData = await microsoftApiRequest.call(
+				this,
+				'PATCH',
+				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				{ values },
+			);
+		}
+
+		if (worksheetData.values === undefined || (worksheetData.values as string[][]).length <= 1) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No data found in the specified range, mapping not possible, you can use raw mode instead to update selected range',
+			);
+		}
+
+		const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
+
+		let updateSummary: UpdateSummary = {
+			updatedData: [],
+			updatedRows: [],
+			appendData: [],
+		};
+
+		if (dataMode === 'define') {
+			updateSummary = updateByDefinedValues.call(
+				this,
+				items,
+				worksheetData.values as string[][],
+				updateAll,
+			);
+		}
+
+		if (dataMode === 'autoMap') {
+			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+
+			if (!items.some(({ json }) => json[columnToMatchOn] !== undefined)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Any item in input data contains column '${columnToMatchOn}', that is selected to match on`,
+				);
+			}
+
+			updateSummary = updateByAutoMaping.call(
+				this,
+				items,
+				worksheetData.values as string[][],
+				columnToMatchOn,
+				updateAll,
+			);
+		}
+
+		const columnsRow = (worksheetData.values as string[][])[0];
+
+		// const upsert = operation === 'upsert' ? true : false;
+
+		responseData = await updateOrUpsertRange.call(
+			this,
+			updateSummary,
+			workbookId,
+			worksheetId,
+			range,
+			columnsRow,
+			true,
+		);
+
+		const { updatedRows } = updateSummary;
+
+		const rawData = this.getNodeParameter('options.rawData', 0, false) as boolean;
+		const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
+
+		returnData.push(
+			...prepareOutput.call(this, responseData, { updatedRows, rawData, dataProperty }),
+		);
+	} catch (error) {
+		if (this.continueOnFail()) {
+			const executionErrorData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ error: error.message }),
+				{ itemData: { item: 0 } },
+			);
+			returnData.push(...executionErrorData);
+		} else {
+			throw error;
+		}
+	}
+
+	return returnData;
+}
