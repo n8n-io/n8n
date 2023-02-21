@@ -1,4 +1,5 @@
 import validator from 'validator';
+import { totp } from 'speakeasy';
 import { Get, Post, RestController } from '@/decorators';
 import { BadRequestError, InternalServerError, AuthError } from '@/ResponseHelper';
 import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
@@ -13,7 +14,6 @@ import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
-import { validateMfaRecoveryCode, validateMfaToken } from '@/Mfa/helpers';
 
 @RestController()
 export class AuthController {
@@ -56,14 +56,12 @@ export class AuthController {
 			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
 
 		if (user) {
-			console.log(user);
-			console.log(mfaToken);
-			console.log('valid mFA TOKEN', validateMfaToken(user, mfaToken));
-			if (
-				user.mfaEnabled &&
-				!(validateMfaToken(user, mfaToken) || validateMfaRecoveryCode(user, mfaRecoveryCode))
-			) {
-				throw new AuthError('MFA Error', 998);
+			if (user.mfaEnabled) {
+				const isMFATokenValid =
+					this.validateMfaToken(user, mfaToken) ||
+					this.validateMfaRecoveryCode(user, mfaRecoveryCode);
+				// console.log('valid mFA TOKEN', user, mfaToken, isMFATokenValid);
+				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
 
 			await issueCookie(res, user);
@@ -185,5 +183,17 @@ export class AuthController {
 	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 		return { loggedOut: true };
+	}
+
+	private validateMfaToken(user: User, mfaToken: string) {
+		return totp.verify({
+			secret: user.mfaSecret ?? '',
+			encoding: 'base32',
+			token: mfaToken,
+		});
+	}
+
+	private validateMfaRecoveryCode(user: User, mfaRecoveryCode: string) {
+		return user.mfaRecoveryCodes.includes(mfaRecoveryCode);
 	}
 }

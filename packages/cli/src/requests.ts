@@ -256,6 +256,22 @@ export type LoginRequest = AuthlessRequest<
 >;
 
 // ----------------------------------
+//          MFA endpoints
+// ----------------------------------
+
+export declare namespace MFA {
+	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
+	type ValidateRecoveryCode = AuthenticatedRequest<
+		{},
+		{},
+		{ recoveryCode: { enabled: boolean } },
+		{}
+	>;
+}
+
+// ----------------------------------
 //          oauth endpoints
 // ----------------------------------
 

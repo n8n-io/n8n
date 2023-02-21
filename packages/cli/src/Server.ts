@@ -86,6 +86,7 @@ import { registerController } from '@/decorators';
 import {
 	AuthController,
 	MeController,
+	MFAController,
 	OwnerController,
 	PasswordResetController,
 	UsersController,
@@ -147,7 +148,6 @@ import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
-import { mfaController } from './Mfa/MfaController';
 
 const exec = promisify(callbackExec);
 
@@ -351,6 +351,7 @@ class Server extends AbstractServer {
 			new AuthController({ config, internalHooks, repositories, logger }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new MFAController(repositories.User),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
 			new UsersController({
 				config,
@@ -452,12 +453,6 @@ class Server extends AbstractServer {
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
 		}
-
-		// ----------------------------------------
-		// MFA
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/mfa`, mfaController);
 
 		// ----------------------------------------
 		// Workflow
