@@ -465,7 +465,7 @@ export class Airtable implements INodeType {
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
 						type: 'string',
-						requiresDataPath: 'single',
+						requiresDataPath: 'multiple',
 						displayOptions: {
 							show: {
 								'/operation': ['update'],
