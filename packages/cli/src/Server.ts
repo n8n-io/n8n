@@ -145,6 +145,7 @@ import { eventBus } from './eventbus';
 import { isSamlEnabled } from './Saml/helpers';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 
 const exec = promisify(callbackExec);
 
@@ -986,6 +987,9 @@ class Server extends AbstractServer {
 						if (!executions.length) return [];
 
 						return executions.map((execution) => {
+							if (!execution.status) {
+								execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+							}
 							return {
 								id: execution.id,
 								workflowId: execution.workflowId,
@@ -1020,6 +1024,7 @@ class Server extends AbstractServer {
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
+							status: data.status,
 						});
 					}
 
@@ -1072,6 +1077,7 @@ class Server extends AbstractServer {
 							startedAt: new Date(result.startedAt),
 							stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 							finished: result.finished,
+							status: result.status,
 						} as IExecutionsStopData;
 					}
 
@@ -1098,6 +1104,7 @@ class Server extends AbstractServer {
 							? new Date(fullExecutionData.stoppedAt)
 							: undefined,
 						finished: fullExecutionData.finished,
+						status: fullExecutionData.status,
 					};
 
 					return returnData;
@@ -1116,6 +1123,7 @@ class Server extends AbstractServer {
 						startedAt: new Date(result.startedAt),
 						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
+						status: result.status,
 					};
 				}
 

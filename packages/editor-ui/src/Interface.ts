@@ -31,6 +31,7 @@ import {
 	IExecutionsSummary,
 	IAbstractEventMessage,
 	FeatureFlags,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
@@ -383,6 +384,7 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
