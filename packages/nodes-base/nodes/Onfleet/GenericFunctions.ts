@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -6,10 +6,10 @@ import {
 	INodePropertyOptions,
 	IWebhookFunctions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment-timezone';
 
@@ -42,7 +42,7 @@ export async function onfleetApiRequest(
 	};
 	try {
 		//@ts-ignore
-		return this.helpers.request(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

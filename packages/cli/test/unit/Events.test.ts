@@ -1,8 +1,11 @@
-import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
+import { QueryFailedError } from 'typeorm';
+import config from '@/config';
+import { Db } from '@/index';
+import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
+import { InternalHooksManager } from '@/InternalHooksManager';
 import { getLogger } from '@/Logger';
+import  * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 
 const FAKE_USER_ID = 'abcde-fghij';
 
@@ -20,28 +23,15 @@ jest.spyOn(InternalHooksManager, 'getInstance').mockImplementation((...args) => 
 jest.mock('@/Db', () => {
 	return {
 		collections: {
-			Workflow: {
-				update: jest.fn(({ id, dataLoaded }, updateArgs) => {
-					if (id === 1) return { affected: 1 };
-					return { affected: 0 };
-				}),
-			},
 			WorkflowStatistics: {
-				insert: jest.fn(({ count, name, workflowId }) => {
-					if (workflowId === -1) throw new Error('test error');
-					return null;
-				}),
+				insert: jest.fn((...args) => {}),
 				update: jest.fn((...args) => {}),
 			},
 		},
 	};
 });
-jest.mock('@/UserManagement/UserManagementHelper', () => {
-	return {
-		getWorkflowOwner: jest.fn((workflowId) => {
-			return { id: FAKE_USER_ID };
-		}),
-	};
+jest.spyOn(UserManagementHelper, 'getWorkflowOwner').mockImplementation(async (workflowId) => {
+	return { id: FAKE_USER_ID };
 });
 
 describe('Events', () => {
@@ -64,25 +54,6 @@ describe('Events', () => {
 	afterEach(() => {});
 
 	describe('workflowExecutionCompleted', () => {
-		test('should fail with an invalid workflowId', async () => {
-			const workflow = {
-				id: 'abcde',
-				name: '',
-				active: false,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				nodes: [],
-				connections: {},
-			};
-			const runData = {
-				finished: true,
-				data: { resultData: { runData: {} } },
-				mode: 'internal' as WorkflowExecuteMode,
-				startedAt: new Date(),
-			};
-			await workflowExecutionCompleted(workflow, runData);
-		});
-
 		test('should create metrics for production successes', async () => {
 			// Call the function with a production success result, ensure metrics hook gets called
 			const workflow = {
@@ -104,7 +75,7 @@ describe('Events', () => {
 			expect(mockedFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(mockedFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflow.id, 10),
+				workflow_id: workflow.id,
 			});
 		});
 
@@ -130,9 +101,12 @@ describe('Events', () => {
 		});
 
 		test('should not send metrics for updated entries', async () => {
-			// Call the function with the id that causes insert to fail, ensure update is called *and* metrics aren't sent
+			// Call the function with a fail insert, ensure update is called *and* metrics aren't sent
+			Db.collections.WorkflowStatistics.insert.mockImplementationOnce((...args) => {
+				throw new QueryFailedError('invalid insert', [], '');
+			});
 			const workflow = {
-				id: '-1',
+				id: '1',
 				name: '',
 				active: false,
 				createdAt: new Date(),
@@ -152,19 +126,6 @@ describe('Events', () => {
 	});
 
 	describe('nodeFetchedData', () => {
-		test('should fail with an invalid workflowId', async () => {
-			const workflowId = 'abcde';
-			const node = {
-				id: 'abcde',
-				name: 'test node',
-				typeVersion: 1,
-				type: '',
-				position: [0, 0] as [number, number],
-				parameters: {},
-			};
-			await nodeFetchedData(workflowId, node);
-		});
-
 		test('should create metrics when the db is updated', async () => {
 			// Call the function with a production success result, ensure metrics hook gets called
 			const workflowId = '1';
@@ -180,7 +141,7 @@ describe('Events', () => {
 			expect(mockedFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(mockedFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflowId, 10),
+				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
 			});
@@ -207,7 +168,7 @@ describe('Events', () => {
 			expect(mockedFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(mockedFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflowId, 10),
+				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
 				credential_type: 'testCredentials',
@@ -217,7 +178,10 @@ describe('Events', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			const workflowId = '2';
+			Db.collections.WorkflowStatistics.insert.mockImplementationOnce((...args) => {
+				throw new QueryFailedError('invalid insert', [], '');
+			});
+			const workflowId = '1';
 			const node = {
 				id: 'abcde',
 				name: 'test node',

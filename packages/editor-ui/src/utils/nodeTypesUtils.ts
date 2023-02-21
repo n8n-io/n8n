@@ -1,6 +1,9 @@
+import { MAIN_AUTH_FIELD_NAME, NODE_RESOURCE_FIELD_NAME } from './../constants';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from './../stores/nodeTypes';
+import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
-	RECOMMENDED_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
 	SUBCATEGORY_DESCRIPTIONS,
 	UNCATEGORIZED_CATEGORY,
@@ -19,6 +22,8 @@ import {
 	INodeUi,
 	ITemplatesNode,
 	INodeItemProps,
+	NodeAuthenticationOption,
+	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	IDataObject,
@@ -27,6 +32,8 @@ import {
 	INodeTypeDescription,
 	INodeActionTypeDescription,
 	NodeParameterValueType,
+	INodePropertyOptions,
+	INodePropertyCollection,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 
@@ -64,7 +71,7 @@ const addNodeToCategory = (
 	}
 	accu[category][subcategory].nodes.push({
 		type: nodeType.actionKey ? 'action' : 'node',
-		key: `${category}_${nodeType.name}`,
+		key: `${nodeType.name}`,
 		category,
 		properties: {
 			nodeType,
@@ -77,17 +84,12 @@ const addNodeToCategory = (
 
 export const getCategoriesWithNodes = (
 	nodeTypes: INodeTypeDescription[],
-	personalizedNodeTypes: string[],
 	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
 ): ICategoriesWithNodes => {
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
 		a.displayName > b.displayName ? 1 : -1,
 	);
 	const result = sorted.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-		if (personalizedNodeTypes.includes(nodeType.name)) {
-			addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, uncategorizedSubcategory);
-		}
-
 		if (!nodeType.codex || !nodeType.codex.categories) {
 			addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
 			return accu;
@@ -117,14 +119,12 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 		CUSTOM_NODES_CATEGORY,
 		UNCATEGORIZED_CATEGORY,
 		PERSONALIZED_CATEGORY,
-		RECOMMENDED_CATEGORY,
 	];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
 	sorted.sort();
 
 	return [
-		RECOMMENDED_CATEGORY,
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
 		PERSONALIZED_CATEGORY,
@@ -147,8 +147,9 @@ export const getCategorizedList = (
 		const categoryEl: INodeCreateElement = {
 			type: 'category',
 			key: category,
-			category,
 			properties: {
+				category,
+				name: category,
 				expanded: categoryIsExpanded,
 			},
 		};
@@ -171,7 +172,6 @@ export const getCategorizedList = (
 				const subcategoryEl: INodeCreateElement = {
 					type: 'subcategory',
 					key: `${category}_${subcategory}`,
-					category,
 					properties: {
 						subcategory,
 						description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
@@ -269,15 +269,15 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
-	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
+export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
+	if (selectedView === REGULAR_NODE_FILTER && el.includedByRegular) {
 		return true;
 	}
-	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
+	if (selectedView === TRIGGER_NODE_FILTER && el.includedByTrigger) {
 		return true;
 	}
 
-	return selectedType === ALL_NODE_FILTER;
+	return selectedView === ALL_NODE_FILTER;
 };
 
 const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {
@@ -304,4 +304,274 @@ export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 		parameter.modes.length === 1 &&
 		parameter.modes[0].name === 'list'
 	);
+};
+
+// A credential type is considered required if it has no dependencies
+// or if it's only dependency is the main authentication fields
+export const isRequiredCredential = (
+	nodeType: INodeTypeDescription | null,
+	credential: INodeCredentialDescription,
+): boolean => {
+	if (!credential.displayOptions || !credential.displayOptions.show) {
+		return true;
+	}
+	const mainAuthField = getMainAuthField(nodeType);
+	if (mainAuthField) {
+		return mainAuthField.name in credential.displayOptions.show;
+	}
+	return false;
+};
+
+// Finds the main authentication filed for the node type
+// It's the field that node's required credential depend on
+export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
+	if (!nodeType) {
+		return null;
+	}
+	const credentialDependencies = getNodeAuthFields(nodeType);
+	const authenticationField =
+		credentialDependencies.find(
+			(prop) =>
+				prop.name === MAIN_AUTH_FIELD_NAME &&
+				!prop.options?.find((option) => option.value === 'none'),
+		) || null;
+	// If there is a field name `authentication`, use it
+	// Otherwise, try to find alternative main auth field
+	const mainAuthFiled =
+		authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
+	// Main authentication field has to be required
+	const isFieldRequired = mainAuthFiled ? isNodeParameterRequired(nodeType, mainAuthFiled) : false;
+	return mainAuthFiled && isFieldRequired ? mainAuthFiled : null;
+};
+
+// A field is considered main auth filed if:
+// 1. It is a credential dependency
+// 2. If all of it's possible values are used in credential's display options
+const findAlternativeAuthField = (
+	nodeType: INodeTypeDescription,
+	fields: INodeProperties[],
+): INodeProperties | null => {
+	const dependentAuthFieldValues: { [fieldName: string]: string[] } = {};
+	nodeType.credentials?.forEach((cred) => {
+		if (cred.displayOptions && cred.displayOptions.show) {
+			for (const fieldName in cred.displayOptions.show) {
+				dependentAuthFieldValues[fieldName] = (dependentAuthFieldValues[fieldName] || []).concat(
+					(cred.displayOptions.show[fieldName] || []).map((val) => (val ? val.toString() : '')),
+				);
+			}
+		}
+	});
+	const alternativeAuthField = fields.find((field) => {
+		let required = true;
+		field.options?.forEach((option) => {
+			if (!dependentAuthFieldValues[field.name].includes(option.value)) {
+				required = false;
+			}
+		});
+		return required;
+	});
+	return alternativeAuthField || null;
+};
+
+// Gets all authentication types that a given node type supports
+export const getNodeAuthOptions = (
+	nodeType: INodeTypeDescription | null,
+	nodeVersion?: number,
+): NodeAuthenticationOption[] => {
+	if (!nodeType) {
+		return [];
+	}
+	let options: NodeAuthenticationOption[] = [];
+	const authProp = getMainAuthField(nodeType);
+	// Some nodes have multiple auth fields with same name but different display options so need
+	// take them all into account
+	const authProps = getNodeAuthFields(nodeType, nodeVersion).filter(
+		(prop) => prop.name === authProp?.name,
+	);
+
+	authProps.forEach((field) => {
+		if (field.options) {
+			options = options.concat(
+				field.options.map((option) => ({
+					name: option.name,
+					value: option.value,
+					// Also add in the display options so we can hide/show the option if necessary
+					displayOptions: field.displayOptions,
+				})) || [],
+			);
+		}
+	});
+	// sort so recommended options are first
+	options.forEach((item, i) => {
+		if (item.name.includes('(recommended)')) {
+			options.splice(i, 1);
+			options.unshift(item);
+		}
+	});
+	return options;
+};
+
+export const getAllNodeCredentialForAuthType = (
+	nodeType: INodeTypeDescription | null,
+	authType: string,
+): INodeCredentialDescription[] => {
+	if (nodeType) {
+		return (
+			nodeType.credentials?.filter(
+				(cred) => cred.displayOptions?.show && authType in (cred.displayOptions.show || {}),
+			) || []
+		);
+	}
+	return [];
+};
+
+export const getNodeCredentialForSelectedAuthType = (
+	nodeType: INodeTypeDescription,
+	authType: string,
+): INodeCredentialDescription | null => {
+	const authField = getMainAuthField(nodeType);
+	const authFieldName = authField ? authField.name : '';
+	return (
+		nodeType.credentials?.find(
+			(cred) =>
+				cred.displayOptions?.show && cred.displayOptions.show[authFieldName]?.includes(authType),
+		) || null
+	);
+};
+
+export const getAuthTypeForNodeCredential = (
+	nodeType: INodeTypeDescription | null | undefined,
+	credentialType: INodeCredentialDescription | null | undefined,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection | null => {
+	if (nodeType && credentialType) {
+		const authField = getMainAuthField(nodeType);
+		const authFieldName = authField ? authField.name : '';
+		const nodeAuthOptions = getNodeAuthOptions(nodeType);
+		return (
+			nodeAuthOptions.find(
+				(option) =>
+					credentialType.displayOptions?.show &&
+					credentialType.displayOptions?.show[authFieldName]?.includes(option.value),
+			) || null
+		);
+	}
+	return null;
+};
+
+export const isAuthRelatedParameter = (
+	authFields: INodeProperties[],
+	parameter: INodeProperties,
+): boolean => {
+	let isRelated = false;
+	authFields.forEach((prop) => {
+		if (
+			prop.displayOptions &&
+			prop.displayOptions.show &&
+			parameter.name in prop.displayOptions.show
+		) {
+			isRelated = true;
+			return;
+		}
+	});
+	return isRelated;
+};
+
+export const getNodeAuthFields = (
+	nodeType: INodeTypeDescription | null,
+	nodeVersion?: number,
+): INodeProperties[] => {
+	const authFields: INodeProperties[] = [];
+	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
+		nodeType.credentials.forEach((cred) => {
+			if (cred.displayOptions && cred.displayOptions.show) {
+				Object.keys(cred.displayOptions.show).forEach((option) => {
+					const nodeFieldsForName = nodeType.properties.filter((prop) => prop.name === option);
+					if (nodeFieldsForName) {
+						nodeFieldsForName.forEach((nodeField) => {
+							if (
+								!authFields.includes(nodeField) &&
+								isNodeFieldMatchingNodeVersion(nodeField, nodeVersion)
+							) {
+								authFields.push(nodeField);
+							}
+						});
+					}
+				});
+			}
+		});
+	}
+	return authFields;
+};
+
+export const isNodeFieldMatchingNodeVersion = (
+	nodeField: INodeProperties,
+	nodeVersion: number | undefined,
+) => {
+	if (nodeVersion && nodeField.displayOptions?.show?.['@version']) {
+		return nodeField.displayOptions.show['@version']?.includes(nodeVersion);
+	}
+	return true;
+};
+
+export const getCredentialsRelatedFields = (
+	nodeType: INodeTypeDescription | null,
+	credentialType: INodeCredentialDescription | null,
+): INodeProperties[] => {
+	let fields: INodeProperties[] = [];
+	if (
+		nodeType &&
+		credentialType &&
+		credentialType.displayOptions &&
+		credentialType.displayOptions.show
+	) {
+		Object.keys(credentialType.displayOptions.show).forEach((option) => {
+			console.log(option);
+			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
+		});
+	}
+	return fields;
+};
+
+export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
+	if (!node) {
+		return;
+	}
+	const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+	if (nodeType) {
+		const nodeAuthField = getMainAuthField(nodeType);
+		if (nodeAuthField) {
+			const updateInformation = {
+				name: node.name,
+				properties: {
+					parameters: {
+						...node.parameters,
+						[nodeAuthField.name]: type,
+					},
+				} as IDataObject,
+			} as INodeUpdatePropertiesInformation;
+			useWorkflowsStore().updateNodeProperties(updateInformation);
+		}
+	}
+};
+
+export const isNodeParameterRequired = (
+	nodeType: INodeTypeDescription,
+	parameter: INodeProperties,
+): boolean => {
+	if (!parameter.displayOptions || !parameter.displayOptions.show) {
+		return true;
+	}
+	// If parameter itself contains 'none'?
+	// Walk through dependencies and check if all their values are used in displayOptions
+	Object.keys(parameter.displayOptions.show).forEach((name) => {
+		const relatedField = nodeType.properties.find((prop) => {
+			prop.name === name;
+		});
+		if (relatedField && !isNodeParameterRequired(nodeType, relatedField)) {
+			return false;
+		} else {
+			return true;
+		}
+	});
+	return true;
 };

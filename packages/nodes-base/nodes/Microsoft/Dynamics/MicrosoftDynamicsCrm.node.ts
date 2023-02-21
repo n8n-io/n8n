@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,11 +9,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { IField } from './GenericFunctions';
 import {
 	adjustAddresses,
 	getEntityFields,
 	getPicklistOptions,
-	IField,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	sort,
@@ -182,7 +182,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 							qs.$select = 'accountid';
 						}
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/accounts`, body, qs);
+						responseData = await microsoftApiRequest.call(this, 'POST', '/accounts', body, qs);
 					}
 
 					if (operation === 'delete') {
@@ -230,13 +230,13 @@ export class MicrosoftDynamicsCrm implements INodeType {
 								this,
 								'value',
 								'GET',
-								`/accounts`,
+								'/accounts',
 								{},
 								qs,
 							);
 						} else {
 							qs.$top = this.getNodeParameter('limit', 0);
-							responseData = await microsoftApiRequest.call(this, 'GET', `/accounts`, {}, qs);
+							responseData = await microsoftApiRequest.call(this, 'GET', '/accounts', {}, qs);
 							responseData = responseData.value;
 						}
 					}

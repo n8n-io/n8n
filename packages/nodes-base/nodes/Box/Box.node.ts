@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
 
@@ -114,10 +114,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
 
 						const fileName = responseData.name;
@@ -210,13 +207,13 @@ export class Box implements INodeType {
 								this,
 								'entries',
 								'GET',
-								`/search`,
+								'/search',
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
+							responseData = await boxApiRequest.call(this, 'GET', '/search', {}, qs);
 							responseData = responseData.entries;
 						}
 					}
@@ -262,7 +259,7 @@ export class Box implements INodeType {
 							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
+						responseData = await boxApiRequest.call(this, 'POST', '/collaborations', body, qs);
 					}
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
@@ -280,7 +277,7 @@ export class Box implements INodeType {
 						}
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -444,13 +441,13 @@ export class Box implements INodeType {
 								this,
 								'entries',
 								'GET',
-								`/search`,
+								'/search',
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
+							responseData = await boxApiRequest.call(this, 'GET', '/search', {}, qs);
 							responseData = responseData.entries;
 						}
 					}
@@ -496,7 +493,7 @@ export class Box implements INodeType {
 							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
+						responseData = await boxApiRequest.call(this, 'POST', '/collaborations', body, qs);
 					}
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {

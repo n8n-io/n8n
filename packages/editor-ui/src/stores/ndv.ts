@@ -11,7 +11,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		mainPanelDimensions: {},
 		sessionId: '',
 		input: {
-			displayMode: window.posthog?.isFeatureEnabled?.('schema-view') ? 'schema' : 'table',
+			displayMode: 'schema',
 			nodeName: undefined,
 			run: undefined,
 			branch: undefined,

@@ -77,7 +77,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
-						:blockUI="blockUi && isTriggerNode"
+						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
@@ -93,7 +93,7 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
-						:hasForeignCredential="hasForeignCredential"
+						:foreignCredentials="foreignCredentials"
 						:readOnly="readOnly"
 						:blockUI="blockUi && showTriggerPanel"
 						:executable="!readOnly"
@@ -143,6 +143,7 @@ import TriggerPanel from './TriggerPanel.vue';
 import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -199,7 +200,6 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.ndvStore.setNDVSessionId;
 		dataPinningEventBus.$on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
@@ -268,6 +268,11 @@ export default mixins(
 		},
 		parentNode(): string | undefined {
 			return this.parentNodes[0];
+		},
+		isExecutableTriggerNode(): boolean {
+			if (!this.activeNodeType) return false;
+
+			return EXECUTABLE_TRIGGER_NODE_TYPES.includes(this.activeNodeType.name);
 		},
 		isTriggerNode(): boolean {
 			return (
@@ -370,11 +375,11 @@ export default mixins(
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
-		hasForeignCredential(): boolean {
+		foreignCredentials(): string[] {
 			const credentials = (this.activeNode || {}).credentials;
 			const usedCredentials = this.workflowsStore.usedCredentials;
 
-			let hasForeignCredential = false;
+			const foreignCredentials: string[] = [];
 			if (
 				credentials &&
 				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
@@ -385,12 +390,15 @@ export default mixins(
 						usedCredentials[credential.id] &&
 						!usedCredentials[credential.id].currentUserHasAccess
 					) {
-						hasForeignCredential = true;
+						foreignCredentials.push(credential.id);
 					}
 				});
 			}
 
-			return hasForeignCredential;
+			return foreignCredentials;
+		},
+		hasForeignCredential(): boolean {
+			return this.foreignCredentials.length > 0;
 		},
 	},
 	watch: {
@@ -404,9 +412,7 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => {
-					this.ndvStore.setNDVSessionId;
-				}, 0);
+				setTimeout(this.ndvStore.setNDVSessionId, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});

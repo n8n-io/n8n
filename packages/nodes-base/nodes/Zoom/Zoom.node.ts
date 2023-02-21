@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -321,7 +321,7 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'POST', `/users/me/meetings`, body, qs);
+						responseData = await zoomApiRequest.call(this, 'POST', '/users/me/meetings', body, qs);
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate

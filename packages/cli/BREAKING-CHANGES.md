@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.214.0
+
+### What changed?
+
+Invalid Luxon datetimes no longer resolve to `null`. Now they throw the error `invalid DateTime`.
+
+### When is action necessary?
+
+If you are relying on the above behavior, review your workflow to ensure you handle invalid Luxon datetimes.
+
 ## 0.202.0
 
 ### What changed?
@@ -105,7 +115,7 @@ const items = this.getInputData();
 
 for (const i = 0; i < items.length; i++) {
 	const item = items[i].binary as IBinaryKeyData;
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 	const binaryData = item[binaryPropertyName] as IBinaryData;
 	// Before 0.135.0:
 	const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);

@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	convertTriggerObjectToStringArray,
@@ -126,7 +126,7 @@ export class PostmarkTrigger implements INodeType {
 				}
 
 				// Get all webhooks
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const responseData = await postmarkApiRequest.call(this, 'GET', endpoint, {});
 
@@ -152,7 +152,7 @@ export class PostmarkTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const body: any = {
 					Url: webhookUrl,

@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -55,7 +56,7 @@ export async function apiRequest(
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.requestWithAuthentication.call(this, 'typeformApi', options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

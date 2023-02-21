@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,7 +14,7 @@ import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
 
 import { itemFields, itemOperations } from './ItemDescription';
 
-import {
+import type {
 	FieldsUiValues,
 	IAttributeNameUi,
 	IAttributeValueUi,
@@ -91,7 +91,7 @@ export class AwsDynamoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -391,14 +391,19 @@ export class AwsDynamoDB implements INodeType {
 							responseData = responseData.map(simplify);
 						}
 					}
-
-					Array.isArray(responseData)
-						? returnData.push(...responseData)
-						: returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 
@@ -406,6 +411,6 @@ export class AwsDynamoDB implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

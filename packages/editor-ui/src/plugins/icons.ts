@@ -11,6 +11,7 @@ import {
 	faArrowRight,
 	faAt,
 	faBan,
+	faBolt,
 	faBook,
 	faBoxOpen,
 	faBug,
@@ -46,6 +47,7 @@ import {
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
+	faFileAlt,
 	faFileArchive,
 	faFileCode,
 	faFileDownload,
@@ -112,6 +114,7 @@ import {
 	faThumbtack,
 	faTimes,
 	faTimesCircle,
+	faToolbox,
 	faTrash,
 	faUndo,
 	faUnlink,
@@ -120,6 +123,7 @@ import {
 	faUserFriends,
 	faUsers,
 	faVideo,
+	faTree,
 	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -139,6 +143,7 @@ addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
 addIcon(faBan);
+addIcon(faBolt);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
@@ -175,6 +180,7 @@ addIcon(faExpandAlt);
 addIcon(faExternalLinkAlt);
 addIcon(faExchangeAlt);
 addIcon(faFile);
+addIcon(faFileAlt);
 addIcon(faFileArchive);
 addIcon(faFileCode);
 addIcon(faFileDownload);
@@ -242,6 +248,7 @@ addIcon(faThLarge);
 addIcon(faThumbtack);
 addIcon(faTimes);
 addIcon(faTimesCircle);
+addIcon(faToolbox);
 addIcon(faTrash);
 addIcon(faUndo);
 addIcon(faUnlink);
@@ -250,5 +257,6 @@ addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
 addIcon(faVideo);
+addIcon(faTree);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

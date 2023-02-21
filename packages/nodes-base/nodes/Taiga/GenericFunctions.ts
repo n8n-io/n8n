@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,12 +8,8 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { createHash } from 'crypto';
 
@@ -44,7 +40,7 @@ export async function getAuthorization(
 	};
 
 	try {
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		return response.auth_token;
 	} catch (error) {
@@ -92,7 +88,7 @@ export async function taigaApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

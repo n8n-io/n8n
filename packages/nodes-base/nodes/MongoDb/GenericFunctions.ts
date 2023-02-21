@@ -1,13 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	INodeExecutionData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
+import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,

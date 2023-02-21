@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -134,11 +134,38 @@ export class Linear implements INodeType {
 				return returnData;
 			},
 			async getStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				let teamId = this.getNodeParameter('teamId', null) as string;
+				// Handle Updates
+				if (!teamId) {
+					const updateFields = this.getNodeParameter('updateFields', null) as IDataObject;
+					// If not updating the team look up the current team
+					if (!updateFields.teamId) {
+						const issueId = this.getNodeParameter('issueId');
+						const body = {
+							query: query.getIssueTeam(),
+							variables: {
+								issueId,
+							},
+						};
+						const responseData = await linearApiRequest.call(this, body);
+						teamId = responseData?.data?.issue?.team?.id;
+					} else {
+						teamId = updateFields.teamId as string;
+					}
+				}
+
 				const returnData: INodePropertyOptions[] = [];
 				const body = {
 					query: query.getStates(),
 					variables: {
 						$first: 10,
+						filter: {
+							team: {
+								id: {
+									eq: teamId,
+								},
+							},
+						},
 					},
 				};
 				const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body);
@@ -202,7 +229,7 @@ export class Linear implements INodeType {
 						};
 
 						responseData = await linearApiRequest.call(this, body);
-						responseData = responseData.data?.issues?.nodes[0];
+						responseData = responseData.data.issue;
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);

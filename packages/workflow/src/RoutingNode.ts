@@ -13,7 +13,7 @@ import get from 'lodash.get';
 import merge from 'lodash.merge';
 import set from 'lodash.set';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	IHttpRequestOptions,
@@ -180,7 +180,7 @@ export class RoutingNode {
 						runIndex,
 						executeData,
 						{ $credentials: credentials, $version: this.node.typeVersion },
-						true,
+						false,
 					) as string | NodeParameterValue;
 
 					const tempOptions = this.getRequestOptionsFromParameters(
@@ -380,7 +380,7 @@ export class RoutingNode {
 							$value: parameterValue,
 							$version: this.node.typeVersion,
 						},
-						true,
+						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnItem as Record<string, any>)[key] = propertyValue;
@@ -391,7 +391,7 @@ export class RoutingNode {
 			return returnData;
 		}
 		if (action.type === 'binaryData') {
-			responseData.body = Buffer.from(responseData.body as string);
+			const body = (responseData.body = Buffer.from(responseData.body as string));
 			let { destinationProperty } = action.properties;
 
 			destinationProperty = this.getParameterValue(
@@ -403,7 +403,7 @@ export class RoutingNode {
 				false,
 			) as string;
 
-			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(responseData.body);
+			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(body);
 
 			return inputData.map((item) => {
 				if (typeof item.json === 'string') {
@@ -422,28 +422,13 @@ export class RoutingNode {
 		return [];
 	}
 
-	async rawRoutingRequest(
+	async postProcessResponseData(
 		executeSingleFunctions: IExecuteSingleFunctions,
+		responseData: IN8nHttpFullResponse,
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
-		credentialType?: string,
-		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[]> {
-		let responseData: IN8nHttpFullResponse;
-		requestData.options.returnFullResponse = true;
-		if (credentialType) {
-			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
-				executeSingleFunctions,
-				credentialType,
-				requestData.options as IHttpRequestOptions,
-				{ credentialsDecrypted },
-			)) as IN8nHttpFullResponse;
-		} else {
-			responseData = (await executeSingleFunctions.helpers.httpRequest(
-				requestData.options as IHttpRequestOptions,
-			)) as IN8nHttpFullResponse;
-		}
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -482,6 +467,30 @@ export class RoutingNode {
 		return returnData;
 	}
 
+	async rawRoutingRequest(
+		executeSingleFunctions: IExecuteSingleFunctions,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
+		credentialType?: string,
+		credentialsDecrypted?: ICredentialsDecrypted,
+	): Promise<IN8nHttpFullResponse> {
+		let responseData: IN8nHttpFullResponse;
+		requestData.options.returnFullResponse = true;
+		if (credentialType) {
+			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
+				executeSingleFunctions,
+				credentialType,
+				requestData.options as IHttpRequestOptions,
+				{ credentialsDecrypted },
+			)) as IN8nHttpFullResponse;
+		} else {
+			responseData = (await executeSingleFunctions.helpers.httpRequest(
+				requestData.options as IHttpRequestOptions,
+			)) as IN8nHttpFullResponse;
+		}
+
+		return responseData;
+	}
+
 	async makeRoutingRequest(
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
@@ -505,10 +514,16 @@ export class RoutingNode {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
-					itemIndex,
-					runIndex,
 					credentialType,
 					credentialsDecrypted,
+				).then(async (data) =>
+					this.postProcessResponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
 				);
 			},
 		};
@@ -524,14 +539,68 @@ export class RoutingNode {
 				);
 			} else {
 				// Pagination via JSON properties
-				const { properties } = requestOperations.pagination;
 				responseData = [];
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
 				}
 
 				// Different predefined pagination types
-				if (requestOperations.pagination.type === 'offset') {
+				if (requestOperations.pagination.type === 'generic') {
+					let tempResponseData: IN8nHttpFullResponse;
+					let tempResponseItems: INodeExecutionData[];
+					let makeAdditionalRequest: boolean;
+					let paginateRequestData: IHttpRequestOptions;
+
+					const additionalKeys = {
+						$request: requestData.options,
+						$response: {} as IN8nHttpFullResponse,
+						$version: this.node.typeVersion,
+					};
+
+					do {
+						additionalKeys.$request = requestData.options;
+
+						paginateRequestData = this.getParameterValue(
+							requestOperations.pagination.properties.request as unknown as NodeParameterValueType,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as object as IHttpRequestOptions;
+
+						// Make the HTTP request
+						tempResponseData = await this.rawRoutingRequest(
+							executeSingleFunctions,
+							{ ...requestData, options: { ...requestData.options, ...paginateRequestData } },
+							credentialType,
+							credentialsDecrypted,
+						);
+
+						additionalKeys.$response = tempResponseData;
+
+						tempResponseItems = await this.postProcessResponseData(
+							executeSingleFunctions,
+							tempResponseData,
+							requestData,
+							itemIndex,
+							runIndex,
+						);
+
+						responseData.push(...tempResponseItems);
+
+						makeAdditionalRequest = this.getParameterValue(
+							requestOperations.pagination.properties.continue,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as boolean;
+					} while (makeAdditionalRequest);
+				} else if (requestOperations.pagination.type === 'offset') {
+					const { properties } = requestOperations.pagination;
+
 					const optionsType = properties.type === 'body' ? 'body' : 'qs';
 					if (properties.type === 'body' && !requestData.options.body) {
 						requestData.options.body = {};
@@ -555,10 +624,16 @@ export class RoutingNode {
 						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
 							requestData,
-							itemIndex,
-							runIndex,
 							credentialType,
 							credentialsDecrypted,
+						).then(async (data) =>
+							this.postProcessResponseData(
+								executeSingleFunctions,
+								data,
+								requestData,
+								itemIndex,
+								runIndex,
+							),
 						);
 
 						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
@@ -594,10 +669,16 @@ export class RoutingNode {
 			responseData = await this.rawRoutingRequest(
 				executeSingleFunctions,
 				requestData,
-				itemIndex,
-				runIndex,
 				credentialType,
 				credentialsDecrypted,
+			).then(async (data) =>
+				this.postProcessResponseData(
+					executeSingleFunctions,
+					data,
+					requestData,
+					itemIndex,
+					runIndex,
+				),
 			);
 		}
 		return responseData;
@@ -725,7 +806,7 @@ export class RoutingNode {
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: value },
-							true,
+							false,
 						) as string;
 					}
 

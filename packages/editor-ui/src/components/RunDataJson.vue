@@ -18,7 +18,7 @@
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<MappingPill v-if="el" :html="getShortKey(el)"	:can-drop="canDrop" />
+				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
 			<template>
 				<vue-json-pretty
@@ -73,12 +73,14 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { convertPath, executionDataToJson, isString, shorten } from '@/utils';
+import { executionDataToJson, isString, shorten } from '@/utils';
 import { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -148,7 +150,7 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
 		},
@@ -169,11 +171,13 @@ export default mixins(externalHooks).extend({
 			return shorten(el.dataset.name || '', 16, 2);
 		},
 		getJsonParameterPath(path: string): string {
-			const convertedPath = convertPath(path);
-			return `{{ ${convertedPath.replace(
-				/^(\["?\d"?])/,
-				this.distanceFromActive === 1 ? '$json' : `$node["${this.node!.name}"].json`,
-			)} }}`;
+			const subPath = path.replace(/^(\["?\d"?])/, ''); // remove item position
+
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: subPath,
+			});
 		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.path) {
@@ -251,7 +255,6 @@ export default mixins(externalHooks).extend({
 		background-color: var(--color-primary-tint-2);
 	}
 }
-
 </style>
 
 <style lang="scss">

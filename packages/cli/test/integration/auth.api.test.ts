@@ -10,30 +10,24 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['auth'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
+	await testDb.truncate(['User']);
+
+	config.set('ldap.disabled', true);
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -44,7 +38,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('POST /login should log user in', async () => {
@@ -276,6 +270,60 @@ test('GET /login should return logged-in member', async () => {
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeUndefined();
+});
+
+test('GET /resolve-signup-token should validate invite token', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	const memberShell = await testDb.createUserShell(globalMemberRole);
+
+	const response = await authAgent(owner)
+		.get('/resolve-signup-token')
+		.query({ inviterId: owner.id })
+		.query({ inviteeId: memberShell.id });
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body).toEqual({
+		data: {
+			inviter: {
+				firstName: owner.firstName,
+				lastName: owner.lastName,
+			},
+		},
+	});
+});
+
+test('GET /resolve-signup-token should fail with invalid inputs', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authOwnerAgent = authAgent(owner);
+
+	const { id: inviteeId } = await testDb.createUser({ globalRole: globalMemberRole });
+
+	const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
+
+	const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
+
+	const third = await authOwnerAgent.get('/resolve-signup-token').query({
+		inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
+		inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+	});
+
+	// user is already set up, so call should error
+	const fourth = await authOwnerAgent
+		.get('/resolve-signup-token')
+		.query({ inviterId: owner.id })
+		.query({ inviteeId });
+
+	// cause inconsistent DB state
+	await Db.collections.User.update(owner.id, { email: '' });
+	const fifth = await authOwnerAgent
+		.get('/resolve-signup-token')
+		.query({ inviterId: owner.id })
+		.query({ inviteeId });
+
+	for (const response of [first, second, third, fourth, fifth]) {
+		expect(response.statusCode).toBe(400);
+	}
 });
 
 test('POST /logout should log user out', async () => {

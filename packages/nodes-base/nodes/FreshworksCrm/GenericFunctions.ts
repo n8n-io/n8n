@@ -1,10 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
 	SalesAccounts,
@@ -190,5 +191,5 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 }
 
 export function throwOnEmptyFilter(this: IExecuteFunctions) {
-	throw new NodeOperationError(this.getNode(), `Please select at least one filter.`);
+	throw new NodeOperationError(this.getNode(), 'Please select at least one filter.');
 }

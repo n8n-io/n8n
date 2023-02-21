@@ -6,36 +6,25 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 import { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { LicenseManager } from '@n8n_io/license-sdk';
 import { License } from '@/License';
-
-jest.mock('@/telemetry');
-jest.mock('@n8n_io/license-sdk');
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
-const MOCK_N8N_VERSION = '0.27.0';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let authAgent: AuthAgent;
 let license: License;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['license'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['license'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
@@ -44,15 +33,15 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	license = new License();
-	await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+	await license.init(MOCK_INSTANCE_ID);
 });
 
 afterEach(async () => {
-	await testDb.truncate(['Settings'], testDbName);
+	await testDb.truncate(['Settings']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /license should return license information to the instance owner', async () => {

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -171,7 +171,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all' },
 							);
@@ -180,7 +180,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all', per_page: limit },
 							);

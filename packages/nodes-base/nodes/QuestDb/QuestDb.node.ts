@@ -1,10 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
@@ -243,6 +239,7 @@ export class QuestDb implements INodeType {
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
 
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			const insertData = await db.any('SELECT ${columns:name} from ${table:name}', {
 				columns: returnFields
 					.split(',')

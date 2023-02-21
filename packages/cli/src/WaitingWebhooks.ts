@@ -1,21 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-param-reassign */
-import {
-	INode,
-	NodeHelpers,
-	WebhookHttpMethod,
-	Workflow,
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
+import type { INode, WebhookHttpMethod } from 'n8n-workflow';
+import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
 
-import express from 'express';
+import type express from 'express';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
-import { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
+import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
@@ -41,9 +36,9 @@ export class WaitingWebhooks {
 		const executionId = pathParts.shift();
 		const path = pathParts.join('/');
 
-		const execution = await Db.collections.Execution.findOne(executionId);
+		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
 
-		if (execution === undefined) {
+		if (execution === null) {
 			throw new ResponseHelper.NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 

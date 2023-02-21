@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -8,15 +8,15 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import {
 	payoutFields,
 	payoutItemFields,
 	payoutItemOperations,
 	payoutOperations,
 } from './PaymentDescription';
-import {
+import type {
 	IAmount,
 	IItem,
 	IPaymentBatch,
@@ -88,7 +88,7 @@ export class PayPal implements INodeType {
 				if (!clientId || !clientSecret || !environment) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid: missing credentials`,
+						message: 'Connection details not valid: missing credentials',
 					};
 				}
 
@@ -113,7 +113,7 @@ export class PayPal implements INodeType {
 				};
 
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 					return {
 						status: 'OK',
 						message: 'Authentication successful!',

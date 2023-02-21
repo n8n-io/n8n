@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
 
@@ -119,7 +119,7 @@ export class Wekan implements INodeType {
 			},
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const user = await apiRequest.call(this, 'GET', `user`, {}, {});
+				const user = await apiRequest.call(this, 'GET', 'user', {}, {});
 				const boards = await apiRequest.call(this, 'GET', `users/${user._id}/boards`, {}, {});
 				for (const board of boards) {
 					returnData.push({

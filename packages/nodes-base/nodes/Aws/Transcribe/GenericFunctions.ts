@@ -1,17 +1,19 @@
 import { URL } from 'url';
 
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -63,7 +65,7 @@ export async function awsApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
 	}

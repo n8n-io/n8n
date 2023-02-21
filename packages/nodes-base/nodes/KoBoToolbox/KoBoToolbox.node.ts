@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -400,7 +400,7 @@ export class KoBoToolbox implements INodeType {
 					];
 
 					if (responseData?.[0] && download) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						const binaryItem: INodeExecutionData = {
 							json: responseData[0],
@@ -441,7 +441,7 @@ export class KoBoToolbox implements INodeType {
 					};
 
 					if ('binary' === fileMode) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const item = items[i].binary as IBinaryKeyData;
 						const binaryData = item[binaryPropertyName];
 

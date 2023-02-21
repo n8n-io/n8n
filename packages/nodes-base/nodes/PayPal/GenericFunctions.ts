@@ -1,54 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	BINARY_ENCODING,
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function payPalApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
-	endpoint: string,
-	method: string,
-
-	body: any = {},
-	query?: IDataObject,
-	uri?: string,
-): Promise<any> {
-	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials.env as string);
-	const tokenInfo = await getAccessToken.call(this);
-	const headerWithAuthentication = Object.assign(
-		{},
-		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' },
-	);
-	const options = {
-		headers: headerWithAuthentication,
-		method,
-		qs: query || {},
-		uri: uri || `${env}/v1${endpoint}`,
-		body,
-		json: true,
-	};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
-}
-
-function getEnvironment(env: string): string {
-	// @ts-ignore
+function getEnvironment(env: string) {
 	return {
 		sanbox: 'https://api-m.sandbox.paypal.com',
 		live: 'https://api-m.paypal.com',
@@ -82,10 +46,55 @@ async function getAccessToken(
 		json: true,
 	};
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), error);
 	}
+}
+
+export async function payPalApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	endpoint: string,
+	method: string,
+
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+): Promise<any> {
+	const credentials = await this.getCredentials('payPalApi');
+	const env = getEnvironment(credentials.env as string);
+	const tokenInfo = await getAccessToken.call(this);
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' },
+	);
+	const options = {
+		headers: headerWithAuthentication,
+		method,
+		qs: query || {},
+		uri: uri || `${env}/v1${endpoint}`,
+		body,
+		json: true,
+	};
+	try {
+		return await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+}
+
+function getNext(links: IDataObject[]): string | undefined {
+	for (const link of links) {
+		if (link.rel === 'next') {
+			return link.href as string;
+		}
+	}
+	return undefined;
 }
 
 /**
@@ -115,15 +124,6 @@ export async function payPalApiRequestAllItems(
 	} while (getNext(responseData.links) !== undefined);
 
 	return returnData;
-}
-
-function getNext(links: IDataObject[]): string | undefined {
-	for (const link of links) {
-		if (link.rel === 'next') {
-			return link.href as string;
-		}
-	}
-	return undefined;
 }
 
 export function validateJSON(json: string | undefined): any {

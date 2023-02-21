@@ -45,18 +45,16 @@ const props = withDefaults(defineProps<AlertProps>(), {
 });
 
 const icon = computed(() => {
-	/* eslint-disable prettier/prettier */
 	switch (props.type) {
-	case 'success':
-		return 'check-circle';
-	case 'warning':
-		return 'exclamation-triangle';
-	case 'error':
-		return 'times-circle';
-	default:
-		return 'info-circle';
+		case 'success':
+			return 'check-circle';
+		case 'warning':
+			return 'exclamation-triangle';
+		case 'error':
+			return 'times-circle';
+		default:
+			return 'info-circle';
 	}
-	/* eslint-enable */
 });
 
 const style = useCssModule();

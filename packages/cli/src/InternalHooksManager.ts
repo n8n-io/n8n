@@ -1,6 +1,7 @@
-import { INodeTypes } from 'n8n-workflow';
+import type { INodeTypes } from 'n8n-workflow';
 import { InternalHooksClass } from '@/InternalHooks';
 import { Telemetry } from '@/telemetry';
+import type { PostHogClient } from './posthog';
 
 export class InternalHooksManager {
 	private static internalHooksInstance: InternalHooksClass;
@@ -13,14 +14,15 @@ export class InternalHooksManager {
 		throw new Error('InternalHooks not initialized');
 	}
 
-	static init(instanceId: string, versionCli: string, nodeTypes: INodeTypes): InternalHooksClass {
+	static async init(
+		instanceId: string,
+		nodeTypes: INodeTypes,
+		postHog: PostHogClient,
+	): Promise<InternalHooksClass> {
 		if (!this.internalHooksInstance) {
-			this.internalHooksInstance = new InternalHooksClass(
-				new Telemetry(instanceId, versionCli),
-				instanceId,
-				versionCli,
-				nodeTypes,
-			);
+			const telemetry = new Telemetry(instanceId, postHog);
+			await telemetry.init();
+			this.internalHooksInstance = new InternalHooksClass(telemetry, instanceId, nodeTypes);
 		}
 
 		return this.internalHooksInstance;

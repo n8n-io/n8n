@@ -1,12 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { flow } from 'lodash';
 
 import type { Zammad } from './types';
+
+export function tolerateTrailingSlash(url: string) {
+	return url.endsWith('/') ? url.substr(0, url.length - 1) : url;
+}
 
 export async function zammadApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -65,7 +70,7 @@ export async function zammadApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.error.error === 'Object already exists!') {
 			error.error.error = 'An entity with this name already exists.';
@@ -105,10 +110,6 @@ export async function zammadApiRequestAllItems(
 	return returnData;
 }
 
-export function tolerateTrailingSlash(url: string) {
-	return url.endsWith('/') ? url.substr(0, url.length - 1) : url;
-}
-
 export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 	throw new NodeOperationError(
 		this.getNode(),
@@ -120,11 +121,11 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 //        loadOptions utils
 // ----------------------------------
 
+export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
+
 export const fieldToLoadOption = (i: Zammad.Field) => {
 	return { name: i.display ? prettifyDisplayName(i.display) : i.name, value: i.name };
 };
-
-export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
 
 export const isCustomer = (user: Zammad.User) =>
 	user.role_ids.includes(3) && !user.email.endsWith('@zammad.org');

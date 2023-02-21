@@ -22,7 +22,7 @@ export const titleChange = Vue.extend({
 		},
 
 		$titleReset() {
-			document.title = `n8n - Workflow Automation`;
+			document.title = 'n8n - Workflow Automation';
 		},
 	},
 });

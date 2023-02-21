@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated API request to Bubble.
@@ -48,7 +49,7 @@ export async function bubbleApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -68,9 +69,10 @@ export async function bubbleApiRequestAllItems(
 
 	let responseData;
 	qs.limit = 100;
+	qs.cursor = 0;
 	do {
 		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
-		qs.cursor = responseData.cursor;
+		qs.cursor += qs.limit;
 		returnData.push.apply(returnData, responseData.response.results);
 	} while (responseData.response.remaining !== 0);
 

@@ -16,7 +16,6 @@ import * as ActiveExecutions from './ActiveExecutions';
 import * as ActiveWorkflowRunner from './ActiveWorkflowRunner';
 import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
-import * as Push from './Push';
 import * as ResponseHelper from './ResponseHelper';
 import * as Server from './Server';
 import * as TestWebhooks from './TestWebhooks';
@@ -25,14 +24,11 @@ import * as WebhookServer from './WebhookServer';
 import * as WorkflowExecuteAdditionalData from './WorkflowExecuteAdditionalData';
 import * as WorkflowHelpers from './WorkflowHelpers';
 
-import './events';
-
 export {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	Db,
 	GenericHelpers,
-	Push,
 	ResponseHelper,
 	Server,
 	TestWebhooks,

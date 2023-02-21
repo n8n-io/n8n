@@ -1,6 +1,8 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
+import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -9,26 +11,26 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
-import { WorkflowRequest } from '@/requests';
-import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { WorkflowRequest } from '@/requests';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
+import type { WorkflowForList } from '@/workflows/workflows.types';
 
-export interface IGetWorkflowsQueryFilter {
-	id?: number | string;
-	name?: string;
-	active?: boolean;
-}
+export type IGetWorkflowsQueryFilter = Pick<
+	FindOptionsWhere<WorkflowEntity>,
+	'id' | 'name' | 'active'
+>;
 
 const schemaGetWorkflowsQueryFilter = {
 	$id: '/IGetWorkflowsQueryFilter',
@@ -45,28 +47,20 @@ const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFil
 export class WorkflowsService {
 	static async getSharing(
 		user: User,
-		workflowId: number | string,
+		workflowId: string,
 		relations: string[] = ['workflow'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedWorkflow | undefined> {
-		const options: FindOneOptions<SharedWorkflow> & { where: ObjectLiteral } = {
-			where: {
-				workflow: { id: workflowId },
-			},
-		};
+	): Promise<SharedWorkflow | null> {
+		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// workflows they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			options.where.user = { id: user.id };
+			where.userId = user.id;
 		}
 
-		if (relations?.length) {
-			options.relations = relations;
-		}
-
-		return Db.collections.SharedWorkflow.findOne(options);
+		return Db.collections.SharedWorkflow.findOne({ where, relations });
 	}
 
 	/**
@@ -111,16 +105,16 @@ export class WorkflowsService {
 		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
-	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
-		return Db.collections.Workflow.findOne(workflow, options);
+	static async get(workflow: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+		return Db.collections.Workflow.findOne({ where: workflow, relations: options?.relations });
 	}
 
-	// Warning: this function is overriden by EE to disregard role list.
+	// Warning: this function is overridden by EE to disregard role list.
 	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string) {
+	static async getMany(user: User, rawFilter: string): Promise<WorkflowForList[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -128,7 +122,7 @@ export class WorkflowsService {
 			return [];
 		}
 
-		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
+		let filter: IGetWorkflowsQueryFilter = {};
 		if (rawFilter) {
 			try {
 				const filterJson: JsonObject = jsonParse(rawFilter);
@@ -146,7 +140,7 @@ export class WorkflowsService {
 					filter,
 				});
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
@@ -158,42 +152,32 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = [
-			'id',
-			'name',
-			'active',
-			'createdAt',
-			'updatedAt',
-			'nodes',
-		];
+		const select: FindOptionsSelect<WorkflowEntity> = {
+			id: true,
+			name: true,
+			active: true,
+			createdAt: true,
+			updatedAt: true,
+		};
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
+			select.tags = { name: true };
 		}
 
 		if (isSharingEnabled()) {
-			relations.push('shared', 'shared.user', 'shared.role');
+			relations.push('shared');
+			select.shared = { userId: true, roleId: true };
+			select.versionId = true;
 		}
 
-		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
+		filter.id = In(sharedWorkflowIds);
+		return Db.collections.Workflow.find({
+			select,
 			relations,
-			where: {
-				id: In(sharedWorkflowIds),
-				...filter,
-			},
-		};
-
-		const workflows = await Db.collections.Workflow.find(query);
-
-		return workflows.map((workflow) => {
-			const { id, ...rest } = workflow;
-
-			return {
-				id: id.toString(),
-				...rest,
-			};
+			where: filter,
+			order: { updatedAt: 'DESC' },
 		});
 	}
 
@@ -314,19 +298,16 @@ export class WorkflowsService {
 			}
 		}
 
-		const options: FindManyOptions<WorkflowEntity> = {
-			relations: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete options.relations;
-		}
+		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
+		const updatedWorkflow = await Db.collections.Workflow.findOne({
+			where: { id: workflowId },
+			relations,
+		});
 
-		if (updatedWorkflow === undefined) {
+		if (updatedWorkflow === null) {
 			throw new ResponseHelper.BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);
@@ -339,7 +320,7 @@ export class WorkflowsService {
 		}
 
 		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowSaved(user.id, updatedWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
@@ -351,13 +332,21 @@ export class WorkflowsService {
 				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				await Db.collections.Workflow.update(workflowId, { active: false });
+				// and revert the versionId change so UI remains consistent
+				await Db.collections.Workflow.update(workflowId, {
+					active: false,
+					versionId: shared.workflow.versionId,
+				});
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
 
+				let message;
+				if (error instanceof NodeApiError) message = error.description;
+				message = message ?? (error as Error).message;
+
 				// Now return the original error for UI to display
-				throw new ResponseHelper.BadRequestError((error as Error).message);
+				throw new ResponseHelper.BadRequestError(message);
 			}
 		}
 
@@ -444,5 +433,52 @@ export class WorkflowsService {
 		return {
 			executionId,
 		};
+	}
+
+	static async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		await ExternalHooks().run('workflow.delete', [workflowId]);
+
+		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+			relations: ['workflow', 'role'],
+			where: whereClause({
+				user,
+				entityType: 'workflow',
+				entityId: workflowId,
+				roles: ['owner'],
+			}),
+		});
+
+		if (!sharedWorkflow) {
+			return;
+		}
+
+		if (sharedWorkflow.workflow.active) {
+			// deactivate before deleting
+			await ActiveWorkflowRunner.getInstance().remove(workflowId);
+		}
+
+		await Db.collections.Workflow.delete(workflowId);
+
+		void InternalHooksManager.getInstance().onWorkflowDeleted(user, workflowId, false);
+		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
+
+		return sharedWorkflow.workflow;
+	}
+
+	static async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
+		const qb = Db.collections.Workflow.createQueryBuilder('workflow');
+		return qb
+			.update()
+			.set({
+				triggerCount,
+				updatedAt: () => {
+					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+						return 'updatedAt';
+					}
+					return '"updatedAt"';
+				},
+			})
+			.where('id = :id', { id })
+			.execute();
 	}
 }

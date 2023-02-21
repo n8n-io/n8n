@@ -1,18 +1,17 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { simpleParser } from 'mailparser';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -41,7 +40,63 @@ export interface IAttachments {
 	content: string;
 }
 
-const mailComposer = require('nodemailer/lib/mail-composer');
+import MailComposer from 'nodemailer/lib/mail-composer';
+
+async function getAccessToken(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	credentials: ICredentialDataDecryptedObject,
+): Promise<IDataObject> {
+	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
+
+	const scopes = [
+		'https://www.googleapis.com/auth/gmail.labels',
+		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
+		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
+		'https://mail.google.com/',
+		'https://www.googleapis.com/auth/gmail.modify',
+		'https://www.googleapis.com/auth/gmail.compose',
+	];
+
+	const now = moment().unix();
+
+	credentials.email = (credentials.email as string).trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
+	const signature = jwt.sign(
+		{
+			iss: credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
+			scope: scopes.join(' '),
+			aud: 'https://oauth2.googleapis.com/token',
+			iat: now,
+			exp: now + 3600,
+		},
+		privateKey,
+		{
+			algorithm: 'RS256',
+			header: {
+				kid: privateKey,
+				typ: 'JWT',
+				alg: 'RS256',
+			},
+		},
+	);
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+			assertion: signature,
+		},
+		uri: 'https://oauth2.googleapis.com/token',
+		json: true,
+	};
+
+	return this.helpers.request(options);
+}
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -126,7 +181,7 @@ export async function googleApiRequest(
 			const resource = this.getNodeParameter('resource', 0) as string;
 			if (resource === 'label') {
 				const errorOptions = {
-					message: `Label name exists already`,
+					message: 'Label name exists already',
 					description: '',
 				};
 				throw new NodeApiError(this.getNode(), error, errorOptions);
@@ -147,7 +202,7 @@ export async function googleApiRequest(
 		) {
 			const errorOptions = {
 				message: error.description,
-				description: ``,
+				description: '',
 			};
 			throw new NodeApiError(this.getNode(), error, errorOptions);
 		}
@@ -250,12 +305,12 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
-	const mail = new mailComposer(mailOptions).compile();
+	const mail = new MailComposer(mailOptions).compile();
 
 	// by default the bcc headers are deleted when the mail is built.
-	// So add keepBcc flag to averride such behaviour. Only works when
+	// So add keepBcc flag to override such behaviour. Only works when
 	// the flag is set after the compilation.
-	//https://nodemailer.com/extras/mailcomposer/#bcc
+	// @ts-expect-error - https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;
 
 	const mailBody = await mail.build();
@@ -292,62 +347,6 @@ export function extractEmail(s: string) {
 		return data.substring(0, data.length - 1);
 	}
 	return s;
-}
-
-async function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = [
-		'https://www.googleapis.com/auth/gmail.labels',
-		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
-		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
-		'https://mail.google.com/',
-		'https://www.googleapis.com/auth/gmail.modify',
-		'https://www.googleapis.com/auth/gmail.compose',
-	];
-
-	const now = moment().unix();
-
-	credentials.email = (credentials.email as string).trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email,
-			sub: credentials.delegatedEmail || credentials.email,
-			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request!(options);
 }
 
 export function prepareQuery(
@@ -405,7 +404,7 @@ export function prepareQuery(
 
 		if (!timestamp) {
 			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received After' field`, {
+			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received After' field", {
 				description,
 			});
 		}
@@ -434,7 +433,7 @@ export function prepareQuery(
 
 		if (!timestamp) {
 			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received Before' field`, {
+			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received Before' field", {
 				description,
 			});
 		}
@@ -463,7 +462,7 @@ export function prepareEmailsInput(
 
 		if (email.indexOf('@') === -1) {
 			const description = `The email address '${email}' in the '${fieldName}' field isn't valid`;
-			throw new NodeOperationError(this.getNode(), `Invalid email address`, {
+			throw new NodeOperationError(this.getNode(), 'Invalid email address', {
 				description,
 				itemIndex,
 			});
@@ -510,7 +509,7 @@ export async function prepareEmailAttachments(
 			for (const name of (property as string).split(',')) {
 				if (!items[itemIndex].binary || items[itemIndex].binary![name] === undefined) {
 					const description = `This node has no input field called '${name}' `;
-					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,
 						itemIndex,
 					});
@@ -521,7 +520,7 @@ export async function prepareEmailAttachments(
 
 				if (!items[itemIndex].binary![name] || !Buffer.isBuffer(binaryDataBuffer)) {
 					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
-					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,
 						itemIndex,
 					});
@@ -675,7 +674,7 @@ export async function simplifyOutput(
 	this: IExecuteFunctions | IPollFunctions,
 	data: IDataObject[],
 ) {
-	const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+	const labelsData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
 		id,
 		name,

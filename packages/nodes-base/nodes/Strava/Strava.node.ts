@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
@@ -141,14 +146,14 @@ export class Strava implements INodeType {
 							responseData = await stravaApiRequestAllItems.call(
 								this,
 								'GET',
-								`/activities`,
+								'/activities',
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
 
-							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
+							responseData = await stravaApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById

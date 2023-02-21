@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,8 +7,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
@@ -23,56 +22,67 @@ const nodeOperations: INodePropertyOptions[] = [
 		name: 'Blur',
 		value: 'blur',
 		description: 'Adds a blur to the image and so makes it less sharp',
+		action: 'Blur Image',
 	},
 	{
 		name: 'Border',
 		value: 'border',
 		description: 'Adds a border to the image',
+		action: 'Border Image',
 	},
 	{
 		name: 'Composite',
 		value: 'composite',
 		description: 'Composite image on top of another one',
+		action: 'Composite Image',
 	},
 	{
 		name: 'Create',
 		value: 'create',
 		description: 'Create a new image',
+		action: 'Create Image',
 	},
 	{
 		name: 'Crop',
 		value: 'crop',
 		description: 'Crops the image',
+		action: 'Crop Image',
 	},
 	{
 		name: 'Draw',
 		value: 'draw',
 		description: 'Draw on image',
+		action: 'Draw Image',
 	},
 	{
 		name: 'Rotate',
 		value: 'rotate',
 		description: 'Rotate image',
+		action: 'Rotate Image',
 	},
 	{
 		name: 'Resize',
 		value: 'resize',
 		description: 'Change the size of image',
+		action: 'Resize Image',
 	},
 	{
 		name: 'Shear',
 		value: 'shear',
 		description: 'Shear image along the X or Y axis',
+		action: 'Shear Image',
 	},
 	{
 		name: 'Text',
 		value: 'text',
 		description: 'Adds text to image',
+		action: 'Apply Text to Image',
 	},
 	{
 		name: 'Transparent',
 		value: 'transparent',
 		description: 'Make a color in image transparent',
+		action: 'Add Transparency to Image',
 	},
 ];
 
@@ -910,6 +920,10 @@ export class EditImage implements INodeType {
 								name: 'tiff',
 								value: 'tiff',
 							},
+							{
+								name: 'WebP',
+								value: 'webp',
+							},
 						],
 						default: 'jpeg',
 						description: 'Set the output image format',
@@ -986,7 +1000,7 @@ export class EditImage implements INodeType {
 				item = items[itemIndex];
 
 				const operation = this.getNodeParameter('operation', itemIndex);
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const options = this.getNodeParameter('options', itemIndex, {});
 
@@ -1106,6 +1120,7 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
@@ -1286,6 +1301,7 @@ export class EditImage implements INodeType {
 					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}

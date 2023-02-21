@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function pushcutApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -34,7 +35,7 @@ export async function pushcutApiRequest(
 			Object.assign(options, option);
 		}
 		//@ts-ignore
-		return this.helpers.request.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

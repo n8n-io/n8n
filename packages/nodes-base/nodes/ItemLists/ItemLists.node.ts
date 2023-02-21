@@ -1,17 +1,56 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { NodeVMOptions } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
 
-const { NodeVM } = require('vm2');
+const compareItems = (
+	obj: INodeExecutionData,
+	obj2: INodeExecutionData,
+	keys: string[],
+	disableDotNotation: boolean,
+	_node: INode,
+) => {
+	let result = true;
+	for (const key of keys) {
+		if (!disableDotNotation) {
+			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
+				result = false;
+				break;
+			}
+		} else {
+			if (!isEqual(obj.json[key], obj2.json[key])) {
+				result = false;
+				break;
+			}
+		}
+	}
+	return result;
+};
+
+const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
+	return !isObject(obj)
+		? { [path.join('.')]: obj }
+		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
+};
+
+const shuffleArray = (array: any[]) => {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+};
+
+import * as summarize from './summarize.operation';
 
 export class ItemLists implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,10 +87,10 @@ export class ItemLists implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Aggregate Items',
+						name: 'Concatenate Items',
 						value: 'aggregateItems',
-						description: 'Combine fields into a single new item',
-						action: 'Combine fields into a single new item',
+						description: 'Combine fields into a list in a single new item',
+						action: 'Combine fields into a list in a single new item',
 					},
 					{
 						name: 'Limit',
@@ -77,11 +116,16 @@ export class ItemLists implements INodeType {
 						description: 'Turn a list inside item(s) into separate items',
 						action: 'Turn a list inside item(s) into separate items',
 					},
+					{
+						name: 'Summarize',
+						value: 'summarize',
+						description: 'Aggregate items together (pivot table)',
+						action: 'Aggregate items together (pivot table)',
+					},
 				],
 				default: 'splitOutItems',
 			},
 			// Split out items - Fields
-
 			{
 				displayName: 'Field To Split Out',
 				name: 'fieldToSplitOut',
@@ -95,6 +139,7 @@ export class ItemLists implements INodeType {
 					},
 				},
 				description: 'The name of the input field to break out into separate items',
+				requiresDataPath: 'single',
 			},
 			{
 				displayName: 'Include',
@@ -153,6 +198,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -212,6 +258,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Rename Field',
@@ -232,6 +279,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description:
 									'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -302,6 +350,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -338,6 +387,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -409,6 +459,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -444,6 +495,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -500,6 +552,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Order',
@@ -729,6 +782,8 @@ return 0;`,
 					},
 				],
 			},
+			// Remove duplicates - Fields
+			...summarize.description,
 		],
 	};
 
@@ -767,7 +822,8 @@ return 0;`,
 								this.getNode(),
 								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else {
@@ -901,7 +957,8 @@ return 0;`,
 								this.getNode(),
 								`Couldn't find the field '${fieldToAggregate}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (!found && !keepMissing) {
@@ -931,7 +988,7 @@ return 0;`,
 							throw new NodeOperationError(
 								this.getNode(),
 								`The '${field}' output field is used more than once`,
-								{ description: `Please make sure each output field name is unique` },
+								{ description: 'Please make sure each output field name is unique' },
 							);
 						} else {
 							outputFields.push(field);
@@ -1132,7 +1189,7 @@ return 0;`,
 					let type: any = undefined;
 					for (const item of newItems) {
 						if (key === '') {
-							throw new NodeOperationError(this.getNode(), `Name of field to compare is blank`);
+							throw new NodeOperationError(this.getNode(), 'Name of field to compare is blank');
 						}
 						const value = !disableDotNotation ? get(item.json, key) : item.json[key];
 						if (value === undefined && disableDotNotation && key.includes('.')) {
@@ -1140,7 +1197,8 @@ return 0;`,
 								this.getNode(),
 								`'${key}' field is missing from some input items`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (value === undefined) {
@@ -1225,7 +1283,8 @@ return 0;`,
 								this.getNode(),
 								`Couldn't find the field '${fieldName}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (!found) {
@@ -1313,7 +1372,7 @@ return 0;`,
 							console: mode === 'manual' ? 'redirect' : 'inherit',
 							sandbox,
 						};
-						const vm = new NodeVM(options);
+						const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 						newItems = await vm.run(
 							`
@@ -1328,7 +1387,7 @@ return 0;`,
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Sort code doesn't return. Please add a 'return' statement to your code`,
+							"Sort code doesn't return. Please add a 'return' statement to your code",
 						);
 					}
 				}
@@ -1348,6 +1407,8 @@ return 0;`,
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
 				return this.prepareOutputData(newItems);
+			} else if (operation === 'summarize') {
+				return summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
@@ -1356,40 +1417,3 @@ return 0;`,
 		}
 	}
 }
-
-const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
-
-const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
-};
-
-const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};

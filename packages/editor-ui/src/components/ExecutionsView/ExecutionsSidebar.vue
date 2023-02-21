@@ -1,18 +1,32 @@
 <template>
-	<div :class="['executions-sidebar', $style.container]">
+	<div
+		:class="['executions-sidebar', $style.container]"
+		ref="container"
+		data-test-id="executions-sidebar"
+	>
 		<div :class="$style.heading">
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
 		</div>
 		<div :class="$style.controls">
-			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{
-				$locale.baseText('executionsList.autoRefresh')
-			}}</el-checkbox>
+			<el-checkbox
+				v-model="autoRefresh"
+				@change="onAutoRefreshToggle"
+				data-test-id="auto-refresh-checkbox"
+			>
+				{{ $locale.baseText('executionsList.autoRefresh') }}
+			</el-checkbox>
 			<n8n-popover trigger="click">
 				<template #reference>
 					<div :class="$style.filterButton">
-						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
+						<n8n-button
+							icon="filter"
+							type="tertiary"
+							size="medium"
+							:active="statusFilterApplied"
+							data-test-id="executions-filter-button"
+						>
 							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
 							{{ $locale.baseText('executionsList.filters') }}
 						</n8n-button>
@@ -33,6 +47,7 @@
 							ref="typeInput"
 							:class="$style['type-input']"
 							:placeholder="$locale.baseText('generic.any')"
+							data-test-id="execution-status-select"
 							@change="onFilterChange"
 						>
 							<n8n-option
@@ -40,6 +55,7 @@
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
+								:data-test-id="`execution-status-${item.id}`"
 							>
 							</n8n-option>
 						</n8n-select>
@@ -60,11 +76,21 @@
 				</n8n-link>
 			</n8n-info-tip>
 		</div>
-		<div :class="$style.executionList" ref="executionList" @scroll="loadMore">
+		<div
+			:class="$style.executionList"
+			ref="executionList"
+			data-test-id="current-executions-list"
+			@scroll="loadMore(20)"
+		>
 			<div v-if="loading" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			</div>
+			<div v-if="executions.length === 0 && statusFilterApplied" :class="$style.noResultsContainer">
+				<n8n-text color="text-base" size="medium" align="center">
+					{{ $locale.baseText('executionsLandingPage.noResults') }}
+				</n8n-text>
 			</div>
 			<execution-card
 				v-else
@@ -72,6 +98,7 @@
 				:key="execution.id"
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
+				:data-test-id="`execution-details-${execution.id}`"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
@@ -135,6 +162,8 @@ export default Vue.extend({
 		},
 		executionStatuses(): Array<{ id: string; name: string }> {
 			return [
+				{ id: 'crashed', name: this.$locale.baseText('executionsList.error') },
+				{ id: 'new', name: this.$locale.baseText('executionsList.new') },
 				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
 				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
 				{ id: 'success', name: this.$locale.baseText('executionsList.success') },
@@ -149,12 +178,19 @@ export default Vue.extend({
 				this.$router.go(-1);
 			}
 		},
+		'workflowsStore.activeWorkflowExecution'() {
+			this.checkListSize();
+			this.scrollToActiveCard();
+		},
 	},
 	mounted() {
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
+		// On larger screens, we need to load more then first page of executions
+		// for the scroll bar to appear and infinite scrolling is enabled
+		this.checkListSize();
 		this.scrollToActiveCard();
 	},
 	beforeDestroy() {
@@ -164,14 +200,14 @@ export default Vue.extend({
 		}
 	},
 	methods: {
-		loadMore(): void {
+		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsList = this.$refs.executionList as HTMLElement;
 				if (executionsList) {
 					const diff =
 						executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
 					if (diff > -10 && diff < 10) {
-						this.$emit('loadMore');
+						this.$emit('loadMore', limit);
 					}
 				}
 			}
@@ -209,15 +245,39 @@ export default Vue.extend({
 				status: this.filter.status,
 			};
 		},
+		checkListSize(): void {
+			const sidebarContainer = this.$refs.container as HTMLElement;
+			const currentExecutionCard = this.$refs[
+				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+			] as Vue[];
+
+			// Find out how many execution card can fit into list
+			// and load more if needed
+			if (sidebarContainer && currentExecutionCard?.length) {
+				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
+
+				if (listCapacity > this.executions.length) {
+					this.$emit('loadMore', listCapacity - this.executions.length);
+				}
+			}
+		},
 		scrollToActiveCard(): void {
 			const executionsList = this.$refs.executionList as HTMLElement;
-			const currentExecutionCard = this.$refs[`execution-${this.workflowsStore.activeWorkflowExecution?.id}`] as Vue[];
+			const currentExecutionCard = this.$refs[
+				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+			] as Vue[];
 
-			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
+			if (
+				executionsList &&
+				currentExecutionCard?.length &&
+				this.workflowsStore.activeWorkflowExecution
+			) {
 				const cardElement = currentExecutionCard[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
+				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsList.offsetHeight) {
-					executionsList.scrollTo({ top: cardRect.top });
+					executionsList.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
 				}
 			}
 		},
@@ -288,5 +348,11 @@ export default Vue.extend({
 		background-color: var(--color-background-light);
 		margin-top: 0 !important;
 	}
+}
+
+.noResultsContainer {
+	width: 100%;
+	margin-top: var(--spacing-2xl);
+	text-align: center;
 }
 </style>

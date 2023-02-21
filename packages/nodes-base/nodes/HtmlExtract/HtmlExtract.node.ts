@@ -1,12 +1,12 @@
 import cheerio from 'cheerio';
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 type Cheerio = ReturnType<typeof cheerio>;
 
@@ -48,6 +48,7 @@ export class HtmlExtract implements INodeType {
 		icon: 'fa:cut',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		subtitle: '={{$parameter["sourceData"] + ": " + $parameter["dataPropertyName"]}}',
 		description: 'Extracts data from HTML',
 		defaults: {
@@ -214,7 +215,7 @@ export class HtmlExtract implements INodeType {
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 				const extractionValues = this.getNodeParameter(
 					'extractionValues',
 					itemIndex,
@@ -236,7 +237,7 @@ export class HtmlExtract implements INodeType {
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, {
+						throw new NodeOperationError(this.getNode(), 'No item does not contain binary data!', {
 							itemIndex,
 						});
 					}

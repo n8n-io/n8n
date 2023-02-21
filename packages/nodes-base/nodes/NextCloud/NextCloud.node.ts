@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URLSearchParams } from 'url';
 
@@ -911,7 +910,7 @@ export class NextCloud implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -1062,7 +1061,7 @@ export class NextCloud implements INodeType {
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
-						endpoint = `ocs/v1.php/cloud/users`;
+						endpoint = 'ocs/v1.php/cloud/users';
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1144,7 +1143,7 @@ export class NextCloud implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData,

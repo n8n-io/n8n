@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
@@ -68,16 +68,20 @@ export class Gitlab implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'File',
+						value: 'file',
+					},
+					{
 						name: 'Issue',
 						value: 'issue',
 					},
 					{
-						name: 'Repository',
-						value: 'repository',
-					},
-					{
 						name: 'Release',
 						value: 'release',
+					},
+					{
+						name: 'Repository',
+						value: 'repository',
 					},
 					{
 						name: 'User',
@@ -203,13 +207,13 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a new release',
+						description: 'Delete a release',
 						action: 'Delete a release',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a new release',
+						description: 'Get a release',
 						action: 'Get a release',
 					},
 					{
@@ -221,8 +225,53 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a new release',
+						description: 'Update a release',
 						action: 'Update a release',
+					},
+				],
+				default: 'create',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['file'],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new file in repository',
+						action: 'Create a file',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a file in repository',
+						action: 'Delete a file',
+					},
+					{
+						name: 'Edit',
+						value: 'edit',
+						description: 'Edit a file in repository',
+						action: 'Edit a file',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of a single file',
+						action: 'Get a file',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'List contents of a folder',
+						action: 'List files',
 					},
 				],
 				default: 'create',
@@ -697,8 +746,8 @@ export class Gitlab implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['release'],
-						operation: ['getAll'],
+						resource: ['release', 'file'],
+						operation: ['getAll', 'list'],
 					},
 				},
 				default: false,
@@ -710,8 +759,8 @@ export class Gitlab implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['release'],
-						operation: ['getAll'],
+						resource: ['release', 'file'],
+						operation: ['getAll', 'list'],
 						returnAll: [false],
 					},
 				},
@@ -971,6 +1020,267 @@ export class Gitlab implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         file
+			// ----------------------------------
+
+			// ----------------------------------
+			//         file:create/delete/edit/get
+			// ----------------------------------
+			{
+				displayName: 'File Path',
+				name: 'filePath',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['file'],
+					},
+					hide: {
+						operation: ['list'],
+					},
+				},
+				placeholder: 'docs/README.md',
+				description:
+					'The file path of the file. Has to contain the full path or leave it empty for root folder.',
+			},
+
+			// ----------------------------------
+			//         file:list
+			// ----------------------------------
+			{
+				displayName: 'Path',
+				name: 'filePath',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['file'],
+						operation: ['list'],
+					},
+				},
+				placeholder: 'docs/',
+				description: 'The path of the folder to list',
+			},
+
+			{
+				displayName: 'Page',
+				name: 'page',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['file'],
+						operation: ['list'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 1,
+				description: 'Page of results to display',
+			},
+
+			// ----------------------------------
+			//         file:get
+			// ----------------------------------
+			{
+				displayName: 'As Binary Property',
+				name: 'asBinaryProperty',
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['file'],
+					},
+				},
+				description:
+					'Whether to set the data of the file as binary property instead of returning the raw API response',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						asBinaryProperty: [true],
+						operation: ['get'],
+						resource: ['file'],
+					},
+				},
+				placeholder: '',
+				description:
+					'Name of the binary property in which to save the binary data of the received file',
+			},
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['file'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'reference',
+						type: 'string',
+						default: '',
+						placeholder: 'master',
+						description:
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         file:create/edit
+			// ----------------------------------
+			{
+				displayName: 'Binary Data',
+				name: 'binaryData',
+				type: 'boolean',
+				default: false,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create', 'edit'],
+						resource: ['file'],
+					},
+				},
+				description: 'Whether the data to upload should be taken from binary field',
+			},
+			{
+				displayName: 'File Content',
+				name: 'fileContent',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						binaryData: [false],
+						operation: ['create', 'edit'],
+						resource: ['file'],
+					},
+				},
+				placeholder: '',
+				description: 'The text content of the file',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						binaryData: [true],
+						operation: ['create', 'edit'],
+						resource: ['file'],
+					},
+				},
+				placeholder: '',
+				description: 'Name of the binary property which contains the data for the file',
+			},
+			{
+				displayName: 'Commit Message',
+				name: 'commitMessage',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create', 'delete', 'edit'],
+						resource: ['file'],
+					},
+				},
+			},
+			{
+				displayName: 'Branch',
+				name: 'branch',
+				type: 'string',
+				default: '',
+				description: 'Name of the new branch to create. The commit is added to this branch.',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create', 'delete', 'edit'],
+						resource: ['file'],
+					},
+				},
+			},
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add',
+				type: 'fixedCollection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['create', 'delete', 'edit'],
+						resource: ['file'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Start Branch',
+						name: 'branchStart',
+						values: [
+							{
+								displayName: 'Start Branch',
+								name: 'branchStart',
+								type: 'string',
+								default: '',
+								description: 'Name of the base branch to create the new branch from',
+							},
+						],
+					},
+					{
+						name: 'author',
+						displayName: 'Author',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'The name of the author of the commit',
+							},
+							{
+								displayName: 'Email',
+								name: 'email',
+								type: 'string',
+								placeholder: 'name@email.com',
+								default: '',
+								description: 'The email of the author of the commit',
+							},
+						],
+					},
+					{
+						name: 'encoding',
+						displayName: 'Encoding',
+						values: [
+							{
+								displayName: 'Encoding',
+								name: 'encoding',
+								type: 'string',
+								default: 'text',
+								description: 'Change encoding to base64. Default is text.',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -997,6 +1307,10 @@ export class Gitlab implements INodeType {
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
+			'file:get',
+			'file:create',
+			'file:edit',
+			'file:delete',
 			'issue:create',
 			'issue:createComment',
 			'issue:edit',
@@ -1010,6 +1324,7 @@ export class Gitlab implements INodeType {
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
+			'file:list',
 			'release:getAll',
 			'repository:getIssues',
 			'user:getRepositories',
@@ -1229,12 +1544,134 @@ export class Gitlab implements INodeType {
 
 						endpoint = `/users/${owner}/projects`;
 					}
+				} else if (resource === 'file') {
+					if (['create', 'edit'].includes(operation)) {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = operation === 'create' ? 'POST' : 'PUT';
+
+						const filePath = this.getNodeParameter('filePath', i);
+						const additionalParameters = this.getNodeParameter(
+							'additionalParameters',
+							i,
+						) as IDataObject;
+
+						body.branch = this.getNodeParameter('branch', i) as string;
+						body.commit_message = this.getNodeParameter('commitMessage', i) as string;
+
+						if (additionalParameters.author) {
+							body.author = additionalParameters.author;
+						}
+						if (
+							additionalParameters.branchStart &&
+							(additionalParameters.branchStart as IDataObject).branchStart
+						) {
+							body.start_branch = (additionalParameters.branchStart as IDataObject).branchStart;
+						}
+
+						if (this.getNodeParameter('binaryData', i)) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
+							}
+
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+
+							if (item.binary[binaryPropertyName] === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									{ itemIndex: i },
+								);
+							}
+
+							// Currently internally n8n uses base64 and also GitLab expects it base64 encoded.
+							// If that ever changes the data has to get converted here.
+							body.content = item.binary[binaryPropertyName].data;
+							body.encoding = 'base64';
+						} else {
+							// Is text file
+							if (additionalParameters.encoding === 'base64') {
+								body.content = Buffer.from(
+									this.getNodeParameter('fileContent', i) as string,
+								).toString('base64');
+							} else {
+								body.content = this.getNodeParameter('fileContent', i) as string;
+							}
+						}
+
+						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const additionalParameters = this.getNodeParameter(
+							'additionalParameters',
+							i,
+							{},
+						) as IDataObject;
+						if (additionalParameters.author) {
+							body.author = additionalParameters.author;
+						}
+						body.branch = this.getNodeParameter('branch', i) as string;
+						body.commit_message = this.getNodeParameter('commitMessage', i) as string;
+
+						const filePath = this.getNodeParameter('filePath', i);
+
+						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const filePath = this.getNodeParameter('filePath', i);
+						const additionalParameters = this.getNodeParameter(
+							'additionalParameters',
+							i,
+						) as IDataObject;
+
+						if (additionalParameters.reference) {
+							qs.ref = additionalParameters.reference;
+						} else {
+							qs.ref = 'master';
+						}
+
+						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
+					} else if (operation === 'list') {
+						requestMethod = 'GET';
+
+						const filePath = this.getNodeParameter('filePath', i);
+						qs = this.getNodeParameter('additionalFields', i, {});
+						returnAll = this.getNodeParameter('returnAll', i);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', i);
+							qs.page = this.getNodeParameter('page', i);
+						}
+
+						if (filePath) {
+							qs.path = filePath;
+						}
+						endpoint = `${baseEndpoint}/repository/tree`;
+					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
 						itemIndex: i,
 					});
 				}
 
+				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll) {
 					responseData = await gitlabApiRequestAllItems.call(
 						this,
@@ -1247,11 +1684,47 @@ export class Gitlab implements INodeType {
 					responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: i } },
-				);
-				returnData.push(...executionData);
+				if (fullOperation === 'file:get' && asBinaryProperty) {
+					if (Array.isArray(responseData) && responseData.length > 1) {
+						throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
+							itemIndex: i,
+						});
+					}
+					// Add the returned data to the item as binary property
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary as object, items[i].binary!);
+					}
+					const { content, path } = responseData;
+					newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+						Buffer.from(content as string, 'base64'),
+						path as string,
+					);
+
+					items[i] = newItem;
+
+					return [items];
+				}
+
+				if (
+					overwriteDataOperations.includes(fullOperation) ||
+					overwriteDataOperationsArray.includes(fullOperation)
+				) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (

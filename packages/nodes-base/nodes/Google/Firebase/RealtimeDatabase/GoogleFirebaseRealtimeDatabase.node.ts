@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -219,7 +218,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				if (responseData === null) {
 					if (operation === 'get') {
 						throw new NodeApiError(this.getNode(), responseData, {
-							message: `Requested entity was not found.`,
+							message: 'Requested entity was not found.',
 						});
 					} else if (method === 'DELETE') {
 						responseData = { success: true };

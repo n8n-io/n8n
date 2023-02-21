@@ -1,5 +1,5 @@
 import express from 'express';
-import {
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -36,7 +36,7 @@ EEExecutionsController.get(
  * GET /executions/:id
  */
 EEExecutionsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(
 		async (
 			req: ExecutionRequest.Get,

@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { flow, omit } from 'lodash';
 
-import {
+import type {
 	AllFieldsUi,
 	FieldWithPrimaryField,
 	LinksFieldContainer,
@@ -41,6 +41,22 @@ export async function actionNetworkApiRequest(
 
 	return this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 }
+
+/**
+ * Convert an endpoint to the key needed to access data in the response.
+ */
+const toItemsKey = (endpoint: string) => {
+	// handle two-resource endpoint
+	if (
+		endpoint.includes('/signatures') ||
+		endpoint.includes('/attendances') ||
+		endpoint.includes('/taggings')
+	) {
+		endpoint = endpoint.split('/').pop()!;
+	}
+
+	return `osdi:${endpoint.replace(/\//g, '')}`;
+};
 
 export async function handleListing(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -82,22 +98,6 @@ export async function handleListing(
 // ----------------------------------------
 //              helpers
 // ----------------------------------------
-
-/**
- * Convert an endpoint to the key needed to access data in the response.
- */
-const toItemsKey = (endpoint: string) => {
-	// handle two-resource endpoint
-	if (
-		endpoint.includes('/signatures') ||
-		endpoint.includes('/attendances') ||
-		endpoint.includes('/taggings')
-	) {
-		endpoint = endpoint.split('/').pop()!;
-	}
-
-	return `osdi:${endpoint.replace(/\//g, '')}`;
-};
 
 export const extractId = (response: LinksFieldContainer) => {
 	return response._links.self.href.split('/').pop() ?? 'No ID';
@@ -257,32 +257,6 @@ export const resourceLoaders = {
 // ----------------------------------------
 //          response simplifiers
 // ----------------------------------------
-
-export const simplifyResponse = (response: Response, resource: Resource) => {
-	if (resource === 'person') {
-		return simplifyPersonResponse(response as PersonResponse);
-	} else if (resource === 'petition') {
-		return simplifyPetitionResponse(response as PetitionResponse);
-	}
-
-	const fieldsToSimplify = ['identifiers', '_links', 'action_network:sponsor', 'reminders'];
-
-	return {
-		id: extractId(response),
-		...omit(response, fieldsToSimplify),
-	};
-};
-
-const simplifyPetitionResponse = (response: PetitionResponse) => {
-	const fieldsToSimplify = ['identifiers', '_links', 'action_network:hidden', '_embedded'];
-
-	return {
-		id: extractId(response),
-		...omit(response, fieldsToSimplify),
-		creator: simplifyPersonResponse(response._embedded['osdi:creator']),
-	};
-};
-
 const simplifyPersonResponse = (response: PersonResponse) => {
 	const emailAddress = response.email_addresses.filter(isPrimary);
 	const phoneNumber = response.phone_numbers.filter(isPrimary);
@@ -309,5 +283,30 @@ const simplifyPersonResponse = (response: PersonResponse) => {
 			},
 		},
 		language_spoken: response.languages_spoken[0],
+	};
+};
+
+const simplifyPetitionResponse = (response: PetitionResponse) => {
+	const fieldsToSimplify = ['identifiers', '_links', 'action_network:hidden', '_embedded'];
+
+	return {
+		id: extractId(response),
+		...omit(response, fieldsToSimplify),
+		creator: simplifyPersonResponse(response._embedded['osdi:creator']),
+	};
+};
+
+export const simplifyResponse = (response: Response, resource: Resource) => {
+	if (resource === 'person') {
+		return simplifyPersonResponse(response as PersonResponse);
+	} else if (resource === 'petition') {
+		return simplifyPetitionResponse(response as PetitionResponse);
+	}
+
+	const fieldsToSimplify = ['identifiers', '_links', 'action_network:sponsor', 'reminders'];
+
+	return {
+		id: extractId(response),
+		...omit(response, fieldsToSimplify),
 	};
 };

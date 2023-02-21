@@ -10,7 +10,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		SpacingPreview,
 	},
-	template: `<spacing-preview v-bind="$props" />`,
+	template: '<spacing-preview v-bind="$props" />',
 });
 
 export const Padding = Template.bind({});

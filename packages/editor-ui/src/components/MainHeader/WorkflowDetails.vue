@@ -62,7 +62,12 @@
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-button type="secondary" class="mr-2xs" @click="onShareButtonClick">
+					<n8n-button
+						type="secondary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+						data-test-id="workflow-share-button"
+					>
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
 					<template #fallback>
@@ -154,6 +159,7 @@ import { useTagsStore } from '@/stores/tags';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 import { useUsageStore } from '@/stores/usage';
+import { BaseTextKey } from '@/plugins/i18n';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -240,7 +246,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		onExecutionsTab(): boolean {
 			return [
 				VIEWS.EXECUTION_HOME.toString(),
-				VIEWS.EXECUTIONS.toString(),
+				VIEWS.WORKFLOW_EXECUTIONS.toString(),
 				VIEWS.EXECUTION_PREVIEW,
 			].includes(this.$route.name || '');
 		},
@@ -434,10 +440,6 @@ export default mixins(workflowHelpers, titleChange).extend({
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
 					const workflowData = await this.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
-					if (data.id && typeof data.id === 'string') {
-						data.id = parseInt(data.id, 10);
-					}
-
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
@@ -526,9 +528,14 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
-			if (linkUrl.includes('subscription')) {
-				linkUrl = this.usageStore.viewPlansUrl;
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-workflow-sharing`;
 			}
 
 			window.open(linkUrl, '_blank');

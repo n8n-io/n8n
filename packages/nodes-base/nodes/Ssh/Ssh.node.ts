@@ -1,17 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { readFile, rm, writeFile } from 'fs/promises';
+import { rm, writeFile } from 'fs/promises';
 
-import { file } from 'tmp-promise';
+import { file as tmpFile } from 'tmp-promise';
 
-const nodeSSH = require('node-ssh');
+import type { Config } from 'node-ssh';
+import { NodeSSH } from 'node-ssh';
+import type { Readable } from 'stream';
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
@@ -252,7 +256,7 @@ export class Ssh implements INodeType {
 
 		const temporaryFiles: string[] = [];
 
-		const ssh = new nodeSSH.NodeSSH();
+		const ssh = new NodeSSH();
 
 		try {
 			if (authentication === 'password') {
@@ -267,16 +271,16 @@ export class Ssh implements INodeType {
 			} else if (authentication === 'privateKey') {
 				const credentials = await this.getCredentials('sshPrivateKey');
 
-				const { path } = await file({ prefix: 'n8n-ssh-' });
+				const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
 				await writeFile(path, credentials.privateKey as string);
 
-				const options = {
+				const options: Config = {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,
 					privateKey: path,
-				} as any;
+				};
 
 				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;
@@ -292,7 +296,7 @@ export class Ssh implements INodeType {
 							const command = this.getNodeParameter('command', i) as string;
 							const cwd = this.getNodeParameter('cwd', i) as string;
 							returnItems.push({
-								json: await ssh.execCommand(command, { cwd }),
+								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},
@@ -302,13 +306,10 @@ export class Ssh implements INodeType {
 
 					if (resource === 'file') {
 						if (operation === 'download') {
-							const dataPropertyNameDownload = this.getNodeParameter(
-								'binaryPropertyName',
-								i,
-							) as string;
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const parameterPath = this.getNodeParameter('path', i) as string;
 
-							const { path } = await file({ prefix: 'n8n-ssh-' });
+							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
 
 							await ssh.getFile(path, parameterPath);
@@ -330,10 +331,8 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
-							const data = await readFile(path);
-
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-								data,
+							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+								path,
 								parameterPath,
 							);
 						}
@@ -350,7 +349,7 @@ export class Ssh implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							const binaryData = item.binary[propertyNameUpload];
 
@@ -362,11 +361,16 @@ export class Ssh implements INodeType {
 								);
 							}
 
-							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							let uploadData: Buffer | Readable;
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
+							} else {
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
+							}
 
-							const { path } = await file({ prefix: 'n8n-ssh-' });
+							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
-							await writeFile(path, dataBuffer);
+							await writeFile(path, uploadData);
 
 							await ssh.putFile(
 								path,

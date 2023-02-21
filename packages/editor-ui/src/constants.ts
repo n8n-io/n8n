@@ -43,6 +43,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -56,15 +57,16 @@ export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
-export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
+export const N8N_IO_BASE_URL = 'https://api.n8n.io/api/';
 export const DOCS_DOMAIN = 'docs.n8n.io';
 export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;
 export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
-export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
-export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
-export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
+export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
+export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
+export const NPM_KEYWORD_SEARCH_URL =
+	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
@@ -73,6 +75,7 @@ export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integratio
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
+export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -89,6 +92,7 @@ export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
@@ -99,6 +103,7 @@ export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
+export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 export const NOTION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.notionTrigger';
@@ -115,6 +120,7 @@ export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
 export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
+export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
 export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
@@ -124,18 +130,21 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 
+export const EXECUTABLE_TRIGGER_NODE_TYPES = [
+	START_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+];
+
 export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 ];
 
-export const MULTIPLE_OUTPUT_NODE_TYPES = [IF_NODE_TYPE, SWITCH_NODE_TYPE];
-
-export const PIN_DATA_NODE_TYPES_DENYLIST = [
-	...MULTIPLE_OUTPUT_NODE_TYPES,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-];
+export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -160,6 +169,10 @@ export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
+export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
+export const FILES_SUBCATEGORY = 'Files';
+export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
+export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
@@ -168,6 +181,7 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
+export const EMAIL_KEY = 'email';
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -223,13 +237,40 @@ export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
 
 export const CODING_SKILL_KEY = 'codingSkill';
 
+export const AUTOMATION_BENEFICIARY_KEY = 'automationBeneficiary';
+export const AUTOMATION_BENEFICIARY_SELF = 'myself';
+export const AUTOMATION_BENEFICIARY_MY_TEAM = 'my-team';
+export const AUTOMATION_BENEFICIARY_OTHER_TEAMS = 'other-teams';
+
 export const USAGE_MODE_KEY = 'usageModes';
 export const USAGE_MODE_CONNECT_TO_DB = 'connect-internal-db';
 export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
 export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
 
+export const REPORTED_SOURCE_KEY = 'reportedSource';
+export const REPORTED_SOURCE_OTHER_KEY = 'reportedSourceOther';
+export const REPORTED_SOURCE_GOOGLE = 'google';
+export const REPORTED_SOURCE_TWITTER = 'twitter';
+export const REPORTED_SOURCE_LINKEDIN = 'linkedin';
+export const REPORTED_SOURCE_YOUTUBE = 'youtube';
+export const REPORTED_SOURCE_FRIEND = 'friend';
+export const REPORTED_SOURCE_PODCAST = 'podcast';
+export const REPORTED_SOURCE_EVENT = 'event';
+export const REPORTED_SOURCE_OTHER = 'other';
+
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
-export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
+export const DEVOPS_AUTOMATION_GOAL_KEY = 'automationGoalDevops';
+export const DEVOPS_AUTOMATION_GOAL_OTHER_KEY = 'automationGoalDevopsOther';
+export const DEVOPS_AUTOMATION_OTHER = 'other';
+export const DEVOPS_AUTOMATION_CI_CD_GOAL = 'ci-cd';
+export const DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL =
+	'cloud-infrastructure-orchestration';
+export const DEVOPS_AUTOMATION_DATA_SYNCING_GOAL = 'data-syncing';
+export const DEVOPS_INCIDENT_RESPONSE_GOAL = 'incident-response';
+export const DEVOPS_MONITORING_AND_ALERTING_GOAL = 'monitoring-alerting';
+export const DEVOPS_REPORTING_GOAL = 'reporting';
+export const DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL = 'ticketing-systems-integrations';
+
 export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
 export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
 export const ENGINEERING_GOAL = 'engineering';
@@ -241,6 +282,18 @@ export const SALES_MARKETING_GOAL = 'sales-marketing';
 export const SECURITY_GOAL = 'security';
 export const OTHER_AUTOMATION_GOAL = 'other';
 export const NOT_SURE_YET_GOAL = 'not-sure-yet';
+
+export const ROLE_KEY = 'role';
+export const ROLE_OTHER_KEY = 'roleOther';
+export const ROLE_BUSINESS_OWNER = 'business-owner';
+export const ROLE_CUSTOMER_SUPPORT = 'customer-support';
+export const ROLE_DATA_SCIENCE = 'data-science';
+export const ROLE_DEVOPS = 'devops';
+export const ROLE_IT = 'it';
+export const ROLE_ENGINEERING = 'engineering';
+export const ROLE_SALES_AND_MARKETING = 'sales-and-marketing';
+export const ROLE_SECURITY = 'security';
+export const ROLE_OTHER = 'other';
 
 /** END OF PERSONALIZATION SURVEY */
 
@@ -277,7 +330,7 @@ export const HIRING_BANNER = `
                                                         ///////////
                                                           //////
 
-Love n8n? Help us build the future of automation! https://n8n.io/careers
+Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
 `;
 
 export const NODE_TYPE_COUNT_MAPPER = {
@@ -290,8 +343,7 @@ export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.r
 export enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
-	EXECUTION = 'ExecutionById',
-	EXECUTIONS = 'ExecutionList',
+	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
@@ -303,22 +355,27 @@ export enum VIEWS {
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
+	SIGNOUT = 'SignoutView',
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
+	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
+	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
+	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 }
 
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
+	SSO = 'sso',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -373,6 +430,8 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	Ldap = 'ldap',
+	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -432,3 +491,33 @@ export enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 }
+
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
+}
+
+export const N8N_SALES_EMAIL = 'sales@n8n.io';
+
+export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
+
+export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
+
+export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+export const MAIN_AUTH_FIELD_NAME = 'authentication';
+export const NODE_RESOURCE_FIELD_NAME = 'resource';
+
+export const ASSUMPTION_EXPERIMENT = {
+	name: 'adore-assumption-tests-1',
+	control: 'control',
+	demo: 'assumption-demo',
+	video: 'assumption-video',
+};
+
+export const ONBOARDING_EXPERIMENT = {
+	name: 'checklist_001',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];

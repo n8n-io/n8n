@@ -1,4 +1,4 @@
-import {
+import type {
 	DeclarativeRestApiSettings,
 	IDataObject,
 	IExecuteFunctions,
@@ -9,11 +9,10 @@ import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 	PreSendAction,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 /**
  * A custom API request function to be used with the resourceLocator lookup queries.
@@ -44,7 +43,7 @@ export async function apiRequest(
 	};
 
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
 	} catch (error) {
 		if (error instanceof NodeApiError) {
 			throw error;

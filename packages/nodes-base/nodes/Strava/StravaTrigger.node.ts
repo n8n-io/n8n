@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { stravaApiRequest } from './GenericFunctions';
 
@@ -162,7 +167,7 @@ export class StravaTrigger implements INodeType {
 								const webhooks = await stravaApiRequest.call(
 									this,
 									'GET',
-									`/push_subscriptions`,
+									'/push_subscriptions',
 									{},
 								);
 
@@ -182,7 +187,7 @@ export class StravaTrigger implements INodeType {
 									responseData = await stravaApiRequest.call(
 										this,
 										'POST',
-										`/push_subscriptions`,
+										'/push_subscriptions',
 										requestBody,
 									);
 								} else {

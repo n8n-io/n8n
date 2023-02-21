@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 import * as amqplib from 'amqplib';
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,9 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
 

@@ -1,14 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeProperties,
 	IWebhookFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { upperFirst } from 'lodash';
 
@@ -42,7 +42,7 @@ export async function webexApiRequest(
 			delete options.qs;
 		}
 		//@ts-ignore
-		return this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
+		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
 	} catch (error) {
@@ -126,6 +126,12 @@ export function mapResource(event: string) {
 			all: 'all',
 		} as { [key: string]: string }
 	)[event];
+}
+
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAttachemnts(attachements: IDataObject[]) {
@@ -619,12 +625,6 @@ export function getInputTextProperties(): INodeProperties[] {
 			description: 'The initial value for this field',
 		},
 	];
-}
-
-function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {

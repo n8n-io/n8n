@@ -1,6 +1,6 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -189,7 +189,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/custom_fields');
 
 						responseData = responseData.custom_fields;
 
@@ -256,7 +256,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/forms`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/forms');
 
 						responseData = responseData.forms;
 
@@ -339,7 +339,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/sequences`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/sequences');
 
 						responseData = responseData.courses;
 
@@ -394,7 +394,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/tags`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/tags');
 
 						responseData = responseData.tags;
 

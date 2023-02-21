@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -188,7 +188,8 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]`,
+				placeholder:
+					'[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]',
 			},
 			{
 				displayName: 'Properties (JSON)',
@@ -202,7 +203,7 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `{ "name": "text_1" }`,
+				placeholder: '{ "name": "text_1" }',
 			},
 			{
 				displayName: 'Overrides',

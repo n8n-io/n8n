@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -12,8 +12,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	clean,
@@ -41,9 +41,9 @@ import { formFields, formOperations } from './FormDescription';
 
 import { ticketFields, ticketOperations } from './TicketDescription';
 
-import { IForm } from './FormInterface';
+import type { IForm } from './FormInterface';
 
-import { IAssociation, IDeal } from './DealInterface';
+import type { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
 
@@ -187,7 +187,7 @@ export class Hubspot implements INodeType {
 					if (err.statusCode === 401) {
 						return {
 							status: 'Error',
-							message: `Invalid credentials`,
+							message: 'Invalid credentials',
 						};
 					}
 				}
@@ -1938,7 +1938,7 @@ export class Hubspot implements INodeType {
 							if (options.propertiesWithHistory) {
 								qs.propertiesWithHistory = (options.propertiesWithHistory as string).split(',');
 							}
-							const endpoint = `/companies/v2/companies/paged`;
+							const endpoint = '/companies/v2/companies/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -1959,13 +1959,13 @@ export class Hubspot implements INodeType {
 							let endpoint;
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (operation === 'getRecentlyCreated') {
-								endpoint = `/companies/v2/companies/recent/created`;
+								endpoint = '/companies/v2/companies/recent/created';
 							} else {
 								const filters = this.getNodeParameter('filters', i);
 								if (filters.since) {
 									qs.since = new Date(filters.since as string).getTime();
 								}
-								endpoint = `/companies/v2/companies/recent/modified`;
+								endpoint = '/companies/v2/companies/recent/modified';
 							}
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
@@ -2176,7 +2176,7 @@ export class Hubspot implements INodeType {
 									? (propertiesWithHistory as string).split(',')
 									: propertiesWithHistory;
 							}
-							const endpoint = `/deals/v1/deal/paged`;
+							const endpoint = '/deals/v1/deal/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2203,9 +2203,9 @@ export class Hubspot implements INodeType {
 								qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 							}
 							if (operation === 'getRecentlyCreated') {
-								endpoint = `/deals/v1/deal/recent/created`;
+								endpoint = '/deals/v1/deal/recent/created';
 							} else {
-								endpoint = `/deals/v1/deal/recent/modified`;
+								endpoint = '/deals/v1/deal/recent/modified';
 							}
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
@@ -2295,7 +2295,7 @@ export class Hubspot implements INodeType {
 							if (!Object.keys(metadata).length) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`At least one metadata field needs to set`,
+									'At least one metadata field needs to set',
 									{ itemIndex: i },
 								);
 							}
@@ -2350,7 +2350,7 @@ export class Hubspot implements INodeType {
 						//https://legacydocs.hubspot.com/docs/methods/engagements/get-all-engagements
 						if (operation === 'getAll') {
 							const returnAll = this.getNodeParameter('returnAll', 0);
-							const endpoint = `/engagements/v1/engagements/paged`;
+							const endpoint = '/engagements/v1/engagements/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2578,7 +2578,7 @@ export class Hubspot implements INodeType {
 									',',
 								);
 							}
-							const endpoint = `/crm-objects/v1/objects/tickets/paged`;
+							const endpoint = '/crm-objects/v1/objects/tickets/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,

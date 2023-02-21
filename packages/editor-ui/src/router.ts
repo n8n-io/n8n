@@ -6,14 +6,16 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import ExecutionsView from '@/components/ExecutionsView/ExecutionsView.vue';
+import WorkflowExecutionsList from '@/components/ExecutionsView/ExecutionsList.vue';
 import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
 import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsView from './views/SettingsView.vue';
+import SettingsLdapView from './views/SettingsLdapView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -24,14 +26,16 @@ import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
+import ExecutionsView from '@/views/ExecutionsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
-import { VIEWS } from './constants';
+import { EnterpriseEditionFeature, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
+import SignoutView from '@/views/SignoutView.vue';
 
 Vue.use(Router);
 
@@ -53,7 +57,7 @@ function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return {name: VIEWS.NOT_FOUND};
+		return { name: VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -75,7 +79,7 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect() {
-					return {name: VIEWS.WORKFLOWS};
+					return { name: VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
@@ -103,23 +107,6 @@ const router = new Router({
 					},
 				},
 				getRedirect: getTemplatesRedirect,
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-				},
-			},
-		},
-		{
-			path: '/execution/:id',
-			name: VIEWS.EXECUTION,
-			components: {
-				default: NodeView,
-				header: MainHeader,
-				sidebar: MainSidebar,
-			},
-			meta: {
-				nodeView: true,
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -199,6 +186,21 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/executions',
+			name: VIEWS.EXECUTIONS,
+			components: {
+				default: ExecutionsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '/workflow',
 			redirect: '/workflow/new',
 		},
@@ -253,9 +255,9 @@ const router = new Router({
 		},
 		{
 			path: '/workflow/:name/executions',
-			name: VIEWS.EXECUTIONS,
+			name: VIEWS.WORKFLOW_EXECUTIONS,
 			components: {
-				default: ExecutionsView,
+				default: WorkflowExecutionsList,
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
@@ -367,6 +369,23 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/signout',
+			name: VIEWS.SIGNOUT,
+			components: {
+				default: SignoutView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '/setup',
 			name: VIEWS.SETUP,
 			components: {
@@ -450,7 +469,10 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.settings.hideUsagePage === true || settingsStore.settings.deployment?.type === 'cloud';
+									return (
+										settingsStore.settings.hideUsagePage === true ||
+										settingsStore.settings.deployment?.type === 'cloud'
+									);
 								},
 							},
 						},
@@ -503,7 +525,11 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.isUserManagementEnabled === false;
+
+									return (
+										settingsStore.isUserManagementEnabled === false &&
+										!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
+									);
 								},
 							},
 						},
@@ -533,6 +559,27 @@ const router = new Router({
 									const settingsStore = useSettingsStore();
 									return settingsStore.isPublicApiEnabled === false;
 								},
+							},
+						},
+					},
+				},
+				{
+					path: 'log-streaming',
+					name: VIEWS.LOG_STREAMING_SETTINGS,
+					components: {
+						settingsView: SettingsLogStreamingView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+								role: [ROLE.Owner],
+							},
+							deny: {
+								role: [ROLE.Default],
 							},
 						},
 					},
@@ -578,6 +625,20 @@ const router = new Router({
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+				{
+					path: 'ldap',
+					name: VIEWS.LDAP_SETTINGS,
+					components: {
+						settingsView: SettingsLdapView,
+					},
+					meta: {
+						permissions: {
+							allow: {
+								role: [ROLE.Owner],
 							},
 						},
 					},

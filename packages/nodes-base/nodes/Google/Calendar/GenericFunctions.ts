@@ -1,14 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeListSearchItems,
 	INodeListSearchResult,
 	IPollFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -40,7 +40,7 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 		//@ts-ignore
-		return this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

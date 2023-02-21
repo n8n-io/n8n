@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 const data = [
 	{
@@ -111,7 +111,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
@@ -133,11 +133,15 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 			}
 
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+				returnData.push({ json: responseData });
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

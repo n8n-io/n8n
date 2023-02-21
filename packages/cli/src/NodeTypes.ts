@@ -10,15 +10,11 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-class NodeTypesClass implements INodeTypes {
+export class NodeTypesClass implements INodeTypes {
 	constructor(private nodesAndCredentials: INodesAndCredentials) {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
-		// eslint-disable-next-line no-restricted-syntax
-		for (const nodeTypeData of Object.values(this.loadedNodes)) {
-			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
-			this.applySpecialNodeParameters(nodeType);
-		}
+		this.applySpecialNodeParameters();
 	}
 
 	/**
@@ -47,6 +43,13 @@ class NodeTypesClass implements INodeTypes {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
+	applySpecialNodeParameters() {
+		for (const nodeTypeData of Object.values(this.loadedNodes)) {
+			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
+			NodeHelpers.applySpecialNodeParameters(nodeType);
+		}
+	}
+
 	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {
 		const loadedNodes = this.loadedNodes;
 		if (type in loadedNodes) {
@@ -57,18 +60,11 @@ class NodeTypesClass implements INodeTypes {
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
 			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
-			this.applySpecialNodeParameters(loaded);
+			NodeHelpers.applySpecialNodeParameters(loaded);
 			loadedNodes[type] = { sourcePath, type: loaded };
 			return loadedNodes[type];
 		}
 		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
-	}
-
-	private applySpecialNodeParameters(nodeType: INodeType) {
-		const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
-		if (applyParameters.length) {
-			nodeType.description.properties.unshift(...applyParameters);
-		}
 	}
 
 	private get loadedNodes() {

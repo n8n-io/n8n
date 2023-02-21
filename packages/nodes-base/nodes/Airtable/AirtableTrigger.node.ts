@@ -1,12 +1,12 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
@@ -163,6 +163,7 @@ export class AirtableTrigger implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 						description:

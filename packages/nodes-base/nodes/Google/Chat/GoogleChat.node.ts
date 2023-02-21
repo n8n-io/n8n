@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,12 +10,12 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { IMessage, IMessageUi } from './MessageInterface';
+import type { IMessage, IMessageUi } from './MessageInterface';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import {
 	// attachmentFields,
@@ -114,7 +114,7 @@ export class GoogleChat implements INodeType {
 			// select them easily
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const spaces = await googleApiRequestAllItems.call(this, 'spaces', 'GET', `/v1/spaces`);
+				const spaces = await googleApiRequestAllItems.call(this, 'spaces', 'GET', '/v1/spaces');
 				for (const space of spaces) {
 					returnData.push({
 						name: space.displayName,
@@ -142,7 +142,7 @@ export class GoogleChat implements INodeType {
 							iss: email,
 							sub: credential.data!.delegatedEmail || email,
 							scope: scopes.join(' '),
-							aud: `https://oauth2.googleapis.com/token`,
+							aud: 'https://oauth2.googleapis.com/token',
 							iat: now,
 							exp: now,
 						},
@@ -243,7 +243,7 @@ export class GoogleChat implements INodeType {
 
 						items[i] = newItem;
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							responseData,
@@ -274,13 +274,13 @@ export class GoogleChat implements INodeType {
 								this,
 								'spaces',
 								'GET',
-								`/v1/spaces`,
+								'/v1/spaces',
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
-							responseData = await googleApiRequest.call(this, 'GET', `/v1/spaces`, undefined, qs);
+							responseData = await googleApiRequest.call(this, 'GET', '/v1/spaces', undefined, qs);
 							responseData = responseData.spaces;
 						}
 					}

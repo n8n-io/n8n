@@ -1,5 +1,11 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
+	<div
+		class="sticky-wrapper"
+		:id="nodeId"
+		:ref="data.name"
+		:style="stickyPosition"
+		:data-name="data.name"
+	>
 		<div
 			:class="{
 				'sticky-default': true,
@@ -11,8 +17,6 @@
 			<div class="select-sticky-background" v-show="isSelected" />
 			<div
 				class="sticky-box"
-				:data-name="data.name"
-				:ref="data.name"
 				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -186,9 +190,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			if (this.node) {
-				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
-			}
 		},
 		onResize({ height, width, dX, dY }: { width: number; height: number; dX: number; dY: number }) {
 			if (!this.node) {
@@ -202,7 +203,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			this.__makeInstanceDraggable(this.data);
 		},
 		setParameters(params: { content?: string; height?: number; width?: number }) {
 			if (this.node) {
@@ -252,8 +252,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 
 	.sticky-default {
-		position: absolute;
-
 		.sticky-box {
 			width: 100%;
 			height: 100%;

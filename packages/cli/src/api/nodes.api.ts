@@ -1,10 +1,9 @@
 import express from 'express';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import config from '@/config';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 
 import {
@@ -31,9 +30,10 @@ import {
 } from '@/constants';
 import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 
-import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
+import { getPushInstance } from '@/push';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -124,7 +124,7 @@ nodesController.post(
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
 			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
-				user_id: req.user.id,
+				user: req.user,
 				input_string: name,
 				package_name: parsed.packageName,
 				success: false,
@@ -141,7 +141,7 @@ nodesController.post(
 
 		if (!hasLoaded) removePackageFromMissingList(name);
 
-		const pushInstance = Push.getInstance();
+		const pushInstance = getPushInstance();
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -152,7 +152,7 @@ nodesController.post(
 		});
 
 		void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
-			user_id: req.user.id,
+			user: req.user,
 			input_string: name,
 			package_name: parsed.packageName,
 			success: true,
@@ -248,7 +248,7 @@ nodesController.delete(
 			throw new ResponseHelper.InternalServerError(message);
 		}
 
-		const pushInstance = Push.getInstance();
+		const pushInstance = getPushInstance();
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -259,7 +259,7 @@ nodesController.delete(
 		});
 
 		void InternalHooksManager.getInstance().onCommunityPackageDeleteFinished({
-			user_id: req.user.id,
+			user: req.user,
 			package_name: name,
 			package_version: installedPackage.installedVersion,
 			package_node_names: installedPackage.installedNodes.map((node) => node.name),
@@ -295,7 +295,7 @@ nodesController.patch(
 				previouslyInstalledPackage,
 			);
 
-			const pushInstance = Push.getInstance();
+			const pushInstance = getPushInstance();
 
 			// broadcast to connected frontends that node list has been updated
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
@@ -313,7 +313,7 @@ nodesController.patch(
 			});
 
 			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
-				user_id: req.user.id,
+				user: req.user,
 				package_name: name,
 				package_version_current: previouslyInstalledPackage.installedVersion,
 				package_version_new: newInstalledPackage.installedVersion,
@@ -325,7 +325,7 @@ nodesController.patch(
 			return newInstalledPackage;
 		} catch (error) {
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				const pushInstance = Push.getInstance();
+				const pushInstance = getPushInstance();
 				pushInstance.send('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,

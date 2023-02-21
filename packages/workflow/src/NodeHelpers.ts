@@ -15,7 +15,7 @@
 import get from 'lodash.get';
 import isEqual from 'lodash.isequal';
 
-import {
+import type {
 	IContextObject,
 	INode,
 	INodeCredentialDescription,
@@ -230,31 +230,29 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-/**
- * Gets special parameters which should be added to nodeTypes depending
- * on their type or configuration
- *
- */
-export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
-	if (nodeType.description.polling === true) {
-		return [
-			{
-				displayName: 'Poll Times',
-				name: 'pollTimes',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Poll Time',
-				},
-				default: { item: [{ mode: 'everyMinute' }] },
-				description: 'Time at which polling should occur',
-				placeholder: 'Add Poll Time',
-				options: cronNodeOptions,
-			},
-		];
-	}
+const specialNodeParameters: INodeProperties[] = [
+	{
+		displayName: 'Poll Times',
+		name: 'pollTimes',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Poll Time',
+		},
+		default: { item: [{ mode: 'everyMinute' }] },
+		description: 'Time at which polling should occur',
+		placeholder: 'Add Poll Time',
+		options: cronNodeOptions,
+	},
+];
 
-	return [];
+/**
+ * Apply special parameters which should be added to nodeTypes depending on their type or configuration
+ */
+export function applySpecialNodeParameters(nodeType: INodeType): void {
+	if (nodeType.description.polling === true) {
+		nodeType.description.properties.unshift(...specialNodeParameters);
+	}
 }
 
 /**
@@ -404,7 +402,7 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			throw new Error(`The request data of context type "node" the node parameter has to be set!`);
+			throw new Error('The request data of context type "node" the node parameter has to be set!');
 		}
 		key = `node:${node.name}`;
 	} else {
@@ -1071,7 +1069,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	const nodeIssues = [];
 
 	if (issues.execution !== undefined) {
-		nodeIssues.push(`Execution Error.`);
+		nodeIssues.push('Execution Error.');
 	}
 
 	const objectProperties = ['parameters', 'credentials'];
@@ -1092,7 +1090,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		if (node !== undefined) {
 			nodeIssues.push(`Node Type "${node.type}" is not known.`);
 		} else {
-			nodeIssues.push(`Node Type is not known.`);
+			nodeIssues.push('Node Type is not known.');
 		}
 	}
 
@@ -1397,22 +1395,18 @@ export function getVersionedNodeType(
 	object: IVersionedNodeType | INodeType,
 	version?: number,
 ): INodeType {
-	if (isNodeTypeVersioned(object)) {
-		return (object as IVersionedNodeType).getNodeType(version);
+	if ('nodeVersions' in object) {
+		return object.getNodeType(version);
 	}
-	return object as INodeType;
+	return object;
 }
 
 export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
-	if (isNodeTypeVersioned(object)) {
-		return Object.values((object as IVersionedNodeType).nodeVersions).map((element) => {
+	if ('nodeVersions' in object) {
+		return Object.values(object.nodeVersions).map((element) => {
 			element.description.name = object.description.name;
 			return element;
 		});
 	}
-	return [object as INodeType];
-}
-
-export function isNodeTypeVersioned(object: IVersionedNodeType | INodeType): boolean {
-	return !!('getNodeType' in object);
+	return [object];
 }

@@ -1,6 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -402,7 +407,7 @@ export class GoogleBooks implements INodeType {
 							const userId = this.getNodeParameter('userId', i) as string;
 							endpoint = `v1/users/${userId}/bookshelves`;
 						} else {
-							endpoint = `v1/mylibrary/bookshelves`;
+							endpoint = 'v1/mylibrary/bookshelves';
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(

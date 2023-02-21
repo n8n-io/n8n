@@ -1,21 +1,21 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
 
@@ -24,6 +24,21 @@ import { filters } from './Filters';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+
+function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
+	if (uuidValidate(value)) return true;
+	if (value.length == 32) {
+		//prettier-ignore
+		const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+		if (uuidValidate(strWithDashes)) return true;
+	}
+	throw new NodeOperationError(
+		this.getNode(),
+		`The relation id "${value}" is not a valid uuid with optional dashes.`,
+	);
+}
+
+export type SortData = { key: string; type: string; direction: string; timestamp: boolean };
 
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
@@ -61,9 +76,9 @@ export async function notionApiRequest(
 			delete options.body;
 		}
 		if (!uri) {
-			return this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
+			return await this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
 		}
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -138,6 +153,10 @@ export function getBlockTypes() {
 		{
 			name: 'Numbered List Item',
 			value: 'numbered_list_item',
+		},
+		{
+			name: 'Image',
+			value: 'image',
 		},
 	];
 }
@@ -237,6 +256,15 @@ function getTexts(
 	return results;
 }
 
+function getTextBlocks(block: IDataObject) {
+	return {
+		text:
+			block.richText === false
+				? formatText(block.textContent as string).text
+				: getTexts(((block.text as IDataObject).text as any) || []),
+	};
+}
+
 export function formatBlocks(blocks: IDataObject[]) {
 	const results = [];
 	for (const block of blocks) {
@@ -245,16 +273,29 @@ export function formatBlocks(blocks: IDataObject[]) {
 			type: block.type,
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
-				// prettier-ignore
-
-				text: (block.richText === false) ? formatText(block.textContent as string).text : getTexts((block.text as IDataObject).text as any || []),
+				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
+				// prettier-ignore,
+				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}
 	return results;
 }
 
-function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
+function getDateFormat(includeTime: boolean) {
+	if (!includeTime) {
+		return 'yyyy-MM-DD';
+	}
+	return '';
+}
+
+function getPropertyKeyValue(
+	this: IExecuteFunctions,
+	value: any,
+	type: string,
+	timezone: string,
+	version = 1,
+) {
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result: IDataObject = {};
@@ -282,10 +323,17 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'relation':
 			result = {
 				type: 'relation',
-
-				relation: value.relationValue.reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-				}, []),
+				relation: value.relationValue
+					.filter((relation: any) => {
+						return relation && typeof relation === 'string';
+					})
+					.reduce((acc: [], cur: any) => {
+						return acc.concat(cur.split(',').map((relation: string) => relation.trim()));
+					}, [])
+					.filter((relation: string) => {
+						return uuidValidateWithoutDashes.call(this, relation);
+					})
+					.map((relation: string) => ({ id: relation })),
 			};
 			break;
 		case 'multi_select':
@@ -296,7 +344,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					? multiSelectValue
 					: multiSelectValue.split(',').map((v: string) => v.trim())
 				)
-					// tslint:disable-next-line: no-any
 					.filter((entry: any) => entry !== null)
 					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
@@ -378,13 +425,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 	return result;
 }
 
-function getDateFormat(includeTime: boolean) {
-	if (!includeTime) {
-		return 'yyyy-MM-DD';
-	}
-	return '';
-}
-
 function getNameAndType(key: string) {
 	const [name, type] = key.split('|');
 	return {
@@ -393,7 +433,12 @@ function getNameAndType(key: string) {
 	};
 }
 
-export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
+export function mapProperties(
+	this: IExecuteFunctions,
+	properties: IDataObject[],
+	timezone: string,
+	version = 1,
+) {
 	return properties
 		.filter(
 			(property): property is Record<string, { key: string; [k: string]: any }> =>
@@ -403,7 +448,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 			(property) =>
 				[
 					`${property.key.split('|')[0]}`,
-					getPropertyKeyValue(property, property.key.split('|')[1], timezone, version),
+					getPropertyKeyValue.call(this, property, property.key.split('|')[1], timezone, version),
 				] as const,
 		)
 		.filter(([, value]) => value)
@@ -416,9 +461,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 		);
 }
 
-export function mapSorting(
-	data: [{ key: string; type: string; direction: string; timestamp: boolean }],
-) {
+export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,
@@ -428,7 +471,6 @@ export function mapSorting(
 }
 
 export function mapFilters(filtersList: IDataObject[], timezone: string) {
-	// tslint:disable-next-line: no-any
 	return filtersList.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 
@@ -546,6 +588,21 @@ export function simplifyProperties(properties: any) {
 		results[`${key}`] = simplifyProperty(properties[key]);
 	}
 	return results;
+}
+
+export function getPropertyTitle(properties: { [key: string]: any }) {
+	return (
+		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
+			?.plain_text || ''
+	);
+}
+
+function prepend(stringKey: string, properties: { [key: string]: any }) {
+	for (const key of Object.keys(properties)) {
+		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		delete properties[key];
+	}
+	return properties;
 }
 
 export function simplifyObjects(objects: any, download = false, version = 2) {
@@ -734,7 +791,7 @@ export function getConditions() {
 }
 
 // prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string; type: string; files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { // tslint:disable-line:no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string; type: string; files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
 
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
@@ -786,21 +843,6 @@ export function extractDatabaseId(database: string) {
 	} else {
 		return database;
 	}
-}
-
-function prepend(stringKey: string, properties: { [key: string]: any }) {
-	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
-		delete properties[key];
-	}
-	return properties;
-}
-
-export function getPropertyTitle(properties: { [key: string]: any }) {
-	return (
-		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
-			?.plain_text || ''
-	);
 }
 
 export function getSearchFilters(resource: string) {

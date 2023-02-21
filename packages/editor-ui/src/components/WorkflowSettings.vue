@@ -450,7 +450,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$showMessage({
 				title: 'No workflow active',
-				message: `No workflow active to display settings of.`,
+				message: 'No workflow active to display settings of.',
 				type: 'error',
 				duration: 0,
 			});

@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { conditionFields } from './ConditionDescription';
@@ -275,7 +275,7 @@ export class ZendeskTrigger implements INodeType {
 					return false;
 				}
 
-				endpoint = `/triggers/active`;
+				endpoint = '/triggers/active';
 				const triggers = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
 
 				for (const trigger of triggers) {

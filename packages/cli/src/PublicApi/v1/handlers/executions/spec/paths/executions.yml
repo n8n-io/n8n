@@ -19,8 +19,8 @@ get:
       description: Workflow to filter the executions by.
       required: false
       schema:
-        type: number
-        example: 1000
+        type: string
+        example: '1000'
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
   responses:

@@ -1,6 +1,11 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	mispApiRequest,
@@ -33,7 +38,7 @@ import {
 	warninglistOperations,
 } from './descriptions';
 
-import { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
+import type { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
 
 export class Misp implements INodeType {
 	description: INodeTypeDescription = {
@@ -342,7 +347,7 @@ export class Misp implements INodeType {
 							tag: this.getNodeParameter('tagId', i),
 						};
 
-						const endpoint = `/events/addTag`;
+						const endpoint = '/events/addTag';
 						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
 					} else if (operation === 'remove') {
 						// ----------------------------------------

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -91,7 +91,7 @@ export class GetResponse implements INodeType {
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const campaigns = await getresponseApiRequest.call(this, 'GET', `/campaigns`);
+				const campaigns = await getresponseApiRequest.call(this, 'GET', '/campaigns');
 				for (const campaign of campaigns) {
 					returnData.push({
 						name: campaign.name as string,
@@ -104,7 +104,7 @@ export class GetResponse implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await getresponseApiRequest.call(this, 'GET', `/tags`);
+				const tags = await getresponseApiRequest.call(this, 'GET', '/tags');
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name as string,
@@ -117,7 +117,7 @@ export class GetResponse implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const customFields = await getresponseApiRequest.call(this, 'GET', `/custom-fields`);
+				const customFields = await getresponseApiRequest.call(this, 'GET', '/custom-fields');
 				for (const customField of customFields) {
 					returnData.push({
 						name: customField.name as string,
@@ -256,13 +256,13 @@ export class GetResponse implements INodeType {
 							responseData = await getResponseApiRequestAllItems.call(
 								this,
 								'GET',
-								`/contacts`,
+								'/contacts',
 								{},
 								qs,
 							);
 						} else {
 							qs.perPage = this.getNodeParameter('limit', i);
-							responseData = await getresponseApiRequest.call(this, 'GET', `/contacts`, {}, qs);
+							responseData = await getresponseApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						}
 					}
 					//https://apireference.getresponse.com/?_ga=2.160836350.2102802044.1604719933-1897033509.1604598019#operation/updateContact

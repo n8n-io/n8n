@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { customerIoApiRequest, validateJSON } from './GenericFunctions';
 import { campaignFields, campaignOperations } from './CampaignDescription';
 import { customerFields, customerOperations } from './CustomerDescription';
@@ -93,7 +93,7 @@ export class CustomerIo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const endpoint = `/campaigns`;
+						const endpoint = '/campaigns';
 
 						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
 						responseData = responseData.campaigns;
@@ -298,7 +298,7 @@ export class CustomerIo implements INodeType {
 							body.data = data;
 						}
 
-						const endpoint = `/events`;
+						const endpoint = '/events';
 						await customerIoApiRequest.call(this, 'POST', endpoint, body, 'tracking');
 
 						responseData = {

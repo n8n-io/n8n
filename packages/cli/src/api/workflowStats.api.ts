@@ -1,4 +1,4 @@
-import { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
@@ -11,7 +11,7 @@ import type {
 } from '@/Interfaces';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
-import { ExecutionRequest } from '../requests';
+import type { ExecutionRequest } from '../requests';
 
 export const workflowStatsController = express.Router();
 
@@ -38,7 +38,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 }
 
 /**
- * Initialise Logger if needed
+ * Initialize Logger if needed
  */
 workflowStatsController.use((req, res, next) => {
 	try {
@@ -169,15 +169,17 @@ workflowStatsController.get(
 		// Get flag
 		const workflowId = req.params.id;
 
-		// Get the corresponding workflow
-		const workflow = await Db.collections.Workflow.findOne(workflowId);
-		// It will be valid if we reach this point, this is just for TS
-		if (!workflow) {
-			return { dataLoaded: false };
-		}
+		// Get the flag
+		const stats = await Db.collections.WorkflowStatistics.findOne({
+			select: ['latestEvent'],
+			where: {
+				workflowId,
+				name: StatisticsNames.dataLoaded,
+			},
+		});
 
 		const data: IWorkflowStatisticsDataLoaded = {
-			dataLoaded: workflow.dataLoaded,
+			dataLoaded: stats ? true : false,
 		};
 
 		return data;

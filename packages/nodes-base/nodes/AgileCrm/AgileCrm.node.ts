@@ -1,13 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
@@ -15,7 +14,7 @@ import { companyFields, companyOperations } from './CompanyDescription';
 
 import { dealFields, dealOperations } from './DealDescription';
 
-import { IContact, IContactUpdate } from './ContactInterface';
+import type { IContact, IContactUpdate } from './ContactInterface';
 
 import {
 	agileCrmApiRequest,
@@ -26,9 +25,9 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import { IDeal } from './DealInterface';
+import type { IDeal } from './DealInterface';
 
-import { IFilter, ISearchConditions } from './FilterInterface';
+import type { IFilter, ISearchConditions } from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -172,7 +171,7 @@ export class AgileCrm implements INodeType {
 						responseData = await agileCrmApiRequestAllItems.call(
 							this,
 							'POST',
-							`api/filters/filter/dynamic-filter`,
+							'api/filters/filter/dynamic-filter',
 							body,
 							undefined,
 							undefined,
@@ -183,7 +182,7 @@ export class AgileCrm implements INodeType {
 						responseData = await agileCrmApiRequest.call(
 							this,
 							'POST',
-							`api/filters/filter/dynamic-filter`,
+							'api/filters/filter/dynamic-filter',
 							body,
 							undefined,
 							undefined,

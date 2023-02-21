@@ -1,15 +1,15 @@
+import type { INode, Workflow } from 'n8n-workflow';
 import {
-	INode,
 	NodeOperationError,
 	SubworkflowOperationError,
-	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRole, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
+import { getRoleId, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { UserService } from '@/user/user.service';
 
@@ -28,7 +28,8 @@ export class PermissionChecker {
 
 		// allow if requesting user is instance owner
 
-		const user = await Db.collections.User.findOneOrFail(userId, {
+		const user = await Db.collections.User.findOneOrFail({
+			where: { id: userId },
 			relations: ['globalRole'],
 		});
 
@@ -42,26 +43,23 @@ export class PermissionChecker {
 		if (workflow.id && isSharingEnabled()) {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
-				where: { workflow: { id: Number(workflow.id) } },
+				where: { workflowId: workflow.id },
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const credentialsWhereCondition: FindManyOptions<SharedCredentials> & { where: ObjectLiteral } =
-			{
-				where: { user: In(workflowUserIds) },
-			};
+		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
 
 		if (!isSharingEnabled()) {
 			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhereCondition.where.role = await getRole('credential', 'owner');
+			credentialsWhere.roleId = await getRoleId('credential', 'owner');
 		}
 
-		const credentialSharings = await Db.collections.SharedCredentials.find(
-			credentialsWhereCondition,
-		);
+		const credentialSharings = await Db.collections.SharedCredentials.find({
+			where: credentialsWhere,
+		});
 
-		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId.toString());
+		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
 
