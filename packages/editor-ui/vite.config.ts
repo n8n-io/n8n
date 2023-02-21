@@ -68,14 +68,14 @@ export default mergeConfig(
 					find: /^n8n-design-system\//,
 					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 				},
-				{
-					find: /^lodash\.(.+)$/,
-					replacement: 'lodash-es/$1',
-				},
 				...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
 					find: new RegExp(`^lodash.${name}$`, 'i'),
 					replacement: require.resolve(`lodash-es/${name}`),
 				})),
+				{
+					find: /^lodash\.(.+)$/,
+					replacement: 'lodash-es/$1',
+				},
 				{
 					find: 'vue2-boring-avatars',
 					replacement: require.resolve('vue2-boring-avatars'),
