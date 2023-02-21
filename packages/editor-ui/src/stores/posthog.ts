@@ -17,7 +17,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 	const initialized: Ref<boolean> = ref(false);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
-	const onLogout = () => {
+	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
 		trackedDemoExp.value = {};
@@ -115,18 +115,10 @@ export const usePostHogStore = defineStore('posthog', () => {
 		},
 	);
 
-	watch(
-		() => usersStore.currentUserId,
-		(userId, prevId) => {
-			if (!userId && prevId) {
-				onLogout();
-			}
-		},
-	);
-
 	return {
 		init,
 		isVariantEnabled,
 		getVariant,
+		reset,
 	};
 });
