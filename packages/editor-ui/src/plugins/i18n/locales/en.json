@@ -187,6 +187,8 @@
 	"codeNodeEditor.completer.luxon.instanceMethods.outputCalendar": "Get the output calendar of a DateTime, such 'islamic'. The output calendar is used when formatting the DateTime",
 	"codeNodeEditor.completer.luxon.instanceMethods.plus": "Add hours, minutes, seconds, or milliseconds increases the timestamp by the right number of milliseconds.",
 	"codeNodeEditor.completer.luxon.instanceMethods.quarter": "Get the quarter",
+	"codeNodeEditor.completer.luxon.instanceMethods.reconfigure": "'Set' the locale, numberingSystem, or outputCalendar. Returns a newly-constructed DateTime.",
+	"codeNodeEditor.completer.luxon.instanceMethods.resolvedLocaleOptions": "Returns the resolved Intl options for this DateTime. This is useful in understanding the behavior of formatting methods",
 	"codeNodeEditor.completer.luxon.instanceMethods.second": "Get the second of the minute (0-59).",
 	"codeNodeEditor.completer.luxon.instanceMethods.set": "Set the values of specified units. Returns a newly-constructed DateTime.",
 	"codeNodeEditor.completer.luxon.instanceMethods.setLocale": "Set the locale. Returns a newly-constructed DateTime.",

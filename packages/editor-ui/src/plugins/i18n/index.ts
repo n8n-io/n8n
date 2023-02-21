@@ -462,6 +462,10 @@ export class I18nClass {
 		),
 		min: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.min'),
 		max: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.max'),
+		reconfigure: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.reconfigure'),
+		resolvedLocaleOptions: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.resolvedLocaleOptions',
+		),
 	};
 
 	luxonStatic: Record<string, string | undefined> = {

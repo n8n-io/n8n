@@ -18,6 +18,8 @@ import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } fro
 import { sanitizeHtml } from '@/utils';
 import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
 import { isFunctionOption } from './typeGuards';
+import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
+import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -291,7 +293,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 			};
 
 			const infoKey = [name, key].join('.');
-			const info = createCompletionOption(
+			option.info = createCompletionOption(
 				'Object',
 				key,
 				isFunction ? 'native-function' : 'keyword',
@@ -302,8 +304,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 						description: i18n.proxyVars[infoKey],
 					},
 				},
-			);
-			option.info = info.info;
+			).info;
 
 			return option;
 		});
@@ -341,16 +342,24 @@ export const luxonInstanceOptions = () => {
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([key, descriptor]) => {
 			const isFunction = typeof descriptor.value === 'function';
+			const optionType = isFunction ? 'native-function' : 'keyword';
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
-				type: isFunction ? 'function' : 'keyword',
+				type: optionType,
 			};
 
-			const info = i18n.luxonInstance[key];
-
-			if (info) option.info = info;
-
+			let doc: DocMetadata | undefined;
+			if (Object.hasOwn(luxonInstanceDocs.properties, key)) {
+				doc = luxonInstanceDocs.properties[key].doc;
+			} else if (Object.hasOwn(luxonInstanceDocs.functions, key)) {
+				doc = luxonInstanceDocs.functions[key].doc;
+			}
+			// TODO: Rework this:
+			if (doc) {
+				doc.description = i18n.luxonInstance[key];
+			}
+			option.info = createCompletionOption('DateTime', key, optionType, { doc }).info;
 			return option;
 		});
 };
@@ -367,13 +376,20 @@ export const luxonStaticOptions = () => {
 		.map((key) => {
 			const option: Completion = {
 				label: key + '()',
-				type: 'function',
+				type: 'native-function',
 			};
 
-			const info = i18n.luxonStatic[key];
-
-			if (info) option.info = info;
-
+			let doc: DocMetadata | undefined;
+			if (Object.hasOwn(luxonStaticDocs.properties, key)) {
+				doc = luxonStaticDocs.properties[key].doc;
+			} else if (Object.hasOwn(luxonStaticDocs.functions, key)) {
+				doc = luxonStaticDocs.functions[key].doc;
+			}
+			// TODO: Rework this:
+			if (doc) {
+				doc.description = i18n.luxonStatic[key];
+			}
+			option.info = createCompletionOption('DateTime', key, 'native-function', { doc }).info;
 			return option;
 		});
 };
