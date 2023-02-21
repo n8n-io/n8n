@@ -1,7 +1,7 @@
 import type express from 'express';
 
 import { FindManyOptions, FindOptionsWhere, QueryFailedError } from 'typeorm';
-import { In } from 'typeorm';
+import { In, Like } from 'typeorm';
 
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import config from '@/config';
@@ -101,13 +101,14 @@ export = {
 		authorize(['owner', 'member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
+			const { offset = 0, limit = 100, active = undefined, tags = undefined, name = undefined } = req.query;
 
 			let workflows: WorkflowEntity[];
 			let count: number;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
+				...(name !== undefined && { name: Like('%' + name.trim() + '%') })
 			};
 			const query: FindManyOptions<WorkflowEntity> = {
 				skip: offset,
