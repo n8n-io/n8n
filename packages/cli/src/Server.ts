@@ -362,7 +362,7 @@ class Server extends AbstractServer {
 		const postHog = this.postHog;
 
 		const controllers = [
-			new AuthController({ config, internalHooks, repositories, logger, postHog: this.postHog }),
+			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),

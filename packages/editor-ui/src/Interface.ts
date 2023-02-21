@@ -593,7 +593,7 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: Date | string;
+	createdAt?: string;
 }
 
 export interface IVersionNotificationSettings {

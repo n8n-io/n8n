@@ -1,4 +1,4 @@
-import { Telemetry } from '@/plugins/telemetry';
+import type { Telemetry } from '@/plugins/telemetry';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { ref, Ref } from 'vue';

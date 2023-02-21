@@ -23,7 +23,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		trackedDemoExp.value = {};
 	};
 
-	const getVariant = (experiment: string): string | boolean | undefined => {
+	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
 		return featureFlags.value?.[experiment];
 	};
 
@@ -36,10 +36,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		const user = usersStore.currentUser;
 		const traits: Record<string, string | number> = { instance_id: instanceId };
 
-		// todo check why Date is used there
-		if (user && user.createdAt instanceof Date) {
-			traits.created_at_timestamp = user.createdAt.getTime();
-		} else if (user && typeof user.createdAt === 'string') {
+		if (user && typeof user.createdAt === 'string') {
 			traits.created_at_timestamp = new Date(user.createdAt).getTime();
 		}
 
@@ -48,7 +45,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		window.posthog?.identify?.(id, traits);
 	};
 
-	const init = (bootstrapped?: FeatureFlags) => {
+	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
 		if (!window.posthog) {
 			return;
 		}
@@ -73,11 +70,11 @@ export const usePostHogStore = defineStore('posthog', () => {
 			debug: config.debug,
 		};
 
-		if (bootstrapped) {
-			featureFlags.value = bootstrapped;
+		if (evaluatedFeatureFlags) {
+			featureFlags.value = evaluatedFeatureFlags;
 			options.bootstrap = {
 				distinctId,
-				featureFlags: bootstrapped,
+				featureFlags: evaluatedFeatureFlags,
 			};
 		}
 
