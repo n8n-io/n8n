@@ -2,7 +2,7 @@ import type { AllEntities, Entity } from 'n8n-workflow';
 
 type MicrosoftExcelMap = {
 	table:
-		| 'addRow'
+		| 'append'
 		| 'addTable'
 		| 'convertToRange'
 		| 'deleteTable'

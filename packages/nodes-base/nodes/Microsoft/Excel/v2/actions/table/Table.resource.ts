@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as addRow from './addRow.operation';
+import * as append from './append.operation';
 import * as addTable from './addTable.operation';
 import * as convertToRange from './convertToRange.operation';
 import * as deleteTable from './deleteTable.operation';
@@ -8,7 +8,7 @@ import * as getColumns from './getColumns.operation';
 import * as getRows from './getRows.operation';
 import * as lookup from './lookup.operation';
 
-export { addRow, addTable, convertToRange, deleteTable, getColumns, getRows, lookup };
+export { append, addTable, convertToRange, deleteTable, getColumns, getRows, lookup };
 
 export const description: INodeProperties[] = [
 	{
@@ -23,16 +23,16 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Row',
-				value: 'addRow',
-				description: 'Add rows to the end of the table',
-				action: 'Add a row',
-			},
-			{
 				name: 'Add Table',
 				value: 'addTable',
 				description: 'Add a table based on range',
 				action: 'Add a table',
+			},
+			{
+				name: 'Append',
+				value: 'append',
+				description: 'Add rows to the end of the table',
+				action: 'Add a row',
 			},
 			{
 				name: 'Convert to Range',
@@ -65,9 +65,9 @@ export const description: INodeProperties[] = [
 				action: 'Look up a column',
 			},
 		],
-		default: 'addRow',
+		default: 'append',
 	},
-	...addRow.description,
+	...append.description,
 	...addTable.description,
 	...convertToRange.description,
 	...deleteTable.description,

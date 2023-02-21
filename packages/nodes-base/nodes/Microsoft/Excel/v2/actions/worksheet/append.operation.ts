@@ -42,7 +42,7 @@ const properties: INodeProperties[] = [
 		type: 'json',
 		default: '',
 		required: true,
-		placeholder: 'e.g. [["Hello", "100"],["1/1/2016", null]]',
+		placeholder: 'e.g. [["Sara","1/2/2006","Berlin"],["George","5/3/2010","Paris"]]',
 		description: 'Raw values for the specified range as array of string arrays in JSON format',
 		displayOptions: {
 			show: {

@@ -15,10 +15,12 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Automatically',
 				value: 'auto',
+				description: 'The whole used range on a selected worksheet will be converted into a table',
 			},
 			{
 				name: 'Manually',
 				value: 'manual',
+				description: 'Select a range that will be converted into a table',
 			},
 		],
 		default: 'auto',

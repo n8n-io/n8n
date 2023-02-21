@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsDependsOn: ['table.value'],
+					loadOptionsDependsOn: ['table.value', 'worksheet.value', 'workbook.value'],
 					loadOptionsMethod: 'getTableColumns',
 				},
 				default: [],
