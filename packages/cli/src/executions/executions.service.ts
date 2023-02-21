@@ -265,6 +265,11 @@ export class ExecutionsService {
 			.where(findWhere);
 
 		const countFilter = deepCopy(filter ?? {});
+		// deepcopy breaks the In operator so we need to reapply it
+		if (filter?.status) {
+			Object.assign(filter, { status: In(filter.status) });
+			Object.assign(countFilter, { status: In(filter.status) });
+		}
 
 		if (filter) {
 			this.massageFilters(filter as IDataObject);
