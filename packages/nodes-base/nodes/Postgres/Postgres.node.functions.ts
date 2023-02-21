@@ -72,6 +72,9 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
 }
 
 export function wrapData(data: IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
 	return data.map((item) => ({
 		json: item,
 	}));

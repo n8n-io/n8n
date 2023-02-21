@@ -12,7 +12,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
-import { pgInsertV2, pgQueryV2, pgUpdate } from './Postgres.node.functions';
+import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './Postgres.node.functions';
 
 export class Postgres implements INodeType {
 	description: INodeTypeDescription = {
@@ -389,7 +389,7 @@ export class Postgres implements INodeType {
 				this.continueOnFail(),
 			);
 
-			returnItems = this.helpers.returnJsonArray(updateItems);
+			returnItems = wrapData(updateItems);
 		} else {
 			pgp.end();
 			throw new NodeOperationError(
