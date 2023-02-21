@@ -1,0 +1,57 @@
+name: 'Release: Publish'
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'release/patch'
+      - 'release/minor'
+
+jobs:
+  publish-release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v2.2.4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish to NPM
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public
+          echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          commit: ${{github.event.pull_request.base.ref}}
+          tag: 'n8n@${{env.RELEASE}}'
+
+      - name: Merge Release into 'master'
+        run: |
+          git fetch origin
+          git checkout --track origin/master
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git merge --ff origin/${{github.event.pull_request.base.ref}}
+          git push origin master
+          git push origin :${{github.event.pull_request.base.ref}}

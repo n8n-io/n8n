@@ -55,7 +55,7 @@
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "~0.137.0",
+    "n8n-workflow": "workspace:*",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",

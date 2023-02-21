@@ -6,6 +6,8 @@ on:
       - opened
       - edited
       - synchronize
+    branches:
+      - '!release/*'
 
 jobs:
   check-pr-title:
