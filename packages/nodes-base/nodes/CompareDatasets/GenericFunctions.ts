@@ -185,7 +185,12 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
-	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean);
+	let compareVersion = 1;
+	if (options.nodeVersion === 2) {
+		compareVersion = 2;
+	}
+
+	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean, compareVersion);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());

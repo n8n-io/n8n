@@ -89,7 +89,7 @@ const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
 	}
 };
 
-export const fuzzyCompare = (useFuzzyCompare: boolean) => {
+export const fuzzyCompare = (useFuzzyCompare: boolean, compareVersion = 1) => {
 	if (!useFuzzyCompare) {
 		//Fuzzy compare is false we do strict comparison
 		return <T, U>(item1: T, item2: U) => isEqual(item1, item2);
@@ -101,13 +101,15 @@ export const fuzzyCompare = (useFuzzyCompare: boolean) => {
 			return isEqual(item1, item2);
 		}
 
-		//Null, 0 and "0" treated as equal
-		if (isNull(item1) && (isNull(item2) || item2 === 0 || item2 === '0')) {
-			return true;
-		}
+		if (compareVersion >= 2) {
+			//Null, 0 and "0" treated as equal
+			if (isNull(item1) && (isNull(item2) || item2 === 0 || item2 === '0')) {
+				return true;
+			}
 
-		if (isNull(item2) && (isNull(item1) || item1 === 0 || item1 === '0')) {
-			return true;
+			if (isNull(item2) && (isNull(item1) || item1 === 0 || item1 === '0')) {
+				return true;
+			}
 		}
 
 		//Null, empty strings, empty arrays all treated as the same

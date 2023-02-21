@@ -15,10 +15,17 @@ describe('Test fuzzyCompare', () => {
 	});
 
 	it('should treat null, 0 and "0" as equal', () => {
-		const compareFunction = fuzzyCompare(true);
+		const compareFunction = fuzzyCompare(true, 2);
 
 		expect(compareFunction(null, null)).toEqual(true);
 		expect(compareFunction(null, 0)).toEqual(true);
 		expect(compareFunction(null, '0')).toEqual(true);
+	});
+
+	it('should not treat null, 0 and "0" as equal', () => {
+		const compareFunction = fuzzyCompare(true);
+
+		expect(compareFunction(null, 0)).toEqual(false);
+		expect(compareFunction(null, '0')).toEqual(false);
 	});
 });
