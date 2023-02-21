@@ -96,9 +96,9 @@ export const setupAuthMiddlewares = (
 			req.url.startsWith(`/${restEndpoint}/change-password`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`) ||
-			req.url.startsWith(`/${restEndpoint}/sso/saml/${SamlUrls.metadata}`) ||
-			req.url.startsWith(`/${restEndpoint}/sso/saml/${SamlUrls.initSSO}`) ||
-			req.url.startsWith(`/${restEndpoint}/sso/saml/${SamlUrls.acs}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml${SamlUrls.metadata}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml${SamlUrls.initSSO}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml${SamlUrls.acs}`) ||
 			isAuthExcluded(req.url, ignoredEndpoints)
 		) {
 			return next();

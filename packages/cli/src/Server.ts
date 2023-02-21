@@ -149,6 +149,7 @@ import { eventBus } from './eventbus';
 import { isSamlLicensed } from './sso/saml/samlHelpers';
 import { samlController } from './sso/saml/routes/saml.controller.ee';
 import { samlControllerPublic } from './sso/saml/routes/saml.controller-public.ee';
+import { SamlService } from './sso/saml/saml.service.ee';
 
 const exec = promisify(callbackExec);
 
@@ -484,6 +485,9 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
+
+		// initialize SamlService
+		await SamlService.getInstance().init();
 
 		// public SAML endpoints
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
@@ -1061,6 +1065,7 @@ class Server extends AbstractServer {
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
+							status: data.status,
 						});
 					}
 

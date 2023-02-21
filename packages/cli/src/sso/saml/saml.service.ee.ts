@@ -4,16 +4,20 @@ import { User } from '@/databases/entities/User';
 import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError } from '@/ResponseHelper';
-import { getIdentityProviderInstance } from './identityProvider.ee';
+// import { getIdentityProviderInstance } from './identityProvider.ee';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
 import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
+import type { IdentityProviderInstance } from 'samlify';
+import { IdentityProvider } from 'samlify';
 
 export class SamlService {
 	private static instance: SamlService;
+
+	private identityProviderInstance: IdentityProviderInstance | undefined;
 
 	private _attributeMapping: SamlAttributeMapping = {
 		email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
@@ -41,12 +45,19 @@ export class SamlService {
 		this._metadata = metadata;
 	}
 
+	constructor() {
+		this.loadSamlPreferences()
+			.then(() => {
+				LoggerProxy.debug('Initializing SAML service');
+			})
+			.catch(() => {
+				LoggerProxy.error('Error initializing SAML service');
+			});
+	}
+
 	static getInstance(): SamlService {
 		if (!SamlService.instance) {
 			SamlService.instance = new SamlService();
-			SamlService.instance.init().catch(() => {
-				LoggerProxy.error('Error initializing SAML service');
-			});
 		}
 		return SamlService.instance;
 	}
@@ -55,9 +66,19 @@ export class SamlService {
 		await this.loadSamlPreferences();
 	}
 
+	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
+		if (this.identityProviderInstance === undefined || forceRecreate) {
+			this.identityProviderInstance = IdentityProvider({
+				metadata: this.metadata,
+			});
+		}
+
+		return this.identityProviderInstance;
+	}
+
 	getRedirectLoginRequestUrl(): string {
 		const loginRequest = getServiceProviderInstance().createLoginRequest(
-			getIdentityProviderInstance(),
+			this.getIdentityProviderInstance(),
 			'redirect',
 		);
 		//TODO:SAML: debug logging
@@ -124,6 +145,7 @@ export class SamlService {
 	async setSamlPreferences(prefs: SamlPreferences): Promise<void> {
 		this.attributeMapping = prefs.mapping;
 		this.metadata = prefs.metadata;
+		this.getIdentityProviderInstance(true);
 		await this.saveSamlPreferences();
 	}
 
@@ -209,7 +231,7 @@ export class SamlService {
 
 	async getAttributesFromLoginResponse(req: express.Request): Promise<SamlUserAttributes> {
 		const parsedSamlResponse = await getServiceProviderInstance().parseLoginResponse(
-			getIdentityProviderInstance(),
+			this.getIdentityProviderInstance(),
 			'post',
 			req,
 		);
