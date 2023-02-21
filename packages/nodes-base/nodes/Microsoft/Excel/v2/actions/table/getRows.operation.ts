@@ -57,11 +57,6 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		displayOptions: {
-			show: {
-				rawData: [true],
-			},
-		},
 		options: [
 			{
 				displayName: 'Fields',
@@ -69,6 +64,29 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'A comma-separated list of the fields to include in the response',
+				displayOptions: {
+					show: {
+						'/rawData': [true],
+					},
+				},
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Column Names or IDs',
+				name: 'column',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsDependsOn: ['table.value'],
+					loadOptionsMethod: 'getTableColumns',
+				},
+				default: [],
+				displayOptions: {
+					show: {
+						'/rawData': [false],
+					},
+				},
 			},
 		],
 	},
@@ -105,10 +123,11 @@ export async function execute(
 				extractValue: true,
 			}) as string;
 
+			const filters = this.getNodeParameter('filters', i);
 			const returnAll = this.getNodeParameter('returnAll', i);
 			const rawData = this.getNodeParameter('rawData', i);
+
 			if (rawData) {
-				const filters = this.getNodeParameter('filters', i);
 				if (filters.fields) {
 					qs.$select = filters.fields;
 				}
@@ -150,6 +169,8 @@ export async function execute(
 				);
 
 				columns = (columns as IDataObject[]).map((column) => column.name);
+
+				let rows: INodeExecutionData[] = [];
 				for (let index = 0; index < responseData.length; index++) {
 					const object: IDataObject = {};
 					for (let y = 0; y < columns.length; y++) {
@@ -160,8 +181,22 @@ export async function execute(
 						{ itemData: { item: index } },
 					);
 
-					returnData.push(...executionData);
+					rows.push(...executionData);
 				}
+
+				if ((filters?.column as string[])?.length) {
+					rows = rows.map((row) => {
+						const rowData: IDataObject = {};
+						Object.keys(row.json).forEach((key) => {
+							if ((filters.column as string[]).includes(key)) {
+								rowData[key] = row.json[key];
+							}
+						});
+						return { ...rowData, json: rowData };
+					});
+				}
+
+				returnData.push(...rows);
 			} else {
 				const dataProperty = this.getNodeParameter('dataProperty', i) as string;
 				const executionData = this.helpers.constructExecutionMetaData(

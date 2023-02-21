@@ -1,4 +1,4 @@
-import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { microsoftApiRequest } from '../transport';
 
 export async function getWorksheetColumnRow(
@@ -58,4 +58,32 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 	const returnData = await getWorksheetColumnRow.call(this);
 	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
 	return returnData.filter((column) => column.value !== columnToMatchOn);
+}
+
+export async function getTableColumns(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const workbookId = this.getNodeParameter('workbook', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const worksheetId = this.getNodeParameter('worksheet', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const tableId = this.getNodeParameter('table', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const response = await microsoftApiRequest.call(
+		this,
+		'GET',
+		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+		{},
+	);
+
+	return (response.value as IDataObject[]).map((column) => ({
+		name: column.name as string,
+		value: column.name as string,
+	}));
 }
