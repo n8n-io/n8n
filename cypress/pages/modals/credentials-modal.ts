@@ -26,8 +26,19 @@ export class CredentialsModal extends BasePage {
 		credentialAuthTypeRadioButtons: () =>
 			this.getters.credentialsAuthTypeSelector().find('label[role=radio]'),
 		credentialInputs: () => cy.getByTestId('credential-connection-parameter'),
+		menu: () => this.getters.editCredentialModal().get('.menu-container'),
+		menuItem: (name: string) => this.getters.menu().get('.n8n-menu-item').contains(name),
+		usersSelect: () => cy.getByTestId('credential-sharing-modal-users-select'),
 	};
 	actions = {
+		addUser: (email: string) => {
+			this.getters.usersSelect().click();
+			this.getters
+				.usersSelect()
+				.get('.el-select-dropdown__item')
+				.contains(email.toLowerCase())
+				.click();
+		},
 		setName: (name: string) => {
 			this.getters.name().click();
 			this.getters.nameInput().clear().type(name);
@@ -63,6 +74,9 @@ export class CredentialsModal extends BasePage {
 			this.getters.nameInput().type('{selectall}');
 			this.getters.nameInput().type(newName);
 			this.getters.nameInput().type('{enter}');
+		},
+		changeTab: (tabName: string) => {
+			this.getters.menuItem(tabName).click();
 		},
 	};
 }

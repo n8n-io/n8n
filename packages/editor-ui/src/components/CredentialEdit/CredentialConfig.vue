@@ -40,12 +40,12 @@
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
 		>
-			<template #button>
+			<template #button v-if="isGoogleOAuthType">
 				<p
 					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					:class="$style.googleReconnectLabel"
 				/>
-				<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
+				<GoogleAuthButton @click="$emit('oauth')" />
 			</template>
 		</banner>
 
@@ -266,7 +266,7 @@ export default mixins(restApi).extend({
 			return (this.credentialType as ICredentialType).name;
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;

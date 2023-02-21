@@ -1,4 +1,9 @@
-import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IPushData } from '@/Interface';
+import {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IPushData,
+	IPushDataExecutionFinished,
+} from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -10,6 +15,8 @@ import {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
+	IRun,
+	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
 	TelemetryHelpers,
@@ -24,6 +31,8 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useSettingsStore } from '@/stores/settings';
+import { parse } from 'flatted';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -34,7 +43,7 @@ export const pushConnection = mixins(
 ).extend({
 	data() {
 		return {
-			eventSource: null as EventSource | null,
+			pushSource: null as WebSocket | EventSource | null,
 			reconnectTimeout: null as NodeJS.Timeout | null,
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ event: Event; retriesLeft: number }>,
@@ -43,79 +52,72 @@ export const pushConnection = mixins(
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useWorkflowsStore,
+			useSettingsStore,
+		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
 		},
 	},
 	methods: {
-		pushAutomaticReconnect(): void {
-			if (this.reconnectTimeout !== null) {
-				return;
-			}
-
-			this.reconnectTimeout = setTimeout(() => {
-				this.connectRetries++;
-				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-				if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
-					this.lostConnection = true;
-
-					this.workflowsStore.executingNode = null;
-					this.uiStore.removeActiveAction('workflowRunning');
-
-					this.$showMessage({
-						title: this.$locale.baseText('pushConnection.executionFailed'),
-						message: this.$locale.baseText('pushConnection.executionFailed.message'),
-						type: 'error',
-						duration: 0,
-					});
-				}
-				this.pushConnect();
-			}, 3000);
+		attemptReconnect() {
+			this.pushConnect();
 		},
 
 		/**
-		 * Connect to server to receive data via EventSource
+		 * Connect to server to receive data via a WebSocket or EventSource
 		 */
 		pushConnect(): void {
-			// Make sure existing event-source instances get
-			// always removed that we do not end up with multiple ones
+			// always close the previous connection so that we do not end up with multiple connections
 			this.pushDisconnect();
 
-			const connectionUrl = `${this.rootStore.getRestUrl}/push?sessionId=${this.sessionId}`;
+			if (this.reconnectTimeout) {
+				clearTimeout(this.reconnectTimeout);
+				this.reconnectTimeout = null;
+			}
 
-			this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
-			this.eventSource.addEventListener('message', this.pushMessageReceived, false);
+			const useWebSockets = this.settingsStore.pushBackend === 'websocket';
 
-			this.eventSource.addEventListener(
-				'open',
-				() => {
-					this.connectRetries = 0;
-					this.lostConnection = false;
+			const { getRestUrl: restUrl } = this.rootStore;
+			const url = `/push?sessionId=${this.sessionId}`;
 
-					this.rootStore.pushConnectionActive = true;
-					if (this.reconnectTimeout !== null) {
-						clearTimeout(this.reconnectTimeout);
-						this.reconnectTimeout = null;
-					}
-				},
+			if (useWebSockets) {
+				const { protocol, host } = window.location;
+				const baseUrl = restUrl.startsWith('http')
+					? restUrl.replace(/^http/, 'ws')
+					: `${protocol === 'https:' ? 'wss' : 'ws'}://${host + restUrl}`;
+				this.pushSource = new WebSocket(`${baseUrl}${url}`);
+			} else {
+				this.pushSource = new EventSource(`${restUrl}${url}`, { withCredentials: true });
+			}
+
+			this.pushSource.addEventListener('open', this.onConnectionSuccess, false);
+			this.pushSource.addEventListener('message', this.pushMessageReceived, false);
+			this.pushSource.addEventListener(
+				useWebSockets ? 'close' : 'error',
+				this.onConnectionError,
 				false,
 			);
+		},
 
-			this.eventSource.addEventListener(
-				'error',
-				() => {
-					this.pushDisconnect();
+		onConnectionSuccess() {
+			this.connectRetries = 0;
+			this.lostConnection = false;
+			this.rootStore.pushConnectionActive = true;
+			this.clearAllStickyNotifications();
+			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
+		},
 
-					if (this.reconnectTimeout !== null) {
-						clearTimeout(this.reconnectTimeout);
-						this.reconnectTimeout = null;
-					}
-
-					this.rootStore.pushConnectionActive = false;
-					this.pushAutomaticReconnect();
-				},
-				false,
+		onConnectionError() {
+			this.pushDisconnect();
+			this.connectRetries++;
+			this.reconnectTimeout = setTimeout(
+				this.attemptReconnect,
+				Math.min(this.connectRetries * 3000, 30000), // maximum 30 seconds backoff
 			);
 		},
 
@@ -123,12 +125,15 @@ export const pushConnection = mixins(
 		 * Close connection to server
 		 */
 		pushDisconnect(): void {
-			if (this.eventSource !== null) {
-				this.eventSource.close();
-				this.eventSource = null;
-
-				this.rootStore.pushConnectionActive = false;
+			if (this.pushSource !== null) {
+				this.pushSource.removeEventListener('error', this.onConnectionError);
+				this.pushSource.removeEventListener('close', this.onConnectionError);
+				this.pushSource.removeEventListener('message', this.pushMessageReceived);
+				if (this.pushSource.readyState < 2) this.pushSource.close();
+				this.pushSource = null;
 			}
+
+			this.rootStore.pushConnectionActive = false;
 		},
 
 		/**
@@ -136,7 +141,6 @@ export const pushConnection = mixins(
 		 * the REST API so we do not know yet what execution ID
 		 * is currently active. So internally resend the message
 		 * a few more times
-		 *
 		 */
 		queuePushMessage(event: Event, retryAttempts: number) {
 			this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
@@ -178,11 +182,8 @@ export const pushConnection = mixins(
 
 		/**
 		 * Process a newly received message
-		 *
-		 * @param {Event} event The event data with the message data
-		 * @param {boolean} [isRetry] If it is a retry
 		 */
-		pushMessageReceived(event: Event, isRetry?: boolean): boolean {
+		async pushMessageReceived(event: Event, isRetry?: boolean): Promise<boolean> {
 			const retryAttempts = 5;
 			let receivedData: IPushData;
 			try {
@@ -225,11 +226,81 @@ export const pushConnection = mixins(
 				}
 			}
 
-			if (receivedData.type === 'executionFinished') {
-				// The workflow finished executing
-				const pushData = receivedData.data;
+			// recovered execution data is handled like executionFinished data, however for security reasons
+			// we need to fetch the data from the server again rather than push it to all clients
+			let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
+			if (receivedData.type === 'executionRecovered') {
+				const recoveredExecutionId = receivedData.data?.executionId;
+				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
+				if (isWorkflowRunning && this.workflowsStore.activeExecutionId === recoveredExecutionId) {
+					// pull execution data for the recovered execution from the server
+					const executionData = await this.workflowsStore.fetchExecutionDataById(
+						this.workflowsStore.activeExecutionId,
+					);
+					if (executionData?.data) {
+						// data comes in as 'flatten' object, so we need to parse it
+						executionData.data = parse(
+							executionData.data as unknown as string,
+						) as IRunExecutionData;
+						const iRunExecutionData: IRunExecutionData = {
+							startData: executionData.data?.startData,
+							resultData: executionData.data?.resultData ?? { runData: {} },
+							executionData: executionData.data?.executionData,
+						};
+						if (
+							this.workflowsStore.workflowExecutionData?.workflowId === executionData.workflowId
+						) {
+							const activeRunData =
+								this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+							if (activeRunData) {
+								for (const key of Object.keys(activeRunData)) {
+									iRunExecutionData.resultData.runData[key] = activeRunData[key];
+								}
+							}
+						}
+						const iRun: IRun = {
+							data: iRunExecutionData,
+							finished: executionData.finished,
+							mode: executionData.mode,
+							waitTill: executionData.data?.waitTill,
+							startedAt: executionData.startedAt,
+							stoppedAt: executionData.stoppedAt,
+							status: 'crashed',
+						};
+						if (executionData.data) {
+							recoveredPushData = {
+								executionId: executionData.id,
+								data: iRun,
+							};
+						}
+					}
+				}
+			}
 
-				this.workflowsStore.finishActiveExecution(pushData);
+			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
+				// The workflow finished executing
+				let pushData: IPushDataExecutionFinished;
+				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
+					pushData = recoveredPushData as IPushDataExecutionFinished;
+				} else {
+					pushData = receivedData.data as IPushDataExecutionFinished;
+				}
+
+				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+					const activeRunData =
+						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+					if (activeRunData) {
+						for (const key of Object.keys(activeRunData)) {
+							if (
+								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
+									.isArtificalRecoveredEventItem === true &&
+								activeRunData[key].length > 0
+							)
+								pushData.data.data.resultData.runData[key] = activeRunData[key];
+						}
+					}
+					this.workflowsStore.finishActiveExecution(pushData);
+				}
 
 				if (!this.uiStore.isActionActive('workflowRunning')) {
 					// No workflow is running so ignore the messages
@@ -247,7 +318,13 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+
+				if (pushData.data.status === 'crashed') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'pushConnection.executionFailed.message',
+					);
+				}
 
 				const lineNumber =
 					runDataExecuted &&
@@ -490,6 +567,9 @@ export const pushConnection = mixins(
 				this.credentialsStore.fetchCredentialTypes(false).then(() => {
 					this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 				});
+			} else if (receivedData.type === 'nodeDescriptionUpdated') {
+				this.nodeTypesStore.getNodeTypes();
+				this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
 		},

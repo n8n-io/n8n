@@ -1,4 +1,4 @@
-import { WorkflowExecuteMode } from 'n8n-workflow';
+import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 import { Column, Entity, Generated, Index, PrimaryColumn } from 'typeorm';
 import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
 import { IWorkflowDb } from '@/Interfaces';
@@ -30,6 +30,9 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 
 	@Column({ nullable: true })
 	retrySuccessId: string;
+
+	@Column('varchar', { nullable: true })
+	status: ExecutionStatus;
 
 	@Column(datetimeColumnType)
 	startedAt: Date;

@@ -48,30 +48,6 @@ export class Sandbox extends NodeVM {
 	private async runCodeAllItems() {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
-		const match = script.match(
-			/(?<disallowedSyntax>\)\.item(?!Matching)|\$input\.item(?!Matching)|\$json|\$binary|\$itemIndex)/,
-		); // disallow .item but tolerate .itemMatching
-
-		if (match?.groups?.disallowedSyntax) {
-			const { disallowedSyntax } = match.groups;
-
-			const lineNumber =
-				this.jsCode.split('\n').findIndex((line) => {
-					return line.includes(disallowedSyntax) && !line.startsWith('//') && !line.startsWith('*');
-				}) + 1;
-
-			const disallowedSyntaxFound = lineNumber !== 0;
-
-			if (disallowedSyntaxFound) {
-				throw new ValidationError({
-					message: `Can't use ${disallowedSyntax} here`,
-					description: "This is only available in 'Run Once for Each Item' mode",
-					itemIndex: this.itemIndex,
-					lineNumber,
-				});
-			}
-		}
-
 		let executionResult;
 
 		try {

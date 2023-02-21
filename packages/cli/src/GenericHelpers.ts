@@ -22,6 +22,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
+import type { UserUpdatePayload } from '@/requests';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -99,7 +100,7 @@ export async function generateUniqueName(
 }
 
 export async function validateEntity(
-	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User | UserUpdatePayload,
 ): Promise<void> {
 	const errors = await validate(entity);
 
@@ -190,6 +191,7 @@ export async function createErrorExecution(
 		workflowData,
 		workflowId: workflow.id,
 		stoppedAt: new Date(),
+		status: 'new',
 	};
 
 	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);

@@ -52,7 +52,6 @@
 							@runWorkflow="onRunNode"
 							@moved="onNodeMoved"
 							@run="onNodeRun"
-							:ref="`node-${nodeData.id}`"
 							:key="`${nodeData.id}_node`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
@@ -76,7 +75,6 @@
 							@nodeSelected="nodeSelectedByName"
 							@removeNode="(name) => removeNode(name, true)"
 							:key="`${nodeData.id}_sticky`"
-							:ref="`node-${nodeData.id}`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
 							:instance="instance"
@@ -135,6 +133,7 @@
 					"
 					:loading="stopExecutionInProgress"
 					@click.stop="stopExecution"
+					data-test-id="stop-execution-button"
 				/>
 
 				<n8n-icon-button
@@ -145,6 +144,7 @@
 					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
 					type="secondary"
 					@click.stop="stopWaitingForWebhook"
+					data-test-id="stop-execution-waiting-for-webhook-button"
 				/>
 
 				<n8n-icon-button
@@ -153,6 +153,7 @@
 					icon="trash"
 					size="large"
 					@click.stop="clearExecutionData"
+					data-test-id="clear-execution-data-button"
 				/>
 			</div>
 		</div>
@@ -194,7 +195,9 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
-	POSTHOG_ASSUMPTION_TEST,
+	ASSUMPTION_EXPERIMENT,
+	REGULAR_NODE_FILTER,
+	MANUAL_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -297,6 +300,7 @@ import {
 	ready,
 } from '@jsplumb/browser-ui';
 import { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
+import { usePostHogStore } from '@/stores/posthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -406,8 +410,6 @@ export default mixins(
 			next();
 			return;
 		}
-		// Make sure workflow id is empty when leaving the editor
-		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		if (this.uiStore.stateIsDirty) {
 			const confirmModal = await this.confirmModal(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -418,6 +420,8 @@ export default mixins(
 				true,
 			);
 			if (confirmModal === MODAL_CONFIRMED) {
+				// Make sure workflow id is empty when leaving the editor
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
@@ -439,6 +443,7 @@ export default mixins(
 					next();
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				await this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
@@ -750,10 +755,9 @@ export default mixins(
 		},
 		showTriggerCreator(source: string) {
 			if (this.createNodeActive) return;
-			this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
+			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
-			this.$nextTick(() => this.nodeCreatorStore.setShowTabs(false));
 		},
 		async openExecution(executionId: string) {
 			this.startLoading();
@@ -1797,6 +1801,7 @@ export default mixins(
 			options: AddNodeOptions = {},
 			showDetail = true,
 			trackHistory = false,
+			isAutoAdd = false,
 		) {
 			const nodeTypeData: INodeTypeDescription | null =
 				this.nodeTypesStore.getNodeType(nodeTypeName);
@@ -1918,6 +1923,7 @@ export default mixins(
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
+					is_auto_add: isAutoAdd,
 					workflow_id: this.workflowsStore.workflowId,
 					drag_and_drop: options.dragAndDrop,
 				};
@@ -1996,13 +2002,14 @@ export default mixins(
 				},
 			] as [IConnection, IConnection];
 
-			this.__addConnection(connectionData, true);
+			this.__addConnection(connectionData);
 		},
 		async addNode(
 			nodeTypeName: string,
 			options: AddNodeOptions = {},
 			showDetail = true,
 			trackHistory = false,
+			isAutoAdd = false,
 		) {
 			if (!this.editAllowedCheck()) {
 				return;
@@ -2014,7 +2021,13 @@ export default mixins(
 
 			this.historyStore.startRecordingUndo();
 
-			const newNodeData = await this.injectNode(nodeTypeName, options, showDetail, trackHistory);
+			const newNodeData = await this.injectNode(
+				nodeTypeName,
+				options,
+				showDetail,
+				trackHistory,
+				isAutoAdd,
+			);
 			if (!newNodeData) {
 				return;
 			}
@@ -2089,6 +2102,7 @@ export default mixins(
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 							this.pullConnActiveNodeName = null;
+							this.dropPrevented = true;
 						}
 						return;
 					}
@@ -2161,6 +2175,8 @@ export default mixins(
 					];
 
 					this.dropPrevented = true;
+					this.workflowsStore.addConnection({ connection: connectionData });
+					this.uiStore.stateIsDirty = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
@@ -2180,6 +2196,15 @@ export default mixins(
 								});
 							},
 						);
+						setTimeout(() => {
+							NodeViewUtils.addConnectionTestData(
+								info.source,
+								info.target,
+								'canvas' in info.connection.connector
+									? (info.connection.connector.canvas as HTMLElement)
+									: undefined,
+							);
+						}, 0);
 					}
 				} catch (e) {
 					console.error(e); // eslint-disable-line no-console
@@ -2434,7 +2459,9 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-video') {
+			if (
+				usePostHogStore().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)
+			) {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
@@ -2525,7 +2552,10 @@ export default mixins(
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
-			window.addEventListener('beforeunload', (e) => {
+
+			// allow to be overriden in e2e tests
+			// @ts-ignore
+			window.onBeforeUnload = (e) => {
 				if (this.isDemo) {
 					return;
 				} else if (this.uiStore.stateIsDirty) {
@@ -2538,7 +2568,8 @@ export default mixins(
 					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
 					return;
 				}
-			});
+			};
+			window.addEventListener('beforeunload', window.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -2556,22 +2587,19 @@ export default mixins(
 
 			return NodeViewUtils.getInputEndpointUUID(node.id, index);
 		},
-		__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
-			if (addVisualConnection) {
-				const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
-				const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
-				if (!outputUuid || !inputUuid) {
-					return;
-				}
-
-				const uuid: [string, string] = [outputUuid, inputUuid];
-				// Create connections in DOM
-				this.instance?.connect({
-					uuids: uuid,
-					detachable: !this.isReadOnly,
-				});
+		__addConnection(connection: [IConnection, IConnection]) {
+			const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
+			const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+			if (!outputUuid || !inputUuid) {
+				return;
 			}
-			this.workflowsStore.addConnection({ connection });
+
+			const uuid: [string, string] = [outputUuid, inputUuid];
+			// Create connections in DOM
+			this.instance?.connect({
+				uuids: uuid,
+				detachable: !this.isReadOnly,
+			});
 
 			setTimeout(() => {
 				this.addPinDataConnections(this.workflowsStore.pinData);
@@ -2755,12 +2783,10 @@ export default mixins(
 		},
 		getJSPlumbEndpoints(nodeName: string): Endpoint[] {
 			const node = this.workflowsStore.getNodeByName(nodeName);
-			const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0]
-				.$el as Element;
+			const nodeEl = this.instance.getManagedElement(node?.id);
 
-			const endpoints = this.instance?.getEndpoints(nodeEls);
-
-			return endpoints as Endpoint[];
+			const endpoints = this.instance?.getEndpoints(nodeEl);
+			return endpoints;
 		},
 		getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
 			const endpoints = this.getJSPlumbEndpoints(nodeName);
@@ -2856,7 +2882,9 @@ export default mixins(
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 
-									if (!output || !output.total) {
+									if (output.isArtificalRecoveredEventItem) {
+										NodeViewUtils.recoveredConnection(connection);
+									} else if ((!output || !output.total) && !output.isArtificalRecoveredEventItem) {
 										NodeViewUtils.resetConnection(connection);
 									} else {
 										NodeViewUtils.addConnectionOutputSuccess(connection, output);
@@ -3264,7 +3292,7 @@ export default mixins(
 									},
 								] as [IConnection, IConnection];
 
-								this.__addConnection(connectionData, true);
+								this.__addConnection(connectionData);
 							});
 						}
 					}
@@ -3659,12 +3687,14 @@ export default mixins(
 			if (createNodeActive === this.createNodeActive) return;
 
 			// Default to the trigger tab in node creator if there's no trigger node yet
-			if (!this.containsTrigger) this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
+			this.nodeCreatorStore.setSelectedView(
+				this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
+			);
 
 			this.createNodeActive = createNodeActive;
 
 			const mode =
-				this.nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER ? 'trigger' : 'default';
+				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
@@ -3682,11 +3712,14 @@ export default mixins(
 			dragAndDrop: boolean,
 		) {
 			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
+				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
+				const openNDV = !isManualTrigger && (nodeTypes.length === 1 || index > 0);
 				this.addNode(
 					nodeTypeName,
 					{ position, dragAndDrop },
-					nodeTypes.length === 1 || index > 0,
+					openNDV,
 					true,
+					nodeTypes.length > 1 && index < 1,
 				);
 				if (index === 0) return;
 				// If there's more than one node, we want to connect them
@@ -3702,7 +3735,7 @@ export default mixins(
 								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
 							);
 
-							// Position the added node to the right side of the previsouly added one
+							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [
 								previouslyAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2,
 								previouslyAddedNode.position[1],
@@ -3750,7 +3783,7 @@ export default mixins(
 		},
 		async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection] }) {
 			this.suspendRecordingDetachedConnections = true;
-			this.__addConnection(connection, true);
+			this.__addConnection(connection);
 			this.suspendRecordingDetachedConnections = false;
 		},
 		async onRevertNameChange({ currentName, newName }: { currentName: string; newName: string }) {
@@ -4058,7 +4091,8 @@ export default mixins(
 	position: relative;
 	display: flex;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
+	width: 100%;
 }
 
 .shake {
