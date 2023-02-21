@@ -142,6 +142,7 @@ export class WaitTrackerClass {
 			startedAt: new Date(fullExecutionData.startedAt),
 			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
 			finished: fullExecutionData.finished,
+			status: fullExecutionData.status,
 		};
 	}
 

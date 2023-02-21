@@ -34,6 +34,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -212,7 +213,6 @@ export class ExecutionsService {
 		};
 		if (filter?.status) {
 			Object.assign(findWhere, { status: In(filter.status) });
-			delete filter.status; // remove status from filter so it does not get applied twice
 		}
 		if (filter?.finished) {
 			Object.assign(findWhere, { finished: filter.finished });
@@ -258,6 +258,7 @@ export class ExecutionsService {
 				'execution.startedAt',
 				'execution.stoppedAt',
 				'execution.workflowData',
+				'execution.status',
 			])
 			.orderBy('id', 'DESC')
 			.take(limit)
@@ -285,6 +286,10 @@ export class ExecutionsService {
 			const nodeExecutionStatus = {};
 			let lastNodeExecuted;
 			let executionError;
+			// fill execution status for old executions that will return null
+			if (!execution.status) {
+				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+			}
 			try {
 				const data = parse(execution.data) as IRunExecutionData;
 				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
@@ -360,6 +365,10 @@ export class ExecutionsService {
 				executionId,
 			});
 			return undefined;
+		}
+
+		if (!execution.status) {
+			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
 		if (req.query.unflattedResponse === 'true') {
