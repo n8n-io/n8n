@@ -1,4 +1,6 @@
-import { flow, sortBy, uniqBy } from 'lodash-es';
+import flow from 'lodash.flow';
+import sortBy from 'lodash.sortby';
+import uniqBy from 'lodash.uniqby';
 
 export type DocumentProperties = {
 	customProperty: Array<{ field: string; value: string }>;

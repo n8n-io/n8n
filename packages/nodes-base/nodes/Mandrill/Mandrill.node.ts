@@ -20,7 +20,8 @@ import {
 
 import moment from 'moment';
 
-import { map, isEmpty } from 'lodash-es';
+import map from 'lodash.map';
+import isEmpty from 'lodash.isempty';
 
 interface Attachments {
 	type: string;

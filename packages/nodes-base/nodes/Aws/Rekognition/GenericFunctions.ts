@@ -1,4 +1,4 @@
-import { get } from 'lodash-es';
+import get from 'lodash.get';
 
 import { parseString } from 'xml2js';
 

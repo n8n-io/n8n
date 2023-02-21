@@ -9,7 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { isEmpty, omit } from 'lodash-es';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import { raindropApiRequest } from './GenericFunctions';
 
