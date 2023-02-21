@@ -721,7 +721,7 @@ export async function pgTriggerFunction(
 	try {
 		if (replaceIfExists) {
 			await db.any(
-				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', concat(row_to_json(new)::text, TG_OP::text)); return null; end; $BODY$;",
+				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
 				[functionName, channelName],
 			);
 			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
@@ -740,7 +740,17 @@ export async function pgTriggerFunction(
 			);
 		}
 	} catch (err) {
-		console.log(err);
+		console.log(
+			`function "${functionName.replace('()', '')}" already exists with same argument types`,
+		);
+		console.log(err.message);
+		if (
+			err.message.includes(
+				`function "${functionName.replace('()', '')}" already exists with same argument types`,
+			)
+		) {
+			return returnData;
+		}
 		throw new Error(err);
 	}
 	return returnData;
