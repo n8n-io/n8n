@@ -952,12 +952,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						workflowId: requestFilter.workflowId,
 					});
 				}
-				if (!requestFilter.status || requestFilter.finished) {
-					finishedExecutions = await getFinishedExecutions(
-						rootStore.getRestApiContext,
-						requestFilter,
-					);
-				}
+				finishedExecutions = await getFinishedExecutions(
+					rootStore.getRestApiContext,
+					requestFilter,
+				);
 				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {

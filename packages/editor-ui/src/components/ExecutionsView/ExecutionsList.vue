@@ -356,7 +356,7 @@ export default mixins(
 
 					if (existingStillRunning && currentFinished) {
 						existingExecutions[executionIndex] = currentItem;
-						if (currentItem.id === this.activeExecution.id) {
+						if (currentItem.id === this.activeExecution?.id) {
 							updatedActiveExecution = currentItem;
 						}
 					}
@@ -383,7 +383,7 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
 				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
