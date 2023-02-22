@@ -9,53 +9,64 @@ const properties: INodeProperties[] = [
 	workbookRLC,
 	worksheetRLC,
 	{
+		displayName: 'Select a Range',
+		name: 'useRange',
+		type: 'boolean',
+		default: false,
+	},
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		placeholder: 'e.g. A1:B2',
+		default: '',
+		description: 'The sheet range to read the data from specified using a A1-style notation',
+		hint: 'Leave blank to return entire sheet',
+		displayOptions: {
+			show: {
+				useRange: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Header Row',
+		name: 'keyRow',
+		type: 'number',
+		typeOptions: {
+			minValue: 0,
+		},
+		default: 0,
+		hint: 'Index of the row which contains the column names',
+		description: "Relative to the set 'Range', first row index is 0",
+		displayOptions: {
+			show: {
+				useRange: [true],
+			},
+		},
+	},
+	{
+		displayName: 'First Data Row',
+		name: 'dataStartRow',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		hint: 'Index of first row which contains the actual data',
+		description: "Relative to the set 'Range', first row index is 0",
+		displayOptions: {
+			show: {
+				useRange: [true],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			{
-				displayName: 'Range',
-				name: 'range',
-				type: 'string',
-				placeholder: 'e.g. A1:B2',
-				default: '',
-				description: 'The sheet range to read the data from specified using a A1-style notation',
-				hint: 'Leave blank to return entire sheet',
-			},
-			{
-				displayName: 'Header Row',
-				name: 'keyRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				displayOptions: {
-					hide: {
-						rawData: [true],
-					},
-				},
-				default: 0,
-				hint: 'Index of the row which contains the column names',
-				description: "Relative to the set 'Range', first row index is 0",
-			},
-			{
-				displayName: 'First Data Row',
-				name: 'dataStartRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				default: 1,
-				displayOptions: {
-					hide: {
-						rawData: [true],
-					},
-				},
-				hint: 'Index of first row which contains the actual data',
-				description: "Relative to the set 'Range', first row index is 0",
-			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
@@ -123,7 +134,7 @@ export async function execute(
 
 			const options = this.getNodeParameter('options', i, {});
 
-			const range = (options.range as string) || '';
+			const range = this.getNodeParameter('range', i, '') as string;
 
 			const rawData = (options.rawData as boolean) || false;
 
@@ -151,8 +162,8 @@ export async function execute(
 			}
 
 			if (!rawData) {
-				const keyRow = (options.keyRow as number) || 0;
-				const firstDataRow = (options.dataStartRow as number) || 1;
+				const keyRow = this.getNodeParameter('keyRow', i, 0) as number;
+				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
 
 				returnData.push(
 					...prepareOutput.call(this, responseData, {

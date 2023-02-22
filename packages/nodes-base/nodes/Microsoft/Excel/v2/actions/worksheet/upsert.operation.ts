@@ -11,6 +11,27 @@ const properties: INodeProperties[] = [
 	workbookRLC,
 	worksheetRLC,
 	{
+		displayName: 'Select a Range',
+		name: 'useRange',
+		type: 'boolean',
+		default: false,
+	},
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		displayOptions: {
+			show: {
+				dataMode: ['autoMap', 'define'],
+				useRange: [true],
+			},
+		},
+		placeholder: 'e.g. A1:B2',
+		default: '',
+		description: 'The sheet range to read the data from specified using a A1-style notation',
+		hint: 'First row must contain column names. Leave blank for entire sheet.',
+	},
+	{
 		displayName: 'Data Mode',
 		name: 'dataMode',
 		type: 'options',
@@ -108,37 +129,6 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Range',
-				name: 'range',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/dataMode': ['autoMap', 'define'],
-					},
-				},
-				placeholder: 'e.g. A1:B2',
-				default: '',
-				description: 'The sheet range to read the data from specified using a A1-style notation',
-				hint: 'First row must contain column names. Leave blank for entire sheet.',
-			},
-			{
-				displayName: 'Range',
-				name: 'range',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/dataMode': ['raw'],
-					},
-					hide: {
-						'/operation': ['updateRange'],
-					},
-				},
-				placeholder: 'e.g. A1:B2',
-				default: '',
-				description: 'The sheet range to read the data from specified using a A1-style notation',
-				hint: 'Leave blank for entire worksheet',
-			},
-			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
@@ -195,7 +185,7 @@ export async function execute(
 			extractValue: true,
 		}) as string;
 
-		let range = this.getNodeParameter('options.range', 0, '') as string;
+		let range = this.getNodeParameter('range', 0, '') as string;
 		const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
 		let worksheetData: IDataObject = {};

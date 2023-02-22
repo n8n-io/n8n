@@ -16,6 +16,7 @@ const properties: INodeProperties[] = [
 			{
 				name: 'All',
 				value: 'All',
+				description: 'Clear data in cells and remove all formatting',
 			},
 			{
 				name: 'Formats',
@@ -31,33 +32,24 @@ const properties: INodeProperties[] = [
 		default: 'All',
 	},
 	{
-		displayName: 'Select Range',
-		name: 'selectRange',
-		type: 'options',
-		options: [
-			{
-				name: 'Whole Sheet',
-				value: 'whole',
-			},
-			{
-				name: 'Specify',
-				value: 'specify',
-			},
-		],
-		default: 'whole',
+		displayName: 'Select a Range',
+		name: 'useRange',
+		type: 'boolean',
+		default: false,
 	},
 	{
 		displayName: 'Range',
 		name: 'range',
 		type: 'string',
-		default: '',
-		placeholder: 'e.g. A1:B2',
-		description: 'The range of cells that will be cleared',
 		displayOptions: {
 			show: {
-				selectRange: ['specify'],
+				useRange: [true],
 			},
 		},
+		placeholder: 'e.g. A1:B2',
+		default: '',
+		description: 'The sheet range that would be cleared, specified using a A1-style notation',
+		hint: 'Leave blank for entire worksheet',
 	},
 ];
 
@@ -87,9 +79,9 @@ export async function execute(
 			}) as string;
 
 			const applyTo = this.getNodeParameter('applyTo', i) as string;
-			const selectRange = this.getNodeParameter('selectRange', i) as string;
+			const useRange = this.getNodeParameter('useRange', i, false) as boolean;
 
-			if (selectRange === 'whole') {
+			if (!useRange) {
 				await microsoftApiRequest.call(
 					this,
 					'POST',
@@ -97,7 +89,7 @@ export async function execute(
 					{ applyTo },
 				);
 			} else {
-				const range = this.getNodeParameter('range', i) as string;
+				const range = this.getNodeParameter('range', i, '') as string;
 				await microsoftApiRequest.call(
 					this,
 					'POST',
