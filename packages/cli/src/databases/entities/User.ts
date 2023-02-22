@@ -128,6 +128,8 @@ export class User extends AbstractEntity implements IUser {
 	@AfterLoad()
 	@AfterUpdate()
 	computeHasRecoveryCodesLeft(): void {
-		this.hasRecoveryCodesLeft = !!this.mfaRecoveryCodes.length;
+		this.hasRecoveryCodesLeft = Array.isArray(this.mfaRecoveryCodes)
+			? !!this.mfaRecoveryCodes.length
+			: false;
 	}
 }
