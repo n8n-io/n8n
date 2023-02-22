@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,10 +9,10 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import {
 	groupDescription,
@@ -320,7 +320,7 @@ export class Zammad implements INodeType {
 		const items = this.getInputData();
 
 		const resource = this.getNodeParameter('resource', 0) as ZammadTypes.Resource;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -352,7 +352,7 @@ export class Zammad implements INodeType {
 						Object.assign(body, addressUi?.addressDetails);
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -383,7 +383,7 @@ export class Zammad implements INodeType {
 						Object.assign(body, addressUi?.addressDetails);
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -432,16 +432,16 @@ export class Zammad implements INodeType {
 
 						qs.query ||= ''; // otherwise triggers 500
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems
 							.call(this, 'GET', '/users/search', {}, qs, limit)
-							.then((responseData) => {
-								return responseData.map((user) => {
-									const { preferences, ...rest } = user;
-									return rest;
+							.then((response) => {
+								return response.map((user) => {
+									const { _preferences, ...data } = user;
+									return data;
 								});
 							});
 					} else if (operation === 'getSelf') {
@@ -475,7 +475,7 @@ export class Zammad implements INodeType {
 						) as ZammadTypes.UserAdditionalFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -504,7 +504,7 @@ export class Zammad implements INodeType {
 						const { customFieldsUi, ...rest } = updateFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -540,9 +540,9 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/organization.html#list
 						// https://docs.zammad.org/en/latest/api/organization.html#search - returning empty always
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,
@@ -575,7 +575,7 @@ export class Zammad implements INodeType {
 						) as ZammadTypes.UserAdditionalFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -604,7 +604,7 @@ export class Zammad implements INodeType {
 						const { customFieldsUi, ...rest } = updateFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -639,9 +639,9 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#list
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,
@@ -730,9 +730,9 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#list
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#search - returning empty always
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,

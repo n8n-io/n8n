@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	getGoogleAnalyticsDomainsArray,
@@ -68,7 +67,7 @@ interface Body {
 	send_at?: string;
 }
 
-interface Options {
+type Options = IDataObject & {
 	html: string;
 	fromName?: string;
 	text: string;
@@ -93,7 +92,7 @@ interface Options {
 	signingDomain: string;
 	returnPathDomain: string;
 	sendAt: string;
-}
+};
 
 export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
@@ -715,8 +714,8 @@ export class Mandrill implements INodeType {
 		const items = this.getInputData();
 		let responseData;
 		let emailSentResponse;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -724,7 +723,7 @@ export class Mandrill implements INodeType {
 					const options = this.getNodeParameter('options', i) as Options;
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const toEmail = this.getNodeParameter('toEmail', i) as string;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					const toEmailArray = getToEmailArray(toEmail);
 
 					const message: Message = {

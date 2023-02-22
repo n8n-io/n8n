@@ -30,12 +30,14 @@ module.exports = {
 		meta: {
 			type: 'problem',
 			docs: {
-				description: 'Calls to JSON.parse() must be surrounded with a try/catch block.',
+				description:
+					'Calls to `JSON.parse()` must be replaced with `jsonParse()` from `n8n-workflow` or surrounded with a try/catch block.',
 				recommended: 'error',
 			},
 			schema: [],
 			messages: {
-				noUncaughtJsonParse: 'Surround the JSON.parse() call with a try/catch block.',
+				noUncaughtJsonParse:
+					'Use `jsonParse()` from `n8n-workflow` or surround the `JSON.parse()` call with a try/catch block.',
 			},
 		},
 		defaultOptions: [],
@@ -46,7 +48,7 @@ module.exports = {
 						return;
 					}
 
-					if (isDeepCloneOperation(node)) {
+					if (isJsonStringifyCall(node)) {
 						return;
 					}
 
@@ -63,6 +65,110 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-json-parse-json-stringify': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Calls to `JSON.parse(JSON.stringify(arg))` must be replaced with `deepCopy(arg)` from `n8n-workflow`.',
+				recommended: 'error',
+			},
+			messages: {
+				noJsonParseJsonStringify: 'Replace with `deepCopy({{ argText }})`',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				CallExpression(node) {
+					if (isJsonParseCall(node) && isJsonStringifyCall(node)) {
+						const [callExpression] = node.arguments;
+
+						const { arguments: args } = callExpression;
+
+						if (!Array.isArray(args) || args.length !== 1) return;
+
+						const [arg] = args;
+
+						if (!arg) return;
+
+						const argText = context.getSourceCode().getText(arg);
+
+						context.report({
+							messageId: 'noJsonParseJsonStringify',
+							node,
+							data: { argText },
+							fix: (fixer) => fixer.replaceText(node, `deepCopy(${argText})`),
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-unneeded-backticks': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Template literal backticks may only be used for string interpolation or multiline strings.',
+				recommended: 'error',
+			},
+			messages: {
+				noUneededBackticks: 'Use single or double quotes, not backticks',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				TemplateLiteral(node) {
+					if (node.expressions.length > 0) return;
+					if (node.quasis.every((q) => q.loc.start.line !== q.loc.end.line)) return;
+
+					node.quasis.forEach((q) => {
+						const escaped = q.value.raw.replace(/(?<!\\)'/g, "\\'");
+
+						context.report({
+							messageId: 'noUneededBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(q, `'${escaped}'`),
+						});
+					});
+				},
+			};
+		},
+	},
+
+	'no-interpolation-in-regular-string': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'String interpolation `${...}` requires backticks, not single or double quotes.',
+				recommended: 'error',
+			},
+			messages: {
+				useBackticks: 'Use backticks to interpolate',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				Literal(node) {
+					if (typeof node.value !== 'string') return;
+
+					if (/\$\{/.test(node.value)) {
+						context.report({
+							messageId: 'useBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(node, `\`${node.value}\``),
+						});
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>
@@ -72,7 +178,7 @@ const isJsonParseCall = (node) =>
 	node.callee.property.type === 'Identifier' &&
 	node.callee.property.name === 'parse';
 
-const isDeepCloneOperation = (node) => {
+const isJsonStringifyCall = (node) => {
 	const parseArg = node.arguments?.[0];
 	return (
 		parseArg !== undefined &&

@@ -14,7 +14,7 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 
-import {
+import type {
 	IConnections,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
@@ -33,7 +33,7 @@ import {
 	ITriggerResponse,
 	IWebhookData,
 	IWebhookResponseData,
-	IWorfklowIssues,
+	IWorkflowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	WebhookSetupMethodNames,
@@ -49,7 +49,7 @@ import {
 	IRunNodeResponse,
 	NodeParameterValueType,
 } from './Interfaces';
-import { IDeferredPromise } from './DeferredPromise';
+import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
@@ -249,11 +249,11 @@ export class Workflow {
 		startNode?: string;
 		destinationNode?: string;
 		pinDataNodeNames?: string[];
-	}): IWorfklowIssues | null {
+	}): IWorkflowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
-		const workflowIssues: IWorfklowIssues = {};
+		const workflowIssues: IWorkflowIssues = {};
 
 		let checkNodes: string[] = [];
 		if (inputData.destinationNode) {
@@ -318,7 +318,7 @@ export class Workflow {
 		} else if (type === 'node') {
 			if (node === undefined) {
 				throw new Error(
-					`The request data of context type "node" the node parameter has to be set!`,
+					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;
@@ -899,7 +899,11 @@ export class Workflow {
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
 
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+			if (nodeNames.length === 1 && !node.disabled) {
+				return node;
+			}
+
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {
 				if (node.disabled === true) {
@@ -909,11 +913,23 @@ export class Workflow {
 			}
 		}
 
-		// Check if there is the actual "start" node
-		const startNodeType = 'n8n-nodes-base.start';
-		for (const nodeName of nodeNames) {
+		const startingNodeTypes = [
+			'n8n-nodes-base.manualTrigger',
+			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.errorTrigger',
+			'n8n-nodes-base.start',
+		];
+
+		const sortedNodeNames = Object.values(this.nodes)
+			.sort((a, b) => startingNodeTypes.indexOf(a.type) - startingNodeTypes.indexOf(b.type))
+			.map((n) => n.name);
+
+		for (const nodeName of sortedNodeNames) {
 			node = this.nodes[nodeName];
-			if (node.type === startNodeType) {
+			if (startingNodeTypes.includes(node.type)) {
+				if (node.disabled === true) {
+					continue;
+				}
 				return node;
 			}
 		}
@@ -964,7 +980,7 @@ export class Workflow {
 		isTest?: boolean,
 	): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node) as INode;
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType.webhookMethods === undefined) {
 			return;
@@ -1195,7 +1211,6 @@ export class Workflow {
 
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
-			connectionInputData = connectionInputData.slice(0, 1);
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
 				newInputData[inputName] = inputData[inputName].map((input) => {

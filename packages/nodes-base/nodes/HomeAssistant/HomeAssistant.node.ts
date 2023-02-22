@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -159,18 +159,18 @@ export class HomeAssistant implements INodeType {
 
 		loadOptions: {
 			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this);
+				return getHomeAssistantEntities.call(this);
 			},
 			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this, 'camera');
+				return getHomeAssistantEntities.call(this, 'camera');
 			},
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantServices.call(this);
+				return getHomeAssistantServices.call(this);
 			},
 			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const currentDomain = this.getCurrentNodeParameter('domain') as string;
 				if (currentDomain) {
-					return await getHomeAssistantServices.call(this, currentDomain);
+					return getHomeAssistantServices.call(this, currentDomain);
 				} else {
 					return [];
 				}
@@ -180,10 +180,10 @@ export class HomeAssistant implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
@@ -200,14 +200,14 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'service') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = (await homeAssistantApiRequest.call(
 							this,
 							'GET',
 							'/services',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'call') {
@@ -240,14 +240,14 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'state') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = (await homeAssistantApiRequest.call(
 							this,
 							'GET',
 							'/states',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'get') {
@@ -283,14 +283,14 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'event') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = (await homeAssistantApiRequest.call(
 							this,
 							'GET',
 							'/events',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'create') {
@@ -326,7 +326,7 @@ export class HomeAssistant implements INodeType {
 							};
 						}
 					} else if (operation === 'getLogbookEntries') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/logbook';
 
 						if (Object.entries(additionalFields).length) {
@@ -355,8 +355,8 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'history') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/history/period';
 
 						if (Object.entries(additionalFields).length) {
@@ -385,17 +385,14 @@ export class HomeAssistant implements INodeType {
 							qs,
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}
 				} else if (resource === 'cameraProxy') {
 					if (operation === 'getScreenshot') {
 						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						const endpoint = `/camera_proxy/${cameraEntityId}`;
 
 						let mimeType: string | undefined;
@@ -445,22 +442,27 @@ export class HomeAssistant implements INodeType {
 					if (resource === 'cameraProxy' && operation === 'get') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					continue;
 				}
 				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

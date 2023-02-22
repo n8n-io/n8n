@@ -1,6 +1,11 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	mispApiRequest,
@@ -33,7 +38,7 @@ import {
 	warninglistOperations,
 } from './descriptions';
 
-import { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
+import type { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
 
 export class Misp implements INodeType {
 	description: INodeTypeDescription = {
@@ -171,8 +176,8 @@ export class Misp implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -193,7 +198,7 @@ export class Misp implements INodeType {
 							value: this.getNodeParameter('value', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						throwOnMissingSharingGroup.call(this, additionalFields);
 
@@ -234,7 +239,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						throwOnMissingSharingGroup.call(this, updateFields);
@@ -261,7 +266,7 @@ export class Misp implements INodeType {
 							info: this.getNodeParameter('information', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						throwOnMissingSharingGroup.call(this, additionalFields);
 
@@ -318,7 +323,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						throwOnMissingSharingGroup.call(this, updateFields);
@@ -342,7 +347,7 @@ export class Misp implements INodeType {
 							tag: this.getNodeParameter('tagId', i),
 						};
 
-						const endpoint = `/events/addTag`;
+						const endpoint = '/events/addTag';
 						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
 					} else if (operation === 'remove') {
 						// ----------------------------------------
@@ -375,7 +380,7 @@ export class Misp implements INodeType {
 							url,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -416,7 +421,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/feeds')) as Array<{
 							Feed: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Feed);
+						responseData = responseData.map((entry) => entry.Feed);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               feed: update
@@ -469,7 +474,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/galaxies')) as Array<{
 							Galaxy: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Galaxy);
+						responseData = responseData.map((entry) => entry.Galaxy);
 					}
 				} else if (resource === 'noticelist') {
 					// **********************************************************************
@@ -493,7 +498,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/noticelists')) as Array<{
 							Noticelist: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Noticelist);
+						responseData = responseData.map((entry) => entry.Noticelist);
 					}
 				} else if (resource === 'organisation') {
 					// **********************************************************************
@@ -509,7 +514,7 @@ export class Misp implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -543,14 +548,14 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/organisations')) as Array<{
 							Organisation: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Organisation);
+						responseData = responseData.map((entry) => entry.Organisation);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//           organisation: update
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						Object.assign(body, updateFields);
 
@@ -600,10 +605,10 @@ export class Misp implements INodeType {
 
 						responseData = (await mispApiRequest.call(this, 'GET', '/tags')) as LoadedTags;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Tag.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -645,7 +650,7 @@ export class Misp implements INodeType {
 							role_id: this.getNodeParameter('role_id', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -678,14 +683,14 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/admin/users')) as Array<{
 							User: unknown;
 						}>;
-						responseData = responseData.map((i) => i.User);
+						responseData = responseData.map((entry) => entry.User);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               user: update
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						Object.assign(body, updateFields);
 
@@ -717,13 +722,15 @@ export class Misp implements INodeType {
 							Warninglists: Array<{ Warninglist: unknown }>;
 						};
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
-							responseData = responseData.Warninglists.slice(0, limit).map((i) => i.Warninglist);
+							const limit = this.getNodeParameter('limit', 0);
+							responseData = responseData.Warninglists.slice(0, limit).map(
+								(entry) => entry.Warninglist,
+							);
 						} else {
-							responseData = responseData.Warninglists.map((i) => i.Warninglist);
+							responseData = responseData.Warninglists.map((entry) => entry.Warninglist);
 						}
 					}
 				}

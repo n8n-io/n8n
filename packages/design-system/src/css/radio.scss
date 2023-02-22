@@ -1,7 +1,7 @@
-@use "mixins/mixins";
-@use "mixins/utils";
+@use 'mixins/mixins';
+@use 'mixins/utils';
 @use 'mixins/button';
-@use "./common/var";
+@use './common/var';
 
 @include mixins.b(radio) {
 	color: var.$radio-font-color;

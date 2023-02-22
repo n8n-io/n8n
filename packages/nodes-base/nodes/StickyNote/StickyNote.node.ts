@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class StickyNote implements INodeType {
 	description: INodeTypeDescription = {
@@ -10,7 +10,7 @@ export class StickyNote implements INodeType {
 		version: 1,
 		description: 'Make your workflow easier to understand',
 		defaults: {
-			name: 'Note',
+			name: 'Sticky Note',
 			color: '#FFD233',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -23,7 +23,8 @@ export class StickyNote implements INodeType {
 				name: 'content',
 				type: 'string',
 				required: true,
-				default: `## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)`,
+				default:
+					"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
 			},
 			{
 				displayName: 'Height',
@@ -42,7 +43,7 @@ export class StickyNote implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		return this.prepareOutputData(items);
 	}

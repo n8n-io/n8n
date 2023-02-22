@@ -2,10 +2,12 @@
 
 Portions of this software are licensed as follows:
 
-- All source code files of this repository that contain ".ee." in their filename are licensed under the n8n Enterprise License defined in "LICENSE_EE.md".
+- Content of branches other than the main branch (i.e. "master") are not licensed.
+- All source code files that contain ".ee." in their filename are licensed under the
+  "n8n Enterprise License" defined in "LICENSE_EE.md".
 - All third party components incorporated into the n8n Software are licensed under the original license
   provided by the owner of the applicable component.
-- Content outside of the above mentioned files or restrictions above is available under the "Sustainable Use
+- Content outside of the above mentioned files or restrictions is available under the "Sustainable Use
   License" as defined below.
 
 ## Sustainable Use License

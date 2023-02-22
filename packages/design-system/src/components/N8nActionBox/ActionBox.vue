@@ -1,5 +1,5 @@
 <template>
-	<div :class="['n8n-action-box', $style.container]">
+	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
 		<div :class="$style.emoji" v-if="emoji">
 			{{ emoji }}
 		</div>
@@ -106,6 +106,7 @@ export default Vue.extend({
 
 .heading {
 	margin-bottom: var(--spacing-l);
+	text-align: center;
 }
 
 .description {
@@ -118,5 +119,4 @@ export default Vue.extend({
 	width: 100%;
 	text-align: left;
 }
-
 </style>

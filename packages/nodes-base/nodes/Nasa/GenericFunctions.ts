@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function nasaApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -11,11 +12,10 @@ export async function nasaApiRequest(
 	qs: IDataObject,
 	option: IDataObject = {},
 	uri?: string | undefined,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('nasaApi');
 
-	qs.api_key = credentials['api_key'] as string;
+	qs.api_key = credentials.api_key as string;
 
 	const options: OptionsWithUri = {
 		method,
@@ -41,7 +41,6 @@ export async function nasaApiRequestAllItems(
 	method: string,
 	resource: string,
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

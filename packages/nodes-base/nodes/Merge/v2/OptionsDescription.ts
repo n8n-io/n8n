@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 const clashHandlingProperties: INodeProperties = {
 	displayName: 'Clash Handling',
@@ -87,7 +87,8 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 					},
 					hide: {
 						'/joinMode': ['keepMatches', 'keepNonMatches'],
@@ -98,7 +99,8 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
 					},
@@ -108,7 +110,8 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['multiplex', 'mergeByPosition'],
+						'/mode': ['combine'],
+						'/combinationMode': ['multiplex', 'mergeByPosition'],
 					},
 				},
 			},
@@ -121,9 +124,18 @@ export const optionsDescription: INodeProperties[] = [
 					'Whether to disallow referencing child fields using `parent.child` in the field name',
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 					},
 				},
+			},
+			{
+				displayName: 'Fuzzy Compare',
+				name: 'fuzzyCompare',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 			},
 			{
 				displayName: 'Include Any Unpaired Items',
@@ -135,7 +147,8 @@ export const optionsDescription: INodeProperties[] = [
 					'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByPosition'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByPosition'],
 					},
 				},
 			},
@@ -158,7 +171,8 @@ export const optionsDescription: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
 					},
@@ -183,8 +197,9 @@ export const optionsDescription: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
-						'/joinMode': ['enrichInput1', 'enrichInput2'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
+						'/joinMode': ['enrichInput1', 'enrichInput2', 'keepEverything'],
 					},
 				},
 			},

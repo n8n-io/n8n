@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -186,18 +186,12 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -256,17 +250,11 @@ export const invoiceFields: INodeProperties[] = [
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 					},
 					{
 						displayName: 'Service',
 						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						type: 'string',
 						default: '',
 					},

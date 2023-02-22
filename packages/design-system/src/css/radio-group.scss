@@ -1,5 +1,5 @@
-@use "mixins/mixins";
-@use "./common/var";
+@use 'mixins/mixins';
+@use './common/var';
 
 @include mixins.b(radio-group) {
 	display: inline-block;

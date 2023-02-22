@@ -1,5 +1,5 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -7,8 +7,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
@@ -22,56 +22,67 @@ const nodeOperations: INodePropertyOptions[] = [
 		name: 'Blur',
 		value: 'blur',
 		description: 'Adds a blur to the image and so makes it less sharp',
+		action: 'Blur Image',
 	},
 	{
 		name: 'Border',
 		value: 'border',
 		description: 'Adds a border to the image',
+		action: 'Border Image',
 	},
 	{
 		name: 'Composite',
 		value: 'composite',
 		description: 'Composite image on top of another one',
+		action: 'Composite Image',
 	},
 	{
 		name: 'Create',
 		value: 'create',
 		description: 'Create a new image',
+		action: 'Create Image',
 	},
 	{
 		name: 'Crop',
 		value: 'crop',
 		description: 'Crops the image',
+		action: 'Crop Image',
 	},
 	{
 		name: 'Draw',
 		value: 'draw',
 		description: 'Draw on image',
+		action: 'Draw Image',
 	},
 	{
 		name: 'Rotate',
 		value: 'rotate',
 		description: 'Rotate image',
+		action: 'Rotate Image',
 	},
 	{
 		name: 'Resize',
 		value: 'resize',
 		description: 'Change the size of image',
+		action: 'Resize Image',
 	},
 	{
 		name: 'Shear',
 		value: 'shear',
 		description: 'Shear image along the X or Y axis',
+		action: 'Shear Image',
 	},
 	{
 		name: 'Text',
 		value: 'text',
 		description: 'Adds text to image',
+		action: 'Apply Text to Image',
 	},
 	{
 		name: 'Transparent',
 		value: 'transparent',
 		description: 'Make a color in image transparent',
+		action: 'Add Transparency to Image',
 	},
 ];
 
@@ -776,20 +787,14 @@ export class EditImage implements INodeType {
 					},
 					...nodeOperations,
 				].sort((a, b) => {
-					if (
-						(a as INodePropertyOptions).name.toLowerCase() <
-						(b as INodePropertyOptions).name.toLowerCase()
-					) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (
-						(a as INodePropertyOptions).name.toLowerCase() >
-						(b as INodePropertyOptions).name.toLowerCase()
-					) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;
-				}) as INodePropertyOptions[],
+				}),
 				default: 'border',
 			},
 			{
@@ -915,6 +920,10 @@ export class EditImage implements INodeType {
 								name: 'tiff',
 								value: 'tiff',
 							},
+							{
+								name: 'WebP',
+								value: 'webp',
+							},
 						],
 						default: 'jpeg',
 						description: 'Set the output image format',
@@ -947,15 +956,15 @@ export class EditImage implements INodeType {
 				const files = await getSystemFonts();
 				const returnData: INodePropertyOptions[] = [];
 
-				files.forEach((file: string) => {
-					const pathParts = pathParse(file);
+				files.forEach((entry: string) => {
+					const pathParts = pathParse(entry);
 					if (!pathParts.ext) {
 						return;
 					}
 
 					returnData.push({
 						name: pathParts.name,
-						value: file,
+						value: entry,
 					});
 				});
 
@@ -990,10 +999,10 @@ export class EditImage implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const operation = this.getNodeParameter('operation', itemIndex) as string;
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const operation = this.getNodeParameter('operation', itemIndex);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
-				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 
 				const cleanupFunctions: Array<() => void> = [];
 
@@ -1055,7 +1064,7 @@ export class EditImage implements INodeType {
 						});
 					}
 
-					if (item.binary[dataPropertyName as string] === undefined) {
+					if (item.binary[dataPropertyName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`Item does not contain any binary data with the name "${dataPropertyName}".`,
@@ -1082,12 +1091,12 @@ export class EditImage implements INodeType {
 				if (operation === 'information') {
 					// Just return the information
 					const imageData = await new Promise<IDataObject>((resolve, reject) => {
-						gmInstance = gmInstance.identify((error, imageData) => {
+						gmInstance = gmInstance.identify((error, data) => {
 							if (error) {
 								reject(error);
 								return;
 							}
-							resolve(imageData as unknown as IDataObject);
+							resolve(data as unknown as IDataObject);
 						});
 					});
 
@@ -1111,6 +1120,7 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
@@ -1268,15 +1278,13 @@ export class EditImage implements INodeType {
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
-					if (newItem.binary![dataPropertyName as string]) {
-						newItem.binary![dataPropertyName as string] = JSON.parse(
-							JSON.stringify(newItem.binary![dataPropertyName as string]),
-						);
+					if (newItem.binary[dataPropertyName]) {
+						newItem.binary[dataPropertyName] = deepCopy(newItem.binary[dataPropertyName]);
 					}
 				}
 
-				if (newItem.binary![dataPropertyName as string] === undefined) {
-					newItem.binary![dataPropertyName as string] = {
+				if (newItem.binary![dataPropertyName] === undefined) {
+					newItem.binary![dataPropertyName] = {
 						data: '',
 						mimeType: '',
 					};
@@ -1288,31 +1296,32 @@ export class EditImage implements INodeType {
 
 				if (options.format !== undefined) {
 					gmInstance = gmInstance!.setFormat(options.format as string);
-					newItem.binary![dataPropertyName as string].fileExtension = options.format as string;
-					newItem.binary![dataPropertyName as string].mimeType = `image/${options.format}`;
-					const fileName = newItem.binary![dataPropertyName as string].fileName;
-					if (fileName && fileName.includes('.')) {
-						newItem.binary![dataPropertyName as string].fileName =
+					newItem.binary![dataPropertyName].fileExtension = options.format as string;
+					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
+					const fileName = newItem.binary![dataPropertyName].fileName;
+					if (fileName?.includes('.')) {
+						newItem.binary![dataPropertyName].fileName =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
 
 				if (options.fileName !== undefined) {
-					newItem.binary![dataPropertyName as string].fileName = options.fileName as string;
+					newItem.binary![dataPropertyName].fileName = options.fileName as string;
 				}
 
 				returnData.push(
 					await new Promise<INodeExecutionData>((resolve, reject) => {
 						gmInstance.toBuffer(async (error: Error | null, buffer: Buffer) => {
-							cleanupFunctions.forEach(async (cleanup) => await cleanup());
+							cleanupFunctions.forEach(async (cleanup) => cleanup());
 
 							if (error) {
 								return reject(error);
 							}
 
 							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![dataPropertyName as string] = {
-								...newItem.binary![dataPropertyName as string],
+							newItem.binary![dataPropertyName] = {
+								...newItem.binary![dataPropertyName],
 								...binaryData,
 							};
 

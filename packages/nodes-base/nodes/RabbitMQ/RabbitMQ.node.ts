@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 import * as amqplib from 'amqplib';
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,9 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
 
@@ -335,7 +334,7 @@ export class RabbitMQ implements INodeType {
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
@@ -345,7 +344,7 @@ export class RabbitMQ implements INodeType {
 
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
+					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
 						message = this.getNodeParameter('message', i) as string;
@@ -356,7 +355,7 @@ export class RabbitMQ implements INodeType {
 						options.headers &&
 						((options.headers as IDataObject).header! as IDataObject[]).length
 					) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const itemOptions = this.getNodeParameter('options', i, {});
 						const additionalHeaders: IDataObject = {};
 						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach(
 							(header: IDataObject) => {
@@ -374,8 +373,8 @@ export class RabbitMQ implements INodeType {
 
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
-					if (response!.status !== 'fulfilled') {
-						if (this.continueOnFail() !== true) {
+					if (response.status !== 'fulfilled') {
+						if (!this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
@@ -402,7 +401,7 @@ export class RabbitMQ implements INodeType {
 				const type = this.getNodeParameter('exchangeType', 0) as string;
 				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
 
@@ -412,7 +411,7 @@ export class RabbitMQ implements INodeType {
 
 				const exchangePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
+					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
 						message = this.getNodeParameter('message', i) as string;
@@ -423,7 +422,7 @@ export class RabbitMQ implements INodeType {
 						options.headers &&
 						((options.headers as IDataObject).header! as IDataObject[]).length
 					) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const itemOptions = this.getNodeParameter('options', i, {});
 						const additionalHeaders: IDataObject = {};
 						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach(
 							(header: IDataObject) => {
@@ -443,8 +442,8 @@ export class RabbitMQ implements INodeType {
 
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
-					if (response!.status !== 'fulfilled') {
-						if (this.continueOnFail() !== true) {
+					if (response.status !== 'fulfilled') {
+						if (!this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
@@ -470,7 +469,7 @@ export class RabbitMQ implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return this.prepareOutputData(returnItems);
+			return await this.prepareOutputData(returnItems);
 		} catch (error) {
 			if (channel) {
 				await channel.close();

@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { gumroadApiRequest } from './GenericFunctions';
 
@@ -77,6 +82,7 @@ export class GumroadTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations: INodeProperties[] = [
 	{
@@ -86,9 +86,6 @@ export const threadFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {

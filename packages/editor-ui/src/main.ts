@@ -7,39 +7,46 @@ import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
-
+import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
+import './styles/autocomplete-theme.scss';
 
-import "@fontsource/open-sans/latin-400.css";
-import "@fontsource/open-sans/latin-600.css";
-import "@fontsource/open-sans/latin-700.css";
+import '@fontsource/open-sans/latin-400.css';
+import '@fontsource/open-sans/latin-600.css';
+import '@fontsource/open-sans/latin-700.css';
 
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from './components/mixins/externalHooks';
+import { runExternalHook } from '@/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
-import { store } from './store';
+import { createPinia, PiniaVuePlugin } from 'pinia';
+
+import { useWebhooksStore } from './stores/webhooks';
 
 Vue.config.productionTip = false;
-router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', store, { from, to });
-});
 
 Vue.use(TelemetryPlugin);
-Vue.use((vue) => I18nPlugin(vue, store));
+Vue.use((vue) => I18nPlugin(vue));
+Vue.use(PiniaVuePlugin);
+
+const pinia = createPinia();
 
 new Vue({
 	i18n: i18nInstance,
 	router,
-	store,
-	render: h => h(App),
+	pinia,
+	render: (h) => h(App),
 }).$mount('#app');
 
-if (import.meta.env.NODE_ENV !== 'production') {
+router.afterEach((to, from) => {
+	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+});
+
+if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
 	window.onerror = (message, source, lineno, colno, error) => {

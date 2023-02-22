@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const entryOperations: INodeProperties[] = [
 	{
@@ -240,9 +240,6 @@ export const entryFields: INodeProperties[] = [
 				displayName: 'Where (JSON)',
 				name: 'where',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters">More info</a>.',

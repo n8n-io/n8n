@@ -4,9 +4,9 @@ import {
 	runInBatches,
 	getTablePrefix,
 	escapeQuery,
-} from '../../utils/migrationHelpers';
+} from '@db/utils/migrationHelpers';
 import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { isJsonKeyObject, PinData } from '../../utils/migrations.types';
+import { isJsonKeyObject, PinData } from '@db/utils/migrations.types';
 
 /**
  * Convert TEXT-type `pinData` column in `workflow_entity` table from

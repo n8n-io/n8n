@@ -1,6 +1,7 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IBinaryData, IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
+import type { IBinaryKeyData, IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -11,7 +12,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	const items = this.getInputData();
 
 	const category = this.getNodeParameter('categoryId', index) as string;
-	const options = this.getNodeParameter('options', index) as IDataObject;
+	const options = this.getNodeParameter('options', index);
 
 	if (items[index].binary === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -19,7 +20,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		});
 	}
 
-	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
+	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index);
 
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
 		throw new NodeOperationError(
@@ -31,7 +32,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 
 	const item = items[index].binary as IBinaryKeyData;
 
-	const binaryData = item[propertyNameUpload] as IBinaryData;
+	const binaryData = item[propertyNameUpload];
 
 	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, propertyNameUpload);
 

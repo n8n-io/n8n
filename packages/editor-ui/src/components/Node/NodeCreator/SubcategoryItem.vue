@@ -1,68 +1,38 @@
 <template>
-	<div :class="$style.subcategory">
-		<div :class="$style.details">
-			<div :class="$style.title">
-				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
-			</div>
-			<div v-if="item.properties.description" :class="$style.description">
-				{{ $locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`) }}
-			</div>
-		</div>
-		<div :class="$style.action">
-			<font-awesome-icon :class="$style.arrow" icon="arrow-right" />
-		</div>
-	</div>
+	<n8n-node-creator-node
+		:class="$style.subCategory"
+		:title="$locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`)"
+		:isTrigger="false"
+		:description="$locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`)"
+		:showActionArrow="true"
+	>
+		<template #icon>
+			<n8n-node-icon type="icon" :name="item.icon" :circle="false" :showTooltip="false" />
+		</template>
+	</n8n-node-creator-node>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
+<script setup lang="ts">
+import { ISubcategoryItemProps } from '@/Interface';
 import camelcase from 'lodash.camelcase';
+import { computed } from 'vue';
+export interface Props {
+	item: ISubcategoryItemProps;
+}
 
-export default Vue.extend({
-	props: ['item'],
-	computed: {
-		subcategoryName() {
-			return camelcase(this.item.properties.subcategory);
-		},
-	},
-});
+const props = defineProps<Props>();
+const subcategoryName = computed(() => camelcase(props.item.subcategory));
 </script>
 
-
 <style lang="scss" module>
-.subcategory {
-	display: flex;
-	padding: 11px 16px 11px 30px;
+.subCategory {
+	--action-arrow-color: var(--color-text-light);
+	margin-left: 15px;
+	margin-right: 12px;
 }
-
-.details {
-	flex-grow: 1;
-	margin-right: 4px;
+.withTopBorder {
+	border-top: 1px solid var(--color-foreground-base);
+	margin-top: var(--spacing-m);
+	padding-top: var(--spacing-l);
 }
-
-.title {
-	font-size: 14px;
-	font-weight: bold;
-	line-height: 16px;
-	margin-bottom: 3px;
-}
-
-.description {
-	font-size: 11px;
-	line-height: 16px;
-	font-weight: 400;
-	color: $node-creator-description-color;
-}
-
-.action {
-	display: flex;
-	align-items: center;
-}
-
-.arrow {
-	font-size: 12px;
-	width: 12px;
-	color: $node-creator-arrow-color;
-}
-
 </style>

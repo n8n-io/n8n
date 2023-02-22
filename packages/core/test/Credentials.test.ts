@@ -1,4 +1,4 @@
-import { Credentials } from '../src';
+import { Credentials } from '@/Credentials';
 
 describe('Credentials', () => {
 	describe('without nodeType set', () => {

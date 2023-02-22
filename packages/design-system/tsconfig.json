@@ -8,6 +8,7 @@
 		"importHelpers": true,
 		"skipLibCheck": true,
 		"allowJs": true,
+		"incremental": false,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
 		"types": ["webpack-env", "vitest/globals"],

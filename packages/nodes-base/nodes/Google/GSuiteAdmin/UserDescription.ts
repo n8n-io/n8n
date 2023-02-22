@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -555,7 +555,7 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					"The unique ID for the customer's G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
+					"The unique ID for the customer's Google Workspace account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
 			},
 			{
 				displayName: 'Domain',

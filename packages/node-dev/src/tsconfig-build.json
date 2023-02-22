@@ -11,8 +11,5 @@
 		"incremental": true,
 		"sourceMap": true
 	},
-	"include": [
-		"**/*.credentials.ts",
-		"**/*.node.ts"
-	]
+	"include": ["**/*.credentials.ts", "**/*.node.ts"]
 }

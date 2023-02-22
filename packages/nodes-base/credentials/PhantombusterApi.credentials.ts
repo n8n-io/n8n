@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,16 +7,21 @@ import {
 
 export class PhantombusterApi implements ICredentialType {
 	name = 'phantombusterApi';
+
 	displayName = 'Phantombuster API';
+
 	documentationUrl = 'phantombuster';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,6 +30,7 @@ export class PhantombusterApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.phantombuster.com/api/v2',

@@ -1,12 +1,12 @@
 import cheerio from 'cheerio';
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 type Cheerio = ReturnType<typeof cheerio>;
 
@@ -24,9 +24,9 @@ const extractFunctions: {
 } = {
 	attribute: ($: Cheerio, valueData: IValueData): string | undefined =>
 		$.attr(valueData.attribute!),
-	html: ($: Cheerio, valueData: IValueData): string | undefined => $.html() || undefined,
-	text: ($: Cheerio, valueData: IValueData): string | undefined => $.text(),
-	value: ($: Cheerio, valueData: IValueData): string | undefined => $.val(),
+	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() || undefined,
+	text: ($: Cheerio, _valueData: IValueData): string | undefined => $.text(),
+	value: ($: Cheerio, _valueData: IValueData): string | undefined => $.val(),
 };
 
 /**
@@ -48,6 +48,7 @@ export class HtmlExtract implements INodeType {
 		icon: 'fa:cut',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		subtitle: '={{$parameter["sourceData"] + ": " + $parameter["dataPropertyName"]}}',
 		description: 'Extracts data from HTML',
 		defaults: {
@@ -214,12 +215,12 @@ export class HtmlExtract implements INodeType {
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 				const extractionValues = this.getNodeParameter(
 					'extractionValues',
 					itemIndex,
 				) as IDataObject;
-				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 				const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
 
 				item = items[itemIndex];
@@ -236,7 +237,7 @@ export class HtmlExtract implements INodeType {
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, {
+						throw new NodeOperationError(this.getNode(), 'No item does not contain binary data!', {
 							itemIndex,
 						});
 					}
@@ -275,18 +276,18 @@ export class HtmlExtract implements INodeType {
 					for (const valueData of extractionValues.values as IValueData[]) {
 						htmlElement = $(valueData.cssSelector);
 
-						if (valueData.returnArray === true) {
+						if (valueData.returnArray) {
 							// An array should be returned so itterate over one
 							// value at a time
-							newItem.json[valueData.key as string] = [];
+							newItem.json[valueData.key] = [];
 							htmlElement.each((i, el) => {
-								(newItem.json[valueData.key as string] as Array<string | undefined>).push(
+								(newItem.json[valueData.key] as Array<string | undefined>).push(
 									getValue($(el), valueData, options),
 								);
 							});
 						} else {
 							// One single value should be returned
-							newItem.json[valueData.key as string] = getValue(htmlElement, valueData, options);
+							newItem.json[valueData.key] = getValue(htmlElement, valueData, options);
 						}
 					}
 					returnData.push(newItem);

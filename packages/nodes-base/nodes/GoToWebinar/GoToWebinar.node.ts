@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	attendeeFields,
@@ -112,13 +112,13 @@ export class GoToWebinar implements INodeType {
 	methods = {
 		loadOptions: {
 			async getWebinars(this: ILoadOptionsFunctions) {
-				return await loadWebinars.call(this);
+				return loadWebinars.call(this);
 			},
 			async getAnswers(this: ILoadOptionsFunctions) {
-				return await loadAnswers.call(this);
+				return loadAnswers.call(this);
 			},
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
-				return await loadWebinarSessions.call(this);
+				return loadWebinarSessions.call(this);
 			},
 			// Get all the timezones to display them to user so that he can
 			// select them easily
@@ -137,12 +137,12 @@ export class GoToWebinar implements INodeType {
 			async getRegistranSimpleQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return await loadRegistranSimpleQuestions.call(this);
+				return loadRegistranSimpleQuestions.call(this);
 			},
 			async getRegistranMultiChoiceQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return await loadRegistranMultiChoiceQuestions.call(this);
+				return loadRegistranMultiChoiceQuestions.call(this);
 			},
 		},
 	};
@@ -150,8 +150,8 @@ export class GoToWebinar implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -443,10 +443,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { webinarKey, times } = this.getNodeParameter('additionalFields', i) as {
@@ -521,7 +521,7 @@ export class GoToWebinar implements INodeType {
 							times: timesProperties,
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const endpoint = `organizers/${organizerKey}/webinars`;
@@ -533,10 +533,7 @@ export class GoToWebinar implements INodeType {
 
 						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-						const { sendCancellationEmails } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { sendCancellationEmails } = this.getNodeParameter('additionalFields', i);
 
 						const qs = {} as IDataObject;
 
@@ -563,10 +560,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { times } = this.getNodeParameter('additionalFields', i) as {
@@ -605,7 +602,7 @@ export class GoToWebinar implements INodeType {
 
 						let body = {};
 
-						let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						let updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.times) {
 							const { times } = updateFields as {

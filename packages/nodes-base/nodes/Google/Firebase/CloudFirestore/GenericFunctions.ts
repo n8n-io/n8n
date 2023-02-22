@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -10,11 +11,10 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri: string | null = null,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -50,11 +50,10 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri: string | null = null,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -63,9 +62,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
@@ -104,20 +103,6 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 	}
 
 	return {};
-}
-
-export function fullDocumentToJson(data: IDataObject): IDataObject {
-	if (data === undefined) {
-		return data;
-	}
-
-	return {
-		_name: data.name,
-		_id: data.id,
-		_createTime: data.createTime,
-		_updateTime: data.updateTime,
-		...documentToJson(data.fields as IDataObject),
-	};
 }
 
 export function documentToJson(fields: IDataObject): IDataObject {
@@ -164,4 +149,18 @@ export function documentToJson(fields: IDataObject): IDataObject {
 		}
 	}
 	return result;
+}
+
+export function fullDocumentToJson(data: IDataObject): IDataObject {
+	if (data === undefined) {
+		return data;
+	}
+
+	return {
+		_name: data.name,
+		_id: data.id,
+		_createTime: data.createTime,
+		_updateTime: data.updateTime,
+		...documentToJson(data.fields as IDataObject),
+	};
 }

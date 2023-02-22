@@ -1,5 +1,5 @@
-@use "../common/var";
-@use "../mixins/mixins";
+@use '../common/var';
+@use '../mixins/mixins';
 
 @include mixins.b(date-range-picker) {
 	width: 646px;

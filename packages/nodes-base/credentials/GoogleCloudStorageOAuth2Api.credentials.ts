@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'https://www.googleapis.com/auth/cloud-platform',
@@ -10,9 +10,13 @@ const scopes = [
 
 export class GoogleCloudStorageOAuth2Api implements ICredentialType {
 	name = 'googleCloudStorageOAuth2Api';
+
 	extends = ['googleOAuth2Api'];
+
 	displayName = 'Google Cloud Storage OAuth2 API';
-	documentationUrl = 'google';
+
+	documentationUrl = 'google/oauth-single-service';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

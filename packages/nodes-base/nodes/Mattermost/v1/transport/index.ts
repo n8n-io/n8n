@@ -1,11 +1,10 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	GenericValue,
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 /**

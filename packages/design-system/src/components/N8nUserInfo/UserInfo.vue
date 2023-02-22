@@ -5,23 +5,33 @@
 		</div>
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">
-			<n8n-text :bold="true">{{email}}</n8n-text>
+			<n8n-text :bold="true">{{ email }}</n8n-text>
 			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true" color="text-dark">{{firstName}} {{lastName}} {{isCurrentUser ? this.t('nds.userInfo.you') : ''}}</n8n-text>
+				<n8n-text :bold="true" color="text-dark">
+					{{ firstName }} {{ lastName }}
+					{{ isCurrentUser ? this.t('nds.userInfo.you') : '' }}
+				</n8n-text>
+				<span v-if="disabled" :class="$style.pendingBadge">
+					<n8n-badge :bold="true">Disabled</n8n-badge>
+				</span>
 			</div>
 			<div>
-				<n8n-text size="small" color="text-light">{{email}}</n8n-text>
+				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
+			</div>
+			<div v-if="!isOwner">
+				<n8n-text v-if="signInType" size="small" color="text-light">
+					Sign-in type: {{ signInType }}
+				</n8n-text>
 			</div>
 		</div>
 	</div>
 </template>
 
-
 <script lang="ts">
-import Vue from 'vue';
+import 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
@@ -45,6 +55,9 @@ export default mixins(Locale).extend({
 		email: {
 			type: String,
 		},
+		isOwner: {
+			type: Boolean,
+		},
 		isPendingUser: {
 			type: Boolean,
 		},
@@ -53,7 +66,10 @@ export default mixins(Locale).extend({
 		},
 		disabled: {
 			type: Boolean,
-			default: false,
+		},
+		signInType: {
+			type: String,
+			required: false,
 		},
 	},
 	computed: {
@@ -66,7 +82,6 @@ export default mixins(Locale).extend({
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .container {
@@ -84,7 +99,7 @@ export default mixins(Locale).extend({
 .infoContainer {
 	flex-grow: 1;
 	display: inline-flex;
-	flex-direction: column;;
+	flex-direction: column;
 	justify-content: center;
 	margin-left: var(--spacing-xs);
 }
@@ -101,6 +116,6 @@ export default mixins(Locale).extend({
 }
 
 .disabled {
-  opacity: 0.5;
+	opacity: 0.5;
 }
 </style>

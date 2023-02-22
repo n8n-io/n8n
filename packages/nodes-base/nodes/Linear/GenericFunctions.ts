@@ -1,16 +1,16 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import get from 'lodash.get';
 
@@ -18,19 +18,15 @@ import { query } from './Queries';
 
 export async function linearApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('linearApi');
-
 	const endpoint = 'https://api.linear.app/graphql';
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: credentials.apiKey,
 		},
 		method: 'POST',
 		body,
@@ -39,7 +35,7 @@ export async function linearApiRequest(
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'linearApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -52,9 +48,8 @@ export function capitalizeFirstLetter(data: string) {
 export async function linearApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,7 +68,6 @@ export async function linearApiRequestAllItems(
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -93,7 +87,7 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 //@ts-ignore

@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	createDeferredPromise,
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
@@ -9,9 +8,8 @@ import {
 	IRun,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { createDeferredPromise, LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
 
@@ -149,8 +147,6 @@ export class RabbitMQTrigger implements INodeType {
 
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
-		const self = this;
-
 		let parallelMessages =
 			options.parallelMessages !== undefined && options.parallelMessages !== -1
 				? parseInt(options.parallelMessages as string, 10)
@@ -183,12 +179,12 @@ export class RabbitMQTrigger implements INodeType {
 
 		const startConsumer = async () => {
 			if (parallelMessages !== -1) {
-				channel.prefetch(parallelMessages);
+				await channel.prefetch(parallelMessages);
 			}
 
 			channel.on('close', () => {
 				if (!closeGotCalled) {
-					self.emitError(new Error('Connection got closed unexpectedly'));
+					this.emitError(new Error('Connection got closed unexpectedly'));
 				}
 			});
 
@@ -199,7 +195,7 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.received(message);
 						}
 
-						let content: IDataObject | string = message!.content!.toString();
+						let content: IDataObject | string = message.content.toString();
 
 						const item: INodeExecutionData = {
 							json: {},
@@ -214,7 +210,7 @@ export class RabbitMQTrigger implements INodeType {
 							message.content = undefined as unknown as Buffer;
 						} else {
 							if (options.jsonParseBody === true) {
-								content = JSON.parse(content as string);
+								content = JSON.parse(content);
 							}
 							if (options.onlyContent === true) {
 								item.json = content as IDataObject;
@@ -229,7 +225,7 @@ export class RabbitMQTrigger implements INodeType {
 							responsePromise = await createDeferredPromise<IRun>();
 						}
 
-						self.emit([[item]], undefined, responsePromise);
+						this.emit([[item]], undefined, responsePromise);
 
 						if (responsePromise) {
 							// Acknowledge message after the execution finished
@@ -270,17 +266,17 @@ export class RabbitMQTrigger implements INodeType {
 			consumerTag = consumerInfo.consumerTag;
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
+		const closeFunction = async () => {
 			closeGotCalled = true;
 			try {
-				return messageTracker.closeChannel(channel, consumerTag);
+				return await messageTracker.closeChannel(channel, consumerTag);
 			} catch (error) {
-				const workflow = self.getWorkflow();
-				const node = self.getNode();
+				const workflow = this.getWorkflow();
+				const node = this.getNode();
 				Logger.error(
 					`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
 					{
@@ -289,7 +285,7 @@ export class RabbitMQTrigger implements INodeType {
 					},
 				);
 			}
-		}
+		};
 
 		return {
 			closeFunction,

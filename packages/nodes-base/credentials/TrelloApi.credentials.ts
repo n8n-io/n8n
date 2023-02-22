@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,13 +8,17 @@ import {
 
 export class TrelloApi implements ICredentialType {
 	name = 'trelloApi';
+
 	displayName = 'Trello API';
+
 	documentationUrl = 'trello';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			required: true,
 			default: '',
 		},
@@ -44,6 +48,7 @@ export class TrelloApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.trello.com',

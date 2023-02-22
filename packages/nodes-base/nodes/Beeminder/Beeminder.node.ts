@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -296,8 +296,8 @@ export class Beeminder implements INodeType {
 		const length = items.length;
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let results;
 
 		for (let i = 0; i < length; i++) {
@@ -323,15 +323,15 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as INodeParameters;
 						const data: IDataObject = {
 							goalName,
 						};
 						Object.assign(data, options);
 
-						if (returnAll === false) {
-							data.count = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							data.count = this.getNodeParameter('limit', 0);
 						}
 
 						results = await getAllDatapoints.call(this, data);

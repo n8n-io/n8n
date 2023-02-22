@@ -1,14 +1,9 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeProperties,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodeProperties } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface IProduct {
 	fields: {
@@ -27,7 +22,6 @@ export async function activeCampaignApiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('activeCampaignApi');
 
@@ -81,7 +75,6 @@ export async function activeCampaignApiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -110,11 +103,7 @@ export async function activeCampaignApiRequestAllItems(
 		}
 
 		query.offset = itemsReceived;
-	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.total !== undefined &&
-		responseData.meta.total > itemsReceived
-	);
+	} while (responseData.meta?.total !== undefined && responseData.meta.total > itemsReceived);
 
 	return returnData;
 }

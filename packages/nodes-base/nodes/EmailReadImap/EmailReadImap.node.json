@@ -11,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.imapemail/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/"
 			}
 		],
 		"generic": [
@@ -23,6 +23,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Helpers", "Other Trigger Nodes"]
 	}
 }

@@ -1,12 +1,10 @@
-/* tslint:disable:variable-name */
-
-import {StoryFn} from "@storybook/vue";
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Utilities/Lists',
 };
 
-const ListStyleNoneTemplate: StoryFn = (args, {argTypes}) => ({
+const ListStyleNoneTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	template: `<ul class="list-style-none">
 		<li>List item 1</li>
@@ -17,7 +15,7 @@ const ListStyleNoneTemplate: StoryFn = (args, {argTypes}) => ({
 
 export const StyleNone = ListStyleNoneTemplate.bind({});
 
-const ListInlineTemplate: StoryFn = (args, {argTypes}) => ({
+const ListInlineTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	template: `<ul class="list-inline">
 		<li>List item 1</li>

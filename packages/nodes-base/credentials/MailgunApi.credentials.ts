@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class MailgunApi implements ICredentialType {
 	name = 'mailgunApi';
+
 	displayName = 'Mailgun API';
+
 	documentationUrl = 'mailgun';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Domain',
@@ -37,9 +40,11 @@ export class MailgunApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -49,6 +54,7 @@ export class MailgunApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.apiDomain}}/v3',

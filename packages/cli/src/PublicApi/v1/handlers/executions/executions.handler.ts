@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 
 import { BinaryDataManager } from 'n8n-core';
 
@@ -8,12 +8,13 @@ import {
 	deleteExecution,
 	getExecutionsCount,
 } from './executions.service';
-import { ActiveExecutions } from '../../../..';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
-import { ExecutionRequest } from '../../../types';
+import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooksManager } from '../../../../InternalHooksManager';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	deleteExecution: [
@@ -36,7 +37,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id.toString());
+			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id);
 
 			await deleteExecution(execution);
 
@@ -66,7 +67,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void InternalHooksManager.getInstance().onUserRetrievedExecution({
+			void Container.get(InternalHooks).onUserRetrievedExecution({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -95,9 +96,9 @@ export = {
 			}
 
 			// get running workflows so we exclude them from the result
-			const runningExecutionsIds = ActiveExecutions.getInstance()
+			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
-				.map(({ id }) => Number(id));
+				.map(({ id }) => id);
 
 			const filters = {
 				status,
@@ -110,13 +111,13 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? 0 : (executions.slice(-1)[0].id as number);
+			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 
 			const count = await getExecutionsCount(filters);
 
-			void InternalHooksManager.getInstance().onUserRetrievedAllExecutions({
+			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
 				user_id: req.user.id,
 				public_api: true,
 			});

@@ -1,10 +1,13 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://www.contentful.com/developers/docs/references/authentication/
 export class ContentfulApi implements ICredentialType {
 	name = 'contentfulApi';
+
 	displayName = 'Contenful API';
+
 	documentationUrl = 'contentful';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Space ID',

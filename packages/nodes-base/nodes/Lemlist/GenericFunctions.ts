@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { capitalCase } from 'change-case';
 
@@ -17,10 +17,8 @@ export async function lemlistApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-
 	const options: OptionsWithUri = {
-		headers: {
-		},
+		headers: {},
 		method,
 		uri: `https://api.lemlist.com/api${endpoint}`,
 		qs,
@@ -40,11 +38,7 @@ export async function lemlistApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this,'lemlistApi',options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
 }
 
 /**

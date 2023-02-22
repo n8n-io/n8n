@@ -1,14 +1,12 @@
-import {
+import type {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { collectionFields } from './CollectionDescription';
-import { FieldsUiValues } from './types';
+import type { FieldsUiValues } from './types';
 
 export class Adalo implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +19,6 @@ export class Adalo implements INodeType {
 		description: 'Consume Adalo API',
 		defaults: {
 			name: 'Adalo',
-			color: '#4f44d7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

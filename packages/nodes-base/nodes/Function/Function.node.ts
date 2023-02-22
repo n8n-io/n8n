@@ -1,19 +1,20 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { NodeVMOptions } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function',
 		name: 'function',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -26,6 +27,12 @@ export class Function implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
@@ -60,7 +67,7 @@ return items;`,
 		let items = this.getInputData();
 
 		// Copy the items as they may get changed in the functions
-		items = JSON.parse(JSON.stringify(items));
+		items = deepCopy(items);
 
 		// Assign item indexes
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -75,7 +82,7 @@ return items;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});
@@ -95,7 +102,7 @@ return items;`,
 				if (item?.binary && item?.index !== undefined && item?.index !== null) {
 					for (const binaryPropertyName of Object.keys(item.binary)) {
 						item.binary[binaryPropertyName].data = (
-							await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+							await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
 						)?.toString('base64');
 					}
 				}
@@ -140,21 +147,24 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options = {
+		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
 			require: {
-				external: false as boolean | { modules: string[] },
+				external: false as boolean | { modules: string[]; transitive: boolean },
 				builtin: [] as string[],
 			},
 		};
 
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN && typeof options.require === 'object') {
 			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
 		}
 
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL && typeof options.require === 'object') {
+			options.require.external = {
+				modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+				transitive: false,
+			};
 		}
 
 		const vm = new NodeVM(options);

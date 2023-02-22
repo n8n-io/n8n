@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -190,7 +190,7 @@ export class RespondToWebhook implements INodeType {
 		const items = this.getInputData();
 
 		const respondWith = this.getNodeParameter('respondWith', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		const headers = {} as IDataObject;
 		if (options.responseHeaders) {
@@ -206,7 +206,9 @@ export class RespondToWebhook implements INodeType {
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
 			if (responseBodyParameter) {
-				responseBody = JSON.parse(responseBodyParameter);
+				responseBody = jsonParse(responseBodyParameter, {
+					errorMessage: "Invalid JSON in 'Response Body' field",
+				});
 			}
 		} else if (respondWith === 'firstIncomingItem') {
 			responseBody = items[0].json;
@@ -246,7 +248,7 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			if (headers['content-type']) {
+			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
 			responseBody = binaryDataBuffer;

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
@@ -29,7 +29,7 @@ import { fileFields, fileOperations } from './FileDescription';
 
 import { companyFields, companyOperations } from './CompanyDescription';
 
-import {
+import type {
 	IAddress,
 	IContact,
 	IEmailContact,
@@ -38,17 +38,17 @@ import {
 	ISocialAccount,
 } from './ConctactInterface';
 
-import { IAttachment, IEmail } from './EmaiIInterface';
+import type { IAttachment, IEmail } from './EmaiIInterface';
 
-import { INote } from './ContactNoteInterface';
+import type { INote } from './ContactNoteInterface';
 
-import { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
+import type { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
 
-import { IEcommerceProduct } from './EcommerceProductInterface';
+import type { IEcommerceProduct } from './EcommerceProductInterface';
 
-import { IFile } from './FileInterface';
+import type { IFile } from './FileInterface';
 
-import { ICompany } from './CompanyInterface';
+import type { ICompany } from './CompanyInterface';
 
 import { capitalCase, pascalCase } from 'change-case';
 
@@ -186,7 +186,7 @@ export class Keap implements INodeType {
 					const countryId = key;
 					returnData.push({
 						name: countryName as string,
-						value: countryId as string,
+						value: countryId,
 					});
 				}
 				return returnData;
@@ -206,7 +206,7 @@ export class Keap implements INodeType {
 					const provinceId = key;
 					returnData.push({
 						name: provinceName as string,
-						value: provinceId as string,
+						value: provinceId,
 					});
 				}
 				return returnData;
@@ -249,8 +249,8 @@ export class Keap implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'company') {
 				//https://developer.keap.com/docs/rest/#!/Company/createCompanyUsingPOST
@@ -262,7 +262,7 @@ export class Keap implements INodeType {
 					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject)
 						.phonesValues as IDataObject[];
 					const companyName = this.getNodeParameter('companyName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ICompany = {
 						company_name: companyName,
 					};
@@ -281,8 +281,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Company/listCompaniesUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (qs.fields) {
@@ -299,7 +299,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/companies', {}, qs);
 						responseData = responseData.companies;
 					}
@@ -319,7 +319,7 @@ export class Keap implements INodeType {
 						.socialAccountsValues as IDataObject[];
 					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject)
 						.phonesValues as IDataObject[];
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IContact = {
 						duplicate_option: pascalCase(duplicateOption),
 					};
@@ -407,7 +407,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/getContactUsingGET
 				if (operation === 'get') {
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.fields) {
 						qs.optional_properties = options.fields as string;
 					}
@@ -415,8 +415,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listContactsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					if (options.email) {
 						qs.email = options.email as boolean;
 					}
@@ -448,7 +448,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						responseData = responseData.contacts;
 					}
@@ -459,7 +459,7 @@ export class Keap implements INodeType {
 				if (operation === 'create') {
 					const userId = this.getNodeParameter('userId', i) as number;
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: INote = {
 						user_id: userId,
 						contact_id: contactId,
@@ -484,8 +484,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/listNotesUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (returnAll) {
@@ -498,7 +498,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/notes', {}, qs);
 						responseData = responseData.notes;
 					}
@@ -506,7 +506,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/updatePropertiesOnNoteUsingPATCH
 				if (operation === 'update') {
 					const noteId = this.getNodeParameter('noteId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: INote = {};
 					keysToSnakeCase(additionalFields);
 					if (additionalFields.type) {
@@ -547,7 +547,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listAppliedTagsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
 					if (returnAll) {
 						responseData = await keapApiRequestAllItems.call(
@@ -559,7 +559,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(
 							this,
 							'GET',
@@ -582,7 +582,7 @@ export class Keap implements INodeType {
 						.orderItemsValues as IDataObject[];
 					const shippingAddress = (this.getNodeParameter('addressUi', i) as IDataObject)
 						.addressValues as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceOrder = {
 						contact_id: contactId,
 						order_date: orderDate,
@@ -590,9 +590,7 @@ export class Keap implements INodeType {
 						order_type: pascalCase(orderType),
 					};
 					if (additionalFields.promoCodes) {
-						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(
-							',',
-						) as string[];
+						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(',');
 					}
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
@@ -615,8 +613,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (returnAll) {
@@ -629,7 +627,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/orders', {}, qs);
 						responseData = responseData.orders;
 					}
@@ -639,7 +637,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/createProductUsingPOST
 				if (operation === 'create') {
 					const productName = this.getNodeParameter('productName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceProduct = {
 						product_name: productName,
 					};
@@ -660,8 +658,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (returnAll) {
@@ -674,7 +672,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/products', {}, qs);
 						responseData = responseData.products;
 					}
@@ -685,13 +683,13 @@ export class Keap implements INodeType {
 				if (operation === 'createRecord') {
 					const sentFromAddress = this.getNodeParameter('sentFromAddress', i) as string;
 					const sendToAddress = this.getNodeParameter('sentToAddress', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						sent_to_address: sendToAddress,
 						sent_from_address: sentFromAddress,
 					};
 					Object.assign(body, additionalFields);
-					keysToSnakeCase(body as IDataObject);
+					keysToSnakeCase(body);
 					responseData = await keapApiRequest.call(this, 'POST', '/emails', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
@@ -702,8 +700,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/listEmailsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (returnAll) {
@@ -716,7 +714,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/emails', {}, qs);
 						responseData = responseData.emails;
 					}
@@ -724,11 +722,11 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
 				if (operation === 'send') {
 					const userId = this.getNodeParameter('userId', i) as number;
-					const contactIds = (
-						(this.getNodeParameter('contactIds', i) as string).split(',') as string[]
-					).map((e) => parseInt(e, 10));
+					const contactIds = (this.getNodeParameter('contactIds', i) as string)
+						.split(',')
+						.map((e) => parseInt(e, 10));
 					const subject = this.getNodeParameter('subject', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEmail = {
 						user_id: userId,
 						contacts: contactIds,
@@ -787,8 +785,8 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/listFilesUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (qs.permission) {
@@ -810,14 +808,14 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/files', {}, qs);
 						responseData = responseData.files;
 					}
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/createFileUsingPOST
 				if (operation === 'upload') {
-					const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const binaryData = this.getNodeParameter('binaryData', i);
 					const fileAssociation = this.getNodeParameter('fileAssociation', i) as string;
 					const isPublic = this.getNodeParameter('isPublic', i) as boolean;
 					const body: IFile = {
@@ -829,7 +827,7 @@ export class Keap implements INodeType {
 						body.contact_id = contactId;
 					}
 					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -839,7 +837,7 @@ export class Keap implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						if (item[binaryPropertyName as string] === undefined) {
+						if (item[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Item has no binary property called "${binaryPropertyName}"`,
@@ -847,8 +845,8 @@ export class Keap implements INodeType {
 							);
 						}
 
-						body.file_data = item[binaryPropertyName as string].data;
-						body.file_name = item[binaryPropertyName as string].fileName;
+						body.file_data = item[binaryPropertyName].data;
+						body.file_name = item[binaryPropertyName].fileName;
 					} else {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileData = this.getNodeParameter('fileData', i) as string;

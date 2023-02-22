@@ -1,19 +1,13 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
-import { OptionsWithUri } from 'request';
-
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -22,7 +16,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -37,11 +30,7 @@ export async function awsApiRequest(
 		headers,
 		region: credentials?.region as string,
 	} as IHttpRequestOptions;
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(
@@ -51,7 +40,6 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -68,7 +56,6 @@ export async function awsApiRequestSOAP(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {

@@ -2,40 +2,27 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { In } from 'typeorm';
 
-import { Db, IUser } from '../../src';
-import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
-import * as CredentialHelpers from '../../src/credentials/helpers';
-import type { Role } from '../../src/databases/entities/Role';
+import * as Db from '@/Db';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { CredentialWithSharings } from '@/credentials/credentials.types';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
-
-jest.mock('../../src/telemetry');
-
-// mock whether credentialsSharing is enabled or not
-const mockIsCredentialsSharingEnabled = jest.spyOn(
-	CredentialHelpers,
-	'isCredentialsSharingEnabled',
-);
-mockIsCredentialsSharingEnabled.mockReturnValue(true);
+import type { IUser } from 'n8n-workflow';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 let authAgent: AuthAgent;
+let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['credentials'],
-		applyAuth: true,
-	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['credentials'] });
 
 	utils.initConfigFile();
 
@@ -46,16 +33,15 @@ beforeAll(async () => {
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 	authAgent = utils.createAuthAgent(app);
 
-	utils.initTestLogger();
-	utils.initTestTelemetry();
+	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'SharedCredentials', 'Credentials'], testDbName);
+	await testDb.truncate(['User', 'SharedCredentials', 'Credentials']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 // ----------------------------------------
@@ -68,7 +54,7 @@ test('router should switch based on flag', async () => {
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	// free router
-	mockIsCredentialsSharingEnabled.mockReturnValueOnce(false);
+	sharingSpy.mockReturnValueOnce(false);
 
 	const freeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
@@ -85,7 +71,6 @@ test('router should switch based on flag', async () => {
 	expect(freeGetStatus).toBe(200);
 
 	// EE router
-	mockIsCredentialsSharingEnabled.mockReturnValueOnce(true);
 
 	const eeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
@@ -121,9 +106,9 @@ test('GET /credentials should return all creds for owner', async () => {
 	const response = await authAgent(owner).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
+	expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
 
-	const [ownerCredential, memberCredential] = response.body.data;
+	const [ownerCredential, memberCredential] = response.body.data as CredentialWithSharings[];
 
 	validateMainCredentialData(ownerCredential);
 	expect(ownerCredential.data).toBeUndefined();
@@ -139,14 +124,20 @@ test('GET /credentials should return all creds for owner', async () => {
 	});
 
 	expect(Array.isArray(ownerCredential.sharedWith)).toBe(true);
-	expect(ownerCredential.sharedWith.length).toBe(3);
+	expect(ownerCredential.sharedWith).toHaveLength(3);
 
-	ownerCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
+	// Fix order issue (MySQL might return items in any order)
+	const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWith!].sort(
+		(a: IUser, b: IUser) => (a.email < b.email ? -1 : 1),
+	);
+	const orderedSharedWith = [...sharedWith].sort((a, b) => (a.email < b.email ? -1 : 1));
+
+	ownerCredentialsSharedWithOrdered.forEach((sharee: IUser, idx: number) => {
 		expect(sharee).toMatchObject({
-			id: sharedWith[idx].id,
-			email: sharedWith[idx].email,
-			firstName: sharedWith[idx].firstName,
-			lastName: sharedWith[idx].lastName,
+			id: orderedSharedWith[idx].id,
+			email: orderedSharedWith[idx].email,
+			firstName: orderedSharedWith[idx].firstName,
+			lastName: orderedSharedWith[idx].lastName,
 		});
 	});
 
@@ -158,7 +149,7 @@ test('GET /credentials should return all creds for owner', async () => {
 	});
 
 	expect(Array.isArray(memberCredential.sharedWith)).toBe(true);
-	expect(memberCredential.sharedWith.length).toBe(0);
+	expect(memberCredential.sharedWith).toHaveLength(0);
 });
 
 test('GET /credentials should return only relevant creds for member', async () => {
@@ -174,7 +165,7 @@ test('GET /credentials should return only relevant creds for member', async () =
 	const response = await authAgent(member1).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(1); // member retrieved only member cred
+	expect(response.body.data).toHaveLength(1); // member retrieved only member cred
 
 	const [member1Credential] = response.body.data;
 
@@ -189,7 +180,7 @@ test('GET /credentials should return only relevant creds for member', async () =
 	});
 
 	expect(Array.isArray(member1Credential.sharedWith)).toBe(true);
-	expect(member1Credential.sharedWith.length).toBe(1);
+	expect(member1Credential.sharedWith).toHaveLength(1);
 
 	const [sharee] = member1Credential.sharedWith;
 
@@ -223,7 +214,7 @@ test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 		firstName: ownerShell.firstName,
 		lastName: ownerShell.lastName,
 	});
-	expect(firstCredential.sharedWith.length).toBe(0);
+	expect(firstCredential.sharedWith).toHaveLength(0);
 
 	const secondResponse = await authOwnerAgent
 		.get(`/credentials/${savedCredential.id}`)
@@ -258,7 +249,7 @@ test('GET /credentials/:id should retrieve non-owned cred for owner', async () =
 		firstName: member1.firstName,
 		lastName: member1.lastName,
 	});
-	expect(response1.body.data.sharedWith.length).toBe(1);
+	expect(response1.body.data.sharedWith).toHaveLength(1);
 	expect(response1.body.data.sharedWith[0]).toMatchObject({
 		id: member2.id,
 		email: member2.email,
@@ -274,7 +265,7 @@ test('GET /credentials/:id should retrieve non-owned cred for owner', async () =
 
 	validateMainCredentialData(response2.body.data);
 	expect(response2.body.data.data).toBeUndefined();
-	expect(response2.body.data.sharedWith.length).toBe(1);
+	expect(response2.body.data.sharedWith).toHaveLength(1);
 });
 
 test('GET /credentials/:id should retrieve owned cred for member', async () => {
@@ -298,7 +289,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 		firstName: member1.firstName,
 		lastName: member1.lastName,
 	});
-	expect(firstCredential.sharedWith.length).toBe(2);
+	expect(firstCredential.sharedWith).toHaveLength(2);
 	firstCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
 		expect([member2.id, member3.id]).toContain(sharee.id);
 	});
@@ -312,7 +303,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 	const { data: secondCredential } = secondResponse.body;
 	validateMainCredentialData(secondCredential);
 	expect(secondCredential.data).toBeDefined();
-	expect(firstCredential.sharedWith.length).toBe(2);
+	expect(firstCredential.sharedWith).toHaveLength(2);
 });
 
 test('GET /credentials/:id should not retrieve non-owned cred for member', async () => {
@@ -349,7 +340,7 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 
 	const responseAbc = await authAgent(ownerShell).get('/credentials/abc');
-	expect(responseAbc.statusCode).toBe(400);
+	expect(responseAbc.statusCode).toBe(404);
 
 	// because EE router has precedence, check if forwards this route
 	const responseNew = await authAgent(ownerShell).get('/credentials/new');
@@ -380,7 +371,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
 		relations: ['role'],
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
 	// check that sharings have been removed/added correctly
@@ -420,7 +411,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	// check that sharings got correctly set in DB
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
 		relations: ['role'],
-		where: { credentials: savedCredential, user: { id: In([...memberIds]) } },
+		where: { credentialsId: savedCredential.id, userId: In([...memberIds]) },
 	});
 
 	expect(sharedCredentials.length).toBe(memberIds.length);
@@ -433,7 +424,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	// check that owner still exists
 	const ownerSharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['role'],
-		where: { credentials: savedCredential, user: owner },
+		where: { credentialsId: savedCredential.id, userId: owner.id },
 	});
 
 	expect(ownerSharedCredential.role.name).toBe('owner');
@@ -475,10 +466,10 @@ test('PUT /credentials/:id/share should ignore pending sharee', async () => {
 	expect(response.statusCode).toBe(200);
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
-	expect(sharedCredentials.length).toBe(1);
+	expect(sharedCredentials).toHaveLength(1);
 	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
 
@@ -493,10 +484,10 @@ test('PUT /credentials/:id/share should ignore non-existing sharee', async () =>
 	expect(response.statusCode).toBe(200);
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
-	expect(sharedCredentials.length).toBe(1);
+	expect(sharedCredentials).toHaveLength(1);
 	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
 
@@ -535,10 +526,10 @@ test('PUT /credentials/:id/share should unshare the credential', async () => {
 	expect(response.statusCode).toBe(200);
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
-	expect(sharedCredentials.length).toBe(1);
+	expect(sharedCredentials).toHaveLength(1);
 	expect(sharedCredentials[0].userId).toBe(owner.id);
 });
 

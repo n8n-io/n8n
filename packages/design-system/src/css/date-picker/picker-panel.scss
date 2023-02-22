@@ -1,6 +1,6 @@
-@use "../common/var";
-@use "../mixins/mixins";
-@use "../mixins/button";
+@use '../common/var';
+@use '../mixins/mixins';
+@use '../mixins/button';
 
 @include mixins.b(picker-panel) {
 	color: var(--color-text-dark);

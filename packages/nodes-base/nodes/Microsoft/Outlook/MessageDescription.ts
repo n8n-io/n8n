@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -27,7 +27,7 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many messages in the signed-in user\'s mailbox',
+				description: "Get many messages in the signed-in user's mailbox",
 				action: 'Get many messages',
 			},
 			{

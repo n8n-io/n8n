@@ -1,4 +1,4 @@
-import { toCronExpression } from '../src/Cron';
+import { toCronExpression } from '@/Cron';
 
 describe('Cron', () => {
 	describe('toCronExpression', () => {

@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	actionNetworkApiRequest,
@@ -36,7 +36,7 @@ import {
 	tagOperations,
 } from './descriptions';
 
-import {
+import type {
 	AllFieldsUi,
 	EmailAddressUi,
 	Operation,
@@ -233,7 +233,7 @@ export class ActionNetwork implements INodeType {
 							},
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length && body.person) {
 							Object.assign(body.person, adjustPersonPayload(additionalFields));
@@ -265,7 +265,7 @@ export class ActionNetwork implements INodeType {
 
 						const personId = this.getNodeParameter('personId', i);
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPersonPayload(updateFields));
@@ -361,7 +361,7 @@ export class ActionNetwork implements INodeType {
 
 						const body = makeOsdiLink(personId) as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -480,7 +480,7 @@ export class ActionNetwork implements INodeType {
 				if (simplify) {
 					response =
 						operation === 'getAll'
-							? response.map((i: Response) => simplifyResponse(i, resource))
+							? response.map((entry: Response) => simplifyResponse(entry, resource))
 							: simplifyResponse(response, resource);
 				}
 

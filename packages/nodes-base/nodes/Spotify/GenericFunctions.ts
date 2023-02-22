@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -17,7 +18,6 @@ export async function spotifyApiRequest(
 	body: object,
 	query?: object,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -48,7 +48,6 @@ export async function spotifyApiRequestAllItems(
 	endpoint: string,
 	body: object,
 	query?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -67,7 +66,7 @@ export async function spotifyApiRequestAllItems(
 			return returnData;
 		}
 	} while (
-		(responseData['next'] !== null && responseData['next'] !== undefined) ||
+		(responseData.next !== null && responseData.next !== undefined) ||
 		(responseData[propertyName.split('.')[0]].next !== null &&
 			responseData[propertyName.split('.')[0]].next !== undefined)
 	);

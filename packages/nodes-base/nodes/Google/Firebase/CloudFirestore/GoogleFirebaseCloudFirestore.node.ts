@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import {
 	fullDocumentToJson,
@@ -92,8 +93,8 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'document') {
 			if (operation === 'get') {
@@ -115,7 +116,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				responseData = responseData.map((element: { found: { id: string; name: string } }) => {
 					if (element.found) {
-						element.found.id = (element.found.name as string).split('/').pop() as string;
+						element.found.id = element.found.name.split('/').pop() as string;
 					}
 					return element;
 				});
@@ -147,9 +148,9 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						const document = { fields: {} };
 						columnList.map((column) => {
 							// @ts-ignore
-							if (item['json'][column]) {
+							if (item.json[column]) {
 								// @ts-ignore
-								document.fields[column] = jsonToDocument(item['json'][column]);
+								document.fields[column] = jsonToDocument(item.json[column]);
 							} else {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(null);
@@ -180,7 +181,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
 				const collection = this.getNodeParameter('collection', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				if (returnAll) {
@@ -191,7 +192,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 					);
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0);
 					const getAllResponse = (await googleApiRequest.call(
 						this,
 						'GET',
@@ -208,9 +209,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				});
 
 				if (simple) {
-					responseData = responseData.map((element: IDataObject) =>
-						fullDocumentToJson(element as IDataObject),
-					);
+					responseData = responseData.map((element: IDataObject) => fullDocumentToJson(element));
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -249,15 +248,15 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					const collection = this.getNodeParameter('collection', i) as string;
 					const updateKey = this.getNodeParameter('updateKey', i) as string;
 					// @ts-ignore
-					const documentId = item['json'][updateKey] as string;
+					const documentId = item.json[updateKey] as string;
 					const columns = this.getNodeParameter('columns', i) as string;
-					const columnList = columns.split(',').map((column) => column.trim()) as string[];
+					const columnList = columns.split(',').map((column) => column.trim());
 					const document = {};
 					columnList.map((column) => {
 						// @ts-ignore
-						if (item['json'].hasOwnProperty(column)) {
+						if (item.json.hasOwnProperty(column)) {
 							// @ts-ignore
-							document[column] = jsonToDocument(item['json'][column]);
+							document[column] = jsonToDocument(item.json[column]);
 						} else {
 							// @ts-ignore
 							document[column] = jsonToDocument(null);
@@ -285,7 +284,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				);
 
 				for (let i = 0; i < writeResults.length; i++) {
-					writeResults[i]['status'] = status[i];
+					writeResults[i].status = status[i];
 					Object.assign(writeResults[i], items[i].json);
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -338,15 +337,13 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							this,
 							'POST',
 							`/${projectId}/databases/${database}/documents:runQuery`,
-							JSON.parse(query),
+							jsonParse(query),
 						);
 
 						responseData = responseData.map(
 							(element: { document: { id: string; name: string } }) => {
 								if (element.document) {
-									element.document.id = (element.document.name as string)
-										.split('/')
-										.pop() as string;
+									element.document.id = element.document.name.split('/').pop() as string;
 								}
 								return element;
 							},
@@ -373,7 +370,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 			if (operation === 'getAll') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 
 				if (returnAll) {
 					const getAllResponse = await googleApiRequestAllItems.call(
@@ -385,7 +382,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					// @ts-ignore
 					responseData = getAllResponse.map((o) => ({ name: o }));
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0);
 					const getAllResponse = (await googleApiRequest.call(
 						this,
 						'POST',

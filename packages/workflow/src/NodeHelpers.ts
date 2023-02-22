@@ -12,10 +12,10 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get, isEqual } from 'lodash';
+import get from 'lodash.get';
+import isEqual from 'lodash.isequal';
 
-import {
+import type {
 	IContextObject,
 	INode,
 	INodeCredentialDescription,
@@ -30,7 +30,7 @@ import {
 	INodePropertyModeValidation,
 	INodePropertyRegexValidation,
 	INodeType,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
@@ -38,6 +38,8 @@ import {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
+import { isValidResourceLocatorParameterValue } from './type-guards';
+import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
 
@@ -228,31 +230,29 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-/**
- * Gets special parameters which should be added to nodeTypes depending
- * on their type or configuration
- *
- */
-export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
-	if (nodeType.description.polling === true) {
-		return [
-			{
-				displayName: 'Poll Times',
-				name: 'pollTimes',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Poll Time',
-				},
-				default: { item: [{ mode: 'everyMinute' }] },
-				description: 'Time at which polling should occur',
-				placeholder: 'Add Poll Time',
-				options: cronNodeOptions,
-			},
-		];
-	}
+const specialNodeParameters: INodeProperties[] = [
+	{
+		displayName: 'Poll Times',
+		name: 'pollTimes',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Poll Time',
+		},
+		default: { item: [{ mode: 'everyMinute' }] },
+		description: 'Time at which polling should occur',
+		placeholder: 'Add Poll Time',
+		options: cronNodeOptions,
+	},
+];
 
-	return [];
+/**
+ * Apply special parameters which should be added to nodeTypes depending on their type or configuration
+ */
+export function applySpecialNodeParameters(nodeType: INodeType): void {
+	if (nodeType.description.polling === true) {
+		nodeType.description.properties.unshift(...specialNodeParameters);
+	}
 }
 
 /**
@@ -291,6 +291,10 @@ export function displayParameter(
 				value = get(nodeValues, propertyName);
 			}
 
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
+			}
+
 			values.length = 0;
 			if (!Array.isArray(value)) {
 				values.push(value);
@@ -322,6 +326,10 @@ export function displayParameter(
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
+			}
+
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
 			}
 
 			values.length = 0;
@@ -394,7 +402,7 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			throw new Error(`The request data of context type "node" the node parameter has to be set!`);
+			throw new Error('The request data of context type "node" the node parameter has to be set!');
 		}
 		key = `node:${node.name}`;
 	} else {
@@ -413,9 +421,7 @@ export function getContext(
  * Returns which parameters are dependent on which
  *
  */
-export function getParamterDependencies(
-	nodePropertiesArray: INodeProperties[],
-): IParameterDependencies {
+function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
 
 	for (const nodeProperties of nodePropertiesArray) {
@@ -538,7 +544,7 @@ export function getNodeParameters(
 	parameterDependencies?: IParameterDependencies,
 ): INodeParameters | null {
 	if (parameterDependencies === undefined) {
-		parameterDependencies = getParamterDependencies(nodePropertiesArray);
+		parameterDependencies = getParameterDependencies(nodePropertiesArray);
 	}
 
 	// Get the parameter names which get used multiple times as for this
@@ -619,6 +625,14 @@ export function getNodeParameters(
 						nodeValues[nodeProperties.name] !== undefined
 							? nodeValues[nodeProperties.name]
 							: nodeProperties.default;
+				} else if (
+					nodeProperties.type === 'resourceLocator' &&
+					typeof nodeProperties.default === 'object'
+				) {
+					nodeParameters[nodeProperties.name] =
+						nodeValues[nodeProperties.name] !== undefined
+							? nodeValues[nodeProperties.name]
+							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] || nodeProperties.default;
@@ -660,9 +674,7 @@ export function getNodeParameters(
 				} else if (returnDefaults) {
 					// Does not have values defined but defaults should be returned
 					if (Array.isArray(nodeProperties.default)) {
-						nodeParameters[nodeProperties.name] = JSON.parse(
-							JSON.stringify(nodeProperties.default),
-						);
+						nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 					} else {
 						// As it is probably wrong for many nodes, do we keep on returning an empty array if
 						// anything else than an array is set as default
@@ -690,7 +702,7 @@ export function getNodeParameters(
 				}
 			} else if (returnDefaults) {
 				// Does not have values defined but defaults should be returned
-				nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+				nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
@@ -704,7 +716,7 @@ export function getNodeParameters(
 			let propertyValues = nodeValues[nodeProperties.name];
 			if (returnDefaults) {
 				if (propertyValues === undefined) {
-					propertyValues = JSON.parse(JSON.stringify(nodeProperties.default));
+					propertyValues = deepCopy(nodeProperties.default);
 				}
 			}
 
@@ -819,9 +831,7 @@ export function getNodeParameters(
 				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
-						nodeParameters[nodeProperties.name] = JSON.parse(
-							JSON.stringify(nodeProperties.default),
-						);
+						nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 					} else {
 						nodeParameters[nodeProperties.name] = collectionValues;
 					}
@@ -874,7 +884,7 @@ export function getNodeWebhooks(
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -1059,7 +1069,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	const nodeIssues = [];
 
 	if (issues.execution !== undefined) {
-		nodeIssues.push(`Execution Error.`);
+		nodeIssues.push('Execution Error.');
 	}
 
 	const objectProperties = ['parameters', 'credentials'];
@@ -1080,7 +1090,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		if (node !== undefined) {
 			nodeIssues.push(`Node Type "${node.type}" is not known.`);
 		} else {
-			nodeIssues.push(`Node Type is not known.`);
+			nodeIssues.push('Node Type is not known.');
 		}
 	}
 
@@ -1137,7 +1147,7 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'resourceLocator' &&
-			(!value || (typeof value === 'object' && !value.value)))
+			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
@@ -1382,25 +1392,21 @@ export function mergeNodeProperties(
 }
 
 export function getVersionedNodeType(
-	object: INodeVersionedType | INodeType,
+	object: IVersionedNodeType | INodeType,
 	version?: number,
 ): INodeType {
-	if (isNodeTypeVersioned(object)) {
-		return (object as INodeVersionedType).getNodeType(version);
+	if ('nodeVersions' in object) {
+		return object.getNodeType(version);
 	}
-	return object as INodeType;
+	return object;
 }
 
-export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
-	if (isNodeTypeVersioned(object)) {
-		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
+export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
+	if ('nodeVersions' in object) {
+		return Object.values(object.nodeVersions).map((element) => {
 			element.description.name = object.description.name;
 			return element;
 		});
 	}
-	return [object as INodeType];
-}
-
-export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
-	return !!('getNodeType' in object);
+	return [object];
 }

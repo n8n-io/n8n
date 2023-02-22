@@ -1,4 +1,4 @@
-import { MessageProperties } from '../../Interfaces';
+import type { MessageProperties } from '../../Interfaces';
 
 export const messagePostEphemeralDescription: MessageProperties = [
 	{
@@ -42,9 +42,6 @@ export const messagePostEphemeralDescription: MessageProperties = [
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {

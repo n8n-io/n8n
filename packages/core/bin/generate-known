@@ -1,0 +1,64 @@
+#!/usr/bin/env node
+
+const path = require('path');
+const glob = require('fast-glob');
+const { LoggerProxy } = require('n8n-workflow');
+const { packageDir, writeJSON } = require('./common');
+const { loadClassInIsolation } = require('../dist/ClassLoader');
+
+LoggerProxy.init({
+	log: console.log.bind(console),
+	warn: console.warn.bind(console),
+});
+
+const loadClass = (sourcePath) => {
+	try {
+		const [className] = path.parse(sourcePath).name.split('.');
+		const filePath = path.resolve(packageDir, sourcePath);
+		const instance = loadClassInIsolation(filePath, className);
+		return { instance, sourcePath, className };
+	} catch (e) {
+		LoggerProxy.warn(`Failed to load ${sourcePath}: ${e.message}`);
+	}
+};
+
+const nodesToTestWith = {};
+
+const generate = async (kind) => {
+	const data = glob
+		.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
+			cwd: packageDir,
+		})
+		.map(loadClass)
+		.filter((data) => !!data)
+		.reduce((obj, { className, sourcePath, instance }) => {
+			const name = kind === 'nodes' ? instance.description.name : instance.name;
+			if (!/[vV]\d.node\.js$/.test(sourcePath)) {
+				if (name in obj) console.error('already loaded', kind, name, sourcePath);
+				else obj[name] = { className, sourcePath };
+			}
+
+			if (kind === 'nodes') {
+				const { credentials } = instance.description;
+				if (credentials && credentials.length) {
+					for (const credential of credentials) {
+						nodesToTestWith[credential.name] = nodesToTestWith[credential.name] || [];
+						nodesToTestWith[credential.name].push(name);
+					}
+				}
+			} else {
+				if (name in nodesToTestWith) {
+					obj[name].nodesToTestWith = nodesToTestWith[name];
+				}
+			}
+			return obj;
+		}, {});
+	LoggerProxy.info(`Detected ${Object.keys(data).length} ${kind}`);
+	await writeJSON(`known/${kind}.json`, data);
+	return data;
+};
+
+(async () => {
+	await generate('nodes');
+	await generate('credentials');
+})();

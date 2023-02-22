@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
 
@@ -102,7 +107,7 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const currentEvent = this.getNodeParameter('event') as string;
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const webhooks = await woocommerceApiRequest.call(
 					this,
@@ -156,21 +161,17 @@ export class WooCommerceTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData();
 		const webhookData = this.getWorkflowStaticData('node');
-		//@ts-ignore
 		if (headerData['x-wc-webhook-id'] === undefined) {
 			return {};
 		}
 
 		const computedSignature = createHmac('sha256', webhookData.secret as string)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('base64');
-		//@ts-ignore
 		if (headerData['x-wc-webhook-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};

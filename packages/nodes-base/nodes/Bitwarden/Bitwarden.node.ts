@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	bitwardenApiRequest as tokenlessBitwardenApiRequest,
@@ -16,27 +16,22 @@ import {
 	loadResource,
 } from './GenericFunctions';
 
-import {
-	collectionFields,
-	collectionOperations,
-	CollectionUpdateFields,
-} from './descriptions/CollectionDescription';
+import type { CollectionUpdateFields } from './descriptions/CollectionDescription';
+import { collectionFields, collectionOperations } from './descriptions/CollectionDescription';
 
 import { eventFields, eventOperations } from './descriptions/EventDescription';
 
-import {
+import type {
 	GroupCreationAdditionalFields,
-	groupFields,
-	groupOperations,
 	GroupUpdateFields,
 } from './descriptions/GroupDescription';
+import { groupFields, groupOperations } from './descriptions/GroupDescription';
 
-import {
+import type {
 	MemberCreationAdditionalFields,
-	memberFields,
-	memberOperations,
 	MemberUpdateFields,
 } from './descriptions/MemberDescription';
+import { memberFields, memberOperations } from './descriptions/MemberDescription';
 
 import { isEmpty, partialRight } from 'lodash';
 
@@ -100,11 +95,11 @@ export class Bitwarden implements INodeType {
 	methods = {
 		loadOptions: {
 			async getGroups(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'groups');
+				return loadResource.call(this, 'groups');
 			},
 
 			async getCollections(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'collections');
+				return loadResource.call(this, 'collections');
 			},
 		},
 	};
@@ -112,8 +107,8 @@ export class Bitwarden implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -219,7 +214,7 @@ export class Bitwarden implements INodeType {
 					//         event: getAll
 					// ----------------------------------
 
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i);
 					const qs = isEmpty(filters) ? {} : filters;
 					const endpoint = '/public/events';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, qs, {});

@@ -1,13 +1,12 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-import { createContext, Script } from 'vm';
 import axios from 'axios';
 import { UserSettings } from 'n8n-core';
-import { LoggerProxy, PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -15,11 +14,11 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
-} from '../constants';
-import { InstalledPackages } from '../databases/entities/InstalledPackages';
-import config from '../../config';
+} from '@/constants';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import config from '@/config';
 
-import type { CommunityPackages } from '../Interfaces';
+import type { CommunityPackages } from '@/Interfaces';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -76,7 +75,7 @@ export const executeCommand = async (
 	command: string,
 	options?: { doNotHandleError?: boolean },
 ): Promise<string> => {
-	const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+	const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 	const execOptions = {
 		cwd: downloadFolder,
@@ -235,13 +234,3 @@ export const isClientError = (error: Error): boolean => {
 export function isNpmError(error: unknown): error is { code: number; stdout: string } {
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
-
-const context = createContext({ require });
-export const loadClassInIsolation = (filePath: string, className: string) => {
-	if (process.platform === 'win32') {
-		filePath = filePath.replace(/\\/g, '/');
-	}
-	const script = new Script(`new (require('${filePath}').${className})()`);
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	return script.runInContext(context);
-};

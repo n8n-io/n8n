@@ -1,18 +1,14 @@
 <template>
-	<component :is="tag"
-		:class="{[$style.dragging]: isDragging }"
+	<component
+		:is="tag"
+		:class="{ [$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
 		ref="wrapper"
 	>
 		<slot :isDragging="isDragging"></slot>
 
 		<Teleport to="body">
-			<div
-				ref="draggable"
-				:class="$style.draggable"
-				:style="draggableStyle"
-				v-show="isDragging"
-			>
+			<div ref="draggable" :class="$style.draggable" :style="draggableStyle" v-show="isDragging">
 				<slot name="preview" :canDrop="canDrop" :el="draggingEl"></slot>
 			</div>
 		</Teleport>
@@ -21,6 +17,8 @@
 
 <script lang="ts">
 import { XYPosition } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 // @ts-ignore
@@ -66,11 +64,12 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapStores(useNDVStore),
 		canDrop(): boolean {
-			return this.$store.getters['ui/canDraggableDrop'];
+			return this.ndvStore.canDraggableDrop;
 		},
 		stickyPosition(): XYPosition | null {
-			return this.$store.getters['ui/draggableStickyPos'];
+			return this.ndvStore.draggableStickyPos;
 		},
 	},
 	methods: {
@@ -85,9 +84,18 @@ export default Vue.extend({
 			}
 
 			this.draggingEl = e.target as HTMLElement;
-			if (this.targetDataKey && this.draggingEl && this.draggingEl.dataset.target !== this.targetDataKey) {
+			if (this.targetDataKey && this.draggingEl.dataset?.target !== this.targetDataKey) {
+				this.draggingEl = this.draggingEl.closest(
+					`[data-target="${this.targetDataKey}"]`,
+				) as HTMLElement;
+			}
+
+			if (this.targetDataKey && this.draggingEl?.dataset?.target !== this.targetDataKey) {
 				return;
 			}
+
+			e.preventDefault();
+			e.stopPropagation();
 
 			this.isDragging = false;
 			this.draggablePosition = { x: e.pageX, y: e.pageY };
@@ -104,11 +112,12 @@ export default Vue.extend({
 				return;
 			}
 
-			if(!this.isDragging) {
+			if (!this.isDragging) {
 				this.isDragging = true;
 
-				const data = this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : (this.data || '');
-				this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
+				const data =
+					this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : this.data || '';
+				this.ndvStore.draggableStartDragging({ type: this.type, data: data || '' });
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';
@@ -116,7 +125,7 @@ export default Vue.extend({
 
 			this.animationFrameId = window.requestAnimationFrame(() => {
 				if (this.canDrop && this.stickyPosition) {
-					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
+					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1] };
 				} else {
 					this.draggablePosition = { x: e.pageX, y: e.pageY };
 				}
@@ -138,7 +147,7 @@ export default Vue.extend({
 				this.$emit('dragend', this.draggingEl);
 				this.isDragging = false;
 				this.draggingEl = null;
-				this.$store.commit('ui/draggableStopDragging');
+				this.ndvStore.draggableStopDragging();
 			}, 0);
 		},
 	},

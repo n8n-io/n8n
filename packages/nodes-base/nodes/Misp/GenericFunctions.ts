@@ -1,10 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { MispCredentials } from './types';
+import type { MispCredentials } from './types';
 
 import { URL } from 'url';
 
@@ -40,7 +41,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {
@@ -69,10 +70,10 @@ export async function mispApiRequest(
 
 export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: string) {
 	const responseData = await mispApiRequest.call(this, 'GET', endpoint);
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		const limit = this.getNodeParameter('limit', 0) as number;
+		const limit = this.getNodeParameter('limit', 0);
 		return responseData.slice(0, limit);
 	}
 
@@ -102,7 +103,7 @@ export function throwOnMissingSharingGroup(this: IExecuteFunctions, fields: IDat
 
 const isValidUrl = (str: string) => {
 	try {
-		new URL(str); // tslint:disable-line: no-unused-expression
+		new URL(str);
 		return true;
 	} catch (error) {
 		return false;

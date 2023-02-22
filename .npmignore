@@ -1,5 +1,5 @@
 dist/test
-dist/**/*.{js.map,d.ts}
+dist/**/*.{js.map}
 
 .DS_Store
 
@@ -23,6 +23,6 @@ yarn-error.log*
 .editorconfig
 .eslintrc.js
 tsconfig.json
-tslint.json
 
 .turbo
+*.tsbuildinfo

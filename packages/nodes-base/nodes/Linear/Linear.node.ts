@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -134,11 +134,38 @@ export class Linear implements INodeType {
 				return returnData;
 			},
 			async getStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				let teamId = this.getNodeParameter('teamId', null) as string;
+				// Handle Updates
+				if (!teamId) {
+					const updateFields = this.getNodeParameter('updateFields', null) as IDataObject;
+					// If not updating the team look up the current team
+					if (!updateFields.teamId) {
+						const issueId = this.getNodeParameter('issueId');
+						const body = {
+							query: query.getIssueTeam(),
+							variables: {
+								issueId,
+							},
+						};
+						const responseData = await linearApiRequest.call(this, body);
+						teamId = responseData?.data?.issue?.team?.id;
+					} else {
+						teamId = updateFields.teamId as string;
+					}
+				}
+
 				const returnData: INodePropertyOptions[] = [];
 				const body = {
 					query: query.getStates(),
 					variables: {
 						$first: 10,
+						filter: {
+							team: {
+								id: {
+									eq: teamId,
+								},
+							},
+						},
 					},
 				};
 				const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body);
@@ -159,16 +186,15 @@ export class Linear implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'issue') {
 					if (operation === 'create') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IGraphqlBody = {
 							query: query.createIssue(),
 							variables: {
@@ -203,10 +229,10 @@ export class Linear implements INodeType {
 						};
 
 						responseData = await linearApiRequest.call(this, body);
-						responseData = responseData.data?.issues?.nodes[0];
+						responseData = responseData.data.issue;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const body: IGraphqlBody = {
 							query: query.getIssues(),
 							variables: {
@@ -216,7 +242,7 @@ export class Linear implements INodeType {
 						if (returnAll) {
 							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							body.variables.first = limit;
 							responseData = await linearApiRequest.call(this, body);
 							responseData = responseData.data.issues.nodes;
@@ -224,7 +250,7 @@ export class Linear implements INodeType {
 					}
 					if (operation === 'update') {
 						const issueId = this.getNodeParameter('issueId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IGraphqlBody = {
 							query: query.updateIssue(),
 							variables: {

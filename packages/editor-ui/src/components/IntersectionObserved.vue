@@ -5,9 +5,8 @@
 </template>
 
 <script lang="ts">
-
 import mixins from 'vue-typed-mixins';
-import emitter from '@/components/mixins/emitter';
+import emitter from '@/mixins/emitter';
 
 export default mixins(emitter).extend({
 	name: 'IntersectionObserved',

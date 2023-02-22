@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,13 +7,17 @@ import {
 
 export class N8nApi implements ICredentialType {
 	name = 'n8nApi';
+
 	displayName = 'n8n API';
-	documentationUrl = 'n8nApi';
+
+	documentationUrl = 'https://docs.n8n.io/api/authentication/';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'The API key for the n8n instance',
 		},
@@ -26,6 +30,7 @@ export class N8nApi implements ICredentialType {
 			description: 'The API URL of the n8n instance',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -34,6 +39,7 @@ export class N8nApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',

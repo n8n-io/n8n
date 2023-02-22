@@ -1,11 +1,10 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -29,7 +28,7 @@ export class CiscoWebexTrigger implements INodeType {
 		subtitle: '={{$parameter["resource"] + ":" + $parameter["event"]}}',
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
-			name: 'Webex Trigger',
+			name: 'Webex by Cisco Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -540,13 +539,13 @@ export class CiscoWebexTrigger implements INodeType {
 				};
 
 				if (filters.ownedBy) {
-					body['ownedBy'] = filters.ownedBy as string;
+					body.ownedBy = filters.ownedBy as string;
 				}
 
-				body['secret'] = secret;
+				body.secret = secret;
 
 				if (filter.length) {
-					body['filter'] = filter.join('&');
+					body.filter = filter.join('&');
 				}
 
 				const responseData = await webexApiRequest.call(this, 'POST', endpoint, body);
@@ -587,7 +586,6 @@ export class CiscoWebexTrigger implements INodeType {
 
 		//@ts-ignore
 		const computedSignature = createHmac('sha1', webhookData.secret)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('hex');
 		if (headers['x-spark-signature'] !== computedSignature) {
