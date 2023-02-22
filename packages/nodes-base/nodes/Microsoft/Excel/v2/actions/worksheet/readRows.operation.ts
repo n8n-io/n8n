@@ -37,7 +37,7 @@ const properties: INodeProperties[] = [
 		},
 		default: 0,
 		hint: 'Index of the row which contains the column names',
-		description: "Relative to the set 'Range', first row index is 0",
+		description: "Relative to selected 'Range', first row index is 0",
 		displayOptions: {
 			show: {
 				useRange: [true],
@@ -53,7 +53,7 @@ const properties: INodeProperties[] = [
 		},
 		default: 1,
 		hint: 'Index of first row which contains the actual data',
-		description: "Relative to the set 'Range', first row index is 0",
+		description: "Relative to selected 'Range', first row index is 0",
 		displayOptions: {
 			show: {
 				useRange: [true],
