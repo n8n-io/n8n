@@ -13,10 +13,10 @@ import { TagEntity } from '@db/entities/TagEntity';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { TagRequest } from '../../../types';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
+import { Container } from 'typedi';
 import { FindManyOptions, QueryFailedError } from 'typeorm';
 
 export = {
@@ -28,7 +28,7 @@ export = {
 			const newTag = new TagEntity();
 			newTag.name = name.trim();
 
-			await ExternalHooks().run('tag.beforeCreate', [newTag]);
+			await Container.get(ExternalHooks).run('tag.beforeCreate', [newTag]);
 
 			await validateEntity(newTag);
 
@@ -43,7 +43,7 @@ export = {
 				}
 			}
 
-			await ExternalHooks().run('tag.afterCreate', [tag]);
+			await Container.get(ExternalHooks).run('tag.afterCreate', [tag]);
 
 			return res.status(201).json(tag);
 		},
@@ -64,7 +64,7 @@ export = {
 			newTag.id = id;
 			newTag.name = name.trim();
 
-			await ExternalHooks().run('tag.beforeUpdate', [newTag]);
+			await Container.get(ExternalHooks).run('tag.beforeUpdate', [newTag]);
 
 			await validateEntity(newTag);
 
@@ -78,7 +78,7 @@ export = {
 				}
 			}
 
-			await ExternalHooks().run('tag.afterUpdate', [tag]);
+			await Container.get(ExternalHooks).run('tag.afterUpdate', [tag]);
 
 			tag = await getTagById(id);
 
@@ -103,11 +103,11 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await ExternalHooks().run('tag.beforeDelete', [id]);
+			await Container.get(ExternalHooks).run('tag.beforeDelete', [id]);
 
 			await deleteTag(id);
 
-			await ExternalHooks().run('tag.afterUpdate', [id]);
+			await Container.get(ExternalHooks).run('tag.afterUpdate', [id]);
 
 			return res.json(tag);
 		},
@@ -131,11 +131,6 @@ export = {
 
 			tags = await getTags(query);
 			count = await getTagsCount(query);
-
-			void InternalHooksManager.getInstance().onUserRetrievedAllTags({
-				user_id: req.user.id,
-				public_api: true,
-			});
 
 			return res.json({
 				data: tags,
