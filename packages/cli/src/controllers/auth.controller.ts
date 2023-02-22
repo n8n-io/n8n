@@ -197,10 +197,6 @@ export class AuthController {
 		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
 		if (index === -1) return false;
 
-		if (user.mfaRecoveryCodes.length === 1) {
-			user.hasRecoveryCodesLeft = false;
-		}
-
 		// remove used recovery code
 		user.mfaRecoveryCodes.splice(index, 1);
 

@@ -153,10 +153,13 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 			delete rest[key];
 		});
 	}
+
 	const sanitizedUser: PublicUser = {
 		...rest,
 		signInType: 'email',
+		hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 	};
+
 	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 	if (ldapIdentity) {
 		sanitizedUser.signInType = 'ldap';
