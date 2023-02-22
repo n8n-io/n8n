@@ -50,22 +50,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 								!nodesThatCannotReceiveInput.includes(outgoingConnections.node),
 						);
 					});
-
-					// Filter out output connection items that are empty
-					connection[outputConnectionName] = connection[outputConnectionName].filter(
-						(item) => item.length > 0,
-					);
-
-					// Delete the output connection container if it is empty
-					if (connection[outputConnectionName].length === 0) {
-						delete connection[outputConnectionName];
-					}
 				});
-
-				// Finally delete the source node if it has no output connections
-				if (Object.keys(connection).length === 0) {
-					delete connections[sourceNodeName];
-				}
 			});
 
 			// Update database with new connections
