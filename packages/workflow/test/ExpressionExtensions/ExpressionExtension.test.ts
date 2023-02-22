@@ -209,13 +209,11 @@ describe('tmpl Expression Parser', () => {
 			// If you're implementing sandboxing maybe provide a way to add functions to
 			// sandbox we can check instead?
 			const mockCallback = jest.fn(() => false);
-			// @ts-ignore
-			evaluate('={{ $if("a"==="a", true, $data["cb"]()) }}', [{ cb: mockCallback }]);
+			evaluate('={{ $if("a"==="a", true, $data.cb()) }}', [{ cb: mockCallback }]);
 			expect(mockCallback.mock.calls.length).toEqual(0);
 
-			// @ts-ignore
-			evaluate('={{ $if("a"==="b", true, $data["cb"]()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(0);
+			evaluate('={{ $if("a"==="b", true, $data.cb()) }}', [{ cb: mockCallback }]);
+			expect(mockCallback.mock.calls.length).toEqual(1);
 		});
 
 		test('$not', () => {

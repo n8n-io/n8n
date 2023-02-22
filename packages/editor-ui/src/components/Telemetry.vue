@@ -53,11 +53,6 @@ export default mixins(externalHooks).extend({
 				versionCli: this.rootStore.versionCli,
 			});
 
-			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.rootStore.instanceId,
-				userId: this.currentUserId,
-			});
-
 			this.isTelemetryInitialized = true;
 		},
 	},
@@ -69,10 +64,6 @@ export default mixins(externalHooks).extend({
 			if (this.isTelemetryEnabled) {
 				this.$telemetry.identify(this.rootStore.instanceId, userId);
 			}
-			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.rootStore.instanceId,
-				userId,
-			});
 		},
 		isTelemetryEnabledOnRoute(enabled) {
 			if (enabled) {

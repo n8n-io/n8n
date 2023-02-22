@@ -369,6 +369,15 @@ export class NotionV1 implements INodeType {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { external: { url: options.icon } };
+						} else {
+							body.icon = { emoji: options.icon };
+						}
+					}
+
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
@@ -528,6 +537,15 @@ export class NotionV1 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
+					}
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { external: { url: options.icon } };
+						} else {
+							body.icon = { emoji: options.icon };
+						}
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
