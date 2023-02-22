@@ -1224,6 +1224,7 @@ export class WorkflowExecute {
 					return this.processSuccessExecution(startedAt, workflow, executionError, closeFunction);
 				})
 				.catch(async (error) => {
+					this.status = 'error';
 					const fullRunData = this.getFullRunData(startedAt);
 
 					fullRunData.data.resultData.error = {
@@ -1281,18 +1282,24 @@ export class WorkflowExecute {
 				error: executionError,
 				workflowId: workflow.id,
 			});
+			this.status = 'failed';
+			fullRunData.status = 'failed';
 			fullRunData.data.resultData.error = {
 				...executionError,
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
 		} else if (this.runExecutionData.waitTill!) {
+			this.status = 'waiting';
+			fullRunData.status = 'waiting';
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
+			this.status = 'success';
+			fullRunData.status = 'success';
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 		}
