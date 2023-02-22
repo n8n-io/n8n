@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Container } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -16,26 +17,22 @@ import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as Server from '@/Server';
-import * as TestWebhooks from '@/TestWebhooks';
-import { WaitTracker } from '@/WaitTracker';
+import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { handleLdapInit } from '@/Ldap/helpers';
-import { createPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
+import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
 const pipeline = promisify(stream.pipeline);
-
-let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -63,6 +60,8 @@ export class Start extends BaseCommand {
 		}),
 	};
 
+	protected activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
 	/**
 	 * Opens the UI in browser
 	 */
@@ -87,7 +86,7 @@ export class Start extends BaseCommand {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
+			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
 			await this.externalHooks.run('n8n.stop', []);
 
@@ -98,25 +97,25 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
-			await InternalHooksManager.getInstance().onN8nStop();
+			await Container.get(InternalHooks).onN8nStop();
 
 			const skipWebhookDeregistration = config.getEnv(
 				'endpoints.skipWebhooksDeregistrationOnShutdown',
 			);
 
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
-				removePromises.push(activeWorkflowRunner.removeAll());
+			if (!skipWebhookDeregistration) {
+				removePromises.push(this.activeWorkflowRunner.removeAll());
 			}
 
 			// Remove all test webhooks
-			const testWebhooks = TestWebhooks.getInstance();
+			const testWebhooks = Container.get(TestWebhooks);
 			removePromises.push(testWebhooks.removeAll());
 
 			await Promise.all(removePromises);
 
 			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = ActiveExecutions.getInstance();
+			const activeExecutionsInstance = Container.get(ActiveExecutions);
 			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
 			let count = 0;
@@ -152,20 +151,6 @@ export class Start extends BaseCommand {
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
 				return `${acc}<script src="${curr}"></script>`;
 			}, '');
-		}
-
-		if (config.getEnv('diagnostics.enabled')) {
-			const phLoadingScript = createPostHogLoadingScript({
-				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-				autocapture: false,
-				disableSessionRecording: config.getEnv(
-					'diagnostics.config.posthog.disableSessionRecording',
-				),
-				debug: config.getEnv('logs.level') === 'debug',
-			});
-
-			scriptsString += phLoadingScript;
 		}
 
 		const closingTitleTag = '</title>';
@@ -344,10 +329,7 @@ export class Start extends BaseCommand {
 		await Server.start();
 
 		// Start to get active workflows and run their triggers
-		activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-		await activeWorkflowRunner.init();
-
-		WaitTracker();
+		await this.activeWorkflowRunner.init();
 
 		await handleLdapInit();
 
@@ -393,6 +375,7 @@ export class Start extends BaseCommand {
 	}
 
 	async catch(error: Error) {
+		console.log(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }

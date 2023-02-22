@@ -29,7 +29,7 @@ export abstract class AbstractPush<T> {
 		}
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
+	send<D>(type: IPushDataType, data: D, sessionId: string | undefined) {
 		const { connections } = this;
 		if (sessionId !== undefined && connections[sessionId] === undefined) {
 			Logger.error(`The session "${sessionId}" is not registered.`, { sessionId });

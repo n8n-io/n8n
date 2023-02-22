@@ -21,12 +21,15 @@ patchedDependencies:
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
+  typedi@0.10.0:
+    hash: syy565ld7euwcedfbmx53j2qc4
+    path: patches/typedi@0.10.0.patch
 
 importers:
 
   .:
     specifiers:
-      '@n8n_io/eslint-config': '*'
+      '@n8n_io/eslint-config': workspace:*
       '@ngneat/falso': ^6.1.0
       '@types/jest': ^29.2.2
       '@types/supertest': ^2.0.12
@@ -37,7 +40,7 @@ importers:
       jest-environment-jsdom: ^29.4.2
       jest-mock: ^29.4.2
       jest-mock-extended: ^3.0.1
-      n8n: ^0.210.1
+      n8n: workspace:*
       nock: ^13.2.9
       node-fetch: ^2.6.7
       p-limit: ^3.1.0
@@ -164,6 +167,7 @@ importers:
       callsites: ^3.1.0
       change-case: ^4.1.1
       chokidar: 3.5.2
+      class-transformer: ^0.5.1
       class-validator: ^0.14.0
       client-oauth2: ^4.2.5
       compression: ^1.7.4
@@ -208,10 +212,10 @@ importers:
       luxon: ^3.1.0
       mock-jwks: ^1.0.9
       mysql2: ~2.3.3
-      n8n-core: ~0.155.0
-      n8n-editor-ui: ~0.182.0
-      n8n-nodes-base: ~0.214.0
-      n8n-workflow: ~0.137.0
+      n8n-core: workspace:*
+      n8n-editor-ui: workspace:*
+      n8n-nodes-base: workspace:*
+      n8n-workflow: workspace:*
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -227,6 +231,7 @@ importers:
       posthog-node: ^2.2.2
       prom-client: ^13.1.0
       psl: ^1.8.0
+      reflect-metadata: ^0.1.13
       replacestream: ^4.0.3
       run-script-os: ^1.0.7
       semver: ^7.3.8
@@ -237,8 +242,10 @@ importers:
       sse-channel: ^4.0.0
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
+      ts-essentials: ^7.0.3
       tsc-alias: ^1.8.2
       tsconfig-paths: ^4.1.2
+      typedi: ^0.10.0
       typeorm: ^0.3.12
       uuid: ^8.3.2
       validator: 13.7.0
@@ -262,6 +269,7 @@ importers:
       bull: 4.10.2
       callsites: 3.1.0
       change-case: 4.1.2
+      class-transformer: 0.5.1
       class-validator: 0.14.0
       client-oauth2: 4.3.3
       compression: 1.7.4
@@ -321,6 +329,7 @@ importers:
       posthog-node: 2.3.1
       prom-client: 13.2.0
       psl: 1.9.0
+      reflect-metadata: 0.1.13
       replacestream: 4.0.3
       semver: 7.3.8
       shelljs: 0.8.5
@@ -330,7 +339,8 @@ importers:
       sse-channel: 4.0.0
       swagger-ui-express: 4.6.0_express@4.18.2
       syslog-client: 1.1.1
-      typeorm: 0.3.12_qhi2qldprvm3mk4maowwyglrmu
+      typedi: 0.10.0
+      typeorm: 0.3.12_pgelcv6ef3switkrteavpif3pq
       uuid: 8.3.2
       validator: 13.7.0
       winston: 3.8.2
@@ -383,6 +393,7 @@ importers:
       mock-jwks: 1.0.9_nock@13.3.0
       nodemon: 2.0.20
       run-script-os: 1.1.6
+      ts-essentials: 7.0.3_typescript@4.9.4
       tsc-alias: 1.8.2
       tsconfig-paths: 4.1.2
 
@@ -407,7 +418,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.137.0
+      n8n-workflow: workspace:*
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       pretty-bytes: ^5.6.0
@@ -594,8 +605,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^3.1.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.54.0
-      n8n-workflow: ~0.137.0
+      n8n-design-system: workspace:*
+      n8n-workflow: workspace:*
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prettier: ^2.8.3
@@ -727,8 +738,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.155.0
-      n8n-workflow: ~0.137.0
+      n8n-core: workspace:*
+      n8n-workflow: workspace:*
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -820,8 +831,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.155.0
-      n8n-workflow: ~0.137.0
+      n8n-core: workspace:*
+      n8n-workflow: workspace:*
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -937,7 +948,6 @@ importers:
 
   packages/workflow:
     specifiers:
-      '@n8n_io/eslint-config': ''
       '@n8n_io/riot-tmpl': ^2.0.0
       '@types/crypto-js': ^4.1.1
       '@types/deep-equal': ^1.0.1
@@ -982,7 +992,6 @@ importers:
       transliteration: 2.3.5
       xml2js: 0.4.23
     devDependencies:
-      '@n8n_io/eslint-config': link:../@n8n_io/eslint-config
       '@types/crypto-js': 4.1.1
       '@types/deep-equal': 1.0.1
       '@types/express': 4.17.16
@@ -4968,8 +4977,8 @@ packages:
       react-dom:
         optional: true
     dependencies:
-      '@storybook/client-logger': 7.0.0-beta.47
-      '@storybook/core-events': 7.0.0-beta.47
+      '@storybook/client-logger': 7.0.0-beta.46
+      '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.10
       '@storybook/global': 5.0.0
       '@storybook/manager-api': 7.0.0-beta.47_6l5554ty5ajsajah6yazvrjhoe
@@ -5174,12 +5183,12 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      '@storybook/channels': 7.0.0-beta.47
-      '@storybook/client-logger': 7.0.0-beta.47
-      '@storybook/components': 7.0.0-beta.47_6l5554ty5ajsajah6yazvrjhoe
-      '@storybook/core-events': 7.0.0-beta.47
+      '@storybook/channels': 7.0.0-beta.46
+      '@storybook/client-logger': 7.0.0-beta.46
+      '@storybook/components': 7.0.0-beta.46_6l5554ty5ajsajah6yazvrjhoe
+      '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.10
-      '@storybook/docs-tools': 7.0.0-beta.47
+      '@storybook/docs-tools': 7.0.0-beta.46
       '@storybook/global': 5.0.0
       '@storybook/manager-api': 7.0.0-beta.47_6l5554ty5ajsajah6yazvrjhoe
       '@storybook/preview-api': 7.0.0-beta.47
@@ -5399,9 +5408,9 @@ packages:
       '@babel/preset-env': 7.20.2_@babel+core@7.20.12
       '@babel/types': 7.20.7
       '@storybook/csf': 0.0.2-next.10
-      '@storybook/csf-tools': 7.0.0-beta.47
-      '@storybook/node-logger': 7.0.0-beta.47
-      '@storybook/types': 7.0.0-beta.47
+      '@storybook/csf-tools': 7.0.0-beta.46
+      '@storybook/node-logger': 7.0.0-beta.46
+      '@storybook/types': 7.0.0-beta.46
       cross-spawn: 7.0.3
       globby: 11.1.0
       jscodeshift: 0.14.0_@babel+preset-env@7.20.2
@@ -5437,7 +5446,7 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      '@storybook/client-logger': 7.0.0-beta.47
+      '@storybook/client-logger': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.10
       '@storybook/global': 5.0.0
       '@storybook/theming': 7.0.0-beta.47_6l5554ty5ajsajah6yazvrjhoe
@@ -5506,11 +5515,11 @@ packages:
     dependencies:
       '@aw-web-design/x-default-browser': 1.4.88
       '@discoveryjs/json-ext': 0.5.7
-      '@storybook/builder-manager': 7.0.0-beta.47
-      '@storybook/core-common': 7.0.0-beta.47
-      '@storybook/core-events': 7.0.0-beta.47
+      '@storybook/builder-manager': 7.0.0-beta.46
+      '@storybook/core-common': 7.0.0-beta.46
+      '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.10
-      '@storybook/csf-tools': 7.0.0-beta.47
+      '@storybook/csf-tools': 7.0.0-beta.46
       '@storybook/docs-mdx': 0.0.1-next.6
       '@storybook/global': 5.0.0
       '@storybook/manager': 7.0.0-beta.47
@@ -5580,7 +5589,7 @@ packages:
     dependencies:
       '@babel/types': 7.20.7
       '@storybook/csf': 0.0.2-next.10
-      '@storybook/types': 7.0.0-beta.47
+      '@storybook/types': 7.0.0-beta.46
       fs-extra: 11.1.0
       recast: 0.23.1
       ts-dedent: 2.2.0
@@ -5628,9 +5637,9 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      '@storybook/channels': 7.0.0-beta.47
-      '@storybook/client-logger': 7.0.0-beta.47
-      '@storybook/core-events': 7.0.0-beta.47
+      '@storybook/channels': 7.0.0-beta.46
+      '@storybook/client-logger': 7.0.0-beta.46
+      '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.10
       '@storybook/global': 5.0.0
       '@storybook/router': 7.0.0-beta.47_6l5554ty5ajsajah6yazvrjhoe
@@ -5717,10 +5726,10 @@ packages:
   /@storybook/preview-api/7.0.0-beta.47:
     resolution: {integrity: sha512-A9xKQ25//X8t4Gv1ACJxHpuRwmCul7ZQUISf8f5qvFQf/kANbaQie9LD9Lr25TDj3swbQtKG1tl/QrzPWvcr1Q==}
     dependencies:
-      '@storybook/channel-postmessage': 7.0.0-beta.47
-      '@storybook/channels': 7.0.0-beta.47
-      '@storybook/client-logger': 7.0.0-beta.47
-      '@storybook/core-events': 7.0.0-beta.47
+      '@storybook/channel-postmessage': 7.0.0-beta.46
+      '@storybook/channels': 7.0.0-beta.46
+      '@storybook/client-logger': 7.0.0-beta.46
+      '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.10
       '@storybook/global': 5.0.0
       '@storybook/types': 7.0.0-beta.47
@@ -9003,6 +9012,10 @@ packages:
 
   /clamp/1.0.1:
     resolution: {integrity: sha512-kgMuFyE78OC6Dyu3Dy7vcx4uy97EIbVxJB/B0eJ3bUNAkwdNcxYzgKltnyADiYwsR7SEqkkUPsEUT//OVS6XMA==}
+    dev: false
+
+  /class-transformer/0.5.1:
+    resolution: {integrity: sha512-SQa1Ws6hUbfC98vKGxZH3KFY0Y1lm5Zm0SY8XX9zbK7FJCyVEac3ATW0RIpwzW+oOfmHE5PMPufDG9hCfoEOMw==}
     dev: false
 
   /class-utils/0.3.6:
@@ -20771,83 +20784,11 @@ packages:
   /typedarray/0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  /typeorm/0.2.45_qhi2qldprvm3mk4maowwyglrmu:
-    resolution: {integrity: sha512-c0rCO8VMJ3ER7JQ73xfk0zDnVv0WDjpsP6Q1m6CVKul7DB9iVdWLRjPzc8v2eaeBuomsbZ2+gTaYr8k1gm3bYA==}
-    hasBin: true
-    peerDependencies:
-      '@sap/hana-client': ^2.11.14
-      better-sqlite3: ^7.1.2
-      hdb-pool: ^0.1.6
-      ioredis: ^4.28.3
-      mongodb: ^3.6.0
-      mssql: ^6.3.1
-      mysql2: ^2.2.5
-      oracledb: ^5.1.0
-      pg: ^8.5.1
-      pg-native: ^3.0.0
-      pg-query-stream: ^4.0.0
-      redis: ^3.1.1
-      sql.js: ^1.4.0
-      sqlite3: ^5.0.2
-      typeorm-aurora-data-api-driver: ^2.0.0
-    peerDependenciesMeta:
-      '@sap/hana-client':
-        optional: true
-      better-sqlite3:
-        optional: true
-      hdb-pool:
-        optional: true
-      ioredis:
-        optional: true
-      mongodb:
-        optional: true
-      mssql:
-        optional: true
-      mysql2:
-        optional: true
-      oracledb:
-        optional: true
-      pg:
-        optional: true
-      pg-native:
-        optional: true
-      pg-query-stream:
-        optional: true
-      redis:
-        optional: true
-      sql.js:
-        optional: true
-      sqlite3:
-        optional: true
-      typeorm-aurora-data-api-driver:
-        optional: true
-    dependencies:
-      '@sqltools/formatter': 1.2.5
-      app-root-path: 3.1.0
-      buffer: 6.0.3
-      chalk: 4.1.2
-      cli-highlight: 2.1.11
-      debug: 4.3.4
-      dotenv: 8.6.0
-      glob: 7.2.3
-      ioredis: 5.3.0
-      js-yaml: 4.1.0
-      mkdirp: 1.0.4
-      mysql2: 2.3.3
-      pg: 8.9.0
-      reflect-metadata: 0.1.13
-      sha.js: 2.4.11
-      sqlite3: 5.1.4
-      tslib: 2.5.0
-      uuid: 8.3.2
-      xml2js: 0.4.23
-      yargs: 17.6.2
-      zen-observable-ts: 1.1.0
-    transitivePeerDependencies:
-      - supports-color
+  /typedi/0.10.0:
+    resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
     dev: false
 
-  /typeorm/0.3.12_qhi2qldprvm3mk4maowwyglrmu:
+  /typeorm/0.3.12_pgelcv6ef3switkrteavpif3pq:
     resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
     engines: {node: '>= 12.9.0'}
     hasBin: true

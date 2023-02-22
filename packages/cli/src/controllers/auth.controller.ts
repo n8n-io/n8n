@@ -1,8 +1,8 @@
 import validator from 'validator';
 import { totp } from 'speakeasy';
 import { Get, Post, RestController } from '@/decorators';
-import { BadRequestError, InternalServerError, AuthError } from '@/ResponseHelper';
-import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
+import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
+import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
@@ -12,8 +12,14 @@ import { LoginRequest, UserRequest } from '@/requests';
 import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
-import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type {
+	PublicUser,
+	IDatabaseCollections,
+	IInternalHooksClass,
+	CurrentUser,
+} from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import type { PostHogClient } from '@/posthog';
 
 @RestController()
 export class AuthController {
@@ -25,21 +31,26 @@ export class AuthController {
 
 	private readonly userRepository: Repository<User>;
 
+	private readonly postHog?: PostHogClient;
+
 	constructor({
 		config,
 		logger,
 		internalHooks,
 		repositories,
+		postHog,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		postHog?: PostHogClient;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
+		this.postHog = postHog;
 	}
 
 	/**
@@ -65,7 +76,7 @@ export class AuthController {
 			}
 
 			await issueCookie(res, user);
-			return sanitizeUser(user);
+			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
 
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
@@ -75,7 +86,7 @@ export class AuthController {
 	 * Manually check the `n8n-auth` cookie.
 	 */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<PublicUser> {
+	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
 		// Manually check the existing cookie.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
@@ -85,7 +96,7 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				return sanitizeUser(user);
+				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -111,7 +122,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return sanitizeUser(user);
+		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
 
 	/**
