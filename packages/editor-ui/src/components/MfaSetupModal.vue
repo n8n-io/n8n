@@ -11,7 +11,7 @@
 		:center="true"
 		:loading="loadingQrCode"
 	>
-		<template #content>
+		<template #content :class="$style.modalContent">
 			<div v-if="!showRecoveryCodes" :class="$style.container">
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{
@@ -92,6 +92,7 @@
 						float="right"
 						:disabled="!recoveryCodesDownloaded"
 						:label="$locale.baseText('mfa.setup.step2.button.save')"
+						size="large"
 						@click="onSetupClick"
 					/>
 				</div>
@@ -143,7 +144,7 @@ export default mixins(showMessage, copyPaste).extend({
 			qrCode: '',
 			readyToSubmit: false,
 			formBus: new Vue(),
-			showRecoveryCodes: true,
+			showRecoveryCodes: false,
 			recoveryCodes: [] as string[],
 			recoveryCodesDownloaded: false,
 			authenticatorCode: '',
@@ -240,15 +241,6 @@ export default mixins(showMessage, copyPaste).extend({
 </script>
 
 <style module lang="scss">
-.modalFooter {
-	justify-content: space-between;
-	display: flex;
-	flex-direction: row;
-}
-
-.notice {
-	margin: 0;
-}
 .container > * {
 	margin-bottom: var(--spacing-s);
 	&:last-child {
@@ -281,7 +273,7 @@ export default mixins(showMessage, copyPaste).extend({
 	padding-top: 10px;
 	padding-bottom: 10px;
 	gap: 10px;
-	margin-bottom: 3px;
+	margin-bottom: var(--spacing-2xs);
 	overflow-y: scroll;
 }
 
@@ -318,5 +310,19 @@ export default mixins(showMessage, copyPaste).extend({
 .error > div > span {
 	color: #f45959;
 	font-size: var(--font-size-2xs);
+}
+
+.modalFooter {
+	justify-content: space-between;
+	display: flex;
+	flex-direction: row;
+}
+
+.notice {
+	margin: 0;
+}
+
+.modalContent {
+	overflow: hidden;
 }
 </style>

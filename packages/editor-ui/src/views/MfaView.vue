@@ -47,6 +47,7 @@
 			<div>
 				<n8n-button
 					float="right"
+					:loading="verifyingMfaToken"
 					:label="
 						showRecoveryCodeForm
 							? $locale.baseText('mfa.recovery.button.verify')
@@ -79,6 +80,7 @@ import { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
 
 export default mixins(showMessage).extend({
@@ -114,10 +116,11 @@ export default mixins(showMessage).extend({
 			formInputs: null as null | IFormInputs,
 			showRecoveryCodeForm: false,
 			formError: '',
+			verifyingMfaToken: false,
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useSettingsStore),
 	},
 	methods: {
 		OnRecoveryCodeClick() {
@@ -159,11 +162,20 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onInput({ value, name }: { name: string; value: string }) {
-			const inputValidLength = name === 'token' ? 6 : 36;
+			const isSubmittingMfaToken = name === 'token';
+			const inputValidLength = isSubmittingMfaToken ? 6 : 36;
+
 			if (value.length === inputValidLength) {
 				this.hasAnyChanges = true;
+				this.verifyingMfaToken = true;
+
+				this.onSubmit({ token: value, recoveryCode: value })
+					.catch(() => {})
+					.finally(() => (this.verifyingMfaToken = false));
+
 				return;
 			}
+
 			this.hasAnyChanges = false;
 		},
 		async onSubmit(form: { token: string; recoveryCode: string }) {
@@ -177,9 +189,6 @@ export default mixins(showMessage).extend({
 
 				if (this.usersStore.currentUser) {
 					const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
-
-					console.log('mfa enablwd', mfaEnabled);
-					console.log('hasRecoveryCodesLeft', hasRecoveryCodesLeft);
 
 					if (mfaEnabled && !hasRecoveryCodesLeft) {
 						this.$showToast({

@@ -267,21 +267,21 @@ export default mixins(showMessage).extend({
 .disableMfaButton {
 	--button-color: #f45959;
 	font-weight: var(--font-weight-bold) !important;
-	margin-top: 8px;
+	margin-top: var(--spacing-2xs);
 }
 
 .button {
-	font-size: 12px;
+	font-size: var(--spacing-xs);
 	font-weight: var(--font-weight-bold) !important;
 }
 
 .mfaSection {
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing-l);
 }
 
 .sectionHeader {
+	margin-top: var(--spacing-2xl);
 	margin-bottom: var(--spacing-s);
-	margin-top: var(--spacing-s);
 }
 
 .mfaButtonContainer {
