@@ -34,9 +34,6 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     needs: [e2e-node-16, e2e-node-14]
-    container:
-      image: cypress/base:16.18.1
-      options: --user 1001
     steps:
       - uses: actions/checkout@v3
         with:
@@ -57,13 +54,6 @@ jobs:
         uses: pnpm/action-setup@v2.2.4
         with:
           run_install: true
-
-      - name: Echo spec input
-        run: echo ${{ inputs.spec }}
-
-
-      - name: Install git # required for ESLint plugin and not included in the base image
-        run: sudo apt-get install -y git
 
       - name: Fetch base branch for `git diff`
         run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
