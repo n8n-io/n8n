@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.216.0",
+  "version": "0.216.1",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -79,7 +79,8 @@
       "qqjs>globby": "^11.1.0"
     },
     "patchedDependencies": {
-      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
+      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
+      "typedi@0.10.0": "patches/typedi@0.10.0.patch"
     }
   }
 }
