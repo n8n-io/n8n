@@ -1939,11 +1939,12 @@ export default mixins(
 			// current node. But only if it's added manually by the user (not by undo/redo mechanism)
 			if (trackHistory) {
 				this.deselectAllNodes();
-				if (showDetail) {
-					setTimeout(() => {
-						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
-					});
-				}
+				setTimeout(() => {
+					this.nodeSelectedByName(
+						newNodeData.name,
+						showDetail && nodeTypeName !== STICKY_NODE_TYPE,
+					);
+				});
 			}
 
 			return newNodeData;
