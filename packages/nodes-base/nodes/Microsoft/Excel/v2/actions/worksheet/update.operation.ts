@@ -28,8 +28,9 @@ const properties: INodeProperties[] = [
 		},
 		placeholder: 'e.g. A1:B2',
 		default: '',
-		description: 'The sheet range to read the data from specified using a A1-style notation',
-		hint: 'First row must contain column names. Leave blank for entire sheet.',
+		description:
+			'The sheet range to read the data from specified using a A1-style notation. Leave blank to use whole used range in the sheet.',
+		hint: 'First row must contain column names',
 	},
 	{
 		displayName: 'Range',
@@ -142,7 +143,7 @@ const properties: INodeProperties[] = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['columnToMatchOn'],
+							loadOptionsDependsOn: ['columnToMatchOn', 'range'],
 							loadOptionsMethod: 'getWorksheetColumnRowSkipColumnToMatchOn',
 						},
 						default: '',
