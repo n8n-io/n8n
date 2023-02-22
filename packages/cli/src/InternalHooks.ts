@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	INodesGraphResult,
-	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
@@ -22,13 +22,14 @@ import type {
 	IExecutionTrackProperties,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
-import type { Telemetry } from '@/telemetry';
+import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import * as Db from '@/Db';
+import { NodeTypes } from './NodeTypes';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -46,12 +47,17 @@ function userToPayload(user: User): {
 	};
 }
 
-export class InternalHooksClass implements IInternalHooksClass {
-	constructor(
-		private telemetry: Telemetry,
-		private instanceId: string,
-		private nodeTypes: INodeTypes,
-	) {}
+@Service()
+export class InternalHooks implements IInternalHooksClass {
+	private instanceId: string;
+
+	constructor(private telemetry: Telemetry, private nodeTypes: NodeTypes) {}
+
+	async init(instanceId: string) {
+		this.instanceId = instanceId;
+		this.telemetry.setInstanceId(instanceId);
+		await this.telemetry.init();
+	}
 
 	async onServerStarted(
 		diagnosticInfo: IDiagnosticInfo,

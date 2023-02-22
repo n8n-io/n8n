@@ -45,7 +45,8 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient();
 		postHog.init(instanceId);
 
-		telemetry = new Telemetry(instanceId, postHog);
+		telemetry = new Telemetry(postHog);
+		telemetry.setInstanceId(instanceId);
 		(telemetry as any).rudderStack = {
 			flush: () => {},
 			identify: () => {},
