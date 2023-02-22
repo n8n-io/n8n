@@ -3,6 +3,7 @@ import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/mi
 import { NodeTypes } from '@/NodeTypes';
 import { IConnections, INode } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
+import { Container } from 'typedi';
 
 export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationInterface {
 	name = 'PurgeInvalidWorkflowConnections1675940580449';
@@ -21,7 +22,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 			FROM \`${tablePrefix}workflow_entity\`
 		`);
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		workflows.forEach(async (workflow) => {
 			let connections: IConnections =

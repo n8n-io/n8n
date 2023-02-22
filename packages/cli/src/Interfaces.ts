@@ -225,6 +225,7 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionsCurrentSummary {
