@@ -25,8 +25,8 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Append',
 				value: 'append',
-				description: 'Append data to worksheet',
-				action: 'Append data to worksheet',
+				description: 'Append data to sheet',
+				action: 'Append data to sheet',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
@@ -39,32 +39,32 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Clear',
 				value: 'clear',
-				description: 'Clear worksheet',
-				action: 'Clear worksheet',
+				description: 'Clear sheet',
+				action: 'Clear sheet',
 			},
 			{
 				name: 'Delete',
 				value: 'deleteWorksheet',
-				description: 'Delete worksheet',
-				action: 'Delete worksheet',
+				description: 'Delete sheet',
+				action: 'Delete sheet',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get worksheets',
-				action: 'Get worksheets',
+				description: 'Get sheets',
+				action: 'Get sheets',
 			},
 			{
 				name: 'Read Rows',
 				value: 'readRows',
-				description: 'Get worksheet range',
-				action: 'Get worksheet range',
+				description: 'Get sheet range',
+				action: 'Get sheet range',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update worksheet range',
-				action: 'Update worksheet range',
+				description: 'Update sheet range',
+				action: 'Update sheet range',
 			},
 		],
 		default: 'getAll',

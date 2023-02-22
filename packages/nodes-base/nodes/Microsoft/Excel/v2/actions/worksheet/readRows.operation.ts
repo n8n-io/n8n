@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. A1:B2',
 				default: '',
 				description: 'The sheet range to read the data from specified using a A1-style notation',
-				hint: 'Leave blank to return entire worksheet',
+				hint: 'Leave blank to return entire sheet',
 			},
 			{
 				displayName: 'Header Row',

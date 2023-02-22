@@ -83,6 +83,7 @@ const properties: INodeProperties[] = [
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
+						requiresDataPath: 'single',
 					},
 				],
 			},

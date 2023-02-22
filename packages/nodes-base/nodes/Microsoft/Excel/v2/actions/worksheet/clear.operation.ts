@@ -20,10 +20,12 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Formats',
 				value: 'Formats',
+				description: 'Clear formatting(e.g. font size, color) of cells',
 			},
 			{
 				name: 'Contents',
 				value: 'Contents',
+				description: 'Clear data contained in cells',
 			},
 		],
 		default: 'All',
@@ -34,7 +36,7 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Whole Worksheet',
+				name: 'Whole Sheet',
 				value: 'whole',
 			},
 			{

@@ -19,10 +19,10 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Worksheet',
+				name: 'Add Sheet',
 				value: 'addWorksheet',
-				description: 'Add a new worksheet to the workbook',
-				action: 'Add a worksheet to a workbook',
+				description: 'Add a new sheet to the workbook',
+				action: 'Add a sheet to a workbook',
 			},
 			{
 				name: 'Delete',

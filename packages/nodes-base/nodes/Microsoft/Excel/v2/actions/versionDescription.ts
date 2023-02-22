@@ -49,9 +49,9 @@ export const versionDescription: INodeTypeDescription = {
 					description: 'A workbook is the top level object which contains one or more worksheets',
 				},
 				{
-					name: 'Worksheet',
+					name: 'Sheet',
 					value: 'worksheet',
-					description: 'A worksheet is a grid of cells which can contain data, tables, charts, etc',
+					description: 'A sheet is a grid of cells which can contain data, tables, charts, etc',
 				},
 			],
 			default: 'workbook',

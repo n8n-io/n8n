@@ -29,11 +29,6 @@ const properties: INodeProperties[] = [
 				value: 'raw',
 				description: 'Send raw data as JSON',
 			},
-			{
-				name: 'Nothing',
-				value: 'nothing',
-				description: 'Do not send anything',
-			},
 		],
 	},
 	{
@@ -122,11 +117,6 @@ const properties: INodeProperties[] = [
 				description: 'The name of the property into which to write the RAW data',
 			},
 		],
-		displayOptions: {
-			hide: {
-				dataMode: ['nothing'],
-			},
-		},
 	},
 ];
 

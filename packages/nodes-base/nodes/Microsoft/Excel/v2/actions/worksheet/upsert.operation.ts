@@ -26,11 +26,6 @@ const properties: INodeProperties[] = [
 				value: 'define',
 				description: 'Set the value for each destination column',
 			},
-			{
-				name: 'Nothing',
-				value: 'nothing',
-				description: 'Do not send anything',
-			},
 		],
 	},
 	{
@@ -124,7 +119,7 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. A1:B2',
 				default: '',
 				description: 'The sheet range to read the data from specified using a A1-style notation',
-				hint: 'First row must contain column names. Leave blank for entire worksheet.',
+				hint: 'First row must contain column names. Leave blank for entire sheet.',
 			},
 			{
 				displayName: 'Range',
@@ -202,10 +197,6 @@ export async function execute(
 
 		let range = this.getNodeParameter('options.range', 0, '') as string;
 		const dataMode = this.getNodeParameter('dataMode', 0) as string;
-
-		if (dataMode === 'nothing') {
-			returnData.push(...this.helpers.returnJsonArray(returnData));
-		}
 
 		let worksheetData: IDataObject = {};
 

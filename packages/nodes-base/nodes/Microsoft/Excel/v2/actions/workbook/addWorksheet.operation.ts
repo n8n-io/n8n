@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'The name of the worksheet to be added. The name should be unique. If not specified, Excel will determine the name of the new worksheet.',
+					'The name of the sheet to be added. The name should be unique. If not specified, Excel will determine the name of the new worksheet.',
 			},
 		],
 	},

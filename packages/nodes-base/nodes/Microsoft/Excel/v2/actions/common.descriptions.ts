@@ -34,7 +34,7 @@ export const workbookRLC: INodeProperties = {
 };
 
 export const worksheetRLC: INodeProperties = {
-	displayName: 'Worksheet',
+	displayName: 'Sheet',
 	name: 'worksheet',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
@@ -57,7 +57,7 @@ export const worksheetRLC: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex: '{[a-zA-Z0-9\\-_]{2,}}',
-						errorMessage: 'Not a valid Worksheet ID',
+						errorMessage: 'Not a valid Sheet ID',
 					},
 				},
 			],
