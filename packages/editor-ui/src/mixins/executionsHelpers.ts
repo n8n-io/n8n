@@ -66,7 +66,6 @@ export const executionHelpers = mixins(genericHelpers).extend({
 					);
 				}
 			} else if (
-				execution.status === 'error' ||
 				execution.status === 'failed' ||
 				execution.status === 'crashed' ||
 				execution.stoppedAt !== null

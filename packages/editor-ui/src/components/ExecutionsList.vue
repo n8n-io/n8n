@@ -1116,11 +1116,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			background: var(--color-primary-tint-3);
 		}
 
+		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: var(--color-danger);
-		}
-
-		&.crashed td:first-child::before {
 			background: var(--color-danger);
 		}
 
@@ -1128,6 +1125,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			background: var(--color-success);
 		}
 
+		&.new td:first-child::before,
 		&.running td:first-child::before {
 			background: var(--color-warning);
 		}

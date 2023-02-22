@@ -107,29 +107,29 @@ export default mixins(
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
 		},
 		requestFilter(): IDataObject {
-			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
+			const rFilter: IDataObject = { workflowId: this.currentWorkflow };
 			if (this.filter.status === 'waiting') {
-				requestFilter.waitTill = true;
+				rFilter.waitTill = true;
 			} else if (this.filter.status !== '') {
-				requestFilter.finished = this.filter.status === 'success';
+				rFilter.finished = this.filter.status === 'success';
 			}
 
 			switch (this.filter.status as ExecutionStatus) {
 				case 'waiting':
-					requestFilter.status = ['waiting'];
+					rFilter.status = ['waiting'];
 					break;
 				case 'error':
-					requestFilter.status = ['failed', 'crashed', 'error'];
+					rFilter.status = ['failed', 'crashed'];
 					break;
 				case 'success':
-					requestFilter.status = ['success'];
+					rFilter.status = ['success'];
 					break;
 				case 'running':
-					requestFilter.status = ['running'];
+					rFilter.status = ['running'];
 					break;
 			}
 
-			return requestFilter;
+			return rFilter;
 		},
 	},
 	watch: {
