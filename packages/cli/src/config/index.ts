@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
+console.log('🚀 ~ file: index.ts:8 ~ inE2ETests', inE2ETests);
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
