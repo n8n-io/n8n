@@ -17,7 +17,8 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
 import { Container } from 'typedi';
-import { FindManyOptions, QueryFailedError } from 'typeorm';
+import type { FindManyOptions } from 'typeorm';
+import { QueryFailedError } from 'typeorm';
 
 export = {
 	createTag: [
