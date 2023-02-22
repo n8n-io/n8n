@@ -86,7 +86,6 @@ jobs:
 
   testing:
     runs-on: ubuntu-latest
-    name: "Spec: ${{ inputs.spec }}"
     container:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
