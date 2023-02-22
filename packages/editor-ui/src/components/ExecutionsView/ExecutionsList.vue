@@ -26,21 +26,15 @@ import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue
 import {
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRMED,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import {
-	IExecutionsListResponse,
-	IExecutionsSummary,
-	INodeUi,
-	ITag,
-	IWorkflowDb,
-} from '@/Interface';
+import { IExecutionsListResponse, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import {
 	ExecutionStatus,
+	IExecutionsSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -203,7 +197,7 @@ export default mixins(
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
 				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
-					this.setExecutions();
+					await this.setExecutions();
 				}
 				if (this.activeExecution) {
 					this.$router
@@ -217,7 +211,7 @@ export default mixins(
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced('loadMore', { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {
@@ -470,7 +464,10 @@ export default mixins(
 			}
 
 			// stop if the execution wasn't found in the first 1000 lookups
-			if (attemptCount >= 10) return;
+			if (attemptCount >= 10) {
+				this.workflowsStore.activeWorkflowExecution = null;
+				return;
+			}
 
 			// Fetch next batch of executions
 			await this.loadMore(100);
@@ -637,8 +634,7 @@ export default mixins(
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			this.workflowsStore.activeWorkflows = await this.restApi().getActiveWorkflows();
 		},
 		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
