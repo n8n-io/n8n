@@ -1015,7 +1015,7 @@ export const schema = {
 	sso: {
 		justInTimeProvisioning: {
 			format: Boolean,
-			default: false,
+			default: true,
 			doc: 'Whether to automatically create users when they login via SSO.',
 		},
 		redirectLoginToSso: {

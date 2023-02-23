@@ -1,7 +1,6 @@
 import type express from 'express';
 import * as Db from '@/Db';
-import { User } from '@/databases/entities/User';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import type { User } from '@/databases/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
@@ -12,8 +11,11 @@ import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import type { IdentityProviderInstance } from 'samlify';
 import { IdentityProvider } from 'samlify';
-import { generatePassword } from './samlHelpers';
-import { hashPassword } from '@/UserManagement/UserManagementHelper';
+import {
+	createUserFromSamlAttributes,
+	getMappedSamlAttributesFromFlowResult,
+	updateUserFromSamlAttributes,
+} from './samlHelpers';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -115,7 +117,7 @@ export class SamlService {
 					};
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
-					const updatedUser = await this.updateUserFromSamlAttributes(user, attributes);
+					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
@@ -125,7 +127,7 @@ export class SamlService {
 			} else {
 				// New users to be created JIT based on SAML attributes
 				if (isSsoJustInTimeProvisioningEnabled()) {
-					const newUser = await this.createUserFromSamlAttributes(attributes);
+					const newUser = await createUserFromSamlAttributes(attributes);
 					return {
 						authenticatedUser: newUser,
 						attributes,
@@ -189,90 +191,31 @@ export class SamlService {
 		}
 	}
 
-	async createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
-		const user = new User();
-		const authIdentity = new AuthIdentity();
-		user.email = attributes.email;
-		user.firstName = attributes.firstName;
-		user.lastName = attributes.lastName;
-		// generates a password that is not used or known to the user
-		user.password = await hashPassword(generatePassword());
-		authIdentity.providerId = attributes.userPrincipalName;
-		authIdentity.providerType = 'saml';
-		authIdentity.user = user;
-		const resultAuthIdentity = await Db.collections.AuthIdentity.save(authIdentity);
-		if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
-		user.authIdentities = [authIdentity];
-		const resultUser = await Db.collections.User.save(user);
-		if (!resultUser) throw new AuthError('Could not create User');
-		return resultUser;
-	}
-
-	async updateUserFromSamlAttributes(user: User, attributes: SamlUserAttributes): Promise<User> {
-		if (!attributes.email) throw new AuthError('Email is required to update user');
-		if (!user) throw new AuthError('User not found');
-		let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
-		if (!samlAuthIdentity) {
-			samlAuthIdentity = new AuthIdentity();
-			samlAuthIdentity.providerId = attributes.userPrincipalName;
-			samlAuthIdentity.providerType = 'saml';
-			samlAuthIdentity.user = user;
-			user.authIdentities.push(samlAuthIdentity);
-		} else {
-			samlAuthIdentity.providerId = attributes.userPrincipalName;
-		}
-		await Db.collections.AuthIdentity.save(samlAuthIdentity);
-		user.firstName = attributes.firstName;
-		user.lastName = attributes.lastName;
-		const resultUser = await Db.collections.User.save(user);
-		if (!resultUser) throw new AuthError('Could not create User');
-		return resultUser;
-	}
-
 	async getAttributesFromLoginResponse(req: express.Request): Promise<SamlUserAttributes> {
-		const parsedSamlResponse = await getServiceProviderInstance().parseLoginResponse(
-			this.getIdentityProviderInstance(),
-			'post',
-			req,
+		let parsedSamlResponse;
+		try {
+			parsedSamlResponse = await getServiceProviderInstance().parseLoginResponse(
+				this.getIdentityProviderInstance(),
+				'post',
+				req,
+			);
+		} catch {
+			throw new AuthError('SAML Authentication failed. Could not parse SAML response.');
+		}
+		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
+			parsedSamlResponse,
+			this.attributeMapping,
 		);
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (parsedSamlResponse?.extract?.attributes) {
-			// TODO:SAML: remove, but keep for manual testing for now
-			// LoggerProxy.debug(JSON.stringify(parsedSamlResponse.extract));
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			const attributes = parsedSamlResponse.extract.attributes as { [key: string]: string };
-			// TODO:SAML: fetch mapped attributes from parsedSamlResponse.extract.attributes and create or login user
-			const email = attributes[this.attributeMapping.email];
-			const firstName = attributes[this.attributeMapping.firstName];
-			const lastName = attributes[this.attributeMapping.lastName];
-			const userPrincipalName = attributes[this.attributeMapping.userPrincipalName];
-
-			if (email) {
-				return {
-					email,
-					firstName,
-					lastName,
-					userPrincipalName,
-				};
-			} else {
-				// collect missing attributes for more informative error message
-				const attributesErrors = [];
-				if (!email) attributesErrors.push(this.attributeMapping.email);
-				if (!userPrincipalName) attributesErrors.push(this.attributeMapping.userPrincipalName);
-				if (!firstName) attributesErrors.push(this.attributeMapping.firstName);
-				if (!lastName) attributesErrors.push(this.attributeMapping.lastName);
-
-				throw new AuthError(
-					`SAML Authentication failed. ${
-						attributesErrors ? 'Missing or invalid attributes: ' + attributesErrors.join(', ') : ''
-					}`,
-				);
-			}
-		} else {
+		if (!attributes) {
+			throw new AuthError('SAML Authentication failed. Invalid SAML response.');
+		}
+		if (!attributes.email && missingAttributes.length > 0) {
 			throw new AuthError(
-				'SAML Authentication failed. Invalid SAML response (missing attributes).',
+				`SAML Authentication failed. Invalid SAML response (missing attributes: ${missingAttributes.join(
+					', ',
+				)}).`,
 			);
 		}
+		return attributes;
 	}
 }
