@@ -9,7 +9,7 @@ import {
 	pgInsert,
 	pgQuery,
 	pgUpdate,
-} from '../Postgres/Postgres.node.functions';
+} from '../Postgres/v1/Postgres.node.functions';
 
 import pgPromise from 'pg-promise';
 
