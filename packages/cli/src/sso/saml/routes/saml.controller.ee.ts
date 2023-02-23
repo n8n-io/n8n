@@ -21,16 +21,17 @@ samlController.use(samlEnabledMiddleware);
 samlController.post(SamlUrls.acs, async (req: express.Request, res: express.Response) => {
 	const loginResult = await SamlService.getInstance().handleSamlLogin(req);
 	if (loginResult) {
-		if (loginResult.authenticatedUser && !loginResult.onboardingRequired) {
+		if (loginResult.authenticatedUser) {
 			await issueCookie(res, loginResult.authenticatedUser);
-			return res.redirect('/');
-		} else if (loginResult.authenticatedUser && loginResult.onboardingRequired) {
-			LoggerProxy.debug('// TODO:SAML: user exists but is not fully set up for SAML');
-			LoggerProxy.debug('// TODO:SAML: redirect to user details page');
+			if (loginResult.onboardingRequired) {
+				LoggerProxy.debug('// TODO:SAML: redirect to user saml onboarding page');
+				return res.redirect('/settings/personal');
+			} else {
+				return res.redirect('/');
+			}
 		}
-	} else {
-		throw new AuthError('SAML Authentication failed');
 	}
+	throw new AuthError('SAML Authentication failed');
 });
 
 /**
