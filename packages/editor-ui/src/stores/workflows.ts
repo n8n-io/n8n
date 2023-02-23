@@ -927,10 +927,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
-			if (finishedActiveExecution.data) {
-				this.setWorkflowExecutionRunData(
-					finishedActiveExecution.data as unknown as IRunExecutionData,
-				);
+			if (finishedActiveExecution.data && (finishedActiveExecution.data as IRun).data) {
+				this.setWorkflowExecutionRunData((finishedActiveExecution.data as IRun).data);
 			}
 		},
 
