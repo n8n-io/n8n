@@ -26,4 +26,4 @@ export class SamlEndpoints {
 	static readonly signup = ''; // TODO:SAML: implement signup
 }
 
-export const SAML_PREFERENCES_DB_KEY = LICENSE_FEATURES.SAML.replace(/:/g, '.');
+export const SAML_PREFERENCES_DB_KEY = 'features.saml';
