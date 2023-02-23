@@ -16,11 +16,6 @@ const ignoreChunks = [
 	'@fontsource/open-sans',
 	'normalize-wheel',
 	'stream-browserify',
-	'lodash.camelcase',
-	'lodash.debounce',
-	'lodash.get',
-	'lodash.orderby',
-	'lodash.set',
 ];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
@@ -43,11 +38,6 @@ function renderChunks() {
 }
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
-
-const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
-	find: new RegExp(`^lodash.${name}$`, 'i'),
-	replacement: require.resolve(`lodash-es/${name}`),
-}));
 
 const { NODE_ENV } = process.env;
 
@@ -78,9 +68,12 @@ export default mergeConfig(
 					find: /^n8n-design-system\//,
 					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 				},
-				...lodashAliases,
+				...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
+					find: new RegExp(`^lodash.${name}$`, 'i'),
+					replacement: require.resolve(`lodash-es/${name}`),
+				})),
 				{
-					find: /^lodash.(.+)$/,
+					find: /^lodash\.(.+)$/,
 					replacement: 'lodash-es/$1',
 				},
 				{
