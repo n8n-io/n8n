@@ -1,5 +1,6 @@
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
+import { Container } from 'typedi';
 import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
@@ -11,13 +12,12 @@ import * as CrashJournal from '@/CrashJournal';
 import { inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
-import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
+import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 
 export const UM_FIX_INSTRUCTION =
@@ -28,7 +28,7 @@ export abstract class BaseCommand extends Command {
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+	protected loadNodesAndCredentials: LoadNodesAndCredentials;
 
 	protected nodeTypes: INodeTypes;
 
@@ -43,17 +43,15 @@ export abstract class BaseCommand extends Command {
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
 
-		this.loadNodesAndCredentials = LoadNodesAndCredentials();
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await this.loadNodesAndCredentials.init();
-		this.nodeTypes = NodeTypes(this.loadNodesAndCredentials);
-		const credentialTypes = CredentialTypes(this.loadNodesAndCredentials);
+		this.nodeTypes = Container.get(NodeTypes);
+		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
 		const instanceId = this.userSettings.instanceId ?? '';
-		const postHog = new PostHogClient();
-		await postHog.init(instanceId);
-
-		await InternalHooksManager.init(instanceId, this.nodeTypes, postHog);
+		await Container.get(PostHogClient).init(instanceId);
+		await Container.get(InternalHooks).init(instanceId);
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
@@ -88,7 +86,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async initExternalHooks() {
-		this.externalHooks = ExternalHooks();
+		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
 	}
 

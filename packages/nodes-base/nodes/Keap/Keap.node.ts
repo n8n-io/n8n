@@ -758,7 +758,7 @@ export class Keap implements INodeType {
 								if (item[property as string] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary data property "${property}" does not exists on item!`,
+										`Item has no binary property called "${property}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -840,7 +840,7 @@ export class Keap implements INodeType {
 						if (item[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`Item has no binary property called "${binaryPropertyName}"`,
 								{ itemIndex: i },
 							);
 						}

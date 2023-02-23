@@ -1,8 +1,10 @@
+import { Service } from 'typedi';
 import type { PostHog } from 'posthog-node';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import config from '@/config';
-import type { PublicUser } from '..';
+import type { PublicUser } from '@/Interfaces';
 
+@Service()
 export class PostHogClient {
 	private postHog?: PostHog;
 

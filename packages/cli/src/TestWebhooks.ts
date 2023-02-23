@@ -2,8 +2,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
 import type express from 'express';
-
-import { ActiveWebhooks } from 'n8n-core';
+import { Service } from 'typedi';
 
 import type {
 	IWebhookData,
@@ -13,16 +12,18 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
+import { ActiveWebhooks } from '@/ActiveWebhooks';
 import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
-import type { Push } from '@/push';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
-class TestWebhooks {
+@Service()
+export class TestWebhooks {
 	private testWebhookData: {
 		[key: string]: {
 			sessionId?: string;
@@ -285,14 +286,4 @@ class TestWebhooks {
 		const workflows = Object.values(this.testWebhookData).map(({ workflow }) => workflow);
 		return this.activeWebhooks.removeAll(workflows);
 	}
-}
-
-let testWebhooksInstance: TestWebhooks | undefined;
-
-export function getInstance(): TestWebhooks {
-	if (testWebhooksInstance === undefined) {
-		testWebhooksInstance = new TestWebhooks(new ActiveWebhooks(), getPushInstance());
-	}
-
-	return testWebhooksInstance;
 }
