@@ -7,7 +7,7 @@
     "node": ">=16.9",
     "pnpm": ">=7.18"
   },
-  "packageManager": "pnpm@7.18.1",
+  "packageManager": "pnpm@7.27.0",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
