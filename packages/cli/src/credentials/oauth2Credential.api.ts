@@ -30,9 +30,10 @@ import type { OAuthRequest } from '@/requests';
 import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
 
 export const oauth2CredentialController = express.Router();
+var app = express();
+app.set('view engine', 'ejs');
 
 /**
  * Initialize Logger if needed
@@ -130,7 +131,7 @@ oauth2CredentialController.get(
 			state: stateEncodedStr,
 		};
 
-		await Container.get(ExternalHooks).run('oauth2.authenticate', [oAuthOptions]);
+		await ExternalHooks().run('oauth2.authenticate', [oAuthOptions]);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 
@@ -188,12 +189,10 @@ oauth2CredentialController.get(
 			const { code, state: stateEncoded } = req.query;
 
 			if (!code || !stateEncoded) {
-				const errorResponse = new ResponseHelper.ServiceUnavailableError(
-					`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
-						req.query,
-					)}`,
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = `Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
+					req.query,
+				)}`
+				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
 			}
 
 			let state;
@@ -203,10 +202,8 @@ oauth2CredentialController.get(
 					token: string;
 				};
 			} catch (error) {
-				const errorResponse = new ResponseHelper.ServiceUnavailableError(
-					'Invalid state format returned',
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = "'Invalid state format returned'"
+				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
 			}
 
 			const credential = await getCredentialWithoutUser(state.cid);
@@ -216,10 +213,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.NotFoundError(
-					RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = "OAuth2 callback failed because of insufficient permissions"
+				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
 			}
 
 			let encryptionKey: string;
@@ -255,10 +250,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.NotFoundError(
-					'The OAuth2 callback state is invalid!',
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = "The OAuth2 callback state is invalid!"
+				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
 			}
 
 			let options = {};
@@ -282,7 +275,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			}
 
-			await Container.get(ExternalHooks).run('oauth2.callback', [oAuth2Parameters]);
+			await ExternalHooks().run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 
@@ -302,8 +295,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = "Unable to get access tokens!"
+				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
@@ -338,7 +331,8 @@ oauth2CredentialController.get(
 		} catch (error) {
 			// Error response
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			return ResponseHelper.sendErrorResponse(res, error);
+			const errorResponse = "error"
+			return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
 		}
 	},
 );
