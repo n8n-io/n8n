@@ -240,16 +240,6 @@ export class QuickChart implements INodeType {
 						description: 'Whether to fill area of the dataset',
 					},
 					{
-						displayName: 'Font Color',
-						name: 'fontColor',
-						type: 'color',
-						typeOptions: {
-							showAlpha: true,
-						},
-						default: '',
-						description: 'Color used for the text the dataset',
-					},
-					{
 						displayName: 'Label',
 						name: 'label',
 						type: 'string',
@@ -359,7 +349,6 @@ export class QuickChart implements INodeType {
 			const datasetOptions = this.getNodeParameter('datasetOptions', i) as IDataObject;
 			const backgroundColor = datasetOptions.backgroundColor as string;
 			const borderColor = datasetOptions.borderColor as string | undefined;
-			const fontColor = datasetOptions.fontColor as string | undefined;
 			const datasetChartType = datasetOptions.chartType as string | undefined;
 			const fill = datasetOptions.fill as boolean | undefined;
 			const label = datasetOptions.label as string | undefined;
@@ -379,7 +368,6 @@ export class QuickChart implements INodeType {
 				data,
 				backgroundColor,
 				borderColor,
-				color: fontColor,
 				type: datasetChartType,
 				fill,
 				[pointStyleName]: pointStyle,
