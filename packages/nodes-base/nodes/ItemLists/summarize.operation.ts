@@ -320,6 +320,25 @@ function isEmpty<T>(value: T) {
 	return value === undefined || value === null || value === '';
 }
 
+function parseFieldName(returnData: IDataObject) {
+	console.log('\n First', returnData);
+	const regexBrackets = /[\]\["]/g;
+	const regexSpaces = /[ .]/g;
+	for (const key of Object.keys(returnData)) {
+		if (key.match(regexBrackets)) {
+			const newKey = key.replace(regexBrackets, '');
+			returnData[newKey] = returnData[key];
+			delete returnData[key];
+		}
+		if (key.match(regexSpaces)) {
+			const newKey = key.replace(regexSpaces, '_');
+			returnData[newKey] = returnData[key];
+			delete returnData[key];
+		}
+	}
+	console.log('After', returnData);
+}
+
 const fieldValueGetter = (disableDotNotation?: boolean) => {
 	if (disableDotNotation) {
 		return (item: IDataObject, field: string) => item[field];
@@ -432,7 +451,9 @@ function aggregateData(
 		);
 		return acc;
 	}, {} as IDataObject);
+	parseFieldName(returnData);
 	if (options.outputFormat === 'singleItem') {
+		parseFieldName(returnData);
 		return returnData;
 	} else {
 		return { ...returnData, pairedItems: data.map((item) => item._itemIndex as number) };
