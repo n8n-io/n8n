@@ -132,7 +132,7 @@ removeField.doc = {
 
 removeFieldsContaining.doc = {
 	name: 'removeFieldsContaining',
-	description: 'Removes fields with a given value from the Object. Only top-level values are supported',
+	description: 'Removes fields with a given value from the Object. Only top-level values are supported.',
 	returnType: 'object',
 	args: [{ name: 'value', type: 'string' }],
 	docURL:

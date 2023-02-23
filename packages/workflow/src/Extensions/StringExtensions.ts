@@ -304,7 +304,7 @@ removeTags.doc = {
 
 toDate.doc = {
 	name: 'toDate',
-	description: 'Converts a string to a date',
+	description: 'Converts a string to a date.',
 	returnType: 'Date',
 	docURL:
 		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toDate',

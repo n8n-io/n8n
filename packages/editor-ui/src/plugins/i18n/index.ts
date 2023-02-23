@@ -450,7 +450,7 @@ export class I18nClass {
 		toJSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJSON'),
 		toBSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toBSON'),
 		toObject: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toObject'),
-		toJsDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
+		toJSDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
 		diff: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diff'),
 		diffNow: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diffNow'),
 		until: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.until'),
