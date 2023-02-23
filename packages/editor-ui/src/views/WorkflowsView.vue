@@ -119,6 +119,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
+import { newVersions } from '@/mixins/newVersions';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -147,7 +148,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper).extend({
+export default mixins(showMessage, debounceHelper, newVersions).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -271,6 +272,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
+		this.checkForNewVersions();
 		this.usersStore.showPersonalizationSurvey();
 	},
 });
