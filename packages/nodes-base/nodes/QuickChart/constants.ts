@@ -28,7 +28,7 @@ export const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 	},
 	{
 		name: 'Polar Chart',
-		value: 'polar',
+		value: 'polarArea',
 	},
 	// {
 	// 	name: 'Radar Chart',
