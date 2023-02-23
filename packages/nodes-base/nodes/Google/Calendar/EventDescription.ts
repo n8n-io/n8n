@@ -643,6 +643,20 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'After',
+				name: 'timeMin',
+				type: 'dateTime',
+				default: '',
+				description: 'At least some part of the event must be after this time',
+			},
+			{
+				displayName: 'Before',
+				name: 'timeMax',
+				type: 'dateTime',
+				default: '',
+				description: 'At least some part of the event must be before this time',
+			},
+			{
 				displayName: 'iCalUID',
 				name: 'iCalUID',
 				type: 'string',
@@ -707,20 +721,6 @@ export const eventFields: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
-			},
-			{
-				displayName: 'Start Time',
-				name: 'timeMax',
-				type: 'dateTime',
-				default: '',
-				description: "Upper bound (exclusive) for an event's start time to filter by",
-			},
-			{
-				displayName: 'End Time',
-				name: 'timeMin',
-				type: 'dateTime',
-				default: '',
-				description: "Lower bound (exclusive) for an event's end time to filter by",
 			},
 			{
 				displayName: 'Timezone',
