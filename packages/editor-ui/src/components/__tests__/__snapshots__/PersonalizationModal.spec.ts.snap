@@ -274,7 +274,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
         </div>
         <div class=\\"footer\\">
           <div><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium float-right\\">
-              <!----><span>Continue</span></button></div>
+              <!----><span>Get started</span></button></div>
         </div>
       </div>
       <!---->

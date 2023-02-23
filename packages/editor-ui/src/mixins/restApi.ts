@@ -77,7 +77,9 @@ export const restApi = Vue.extend({
 				getActivationError: (id: string): Promise<IActivationError | undefined> => {
 					return self.restApi().makeRestApiRequest('GET', `/active/error/${id}`);
 				},
-				getCurrentExecutions: (filter: object): Promise<IExecutionsCurrentSummaryExtended[]> => {
+				getCurrentExecutions: (
+					filter: IDataObject,
+				): Promise<IExecutionsCurrentSummaryExtended[]> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
@@ -179,7 +181,7 @@ export const restApi = Vue.extend({
 				// Returns all saved executions
 				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 				getPastExecutions: (
-					filter: object,
+					filter: IDataObject,
 					limit: number,
 					lastId?: string,
 					firstId?: string,

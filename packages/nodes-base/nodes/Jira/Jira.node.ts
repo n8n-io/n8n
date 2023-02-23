@@ -1,4 +1,4 @@
-import { mergeWith } from 'lodash';
+import mergeWith from 'lodash.mergewith';
 
 import type { IExecuteFunctions } from 'n8n-core';
 
@@ -1069,7 +1069,7 @@ export class Jira implements INodeType {
 					if (binaryData === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property "${binaryPropertyName}" does not exists on item!`,
+							`Item has no binary property called "${binaryPropertyName}"`,
 							{ itemIndex: i },
 						);
 					}

@@ -4,11 +4,12 @@ import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
-import { InternalHooksManager } from '../../InternalHooksManager';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import type { IPushDataExecutionRecovered } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -151,16 +152,19 @@ export async function recoverExecutionDataFromEventLogMessages(
 				status: 'crashed',
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 			});
-			const internalHooks = InternalHooksManager.getInstance();
-			await internalHooks.onWorkflowPostExecute(executionId, executionEntry.workflowData, {
-				data: executionData,
-				finished: false,
-				mode: executionEntry.mode,
-				waitTill: executionEntry.waitTill ?? undefined,
-				startedAt: executionEntry.startedAt,
-				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
-				status: 'crashed',
-			});
+			await Container.get(InternalHooks).onWorkflowPostExecute(
+				executionId,
+				executionEntry.workflowData,
+				{
+					data: executionData,
+					finished: false,
+					mode: executionEntry.mode,
+					waitTill: executionEntry.waitTill ?? undefined,
+					startedAt: executionEntry.startedAt,
+					stoppedAt: lastNodeRunTimestamp?.toJSDate(),
+					status: 'crashed',
+				},
+			);
 			const iRunData: IRun = {
 				data: executionData,
 				finished: false,
@@ -178,7 +182,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 			eventBus.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					getPushInstance().send('executionRecovered', {
+					Container.get(Push).send('executionRecovered', {
 						executionId,
 					} as IPushDataExecutionRecovered);
 				}, 1000);
