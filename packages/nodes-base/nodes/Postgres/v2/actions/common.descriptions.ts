@@ -11,6 +11,7 @@ export const additionalFieldsCollection: INodeProperties = {
 			displayName: 'Mode',
 			name: 'mode',
 			type: 'options',
+			noDataExpression: true,
 			options: [
 				{
 					name: 'Independently',
