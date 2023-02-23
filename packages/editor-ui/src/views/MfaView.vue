@@ -20,11 +20,15 @@
 					@submit="onSubmit"
 				/>
 				<div :class="$style.infoBox">
-					<n8n-info-tip :bold="false" v-if="!showRecoveryCodeForm && !formError"
+					<n8n-text
+						size="small"
+						color="text-base"
+						:bold="false"
+						v-if="!showRecoveryCodeForm && !formError"
 						>{{ $locale.baseText('mfa.code.input.info') }}
 						<a @click="OnRecoveryCodeClick">{{
 							$locale.baseText('mfa.code.input.info.action')
-						}}</a></n8n-info-tip
+						}}</a></n8n-text
 					>
 					<n8n-text color="danger" v-if="formError" size="small"
 						>{{ formError }}
