@@ -223,7 +223,7 @@ const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : 
 
 const searchItems = computed<INodeCreateElement[]>(() => {
 	return state.activeNodeActions
-		? transformCreateElements(selectedNodeActions.value)
+		? transformCreateElements(selectedNodeActions.value, 'action')
 		: transformCreateElements(filteredMergedAppNodes.value);
 });
 
@@ -251,6 +251,7 @@ function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateEleme
 
 function transformCreateElements(
 	createElements: Array<INodeTypeDescription | INodeActionTypeDescription>,
+	type: 'node' | 'action' = 'node',
 ): INodeCreateElement[] {
 	const sorted = [...createElements];
 
@@ -265,7 +266,7 @@ function transformCreateElements(
 		// if we have more cases like this we should add more robust logic
 		const isN8nNode = nodeType.name.includes(N8N_NODE_TYPE);
 		return {
-			type: 'node',
+			type,
 			category: nodeType.codex?.categories,
 			key: nodeType.name,
 			properties: {
@@ -274,7 +275,7 @@ function transformCreateElements(
 			},
 			includedByTrigger: isN8nNode || nodeType.group.includes('trigger'),
 			includedByRegular: isN8nNode || !nodeType.group.includes('trigger'),
-		};
+		} as INodeCreateElement;
 	});
 }
 

@@ -1813,6 +1813,10 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
+export interface FeatureFlags {
+	[featureFlag: string]: string | boolean | undefined;
+}
+
 export interface IConnectedNode {
 	name: string;
 	indicies: number[];

@@ -12,6 +12,9 @@ import {
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Helpers from './Helpers';
+import { Container } from 'typedi';
+import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 const TEST_ENCRYPTION_KEY = 'test';
 const mockNodesAndCredentials: INodesAndCredentials = {
@@ -19,6 +22,7 @@ const mockNodesAndCredentials: INodesAndCredentials = {
 	known: { nodes: {}, credentials: {} },
 	credentialTypes: {} as ICredentialTypes,
 };
+Container.set(LoadNodesAndCredentials, mockNodesAndCredentials);
 
 describe('CredentialsHelper', () => {
 	describe('authenticate', () => {
@@ -215,7 +219,7 @@ describe('CredentialsHelper', () => {
 			qs: {},
 		};
 
-		const nodeTypes = Helpers.NodeTypes();
+		const nodeTypes = Helpers.NodeTypes() as unknown as NodeTypes;
 
 		const workflow = new Workflow({
 			nodes: [node],
@@ -235,7 +239,7 @@ describe('CredentialsHelper', () => {
 					},
 				};
 
-				const credentialTypes = CredentialTypes(mockNodesAndCredentials);
+				const credentialTypes = Container.get(CredentialTypes);
 
 				const credentialsHelper = new CredentialsHelper(
 					TEST_ENCRYPTION_KEY,

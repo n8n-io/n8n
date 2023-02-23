@@ -32,6 +32,7 @@ import type { User } from '@db/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
+import { Container } from 'typedi';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -108,7 +109,7 @@ export async function executeErrorWorkflow(
 		}
 
 		const executionMode = 'error';
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		const workflowInstance = new Workflow({
 			id: workflowId,

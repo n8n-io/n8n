@@ -30,12 +30,45 @@ import {
 	IDisplayOptions,
 	IExecutionsSummary,
 	IAbstractEventMessage,
+	FeatureFlags,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
+
+declare global {
+	interface Window {
+		posthog?: {
+			init(
+				key: string,
+				options?: {
+					api_host?: string;
+					autocapture?: boolean;
+					disable_session_recording?: boolean;
+					debug?: boolean;
+					bootstrap?: {
+						distinctId?: string;
+						isIdentifiedID?: boolean;
+						featureFlags: FeatureFlags;
+					};
+				},
+			): void;
+			isFeatureEnabled?(flagName: string): boolean;
+			getFeatureFlag?(flagName: string): boolean | string;
+			identify?(
+				id: string,
+				userProperties?: Record<string, string | number>,
+				userPropertiesOnce?: Record<string, string>,
+			): void;
+			reset?(resetDeviceId?: boolean): void;
+			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
+			reloadFeatureFlags?(): void;
+		};
+	}
+}
 
 export type EndpointStyle = {
 	width?: number;
@@ -100,9 +133,9 @@ export interface IExternalHooks {
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
+	getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
-		filter: object,
+		filter: IDataObject,
 		limit: number,
 		lastId?: string,
 		firstId?: string,
@@ -351,6 +384,7 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
@@ -551,13 +585,17 @@ export interface IUserResponse {
 	signInType?: SignInType;
 }
 
+export interface CurrentUserResponse extends IUserResponse {
+	featureFlags?: FeatureFlags;
+}
+
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: Date;
+	createdAt?: string;
 }
 
 export interface IVersionNotificationSettings {
@@ -703,6 +741,14 @@ export interface IN8nUISettings {
 	templates: {
 		enabled: boolean;
 		host: string;
+	};
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
 	};
 	executionMode: string;
 	pushBackend: 'sse' | 'websocket';

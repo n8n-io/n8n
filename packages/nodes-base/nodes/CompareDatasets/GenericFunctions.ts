@@ -1,6 +1,7 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-import { difference, get, intersection, isEmpty, isEqual, isNull, omit, set, union } from 'lodash';
+
+import { difference, get, intersection, isEmpty, omit, set, union } from 'lodash';
+import { fuzzyCompare } from '../../utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -14,11 +15,18 @@ type EntryMatches = {
 
 type CompareFunction = <T, U>(a: T, b: U) => boolean;
 
+const processNullishValueFunction = (version: number) => {
+	if (version === 2) {
+		return <T>(value: T) => (value === undefined ? null : value);
+	}
+	return <T>(value: T) => value || null;
+};
+
 function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
-	resolve: string,
+	options: IDataObject,
 	skipFields: string[],
 	isEntriesEqual: CompareFunction,
 ) {
@@ -46,20 +54,28 @@ function compareItems(
 	const skipped: IDataObject = {};
 
 	differentKeys.forEach((key) => {
-		switch (resolve) {
+		const processNullishValue = processNullishValueFunction(options.nodeVersion as number);
+
+		switch (options.resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] || null;
+				different[key] = processNullishValue(item1.json[key]);
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] || null;
+				different[key] = processNullishValue(item2.json[key]);
 				break;
 			default:
-				const input1 = item1.json[key] || null;
-				const input2 = item2.json[key] || null;
+				const input1 = processNullishValue(item1.json[key]);
+				const input2 = processNullishValue(item2.json[key]);
+
+				let [firstInputName, secondInputName] = ['input1', 'input2'];
+				if (options.nodeVersion === 2) {
+					[firstInputName, secondInputName] = ['inputA', 'inputB'];
+				}
+
 				if (skipFields.includes(key)) {
-					skipped[key] = { input1, input2 };
+					skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
 				} else {
-					different[key] = { input1, input2 };
+					different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
 				}
 		}
 	});
@@ -160,93 +176,6 @@ function findFirstMatch(
 	return [{ entry: data[index], index }];
 }
 
-const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
-	try {
-		const parsedArray = jsonParse(str);
-		return isEqual(parsedArray, arr);
-	} catch (error) {
-		return false;
-	}
-};
-
-function isFalsy<T>(value: T) {
-	if (isNull(value)) return true;
-	if (typeof value === 'string' && value === '') return true;
-	if (Array.isArray(value) && value.length === 0) return true;
-	return false;
-}
-
-const fuzzyCompare =
-	(options: IDataObject) =>
-	<T, U>(item1: T, item2: U) => {
-		//Fuzzy compare is disabled, so we do strict comparison
-		if (!options.fuzzyCompare) return isEqual(item1, item2);
-
-		//Both types are the same, so we do strict comparison
-		if (!isNull(item1) && !isNull(item2) && typeof item1 === typeof item2) {
-			return isEqual(item1, item2);
-		}
-
-		//Null, empty strings, empty arrays all treated as the same
-		if (isFalsy(item1) && isFalsy(item2)) return true;
-
-		//When a field is missing in one branch and isFalsy() in another, treat them as matching
-		if (isFalsy(item1) && item2 === undefined) return true;
-		if (item1 === undefined && isFalsy(item2)) return true;
-
-		//Compare numbers and strings representing that number
-		if (typeof item1 === 'number' && typeof item2 === 'string') {
-			return item1.toString() === item2;
-		}
-
-		if (typeof item1 === 'string' && typeof item2 === 'number') {
-			return item1 === item2.toString();
-		}
-
-		//Compare objects/arrays and their stringified version
-		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
-			return parseStringAndCompareToObject(item2, item1 as IDataObject);
-		}
-
-		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
-			return parseStringAndCompareToObject(item1, item2 as IDataObject);
-		}
-
-		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
-		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
-			if (item1 === true && item2.toLocaleLowerCase() === 'true') return true;
-			if (item1 === false && item2.toLocaleLowerCase() === 'false') return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
-			if (item2 === true && item1.toLocaleLowerCase() === 'true') return true;
-			if (item2 === false && item1.toLocaleLowerCase() === 'false') return true;
-		}
-
-		//Compare booleans and the numbers/string 0 and 1
-		if (typeof item1 === 'boolean' && typeof item2 === 'number') {
-			if (item1 === true && item2 === 1) return true;
-			if (item1 === false && item2 === 0) return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'number') {
-			if (item2 === true && item1 === 1) return true;
-			if (item2 === false && item1 === 0) return true;
-		}
-
-		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
-			if (item1 === true && item2 === '1') return true;
-			if (item1 === false && item2 === '0') return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
-			if (item2 === true && item1 === '1') return true;
-			if (item2 === false && item1 === '0') return true;
-		}
-
-		return isEqual(item1, item2);
-	};
-
 export function findMatches(
 	input1: INodeExecutionData[],
 	input2: INodeExecutionData[],
@@ -256,7 +185,12 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
-	const isEntriesEqual = fuzzyCompare(options);
+	let compareVersion = 1;
+	if (options.nodeVersion === 2) {
+		compareVersion = 2;
+	}
+
+	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean, compareVersion);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
@@ -370,7 +304,7 @@ export function findMatches(
 								entryMatches.entry,
 								match,
 								fieldsToMatch,
-								options.resolve as string,
+								options,
 								skipFields,
 								isEntriesEqual,
 							),
