@@ -20,7 +20,9 @@ const emit = defineEmits<{
 const statusFilterApplied = computed(() => {
 	return (
 		(props.filter.status !== 'ALL' && props.filter.status !== '') ||
-		(props.workflows?.length && props.filter.workflowId !== 'ALL' && props.filter.workflowId !== '')
+		(!!props.workflows?.length &&
+			props.filter.workflowId !== 'ALL' &&
+			props.filter.workflowId !== '')
 	);
 });
 
