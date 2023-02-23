@@ -13,7 +13,7 @@ module.exports = defineConfig({
 	requestTimeout: 12000,
 	e2e: {
 		baseUrl: BASE_URL,
-		video: false,
+		video: true,
 		screenshotOnRunFailure: true,
 		experimentalSessionAndOrigin: true,
 		experimentalInteractiveRunEvents: true,
@@ -21,12 +21,17 @@ module.exports = defineConfig({
 		setupNodeEvents(on, config) {
 			on('task', {
 				reset: () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
-				'setup-owner': (payload) =>
-					fetch(BASE_URL + '/e2e/db/setup-owner', {
-						method: 'POST',
-						body: JSON.stringify(payload),
-						headers: { 'Content-Type': 'application/json' },
-					}),
+				'setup-owner': (payload) => {
+					try {
+						fetch(BASE_URL + '/e2e/db/setup-owner', {
+							method: 'POST',
+							body: JSON.stringify(payload),
+							headers: { 'Content-Type': 'application/json' },
+						})
+					} catch (error) {
+						console.log("🚀 ~ file: cypress.config.js:32 ~ setupNodeEvents ~ error:", error)
+					}
+				},
 				'enable-feature': (feature) =>
 					fetch(BASE_URL + `/e2e/enable-feature/${feature}`, { method: 'POST' }),
 			});
