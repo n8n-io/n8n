@@ -815,7 +815,7 @@ export const schema = {
 		},
 		authenticationMethod: {
 			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
-			format: String,
+			format: ['email', 'ldap', 'saml'] as const ,
 			default: 'email',
 			env: 'N8N_AUTHENTICATION_METHOD',
 		},
