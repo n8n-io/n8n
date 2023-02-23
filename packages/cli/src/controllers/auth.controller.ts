@@ -58,7 +58,6 @@ export class AuthController {
 	 * Authless endpoint.
 	 */
 	@Post('/login')
-	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	async login(req: LoginRequest, res: Response): Promise<PublicUser> {
 		const { email, password } = req.body;
 		if (!email) throw new Error('Email is required to log in');
