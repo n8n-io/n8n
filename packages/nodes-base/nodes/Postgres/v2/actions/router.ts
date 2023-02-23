@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { configurePostgres } from '../helpers/utils';
-import type { Postgres } from './node.type';
+import type { PostgresType } from './node.type';
 
 import * as database from './database/Database.resource';
 
@@ -10,19 +10,19 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	let returnData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();
-	const resource = this.getNodeParameter<Postgres>('resource', 0);
+	const resource = this.getNodeParameter<PostgresType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
 	const { db, pgp } = await configurePostgres.call(this);
 
-	const postgres = {
+	const postgresNodeData = {
 		resource,
 		operation,
-	} as Postgres;
+	} as PostgresType;
 
-	switch (postgres.resource) {
+	switch (postgresNodeData.resource) {
 		case 'database':
-			returnData = await database[postgres.operation].execute.call(this, pgp, db, items);
+			returnData = await database[postgresNodeData.operation].execute.call(this, pgp, db, items);
 			break;
 		default:
 			pgp.end();

@@ -4,6 +4,6 @@ type PostgresMap = {
 	database: 'deleteTable' | 'executeQuery' | 'insert' | 'select' | 'update' | 'upsert';
 };
 
-export type Postgres = AllEntities<PostgresMap>;
+export type PostgresType = AllEntities<PostgresMap>;
 
-export type PostgresDatabase = Entity<PostgresMap, 'database'>;
+export type PostgresDatabaseType = Entity<PostgresMap, 'database'>;
