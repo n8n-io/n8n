@@ -38,7 +38,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('MFA user setup', () => {
+describe('Enable MFA setup', () => {
 	describe('Step one', () => {
 		test('GET /qr should fail due to unauthenticated user', async () => {
 			const authlessAgent = utils.createAgent(app);
@@ -46,6 +46,23 @@ describe('MFA user setup', () => {
 			const response = await authlessAgent.get('/mfa/qr');
 
 			expect(response.statusCode).toBe(401);
+		});
+
+		test('GET /qr should reuse secret and recovery codes until setup is complete', async () => {
+			const firstCall = await authAgent(owner).get('/mfa/qr');
+
+			const secondCall = await authAgent(owner).get('/mfa/qr');
+
+			expect(firstCall.body.data.secret).toBe(secondCall.body.data.secret);
+			expect(firstCall.body.data.recoveryCodes.join('')).toBe(secondCall.body.data.recoveryCodes.join(''));
+
+			await authAgent(owner).delete('/mfa/disable');
+
+			const thirdCall = await authAgent(owner).get('/mfa/qr');
+
+			expect(firstCall.body.data.secret).not.toBe(thirdCall.body.data.secret);
+			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(thirdCall.body.data.recoveryCodes.join(''));
+
 		});
 
 		test('GET /qr should return qr, secret and recocery codes', async () => {
@@ -138,6 +155,24 @@ describe('MFA user setup', () => {
 	});
 });
 
+describe('Disable MFA setup', () => {
+	test('POST /disable should disable login with MFA', async () => {
+		const { user, secret, rawPassword } = await testDb.createUserWithMfaEnabled();
+
+		const authAgent = utils.createAuthAgent(app);
+
+		const response = await authAgent(user).delete('/mfa/disable');
+
+		expect(response.statusCode).toBe(200);
+
+		const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+
+		expect(dbUser.mfaEnabled).toBe(false);
+		expect(dbUser.mfaSecret).toBe(null);
+		expect(dbUser.mfaRecoveryCodes.length).toBe(0);
+	});
+});
+
 describe('Login', () => {
 	test('POST /login with email/password should succeed when mfa is disabled', async () => {
 		const authlessAgent = utils.createAgent(app);
@@ -214,6 +249,61 @@ describe('Login', () => {
 
 			expect(response.statusCode).toBe(200);
 			expect(data.mfaEnabled).toBe(true);
+		});
+	});
+
+	describe('Login with recovery code', () => {
+		test('POST /login should fail due to invalid MFA recovery code', async () => {
+			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+
+			const authlessAgent = utils.createAgent(app);
+
+			const response = await authlessAgent
+				.post('/login')
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: '' });
+
+			expect(response.statusCode).toBe(401);
+			expect(response.body.code).toBe(998);
+		});
+
+		test('POST /login should succeed with MFA recovery code', async () => {
+			const { user, rawPassword, recoveryCodes } = await testDb.createUserWithMfaEnabled();
+
+			const authlessAgent = utils.createAgent(app);
+
+			const response = await authlessAgent
+				.post('/login')
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: recoveryCodes[0] });
+
+			const data = response.body.data;
+
+			expect(response.statusCode).toBe(200);
+			expect(data.mfaEnabled).toBe(true);
+			expect(data.hasRecoveryCodesLeft).toBe(true);
+
+			const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+
+			// Make sure the recovery code used was removed
+			expect(dbUser.mfaRecoveryCodes.length).toBe(recoveryCodes.length - 1);
+			expect(dbUser.mfaRecoveryCodes.includes(recoveryCodes[0])).toBe(false);
+		});
+
+		test('POST /login with MFA recovery code should update hasRecoveryCodesLeft property', async () => {
+			const { user, rawPassword, recoveryCodes } = await testDb.createUserWithMfaEnabled({
+				numberOfRecoveryCodes: 1,
+			});
+
+			const authlessAgent = utils.createAgent(app);
+
+			const response = await authlessAgent
+				.post('/login')
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: recoveryCodes[0] });
+
+			const data = response.body.data;
+
+			expect(response.statusCode).toBe(200);
+			expect(data.mfaEnabled).toBe(true);
+			expect(data.hasRecoveryCodesLeft).toBe(false);
 		});
 	});
 

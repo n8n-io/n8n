@@ -14,9 +14,28 @@ export class MFAController {
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
-		const { email, id } = req.user;
+		const { email, id, mfaSecret, mfaRecoveryCodes, mfaEnabled } = req.user;
+
+		if (mfaEnabled)
+			throw new BadRequestError(
+				'MFA already enabled. Disable it to generate new secret and recovery codes',
+			);
+
+		if (mfaSecret && mfaRecoveryCodes.length) {
+			const qrCode = speakeasy.otpauthURL({
+				secret: mfaSecret,
+				label: email,
+				encoding: 'base32',
+			});
+			return {
+				secret: mfaSecret,
+				recoveryCodes: mfaRecoveryCodes,
+				qrCode,
+			};
+		}
 
 		const codes = Array.from(Array(10)).map(() => uuid());
+
 		const { base32, otpauth_url } = speakeasy.generateSecret({
 			issuer,
 			name: email,
@@ -38,7 +57,9 @@ export class MFAController {
 	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
 		const { token } = req.body;
-		const { id, mfaRecoveryCodes, mfaSecret } = req.user;
+		const { id, mfaRecoveryCodes, mfaSecret, mfaEnabled } = req.user;
+
+		if (mfaEnabled) throw new BadRequestError('MFA already enabled');
 
 		if (!mfaSecret || !mfaRecoveryCodes.length) {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
