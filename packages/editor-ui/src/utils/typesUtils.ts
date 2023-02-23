@@ -249,17 +249,3 @@ export const getSchema = (input: Optional<Primitives | object>, path = ''): Sche
 
 	return schema;
 };
-
-// Convert UTC dates that come from back-end to workflow timezone
-export const parseDate = (input: string, timezone: string | undefined): DateTime | null => {
-	const isUTCDate = /\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/.test(
-		input,
-	);
-	if (isUTCDate) {
-		const date = new Date(Date.parse(input));
-		if (date.toString() !== 'Invalid Date') {
-			return DateTime.fromJSDate(date, { zone: timezone });
-		}
-	}
-	return null;
-};

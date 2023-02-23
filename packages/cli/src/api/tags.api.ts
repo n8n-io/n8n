@@ -9,15 +9,14 @@ import express from 'express';
 
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import type { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
+import type { ITagWithCountDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { validateEntity } from '@/GenericHelpers';
 import { TagEntity } from '@db/entities/TagEntity';
 import type { TagsRequest } from '@/requests';
-
-export const externalHooks: IExternalHooksClass = ExternalHooks();
+import { Container } from 'typedi';
 
 export const tagsController = express.Router();
 
@@ -50,12 +49,12 @@ tagsController.post(
 		const newTag = new TagEntity();
 		newTag.name = req.body.name.trim();
 
-		await externalHooks.run('tag.beforeCreate', [newTag]);
+		await Container.get(ExternalHooks).run('tag.beforeCreate', [newTag]);
 
 		await validateEntity(newTag);
 		const tag = await Db.collections.Tag.save(newTag);
 
-		await externalHooks.run('tag.afterCreate', [tag]);
+		await Container.get(ExternalHooks).run('tag.afterCreate', [tag]);
 
 		return tag;
 	}),
@@ -74,12 +73,12 @@ tagsController.patch(
 		newTag.id = id;
 		newTag.name = name.trim();
 
-		await externalHooks.run('tag.beforeUpdate', [newTag]);
+		await Container.get(ExternalHooks).run('tag.beforeUpdate', [newTag]);
 
 		await validateEntity(newTag);
 		const tag = await Db.collections.Tag.save(newTag);
 
-		await externalHooks.run('tag.afterUpdate', [tag]);
+		await Container.get(ExternalHooks).run('tag.afterUpdate', [tag]);
 
 		return tag;
 	}),
@@ -100,11 +99,11 @@ tagsController.delete(
 		}
 		const id = req.params.id;
 
-		await externalHooks.run('tag.beforeDelete', [id]);
+		await Container.get(ExternalHooks).run('tag.beforeDelete', [id]);
 
 		await Db.collections.Tag.delete({ id });
 
-		await externalHooks.run('tag.afterDelete', [id]);
+		await Container.get(ExternalHooks).run('tag.afterDelete', [id]);
 
 		return true;
 	}),

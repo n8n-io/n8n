@@ -133,13 +133,13 @@ export class Discord implements INodeType {
 				try {
 					//@ts-expect-error
 					body.embeds = JSON.parse(options.embeds);
-					if (!Array.isArray(body.embeds)) {
-						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
-							itemIndex: i,
-						});
-					}
 				} catch (e) {
 					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', {
+						itemIndex: i,
+					});
+				}
+				if (!Array.isArray(body.embeds)) {
+					throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
 						itemIndex: i,
 					});
 				}

@@ -7,8 +7,6 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 import packageJSON from './package.json';
 
-const isCI = process.env.CI === 'true';
-
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
@@ -63,18 +61,14 @@ export default mergeConfig(
 		},
 		plugins: [
 			vue(),
-			...(!isCI
-				? [
-						legacy({
-							targets: ['defaults', 'not IE 11'],
-						}),
-						monacoEditorPlugin({
-							publicPath: 'assets/monaco-editor',
-							customDistPath: (root: string, buildOutDir: string, base: string) =>
-								`${root}/${buildOutDir}/assets/monaco-editor`,
-						}),
-				  ]
-				: []),
+			legacy({
+				targets: ['defaults', 'not IE 11'],
+			}),
+			monacoEditorPlugin({
+				publicPath: 'assets/monaco-editor',
+				customDistPath: (root: string, buildOutDir: string, base: string) =>
+					`${root}/${buildOutDir}/assets/monaco-editor`,
+			}),
 		],
 		resolve: {
 			alias: [
@@ -113,11 +107,9 @@ export default mergeConfig(
 			},
 		},
 		build: {
-			minify: !isCI,
 			assetsInlineLimit: 0,
 			sourcemap: false,
 			rollupOptions: {
-				treeshake: !isCI,
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,

@@ -1,9 +1,8 @@
 name: Docker Image CI
 
 on:
-  push:
-    tags:
-      - n8n@*
+  release:
+    types: [published]
 
 jobs:
   build:
