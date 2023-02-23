@@ -32,6 +32,7 @@ importers:
       jest: ^29.3.1
       jest-environment-jsdom: ^29.3.1
       jest-mock: ^29.3.1
+      jest-mock-extended: ^3.0.1
       n8n: '*'
       nock: ^13.2.9
       node-fetch: ^2.6.7
@@ -57,6 +58,7 @@ importers:
       jest: 29.4.2_@types+node@16.18.12
       jest-environment-jsdom: 29.4.2
       jest-mock: 29.4.2
+      jest-mock-extended: 3.0.1_47mstovy2thvxzoe7ouhdvjexm
       nock: 13.2.9
       node-fetch: 2.6.7
       prettier: 2.8.3
@@ -690,7 +692,7 @@ importers:
       c8: 7.12.0
       jshint: 2.13.5
       sass: 1.55.0
-      sass-loader: 10.3.1_sass@1.55.0+webpack@5.75.0
+      sass-loader: 10.3.1_sass@1.55.0+webpack@4.46.0
       string-template-parser: 1.2.6
       vite: 4.0.4_sass@1.55.0+terser@5.16.1
       vite-plugin-monaco-editor: 1.1.0_monaco-editor@0.33.0
@@ -12323,7 +12325,7 @@ packages:
       '@babel/code-frame': 7.18.6
       '@types/json-schema': 7.0.11
       chalk: 4.1.2
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       cosmiconfig: 6.0.0
       deepmerge: 4.2.2
       fs-extra: 9.1.0
@@ -14510,6 +14512,17 @@ packages:
       pretty-format: 29.4.2
       slash: 3.0.0
       stack-utils: 2.0.6
+    dev: true
+
+  /jest-mock-extended/3.0.1_47mstovy2thvxzoe7ouhdvjexm:
+    resolution: {integrity: sha512-RF4Ow8pXvbRuEcCTj56oYHmig5311BSFvbEGxPNYL51wGKGu93MvVQgx0UpFmjqyBXIcElkZo2Rke88kR1iSKQ==}
+    peerDependencies:
+      jest: ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0 || ^28.0.0 || ^29.0.0
+      typescript: ^3.0.0 || ^4.0.0
+    dependencies:
+      jest: 29.4.2_@types+node@16.18.12
+      ts-essentials: 7.0.3_typescript@4.9.4
+      typescript: 4.9.4
     dev: true
 
   /jest-mock/29.4.2:
@@ -19239,7 +19252,7 @@ packages:
     dev: false
     optional: true
 
-  /sass-loader/10.3.1_sass@1.55.0+webpack@5.75.0:
+  /sass-loader/10.3.1_sass@1.55.0+webpack@4.46.0:
     resolution: {integrity: sha512-y2aBdtYkbqorVavkC3fcJIUDGIegzDWPn3/LAFhsf3G+MzPKTJx37sROf5pXtUeggSVbNbmfj8TgRaSLMelXRA==}
     engines: {node: '>= 10.13.0'}
     peerDependencies:
@@ -19261,7 +19274,7 @@ packages:
       sass: 1.55.0
       schema-utils: 3.1.1
       semver: 7.3.8
-      webpack: 5.75.0
+      webpack: 4.46.0
     dev: true
 
   /sass-loader/10.3.1_sass@1.58.0+webpack@4.46.0:
@@ -21034,6 +21047,14 @@ packages:
     engines: {node: '>=6.10'}
     dev: true
 
+  /ts-essentials/7.0.3_typescript@4.9.4:
+    resolution: {integrity: sha512-8+gr5+lqO3G84KdiTSMRLtuyJ+nTBVRKuCrK4lidMPdVeEp0uqC875uE5NMcaA7YYMN7XsNiFQuMvasF8HT/xQ==}
+    peerDependencies:
+      typescript: '>=3.7.0'
+    dependencies:
+      typescript: 4.9.4
+    dev: true
+
   /ts-expect/1.3.0:
     resolution: {integrity: sha512-e4g0EJtAjk64xgnFPD6kTBUtpnMVzDrMb12N1YZV0VvSlhnVT3SGxiYTLdGy8Q5cYHOIC/FAHmZ10eGrAguicQ==}
     dev: false
@@ -22637,7 +22658,7 @@ packages:
       graceful-fs: 4.2.10
       neo-async: 2.6.2
     optionalDependencies:
-      chokidar: 3.5.3
+      chokidar: 3.5.2
       watchpack-chokidar2: 2.0.1
     transitivePeerDependencies:
       - supports-color
