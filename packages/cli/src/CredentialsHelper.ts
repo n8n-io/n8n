@@ -32,7 +32,6 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
-	ICredentialTypes,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -54,6 +53,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { Container } from 'typedi';
 
 const mockNode = {
 	name: '',
@@ -87,8 +87,8 @@ const mockNodeTypes: INodeTypes = {
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
 		encryptionKey: string,
-		private credentialTypes: ICredentialTypes = CredentialTypes(),
-		private nodeTypes: INodeTypes = NodeTypes(),
+		private credentialTypes = Container.get(CredentialTypes),
+		private nodeTypes = Container.get(NodeTypes),
 	) {
 		super(encryptionKey);
 	}

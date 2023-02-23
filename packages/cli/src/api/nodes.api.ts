@@ -2,7 +2,6 @@ import express from 'express';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 
@@ -33,7 +32,9 @@ import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -116,14 +117,14 @@ nodesController.post(
 		let installedPackage: InstalledPackages;
 
 		try {
-			installedPackage = await LoadNodesAndCredentials().loadNpmModule(
+			installedPackage = await Container.get(LoadNodesAndCredentials).loadNpmModule(
 				parsed.packageName,
 				parsed.version,
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
+			void Container.get(InternalHooks).onCommunityPackageInstallFinished({
 				user: req.user,
 				input_string: name,
 				package_name: parsed.packageName,
@@ -141,7 +142,7 @@ nodesController.post(
 
 		if (!hasLoaded) removePackageFromMissingList(name);
 
-		const pushInstance = getPushInstance();
+		const pushInstance = Container.get(Push);
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -151,7 +152,7 @@ nodesController.post(
 			});
 		});
 
-		void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
+		void Container.get(InternalHooks).onCommunityPackageInstallFinished({
 			user: req.user,
 			input_string: name,
 			package_name: parsed.packageName,
@@ -238,7 +239,7 @@ nodesController.delete(
 		}
 
 		try {
-			await LoadNodesAndCredentials().removeNpmModule(name, installedPackage);
+			await Container.get(LoadNodesAndCredentials).removeNpmModule(name, installedPackage);
 		} catch (error) {
 			const message = [
 				`Error removing package "${name}"`,
@@ -248,7 +249,7 @@ nodesController.delete(
 			throw new ResponseHelper.InternalServerError(message);
 		}
 
-		const pushInstance = getPushInstance();
+		const pushInstance = Container.get(Push);
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -258,7 +259,7 @@ nodesController.delete(
 			});
 		});
 
-		void InternalHooksManager.getInstance().onCommunityPackageDeleteFinished({
+		void Container.get(InternalHooks).onCommunityPackageDeleteFinished({
 			user: req.user,
 			package_name: name,
 			package_version: installedPackage.installedVersion,
@@ -290,12 +291,12 @@ nodesController.patch(
 		}
 
 		try {
-			const newInstalledPackage = await LoadNodesAndCredentials().updateNpmModule(
+			const newInstalledPackage = await Container.get(LoadNodesAndCredentials).updateNpmModule(
 				parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
 			);
 
-			const pushInstance = getPushInstance();
+			const pushInstance = Container.get(Push);
 
 			// broadcast to connected frontends that node list has been updated
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
@@ -312,7 +313,7 @@ nodesController.patch(
 				});
 			});
 
-			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
+			void Container.get(InternalHooks).onCommunityPackageUpdateFinished({
 				user: req.user,
 				package_name: name,
 				package_version_current: previouslyInstalledPackage.installedVersion,
@@ -325,7 +326,7 @@ nodesController.patch(
 			return newInstalledPackage;
 		} catch (error) {
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				const pushInstance = getPushInstance();
+				const pushInstance = Container.get(Push);
 				pushInstance.send('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,

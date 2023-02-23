@@ -4,21 +4,35 @@ import type { Socket } from 'net';
 import type { Application, RequestHandler } from 'express';
 import { Server as WSServer } from 'ws';
 import { parse as parseUrl } from 'url';
+import { Container, Service } from 'typedi';
 import config from '@/config';
 import { resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
-import type { Push, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
-export type { Push } from './types';
+import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import type { IPushDataType } from '@/Interfaces';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
-let pushInstance: Push;
-export const getPushInstance = () => {
-	if (!pushInstance) pushInstance = useWebSockets ? new WebSocketPush() : new SSEPush();
-	return pushInstance;
-};
+@Service()
+export class Push {
+	private backend = useWebSockets ? new WebSocketPush() : new SSEPush();
+
+	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
+		if (req.ws) {
+			(this.backend as WebSocketPush).add(req.query.sessionId, req.ws);
+		} else if (!useWebSockets) {
+			(this.backend as SSEPush).add(req.query.sessionId, { req, res });
+		} else {
+			res.status(401).send('Unauthorized');
+		}
+	}
+
+	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
+		this.backend.send(type, data, sessionId);
+	}
+}
 
 export const setupPushServer = (restEndpoint: string, server: Server, app: Application) => {
 	if (useWebSockets) {
@@ -48,7 +62,6 @@ export const setupPushHandler = (
 	app: Application,
 	isUserManagementEnabled: boolean,
 ) => {
-	const push = getPushInstance();
 	const endpoint = `/${restEndpoint}/push`;
 
 	const pushValidationMiddleware: RequestHandler = async (
@@ -89,17 +102,10 @@ export const setupPushHandler = (
 		next();
 	};
 
+	const push = Container.get(Push);
 	app.use(
 		endpoint,
 		pushValidationMiddleware,
-		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => {
-			if (req.ws) {
-				(push as WebSocketPush).add(req.query.sessionId, req.ws);
-			} else if (!useWebSockets) {
-				(push as SSEPush).add(req.query.sessionId, { req, res });
-			} else {
-				res.status(401).send('Unauthorized');
-			}
-		},
+		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
 	);
 };

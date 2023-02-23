@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
@@ -25,14 +26,15 @@ import {
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import { mock } from 'jest-mock-extended';
+import { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { NodeTypes } from '@/NodeTypes';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
@@ -74,16 +76,25 @@ import * as testDb from '../shared/testDb';
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
+import { InternalHooks } from '@/InternalHooks';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+
+export const mockInstance = <T>(
+	ctor: new (...args: any[]) => T,
+	data: DeepPartial<T> | undefined = undefined,
+) => {
+	const instance = mock<T>(data);
+	Container.set(ctor, instance);
+	return instance;
+};
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
 	credentialTypes: {} as ICredentialTypes,
 };
-
-const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
-CredentialTypes(loadNodesAndCredentials);
+Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -108,11 +119,9 @@ export async function initTestServer({
 	const logger = getLogger();
 	LoggerProxy.init(logger);
 
-	const postHog = new PostHogClient();
-	postHog.init('test-instance-id');
-
-	// Pre-requisite: Mock the telemetry module before calling.
-	await InternalHooksManager.init('test-instance-id', mockNodeTypes, postHog);
+	// Mock all telemetry.
+	mockInstance(InternalHooks);
+	mockInstance(PostHogClient);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -137,7 +146,7 @@ export async function initTestServer({
 		endpointGroups.includes('users') ||
 		endpointGroups.includes('passwordReset')
 	) {
-		testServer.externalHooks = ExternalHooks();
+		testServer.externalHooks = Container.get(ExternalHooks);
 	}
 
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
@@ -167,8 +176,8 @@ export async function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const externalHooks = ExternalHooks();
-		const internalHooks = InternalHooksManager.getInstance();
+		const externalHooks = Container.get(ExternalHooks);
+		const internalHooks = Container.get(InternalHooks);
 		const mailer = UserManagementMailer.getInstance();
 		const repositories = Db.collections;
 
@@ -218,7 +227,7 @@ export async function initTestServer({
 							externalHooks,
 							internalHooks,
 							repositories,
-							activeWorkflowRunner: ActiveWorkflowRunner.getInstance(),
+							activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 							logger,
 						}),
 					);
@@ -261,8 +270,8 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.ActiveWorkflowRunner> {
-	const workflowRunner = ActiveWorkflowRunner.getInstance();
+export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	workflowRunner.init();
 	return workflowRunner;
 }
@@ -303,7 +312,7 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	loadNodesAndCredentials.loaded.credentials = {
+	Container.get(LoadNodesAndCredentials).loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
@@ -322,7 +331,7 @@ export async function initLdapManager(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	loadNodesAndCredentials.loaded.nodes = {
+	Container.get(LoadNodesAndCredentials).loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {

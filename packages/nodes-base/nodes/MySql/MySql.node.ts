@@ -126,6 +126,7 @@ export class MySql implements INodeType {
 						operation: ['insert'],
 					},
 				},
+				requiresDataPath: 'multiple',
 				default: '',
 				placeholder: 'id,name,description',
 				description:
@@ -231,6 +232,7 @@ export class MySql implements INodeType {
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['update'],
