@@ -11,9 +11,6 @@
 						: $locale.baseText('mfa.code.modal.title')
 				}}</n8n-heading>
 			</div>
-			<br />
-			<br />
-
 			<div :class="[$style.formContainer, formError ? $style.formError : '']">
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -22,28 +19,25 @@
 					@input="onInput"
 					@submit="onSubmit"
 				/>
-			</div>
-			<div>
-				<n8n-info-tip :bold="false" v-if="!showRecoveryCodeForm && !formError"
-					>{{ $locale.baseText('mfa.code.input.info') }}
-					<a @click="OnRecoveryCodeClick">{{
-						$locale.baseText('mfa.code.input.info.action')
-					}}</a></n8n-info-tip
-				>
-				<n8n-text color="danger" v-if="formError" size="small"
-					>{{ formError }}
-					<a
-						v-if="!showRecoveryCodeForm"
-						@click="OnRecoveryCodeClick"
-						:class="$style.recoveryCodeLink"
+				<div :class="$style.infoBox">
+					<n8n-info-tip :bold="false" v-if="!showRecoveryCodeForm && !formError"
+						>{{ $locale.baseText('mfa.code.input.info') }}
+						<a @click="OnRecoveryCodeClick">{{
+							$locale.baseText('mfa.code.input.info.action')
+						}}</a></n8n-info-tip
 					>
-						{{ $locale.baseText('mfa.recovery.input.info.action') }}</a
-					>
-				</n8n-text>
+					<n8n-text color="danger" v-if="formError" size="small"
+						>{{ formError }}
+						<a
+							v-if="!showRecoveryCodeForm"
+							@click="OnRecoveryCodeClick"
+							:class="$style.recoveryCodeLink"
+						>
+							{{ $locale.baseText('mfa.recovery.input.info.action') }}</a
+						>
+					</n8n-text>
+				</div>
 			</div>
-			<br />
-			<br />
-
 			<div>
 				<n8n-button
 					float="right"
@@ -261,6 +255,7 @@ body {
 
 .headerContainer {
 	text-align: center;
+	margin-bottom: var(--spacing-xl);
 }
 
 .formError input {
@@ -270,7 +265,8 @@ body {
 .recoveryCodeLink {
 	text-decoration: underline;
 }
-.formContainer {
-	padding-bottom: 5px;
+
+.infoBox {
+	padding-top: var(--spacing-4xs);
 }
 </style>
