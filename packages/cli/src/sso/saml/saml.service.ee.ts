@@ -115,8 +115,9 @@ export class SamlService {
 					};
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
+					const updatedUser = await this.updateUserFromSamlAttributes(user, attributes);
 					return {
-						authenticatedUser: user,
+						authenticatedUser: updatedUser,
 						attributes,
 						onboardingRequired: true,
 					};
@@ -207,12 +208,8 @@ export class SamlService {
 		return resultUser;
 	}
 
-	async updateUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+	async updateUserFromSamlAttributes(user: User, attributes: SamlUserAttributes): Promise<User> {
 		if (!attributes.email) throw new AuthError('Email is required to update user');
-		const user = await Db.collections.User.findOne({
-			where: { email: attributes.email },
-			relations: ['globalRole', 'authIdentities'],
-		});
 		if (!user) throw new AuthError('User not found');
 		let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
 		if (!samlAuthIdentity) {
