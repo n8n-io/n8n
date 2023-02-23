@@ -1,3 +1,12 @@
+## [0.216.2](https://github.com/n8n-io/n8n/compare/n8n@0.216.1...n8n@0.216.2) (2023-02-23)
+
+
+### Bug Fixes
+
+* **core:** Do not remove empty output connections arrays in PurgeInvalidWorkflowConnections migration ([#5546](https://github.com/n8n-io/n8n/issues/5546)) ([ac86abe](https://github.com/n8n-io/n8n/commit/ac86abe2457d9f54fcd23ac0c8d5f39d565bdcdf))
+
+
+
 ## [0.215.3](https://github.com/n8n-io/n8n/compare/n8n@0.215.2...n8n@0.215.3) (2023-02-23)
 
 
