@@ -25,7 +25,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`No binary data property "${propertyNameUpload}" does not exists on item!`,
+			`Item has no binary property called "${propertyNameUpload}"`,
 			{ itemIndex: index },
 		);
 	}

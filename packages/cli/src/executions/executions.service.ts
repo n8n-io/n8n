@@ -15,7 +15,7 @@ import type {
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator, FindOptionsWhere } from 'typeorm';
 import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
@@ -34,6 +34,8 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
+import { Container } from 'typedi';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -202,7 +204,7 @@ export class ExecutionsService {
 
 		// We may have manual executions even with queue so we must account for these.
 		executingWorkflowIds.push(
-			...ActiveExecutions.getInstance()
+			...Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id),
 		);
@@ -212,7 +214,6 @@ export class ExecutionsService {
 		};
 		if (filter?.status) {
 			Object.assign(findWhere, { status: In(filter.status) });
-			delete filter.status; // remove status from filter so it does not get applied twice
 		}
 		if (filter?.finished) {
 			Object.assign(findWhere, { finished: filter.finished });
@@ -258,12 +259,18 @@ export class ExecutionsService {
 				'execution.startedAt',
 				'execution.stoppedAt',
 				'execution.workflowData',
+				'execution.status',
 			])
 			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);
 
 		const countFilter = deepCopy(filter ?? {});
+		// deepcopy breaks the In operator so we need to reapply it
+		if (filter?.status) {
+			Object.assign(filter, { status: In(filter.status) });
+			Object.assign(countFilter, { status: In(filter.status) });
+		}
 
 		if (filter) {
 			this.massageFilters(filter as IDataObject);
@@ -285,6 +292,10 @@ export class ExecutionsService {
 			const nodeExecutionStatus = {};
 			let lastNodeExecuted;
 			let executionError;
+			// fill execution status for old executions that will return null
+			if (!execution.status) {
+				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+			}
 			try {
 				const data = parse(execution.data) as IRunExecutionData;
 				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
@@ -360,6 +371,10 @@ export class ExecutionsService {
 				executionId,
 			});
 			return undefined;
+		}
+
+		if (!execution.status) {
+			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
 		if (req.query.unflattedResponse === 'true') {
@@ -446,7 +461,7 @@ export class ExecutionsService {
 			}
 
 			data.workflowData = workflowData;
-			const nodeTypes = NodeTypes();
+			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
 				id: workflowData.id as string,
 				name: workflowData.name,
@@ -481,7 +496,7 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData = await ActiveExecutions.getInstance().getPostExecutePromise(
+		const executionData = await Container.get(ActiveExecutions).getPostExecutePromise(
 			retriedExecutionId,
 		);
 

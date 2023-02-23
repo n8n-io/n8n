@@ -1,9 +1,10 @@
 import { flags } from '@oclif/command';
 import { LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
 import { BaseCommand } from './BaseCommand';
+import { Container } from 'typedi';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -32,7 +33,7 @@ export class Webhook extends BaseCommand {
 			}, 30000);
 
 			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = ActiveExecutions.getInstance();
+			const activeExecutionsInstance = Container.get(ActiveExecutions);
 			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
 			let count = 0;

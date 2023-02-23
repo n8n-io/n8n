@@ -106,7 +106,7 @@ export class Line implements INodeType {
 								if (items[i].binary[image.binaryProperty] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${image.binaryProperty}" does not exists on item!`,
+										`Item has no binary property called "${image.binaryProperty}"`,
 										{ itemIndex: i },
 									);
 								}

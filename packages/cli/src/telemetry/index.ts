@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import type { PostHogClient } from '../posthog';
+import { PostHogClient } from '@/posthog';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
@@ -10,6 +10,7 @@ import { getLogger } from '@/Logger';
 import { getLicense } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
+import { Service } from 'typedi';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -28,14 +29,21 @@ interface IExecutionsBuffer {
 	};
 }
 
+@Service()
 export class Telemetry {
+	private instanceId: string;
+
 	private rudderStack?: RudderStack;
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string, private postHog: PostHogClient) {}
+	constructor(private postHog: PostHogClient) {}
+
+	setInstanceId(instanceId: string) {
+		this.instanceId = instanceId;
+	}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');

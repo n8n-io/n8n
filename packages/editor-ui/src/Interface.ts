@@ -31,6 +31,7 @@ import {
 	IExecutionsSummary,
 	IAbstractEventMessage,
 	FeatureFlags,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
@@ -132,9 +133,9 @@ export interface IExternalHooks {
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
+	getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
-		filter: object,
+		filter: IDataObject,
 		limit: number,
 		lastId?: string,
 		firstId?: string,
@@ -383,6 +384,7 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {

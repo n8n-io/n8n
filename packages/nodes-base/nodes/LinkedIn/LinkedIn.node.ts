@@ -150,7 +150,7 @@ export class LinkedIn implements INodeType {
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}

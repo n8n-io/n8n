@@ -163,6 +163,7 @@ export class AirtableTrigger implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 						description:
