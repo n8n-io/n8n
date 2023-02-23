@@ -1,5 +1,3 @@
-import { LICENSE_FEATURES } from '../../constants';
-
 export class SamlUrls {
 	static readonly initSSO = '/initsso';
 
