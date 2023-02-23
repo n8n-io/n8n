@@ -86,6 +86,7 @@
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
+					:disableExpressionCompletions="!isHtmlNode(node)"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -318,7 +319,7 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {

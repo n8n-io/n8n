@@ -1,13 +1,11 @@
-import { WorkflowPage, WorkflowsPage, NDV, CredentialsModal } from '../pages';
+import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { cowBase64 } from '../support/binaryTestFiles';
 
-const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const credentialsModal = new CredentialsModal();
 
-const webhookWorkflowName = 'Webhook Workflow';
 const waitForWebhook = 500;
 
 interface SimpleWebhookCallOptions {
@@ -21,7 +19,7 @@ interface SimpleWebhookCallOptions {
 }
 
 const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
-	const { 
+	const {
 		authentication,
 		method,
 		webhookPath,
@@ -31,10 +29,6 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		executeNow = true,
 		} = options;
 
-	cy.visit(workflowsPage.url);
-
-	workflowsPage.actions.createWorkflowFromCard();
-	workflowPage.actions.renameWorkflow(webhookWorkflowName);
 	workflowPage.actions.addInitialNodeToCanvas('Webhook');
 	workflowPage.actions.openNode('Webhook');
 
@@ -49,7 +43,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		.find('input')
 		.clear()
 		.type(webhookPath);
-	
+
 	if (authentication) {
 		cy.getByTestId('parameter-input-authentication').click();
 		cy.getByTestId('parameter-input-authentication')
@@ -66,7 +60,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		.clear()
 		.type(responseCode.toString());
 	}
-	
+
 	if (respondWith) {
 		cy.getByTestId('parameter-input-responseMode').click();
 		cy.getByTestId('parameter-input-responseMode')
@@ -85,7 +79,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		.click();
 	}
 
-	if (executeNow) { 
+	if (executeNow) {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
@@ -97,14 +91,15 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 };
 
 describe('Webhook Trigger node', async () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-	});
+		workflowPage.actions.visit();
+		cy.waitForLoad();
 
-	afterEach(() => {
-		cy.visit(workflowsPage.url);
-		workflowsPage.actions.deleteWorkFlow(webhookWorkflowName);
+		cy.window()
+			// @ts-ignore
+			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload));
 	});
 
 	it('should listen for a GET request', () => {
@@ -138,7 +133,7 @@ describe('Webhook Trigger node', async () => {
 		});
 
 		ndv.getters.backToCanvas().click();
-		
+
 		workflowPage.actions.addNodeToCanvas('Set');
 		workflowPage.actions.openNode('Set');
 		cy.get('.add-option').click();
@@ -146,12 +141,12 @@ describe('Webhook Trigger node', async () => {
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-name').clear().type('MyValue');
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().type('1234');
 		ndv.getters.backToCanvas().click();
-		
+
 		workflowPage.actions.addNodeToCanvas('Respond to Webhook');
 
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
-	
+
 		cy.request('GET', '/webhook-test/'+ webhookPath).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.eq(1234);
@@ -169,7 +164,7 @@ describe('Webhook Trigger node', async () => {
 
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
-	
+
 		cy.request('GET', '/webhook-test/'+ webhookPath).then((response) => {
 			expect(response.status).to.eq(201);
 		});
@@ -184,7 +179,7 @@ describe('Webhook Trigger node', async () => {
 			respondWith: 'Last Node',
 		});
 		ndv.getters.backToCanvas().click();
-		
+
 		workflowPage.actions.addNodeToCanvas('Set');
 		workflowPage.actions.openNode('Set');
 		cy.get('.add-option').click();
@@ -192,10 +187,10 @@ describe('Webhook Trigger node', async () => {
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-name').clear().type('MyValue');
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().type('1234');
 		ndv.getters.backToCanvas().click();
-		
+
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
-	
+
 		cy.request('GET', '/webhook-test/'+ webhookPath).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.eq(1234);
@@ -212,7 +207,7 @@ describe('Webhook Trigger node', async () => {
 			responseData: 'First Entry Binary',
 		});
 		ndv.getters.backToCanvas().click();
-		
+
 		workflowPage.actions.addNodeToCanvas('Set');
 		workflowPage.actions.openNode('Set');
 		cy.get('.add-option').click();
@@ -220,7 +215,7 @@ describe('Webhook Trigger node', async () => {
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-name').clear().type('data');
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().find('input').invoke('val', cowBase64).trigger('blur');
 		ndv.getters.backToCanvas().click();
-		
+
 
 		workflowPage.actions.addNodeToCanvas('Move Binary Data');
 		workflowPage.actions.zoomToFit();
@@ -233,10 +228,10 @@ describe('Webhook Trigger node', async () => {
 			.contains('JSON to Binary')
 			.click();
 		ndv.getters.backToCanvas().click();
-		
+
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
-	
+
 		cy.request('GET', '/webhook-test/'+ webhookPath).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(Object.keys(response.body).includes('data')).to.be.true;

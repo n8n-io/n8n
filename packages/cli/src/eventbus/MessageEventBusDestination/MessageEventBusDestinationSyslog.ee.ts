@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import syslog from 'syslog-client';
-import { eventBus } from '../MessageEventBus/MessageEventBus';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -10,8 +9,8 @@ import type {
 import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
-import type { EventMessageTypes } from '../EventMessageClasses';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -41,8 +40,8 @@ export class MessageEventBusDestinationSyslog
 
 	eol: string;
 
-	constructor(options: MessageEventBusDestinationSyslogOptions) {
-		super(options);
+	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationSyslogOptions) {
+		super(eventBusInstance, options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
 		this.label = options.label ?? 'Syslog Server';
 
@@ -70,7 +69,8 @@ export class MessageEventBusDestinationSyslog
 		});
 	}
 
-	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
+	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
+		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
 			if (!isLogStreamingEnabled()) return sendResult;
@@ -92,16 +92,17 @@ export class MessageEventBusDestinationSyslog
 					timestamp: msg.ts.toJSDate(),
 				},
 				async (error) => {
-					if (error) {
-						console.log(error);
+					if (error?.message) {
+						LoggerProxy.debug(error.message);
 					} else {
-						eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						// eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						confirmCallback(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					}
 				},
 			);
 		} catch (error) {
-			console.log(error);
+			if (error.message) LoggerProxy.debug(error.message as string);
 		}
 		if (msg.eventName === eventMessageGenericDestinationTestEvent) {
 			await new Promise((resolve) => setTimeout(resolve, 500));
@@ -124,6 +125,7 @@ export class MessageEventBusDestinationSyslog
 	}
 
 	static deserialize(
+		eventBusInstance: MessageEventBus,
 		data: MessageEventBusDestinationOptions,
 	): MessageEventBusDestinationSyslog | null {
 		if (
@@ -131,7 +133,7 @@ export class MessageEventBusDestinationSyslog
 			data.__type === MessageEventBusDestinationTypeNames.syslog &&
 			isMessageEventBusDestinationSyslogOptions(data)
 		) {
-			return new MessageEventBusDestinationSyslog(data);
+			return new MessageEventBusDestinationSyslog(eventBusInstance, data);
 		}
 		return null;
 	}

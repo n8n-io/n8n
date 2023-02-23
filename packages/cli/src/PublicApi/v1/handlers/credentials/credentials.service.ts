@@ -8,6 +8,7 @@ import type { User } from '@db/entities/User';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
+import { Container } from 'typedi';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });
@@ -62,7 +63,7 @@ export async function saveCredential(
 		scope: 'credential',
 	});
 
-	await ExternalHooks().run('credentials.create', [encryptedData]);
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
 	return Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -84,7 +85,7 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
-	await ExternalHooks().run('credentials.delete', [credentials.id]);
+	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 	return Db.collections.Credentials.remove(credentials);
 }
 

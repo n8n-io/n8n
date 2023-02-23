@@ -36,7 +36,7 @@ import {
 	theHiveApiRequest,
 } from './GenericFunctions';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
@@ -442,7 +442,7 @@ export class TheHive implements INodeType {
 										if (item.binary[binaryPropertyName] === undefined) {
 											throw new NodeOperationError(
 												this.getNode(),
-												`No binary data property '${binaryPropertyName}' does not exists on item!`,
+												`Item has no binary property called "${binaryPropertyName}"`,
 												{ itemIndex: i },
 											);
 										}
@@ -719,7 +719,7 @@ export class TheHive implements INodeType {
 										if (item.binary[binaryPropertyName] === undefined) {
 											throw new NodeOperationError(
 												this.getNode(),
-												`No binary data property '${binaryPropertyName}' does not exists on item!`,
+												`Item has no binary property called "${binaryPropertyName}"`,
 												{ itemIndex: i },
 											);
 										}
@@ -914,7 +914,7 @@ export class TheHive implements INodeType {
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property '${binaryPropertyName}' does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -1770,7 +1770,7 @@ export class TheHive implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property '${binaryPropertyName}' does not exists on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex: i },
 									);
 								}

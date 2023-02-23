@@ -25,6 +25,8 @@ export function getN8nPackageJson() {
 	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
 }
 
+export const START_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
+
 export const N8N_VERSION = getN8nPackageJson().version;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
@@ -67,6 +69,7 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
 	LDAP = 'feat:ldap',
+	SAML = 'feat:saml',
 	LOG_STREAMING = 'feat:logStreaming',
 }
 

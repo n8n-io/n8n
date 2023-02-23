@@ -15,7 +15,7 @@ import type {
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 function getEndpointForService(
 	service: string,

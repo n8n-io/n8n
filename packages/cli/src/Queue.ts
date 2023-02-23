@@ -2,9 +2,11 @@ import type Bull from 'bull';
 import type { RedisOptions } from 'ioredis';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { Container } from 'typedi';
 
+export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
 export type JobQueue = Bull.Queue<JobData>;
 
@@ -25,7 +27,7 @@ export interface WebhookResponse {
 export class Queue {
 	private jobQueue: JobQueue;
 
-	constructor(private activeExecutions: ActiveExecutions.ActiveExecutions) {}
+	constructor(private activeExecutions: ActiveExecutions) {}
 
 	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
@@ -55,7 +57,7 @@ export class Queue {
 		return this.jobQueue.add(jobData, jobOptions);
 	}
 
-	async getJob(jobId: Bull.JobId): Promise<Job | null> {
+	async getJob(jobId: JobId): Promise<Job | null> {
 		return this.jobQueue.getJob(jobId);
 	}
 
@@ -94,7 +96,7 @@ let activeQueueInstance: Queue | undefined;
 
 export async function getInstance(): Promise<Queue> {
 	if (activeQueueInstance === undefined) {
-		activeQueueInstance = new Queue(ActiveExecutions.getInstance());
+		activeQueueInstance = new Queue(Container.get(ActiveExecutions));
 		await activeQueueInstance.init();
 	}
 
