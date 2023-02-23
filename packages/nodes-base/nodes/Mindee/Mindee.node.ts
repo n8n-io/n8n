@@ -17,7 +17,7 @@ export class Mindee implements INodeType {
 		name: 'mindee',
 		icon: 'file:mindee.svg',
 		group: ['input'],
-		version: [1, 2],
+		version: [1, 2, 3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mindee API',
 		defaults: {
@@ -65,6 +65,10 @@ export class Mindee implements INodeType {
 						name: '3',
 						value: 3,
 					},
+					{
+						name: '4',
+						value: 4,
+					},
 				],
 				default: 1,
 				description: 'Whether to return all results or only up to a given limit',
@@ -88,8 +92,39 @@ export class Mindee implements INodeType {
 						name: '3',
 						value: 3,
 					},
+					{
+						name: '4',
+						value: 4,
+					},
 				],
 				default: 3,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [3],
+					},
+				},
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '3',
+						value: 3,
+					},
+					{
+						name: '4',
+						value: 4,
+					},
+				],
+				default: 4,
 				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
@@ -218,11 +253,30 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
+						} else if (version === 4) {
+							endpoint = '/expense_receipts/v4/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
 						}
 						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							} else if (version === 3) {
+							} else if (version === 3 || version === 4) {
 								responseData = cleanData(responseData.document);
 							}
 						}
@@ -290,13 +344,32 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
+						} else if (version === 4) {
+							endpoint = '/invoices/v4/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
 						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							} else if (version === 3) {
+							} else if (version === 3 || version === 4) {
 								responseData = cleanData(responseData.document);
 							}
 						}
