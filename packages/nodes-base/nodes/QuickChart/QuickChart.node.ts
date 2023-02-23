@@ -139,7 +139,8 @@ export class QuickChart implements INodeType {
 						type: 'number',
 						default: 2,
 						typeOptions: {
-							numberPrecision: 2,
+							minValue: 1,
+							maxValue: 2,
 						},
 						description: 'Pixel ratio of the chart',
 					},
