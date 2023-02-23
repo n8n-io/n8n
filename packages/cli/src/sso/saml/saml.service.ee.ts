@@ -4,7 +4,6 @@ import { User } from '@/databases/entities/User';
 import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError } from '@/ResponseHelper';
-// import { getIdentityProviderInstance } from './identityProvider.ee';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
@@ -13,6 +12,8 @@ import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import type { IdentityProviderInstance } from 'samlify';
 import { IdentityProvider } from 'samlify';
+import { generatePassword } from './samlHelpers';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -193,6 +194,8 @@ export class SamlService {
 		user.email = attributes.email;
 		user.firstName = attributes.firstName;
 		user.lastName = attributes.lastName;
+		// generates a password that is not used or known to the user
+		user.password = await hashPassword(generatePassword());
 		authIdentity.providerId = attributes.userPrincipalName;
 		authIdentity.providerType = 'saml';
 		authIdentity.user = user;
