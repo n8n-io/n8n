@@ -1,14 +1,13 @@
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import {
-	INodesAndCredentials,
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	ITriggerFunctions,
-	ITriggerResponse,
 	IVersionedNodeType,
 	NodeHelpers,
 } from 'n8n-workflow';
 
+// TODO: delete this
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'test.set': {
@@ -80,7 +79,7 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	constructor(nodesAndCredentials?: INodesAndCredentials) {
+	constructor(nodesAndCredentials?: LoadNodesAndCredentials) {
 		if (nodesAndCredentials?.loaded?.nodes) {
 			this.nodeTypes = nodesAndCredentials?.loaded?.nodes;
 		}
@@ -97,7 +96,7 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypesClass {
+export function NodeTypes(nodesAndCredentials?: LoadNodesAndCredentials): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass(nodesAndCredentials);
 	}

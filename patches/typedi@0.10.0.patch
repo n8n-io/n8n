@@ -1,0 +1,12 @@
+diff --git a/cjs/container-instance.class.js b/cjs/container-instance.class.js
+index e473b1e652aa0b6e7462f7ba93fcef2812483b20..1e2ac7e5cb7943f5226a2bc25fa83bee0470f90c 100644
+--- a/cjs/container-instance.class.js
++++ b/cjs/container-instance.class.js
+@@ -234,6 +234,7 @@ class ContainerInstance {
+      */
+     initializeParams(target, paramTypes) {
+         return paramTypes.map((paramType, index) => {
++            if (paramType === undefined) throw new ReferenceError('Cannot inject an `undefined` dependency. Possibly a circular dependency detected');
+             const paramHandler = container_class_1.Container.handlers.find(handler => {
+                 /**
+                  * @Inject()-ed values are stored as parameter handlers and they reference their target

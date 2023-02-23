@@ -17,7 +17,7 @@ import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
@@ -25,9 +25,11 @@ import type {
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { Container, Service } from 'typedi';
 
-export class WaitTrackerClass {
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+@Service()
+export class WaitTracker {
+	activeExecutionsInstance: ActiveExecutions;
 
 	private waitingExecutions: {
 		[key: string]: {
@@ -39,7 +41,7 @@ export class WaitTrackerClass {
 	mainTimer: NodeJS.Timeout;
 
 	constructor() {
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
@@ -142,6 +144,7 @@ export class WaitTrackerClass {
 			startedAt: new Date(fullExecutionData.startedAt),
 			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
 			finished: fullExecutionData.finished,
+			status: fullExecutionData.status,
 		};
 	}
 
@@ -188,14 +191,4 @@ export class WaitTrackerClass {
 			);
 		});
 	}
-}
-
-let waitTrackerInstance: WaitTrackerClass | undefined;
-
-export function WaitTracker(): WaitTrackerClass {
-	if (waitTrackerInstance === undefined) {
-		waitTrackerInstance = new WaitTrackerClass();
-	}
-
-	return waitTrackerInstance;
 }
