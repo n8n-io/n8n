@@ -191,8 +191,7 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 		}
 	}
 
-	&.error,
-	&.crashed {
+	&.error {
 		&,
 		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);
