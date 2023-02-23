@@ -17,6 +17,7 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-member-access': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'off',
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
+		'@typescript-eslint/no-use-before-define': 'off',
 	},
 
 	overrides: [

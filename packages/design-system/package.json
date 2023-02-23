@@ -75,6 +75,7 @@
     "vue-tsc": "^1.0.24"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.2.1",
     "element-ui": "~2.15.12",
     "markdown-it": "^13.0.1",
     "markdown-it-emoji": "^2.0.2",

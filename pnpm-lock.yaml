@@ -454,6 +454,7 @@ importers:
 
   packages/design-system:
     specifiers:
+      '@floating-ui/dom': ^1.2.1
       '@fortawesome/fontawesome-svg-core': ^1.2.36
       '@fortawesome/free-solid-svg-icons': ^5.15.4
       '@fortawesome/vue-fontawesome': ^2.0.9
@@ -499,6 +500,7 @@ importers:
       vue2-boring-avatars: ^0.3.8
       xss: ^1.0.14
     dependencies:
+      '@floating-ui/dom': 1.2.1
       element-ui: 2.15.12_prckukfdop5sl2her6de25cod4_vue@2.7.14
       markdown-it: 13.0.1
       markdown-it-emoji: 2.0.2
@@ -2923,6 +2925,16 @@ packages:
       '@lit-labs/react': 1.1.1
       react: 17.0.2
     dev: true
+
+  /@floating-ui/core/1.2.1:
+    resolution: {integrity: sha512-LSqwPZkK3rYfD7GKoIeExXOyYx6Q1O4iqZWwIehDNuv3Dv425FIAE8PRwtAx1imEolFTHgBEcoFHm9MDnYgPCg==}
+    dev: false
+
+  /@floating-ui/dom/1.2.1:
+    resolution: {integrity: sha512-Rt45SmRiV8eU+xXSB9t0uMYiQ/ZWGE/jumse2o3i5RGlyvcbqOF4q+1qBnzLE2kZ5JGhq0iMkcGXUKbFe7MpTA==}
+    dependencies:
+      '@floating-ui/core': 1.2.1
+    dev: false
 
   /@fontsource/open-sans/4.5.12:
     resolution: {integrity: sha512-WKCexsVbOECJUSOgG7GnrUxe+3ds4Sa1yhsTjSnszI+0TaJvMZnDnn5YDKwA/KwLbkZqCaV3nvMTH97jJuxWNA==}

@@ -1,0 +1,194 @@
+@use 'sass:map';
+
+@mixin popup($z-index: 2000) {
+	position: fixed;
+	z-index: $z-index;
+	word-wrap: break-word;
+	width: max-content;
+	top: 0;
+	left: 0;
+
+	&:focus:hover {
+		outline-width: 0;
+	}
+
+	&[data-popup-placement^='top'] {
+		transform-origin: center bottom;
+	}
+
+	&[data-popup-placement^='bottom'] {
+		transform-origin: center top;
+	}
+
+	&[data-popup-placement^='right'] {
+		transform-origin: left center;
+	}
+
+	&[data-popup-placement^='left'] {
+		transform-origin: right center;
+	}
+}
+
+@mixin popup-arrow() {
+	> .arrow {
+		position: absolute;
+	}
+
+	> .arrow,
+	> .arrow::after {
+		display: block;
+		width: 0;
+		height: 0;
+		border-color: transparent;
+		border-style: solid;
+		position: absolute;
+	}
+
+	> .arrow::after {
+		content: '';
+	}
+
+	&[data-popup-placement^='top'] > .arrow {
+		border-bottom-width: 0;
+
+		&::after {
+			border-bottom-width: 0;
+		}
+	}
+
+	&[data-popup-placement^='bottom'] > .arrow {
+		border-top-width: 0;
+
+		&::after {
+			border-top-width: 0;
+		}
+	}
+
+	&[data-popup-placement^='right'] > .arrow {
+		border-left-width: 0;
+
+		&::after {
+			border-left-width: 0;
+		}
+	}
+
+	&[data-popup-placement^='left'] > .arrow {
+		border-right-width: 0;
+
+		&::after {
+			border-right-width: 0;
+		}
+	}
+}
+
+@mixin popup-arrow-size-variant($arrow-size: 6px) {
+	> .arrow {
+		width: $arrow-size;
+		height: $arrow-size;
+
+		&,
+		&::after {
+			border-width: $arrow-size;
+		}
+	}
+
+	&[data-popup-placement^='top'],
+	&[data-popup-placement^='bottom'] {
+		> .arrow {
+			&::after {
+				margin-left: calc($arrow-size * -1);
+			}
+		}
+	}
+
+	&[data-popup-placement^='left'],
+	&[data-popup-placement^='right'] {
+		> .arrow {
+			&::after {
+				margin-top: calc($arrow-size * -1);
+			}
+		}
+	}
+
+	&[data-popup-placement^='top'] {
+		> .arrow {
+			bottom: calc($arrow-size * -1);
+
+			&::after {
+				bottom: 1px;
+			}
+		}
+	}
+
+	&[data-popup-placement^='bottom'] {
+		> .arrow {
+			top: calc($arrow-size * -1);
+
+			&::after {
+				top: 1px;
+			}
+		}
+	}
+
+	&[data-popup-placement^='left'] {
+		> .arrow {
+			right: calc($arrow-size * -1);
+
+			&::after {
+				right: 1px;
+			}
+		}
+	}
+
+	&[data-popup-placement^='right'] {
+		> .arrow {
+			left: calc($arrow-size * -1);
+
+			&::after {
+				left: 1px;
+			}
+		}
+	}
+}
+
+@mixin popup-arrow-color-variant-for-side($side, $background, $border-color) {
+	&[data-popup-placement^='#{$side}'] > .arrow {
+		border-#{$side}-color: $border-color;
+
+		&::after {
+			border-#{$side}-color: $background;
+		}
+	}
+}
+
+@mixin popup-arrow-color-variant(
+	$arrow: (
+			'background': #ffffff,
+			'border-color': (
+					'top': #bcbcbc,
+					'right': #bcbcbc,
+					'bottom': #bcbcbc,
+					'left': #bcbcbc
+			)
+	)
+) {
+	$background: map.get($arrow, 'background');
+	$border-color: map.get($arrow, 'border-color');
+
+	@include popup-arrow-color-variant-for-side('top', $background, map.get($border-color, 'top'));
+	@include popup-arrow-color-variant-for-side(
+			'right',
+			$background,
+			map.get($border-color, 'right')
+	);
+	@include popup-arrow-color-variant-for-side(
+			'bottom',
+			$background,
+			map.get($border-color, 'bottom')
+	);
+	@include popup-arrow-color-variant-for-side(
+			'left',
+			$background,
+			map.get($border-color, 'left')
+	);
+}
