@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import type { QueryMode } from '../../helpers/interfaces';
 import type { PgpClient, PgpDatabase } from '../../helpers/utils';
 import { getItemsCopy, wrapData } from '../../helpers/utils';
 
@@ -17,6 +18,19 @@ const properties: INodeProperties[] = [
 		required: true,
 		description:
 			'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
+	},
+	{
+		displayName: 'Query Parameters',
+		name: 'queryParams',
+		type: 'string',
+		displayOptions: {
+			show: {
+				'/operation': ['executeQuery'],
+			},
+		},
+		default: '',
+		placeholder: 'quantity,price',
+		description: 'Comma-separated list of properties which should be used as query parameters',
 	},
 	additionalFieldsCollection,
 ];
@@ -35,17 +49,16 @@ export async function execute(
 	pgp: PgpClient,
 	db: PgpDatabase,
 	items: INodeExecutionData[],
-	overrideMode?: string,
 ): Promise<INodeExecutionData[]> {
+	let returnData: INodeExecutionData[] = [];
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
+	const queryParamsString = this.getNodeParameter('queryParams', 0, '') as string;
 
 	let valuesArray = [] as string[][];
-	if (additionalFields.queryParams) {
-		const propertiesString = additionalFields.queryParams as string;
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const properties = propertiesString.split(',').map((column) => column.trim());
-		const paramsItems = getItemsCopy(items, properties);
-		valuesArray = paramsItems.map((row) => properties.map((col) => row[col])) as string[][];
+	if (queryParamsString !== '') {
+		const queryParams = queryParamsString.split(',').map((column) => column.trim());
+		const paramsItems = getItemsCopy(items, queryParams);
+		valuesArray = paramsItems.map((row) => queryParams.map((col) => row[col])) as string[][];
 	}
 
 	type QueryWithValues = { query: string; values?: string[] };
@@ -57,17 +70,20 @@ export async function execute(
 		allQueries.push(queryFormat);
 	}
 
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
+	const mode = (additionalFields.mode as QueryMode) || 'multiple';
+
 	if (mode === 'multiple') {
-		return (await db.multi(pgp.helpers.concat(allQueries)))
+		returnData = (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
 				return this.helpers.constructExecutionMetaData(wrapData(result), {
 					itemData: { item: i },
 				});
 			})
 			.flat();
-	} else if (mode === 'transaction') {
-		return db.tx(async (t) => {
+	}
+
+	if (mode === 'transaction') {
+		returnData = await db.tx(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
@@ -90,8 +106,10 @@ export async function execute(
 			}
 			return result;
 		});
-	} else if (mode === 'independently') {
-		return db.task(async (t) => {
+	}
+
+	if (mode === 'independently') {
+		returnData = await db.task(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
@@ -114,5 +132,6 @@ export async function execute(
 			return result;
 		});
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+
+	return returnData;
 }

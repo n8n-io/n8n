@@ -52,18 +52,5 @@ export const additionalFieldsCollection: INodeProperties = {
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
 		},
-		{
-			displayName: 'Query Parameters',
-			name: 'queryParams',
-			type: 'string',
-			displayOptions: {
-				show: {
-					'/operation': ['executeQuery'],
-				},
-			},
-			default: '',
-			placeholder: 'quantity,price',
-			description: 'Comma-separated list of properties which should be used as query parameters',
-		},
 	],
 };

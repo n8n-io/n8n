@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import type { QueryMode } from '../../helpers/interfaces';
 import type { PgpClient, PgpDatabase } from '../../helpers/utils';
 import { generateReturning, getItemCopy, getItemsCopy, wrapData } from '../../helpers/utils';
 
@@ -97,7 +98,7 @@ export async function execute(
 	});
 
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
-	const mode = additionalFields.mode ?? ('multiple' as string);
+	const mode = (additionalFields.mode as QueryMode) || 'multiple';
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 

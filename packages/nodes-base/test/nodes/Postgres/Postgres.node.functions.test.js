@@ -1,4 +1,4 @@
-const PostgresFun = require('../../../nodes/Postgres/v1/Postgres.node.functions');
+const PostgresFun = require('../../../nodes/Postgres/v1/genericFunctions');
 const pgPromise = require('pg-promise');
 
 describe('pgUpdate', () => {

@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import type { QueryMode } from '../../helpers/interfaces';
 import type { PgpClient, PgpDatabase } from '../../helpers/utils';
 import { generateReturning, getItemCopy, getItemsCopy, wrapData } from '../../helpers/utils';
 
@@ -60,8 +61,8 @@ export async function execute(
 	pgp: PgpClient,
 	db: PgpDatabase,
 	items: INodeExecutionData[],
-	overrideMode?: string,
 ): Promise<INodeExecutionData[]> {
+	let returnData: INodeExecutionData[] = [];
 	const table = this.getNodeParameter('table', 0) as string;
 	const schema = this.getNodeParameter('schema', 0) as string;
 	const columnString = this.getNodeParameter('columns', 0) as string;
@@ -80,22 +81,25 @@ export async function execute(
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
+	const mode = (additionalFields.mode as QueryMode) || 'multiple';
 
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
+
 	if (mode === 'multiple') {
 		const query =
 			pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
 		const queryResult = await db.any(query);
-		return queryResult
+		returnData = queryResult
 			.map((result, i) => {
 				return this.helpers.constructExecutionMetaData(wrapData(result), {
 					itemData: { item: i },
 				});
 			})
 			.flat();
-	} else if (mode === 'transaction') {
-		return db.tx(async (t) => {
+	}
+
+	if (mode === 'transaction') {
+		returnData = await db.tx(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
@@ -119,8 +123,10 @@ export async function execute(
 			}
 			return result;
 		});
-	} else if (mode === 'independently') {
-		return db.task(async (t) => {
+	}
+
+	if (mode === 'independently') {
+		returnData = await db.task(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
@@ -148,5 +154,5 @@ export async function execute(
 		});
 	}
 
-	throw new Error('multiple, independently or transaction are valid options');
+	return returnData;
 }
