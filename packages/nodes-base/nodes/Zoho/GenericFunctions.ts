@@ -5,7 +5,8 @@ import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { flow, sortBy } from 'lodash';
+import flow from 'lodash.flow';
+import sortBy from 'lodash.sortby';
 
 import type {
 	AllFields,
