@@ -1,11 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+
 export class AddMfaColumns1677108582944 implements MigrationInterface {
 	name = 'AddMfaColumns1677108582944';
 
-	transaction = false;
-
-	async up(queryRunner: QueryRunner): Promise<void> {
+	async up(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);
 
 		const tablePrefix = getTablePrefix();
@@ -23,7 +22,7 @@ export class AddMfaColumns1677108582944 implements MigrationInterface {
 		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
+	async down(queryRunner: QueryRunner) {
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" DROP COLUMN "mfaEnabled"`);
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" DROP COLUMN "mfaSecret"`);
