@@ -240,10 +240,9 @@ import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
-	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject, IExecutionsSummary } from 'n8n-workflow';
 import { range as _range } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
@@ -270,8 +269,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
 				filter: {
-					status: 'ALL',
-					workflowId: 'ALL',
+					status: 'all',
+					workflowId: 'all',
 				},
 
 				isDataLoading: false,
@@ -311,10 +310,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			combinedExecutions(): IExecutionsSummary[] {
 				const returnData: IExecutionsSummary[] = [];
 
-				if (['ALL', 'running'].includes(this.filter.status)) {
+				if (['all', 'running'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
 				}
-				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
+				if (['all', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
 				return returnData;
@@ -338,14 +337,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			},
 			workflowFilterCurrent(): IDataObject {
 				const filter: IDataObject = {};
-				if (this.filter.workflowId !== 'ALL') {
+				if (this.filter.workflowId !== 'all') {
 					filter.workflowId = this.filter.workflowId;
 				}
 				return filter;
 			},
 			workflowFilterPast(): IDataObject {
 				const queryFilter: IDataObject = {};
-				if (this.filter.workflowId !== 'ALL') {
+				if (this.filter.workflowId !== 'all') {
 					queryFilter.workflowId = this.filter.workflowId;
 				}
 				switch (this.filter.status as ExecutionStatus) {
@@ -699,7 +698,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 					// @ts-ignore
 					workflows.unshift({
-						id: 'ALL',
+						id: 'all',
 						name: this.$locale.baseText('executionsList.allWorkflows'),
 					});
 

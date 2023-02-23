@@ -19,15 +19,13 @@ const emit = defineEmits<{
 
 const statusFilterApplied = computed(() => {
 	return (
-		(props.filter.status !== 'ALL' && props.filter.status !== '') ||
-		(!!props.workflows?.length &&
-			props.filter.workflowId !== 'ALL' &&
-			props.filter.workflowId !== '')
+		props.filter.status !== 'all' ||
+		(!!props.workflows?.length && props.filter.workflowId !== 'all')
 	);
 });
 
 const statuses = computed(() => [
-	{ id: 'ALL', name: locale.baseText('executionsList.anyStatus') },
+	{ id: 'all', name: locale.baseText('executionsList.anyStatus') },
 	{ id: 'error', name: locale.baseText('executionsList.error') },
 	{ id: 'running', name: locale.baseText('executionsList.running') },
 	{ id: 'success', name: locale.baseText('executionsList.success') },
@@ -50,8 +48,8 @@ const onFilterStatusChange = (value: string) => {
 
 const onFilterReset = () => {
 	emit('filterChanged', {
-		status: '',
-		workflowId: '',
+		status: 'all',
+		workflowId: 'all',
 	});
 };
 </script>

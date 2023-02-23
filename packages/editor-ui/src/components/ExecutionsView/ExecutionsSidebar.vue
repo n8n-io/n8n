@@ -60,7 +60,7 @@ import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '@/constants';
-import { IExecutionsSummary } from '@/Interface';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { Route } from 'vue-router';
 import Vue from 'vue';
 import { PropType } from 'vue';
@@ -93,7 +93,7 @@ export default Vue.extend({
 		return {
 			VIEWS,
 			filter: {
-				status: '',
+				status: 'all',
 			},
 			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
@@ -168,7 +168,7 @@ export default Vue.extend({
 			}
 		},
 		async resetFilters(): Promise<void> {
-			this.filter.status = '';
+			this.filter.status = 'all';
 			this.$emit('filterUpdated', this.prepareFilter());
 		},
 		prepareFilter(): object {

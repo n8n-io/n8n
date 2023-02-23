@@ -74,7 +74,7 @@ export default mixins(
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: { finished: true, status: '' },
+			filter: { finished: true, status: 'all' },
 		};
 	},
 	computed: {
@@ -86,7 +86,7 @@ export default mixins(
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
-			return this.filter.status !== '';
+			return this.filter.status !== 'all';
 		},
 		workflowDataNotLoaded(): boolean {
 			return (
@@ -104,7 +104,7 @@ export default mixins(
 			const rFilter: IDataObject = { workflowId: this.currentWorkflow };
 			if (this.filter.status === 'waiting') {
 				rFilter.waitTill = true;
-			} else if (this.filter.status !== '') {
+			} else if (this.filter.status !== 'all') {
 				rFilter.finished = this.filter.status === 'success';
 			}
 
