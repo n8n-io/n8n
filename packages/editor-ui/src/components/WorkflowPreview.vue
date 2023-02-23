@@ -230,4 +230,8 @@ export default mixins(showMessage).extend({
 .executionPreview {
 	height: 100%;
 }
+
+iframe appcues-checklist {
+	display: none;
+}
 </style>
