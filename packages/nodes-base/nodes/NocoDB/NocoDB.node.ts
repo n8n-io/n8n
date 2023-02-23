@@ -273,7 +273,7 @@ export class NocoDB implements INodeType {
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary property ${binaryPropertyName} does not exist on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -583,7 +583,7 @@ export class NocoDB implements INodeType {
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary property ${binaryPropertyName} does not exist on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex: i },
 									);
 								}
