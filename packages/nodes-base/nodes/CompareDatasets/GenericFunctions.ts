@@ -1,6 +1,12 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { difference, get, intersection, isEmpty, omit, set, union } from 'lodash';
+import difference from 'lodash.difference';
+import get from 'lodash.get';
+import intersection from 'lodash.intersection';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
+import set from 'lodash.set';
+import union from 'lodash.union';
 import { fuzzyCompare } from '../../utils/utilities';
 
 type PairToMatch = {

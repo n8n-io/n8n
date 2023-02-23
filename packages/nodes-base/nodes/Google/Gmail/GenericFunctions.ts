@@ -19,7 +19,7 @@ import jwt from 'jsonwebtoken';
 
 import { DateTime } from 'luxon';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 export interface IEmail {
 	from?: string;
