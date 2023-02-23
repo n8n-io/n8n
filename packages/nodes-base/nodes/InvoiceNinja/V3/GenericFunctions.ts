@@ -10,7 +10,7 @@ import type {
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export async function invoiceNinjaApiDownloadFile(
 	this: IExecuteFunctions,
