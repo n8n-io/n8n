@@ -67,7 +67,7 @@ describe('Owner shell', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(isPending).toBe(true);
+		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
