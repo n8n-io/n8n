@@ -142,7 +142,6 @@ import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
-import { isSamlEnabled } from './Saml/helpers';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
