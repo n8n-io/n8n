@@ -37,7 +37,16 @@ export class MFAController {
 
 	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
-		const { id } = req.user;
+		const { token } = req.body;
+		const { id, mfaRecoveryCodes, mfaSecret } = req.user;
+
+		if (!mfaSecret || !mfaRecoveryCodes.length) {
+			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
+		}
+
+		const verified = speakeasy.totp.verify({ secret: mfaSecret, encoding: 'base32', token });
+		if (!verified) throw new BadRequestError('MFA secret could not be verified');
+
 		await this.userRepository.update(id, { mfaEnabled: true });
 	}
 

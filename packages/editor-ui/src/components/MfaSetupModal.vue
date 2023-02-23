@@ -213,7 +213,7 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		async onSetupClick() {
 			try {
-				await this.settingsStore.enableMfa();
+				await this.settingsStore.enableMfa({ token: this.authenticatorCode });
 				this.closeDialog();
 				this.$showMessage({
 					type: 'success',

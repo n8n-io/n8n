@@ -109,7 +109,7 @@ export class User extends AbstractEntity implements IUser {
 	@Column({ type: Boolean, default: false })
 	mfaEnabled?: boolean;
 
-	@Column({ type: 'simple-array', default: '[]' })
+	@Column({ type: 'simple-array', default: '' })
 	mfaRecoveryCodes: string[];
 
 	/**

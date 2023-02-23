@@ -23,6 +23,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ICredentialsDb } from '@/Interfaces';
+import * as speakeasy from 'speakeasy';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
@@ -33,6 +34,9 @@ import type {
 	InstalledNodePayload,
 	InstalledPackagePayload,
 } from './types';
+
+import { v4 as uuid } from 'uuid';
+import { randomPassword } from '@/Ldap/helpers';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -183,6 +187,38 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 	const user = await createUser(attributes);
 	await Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId, 'ldap'));
 	return user;
+}
+
+export function generateMfaOneTimeToken(secret: string) {
+	return speakeasy.totp({
+		secret,
+		encoding: 'base32',
+	});
+}
+
+export async function createUserWithMfaEnabled(
+	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
+) {
+	const email = randomEmail();
+	const password = randomPassword();
+
+	const { base32 } = speakeasy.generateSecret({
+		name: email,
+	});
+
+	const codes = Array.from(Array(data.numberOfRecoveryCodes)).map(() => uuid());
+
+	return {
+		user: await createUser({
+			mfaEnabled: true,
+			password,
+			mfaSecret: base32,
+			mfaRecoveryCodes: codes,
+		}),
+		rawPassword: password,
+		secret: base32,
+		recoveryCodes: codes,
+	};
 }
 
 export async function createOwner() {

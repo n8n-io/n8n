@@ -23,7 +23,8 @@ type EndpointGroup =
 	| 'nodes'
 	| 'ldap'
 	| 'eventBus'
-	| 'license';
+	| 'license'
+	| 'mfa';
 
 export type CredentialPayload = {
 	name: string;

@@ -282,10 +282,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			const rootStore = useRootStore();
 			return await verifyMfaToken(rootStore.getRestApiContext, data);
 		},
-		async enableMfa() {
+		async enableMfa(data: { token: string }) {
 			const rootStore = useRootStore();
 			const usersStore = useUsersStore();
-			await enableMfa(rootStore.getRestApiContext);
+			await enableMfa(rootStore.getRestApiContext, data);
 			const currentUser = usersStore.currentUser as IUserResponse;
 			currentUser.mfaEnabled = true;
 			usersStore.addUsers([currentUser]);

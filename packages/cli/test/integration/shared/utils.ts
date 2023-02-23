@@ -66,6 +66,7 @@ import { registerController } from '@/decorators';
 import {
 	AuthController,
 	MeController,
+	MFAController,
 	OwnerController,
 	PasswordResetController,
 	UsersController,
@@ -231,6 +232,8 @@ export async function initTestServer({
 							logger,
 						}),
 					);
+				case 'mfa':
+					registerController(testServer.app, config, new MFAController(repositories.User));
 			}
 		}
 	}

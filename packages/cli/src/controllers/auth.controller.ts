@@ -71,7 +71,6 @@ export class AuthController {
 				const isMFATokenValid =
 					this.validateMfaToken(user, mfaToken) ||
 					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
-				// console.log('valid mFA TOKEN', user, mfaToken, isMFATokenValid);
 				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
 

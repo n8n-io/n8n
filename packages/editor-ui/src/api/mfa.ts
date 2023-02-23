@@ -7,8 +7,8 @@ export function getMfaQr(
 	return makeRestApiRequest(context, 'GET', '/mfa/qr');
 }
 
-export function enableMfa(context: IRestApiContext): Promise<void> {
-	return makeRestApiRequest(context, 'POST', '/mfa/enable');
+export function enableMfa(context: IRestApiContext, data: { token: string }): Promise<void> {
+	return makeRestApiRequest(context, 'POST', '/mfa/enable', data);
 }
 
 export function verifyMfaToken(context: IRestApiContext, data: { token: string }): Promise<void> {
