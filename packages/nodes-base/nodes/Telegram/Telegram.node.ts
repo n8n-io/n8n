@@ -1579,6 +1579,7 @@ export class Telegram implements INodeType {
 									'sendMessage',
 									'sendPhoto',
 									'sendVideo',
+									'sendDocument',
 								],
 							},
 						},
