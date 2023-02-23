@@ -938,33 +938,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(this, 'activeExecutions', newActiveExecutions);
 		},
 
-		async loadCurrentWorkflowExecutions(filter: {
-			finished: boolean;
-			status: string;
-		}): Promise<IExecutionsSummary[]> {
+		async loadCurrentWorkflowExecutions(requestFilter: IDataObject): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
 			let finishedExecutions = [];
-			const requestFilter: IDataObject = { workflowId: this.workflowId };
 
-			if (!this.workflowId) {
+			if (!requestFilter.workflowId) {
 				return [];
 			}
 			try {
 				const rootStore = useRootStore();
-				if (filter.status === '' || !filter.finished) {
-					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, requestFilter);
+				if (!requestFilter.status || !requestFilter.finished) {
+					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
+						workflowId: requestFilter.workflowId,
+					});
 				}
-				if (filter.status === '' || filter.finished) {
-					if (filter.status === 'waiting') {
-						requestFilter.waitTill = true;
-					} else if (filter.status !== '') {
-						requestFilter.finished = filter.status === 'success';
-					}
-					finishedExecutions = await getFinishedExecutions(
-						rootStore.getRestApiContext,
-						requestFilter,
-					);
-				}
+				finishedExecutions = await getFinishedExecutions(
+					rootStore.getRestApiContext,
+					requestFilter,
+				);
 				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
