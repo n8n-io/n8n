@@ -336,14 +336,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						name: this.$locale.baseText('executionsList.error'),
 					},
 					{
-						id: 'crashed',
-						name: this.$locale.baseText('executionsList.error'),
-					},
-					{
-						id: 'new',
-						name: this.$locale.baseText('executionsList.new'),
-					},
-					{
 						id: 'running',
 						name: this.$locale.baseText('executionsList.running'),
 					},
@@ -363,10 +355,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			combinedExecutions(): IExecutionsSummary[] {
 				const returnData: IExecutionsSummary[] = [];
 
-				if (['ALL', 'running', 'new'].includes(this.filter.status)) {
+				if (['ALL', 'running'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
 				}
-				if (['ALL', 'error', 'crashed', 'success', 'waiting'].includes(this.filter.status)) {
+				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
 				return returnData;
@@ -404,14 +396,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					case 'waiting':
 						queryFilter.status = ['waiting'];
 						break;
-					case 'crashed':
-						queryFilter.status = ['crashed'];
-						break;
-					case 'new':
-						queryFilter.status = ['new'];
-						break;
 					case 'error':
-						queryFilter.status = ['failed', 'crashed', 'error'];
+						queryFilter.status = ['failed', 'crashed'];
 						break;
 					case 'success':
 						queryFilter.status = ['success'];
@@ -813,8 +799,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 			},
 			getStatus(execution: IExecutionsSummary): ExecutionStatus {
-				if (execution.status) return execution.status;
-				else {
+				if (execution.status) {
+					return execution.status;
+				} else {
 					// this should not happen but just in case
 					let status: ExecutionStatus = 'unknown';
 					if (execution.waitTill) {
@@ -843,7 +830,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else if (status === 'crashed') {
 					text = this.$locale.baseText('executionsList.error');
 				} else if (status === 'new') {
-					text = this.$locale.baseText('executionsList.new');
+					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'success') {
@@ -865,7 +852,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else if (status === 'crashed') {
 					path = 'executionsList.statusText';
 				} else if (status === 'new') {
-					path = 'executionsList.statusNew';
+					path = 'executionsList.statusRunning';
 				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
 				} else if (status === 'success') {
@@ -1018,11 +1005,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 
+	.crashed &,
 	.failed & {
-		color: var(--color-danger);
-	}
-
-	.crashed & {
 		color: var(--color-danger);
 	}
 
@@ -1034,6 +1018,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		font-weight: var(--font-weight-normal);
 	}
 
+	.new &,
 	.running & {
 		color: var(--color-warning);
 	}
@@ -1131,11 +1116,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			background: var(--color-primary-tint-3);
 		}
 
+		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: var(--color-danger);
-		}
-
-		&.crashed td:first-child::before {
 			background: var(--color-danger);
 		}
 
@@ -1143,6 +1125,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			background: var(--color-success);
 		}
 
+		&.new td:first-child::before,
 		&.running td:first-child::before {
 			background: var(--color-warning);
 		}
