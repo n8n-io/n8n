@@ -33,6 +33,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useSettingsStore } from '@/stores/settings';
 import { parse } from 'flatted';
+import { usePostHogStore } from '@/stores/posthog';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -58,6 +59,7 @@ export const pushConnection = mixins(
 			useUIStore,
 			useWorkflowsStore,
 			useSettingsStore,
+			usePostHogStore,
 		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
@@ -336,6 +338,8 @@ export const pushConnection = mixins(
 				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
+				// This should stop sending multiple telemetry events for nodes when full workflow is being executed
+				let fullWorkflowExecution = true;
 				if (runDataExecuted.waitTill !== undefined) {
 					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
@@ -443,6 +447,7 @@ export const pushConnection = mixins(
 
 					const execution = this.workflowsStore.getWorkflowExecution;
 					if (execution && execution.executedNode) {
+						fullWorkflowExecution = false;
 						const node = this.workflowsStore.getNodeByName(execution.executedNode);
 						const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 						const nodeOutput =
@@ -471,6 +476,9 @@ export const pushConnection = mixins(
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
+						}
+						if (node) {
+							this.posthogStore.trackSuccessfulNodeExecution(node);
 						}
 					} else {
 						this.$showMessage({
@@ -515,6 +523,9 @@ export const pushConnection = mixins(
 					runDataExecutedStartData: runDataExecuted.data.startData,
 					resultDataError: runDataExecuted.data.resultData.error,
 				});
+				if (!runDataExecuted.data.resultData.error && fullWorkflowExecution) {
+					this.posthogStore.trackSuccessfulWorkflowExecution(runDataExecuted);
+				}
 			} else if (receivedData.type === 'executionStarted') {
 				const pushData = receivedData.data;
 
