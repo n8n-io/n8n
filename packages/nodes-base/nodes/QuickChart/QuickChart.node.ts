@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { CHART_TYPE_OPTIONS, HORIZONTAL_CHARTS, ITEM_STYLE_CHARTS } from './constants';
+import { CHART_TYPE_OPTIONS, Fill_CHARTS, HORIZONTAL_CHARTS, ITEM_STYLE_CHARTS } from './constants';
 import type { IDataset } from './types';
 
 import _ from 'lodash';
@@ -239,6 +239,11 @@ export class QuickChart implements INodeType {
 						type: 'boolean',
 						default: true,
 						description: 'Whether to fill area of the dataset',
+						displayOptions: {
+							show: {
+								'/chartType': Fill_CHARTS,
+							},
+						},
 					},
 					{
 						displayName: 'Label',
