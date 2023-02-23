@@ -71,7 +71,7 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 1,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'Which Mindee API Version to use',
 			},
 			{
 				displayName: 'API Version',
@@ -98,7 +98,7 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 3,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'Which Mindee API Version to use',
 			},
 			{
 				displayName: 'API Version',
@@ -125,7 +125,7 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 4,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'Which Mindee API Version to use',
 			},
 			{
 				displayName: 'Resource',
