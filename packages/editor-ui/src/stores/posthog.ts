@@ -103,7 +103,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 			return;
 		}
 
-		const variant = 'curr[name]';
+		const variant = curr[name];
 		telemetryStore.track('User is part of experiment', {
 			name,
 			variant,
