@@ -330,6 +330,8 @@ function parseFieldName(returnData: IDataObject) {
 			returnData[newKey] = returnData[key];
 			delete returnData[key];
 		}
+	}
+	for (const key of Object.keys(returnData)) {
 		if (key.match(regexSpaces)) {
 			const newKey = key.replace(regexSpaces, '_');
 			returnData[newKey] = returnData[key];
