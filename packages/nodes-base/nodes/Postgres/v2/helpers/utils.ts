@@ -67,11 +67,7 @@ export function wrapData(data: IDataObject[]): INodeExecutionData[] {
 
 export async function configurePostgres(this: IExecuteFunctions) {
 	const credentials = await this.getCredentials('postgres');
-	const largeNumbersOutput = this.getNodeParameter(
-		'additionalFields.largeNumbersOutput',
-		0,
-		'',
-	) as string;
+	const largeNumbersOutput = this.getNodeParameter('options.largeNumbersOutput', 0, '') as string;
 
 	const pgp = pgPromise();
 
@@ -103,4 +99,14 @@ export async function configurePostgres(this: IExecuteFunctions) {
 
 	const db = pgp(config);
 	return { db, pgp };
+}
+
+export function prepareError(items: INodeExecutionData[], error: IDataObject, index: number) {
+	const { code, message } = error;
+	return {
+		json: { ...items[index].json },
+		code,
+		message,
+		pairedItem: { item: index },
+	} as INodeExecutionData;
 }

@@ -1,12 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type { QueryMode } from '../../helpers/interfaces';
 import type { PgpClient, PgpDatabase } from '../../helpers/utils';
-import { getItemsCopy, wrapData } from '../../helpers/utils';
+import { prepareError, wrapData } from '../../helpers/utils';
 
-import { additionalFieldsCollection } from '../common.descriptions';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -17,22 +17,42 @@ const properties: INodeProperties[] = [
 		placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 		required: true,
 		description:
-			'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
+			"The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with 'Query Values Replacement'.",
 	},
 	{
-		displayName: 'Query Parameters',
-		name: 'queryParams',
-		type: 'string',
-		displayOptions: {
-			show: {
-				'/operation': ['executeQuery'],
-			},
-		},
+		displayName:
+			'You can use replacement values in query, $1 to reference first value, $2 second and so on, if value is SQL name or identifier use :name or ~, e.g. $1:name',
+		name: 'notice',
+		type: 'notice',
 		default: '',
-		placeholder: 'quantity,price',
-		description: 'Comma-separated list of properties which should be used as query parameters',
 	},
-	additionalFieldsCollection,
+	{
+		displayName: 'Query Values Replacement',
+		name: 'queryReplacement',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: [],
+		placeholder: 'Add Value',
+		description:
+			'Value has to be of type number, bigint, string, boolean, Date and null, types Array and Object are not supported',
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	optionsCollection,
 ];
 
 const displayOptions = {
@@ -51,26 +71,21 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
-	const additionalFields = this.getNodeParameter('additionalFields', 0);
-	const queryParamsString = this.getNodeParameter('queryParams', 0, '') as string;
-
-	let valuesArray = [] as string[][];
-	if (queryParamsString !== '') {
-		const queryParams = queryParamsString.split(',').map((column) => column.trim());
-		const paramsItems = getItemsCopy(items, queryParams);
-		valuesArray = paramsItems.map((row) => queryParams.map((col) => row[col])) as string[][];
-	}
+	const options = this.getNodeParameter('options', 0);
 
 	type QueryWithValues = { query: string; values?: string[] };
-	const allQueries = new Array<QueryWithValues>();
+	const allQueries: QueryWithValues[] = [];
+
 	for (let i = 0; i < items.length; i++) {
 		const query = this.getNodeParameter('query', i) as string;
-		const values = valuesArray[i];
+		const values = (this.getNodeParameter('queryReplacement.values', i, []) as IDataObject[]).map(
+			(entry) => entry.value as string,
+		);
 		const queryFormat = { query, values };
 		allQueries.push(queryFormat);
 	}
 
-	const mode = (additionalFields.mode as QueryMode) || 'multiple';
+	const mode = (options.mode as QueryMode) || 'multiple';
 
 	if (mode === 'multiple') {
 		returnData = (await db.multi(pgp.helpers.concat(allQueries)))
@@ -95,12 +110,7 @@ export async function execute(
 					result.push(...executionData);
 				} catch (err) {
 					if (!this.continueOnFail()) throw err;
-					result.push({
-						json: { ...items[i].json },
-						code: (err as JsonObject).code,
-						message: (err as JsonObject).message,
-						pairedItem: { item: i },
-					} as INodeExecutionData);
+					result.push(prepareError(items, err, i));
 					return result;
 				}
 			}
@@ -121,12 +131,7 @@ export async function execute(
 					result.push(...executionData);
 				} catch (err) {
 					if (!this.continueOnFail()) throw err;
-					result.push({
-						json: { ...items[i].json },
-						code: (err as JsonObject).code,
-						message: (err as JsonObject).message,
-						pairedItem: { item: i },
-					} as INodeExecutionData);
+					result.push(prepareError(items, err, i));
 				}
 			}
 			return result;

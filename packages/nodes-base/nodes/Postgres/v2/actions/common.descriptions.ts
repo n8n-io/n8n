@@ -1,8 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const additionalFieldsCollection: INodeProperties = {
-	displayName: 'Additional Fields',
-	name: 'additionalFields',
+export const optionsCollection: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
 	type: 'collection',
 	placeholder: 'Add Field',
 	default: {},

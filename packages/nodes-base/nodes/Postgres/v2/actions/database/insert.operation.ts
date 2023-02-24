@@ -1,12 +1,18 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type { QueryMode } from '../../helpers/interfaces';
 import type { PgpClient, PgpDatabase } from '../../helpers/utils';
-import { generateReturning, getItemCopy, getItemsCopy, wrapData } from '../../helpers/utils';
+import {
+	generateReturning,
+	getItemCopy,
+	getItemsCopy,
+	prepareError,
+	wrapData,
+} from '../../helpers/utils';
 
-import { additionalFieldsCollection } from '../common.descriptions';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -44,7 +50,7 @@ const properties: INodeProperties[] = [
 		default: '*',
 		description: 'Comma-separated list of the fields that the operation will return',
 	},
-	additionalFieldsCollection,
+	optionsCollection,
 ];
 
 const displayOptions = {
@@ -80,8 +86,8 @@ export async function execute(
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
-	const additionalFields = this.getNodeParameter('additionalFields', 0);
-	const mode = (additionalFields.mode as QueryMode) || 'multiple';
+	const options = this.getNodeParameter('options', 0);
+	const mode = (options.mode as QueryMode) || 'multiple';
 
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 
@@ -112,12 +118,7 @@ export async function execute(
 					);
 				} catch (err) {
 					if (!this.continueOnFail()) throw err;
-					result.push({
-						json: { ...itemCopy },
-						code: (err as JsonObject).code,
-						message: (err as JsonObject).message,
-						pairedItem: { item: i },
-					} as INodeExecutionData);
+					result.push(prepareError(items, err, i));
 					return result;
 				}
 			}
@@ -139,15 +140,8 @@ export async function execute(
 						result.push(...executionData);
 					}
 				} catch (err) {
-					if (!this.continueOnFail()) {
-						throw err;
-					}
-					result.push({
-						json: { ...itemCopy },
-						code: (err as JsonObject).code,
-						message: (err as JsonObject).message,
-						pairedItem: { item: i },
-					} as INodeExecutionData);
+					if (!this.continueOnFail()) throw err;
+					result.push(prepareError(items, err, i));
 				}
 			}
 			return result;
