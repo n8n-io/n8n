@@ -10,7 +10,7 @@
 <script lang="ts">
 import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
-
+import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
@@ -18,7 +18,7 @@ import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, genericHelpers).extend({
 	name: 'SigninView',
 	components: {
 		AuthView,
@@ -86,15 +86,7 @@ export default mixins(showMessage).extend({
 					mfaEnabled: false,
 				});
 
-				if (typeof this.$route.query.redirect === 'string') {
-					const redirect = decodeURIComponent(this.$route.query.redirect);
-					if (redirect.startsWith('/')) {
-						// protect against phishing
-						this.$router.push(redirect);
-
-						return;
-					}
-				}
+				this.protectFromPhishing();
 
 				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {

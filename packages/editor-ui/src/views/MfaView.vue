@@ -70,6 +70,7 @@
 <script lang="ts">
 import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import Vue from 'vue';
 
 import mixins from 'vue-typed-mixins';
@@ -81,7 +82,7 @@ import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, genericHelpers).extend({
 	name: 'MfaView',
 	components: {
 		AuthView,
@@ -210,15 +211,7 @@ export default mixins(showMessage).extend({
 				return;
 			}
 
-			if (typeof this.$route.query.redirect === 'string') {
-				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) {
-					// protect against phishing
-					this.$router.push(redirect);
-
-					return;
-				}
-			}
+			this.protectFromPhishing();
 
 			this.$telemetry.track('User attempted to login', {
 				result: 'success',

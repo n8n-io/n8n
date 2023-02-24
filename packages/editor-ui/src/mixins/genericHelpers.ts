@@ -81,5 +81,16 @@ export const genericHelpers = mixins(showMessage).extend({
 				this.loadingService = null;
 			}
 		},
+		protectFromPhishing() {
+			if (typeof this.$route.query.redirect === 'string') {
+				const redirect = decodeURIComponent(this.$route.query.redirect);
+				if (redirect.startsWith('/')) {
+					// protect against phishing
+					this.$router.push(redirect);
+
+					return;
+				}
+			}
+		},
 	},
 });
