@@ -1,3 +1,78 @@
+# [0.217.0](https://github.com/n8n-io/n8n/compare/n8n@0.216.1...n8n@0.217.0) (2023-02-23)
+
+
+### Bug Fixes
+
+* **Baserow Node:** Fix issue with get all not correctly using filters ([#5519](https://github.com/n8n-io/n8n/issues/5519)) ([ee21b7a](https://github.com/n8n-io/n8n/commit/ee21b7a1cfed17936eb6bf50221b7f9983dd38e6))
+* **Compare Datasets Node:** UI tweaks and fixes ([7ecd5e5](https://github.com/n8n-io/n8n/commit/7ecd5e59eca01ca2b1a01e0a3e3871bd5d322eea))
+* **core:** Do not allow arbitrary path traversal in BinaryDataManager ([#5523](https://github.com/n8n-io/n8n/issues/5523)) ([eef2574](https://github.com/n8n-io/n8n/commit/eef257406730a989ec8e7a056c3d4234300fdb25))
+* **core:** Do not allow arbitrary path traversal in the credential-translation endpoint ([#5522](https://github.com/n8n-io/n8n/issues/5522)) ([f0f8d59](https://github.com/n8n-io/n8n/commit/f0f8d59fee223c6bc9f8459890ed4a31ef8cb0af))
+* **core:** Do not explicitly bypass auth on urls containing `.svg` ([#5525](https://github.com/n8n-io/n8n/issues/5525)) ([f58573d](https://github.com/n8n-io/n8n/commit/f58573dba30eba8fe3d844d1b7b2dbbb8d51b8b5))
+* **core:** Do not remove empty output connections arrays in PurgeInvalidWorkflowConnections migration ([#5546](https://github.com/n8n-io/n8n/issues/5546)) ([0fbb3f0](https://github.com/n8n-io/n8n/commit/0fbb3f0f026432f1aea87b106a0c1f732f93c792))
+* **core:** Fix execution status filters ([#5533](https://github.com/n8n-io/n8n/issues/5533)) ([17eff4d](https://github.com/n8n-io/n8n/commit/17eff4d7d6692bfdc251bfa16ce7334858642ce5))
+* **core:** User update endpoint should only allow updating email, firstName, and lastName ([#5526](https://github.com/n8n-io/n8n/issues/5526)) ([510855d](https://github.com/n8n-io/n8n/commit/510855d9581f07e5081a7bc11377cd6216ba7edf))
+* **Discord Node:** Fix wrong error message being displayed ([#5547](https://github.com/n8n-io/n8n/issues/5547)) ([e251439](https://github.com/n8n-io/n8n/commit/e2514393335e555af47c9aca4f81b31608df9cb5))
+* **Discourse Node:** Fix issue with credential test not working ([#5520](https://github.com/n8n-io/n8n/issues/5520)) ([b3e1793](https://github.com/n8n-io/n8n/commit/b3e1793ac0f304ea72d565097b6766bc278e1238))
+* **editor:** Apply correct IRunExecutionData to finished workflow ([#5552](https://github.com/n8n-io/n8n/issues/5552)) ([e2d7c18](https://github.com/n8n-io/n8n/commit/e2d7c1804f2d5da15d96edeefd50c5b8e2753fd1))
+* **editor:** Fix an issue with zoom and canvas nodes connections ([#5548](https://github.com/n8n-io/n8n/issues/5548)) ([4998ab2](https://github.com/n8n-io/n8n/commit/4998ab23508adf9a244885509b2d5c7c9c9c48f0))
+* **editor:** Fix unexpected date rendering on front-end ([#5528](https://github.com/n8n-io/n8n/issues/5528)) ([684d717](https://github.com/n8n-io/n8n/commit/684d71752064e25143e09666e539b91b3dcd5f71))
+* **editor:** Remove 'crashed' status from filter ([#5524](https://github.com/n8n-io/n8n/issues/5524)) ([7c517cb](https://github.com/n8n-io/n8n/commit/7c517cb5300481908dd653426089a6a9291e79ca))
+* fix typo in error messages when a property does not exist ([#4310](https://github.com/n8n-io/n8n/issues/4310)) ([3af3db1](https://github.com/n8n-io/n8n/commit/3af3db160b5798fe948159b6f3dd48ec743512e7))
+* Fixes an issue when saving an active workflow without triggers would cause n8n to be stuck ([#5513](https://github.com/n8n-io/n8n/issues/5513)) ([75a094a](https://github.com/n8n-io/n8n/commit/75a094a8c03afc40b7872cd2115d82e69455286e))
+* **Google Calendar Node:** Fix incorrect labels for start and end times when getting all events ([#5529](https://github.com/n8n-io/n8n/issues/5529)) ([f965469](https://github.com/n8n-io/n8n/commit/f965469e13a45d3a7b796dfd6be44573bf8b13d0))
+* **Postgres Node:** Fix for tables containing field named json ([5d74a2f](https://github.com/n8n-io/n8n/commit/5d74a2f89a31ee1a386a52d0d71858f73d734e31))
+* **S3 Node:** Fix issue with get many buckets not outputting data ([#5514](https://github.com/n8n-io/n8n/issues/5514)) ([1c47677](https://github.com/n8n-io/n8n/commit/1c476770a778b7d034924db847a8757c383bd281))
+
+
+### Features
+
+* Add new event hooks ([#5530](https://github.com/n8n-io/n8n/issues/5530)) ([d47d008](https://github.com/n8n-io/n8n/commit/d47d0086cc2b0af5338598de1fc496b9d825f9a4))
+* Add Required path name mapping to multiple nodes ([#5369](https://github.com/n8n-io/n8n/issues/5369)) ([f1589d4](https://github.com/n8n-io/n8n/commit/f1589d4f0f9f7cc7beec12d9f6598f8286484989))
+* **core:** Add configurable execution history limit ([#5505](https://github.com/n8n-io/n8n/issues/5505)) ([db70293](https://github.com/n8n-io/n8n/commit/db702932f3f2b14a097e7f4364c06cbb4f001ebc))
+* **core:** Add execution runData recovery and status field ([#5112](https://github.com/n8n-io/n8n/issues/5112)) ([d143f3f](https://github.com/n8n-io/n8n/commit/d143f3f2ec9ce42cfa4db2b41dab019b7b42f379))
+* **core:** Add saml feature flag ([#5494](https://github.com/n8n-io/n8n/issues/5494)) ([3a9c257](https://github.com/n8n-io/n8n/commit/3a9c257f55a87890c7456601de13f182cec89fde))
+* Deprecate Read Binary File node ([#5490](https://github.com/n8n-io/n8n/issues/5490)) ([11b4671](https://github.com/n8n-io/n8n/commit/11b467137e7652c03c0578654b19dbc157b23220))
+* **editor:** Unify regular and trigger node creator panels ([#5315](https://github.com/n8n-io/n8n/issues/5315)) ([9a1e7b5](https://github.com/n8n-io/n8n/commit/9a1e7b52f7ce698f1492af15d0139fb015ba5d30))
+* Hide sensitive value in Auth Header Credentials and Auth Query Credentials ([#5534](https://github.com/n8n-io/n8n/issues/5534)) ([4a209e1](https://github.com/n8n-io/n8n/commit/4a209e1dd98ea4b43d0a4d9cd688615cd6d4d5dd))
+* Support feature flag evaluation server side ([#5511](https://github.com/n8n-io/n8n/issues/5511)) ([26a20ed](https://github.com/n8n-io/n8n/commit/26a20ed47e8f580504b80150d7550ecb9a49be0d))
+
+
+
+## [0.216.2](https://github.com/n8n-io/n8n/compare/n8n@0.216.1...n8n@0.216.2) (2023-02-23)
+
+
+### Bug Fixes
+
+* **core:** Do not remove empty output connections arrays in PurgeInvalidWorkflowConnections migration ([#5546](https://github.com/n8n-io/n8n/issues/5546)) ([ac86abe](https://github.com/n8n-io/n8n/commit/ac86abe2457d9f54fcd23ac0c8d5f39d565bdcdf))
+
+
+
+## [0.215.3](https://github.com/n8n-io/n8n/compare/n8n@0.215.2...n8n@0.215.3) (2023-02-23)
+
+
+### Bug Fixes
+
+* **core:** Do not allow arbitrary path traversal in BinaryDataManager ([#5523](https://github.com/n8n-io/n8n/issues/5523)) ([f7079da](https://github.com/n8n-io/n8n/commit/f7079daecd210a3a2a94e07c4782d15ee2a995e0))
+* **core:** Do not allow arbitrary path traversal in the credential-translation endpoint ([#5522](https://github.com/n8n-io/n8n/issues/5522)) ([14d2a88](https://github.com/n8n-io/n8n/commit/14d2a88120c966a6493c3a64a7a2925af0731b8f))
+* **core:** Do not explicitly bypass auth on urls containing `.svg` ([#5525](https://github.com/n8n-io/n8n/issues/5525)) ([0b568ee](https://github.com/n8n-io/n8n/commit/0b568ee5c3d3259aaa43f757ded5583bf9d1e221))
+* **core:** Do not remove empty output connections arrays in PurgeInvalidWorkflowConnections migration ([#5546](https://github.com/n8n-io/n8n/issues/5546)) ([a31cb05](https://github.com/n8n-io/n8n/commit/a31cb05fecb3c7fcb8f3def33206bb7676358561))
+* **core:** User update endpoint should only allow updating email, firstName, and lastName ([#5526](https://github.com/n8n-io/n8n/issues/5526)) ([d530e20](https://github.com/n8n-io/n8n/commit/d530e20669e90e12a2d2895ae31d0018a53b817a))
+
+
+
+## [0.214.4](https://github.com/n8n-io/n8n/compare/n8n@0.214.3...n8n@0.214.4) (2023-02-23)
+
+
+### Bug Fixes
+
+* **core:** Do not allow arbitrary path traversal in BinaryDataManager ([#5523](https://github.com/n8n-io/n8n/issues/5523)) ([df3f23e](https://github.com/n8n-io/n8n/commit/df3f23e2b8103a15632521e4ba6cf332693acf81))
+* **core:** Do not allow arbitrary path traversal in the credential-translation endpoint ([#5522](https://github.com/n8n-io/n8n/issues/5522)) ([397e42d](https://github.com/n8n-io/n8n/commit/397e42d63e80577a0b897873a1d2f19533e27da7))
+* **core:** Do not explicitly bypass auth on urls containing `.svg` ([#5525](https://github.com/n8n-io/n8n/issues/5525)) ([a8ca2b1](https://github.com/n8n-io/n8n/commit/a8ca2b1aea687256c7d7d3525a2c50659935d7b8))
+* **core:** Do not remove empty output connections arrays in PurgeInvalidWorkflowConnections migration ([#5546](https://github.com/n8n-io/n8n/issues/5546)) ([e6a554f](https://github.com/n8n-io/n8n/commit/e6a554f884d0d8d1e5c3890745986ecc179846d5))
+* **core:** User update endpoint should only allow updating email, firstName, and lastName ([#5526](https://github.com/n8n-io/n8n/issues/5526)) ([d622827](https://github.com/n8n-io/n8n/commit/d6228276a26d9dc1bf2b2c5452bc0644b6df0c63))
+
+
+
 ## [0.216.1](https://github.com/n8n-io/n8n/compare/n8n@0.216.0...n8n@0.216.1) (2023-02-21)
 
 
