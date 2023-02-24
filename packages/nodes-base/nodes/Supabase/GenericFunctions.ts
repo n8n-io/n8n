@@ -14,6 +14,7 @@ import type {
 	IDataObject,
 	INodeProperties,
 	IPairedItemData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
