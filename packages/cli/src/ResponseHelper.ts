@@ -190,7 +190,7 @@ export function send<T, R extends Request, S extends Response>(
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data, raw);
+			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
 				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {

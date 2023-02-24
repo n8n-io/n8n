@@ -815,9 +815,8 @@ export const schema = {
 		},
 		authenticationMethod: {
 			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
-			format: ['email', 'ldap', 'saml'] as const ,
+			format: ['email', 'ldap', 'saml'] as const,
 			default: 'email',
-			env: 'N8N_AUTHENTICATION_METHOD',
 		},
 	},
 
@@ -1026,7 +1025,7 @@ export const schema = {
 		saml: {
 			enabled: {
 				format: Boolean,
-				default: false,
+				default: true,
 				doc: 'Whether to enable SAML SSO.',
 			},
 		},

@@ -146,9 +146,9 @@ import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { isSamlLicensed } from './sso/saml/samlHelpers';
-import { samlController } from './sso/saml/routes/saml.controller.ee';
-import { samlControllerPublic } from './sso/saml/routes/saml.controller-public.ee';
+import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
+import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 
 const exec = promisify(callbackExec);
 
@@ -507,9 +507,7 @@ class Server extends AbstractServer {
 
 		// public SAML endpoints
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
-
-		// licensed SAML endpoints
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlController);
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
 
 		// ----------------------------------------
 

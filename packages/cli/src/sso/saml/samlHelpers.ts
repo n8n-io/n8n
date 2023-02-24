@@ -30,7 +30,7 @@ export function generatePassword(): string {
 	const length = 18;
 	const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 	const charsetNoNumbers = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-	const randomNumber = Math.floor(Math.random());
+	const randomNumber = Math.floor(Math.random() * 10);
 	const randomUpper = charset.charAt(Math.floor(Math.random() * charsetNoNumbers.length));
 	const randomNumberPosition = Math.floor(Math.random() * length);
 	const randomUpperPosition = Math.floor(Math.random() * length);
