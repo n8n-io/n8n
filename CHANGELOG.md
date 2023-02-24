@@ -1,3 +1,12 @@
+## [0.217.1](https://github.com/n8n-io/n8n/compare/n8n@0.217.0...n8n@0.217.1) (2023-02-24)
+
+
+### Bug Fixes
+
+* Prevent executions from displaying as running forever ([#5563](https://github.com/n8n-io/n8n/issues/5563)) ([b30db10](https://github.com/n8n-io/n8n/commit/b30db10d898fa791d99d13192ef411cace4f7c05))
+
+
+
 # [0.217.0](https://github.com/n8n-io/n8n/compare/n8n@0.216.1...n8n@0.217.0) (2023-02-23)
 
 
