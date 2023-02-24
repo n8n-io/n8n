@@ -52,7 +52,7 @@ import { deepCopy, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { Component } from 'vue';

@@ -5,7 +5,7 @@ import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 /**
  * Make an API request to Spotify

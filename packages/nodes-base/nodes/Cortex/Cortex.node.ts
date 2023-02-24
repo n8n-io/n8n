@@ -18,7 +18,7 @@ import { responderFields, respondersOperations } from './ResponderDescription';
 
 import { jobFields, jobOperations } from './JobDescription';
 
-import { upperFirst } from 'lodash';
+import upperFirst from 'lodash.upperfirst';
 
 import type { IJob } from './AnalyzerInterface';
 
