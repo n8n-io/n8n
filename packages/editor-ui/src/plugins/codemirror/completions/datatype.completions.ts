@@ -378,9 +378,9 @@ const createLuxonAutocompleteOption = (
 	};
 
 	let doc: DocMetadata | undefined;
-	if (docDefinition.properties && Object.hasOwn(docDefinition.properties, name)) {
+	if (docDefinition.properties && docDefinition.properties.hasOwnProperty(name)) {
 		doc = docDefinition.properties[name].doc;
-	} else if (Object.hasOwn(docDefinition.functions, name)) {
+	} else if (docDefinition.functions.hasOwnProperty(name)) {
 		doc = docDefinition.functions[name].doc;
 	} else {
 		// Use inferred/default values if docs are still not updated
