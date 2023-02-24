@@ -75,6 +75,7 @@ jobs:
           context: .
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
+          provenance: false
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
           no-cache: true
