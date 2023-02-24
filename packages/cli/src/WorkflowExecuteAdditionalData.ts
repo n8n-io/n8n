@@ -44,7 +44,7 @@ import {
 
 import pick from 'lodash.pick';
 import type { FindOptionsWhere } from 'typeorm';
-import { LessThanOrEqual } from 'typeorm';
+import { LessThanOrEqual, In } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -231,19 +231,23 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 
 		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
-			const executions = await Db.collections.Execution.find({
-				select: ['id'],
-				where: toPrune,
-			});
-			await Db.collections.Execution.remove(executions, { chunk: 100 });
 			setTimeout(() => {
 				throttling = false;
 			}, timeout * 1000);
-			// Mark binary data for deletion for all executions
-			if (!isBinaryModeDefaultMode)
-				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-					executions.map(({ id }) => id),
-				);
+			let executionIds: Array<IExecutionFlattedDb['id']>;
+			do {
+				executionIds = (
+					await Db.collections.Execution.find({
+						select: ['id'],
+						where: toPrune,
+						take: 100,
+					})
+				).map(({ id }) => id);
+				await Db.collections.Execution.delete({ id: In(executionIds) });
+				// Mark binary data for deletion for all executions
+				if (!isBinaryModeDefaultMode)
+					await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(executionIds);
+			} while (executionIds.length > 0);
 		} catch (error) {
 			ErrorReporter.error(error);
 			throttling = false;
