@@ -231,13 +231,11 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 
 		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
-			const executions = isBinaryModeDefaultMode
-				? []
-				: await Db.collections.Execution.find({
-						select: ['id'],
-						where: toPrune,
-				  });
-			await Db.collections.Execution.delete(toPrune);
+			const executions = await Db.collections.Execution.find({
+				select: ['id'],
+				where: toPrune,
+			});
+			await Db.collections.Execution.remove(executions, { chunk: 100 });
 			setTimeout(() => {
 				throttling = false;
 			}, timeout * 1000);
