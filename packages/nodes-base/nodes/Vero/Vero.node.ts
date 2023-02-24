@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { validateJSON, veroApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
 import { eventFields, eventOperations } from './EventDescripion';

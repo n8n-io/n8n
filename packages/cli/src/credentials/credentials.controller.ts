@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
-import { deepCopy, INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import type { INodeCredentialTestResult } from 'n8n-workflow';
+import { deepCopy, LoggerProxy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
 import { getLogger } from '@/Logger';
@@ -13,6 +13,8 @@ import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialRequest } from '@/requests';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export const credentialsController = express.Router();
 
@@ -129,7 +131,7 @@ credentialsController.post(
 		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
 		const credential = await CredentialsService.save(newCredential, encryptedData, req.user);
 
-		void InternalHooksManager.getInstance().onUserCreatedCredentials({
+		void Container.get(InternalHooks).onUserCreatedCredentials({
 			user: req.user,
 			credential_name: newCredential.name,
 			credential_type: credential.type,

@@ -12,6 +12,7 @@ interface IResult {
 	};
 	executions: IExecutionResult[];
 }
+
 interface IExecutionResult {
 	workflowId: string;
 	workflowName: string;
@@ -45,22 +46,9 @@ interface INodeSpecialCase {
 	keepOnlyProperties?: string[];
 }
 
-type ExecutionStatus = 'success' | 'error' | 'warning' | 'running';
-
 declare module 'json-diff' {
 	interface IDiffOptions {
 		keysOnly?: boolean;
 	}
 	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
 }
-
-type SmtpConfig = {
-	host: string;
-	port: number;
-	secure: boolean;
-	auth: {
-		user: string;
-		pass: string;
-	};
-	sender: string;
-};

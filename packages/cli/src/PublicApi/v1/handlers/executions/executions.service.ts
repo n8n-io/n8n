@@ -1,9 +1,10 @@
 import { parse } from 'flatted';
-import { In, Not, Raw, LessThan, IsNull, FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
 
 import * as Db from '@/Db';
 import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';
-import type { ExecutionStatus } from '@/PublicApi/types';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | null,

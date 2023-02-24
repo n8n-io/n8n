@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	billFields,
@@ -48,9 +48,9 @@ import {
 
 import { capitalCase } from 'change-case';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
-import { QuickBooksOAuth2Credentials, TransactionFields } from './types';
+import type { QuickBooksOAuth2Credentials, TransactionFields } from './types';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {

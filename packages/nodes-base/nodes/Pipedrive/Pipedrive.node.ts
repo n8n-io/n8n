@@ -1,15 +1,15 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { ICustomProperties } from './GenericFunctions';
 import {
-	ICustomProperties,
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
 	pipedriveEncodeCustomProperties,
@@ -4350,7 +4350,7 @@ export class Pipedrive implements INodeType {
 						if (item.binary[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`Item has no binary property called "${binaryPropertyName}"`,
 								{ itemIndex: i },
 							);
 						}

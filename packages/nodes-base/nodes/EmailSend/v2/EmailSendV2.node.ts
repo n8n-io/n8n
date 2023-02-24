@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -54,6 +54,7 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Send',
 					value: 'send',
+					action: 'Send an Email',
 				},
 			],
 		},

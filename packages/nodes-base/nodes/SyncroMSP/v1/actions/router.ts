@@ -1,13 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData, NodeApiError } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import * as customer from './customer';
 import * as ticket from './ticket';
 import * as contact from './contact';
 import * as rmm from './rmm';
 
-import { SyncroMsp } from './Interfaces';
+import type { SyncroMsp } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();

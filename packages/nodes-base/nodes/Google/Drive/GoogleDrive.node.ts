@@ -1,12 +1,13 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -2447,7 +2448,7 @@ export class GoogleDrive implements INodeType {
 							if (binary === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}

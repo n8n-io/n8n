@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	attendeeFields,
@@ -36,7 +36,8 @@ import {
 	loadWebinarSessions,
 } from './GenericFunctions';
 
-import { isEmpty, omit } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import moment from 'moment-timezone';
 

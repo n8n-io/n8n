@@ -1,20 +1,20 @@
-import { get, set, unset } from 'lodash';
+import get from 'lodash.get';
+import set from 'lodash.set';
+import unset from 'lodash.unset';
 import prettyBytes from 'pretty-bytes';
 
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
-	NodeOperationError,
-	fileTypeFromMimeType,
 } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError, fileTypeFromMimeType } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
 iconv.encodingExists('utf8');

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import express, { Router } from 'express';
+import type { Router } from 'express';
+import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -12,8 +13,9 @@ import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 async function createApiRouter(
 	version: string,
@@ -47,6 +49,10 @@ async function createApiRouter(
 			}),
 		);
 	}
+
+	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (req, res) => {
+		res.sendFile(openApiSpecPath);
+	});
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
@@ -95,7 +101,7 @@ async function createApiRouter(
 
 						if (!user) return false;
 
-						void InternalHooksManager.getInstance().onUserInvokedApi({
+						void Container.get(InternalHooks).onUserInvokedApi({
 							user_id: user.id,
 							path: req.path,
 							method: req.method,

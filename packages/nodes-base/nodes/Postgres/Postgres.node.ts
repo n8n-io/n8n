@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -7,12 +7,12 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
-import { pgInsertV2, pgQueryV2, pgUpdate } from './Postgres.node.functions';
+import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './Postgres.node.functions';
 
 export class Postgres implements INodeType {
 	description: INodeTypeDescription = {
@@ -80,18 +80,6 @@ export class Postgres implements INodeType {
 				required: true,
 				description:
 					'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
-			},
-			{
-				displayName:
-					'Due to the behavior of the Multiple Queries mode, if you want to use the PairedItem feature, you need to use either the independent or the transaction mode under Additional Fields.',
-				name: 'pairedItemsNotice',
-				type: 'notice',
-				displayOptions: {
-					show: {
-						operation: ['executeQuery'],
-					},
-				},
-				default: '',
 			},
 			// ----------------------------------
 			//         insert
@@ -205,6 +193,7 @@ export class Postgres implements INodeType {
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['insert', 'update'],
@@ -401,7 +390,7 @@ export class Postgres implements INodeType {
 				this.continueOnFail(),
 			);
 
-			returnItems = this.helpers.returnJsonArray(updateItems);
+			returnItems = wrapData(updateItems);
 		} else {
 			pgp.end();
 			throw new NodeOperationError(

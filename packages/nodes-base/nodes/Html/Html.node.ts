@@ -1,12 +1,12 @@
 import cheerio from 'cheerio';
-import {
+import type {
 	INodeExecutionData,
 	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IDataObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { placeholder } from './placeholder';
 import { getResolvables, getValue } from './utils';
 import type { IValueData } from './types';

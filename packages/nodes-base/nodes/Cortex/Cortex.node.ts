@@ -1,26 +1,26 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
 
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { responderFields, respondersOperations } from './ResponderDescription';
 
 import { jobFields, jobOperations } from './JobDescription';
 
-import { upperFirst } from 'lodash';
+import upperFirst from 'lodash.upperfirst';
 
-import { IJob } from './AnalyzerInterface';
+import type { IJob } from './AnalyzerInterface';
 
 import { createHash } from 'crypto';
 
@@ -206,7 +206,7 @@ export class Cortex implements INodeType {
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -352,7 +352,7 @@ export class Cortex implements INodeType {
 												if (item.binary[binaryPropertyName] === undefined) {
 													throw new NodeOperationError(
 														this.getNode(),
-														`No binary data property '${binaryPropertyName}' does not exists on item!`,
+														`Item has no binary property called "${binaryPropertyName}"`,
 														{ itemIndex: i },
 													);
 												}
@@ -386,7 +386,7 @@ export class Cortex implements INodeType {
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 											{ itemIndex: i },
 										);
 									}

@@ -1,16 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 import moment from 'moment-timezone';
 

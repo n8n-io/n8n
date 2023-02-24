@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,7 +23,8 @@ import {
 
 import { lemlistApiRequest, lemlistApiRequestAllItems } from './GenericFunctions';
 
-import { isEmpty, omit } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 export class Lemlist implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/dot-notation */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,8 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { alertFields, alertOperations } from './descriptions/AlertDescription';
 
@@ -22,7 +22,8 @@ import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
 import { logFields, logOperations } from './descriptions/LogDescription';
 
-import { And, Between, ContainsString, Eq, Id, In, IQueryObject, Parent } from './QueryFunctions';
+import type { IQueryObject } from './QueryFunctions';
+import { And, Between, ContainsString, Eq, Id, In, Parent } from './QueryFunctions';
 
 import {
 	buildCustomFieldSearch,
@@ -35,7 +36,7 @@ import {
 	theHiveApiRequest,
 } from './GenericFunctions';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
@@ -312,7 +313,7 @@ export class TheHive implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -441,7 +442,7 @@ export class TheHive implements INodeType {
 										if (item.binary[binaryPropertyName] === undefined) {
 											throw new NodeOperationError(
 												this.getNode(),
-												`No binary data property '${binaryPropertyName}' does not exists on item!`,
+												`Item has no binary property called "${binaryPropertyName}"`,
 												{ itemIndex: i },
 											);
 										}
@@ -718,7 +719,7 @@ export class TheHive implements INodeType {
 										if (item.binary[binaryPropertyName] === undefined) {
 											throw new NodeOperationError(
 												this.getNode(),
-												`No binary data property '${binaryPropertyName}' does not exists on item!`,
+												`Item has no binary property called "${binaryPropertyName}"`,
 												{ itemIndex: i },
 											);
 										}
@@ -913,7 +914,7 @@ export class TheHive implements INodeType {
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property '${binaryPropertyName}' does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -1769,7 +1770,7 @@ export class TheHive implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property '${binaryPropertyName}' does not exists on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -1953,19 +1954,23 @@ export class TheHive implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

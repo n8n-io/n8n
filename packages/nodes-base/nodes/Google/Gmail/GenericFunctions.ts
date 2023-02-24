@@ -1,18 +1,17 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { simpleParser } from 'mailparser';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -20,7 +19,7 @@ import jwt from 'jsonwebtoken';
 
 import { DateTime } from 'luxon';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 export interface IEmail {
 	from?: string;

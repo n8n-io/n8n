@@ -4,17 +4,16 @@ import { createHash } from 'crypto';
 
 import { Builder } from 'xml2js';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from '../Aws/S3/BucketDescription';
 
@@ -186,7 +185,11 @@ export class S3 implements INodeType {
 							);
 							responseData = responseData.slice(0, qs.limit);
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -843,7 +846,7 @@ export class S3 implements INodeType {
 							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}

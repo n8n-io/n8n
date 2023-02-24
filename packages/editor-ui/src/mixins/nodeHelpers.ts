@@ -34,7 +34,7 @@ import {
 
 import { restApi } from '@/mixins/restApi';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { isObjectLiteral } from '@/utils';
@@ -505,7 +505,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				this.updateNodeCredentialIssues(node);
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(
-						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this),
+						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
 					);
 				}
 			}

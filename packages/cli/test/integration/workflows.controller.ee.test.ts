@@ -24,11 +24,7 @@ let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['workflows'],
-		applyAuth: true,
-	});
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['workflows'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
@@ -37,9 +33,6 @@ beforeAll(async () => {
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
@@ -158,7 +151,7 @@ describe('PUT /workflows/:id', () => {
 });
 
 describe('GET /workflows', () => {
-	test('should return workflows with ownership, sharing and credential usage details', async () => {
+	test('should return workflows without nodes, sharing and credential usage details', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -195,32 +188,11 @@ describe('GET /workflows', () => {
 		expect(response.statusCode).toBe(200);
 		expect(fetchedWorkflow.ownedBy).toMatchObject({
 			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
 		});
 
-		expect(fetchedWorkflow.sharedWith).toHaveLength(1);
-
-		const [sharee] = fetchedWorkflow.sharedWith;
-
-		expect(sharee).toMatchObject({
-			id: member.id,
-			email: member.email,
-			firstName: member.firstName,
-			lastName: member.lastName,
-		});
-
-		expect(fetchedWorkflow.usedCredentials).toHaveLength(1);
-
-		const [usedCredential] = fetchedWorkflow.usedCredentials;
-
-		expect(usedCredential).toMatchObject({
-			id: savedCredential.id,
-			name: savedCredential.name,
-			type: savedCredential.type,
-			currentUserHasAccess: true,
-		});
+		expect(fetchedWorkflow.sharedWith).not.toBeDefined()
+		expect(fetchedWorkflow.usedCredentials).not.toBeDefined()
+		expect(fetchedWorkflow.nodes).not.toBeDefined()
 	});
 });
 

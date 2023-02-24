@@ -1,10 +1,11 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export async function mondayComApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

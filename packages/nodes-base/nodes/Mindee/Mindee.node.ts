@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { cleanData, cleanDataPreviousApiVersions, mindeeApiRequest } from './GenericFunctions';
 
@@ -178,7 +178,7 @@ export class Mindee implements INodeType {
 						if (binaryData === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`Item has no binary property called "${binaryPropertyName}"`,
 							);
 						}
 						if (version === 1) {
@@ -249,7 +249,7 @@ export class Mindee implements INodeType {
 						if (binaryData === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`Item has no binary property called "${binaryPropertyName}"`,
 							);
 						}
 						if (version === 1) {

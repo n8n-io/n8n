@@ -1,28 +1,32 @@
 <template>
-	<div ref="root" class="ph-no-capture" @keydown.stop @keydown.esc="onClose"></div>
+	<div ref="root" class="ph-no-capture" @keydown.stop></div>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
+import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
+import { completionManager } from '@/mixins/completionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
-
-import type { IVariableItemSelected } from '@/Interface';
 import { forceParse } from '@/utils/forceParse';
 import { autocompletion } from '@codemirror/autocomplete';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+import type { IVariableItemSelected } from '@/Interface';
+
+export default mixins(expressionManager, completionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
 	props: {
 		value: {
+			type: String,
+		},
+		path: {
 			type: String,
 		},
 		isReadOnly: {
@@ -38,6 +42,20 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		const extensions = [
 			inputTheme(),
 			autocompletion(),
+			Prec.highest(
+				keymap.of([
+					{
+						any: (_: EditorView, event: KeyboardEvent) => {
+							if (event.key === 'Escape') {
+								event.stopPropagation();
+								this.$emit('close');
+							}
+
+							return false;
+						},
+					},
+				]),
+			),
 			n8nLang(),
 			history(),
 			expressionInputHandler(),
@@ -50,14 +68,17 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
-				setTimeout(() => this.editor?.focus()); // prevent blur on paste
-
 				setTimeout(() => {
-					this.$emit('change', {
-						value: this.unresolvedExpression,
-						segments: this.displayableSegments,
-					});
-				}, this.evaluationDelay);
+					this.editor?.focus(); // prevent blur on paste
+					try {
+						this.trackCompletion(viewUpdate, this.path);
+					} catch {}
+				});
+
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 
@@ -86,9 +107,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		this.editor?.destroy();
 	},
 	methods: {
-		onClose() {
-			this.$emit('close');
-		},
 		itemSelected({ variable }: IVariableItemSelected) {
 			if (!this.editor || this.isReadOnly) return;
 

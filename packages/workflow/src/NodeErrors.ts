@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
-import { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
+import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -83,6 +83,19 @@ export abstract class ExecutionBaseError extends Error {
 		} else if (cause && !(cause instanceof Error)) {
 			this.cause = cause;
 		}
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	toJSON?(): any {
+		return {
+			message: this.message,
+			lineNumber: this.lineNumber,
+			timestamp: this.timestamp,
+			name: this.name,
+			description: this.description,
+			context: this.context,
+			cause: this.cause,
+		};
 	}
 }
 

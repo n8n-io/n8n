@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { citrixADCApiRequest } from './GenericFunctions';
 
@@ -83,7 +83,7 @@ export class CitrixAdc implements INodeType {
 						if (item.binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`The binary data property "${binaryProperty}" does not exists on item!`,
 							);
 						}
 

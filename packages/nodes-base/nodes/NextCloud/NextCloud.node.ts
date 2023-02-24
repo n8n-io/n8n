@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URLSearchParams } from 'url';
 
@@ -916,7 +915,7 @@ export class NextCloud implements INodeType {
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}

@@ -1,19 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	getOAuth2AdditionalParameters,
-	IAuthDataSanitizeKeys,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -789,7 +787,7 @@ export class HttpRequestV2 implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex },
 									);
 								}
@@ -827,7 +825,7 @@ export class HttpRequestV2 implements INodeType {
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 										);
 									}
 

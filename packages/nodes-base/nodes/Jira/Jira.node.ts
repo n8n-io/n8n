@@ -1,8 +1,8 @@
-import { mergeWith } from 'lodash';
+import mergeWith from 'lodash.mergewith';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -12,8 +12,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	filterSortSearchListItems,
@@ -29,7 +29,7 @@ import { issueCommentFields, issueCommentOperations } from './IssueCommentDescri
 
 import { issueFields, issueOperations } from './IssueDescription';
 
-import {
+import type {
 	IFields,
 	IIssue,
 	INotificationRecipients,
@@ -1069,7 +1069,7 @@ export class Jira implements INodeType {
 					if (binaryData === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property "${binaryPropertyName}" does not exists on item!`,
+							`Item has no binary property called "${binaryPropertyName}"`,
 							{ itemIndex: i },
 						);
 					}

@@ -1,14 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	mapEndpoint,
@@ -612,7 +612,7 @@ export class ServiceNow implements INodeType {
 						} else {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${inputDataFieldName}" does not exists on item!`,
+								`Item has no binary property called "${inputDataFieldName}"`,
 								{ itemIndex: i },
 							);
 						}

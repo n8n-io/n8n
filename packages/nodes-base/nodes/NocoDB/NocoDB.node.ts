@@ -1,15 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
@@ -274,7 +273,7 @@ export class NocoDB implements INodeType {
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary property ${binaryPropertyName} does not exist on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -584,7 +583,7 @@ export class NocoDB implements INodeType {
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary property ${binaryPropertyName} does not exist on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex: i },
 									);
 								}

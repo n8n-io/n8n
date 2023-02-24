@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -697,7 +697,7 @@ export class TodoistV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const service = new TodoistService();
 		let responseData;
@@ -712,23 +712,40 @@ export class TodoistV2 implements INodeType {
 						i,
 					);
 				}
-				if (Array.isArray(responseData?.data)) {
-					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
+
+				if (responseData !== undefined && Array.isArray(responseData?.data)) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else {
 					if (responseData?.hasOwnProperty('success')) {
-						returnData.push({ success: responseData.success });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: responseData.success }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else {
-						returnData.push(responseData?.data as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData?.data as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

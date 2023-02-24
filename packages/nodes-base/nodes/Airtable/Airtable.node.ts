@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
@@ -186,6 +186,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						addAllFields: [false],
@@ -264,6 +265,7 @@ export class Airtable implements INodeType {
 				name: 'downloadFieldNames',
 				type: 'string',
 				required: true,
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['list'],
@@ -291,6 +293,7 @@ export class Airtable implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'single',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Field',
@@ -419,6 +422,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						updateAllFields: [false],
@@ -461,6 +465,7 @@ export class Airtable implements INodeType {
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						displayOptions: {
 							show: {
 								'/operation': ['update'],

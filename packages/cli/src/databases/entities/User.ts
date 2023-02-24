@@ -12,7 +12,7 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser } from 'n8n-workflow';
-import type { Role } from './Role';
+import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
@@ -111,6 +111,9 @@ export class User extends AbstractEntity implements IUser {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null;
+		this.isPending =
+			this.globalRole?.name === 'owner' && this.globalRole.scope === 'global'
+				? false
+				: this.password === null;
 	}
 }

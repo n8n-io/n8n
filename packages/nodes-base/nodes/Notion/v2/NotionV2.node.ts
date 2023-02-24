@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,10 +8,10 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import type { SortData } from '../GenericFunctions';
 import {
 	downloadFiles,
 	extractDatabaseId,
@@ -26,7 +26,6 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-	SortData,
 	validateJSON,
 } from '../GenericFunctions';
 
@@ -464,6 +463,16 @@ export class NotionV2 implements INodeType {
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { external: { url: options.icon } };
+						} else {
+							body.icon = { emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple) {
 						responseData = simplifyObjects(responseData);
@@ -664,7 +673,6 @@ export class NotionV2 implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', i) as boolean;
-
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
@@ -676,6 +684,16 @@ export class NotionV2 implements INodeType {
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { external: { url: options.icon } };
+						} else {
+							body.icon = { emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple) {
 						responseData = simplifyObjects(responseData, download);

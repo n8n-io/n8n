@@ -1,24 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request-promise-native';
+import type { OptionsWithUri } from 'request-promise-native';
 
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
-	IAuthDataSanitizeKeys,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -1347,7 +1344,17 @@ export class HttpRequestV3 implements INodeType {
 				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
-					response.body = jsonParse(Buffer.from(response.body).toString());
+					const neverError = this.getNodeParameter(
+						'options.response.response.neverError',
+						0,
+						false,
+					) as boolean;
+					const data = Buffer.from(response.body).toString();
+					response.body = jsonParse(data, {
+						...(neverError
+							? { fallbackValue: {} }
+							: { errorMessage: 'Invalid JSON in response body' }),
+					});
 				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {

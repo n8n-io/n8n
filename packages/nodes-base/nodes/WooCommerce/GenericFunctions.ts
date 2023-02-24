@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,15 +8,15 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
-import { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
+import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
 import { createHash } from 'crypto';
 
 import { snakeCase } from 'change-case';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export async function woocommerceApiRequest(
 	this:

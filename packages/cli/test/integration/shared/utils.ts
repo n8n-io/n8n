@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
@@ -22,23 +23,18 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import { mock } from 'jest-mock-extended';
+import { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { NodeTypes } from '@/NodeTypes';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
-import { meNamespace as meEndpoints } from '@/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '@/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '@/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '@/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '@/UserManagement/routes/passwordReset';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
@@ -47,8 +43,8 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
-import { issueJWT } from '@/UserManagement/auth/jwt';
-import { addRoutes as authMiddleware } from '@/UserManagement/routes';
+import { issueJWT } from '@/auth/jwt';
+import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -66,38 +62,66 @@ import type {
 } from './types';
 import { licenseController } from '@/license/license.controller';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
+import { setupAuthMiddlewares } from '@/middlewares';
+import * as testDb from '../shared/testDb';
 
 import { v4 as uuid } from 'uuid';
-import { handleLdapInit } from '../../../src/Ldap/helpers';
+import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
+import { InternalHooks } from '@/InternalHooks';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { PostHogClient } from '@/posthog';
+
+export const mockInstance = <T>(
+	ctor: new (...args: any[]) => T,
+	data: DeepPartial<T> | undefined = undefined,
+) => {
+	const instance = mock<T>(data);
+	Container.set(ctor, instance);
+	return instance;
+};
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
 	credentialTypes: {} as ICredentialTypes,
 };
-
-const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
-CredentialTypes(loadNodesAndCredentials);
+Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
  */
 export async function initTestServer({
-	applyAuth,
+	applyAuth = true,
 	endpointGroups,
 	enablePublicAPI = false,
 }: {
-	applyAuth: boolean;
+	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enablePublicAPI?: boolean;
 }) {
+	await testDb.init();
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
 		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
 		externalHooks: {},
 	};
+
+	const logger = getLogger();
+	LoggerProxy.init(logger);
+
+	// Mock all telemetry.
+	mockInstance(InternalHooks);
+	mockInstance(PostHogClient);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -106,7 +130,12 @@ export async function initTestServer({
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	if (applyAuth) {
-		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
+		setupAuthMiddlewares(
+			testServer.app,
+			AUTHLESS_ENDPOINTS,
+			REST_PATH_SEGMENT,
+			Db.collections.User,
+		);
 	}
 
 	if (!endpointGroups) return testServer.app;
@@ -117,7 +146,7 @@ export async function initTestServer({
 		endpointGroups.includes('users') ||
 		endpointGroups.includes('passwordReset')
 	) {
-		testServer.externalHooks = ExternalHooks();
+		testServer.externalHooks = Container.get(ExternalHooks);
 	}
 
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
@@ -147,16 +176,62 @@ export async function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const map: Record<string, (this: N8nApp) => void> = {
-			me: meEndpoints,
-			users: usersEndpoints,
-			auth: authEndpoints,
-			owner: ownerEndpoints,
-			passwordReset: passwordResetEndpoints,
-		};
+		const externalHooks = Container.get(ExternalHooks);
+		const internalHooks = Container.get(InternalHooks);
+		const mailer = UserManagementMailer.getInstance();
+		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
-			map[group].apply(testServer);
+			switch (group) {
+				case 'auth':
+					registerController(
+						testServer.app,
+						config,
+						new AuthController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'me':
+					registerController(
+						testServer.app,
+						config,
+						new MeController({ logger, externalHooks, internalHooks, repositories }),
+					);
+					break;
+				case 'passwordReset':
+					registerController(
+						testServer.app,
+						config,
+						new PasswordResetController({
+							config,
+							logger,
+							externalHooks,
+							internalHooks,
+							repositories,
+						}),
+					);
+					break;
+				case 'owner':
+					registerController(
+						testServer.app,
+						config,
+						new OwnerController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'users':
+					registerController(
+						testServer.app,
+						config,
+						new UsersController({
+							config,
+							mailer,
+							externalHooks,
+							internalHooks,
+							repositories,
+							activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
+							logger,
+						}),
+					);
+			}
 		}
 	}
 
@@ -164,19 +239,12 @@ export async function initTestServer({
 }
 
 /**
- * Pre-requisite: Mock the telemetry module before calling.
- */
-export function initTestTelemetry() {
-	void InternalHooksManager.init('test-instance-id', mockNodeTypes);
-}
-
-/**
  * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
  * and `functionEndpoints` (legacy, namespaced inside a function).
  */
-const classifyEndpointGroups = (endpointGroups: string[]) => {
-	const routerEndpoints: string[] = [];
-	const functionEndpoints: string[] = [];
+const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
+	const routerEndpoints: EndpointGroup[] = [];
+	const functionEndpoints: EndpointGroup[] = [];
 
 	const ROUTER_GROUP = [
 		'credentials',
@@ -202,8 +270,8 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.ActiveWorkflowRunner> {
-	const workflowRunner = ActiveWorkflowRunner.getInstance();
+export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	workflowRunner.init();
 	return workflowRunner;
 }
@@ -244,7 +312,7 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	loadNodesAndCredentials.loaded.credentials = {
+	Container.get(LoadNodesAndCredentials).loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
@@ -263,7 +331,7 @@ export async function initLdapManager(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	loadNodesAndCredentials.loaded.nodes = {
+	Container.get(LoadNodesAndCredentials).loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {
@@ -557,13 +625,6 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-}
-
-/**
- * Initialize a logger for test runs.
- */
-export function initTestLogger() {
-	LoggerProxy.init(getLogger());
 }
 
 /**

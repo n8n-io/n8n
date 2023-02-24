@@ -1,5 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { checkInput, checkMatchFieldsInput, findMatches } from './GenericFunctions';
 
 export class CompareDatasets implements INodeType {
@@ -8,7 +13,7 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -47,6 +52,7 @@ export class CompareDatasets implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Input B Field',
@@ -56,6 +62,7 @@ export class CompareDatasets implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -86,6 +93,19 @@ export class CompareDatasets implements INodeType {
 						description: 'Output contains all data (but structure more complex)',
 					},
 				],
+			},
+			{
+				displayName: 'Fuzzy Compare',
+				name: 'fuzzyCompare',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 			},
 			{
 				displayName: 'Prefer',
@@ -121,6 +141,7 @@ export class CompareDatasets implements INodeType {
 						resolve: ['mix'],
 					},
 				},
+				requiresDataPath: 'multiple',
 			},
 			{
 				displayName: 'Options',
@@ -138,6 +159,7 @@ export class CompareDatasets implements INodeType {
 						hint: 'Enter the field names as text, separated by commas',
 						description:
 							"Fields that shouldn't be included when checking whether two items are the same",
+						requiresDataPath: 'multiple',
 					},
 					{
 						displayName: 'Fuzzy Compare',
@@ -146,6 +168,11 @@ export class CompareDatasets implements INodeType {
 						default: false,
 						description:
 							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+						displayOptions: {
+							hide: {
+								'@version': [2],
+							},
+						},
 					},
 					{
 						displayName: 'Disable Dot Notation',
@@ -184,6 +211,12 @@ export class CompareDatasets implements INodeType {
 		);
 
 		const options = this.getNodeParameter('options', 0, {});
+
+		options.nodeVersion = this.getNode().typeVersion;
+
+		if (options.nodeVersion === 2) {
+			options.fuzzyCompare = this.getNodeParameter('fuzzyCompare', 0, false) as boolean;
+		}
 
 		const input1 = checkInput(
 			this.getInputData(0),

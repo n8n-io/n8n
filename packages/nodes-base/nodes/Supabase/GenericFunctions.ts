@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,13 +8,14 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
-	NodeApiError,
+	IPairedItemData,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function supabaseApiRequest(
 	this:
@@ -321,4 +322,12 @@ export async function validateCredentials(
 	};
 
 	return this.helpers.request(options);
+}
+
+export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {
+	return Array.from(iterable, (_, i) => i).map((index) => {
+		return {
+			item: index,
+		};
+	});
 }

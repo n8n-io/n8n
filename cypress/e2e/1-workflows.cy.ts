@@ -11,6 +11,8 @@ const lastName = randLastName();
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
+const multipleWorkflowsCount = 5;
+
 describe('Workflows', () => {
 	before(() => {
 		cy.resetAll();
@@ -38,31 +40,39 @@ describe('Workflows', () => {
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-2');
 	});
 
-	it('should create a new workflow using add workflow button', () => {
+	it('should create multiple new workflows using add workflow button', () => {
 		WorkflowsPage.getters.newWorkflowButtonCard().should('not.exist');
-		WorkflowsPage.getters.createWorkflowButton().click();
 
-		cy.createFixtureWorkflow('Test_workflow_2.json', `Add Workflow Button Workflow ${uuid()}`);
+		[...Array(multipleWorkflowsCount).keys()].forEach(() => {
+			cy.visit(WorkflowsPage.url);
+			WorkflowsPage.getters.createWorkflowButton().click();
 
-		WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-1');
-		WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-2');
+			cy.createFixtureWorkflow('Test_workflow_2.json', `My New Workflow ${uuid()}`);
+
+			WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-1');
+			WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-2');
+		});
 	});
 
 	it('should search for a workflow', () => {
+		// One Result
 		WorkflowsPage.getters.searchBar().type('Empty State Card Workflow');
-
 		WorkflowsPage.getters.workflowCards().should('have.length', 1);
 		WorkflowsPage.getters
 			.workflowCard('Empty State Card Workflow')
 			.should('contain.text', 'Empty State Card Workflow');
 
-		WorkflowsPage.getters.searchBar().clear().type('Add Workflow Button Workflow');
+		// Multiple Results
+		WorkflowsPage.getters.searchBar().clear().type('My New Workflow');
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount);
+		WorkflowsPage.getters.workflowCard('My New Workflow').should('contain.text', 'My New Workflow');
 
-		WorkflowsPage.getters.workflowCards().should('have.length', 1);
-		WorkflowsPage.getters
-			.workflowCard('Add Workflow Button Workflow')
-			.should('contain.text', 'Add Workflow Button Workflow');
+		// All Results
+		WorkflowsPage.getters.searchBar().clear().type('Workflow');
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
+		WorkflowsPage.getters.workflowCard('Workflow').should('contain.text', 'Workflow');
 
+		// No Results
 		WorkflowsPage.getters.searchBar().clear().type('Some non-existent workflow');
 		WorkflowsPage.getters.workflowCards().should('not.exist');
 
@@ -70,7 +80,7 @@ describe('Workflows', () => {
 	});
 
 	it('should delete all the workflows', () => {
-		WorkflowsPage.getters.workflowCards().should('have.length', 2);
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
 
 		WorkflowsPage.getters.workflowCards().each(($el) => {
 			const workflowName = $el.find('[data-test-id="workflow-card-name"]').text();

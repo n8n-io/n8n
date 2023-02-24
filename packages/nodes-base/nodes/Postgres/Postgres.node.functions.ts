@@ -1,7 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
-import pg from 'pg-promise/typescript/pg-subset';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import type pgPromise from 'pg-promise';
+import type pg from 'pg-promise/typescript/pg-subset';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -69,6 +69,15 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
 			.map((returnedField) => pgp.as.name(returnedField.trim()))
 			.join(', ')
 	);
+}
+
+export function wrapData(data: IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
 }
 
 /**
@@ -185,7 +194,7 @@ export async function pgQueryV2(
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
+				return this.helpers.constructExecutionMetaData(wrapData(result), {
 					itemData: { item: i },
 				});
 			})
@@ -197,7 +206,7 @@ export async function pgQueryV2(
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(transactionResult),
+						wrapData(transactionResult),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
@@ -221,7 +230,7 @@ export async function pgQueryV2(
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(transactionResult),
+						wrapData(transactionResult),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
@@ -373,7 +382,7 @@ export async function pgInsertV2(
 		const queryResult = await db.any(query);
 		return queryResult
 			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
+				return this.helpers.constructExecutionMetaData(wrapData(result), {
 					itemData: { item: i },
 				});
 			})
@@ -386,7 +395,7 @@ export async function pgInsertV2(
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
 					result.push(
-						...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(insertResult), {
+						...this.helpers.constructExecutionMetaData(wrapData(insertResult), {
 							itemData: { item: i },
 						}),
 					);
@@ -411,10 +420,9 @@ export async function pgInsertV2(
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(insertResult),
-							{ itemData: { item: i } },
-						);
+						const executionData = this.helpers.constructExecutionMetaData(wrapData(insertResult), {
+							itemData: { item: i },
+						});
 						result.push(...executionData);
 					}
 				} catch (err) {
@@ -644,7 +652,7 @@ export async function pgUpdateV2(
 								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(transactionResult),
+							wrapData(transactionResult),
 							{ itemData: { item: i } },
 						);
 						result.push(...executionData);
@@ -672,7 +680,7 @@ export async function pgUpdateV2(
 								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(independentResult),
+							wrapData(independentResult),
 							{ itemData: { item: i } },
 						);
 						result.push(...executionData);

@@ -1,17 +1,18 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
 	SalesAccounts,
 	ViewsResponse,
 } from './types';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export async function freshworksCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

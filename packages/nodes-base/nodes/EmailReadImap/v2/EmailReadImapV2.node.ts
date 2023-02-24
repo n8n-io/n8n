@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	createDeferredPromise,
+import type { ITriggerFunctions } from 'n8n-core';
+import type {
 	IBinaryData,
 	IBinaryKeyData,
 	ICredentialsDecrypted,
@@ -14,21 +13,18 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { createDeferredPromise, LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
-import {
-	connect as imapConnect,
-	getParts,
-	ImapSimple,
-	ImapSimpleOptions,
-	Message,
-} from 'imap-simple';
-import { simpleParser, Source as ParserSource } from 'mailparser';
+import type { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import { connect as imapConnect, getParts } from 'imap-simple';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
 
-import _ from 'lodash';
-import { ICredentialsDataImap, isCredentialsDataImap } from '../../../credentials/Imap.credentials';
+import isEmpty from 'lodash.isempty';
+import find from 'lodash.find';
+import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
+import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 
 export async function parseRawEmail(
 	this: ITriggerFunctions,
@@ -245,7 +241,7 @@ export class EmailReadImapV2 implements INodeType {
 						if (credentials.secure) {
 							tlsOptions.servername = credentials.host;
 						}
-						if (!_.isEmpty(tlsOptions)) {
+						if (!isEmpty(tlsOptions)) {
 							config.imap.tlsOptions = tlsOptions;
 						}
 						const connection = await imapConnect(config);
@@ -398,7 +394,7 @@ export class EmailReadImapV2 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: '' });
+					const part = find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -487,7 +483,7 @@ export class EmailReadImapV2 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: 'TEXT' });
+					const part = find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -585,7 +581,7 @@ export class EmailReadImapV2 implements INodeType {
 				tlsOptions.servername = credentials.host;
 			}
 
-			if (!_.isEmpty(tlsOptions)) {
+			if (!isEmpty(tlsOptions)) {
 				config.imap.tlsOptions = tlsOptions;
 			}
 
