@@ -4101,6 +4101,7 @@ export default mixins(
 	position: relative;
 	display: grid;
 	overflow: auto;
+	width: 100%;
 	height: 100%;
 }
 

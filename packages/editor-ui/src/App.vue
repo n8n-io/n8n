@@ -212,7 +212,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 
 <style lang="scss" module>
 .app {
-	height: 100vh;
+	height: 100%;
 	overflow: hidden;
 }
 
@@ -230,6 +230,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	grid-area: content;
 	overflow: auto;
 	width: 100%;
+	height: 100%;
 	justify-content: center;
 }
 
