@@ -10,9 +10,12 @@ const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		cy.waitForLoad();
 	});
@@ -38,7 +41,11 @@ describe('Undo/Redo', () => {
 	it('should undo/redo adding node in the middle', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeBetweenNodes(SCHEDULE_TRIGGER_NODE_NAME, CODE_NODE_NAME, SET_NODE_NAME)
+		WorkflowPage.actions.addNodeBetweenNodes(
+			SCHEDULE_TRIGGER_NODE_NAME,
+			CODE_NODE_NAME,
+			SET_NODE_NAME,
+		);
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);

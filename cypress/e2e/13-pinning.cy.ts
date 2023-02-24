@@ -4,15 +4,18 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
 	});
 
 	it('Should be able to pin node output', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true});
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
@@ -43,7 +46,7 @@ describe('Data pinning', () => {
 	});
 
 	it('Should be be able to set pinned data', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true});
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');

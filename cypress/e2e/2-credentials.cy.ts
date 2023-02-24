@@ -259,7 +259,7 @@ describe('Credentials', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
-	})
+	});
 
 	it('should render custom node with custom credential', () => {
 		workflowPage.actions.visit();
@@ -269,5 +269,5 @@ describe('Credentials', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
-	})
+	});
 });

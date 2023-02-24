@@ -5,7 +5,7 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Schedule Trigger node', async () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
@@ -42,34 +42,44 @@ describe('Schedule Trigger node', async () => {
 		workflowPage.actions.activateWorkflow();
 		workflowPage.getters.activatorSwitch().should('have.class', 'is-checked');
 
-		cy.request("GET", '/rest/workflows').then((response) => {
-			expect(response.status).to.eq(200);
-			expect(response.body.data).to.have.length(1);
-			const workflowId = response.body.data[0].id.toString();
-			expect(workflowId).to.not.be.empty;
-			return workflowId;
-		}).then((workflowId) => {
-			cy.wait(1200);
-			cy.request("GET", '/rest/executions').then((response) => {
+		cy.request('GET', '/rest/workflows')
+			.then((response) => {
 				expect(response.status).to.eq(200);
-				expect(response.body.data.results.length).to.be.greaterThan(0);
-				const matchingExecutions = response.body.data.results.filter((execution: any) => execution.workflowId === workflowId);
-				expect(matchingExecutions).to.have.length(1);
+				expect(response.body.data).to.have.length(1);
+				const workflowId = response.body.data[0].id.toString();
+				expect(workflowId).to.not.be.empty;
 				return workflowId;
-			}).then((workflowId) => {
+			})
+			.then((workflowId) => {
 				cy.wait(1200);
-				cy.request("GET", '/rest/executions').then((response) => {
-					expect(response.status).to.eq(200);
-					expect(response.body.data.results.length).to.be.greaterThan(0);
-					const matchingExecutions = response.body.data.results.filter((execution: any) => execution.workflowId === workflowId);
-					expect(matchingExecutions).to.have.length(2);
-				}).then(()=>{
-					workflowPage.actions.activateWorkflow();
-					workflowPage.getters.activatorSwitch().should('not.have.class', 'is-checked');
-					cy.visit(workflowsPage.url);
-					workflowsPage.actions.deleteWorkFlow('Schedule Trigger Workflow');
-				});
+				cy.request('GET', '/rest/executions')
+					.then((response) => {
+						expect(response.status).to.eq(200);
+						expect(response.body.data.results.length).to.be.greaterThan(0);
+						const matchingExecutions = response.body.data.results.filter(
+							(execution: any) => execution.workflowId === workflowId,
+						);
+						expect(matchingExecutions).to.have.length(1);
+						return workflowId;
+					})
+					.then((workflowId) => {
+						cy.wait(1200);
+						cy.request('GET', '/rest/executions')
+							.then((response) => {
+								expect(response.status).to.eq(200);
+								expect(response.body.data.results.length).to.be.greaterThan(0);
+								const matchingExecutions = response.body.data.results.filter(
+									(execution: any) => execution.workflowId === workflowId,
+								);
+								expect(matchingExecutions).to.have.length(2);
+							})
+							.then(() => {
+								workflowPage.actions.activateWorkflow();
+								workflowPage.getters.activatorSwitch().should('not.have.class', 'is-checked');
+								cy.visit(workflowsPage.url);
+								workflowsPage.actions.deleteWorkFlow('Schedule Trigger Workflow');
+							});
+					});
 			});
-		});
 	});
 });
