@@ -1025,7 +1025,7 @@ export const schema = {
 		saml: {
 			enabled: {
 				format: Boolean,
-				default: true,
+				default: false,
 				doc: 'Whether to enable SAML SSO.',
 			},
 		},
