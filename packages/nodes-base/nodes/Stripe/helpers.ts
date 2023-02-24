@@ -1,6 +1,8 @@
 import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { flow, isEmpty, omit } from 'lodash';
+import flow from 'lodash.flow';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 

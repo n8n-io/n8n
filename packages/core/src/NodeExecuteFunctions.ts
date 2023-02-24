@@ -70,6 +70,7 @@ import {
 	OAuth2GrantType,
 	deepCopy,
 	fileTypeFromMimeType,
+	ExpressionError,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1028,7 +1029,10 @@ export async function requestOAuth2(
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
 	// if it's the first time using the credentials, get the access token and save it into the DB.
-	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
+	if (
+		credentials.grantType === OAuth2GrantType.clientCredentials &&
+		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+	) {
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
 
 		// Find the credentials
@@ -1806,12 +1810,15 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
-
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+			returnData = [{ name: undefined, value: undefined }];
+		} else {
+			if (e.context) e.context.parameter = parameterName;
+			e.cause = value;
+			throw e;
+		}
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages
@@ -2285,6 +2292,9 @@ export function getExecuteFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
+				if (additionalData.setExecutionStatus) {
+					additionalData.setExecutionStatus('waiting');
+				}
 			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {

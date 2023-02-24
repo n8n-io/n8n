@@ -177,7 +177,7 @@ export class Baserow implements INodeType {
 
 					const { order, filters, filterType, search } = this.getNodeParameter(
 						'additionalOptions',
-						0,
+						i,
 					) as GetAllAdditionalOptions;
 
 					const qs: IDataObject = {};

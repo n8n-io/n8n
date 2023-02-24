@@ -1,7 +1,7 @@
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 import type { OptionsWithUri } from 'request';
 

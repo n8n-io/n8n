@@ -155,6 +155,10 @@ export function getBlockTypes() {
 			name: 'Numbered List Item',
 			value: 'numbered_list_item',
 		},
+		{
+			name: 'Image',
+			value: 'image',
+		},
 	];
 }
 
@@ -250,6 +254,15 @@ function getTexts(texts: TextData[]) {
 	return results;
 }
 
+function getTextBlocks(block: IDataObject) {
+	return {
+		text:
+			block.richText === false
+				? formatText(block.textContent as string).text
+				: getTexts(((block.text as IDataObject).text as any) || []),
+	};
+}
+
 export function formatBlocks(blocks: IDataObject[]) {
 	const results = [];
 	for (const block of blocks) {
@@ -258,9 +271,9 @@ export function formatBlocks(blocks: IDataObject[]) {
 			type: block.type,
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
-				// prettier-ignore
-
-				text: (block.richText === false) ? formatText(block.textContent as string).text : getTexts((block.text as IDataObject).text as TextData[] || []),
+				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
+				// prettier-ignore,
+				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}

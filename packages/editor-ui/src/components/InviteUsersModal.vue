@@ -22,6 +22,8 @@
 							<n8n-icon-button
 								icon="link"
 								type="tertiary"
+								data-test-id="copy-invite-link-button"
+								:data-invite-link="user.inviteAcceptUrl"
 								@click="onCopyInviteLink(user)"
 							></n8n-icon-button>
 						</n8n-tooltip>
@@ -166,7 +168,6 @@ export default mixins(showMessage, copyPaste).extend({
 			return this.emailsCount >= 1;
 		},
 		invitedUsers(): IUser[] {
-			console.log(this.usersStore.allUsers, this.showInviteUrls);
 			return this.showInviteUrls
 				? this.usersStore.allUsers.filter((user) =>
 						this.showInviteUrls!.find((invite) => invite.user.id === user.id),

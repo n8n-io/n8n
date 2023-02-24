@@ -93,7 +93,7 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
-						:hasForeignCredential="hasForeignCredential"
+						:foreignCredentials="foreignCredentials"
 						:readOnly="readOnly"
 						:blockUI="blockUi && showTriggerPanel"
 						:executable="!readOnly"
@@ -375,11 +375,11 @@ export default mixins(
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
-		hasForeignCredential(): boolean {
+		foreignCredentials(): string[] {
 			const credentials = (this.activeNode || {}).credentials;
 			const usedCredentials = this.workflowsStore.usedCredentials;
 
-			let hasForeignCredential = false;
+			const foreignCredentials: string[] = [];
 			if (
 				credentials &&
 				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
@@ -390,12 +390,15 @@ export default mixins(
 						usedCredentials[credential.id] &&
 						!usedCredentials[credential.id].currentUserHasAccess
 					) {
-						hasForeignCredential = true;
+						foreignCredentials.push(credential.id);
 					}
 				});
 			}
 
-			return hasForeignCredential;
+			return foreignCredentials;
+		},
+		hasForeignCredential(): boolean {
+			return this.foreignCredentials.length > 0;
 		},
 	},
 	watch: {

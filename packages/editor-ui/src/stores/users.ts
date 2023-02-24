@@ -1,13 +1,13 @@
 import {
 	changePassword,
 	deleteUser,
-	getCurrentUser,
 	getInviteLink,
 	getUsers,
 	inviteUsers,
 	login,
 	loginCurrentUser,
 	logout,
+	preOwnerSetup,
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
@@ -19,11 +19,12 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
-import {
+import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import type {
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
+	IRole,
 	IUser,
 	IUserResponse,
 	IUsersState,
@@ -33,6 +34,7 @@ import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/uti
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';
+import { usePostHogStore } from './posthog';
 import { useSettingsStore } from './settings';
 import { useUIStore } from './ui';
 
@@ -40,6 +42,9 @@ const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
+
+const isInstanceOwner = (user: IUserResponse | null) =>
+	Boolean(user?.globalRole?.name === ROLE.Owner);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
@@ -55,6 +60,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		isDefaultUser(): boolean {
 			return isDefaultUser(this.currentUser);
+		},
+		isInstanceOwner(): boolean {
+			return isInstanceOwner(this.currentUser);
 		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
@@ -131,36 +139,38 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			}
 			Vue.set(this.currentUser, 'personalizationAnswers', answers);
 		},
-		async getCurrentUser(): Promise<IUserResponse | null> {
-			const rootStore = useRootStore();
-			const user = await getCurrentUser(rootStore.getRestApiContext);
-			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
-			}
-
-			return user;
-		},
 		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await loginCurrentUser(rootStore.getRestApiContext);
-			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
+			if (!user) {
+				return;
 			}
+
+			this.addUsers([user]);
+			this.currentUserId = user.id;
+
+			usePostHogStore().init(user.featureFlags);
 		},
 		async loginWithCreds(params: { email: string; password: string }): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await login(rootStore.getRestApiContext, params);
-			if (user) {
-				this.addUsers([user]);
-				this.currentUserId = user.id;
+			if (!user) {
+				return;
 			}
+
+			this.addUsers([user]);
+			this.currentUserId = user.id;
+
+			usePostHogStore().init(user.featureFlags);
 		},
 		async logout(): Promise<void> {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
+			usePostHogStore().reset();
+		},
+		async preOwnerSetup() {
+			return preOwnerSetup(useRootStore().getRestApiContext);
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -197,6 +207,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
 			}
+
+			usePostHogStore().init(user.featureFlags);
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();

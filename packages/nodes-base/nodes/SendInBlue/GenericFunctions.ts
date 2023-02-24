@@ -91,7 +91,7 @@ export namespace SendInBlueNode {
 					if (item.binary![binaryPropertyAttachmentName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
+							`Item has no binary property called "${binaryPropertyName}"`,
 						);
 					}
 

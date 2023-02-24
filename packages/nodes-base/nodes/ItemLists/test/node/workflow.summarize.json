@@ -1,0 +1,299 @@
+{
+	"name": "itemLists test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-400, 420]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    category: 'red',\n    text: 'foo',\n    char: 'a',\n    value: 1,\n  },\n  {\n    category: 'blue',\n    text: 'spam',\n    char: 'b',\n    value: 2,\n  },\n  {\n    category: 'green',\n    text: 'bar',\n    char: 'c',\n    value: 3,\n  },\n  {\n    category: 'red',\n    text: 'foo',\n    char: 'a',\n    value: 4,\n  },\n  {\n    category: 'red',\n    text: 'bar',\n    char: 'a',\n    value: 5,\n  },\n  {\n    category: 'blue',\n    text: 'foo',\n    char: 'a',\n    value: 6,\n  },\n  {\n    category: 'blue',\n    text: 'foo',\n    char: 'a',\n    value: 7,\n  },\n];"
+			},
+			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-180, 420]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "char"
+						},
+						{
+							"field": "char"
+						},
+						{
+							"aggregation": "countUnique",
+							"field": "char"
+						},
+						{
+							"aggregation": "concatenate",
+							"field": "char",
+							"separateBy": ", "
+						}
+					]
+				},
+				"fieldsToSplitBy": "category, text",
+				"options": {}
+			},
+			"id": "1dedf668-b766-4283-9efd-90db28404f0b",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [40, 220]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "char"
+						},
+						{
+							"field": "char"
+						},
+						{
+							"aggregation": "countUnique",
+							"field": "char"
+						},
+						{
+							"aggregation": "concatenate",
+							"field": "char",
+							"separateBy": ", "
+						}
+					]
+				},
+				"fieldsToSplitBy": "category, text",
+				"options": {
+					"outputFormat": "singleItem"
+				}
+			},
+			"id": "8fd0f819-226c-4b29-87c7-b724dd72605c",
+			"name": "Item Lists1",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [40, 420]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "average",
+							"field": "value"
+						},
+						{
+							"aggregation": "max",
+							"field": "value"
+						},
+						{
+							"aggregation": "min",
+							"field": "value"
+						},
+						{
+							"aggregation": "max",
+							"field": "value"
+						},
+						{
+							"aggregation": "sum",
+							"field": "value"
+						},
+						{
+							"aggregation": "append",
+							"field": "value"
+						}
+					]
+				},
+				"fieldsToSplitBy": "category",
+				"options": {}
+			},
+			"id": "33e0367d-42d9-4f82-8fc8-8e2019aa3734",
+			"name": "Item Lists2",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [40, 620]
+		}
+	],
+	"pinData": {
+		"Item Lists": [
+			{
+				"json": {
+					"category": "red",
+					"text": "foo",
+					"appended_char": ["a", "a"],
+					"count_char": 2,
+					"unique_count_char": 1,
+					"concatenated_char": "a, a"
+				}
+			},
+			{
+				"json": {
+					"category": "red",
+					"text": "bar",
+					"appended_char": ["a"],
+					"count_char": 1,
+					"unique_count_char": 1,
+					"concatenated_char": "a"
+				}
+			},
+			{
+				"json": {
+					"category": "blue",
+					"text": "spam",
+					"appended_char": ["b"],
+					"count_char": 1,
+					"unique_count_char": 1,
+					"concatenated_char": "b"
+				}
+			},
+			{
+				"json": {
+					"category": "blue",
+					"text": "foo",
+					"appended_char": ["a", "a"],
+					"count_char": 2,
+					"unique_count_char": 1,
+					"concatenated_char": "a, a"
+				}
+			},
+			{
+				"json": {
+					"category": "green",
+					"text": "bar",
+					"appended_char": ["c"],
+					"count_char": 1,
+					"unique_count_char": 1,
+					"concatenated_char": "c"
+				}
+			}
+		],
+		"Item Lists1": [
+			{
+				"json": {
+					"red": {
+						"foo": {
+							"appended_char": ["a", "a"],
+							"count_char": 2,
+							"unique_count_char": 1,
+							"concatenated_char": "a, a"
+						},
+						"bar": {
+							"appended_char": ["a"],
+							"count_char": 1,
+							"unique_count_char": 1,
+							"concatenated_char": "a"
+						}
+					},
+					"blue": {
+						"spam": {
+							"appended_char": ["b"],
+							"count_char": 1,
+							"unique_count_char": 1,
+							"concatenated_char": "b"
+						},
+						"foo": {
+							"appended_char": ["a", "a"],
+							"count_char": 2,
+							"unique_count_char": 1,
+							"concatenated_char": "a, a"
+						}
+					},
+					"green": {
+						"bar": {
+							"appended_char": ["c"],
+							"count_char": 1,
+							"unique_count_char": 1,
+							"concatenated_char": "c"
+						}
+					}
+				}
+			}
+		],
+		"Item Lists2": [
+			{
+				"json": {
+					"category": "red",
+					"average_value": 3.3333333333333335,
+					"max_value": 5,
+					"min_value": 1,
+					"sum_value": 10,
+					"appended_value": [1, 4, 5]
+				}
+			},
+			{
+				"json": {
+					"category": "blue",
+					"average_value": 5,
+					"max_value": 7,
+					"min_value": 2,
+					"sum_value": 15,
+					"appended_value": [2, 6, 7]
+				}
+			},
+			{
+				"json": {
+					"category": "green",
+					"average_value": 3,
+					"max_value": 3,
+					"min_value": 3,
+					"sum_value": 3,
+					"appended_value": [3]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "bee0d911-844d-4fe6-bd52-a1716dd74dd8",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

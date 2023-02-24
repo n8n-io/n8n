@@ -19,8 +19,6 @@ import type {
 	IRowObject,
 } from './Interfaces';
 
-import _ from 'lodash';
-
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) {
 		return uri;

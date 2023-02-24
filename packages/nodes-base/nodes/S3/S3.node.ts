@@ -186,7 +186,11 @@ export class S3 implements INodeType {
 							);
 							responseData = responseData.slice(0, qs.limit);
 						}
-						returnData.push.apply(returnData, responseData as INodeExecutionData[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -843,7 +847,7 @@ export class S3 implements INodeType {
 							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}

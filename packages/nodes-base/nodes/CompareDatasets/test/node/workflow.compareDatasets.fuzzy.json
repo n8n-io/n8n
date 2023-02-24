@@ -1,0 +1,1054 @@
+{
+	"name": "compare datasets fuzzy search",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0600a6c9-83c5-4bb8-a2ee-d763406b2f9f",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [160, 2200]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: '1',\n    data: [1,2,3],\n  },\n  {\n    id: 2,\n    data: 25,\n  },\n  {\n    id: 3,\n    data: true,\n  },\n  {\n    id: 4,\n    data: false,\n  },\n  {\n    id: '5',\n    data: true,\n  },\n  {\n    id: 6,\n    data: null,\n  },\n  {\n    id: 7,\n    data: '',\n  },\n  {\n    id: '8',\n    data: [],\n  },\n];"
+			},
+			"id": "a9204c1d-11da-4f54-9a52-82992815e893",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: \"[1,2,3]\",\n  },\n  {\n    id: 2,\n    data: '25',\n  },\n  {\n    id: 3,\n    data: 'tRuE',\n  },\n  {\n    id: 4,\n    data: 'FalsE',\n  },\n  {\n    id: 5,\n    data: 1,\n  },\n  {\n    id: 6,\n    data: [],\n  },\n  {\n    id: 7,\n    data: null,\n  },\n  {\n    id: 8,\n    data: '',\n  },\n];"
+			},
+			"id": "839119da-4372-442d-8ba6-7d57b53b7825",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 500]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"resolve": "preferInput1",
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "c950a588-900b-4eba-a94b-566e27a5f5b6",
+			"name": "Compare Datasets",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [940, 260]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "b4886a20-3c69-4233-a66b-91ed19693647",
+			"name": "Compare Datasets1",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [940, 540]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: [1,2,3],\n  },\n  {\n    id: 2,\n    data: '[\"a\", \"b\", \"c\"]',\n  },\n  {\n    id: 3,\n    data: [],\n  },\n];"
+			},
+			"id": "f0a7fbcf-226a-4b19-a946-5a0d8480bbb8",
+			"name": "Code2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 680]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: '1',\n    data: \"[1,2,3]\",\n  },\n  {\n    id: 2,\n    data: ['a', 'b', 'c'],\n  },\n  {\n    id: 3,\n    data: \"[]\",\n  },\n];"
+			},
+			"id": "9d510249-3eff-4264-8f93-1959480fd100",
+			"name": "Code3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 880]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "80782eeb-bf05-402a-a169-a44d32e189d9",
+			"name": "Compare Datasets2",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [920, 800]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: 25.36,\n  },\n  {\n    id: 2,\n    data: 2500,\n  },\n  {\n    id: 3,\n    data: 0.894,\n  },\n  {\n    id: 4,\n    data: 42,\n  },\n];"
+			},
+			"id": "eb4e5ee5-5f9e-413e-bd80-11d75bff9f90",
+			"name": "Code4",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [620, 1100]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: '25.36',\n  },\n  {\n    id: 2,\n    data: '2500',\n  },\n  {\n    id: 3,\n    data: '0.894',\n  },\n  {\n    id: 4,\n    data: 'forty two',\n  },\n];"
+			},
+			"id": "28d3f7f4-abba-4523-9b5b-1bcf47d6dbec",
+			"name": "Code5",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [620, 1300]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"resolve": "includeBoth",
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "661c9b3e-f5c7-41a2-9f48-4e2648c657d4",
+			"name": "Compare Datasets3",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [900, 1180]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: \"TRUE\",\n  },\n  {\n    id: 2,\n    data: false,\n  },\n  {\n    id: 3,\n    data: 1,\n  },\n  {\n    id: 4,\n    data: false,\n  },\n  {\n    id: '5',\n    data: true,\n  },\n  {\n    id: 6,\n    data: '0',\n  },\n];"
+			},
+			"id": "bf4f3286-db11-4075-a10a-6c19b60ef8cf",
+			"name": "Code6",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [620, 1480]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: true,\n  },\n  {\n    id: 2,\n    data: 'False',\n  },\n  {\n    id: 3,\n    data: true,\n  },\n  {\n    id: 4,\n    data: 0,\n  },\n  {\n    id: '5',\n    data: '1',\n  },\n  {\n    id: 6,\n    data: false,\n  },\n];"
+			},
+			"id": "731b6fc7-0a57-449e-b9c4-54f1feeec9be",
+			"name": "Code7",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [620, 1680]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "72fcf699-62b7-42c6-b6a8-4c8af514eaa7",
+			"name": "Compare Datasets4",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [880, 1580]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: '1',\n    data: null,\n  },\n  {\n    id: 2,\n    data: null,\n  },\n  {\n    id: 3,\n    data: null,\n  },\n  {\n    id: 4,\n    data: [],\n  },\n  {\n    id: '5',\n    data: '',\n  },\n  {\n    id: 6,\n    data: '',\n  },\n  {\n    id: 7,\n    data: [],\n  },\n];"
+			},
+			"id": "f75820ed-4f8f-49b7-af25-3bbd0691eafd",
+			"name": "Code8",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [620, 1860]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: '1',\n    data: '',\n  },\n  {\n    id: 2,\n    data: [],\n  },\n  {\n    id: 3,\n    data: null,\n  },\n  {\n    id: 4,\n    data: '',\n  },\n  {\n    id: '5',\n    data: [],\n  },\n  {\n    id: 6,\n    data: '',\n  },\n  {\n    id: 7,\n    data: [],\n  },\n];"
+			},
+			"id": "abe98ef5-0b3a-4e06-8a5d-f0554e42cf33",
+			"name": "Code9",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [620, 2060]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "0f86d545-5612-4743-8d18-593e95b1b95d",
+			"name": "Compare Datasets5",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [880, 1960]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: {foo: 'foo', bar: 'bar'},\n  },\n  {\n    id: 2,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: {},\n  },\n];"
+			},
+			"id": "c516813c-a5c7-464e-887b-447e5177c137",
+			"name": "Code10",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 2440]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 2,\n    data: {foo: 'foo', bar: 'bar'},\n  },\n  {\n    id: 1,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: \"{}\",\n  },\n];"
+			},
+			"id": "a0986a04-da68-47e7-9a06-f7abf83604c8",
+			"name": "Code11",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 2640]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"resolve": "includeBoth",
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "a60fd8e1-962e-40e9-b00d-847ef424f2be",
+			"name": "Compare Datasets6",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [920, 2560]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: \"2019-08-30T22:54:40.273Z\",\n  },\n  {\n    id: 2,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: {},\n  },\n];"
+			},
+			"id": "80c1f595-9d0e-4df9-b927-4b1459e217c1",
+			"name": "Code12",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 2860]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    data: 'Sat Aug 31 2019 01:54:40 GMT+0300 (Eastern European Summer Time)',\n  },\n  {\n    id: 2,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: \"{}\",\n  },\n];"
+			},
+			"id": "d9764a14-2b8b-4a12-ad06-8a4f09685e62",
+			"name": "Code13",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 3060]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"resolve": "includeBoth",
+				"options": {
+					"fuzzyCompare": true
+				}
+			},
+			"id": "e7c46e07-4f65-4ba8-8435-2b8284567bdd",
+			"name": "Compare Datasets7",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [920, 2980]
+		},
+		{
+			"parameters": {},
+			"id": "7a8fd2b3-a55e-43a0-af3d-5621b42bbd06",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1200, 200]
+		},
+		{
+			"parameters": {},
+			"id": "cfe4cf23-3329-4c7d-89f1-9e358eba9265",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 480]
+		},
+		{
+			"parameters": {},
+			"id": "4b55d3ee-ada6-4b72-beee-f9c5bbf8531b",
+			"name": "No Operation, do nothing2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 680]
+		},
+		{
+			"parameters": {},
+			"id": "b55e855b-ad71-439b-aa76-f0cb38b137d1",
+			"name": "No Operation, do nothing3",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1200, 1020]
+		},
+		{
+			"parameters": {},
+			"id": "a64cbf1e-3701-498e-b4a7-47353f15d602",
+			"name": "No Operation, do nothing4",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1200, 1260]
+		},
+		{
+			"parameters": {},
+			"id": "52b6b2e2-c8f6-4b22-a469-da437d092a5a",
+			"name": "No Operation, do nothing5",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1160, 1520]
+		},
+		{
+			"parameters": {},
+			"id": "dca4c5e9-db21-4cf3-8de4-9b9e32166ae1",
+			"name": "No Operation, do nothing6",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1140, 1860]
+		},
+		{
+			"parameters": {},
+			"id": "ee8d917b-a338-468c-9cc0-fdfbf6a76445",
+			"name": "No Operation, do nothing7",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1180, 2440]
+		},
+		{
+			"parameters": {},
+			"id": "95d18d83-79e8-427b-8745-55e2256cb7f5",
+			"name": "No Operation, do nothing8",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 2900]
+		},
+		{
+			"parameters": {},
+			"id": "e191ba81-bd88-4962-bd13-36ffd752336d",
+			"name": "No Operation, do nothing9",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 3100]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing9": [
+			{
+				"json": {
+					"keys": {
+						"id": 1
+					},
+					"same": {
+						"id": 1
+					},
+					"different": {
+						"data": {
+							"input1": "2019-08-30T22:54:40.273Z",
+							"input2": "Sat Aug 31 2019 01:54:40 GMT+0300 (Eastern European Summer Time)"
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing8": [
+			{
+				"json": {
+					"id": 2,
+					"data": "{\"foo\": \"foo\", \"bar\": \"bar\"}"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": {}
+				}
+			}
+		],
+		"No Operation, do nothing7": [
+			{
+				"json": {
+					"id": 1,
+					"data": {
+						"foo": "foo",
+						"bar": "bar"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "{\"foo\": \"foo\", \"bar\": \"bar\"}"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": {}
+				}
+			}
+		],
+		"No Operation, do nothing6": [
+			{
+				"json": {
+					"id": "1",
+					"data": ""
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": []
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": null
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"data": ""
+				}
+			},
+			{
+				"json": {
+					"id": "5",
+					"data": []
+				}
+			},
+			{
+				"json": {
+					"id": 6,
+					"data": ""
+				}
+			},
+			{
+				"json": {
+					"id": 7,
+					"data": []
+				}
+			}
+		],
+		"No Operation, do nothing5": [
+			{
+				"json": {
+					"id": 1,
+					"data": true
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "False"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": true
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"data": 0
+				}
+			},
+			{
+				"json": {
+					"id": "5",
+					"data": "1"
+				}
+			},
+			{
+				"json": {
+					"id": 6,
+					"data": false
+				}
+			}
+		],
+		"No Operation, do nothing4": [
+			{
+				"json": {
+					"keys": {
+						"id": 4
+					},
+					"same": {
+						"id": 4
+					},
+					"different": {
+						"data": {
+							"input1": 42,
+							"input2": "forty two"
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing3": [
+			{
+				"json": {
+					"id": 1,
+					"data": 25.36
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": 2500
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": 0.894
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"id": "1",
+					"data": "[1,2,3]"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": ["a", "b", "c"]
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": "[]"
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"id": 1,
+					"data": "[1,2,3]"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": "25"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": "tRuE"
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"data": "FalsE"
+				}
+			},
+			{
+				"json": {
+					"id": 5,
+					"data": 1
+				}
+			},
+			{
+				"json": {
+					"id": 6,
+					"data": []
+				}
+			},
+			{
+				"json": {
+					"id": 7,
+					"data": null
+				}
+			},
+			{
+				"json": {
+					"id": 8,
+					"data": ""
+				}
+			}
+		],
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "1",
+					"data": [1, 2, 3]
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": 25
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": true
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"data": false
+				}
+			},
+			{
+				"json": {
+					"id": "5",
+					"data": true
+				}
+			},
+			{
+				"json": {
+					"id": 6,
+					"data": null
+				}
+			},
+			{
+				"json": {
+					"id": 7,
+					"data": ""
+				}
+			},
+			{
+				"json": {
+					"id": "8",
+					"data": []
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code6",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code10",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code11",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code12",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Compare Datasets1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Compare Datasets1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code2": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code3": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets2",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code4": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code5": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets3",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code6": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code7": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets4",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code8": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code9": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets5",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code10": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code11": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets6",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code12": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code13": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets7",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Compare Datasets": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets1": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets2": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets3": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing3",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "No Operation, do nothing4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets4": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets5": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets6": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets7": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing8",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "No Operation, do nothing9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "66b1e26d-0897-4c70-8eac-0f7bc0536214",
+	"id": "85",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

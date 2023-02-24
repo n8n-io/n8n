@@ -3,16 +3,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import type { IDataObject, IWorkflowBase, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IWorkflowBase,
+	JsonObject,
+	ExecutionStatus,
+	IRunExecutionData,
+	NodeOperationError,
+	IExecutionsSummary,
+} from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator, FindOptionsWhere } from 'typeorm';
 import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type {
-	DatabaseType,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -26,6 +33,9 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
+import { parse } from 'flatted';
+import { Container } from 'typedi';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -33,6 +43,7 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
+	status?: ExecutionStatus[];
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
@@ -46,6 +57,10 @@ const schemaGetExecutionsQueryFilter = {
 		mode: { type: 'string' },
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
+		status: {
+			type: 'array',
+			items: { type: 'string' },
+		},
 		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 	},
@@ -70,7 +85,7 @@ export class ExecutionsService {
 		countFilter: IDataObject,
 		user: User,
 	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
@@ -189,12 +204,20 @@ export class ExecutionsService {
 
 		// We may have manual executions even with queue so we must account for these.
 		executingWorkflowIds.push(
-			...ActiveExecutions.getInstance()
+			...Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id),
 		);
 
-		const findWhere: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = {
+			workflowId: In(sharedWorkflowIds),
+		};
+		if (filter?.status) {
+			Object.assign(findWhere, { status: In(filter.status) });
+		}
+		if (filter?.finished) {
+			Object.assign(findWhere, { finished: filter.finished });
+		}
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -224,13 +247,30 @@ export class ExecutionsService {
 			});
 		}
 
-		let query = Db.collections.Execution.createQueryBuilder()
-			.select()
+		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		let query = Db.collections.Execution.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.waitTill',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowData',
+				'execution.status',
+			])
 			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);
 
 		const countFilter = deepCopy(filter ?? {});
+		// deepcopy breaks the In operator so we need to reapply it
+		if (filter?.status) {
+			Object.assign(filter, { status: In(filter.status) });
+			Object.assign(countFilter, { status: In(filter.status) });
+		}
 
 		if (filter) {
 			this.massageFilters(filter as IDataObject);
@@ -247,7 +287,46 @@ export class ExecutionsService {
 			req.user,
 		);
 
-		const formattedExecutions = executions.map((execution) => {
+		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
+			// inject potential node execution errors into the execution response
+			const nodeExecutionStatus = {};
+			let lastNodeExecuted;
+			let executionError;
+			// fill execution status for old executions that will return null
+			if (!execution.status) {
+				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+			}
+			try {
+				const data = parse(execution.data) as IRunExecutionData;
+				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
+				executionError = data?.resultData?.error;
+				if (data?.resultData?.runData) {
+					for (const key of Object.keys(data.resultData.runData)) {
+						const errors = data.resultData.runData[key]
+							?.filter((taskdata) => taskdata.error?.name)
+							?.map((taskdata) => {
+								if (taskdata.error?.name === 'NodeOperationError') {
+									return {
+										name: (taskdata.error as NodeOperationError).name,
+										message: (taskdata.error as NodeOperationError).message,
+										description: (taskdata.error as NodeOperationError).description,
+									};
+								} else {
+									return {
+										name: taskdata.error?.name,
+									};
+								}
+							});
+						Object.assign(nodeExecutionStatus, {
+							[key]: {
+								executionStatus: data.resultData.runData[key][0].executionStatus,
+								errors,
+								data: data.resultData.runData[key][0].data ?? undefined,
+							},
+						});
+					}
+				}
+			} catch {}
 			return {
 				id: execution.id,
 				finished: execution.finished,
@@ -259,9 +338,12 @@ export class ExecutionsService {
 				stoppedAt: execution.stoppedAt,
 				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
-			};
+				status: execution.status,
+				lastNodeExecuted,
+				executionError,
+				nodeExecutionStatus,
+			} as IExecutionsSummary;
 		});
-
 		return {
 			count,
 			results: formattedExecutions,
@@ -289,6 +371,10 @@ export class ExecutionsService {
 				executionId,
 			});
 			return undefined;
+		}
+
+		if (!execution.status) {
+			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
 		if (req.query.unflattedResponse === 'true') {
@@ -375,7 +461,7 @@ export class ExecutionsService {
 			}
 
 			data.workflowData = workflowData;
-			const nodeTypes = NodeTypes();
+			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
 				id: workflowData.id as string,
 				name: workflowData.name,
@@ -410,7 +496,7 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData = await ActiveExecutions.getInstance().getPostExecutePromise(
+		const executionData = await Container.get(ActiveExecutions).getPostExecutePromise(
 			retriedExecutionId,
 		);
 

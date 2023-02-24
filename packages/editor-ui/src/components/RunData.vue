@@ -162,7 +162,7 @@
 		</div>
 
 		<div
-			v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0"
+			v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificalRecoveredEventItem"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
 		>
@@ -172,7 +172,7 @@
 		</div>
 
 		<div :class="$style['data-container']" ref="dataContainer" data-test-id="ndv-data-container">
-			<div v-if="isExecuting" :class="$style.center">
+			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>
@@ -216,6 +216,10 @@
 				</n8n-text>
 			</div>
 
+			<div v-else-if="hasNodeRun && isArtificalRecoveredEventItem" :class="$style.center">
+				<slot name="recovered-artifical-output-data"></slot>
+			</div>
+
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
 				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
 					{{
@@ -244,7 +248,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-				<slot name="no-output-data"></slot>
+				<slot name="no-output-data">xxx</slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
@@ -657,7 +661,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary' });
 			}
 
-			if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
+			if (this.isPaneTypeInput) {
 				defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
 			}
 
@@ -678,6 +682,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 					((this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name)) ||
 						this.hasPinData),
 			);
+		},
+		isArtificalRecoveredEventItem(): boolean {
+			return this.inputData?.[0]?.json?.isArtificalRecoveredEventItem !== undefined ?? false;
 		},
 		subworkflowExecutionError(): Error | null {
 			return this.workflowsStore.subWorkflowExecutionError;
