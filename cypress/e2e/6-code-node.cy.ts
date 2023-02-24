@@ -5,7 +5,7 @@ const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Code node', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
