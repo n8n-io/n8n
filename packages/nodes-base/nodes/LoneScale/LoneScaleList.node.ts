@@ -146,6 +146,7 @@ export class LoneScaleList implements INodeType {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['PEOPLE'],
 					},
 				},
 				default: '',
@@ -159,6 +160,7 @@ export class LoneScaleList implements INodeType {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['PEOPLE'],
 					},
 				},
 				default: '',
@@ -172,6 +174,7 @@ export class LoneScaleList implements INodeType {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['PEOPLE'],
 					},
 				},
 				default: '',
@@ -211,6 +214,7 @@ export class LoneScaleList implements INodeType {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['PEOPLE'],
 					},
 				},
 				default: '',
@@ -250,6 +254,7 @@ export class LoneScaleList implements INodeType {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['PEOPLE'],
 					},
 				},
 				default: '',
@@ -318,7 +323,7 @@ export class LoneScaleList implements INodeType {
 		loadOptions: {
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const type = this.getNodeParameter('type') as string;
-				const data = await lonescaleApiRequest.call(this, 'GET', '/lists');
+				const data = await lonescaleApiRequest.call(this, 'GET', '/lists', {}, { entity: type });
 				return (data as { list: Array<{ name: string; id: string; entity: string }> })?.list
 					?.filter((l) => l.entity === type)
 					.map((d) => ({
@@ -337,56 +342,85 @@ export class LoneScaleList implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'list') {
-				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const entity = this.getNodeParameter('type', i) as string;
-					const body: IDataObject = {
-						name,
-						entity,
-					};
+			try {
+				if (resource === 'list') {
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
+						const entity = this.getNodeParameter('type', i) as string;
+						const body: IDataObject = {
+							name,
+							entity,
+						};
 
-					responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
-					returnData.push(responseData);
+						console.log({ body });
+						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
 				}
-			}
-			if (resource === 'item') {
-				if (operation === 'add') {
-					const listId = this.getNodeParameter('list', i) as string;
-					const firstName = this.getNodeParameter('first_name', i) as string;
-					const lastName = this.getNodeParameter('last_name', i) as string;
-					const fullName = this.getNodeParameter('full_name', i) as string;
-					const linkedinUrl = this.getNodeParameter('linkedin_url', i) as string;
-					const companyName = this.getNodeParameter('company_name', i) as string;
-					const currentPosition = this.getNodeParameter('current_position', i) as string;
-					const domain = this.getNodeParameter('domain', i) as string;
-					const location = this.getNodeParameter('location', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-					const contactId = this.getNodeParameter('contact_id', i) as string;
+				if (resource === 'item') {
+					if (operation === 'add') {
+						let firstName = '';
+						let lastName = '';
+						let currentPosition = '';
+						let fullName = '';
+						let email = '';
+						const entity = this.getNodeParameter('type', i) as string;
+						const listId = this.getNodeParameter('list', i) as string;
+						if (entity === 'PEOPLE') {
+							firstName = this.getNodeParameter('first_name', i) as string;
+							lastName = this.getNodeParameter('last_name', i) as string;
+							fullName = this.getNodeParameter('full_name', i) as string;
+							currentPosition = this.getNodeParameter('current_position', i) as string;
+							email = this.getNodeParameter('email', i) as string;
+						}
+						const linkedinUrl = this.getNodeParameter('linkedin_url', i) as string;
+						const companyName = this.getNodeParameter('company_name', i) as string;
+						const domain = this.getNodeParameter('domain', i) as string;
+						const location = this.getNodeParameter('location', i) as string;
+						const contactId = this.getNodeParameter('contact_id', i) as string;
 
-					const body: IDataObject = {
-						...(firstName && { first_name: firstName }),
-						...(lastName && { last_name: lastName }),
-						...(fullName && { full_name: fullName }),
-						...(linkedinUrl && { linkedin_url: linkedinUrl }),
-						...(companyName && { company_name: companyName }),
-						...(currentPosition && { current_position: currentPosition }),
-						...(domain && { domain }),
-						...(location && { location }),
-						...(email && { email }),
-						...(contactId && { contact_id: contactId }),
-					};
+						const body: IDataObject = {
+							...(firstName && { first_name: firstName }),
+							...(lastName && { last_name: lastName }),
+							...(fullName && { full_name: fullName }),
+							...(linkedinUrl && { linkedin_url: linkedinUrl }),
+							...(companyName && { company_name: companyName }),
+							...(currentPosition && { current_position: currentPosition }),
+							...(domain && { domain }),
+							...(location && { location }),
+							...(email && { email }),
+							...(contactId && { contact_id: contactId }),
+						};
 
-					responseData = await lonescaleApiRequest.call(
-						this,
-						'POST',
-						`/lists/${listId}/item`,
-						body,
+						responseData = await lonescaleApiRequest.call(
+							this,
+							'POST',
+							`/lists/${listId}/item`,
+							body,
+						);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
 					);
-					returnData.push(responseData);
+					returnData.push(...executionData);
+					continue;
 				}
+				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

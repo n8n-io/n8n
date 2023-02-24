@@ -14,10 +14,11 @@ export async function lonescaleApiRequest(
 	uri?: string,
 ) {
 	const endpoint = `${BASE_URL}`;
-
+	const credentials = await this.getCredentials('loneScaleApi');
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
+			'X-API-KEY': credentials?.apiKey,
 		},
 		method,
 		body,
