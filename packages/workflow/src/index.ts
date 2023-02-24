@@ -4,6 +4,7 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
+export * from './Authentication';
 export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
