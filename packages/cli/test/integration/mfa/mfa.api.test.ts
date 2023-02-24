@@ -54,15 +54,18 @@ describe('Enable MFA setup', () => {
 			const secondCall = await authAgent(owner).get('/mfa/qr');
 
 			expect(firstCall.body.data.secret).toBe(secondCall.body.data.secret);
-			expect(firstCall.body.data.recoveryCodes.join('')).toBe(secondCall.body.data.recoveryCodes.join(''));
+			expect(firstCall.body.data.recoveryCodes.join('')).toBe(
+				secondCall.body.data.recoveryCodes.join(''),
+			);
 
 			await authAgent(owner).delete('/mfa/disable');
 
 			const thirdCall = await authAgent(owner).get('/mfa/qr');
 
 			expect(firstCall.body.data.secret).not.toBe(thirdCall.body.data.secret);
-			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(thirdCall.body.data.recoveryCodes.join(''));
-
+			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(
+				thirdCall.body.data.recoveryCodes.join(''),
+			);
 		});
 
 		test('GET /qr should return qr, secret and recocery codes', async () => {
@@ -87,6 +90,12 @@ describe('Enable MFA setup', () => {
 			const response = await authlessAgent.post('/mfa/verify');
 
 			expect(response.statusCode).toBe(401);
+		});
+
+		test('POST /verify should fail due to missing token parameter', async () => {
+			const response = await authAgent(owner).post('/mfa/verify').send({ token: '123' });
+
+			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /verify should fail due to invalid MFA token', async () => {
@@ -117,6 +126,12 @@ describe('Enable MFA setup', () => {
 			const response = await authlessAgent.post('/mfa/enable');
 
 			expect(response.statusCode).toBe(401);
+		});
+
+		test('POST /verify should fail due to missing token parameter', async () => {
+			const response = await authAgent(owner).post('/mfa/verify').send({ token: '123' });
+
+			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /enable should fail due to invalid MFA token', async () => {
@@ -157,7 +172,7 @@ describe('Enable MFA setup', () => {
 
 describe('Disable MFA setup', () => {
 	test('POST /disable should disable login with MFA', async () => {
-		const { user, secret, rawPassword } = await testDb.createUserWithMfaEnabled();
+		const { user } = await testDb.createUserWithMfaEnabled();
 
 		const authAgent = utils.createAuthAgent(app);
 
@@ -208,7 +223,7 @@ describe('Login', () => {
 	});
 
 	test('POST /login with email/password should fail when mfa is enabled', async () => {
-		const { user, secret: mfaSecret, rawPassword } = await testDb.createUserWithMfaEnabled();
+		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
 
 		const authlessAgent = utils.createAgent(app);
 
@@ -222,7 +237,7 @@ describe('Login', () => {
 
 	describe('Login with MFA token', () => {
 		test('POST /login should fail due to invalid MFA token', async () => {
-			const { user, secret, rawPassword } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
 
 			const authlessAgent = utils.createAgent(app);
 
@@ -235,11 +250,11 @@ describe('Login', () => {
 		});
 
 		test('POST /login should succeed with MFA token', async () => {
-			const { user, secret, rawPassword } = await testDb.createUserWithMfaEnabled();
+			const { user, rawSecret, rawPassword } = await testDb.createUserWithMfaEnabled();
 
 			const authlessAgent = utils.createAgent(app);
 
-			const token = testDb.generateMfaOneTimeToken(secret);
+			const token = testDb.generateMfaOneTimeToken(rawSecret);
 
 			const response = await authlessAgent
 				.post('/login')
@@ -267,13 +282,13 @@ describe('Login', () => {
 		});
 
 		test('POST /login should succeed with MFA recovery code', async () => {
-			const { user, rawPassword, recoveryCodes } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled();
 
 			const authlessAgent = utils.createAgent(app);
 
 			const response = await authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: recoveryCodes[0] });
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
 
 			const data = response.body.data;
 
@@ -284,12 +299,12 @@ describe('Login', () => {
 			const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
 
 			// Make sure the recovery code used was removed
-			expect(dbUser.mfaRecoveryCodes.length).toBe(recoveryCodes.length - 1);
-			expect(dbUser.mfaRecoveryCodes.includes(recoveryCodes[0])).toBe(false);
+			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
+			expect(dbUser.mfaRecoveryCodes.includes(rawRecoveryCodes[0])).toBe(false);
 		});
 
 		test('POST /login with MFA recovery code should update hasRecoveryCodesLeft property', async () => {
-			const { user, rawPassword, recoveryCodes } = await testDb.createUserWithMfaEnabled({
+			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled({
 				numberOfRecoveryCodes: 1,
 			});
 
@@ -297,7 +312,7 @@ describe('Login', () => {
 
 			const response = await authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: recoveryCodes[0] });
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
 
 			const data = response.body.data;
 
@@ -322,13 +337,13 @@ describe('Login', () => {
 		});
 
 		test('POST /login should succeed with MFA recovery code', async () => {
-			const { user, rawPassword, recoveryCodes } = await testDb.createUserWithMfaEnabled();
+			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled();
 
 			const authlessAgent = utils.createAgent(app);
 
 			const response = await authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: recoveryCodes[0] });
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
 
 			const data = response.body.data;
 
@@ -339,12 +354,12 @@ describe('Login', () => {
 			const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
 
 			// Make sure the recovery code used was removed
-			expect(dbUser.mfaRecoveryCodes.length).toBe(recoveryCodes.length - 1);
-			expect(dbUser.mfaRecoveryCodes.includes(recoveryCodes[0])).toBe(false);
+			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
+			expect(dbUser.mfaRecoveryCodes.includes(rawRecoveryCodes[0])).toBe(false);
 		});
 
 		test('POST /login with MFA recovery code should update hasRecoveryCodesLeft property', async () => {
-			const { user, rawPassword, recoveryCodes } = await testDb.createUserWithMfaEnabled({
+			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled({
 				numberOfRecoveryCodes: 1,
 			});
 
@@ -352,7 +367,7 @@ describe('Login', () => {
 
 			const response = await authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: recoveryCodes[0] });
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
 
 			const data = response.body.data;
 

@@ -1,16 +1,19 @@
-import * as speakeasy from 'speakeasy';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import type { User } from '@db/entities/User';
 import { BadRequestError } from '@/ResponseHelper';
+import { MultiFactorAuthService } from '@/MultiFactorAuthService';
 
 const issuer = 'n8n';
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(private userRepository: Repository<User>) {}
+	constructor(
+		private userRepository: Repository<User>,
+		private mfaService: MultiFactorAuthService,
+	) {}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
@@ -22,10 +25,9 @@ export class MFAController {
 			);
 
 		if (mfaSecret && mfaRecoveryCodes.length) {
-			const qrCode = speakeasy.otpauthURL({
+			const qrCode = this.mfaService.createQrUrlFromSecret({
 				secret: mfaSecret,
 				label: email,
-				encoding: 'base32',
 			});
 			return {
 				secret: mfaSecret,
@@ -36,28 +38,29 @@ export class MFAController {
 
 		const codes = Array.from(Array(10)).map(() => uuid());
 
-		const { base32, otpauth_url } = speakeasy.generateSecret({
+		const { secret, url } = this.mfaService.generateSecret({
 			issuer,
-			name: email,
-			otpauth_url: true,
+			label: email,
 		});
 
 		await this.userRepository.update(id, {
-			mfaSecret: base32,
+			mfaSecret: secret,
 			mfaRecoveryCodes: codes,
 		});
 
 		return {
-			secret: base32,
-			qrCode: otpauth_url,
+			secret,
+			qrCode: url,
 			recoveryCodes: codes,
 		};
 	}
 
 	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
-		const { token } = req.body;
+		const { token = null } = req.body;
 		const { id, mfaRecoveryCodes, mfaSecret, mfaEnabled } = req.user;
+
+		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
 		if (mfaEnabled) throw new BadRequestError('MFA already enabled');
 
@@ -65,7 +68,8 @@ export class MFAController {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
 		}
 
-		const verified = speakeasy.totp.verify({ secret: mfaSecret, encoding: 'base32', token });
+		const verified = this.mfaService.verifySecret({ secret: mfaSecret, token });
+
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 
 		await this.userRepository.update(id, { mfaEnabled: true });
@@ -86,8 +90,12 @@ export class MFAController {
 		const { mfaSecret: secret } = req.user;
 		const { token } = req.body;
 
+		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
+
 		if (!secret) throw new BadRequestError('No MFA secret se for this user');
-		const verified = speakeasy.totp.verify({ secret, encoding: 'base32', token });
+
+		const verified = this.mfaService.verifySecret({ secret, token });
+
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 	}
 }

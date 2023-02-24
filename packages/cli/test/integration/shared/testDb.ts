@@ -37,6 +37,8 @@ import type {
 
 import { v4 as uuid } from 'uuid';
 import { randomPassword } from '@/Ldap/helpers';
+import Container from 'typedi';
+import { MultiFactorAuthService } from '@/MultiFactorAuthService';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -190,10 +192,8 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 }
 
 export function generateMfaOneTimeToken(secret: string) {
-	return speakeasy.totp({
-		secret,
-		encoding: 'base32',
-	});
+	const mfaService = Container.get(MultiFactorAuthService);
+	return mfaService.generateMfaOneTimeToken({ secret });
 }
 
 export async function createUserWithMfaEnabled(
@@ -216,8 +216,8 @@ export async function createUserWithMfaEnabled(
 			mfaRecoveryCodes: codes,
 		}),
 		rawPassword: password,
-		secret: base32,
-		recoveryCodes: codes,
+		rawSecret: base32,
+		rawRecoveryCodes: codes,
 	};
 }
 

@@ -147,6 +147,7 @@ import { isSamlEnabled } from './Saml/helpers';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
+import { MultiFactorAuthService } from './MultiFactorAuthService';
 
 const exec = promisify(callbackExec);
 
@@ -359,12 +360,13 @@ class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
+		const mfaService = Container.get(MultiFactorAuthService);
 
 		const controllers = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
-			new MFAController(repositories.User),
+			new MFAController(repositories.User, mfaService),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({

@@ -80,6 +80,7 @@ import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { MultiFactorAuthService } from '@/MultiFactorAuthService';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -233,7 +234,11 @@ export async function initTestServer({
 						}),
 					);
 				case 'mfa':
-					registerController(testServer.app, config, new MFAController(repositories.User));
+					registerController(
+						testServer.app,
+						config,
+						new MFAController(repositories.User, Container.get(MultiFactorAuthService)),
+					);
 			}
 		}
 	}
