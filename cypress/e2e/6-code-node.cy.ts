@@ -12,7 +12,7 @@ describe('Code node', () => {
 
 	it('should execute the placeholder in all-items mode successfully', () => {
 		WorkflowPage.actions.visit();
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Code');
 		WorkflowPage.actions.openNode('Code');
 
@@ -23,7 +23,7 @@ describe('Code node', () => {
 
 	it('should execute the placeholder in each-item mode successfully', () => {
 		WorkflowPage.actions.visit();
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Code');
 		WorkflowPage.actions.openNode('Code');
 		ndv.getters.parameterInput('mode').click();

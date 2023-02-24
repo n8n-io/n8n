@@ -1,0 +1,331 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "bd40f2b1-090e-4cf0-8342-0ebcca1089b4",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "duration": 10,
+        "options": {}
+      },
+      "id": "cadf04c8-5900-414e-bf61-46adbf3687c2",
+      "name": "Calculate Date: Add Day",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "duration": 2,
+        "timeUnit": "quarters",
+        "options": {}
+      },
+      "id": "77939e5a-db02-4c85-bf31-b61a017f4f64",
+      "name": "Calculate Date: Substract Quarter",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "operation": "subtract",
+        "duration": 2,
+        "options": {}
+      },
+      "id": "6426aa5b-96ad-4516-a346-b9d0ee68b7bd",
+      "name": "Calculate Date: Substract Day",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "duration": 2,
+        "timeUnit": "months",
+        "options": {}
+      },
+      "id": "de76ce11-7865-4b15-9829-5ed7d6a287eb",
+      "name": "Calculate Date: Add months",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "action": "calculate",
+        "value": "08/01/2022",
+        "operation": "subtract",
+        "duration": 2,
+        "timeUnit": "months",
+        "options": {}
+      },
+      "id": "ccbe4625-e470-45f8-b494-06ee1ecfb1a5",
+      "name": "Calculate Date: Substract Months",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "YYYY/MM/DD",
+        "options": {}
+      },
+      "id": "aed1eed3-db4e-431b-be04-488b47880665",
+      "name": "Calculate Date: Format YYYY/MM/DD",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "YYYY/MM/DD",
+        "options": {
+          "fromTimezone": "US/Hawaii"
+        }
+      },
+      "id": "3bc2aa26-bc98-40c0-be8a-75bc0d58601c",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "YYYY/MM/DD",
+        "options": {
+          "fromTimezone": "US/Hawaii",
+          "toTimezone": "US/Pacific"
+        }
+      },
+      "id": "e2defb6b-e465-4d5f-9d65-d66ab91345f5",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone1",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        520,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "value": "08/01/2022",
+        "toFormat": "x",
+        "options": {
+          "fromTimezone": "US/Hawaii",
+          "toTimezone": "US/Pacific"
+        }
+      },
+      "id": "cdf19ab4-aa0c-4cad-8264-bd4356928baf",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        40,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "value": "2022-01-12",
+        "toFormat": "MM-DD-YYYY",
+        "options": {
+          "fromFormat": "YYYY-DD-MM",
+          "fromTimezone": "US/Hawaii",
+          "toTimezone": "US/Pacific"
+        }
+      },
+      "id": "3383f04e-f13d-438b-b1c4-1bc09332401c",
+      "name": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        40,
+        380
+      ]
+    }
+  ],
+  "pinData": {
+    "Calculate Date: Format YYYY/MM/DD with Timezone Unix": [
+      {
+        "json": {
+          "data": "1659312000000"
+        }
+      }
+    ],
+    "Calculate Date: Format YYYY/MM/DD with Timezone with special zone": [
+      {
+        "json": {
+          "data": "12-01-2022"
+        }
+      }
+    ],
+    "Calculate Date: Add Day": [
+      {
+        "json": {
+          "data": "2022-08-11T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Substract Day": [
+      {
+        "json": {
+          "data": "2022-07-30T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Substract Quarter": [
+      {
+        "json": {
+          "data": "2023-02-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Add months": [
+      {
+        "json": {
+          "data": "2022-10-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Substract Months": [
+      {
+        "json": {
+          "data": "2022-06-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "Calculate Date: Format YYYY/MM/DD": [
+      {
+        "json": {
+          "data": "2022/08/01"
+        }
+      }
+    ],
+    "Calculate Date: Format YYYY/MM/DD with Timezone": [
+      {
+        "json": {
+          "data": "2022/07/31"
+        }
+      }
+    ],
+    "Calculate Date: Format YYYY/MM/DD with Timezone1": [
+      {
+        "json": {
+          "data": "2022/07/31"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Calculate Date: Add Day",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Substract Day",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Substract Quarter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Add months",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Substract Months",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "America/New_York",
+    "saveExecutionProgress": "DEFAULT"
+  },
+  "versionId": "2737913c-dd04-438a-ba00-b1ee5f734038",
+  "id": "230",
+  "meta": {
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "tags": []
+}

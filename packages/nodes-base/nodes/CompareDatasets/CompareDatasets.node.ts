@@ -13,7 +13,7 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -95,6 +95,19 @@ export class CompareDatasets implements INodeType {
 				],
 			},
 			{
+				displayName: 'Fuzzy Compare',
+				name: 'fuzzyCompare',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+			},
+			{
 				displayName: 'Prefer',
 				name: 'preferWhenMix',
 				type: 'options',
@@ -155,6 +168,11 @@ export class CompareDatasets implements INodeType {
 						default: false,
 						description:
 							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+						displayOptions: {
+							hide: {
+								'@version': [2],
+							},
+						},
 					},
 					{
 						displayName: 'Disable Dot Notation',
@@ -193,6 +211,12 @@ export class CompareDatasets implements INodeType {
 		);
 
 		const options = this.getNodeParameter('options', 0, {});
+
+		options.nodeVersion = this.getNode().typeVersion;
+
+		if (options.nodeVersion === 2) {
+			options.fuzzyCompare = this.getNodeParameter('fuzzyCompare', 0, false) as boolean;
+		}
 
 		const input1 = checkInput(
 			this.getInputData(0),

@@ -13,6 +13,7 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -321,4 +322,12 @@ export async function validateCredentials(
 	};
 
 	return this.helpers.request(options);
+}
+
+export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {
+	return Array.from(iterable, (_, i) => i).map((index) => {
+		return {
+			item: index,
+		};
+	});
 }

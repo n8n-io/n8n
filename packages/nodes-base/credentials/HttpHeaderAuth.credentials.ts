@@ -22,6 +22,9 @@ export class HttpHeaderAuth implements ICredentialType {
 			displayName: 'Value',
 			name: 'value',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 	];

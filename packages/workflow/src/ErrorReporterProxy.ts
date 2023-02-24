@@ -12,8 +12,15 @@ interface ErrorReporter {
 }
 
 const instance: ErrorReporter = {
-	report: (error) =>
-		error instanceof Error && Logger.error(`${error.constructor.name}: ${error.message}`),
+	report: (error) => {
+		if (error instanceof Error) {
+			let e = error;
+			do {
+				Logger.error(`${e.constructor.name}: ${e.message}`);
+				e = e.cause as Error;
+			} while (e);
+		}
+	},
 };
 
 export function init(errorReporter: ErrorReporter) {
