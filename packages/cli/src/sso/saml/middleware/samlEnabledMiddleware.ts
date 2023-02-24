@@ -8,7 +8,6 @@ export const samlLicensedOwnerMiddleware: RequestHandler = (
 	res,
 	next,
 ) => {
-	console.log(isSamlEnabled(), req.user?.globalRole.name);
 	if (isSamlLicensed() && req.user?.globalRole.name === 'owner') {
 		next();
 	} else {
@@ -17,7 +16,6 @@ export const samlLicensedOwnerMiddleware: RequestHandler = (
 };
 
 export const samlLicensedAndEnabledMiddleware: RequestHandler = (req, res, next) => {
-	console.log(isSamlEnabled(), isSamlLicensed(), isSamlCurrentAuthenticationMethod());
 	if (isSamlEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod()) {
 		next();
 	} else {
