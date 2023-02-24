@@ -2,7 +2,7 @@ import { IExecutionsSummary } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { i18n as locale } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { genericHelpers } from './genericHelpers';
 
 export interface IExecutionUIData {
@@ -12,7 +12,8 @@ export interface IExecutionUIData {
 	runningTime: string;
 }
 
-export const executionHelpers = mixins(genericHelpers).extend({
+export const executionHelpers = defineComponent({
+	mixins: [genericHelpers],
 	computed: {
 		...mapStores(useWorkflowsStore),
 		executionId(): string {

@@ -97,13 +97,13 @@ import { VIEWS } from '../../constants';
 import { range as _range } from 'lodash';
 import { IExecutionsSummary } from '@/Interface';
 import { Route } from 'vue-router';
-import Vue from 'vue';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 import { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
@@ -225,7 +225,7 @@ export default Vue.extend({
 			const sidebarContainer = this.$refs.container as HTMLElement;
 			const currentExecutionCard = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as Vue[];
+			] as ComponentPublicInstance[];
 
 			// Find out how many execution card can fit into list
 			// and load more if needed
@@ -242,7 +242,7 @@ export default Vue.extend({
 			const executionsList = this.$refs.executionList as HTMLElement;
 			const currentExecutionCard = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as Vue[];
+			] as ComponentPublicInstance[];
 
 			if (
 				executionsList &&

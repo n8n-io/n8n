@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
@@ -18,8 +18,10 @@ import { inputTheme } from './theme';
 import { autocompletion, ifIn } from '@codemirror/autocomplete';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+export default defineComponent({
 	name: 'InlineExpressionEditorInput',
+	mixins: [expressionManager, workflowHelpers],
+
 	props: {
 		value: {
 			type: String,

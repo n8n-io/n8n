@@ -47,11 +47,10 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent, PropType } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import {
 	deepCopy,
@@ -59,13 +58,15 @@ import {
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
 import { BaseTextKey } from '../../plugins/i18n';
+import { EventBus } from '@/event-bus/event-bus';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	mixins: [showMessage],
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -75,7 +76,7 @@ export default mixins(showMessage).extend({
 	components: {},
 	props: {
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		destination: {
 			type: Object,

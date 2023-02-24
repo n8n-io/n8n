@@ -40,7 +40,7 @@ import {
 	UIState,
 	XYPosition,
 } from '@/Interface';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';
 import { getCurlToJson } from '@/api/curlHelper';

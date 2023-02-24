@@ -351,7 +351,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { CODE_NODE_TYPE, HTML_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
@@ -363,14 +363,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'parameter-input',
+	mixins: [externalHooks, nodeHelpers, showMessage, workflowHelpers, debounceHelper],
+
 	components: {
 		CodeEdit,
 		CodeNodeEditor,
@@ -1086,12 +1082,12 @@ export default mixins(
 				if (this.isResourceLocatorParameter) {
 					const resourceLocator = this.$refs.resourceLocator;
 					if (resourceLocator) {
-						(resourceLocator as Vue).$emit('refreshList');
+						(resourceLocator as ComponentPublicInstance).$emit('refreshList');
 					}
 				}
 				this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
-				htmlEditorEventBus.$emit('format-html');
+				htmlEditorEventBus.emit('format-html');
 			}
 
 			if (this.node && (command === 'addExpression' || command === 'removeExpression')) {

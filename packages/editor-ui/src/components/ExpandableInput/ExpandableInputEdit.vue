@@ -16,10 +16,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExpandableInputBase from './ExpandableInputBase.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	components: { ExpandableInputBase },
 	name: 'ExpandableInputEdit',
 	props: ['value', 'placeholder', 'maxlength', 'autofocus', 'eventBus'],

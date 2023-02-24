@@ -31,7 +31,7 @@ import {
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { useRootStore } from './n8nRootStore';
 import { useSettingsStore } from './settings';
 import { useUIStore } from './ui';

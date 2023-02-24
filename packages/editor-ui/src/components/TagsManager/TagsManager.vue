@@ -28,8 +28,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { ITag } from '@/Interface';
 
@@ -41,8 +40,10 @@ import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'TagsManager',
+	mixins: [showMessage],
+
 	created() {
 		this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},

@@ -137,7 +137,7 @@ import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
@@ -152,8 +152,10 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 
-export default mixins(restApi).extend({
+export default defineComponent({
 	name: 'CredentialConfig',
+	mixins: [restApi],
+
 	components: {
 		AuthTypeSelector,
 		Banner,

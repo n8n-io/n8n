@@ -150,7 +150,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
@@ -168,8 +168,6 @@ import { IDataObject, INodeTypeDescription, ITaskData, NodeHelpers } from 'n8n-w
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
-import mixins from 'vue-typed-mixins';
-
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
 import {
@@ -186,15 +184,10 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { EnableNodeToggleCommand } from '@/models/history';
 
-export default mixins(
-	externalHooks,
-	nodeBase,
-	nodeHelpers,
-	workflowHelpers,
-	pinData,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'Node',
+	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
+
 	components: {
 		TitledList,
 		NodeIcon,

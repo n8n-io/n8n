@@ -1,4 +1,4 @@
-import vue from '@vitejs/plugin-vue2';
+import vue from '@vitejs/plugin-vue';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
@@ -81,7 +81,11 @@ export default mergeConfig(
 				},
 				...lodashAliases,
 				{
-					find: /^lodash.(.+)$/,
+					find: /^lodash$/,
+					replacement: 'lodash-es',
+				},
+				{
+					find: /^lodash\.(.+)$/,
 					replacement: 'lodash-es/$1',
 				},
 				{

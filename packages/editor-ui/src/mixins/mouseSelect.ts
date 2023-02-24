@@ -1,6 +1,6 @@
 import { INodeUi, XYPosition } from '@/Interface';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { VIEWS } from '@/constants';
@@ -15,7 +15,8 @@ import {
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 
-export const mouseSelect = mixins(deviceSupportHelpers).extend({
+export const mouseSelect = defineComponent({
+	mixins: [deviceSupportHelpers],
 	data() {
 		return {
 			selectActive: false,

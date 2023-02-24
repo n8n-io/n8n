@@ -124,7 +124,7 @@ import { INodeUi } from '@/Interface';
 import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import {
@@ -140,8 +140,10 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'InputPanel',
+	mixins: [workflowHelpers],
+
 	components: { RunData, NodeExecuteButton, WireMeUp },
 	props: {
 		currentNodeName: {

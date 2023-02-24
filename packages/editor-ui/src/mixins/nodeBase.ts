@@ -1,5 +1,5 @@
 import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
@@ -14,7 +14,8 @@ import { getStyleTokenValue } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
 import { MoveNodeCommand } from '@/models/history';
 
-export const nodeBase = mixins(deviceSupportHelpers).extend({
+export const nodeBase = defineComponent({
+	mixins: [deviceSupportHelpers],
 	mounted() {
 		// Initialize the node
 		if (this.data !== null) {

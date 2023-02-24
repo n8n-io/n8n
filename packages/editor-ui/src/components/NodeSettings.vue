@@ -153,7 +153,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { ComponentPublicInstance, PropType } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeParameters,
@@ -182,7 +182,7 @@ import { get, set, unset } from 'lodash';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
@@ -194,8 +194,10 @@ import { useHistoryStore } from '@/stores/history';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
 
-export default mixins(externalHooks, nodeHelpers).extend({
+export default defineComponent({
 	name: 'NodeSettings',
+	mixins: [externalHooks, nodeHelpers],
+
 	components: {
 		NodeTitle,
 		NodeCredentials,
@@ -865,7 +867,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
 		if (this.eventBus) {
-			(this.eventBus as Vue).$on('openSettings', () => {
+			(this.eventBus as ComponentPublicInstance).$on('openSettings', () => {
 				this.openPanel = 'settings';
 			});
 		}

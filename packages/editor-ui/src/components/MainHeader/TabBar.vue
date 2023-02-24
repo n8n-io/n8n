@@ -12,13 +12,13 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import { ITabBarItem } from '@/Interface';
 import { MAIN_HEADER_TABS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'tab-bar',
 	data() {
 		return {

@@ -62,7 +62,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 import { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
@@ -75,7 +75,6 @@ import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -89,7 +88,8 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default defineComponent({
+	mixins: [showMessage, restApi],
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -165,7 +165,11 @@ export default mixins(showMessage, restApi).extend({
 	methods: {
 		async onClick(event?: PointerEvent) {
 			if (event) {
-				if ((this.$refs.activator as Vue)?.$el.contains(event.target as HTMLElement)) {
+				if (
+					(this.$refs.activator as ComponentPublicInstance)?.$el.contains(
+						event.target as HTMLElement,
+					)
+				) {
 					return;
 				}
 

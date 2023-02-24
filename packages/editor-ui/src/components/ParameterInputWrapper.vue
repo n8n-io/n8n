@@ -39,11 +39,11 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { showMessage } from '@/mixins/showMessage';
 import {
 	INodeProperties,
@@ -59,8 +59,10 @@ import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default defineComponent({
 	name: 'parameter-input-wrapper',
+	mixins: [showMessage, workflowHelpers],
+
 	components: {
 		ParameterInput,
 		InputHint,
@@ -202,7 +204,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 		optionSelected(command: string) {
 			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
+				(this.$refs.param as ComponentPublicInstance).$emit('optionSelected', command);
 			}
 		},
 		onValueChanged(parameterData: IUpdateInformation) {

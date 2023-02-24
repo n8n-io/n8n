@@ -37,14 +37,14 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import { get } from 'lodash';
 
 import { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
@@ -64,8 +64,10 @@ const initialMainPanelWidth: { [key: string]: number } = {
 	wide: MAIN_NODE_PANEL_WIDTH * 2,
 };
 
-export default mixins(debounceHelper).extend({
+export default defineComponent({
 	name: 'NDVDraggablePanels',
+	mixins: [debounceHelper],
+
 	components: {
 		PanelDragButton,
 	},

@@ -50,7 +50,7 @@ import { showMessage } from '@/mixins/showMessage';
 
 import { isEqual } from 'lodash';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
 import { mapStores } from 'pinia';
@@ -420,7 +420,8 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showMessage).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers, restApi, showMessage],
 	computed: {
 		...mapStores(
 			useNodeTypesStore,

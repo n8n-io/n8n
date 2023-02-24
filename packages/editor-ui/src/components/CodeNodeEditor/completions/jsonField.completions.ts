@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { escape, toVariableOption } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
 
-export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const jsonFieldCompletions = defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 	},

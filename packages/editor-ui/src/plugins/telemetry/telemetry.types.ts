@@ -1,7 +1,7 @@
 import type { Telemetry } from '.';
 
-declare module 'vue/types/vue' {
-	interface Vue {
+declare module '@vue/runtime-core' {
+	interface ComponentCustomProperties {
 		$telemetry: Telemetry;
 	}
 }

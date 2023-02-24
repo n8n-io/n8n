@@ -3,10 +3,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ExecutionsView',
 	components: {
 		ExecutionsList,

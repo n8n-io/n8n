@@ -49,8 +49,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -65,7 +64,8 @@ import { IWorkflowDataUpdate } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage, workflowHelpers, restApi).extend({
+export default defineComponent({
+	mixins: [showMessage, workflowHelpers, restApi],
 	components: { TagsDropdown, Modal },
 	name: 'DuplicateWorkflow',
 	props: ['modalName', 'isActive', 'data'],

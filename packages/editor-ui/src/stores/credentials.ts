@@ -31,7 +31,7 @@ import {
 	IUser,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { useRootStore } from './n8nRootStore';
 import { useNodeTypesStore } from './nodeTypes';
 import { useSettingsStore } from './settings';

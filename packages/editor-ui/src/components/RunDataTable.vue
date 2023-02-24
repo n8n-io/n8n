@@ -160,8 +160,8 @@
 /* eslint-disable prefer-spread */
 import { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/utils';
-import Vue, { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
@@ -173,8 +173,10 @@ import MappingPill from './MappingPill.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'run-data-table',
+	mixins: [externalHooks],
+
 	components: { Draggable, MappingPill },
 	props: {
 		node: {
@@ -220,7 +222,7 @@ export default mixins(externalHooks).extend({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
+			const tbody = (this.$refs.draggable as ComponentPublicInstance).$refs.wrapper as HTMLElement;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,

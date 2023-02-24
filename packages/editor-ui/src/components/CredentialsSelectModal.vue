@@ -58,8 +58,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -68,8 +67,10 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useCredentialsStore } from '@/stores/credentials';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'CredentialsSelectModal',
+	mixins: [externalHooks],
+
 	components: {
 		Modal,
 	},

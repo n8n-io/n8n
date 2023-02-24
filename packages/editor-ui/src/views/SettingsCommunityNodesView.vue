@@ -63,7 +63,7 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes';
@@ -73,8 +73,10 @@ import { useSettingsStore } from '@/stores/settings';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsCommunityNodesView',
+	mixins: [showMessage],
+
 	components: {
 		CommunityPackageCard,
 	},

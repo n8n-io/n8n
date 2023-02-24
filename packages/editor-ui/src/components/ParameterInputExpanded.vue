@@ -58,14 +58,14 @@
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterOptions from './ParameterOptions.vue';
-import Vue, { PropType } from 'vue';
+import { ComponentPublicInstance, defineComponent, PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from '@/utils';
 import { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'parameter-input-expanded',
 	components: {
 		ParameterOptions,
@@ -145,7 +145,7 @@ export default Vue.extend({
 		},
 		optionSelected(command: string) {
 			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
+				(this.$refs.param as ComponentPublicInstance).$emit('optionSelected', command);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {

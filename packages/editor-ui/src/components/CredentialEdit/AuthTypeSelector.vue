@@ -11,7 +11,7 @@ import {
 } from '@/utils';
 import { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 export interface Props {
 	credentialType: Object;

@@ -15,9 +15,9 @@
 
 <script lang="ts">
 import { ITaskData } from 'n8n-workflow';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		taskData: {}, // ITaskData
 	},

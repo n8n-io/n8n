@@ -119,7 +119,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import SettingsView from './SettingsView.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -129,7 +129,6 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
 import { EnterpriseEditionFeature, POSTHOG_ASSUMPTION_TEST, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
 import { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -146,8 +145,10 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper).extend({
+export default defineComponent({
 	name: 'WorkflowsView',
+	mixins: [showMessage, debounceHelper],
+
 	components: {
 		ResourcesListLayout,
 		TemplateCard,

@@ -24,7 +24,7 @@ import {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { useCredentialsStore } from './credentials';
 import { useRootStore } from './n8nRootStore';
 import { useUsersStore } from './users';

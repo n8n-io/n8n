@@ -28,7 +28,7 @@
 
 <script lang="ts">
 import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import jp from 'jsonpath';
 import { INodeUi } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
@@ -49,8 +49,10 @@ type JsonPathData = {
 // A path that does not exist so that nothing is selected by default
 const nonExistingJsonPath = '_!^&*';
 
-export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
+export default defineComponent({
 	name: 'run-data-json-actions',
+	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
+
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,

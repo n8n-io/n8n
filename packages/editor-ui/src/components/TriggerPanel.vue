@@ -102,20 +102,21 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 import CopyInput from './CopyInput.vue';
 import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from '@/mixins/copyPaste';
 import { showMessage } from '@/mixins/showMessage';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(workflowHelpers, copyPaste, showMessage).extend({
+export default defineComponent({
 	name: 'TriggerPanel',
+	mixins: [workflowHelpers, copyPaste, showMessage],
+
 	components: {
 		NodeExecuteButton,
 		CopyInput,
@@ -355,7 +356,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	methods: {
 		expandExecutionHelp() {
 			if (this.$refs.help) {
-				(this.$refs.help as Vue).$emit('expand');
+				(this.$refs.help as ComponentPublicInstance).$emit('expand');
 			}
 		},
 		onLinkClick(e: MouseEvent) {

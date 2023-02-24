@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
@@ -31,8 +31,10 @@ import { theme } from './theme';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
 
-export default mixins(expressionManager).extend({
+export default defineComponent({
 	name: 'HtmlEditor',
+	mixins: [expressionManager],
+
 	props: {
 		html: {
 			type: String,
@@ -192,7 +194,7 @@ export default mixins(expressionManager).extend({
 	},
 
 	mounted() {
-		htmlEditorEventBus.$on('format-html', this.format);
+		htmlEditorEventBus.on('format-html', this.format);
 
 		const state = EditorState.create({ doc: this.html, extensions: this.extensions });
 
@@ -202,7 +204,7 @@ export default mixins(expressionManager).extend({
 	},
 
 	destroyed() {
-		htmlEditorEventBus.$off('format-html', this.format);
+		htmlEditorEventBus.off('format-html', this.format);
 	},
 });
 </script>

@@ -31,7 +31,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { ICredentialsResponse, IUser } from '@/Interface';
 import { ICredentialType } from 'n8n-workflow';
 import { EnterpriseEditionFeature } from '@/constants';
@@ -49,7 +49,8 @@ export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	mixins: [showMessage],
 	data() {
 		return {
 			EnterpriseEditionFeature,

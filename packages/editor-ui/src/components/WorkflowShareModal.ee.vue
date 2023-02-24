@@ -133,7 +133,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -143,7 +143,6 @@ import {
 } from '../constants';
 import { IUser, IWorkflowDb, UIState } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { mapStores } from 'pinia';
@@ -156,8 +155,10 @@ import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage';
 import { BaseTextKey } from '@/plugins/i18n';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'workflow-share-modal',
+	mixins: [showMessage],
+
 	components: {
 		Modal,
 	},
@@ -266,7 +267,7 @@ export default mixins(showMessage).extend({
 			const saveWorkflowPromise = () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-						nodeViewEventBus.$emit('saveWorkflow', () => {
+						nodeViewEventBus.emit('saveWorkflow', () => {
 							resolve(this.workflow.id);
 						});
 					} else {

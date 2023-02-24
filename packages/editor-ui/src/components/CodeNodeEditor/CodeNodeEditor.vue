@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
@@ -20,8 +20,10 @@ import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
+export default defineComponent({
 	name: 'code-node-editor',
+	mixins: [linterExtension, completerExtension, workflowHelpers],
+
 	props: {
 		mode: {
 			type: String,
@@ -133,10 +135,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	destroyed() {
-		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
+		codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {
-		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
+		codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		const stateBasedExtensions = [
 			this.linterCompartment.of(this.linterExtension()),

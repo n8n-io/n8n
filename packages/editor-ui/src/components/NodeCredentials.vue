@@ -119,7 +119,7 @@ import { showMessage } from '@/mixins/showMessage';
 
 import TitledList from '@/components/TitledList.vue';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
@@ -141,8 +141,10 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
+export default defineComponent({
 	name: 'NodeCredentials',
+	mixins: [genericHelpers, nodeHelpers, restApi, showMessage],
+
 	props: {
 		readonly: {
 			type: Boolean,

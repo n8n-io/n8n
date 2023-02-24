@@ -56,13 +56,13 @@
 
 <script lang="ts">
 import { ICredentialType } from 'n8n-workflow';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
 import { useCredentialsStore } from '@/stores/credentials';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'CredentialsSelect',
 	components: {
 		ScopesNotice,

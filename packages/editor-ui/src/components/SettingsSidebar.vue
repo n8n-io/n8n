@@ -21,20 +21,22 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { pushConnection } from '@/mixins/pushConnection';
 import { IFakeDoor } from '@/Interface';
-import { IMenuItem } from 'n8n-design-system';
+import { IMenuItem } from 'n8n-design-system-next';
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export default mixins(userHelpers, pushConnection).extend({
+export default defineComponent({
 	name: 'SettingsSidebar',
+	mixins: [userHelpers, pushConnection],
+
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {

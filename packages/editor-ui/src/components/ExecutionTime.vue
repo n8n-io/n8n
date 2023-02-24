@@ -7,10 +7,12 @@
 <script lang="ts">
 import { genericHelpers } from '@/mixins/genericHelpers';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'ExecutionTime',
+	mixins: [genericHelpers],
+
 	props: ['startTime'],
 	computed: {
 		time(): string {

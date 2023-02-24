@@ -1,6 +1,6 @@
 import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IMenuItem } from 'n8n-design-system';
+import { IMenuItem } from 'n8n-design-system-next';
 import {
 	jsPlumbInstance,
 	DragOptions,
@@ -45,7 +45,7 @@ import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
-export * from 'n8n-design-system/types';
+export * from 'n8n-design-system-next/types';
 
 declare module 'jsplumb' {
 	interface PaintStyle {

@@ -132,7 +132,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 import {
 	ILoadOptions,
@@ -151,7 +151,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
@@ -172,8 +172,10 @@ interface IResourceLocatorQuery {
 	loading: boolean;
 }
 
-export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
+export default defineComponent({
 	name: 'resource-locator',
+	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
+
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
@@ -465,7 +467,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		onKeyDown(e: MouseEvent) {
 			const dropdown = this.$refs.dropdown;
 			if (dropdown && this.showResourceDropdown && !this.isSearchable) {
-				(dropdown as Vue).$emit('keyDown', e);
+				(dropdown as ComponentPublicInstance).$emit('keyDown', e);
 			}
 		},
 		openResource(url: string) {

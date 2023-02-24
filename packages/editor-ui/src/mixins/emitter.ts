@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Vue from 'vue';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 function broadcast(componentName: string, eventName: string, params: any) {
 	// @ts-ignore
-	(this as Vue).$children.forEach((child) => {
+	(this as ComponentPublicInstance).$children.forEach((child) => {
 		const name = child.$options.name;
 
 		if (name === componentName) {
@@ -17,7 +17,7 @@ function broadcast(componentName: string, eventName: string, params: any) {
 	});
 }
 
-export default Vue.extend({
+export default defineComponent({
 	methods: {
 		$dispatch(componentName: string, eventName: string, params: any) {
 			let parent = this.$parent || this.$root;

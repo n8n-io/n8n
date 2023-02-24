@@ -10,7 +10,7 @@ import {
 	ITemplatesWorkflowFull,
 	IWorkflowTemplate,
 } from '@/Interface';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { useSettingsStore } from './settings';
 import {
 	getCategories,

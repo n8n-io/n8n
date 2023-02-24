@@ -113,7 +113,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -123,8 +123,10 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { Dropdown as ElDropdown } from 'element-ui';
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+export default defineComponent({
 	name: 'execution-preview',
+	mixins: [restApi, showMessage, executionHelpers],
+
 	components: {
 		ElDropdown,
 		WorkflowPreview,

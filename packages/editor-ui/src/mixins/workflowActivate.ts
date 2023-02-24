@@ -2,7 +2,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -13,7 +13,8 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessage).extend({
+export const workflowActivate = defineComponent({
+	mixins: [externalHooks, workflowHelpers, showMessage],
 	data() {
 		return {
 			updatingWorkflowActivation: false,

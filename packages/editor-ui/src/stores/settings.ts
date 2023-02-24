@@ -26,7 +26,7 @@ import {
 } from '@/Interface';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { useRootStore } from './n8nRootStore';
 import { useUIStore } from './ui';
 import { useUsersStore } from './users';

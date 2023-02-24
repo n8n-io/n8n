@@ -69,13 +69,13 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 import { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { showMessage } from '@/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import {
@@ -90,8 +90,10 @@ import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'parameter-input-full',
+	mixins: [showMessage],
+
 	components: {
 		ParameterOptions,
 		DraggableTarget,
@@ -215,14 +217,14 @@ export default mixins(showMessage).extend({
 		},
 		optionSelected(command: string) {
 			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
+				(this.$refs.param as ComponentPublicInstance).$emit('optionSelected', command);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const param = this.$refs.param as Vue | undefined;
+			const param = this.$refs.param as ComponentPublicInstance | undefined;
 
 			if (isValueExpression(this.parameter, parameterData.value)) {
 				param?.$emit('optionSelected', 'addExpression');

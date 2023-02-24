@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 
@@ -12,7 +12,7 @@ import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'InlineExpressionEditorOutput',
 	props: {
 		segments: {

@@ -68,7 +68,7 @@
 
 <script lang="ts">
 import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -82,8 +82,10 @@ import MappingPill from './MappingPill.vue';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'run-data-json',
+	mixins: [externalHooks],
+
 	components: {
 		VueJsonPretty,
 		Draggable,

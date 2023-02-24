@@ -5,16 +5,16 @@ import { useHistoryStore } from '@/stores/history';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { Command } from '@/models/history';
 import { debounceHelper } from '@/mixins/debounce';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import Vue from 'vue';
 import { getNodeViewTab } from '@/utils';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 
-export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend({
+export const historyHelper = defineComponent({
+	mixins: [debounceHelper, deviceSupportHelpers],
 	computed: {
 		...mapStores(useNDVStore, useHistoryStore, useUIStore, useWorkflowsStore),
 		isNDVOpen(): boolean {

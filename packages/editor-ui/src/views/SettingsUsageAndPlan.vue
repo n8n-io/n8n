@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router/composables';
+import { useRoute, useRouter } from 'vue-router';
 import { Notification } from 'element-ui';
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { telemetry } from '@/plugins/telemetry';

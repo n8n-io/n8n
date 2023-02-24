@@ -1,12 +1,10 @@
 <template>
-	<fragment>
-		<el-tag v-if="type === 'danger'" type="danger" size="small" :class="$style['danger']">
-			{{ text }}
-		</el-tag>
-		<el-tag v-else-if="type === 'warning'" size="small" :class="$style['warning']">
-			{{ text }}
-		</el-tag>
-	</fragment>
+	<el-tag v-if="type === 'danger'" type="danger" size="small" :class="$style['danger']">
+		{{ text }}
+	</el-tag>
+	<el-tag v-else-if="type === 'warning'" size="small" :class="$style['warning']">
+		{{ text }}
+	</el-tag>
 </template>
 
 <script lang="ts">

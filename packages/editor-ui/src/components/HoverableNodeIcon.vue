@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { ITemplatesNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -54,7 +54,7 @@ interface NodeIconData {
 	fileBuffer?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'HoverableNodeIcon',
 	props: {
 		circle: {

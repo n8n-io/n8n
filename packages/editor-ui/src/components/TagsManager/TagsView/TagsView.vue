@@ -22,7 +22,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { ITag, ITagRow } from '@/Interface';
 import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
@@ -33,7 +33,7 @@ import { useUsersStore } from '@/stores/users';
 const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
-export default Vue.extend({
+export default defineComponent({
 	components: { TagsTableHeader, TagsTable },
 	name: 'TagsView',
 	props: ['tags', 'isLoading'],

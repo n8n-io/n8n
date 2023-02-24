@@ -2,7 +2,7 @@ import { STORES } from '@/constants';
 import { INodeUi, IRunDataDisplayMode, NDVState, NodePanelType, XYPosition } from '@/Interface';
 import { IRunData } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { useWorkflowsStore } from './workflows';
 
 export const useNDVStore = defineStore(STORES.NDV, {

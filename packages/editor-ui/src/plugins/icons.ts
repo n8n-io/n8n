@@ -1,5 +1,3 @@
-import Vue from 'vue';
-
 import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
@@ -124,11 +122,9 @@ import {
 	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addIcon(icon: any) {
-	library.add(icon as IconDefinition);
+function addIcon(icon: IconDefinition) {
+	library.add(icon);
 }
 
 addIcon(faAngleDoubleLeft);
@@ -231,7 +227,7 @@ addIcon(faSignOutAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);
-addIcon(faStickyNote);
+addIcon(faStickyNote as IconDefinition);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
@@ -252,5 +248,3 @@ addIcon(faUserFriends);
 addIcon(faUsers);
 addIcon(faVideo);
 addIcon(faTree);
-
-Vue.component('font-awesome-icon', FontAwesomeIcon);

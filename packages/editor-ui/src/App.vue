@@ -27,17 +27,19 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
 import { HIRING_BANNER, LOCAL_STORAGE_THEME, POSTHOG_ASSUMPTION_TEST, VIEWS } from './constants';
 
-import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { restApi } from '@/mixins/restApi';
+import { historyHelper } from '@/mixins/history';
+
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { loadLanguage } from './plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -45,10 +47,11 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
-import { historyHelper } from '@/mixins/history';
 
-export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
+export default defineComponent({
 	name: 'App',
+	mixins: [showMessage, userHelpers, restApi, historyHelper],
+
 	components: {
 		LoadingView,
 		Telemetry,

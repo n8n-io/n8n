@@ -89,11 +89,10 @@
 <script lang="ts">
 import { IExecutionResponse, INodeUi } from '@/Interface';
 import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { pinData } from '@/mixins/pinData';
-import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -102,8 +101,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
-export default mixins(pinData).extend({
+export default defineComponent({
 	name: 'OutputPanel',
+	mixins: [pinData],
+
 	components: { RunData, RunInfo },
 	props: {
 		runIndex: {

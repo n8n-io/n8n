@@ -87,7 +87,7 @@ import {
 	ITemplatesQuery,
 	ITemplatesCategory,
 } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
@@ -106,8 +106,10 @@ interface ISearchEvent {
 	wf_template_repo_session_id: string;
 }
 
-export default mixins(genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'TemplatesSearchView',
+	mixins: [genericHelpers, debounceHelper],
+
 	components: {
 		CollectionsCarousel,
 		TemplateFilters,

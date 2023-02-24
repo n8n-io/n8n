@@ -1,4 +1,4 @@
-import Vue, { VNode } from 'vue';
+import { ComponentPublicInstance, VNode } from 'vue';
 
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';
@@ -21,7 +21,7 @@ declare global {
 
 	namespace JSX {
 		interface Element extends VNode {}
-		interface ElementClass extends Vue {}
+		interface ElementClass extends ComponentPublicInstance {}
 		interface IntrinsicElements {
 			[elem: string]: any;
 		}

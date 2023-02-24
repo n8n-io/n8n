@@ -64,11 +64,12 @@ import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsPersonalView',
+	mixins: [showMessage],
+
 	data() {
 		return {
 			hasAnyChanges: false,

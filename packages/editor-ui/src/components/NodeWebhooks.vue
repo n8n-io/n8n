@@ -65,10 +65,12 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(copyPaste, showMessage, workflowHelpers).extend({
+export default defineComponent({
 	name: 'NodeWebhooks',
+	mixins: [copyPaste, showMessage, workflowHelpers],
+
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription

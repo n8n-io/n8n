@@ -1,3 +1,3 @@
-import Vue from 'vue';
+import { createEventBus } from '@/event-bus/event-bus';
 
-export const dataPinningEventBus = new Vue();
+export const dataPinningEventBus = createEventBus();

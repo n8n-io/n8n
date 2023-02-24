@@ -13,20 +13,15 @@ import { restApi } from '@/mixins/restApi';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { titleChange } from './titleChange';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export const workflowRun = mixins(
-	externalHooks,
-	restApi,
-	workflowHelpers,
-	showMessage,
-	titleChange,
-).extend({
+export const workflowRun = defineComponent({
+	mixins: [externalHooks, restApi, workflowHelpers, showMessage, titleChange],
 	computed: {
 		...mapStores(useRootStore, useUIStore, useWorkflowsStore),
 	},

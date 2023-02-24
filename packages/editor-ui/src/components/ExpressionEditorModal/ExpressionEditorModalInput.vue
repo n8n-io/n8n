@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
@@ -19,8 +19,10 @@ import type { IVariableItemSelected } from '@/Interface';
 import { forceParse } from '@/utils/forceParse';
 import { autocompletion } from '@codemirror/autocomplete';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+export default defineComponent({
 	name: 'ExpressionEditorModalInput',
+	mixins: [expressionManager, workflowHelpers],
+
 	props: {
 		value: {
 			type: String,

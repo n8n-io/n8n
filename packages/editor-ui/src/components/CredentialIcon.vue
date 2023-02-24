@@ -12,9 +12,9 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		credentialTypeName: {
 			type: String,

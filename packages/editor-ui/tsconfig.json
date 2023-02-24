@@ -12,7 +12,6 @@
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
 		"baseUrl": ".",
-		"types": ["vitest/globals"],
 		"paths": {
 			"@/*": ["src/*"],
 			"n8n-design-system-next/*": ["../design-system-next/src/*"],

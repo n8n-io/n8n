@@ -107,12 +107,12 @@
 <script lang="ts">
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { ITagRow } from '@/Interface';
-import Vue from 'vue';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TagsTable',
 	props: ['rows', 'isLoading', 'newName', 'isSaving'],
 	data() {
@@ -190,7 +190,7 @@ export default Vue.extend({
 		},
 
 		focusOnCreate(): void {
-			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+			((this.$refs.table as ComponentPublicInstance).$refs.bodyWrapper as Element).scrollTop = 0;
 			this.focusOnInput();
 		},
 	},

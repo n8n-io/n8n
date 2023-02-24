@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import '../plugins';
 import { I18nPlugin } from '@/plugins/i18n';
 

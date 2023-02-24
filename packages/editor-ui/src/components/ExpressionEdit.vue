@@ -84,7 +84,7 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -93,8 +93,10 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 
-export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'ExpressionEdit',
+	mixins: [externalHooks, genericHelpers, debounceHelper],
+
 	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
 		ExpressionEditorModalInput,

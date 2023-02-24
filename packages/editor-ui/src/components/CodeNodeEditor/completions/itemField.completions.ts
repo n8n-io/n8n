@@ -1,9 +1,9 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
 
-export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const itemFieldCompletions = defineComponent({
 	methods: {
 		/**
 		 * - Complete `x.first().` to `.json .binary`

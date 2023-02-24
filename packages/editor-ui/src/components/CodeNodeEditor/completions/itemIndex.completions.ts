@@ -1,9 +1,9 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
 
-export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const itemIndexCompletions = defineComponent({
 	methods: {
 		/**
 		 * - Complete `$input.` to `.first() .last() .all() .itemMatching()` in all-items mode.

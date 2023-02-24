@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { Diagnostic, linter as createLinter } from '@codemirror/lint';
 import * as esprima from 'esprima-next';
 
@@ -13,7 +13,7 @@ import type { EditorView } from '@codemirror/view';
 import type { Node } from 'estree';
 import type { CodeNodeEditorMixin, RangeNode } from './types';
 
-export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
+export const linterExtension = defineComponent({
 	methods: {
 		linterExtension() {
 			return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });

@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import {
 	IMPORT_CURL_MODAL_KEY,
@@ -48,14 +48,15 @@ import {
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'ImportCurlModal',
+	mixins: [showMessage],
+
 	components: {
 		Modal,
 	},

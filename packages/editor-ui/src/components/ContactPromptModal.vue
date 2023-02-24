@@ -33,8 +33,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
@@ -44,7 +43,8 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
+	mixins: [workflowHelpers],
 	components: { Modal },
 	name: 'ContactPromptModal',
 	props: ['modalName'],

@@ -122,7 +122,7 @@
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
 import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import { INodeUi } from '@/Interface';
 
@@ -132,8 +132,10 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
 	name: 'NodeErrorView',
+	mixins: [copyPaste, showMessage],
+
 	props: ['error'],
 	components: {
 		VueJsonPretty,

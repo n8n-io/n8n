@@ -15,7 +15,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -32,8 +32,10 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(pushConnection, workflowHelpers).extend({
+export default defineComponent({
 	name: 'MainHeader',
+	mixins: [pushConnection, workflowHelpers],
+
 	components: {
 		WorkflowDetails,
 		TabBar,

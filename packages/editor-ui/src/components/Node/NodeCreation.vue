@@ -36,13 +36,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'node-creation',
 	components: {
 		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),

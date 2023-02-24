@@ -164,13 +164,12 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
-import Vue, { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -199,8 +198,10 @@ type IResourceKeyType = 'credentials' | 'workflows';
 
 const filterKeys = ['ownedBy', 'sharedWith'];
 
-export default mixins(showMessage, debounceHelper).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [showMessage, debounceHelper],
+
 	components: {
 		TemplateCard,
 		PageViewLayout,
@@ -343,7 +344,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {
-				(this.$refs.search as Vue & { focus: () => void }).focus();
+				(this.$refs.search as ComponentPublicInstance & { focus: () => void }).focus();
 			}
 		},
 		setOwnerSubview(active: boolean) {

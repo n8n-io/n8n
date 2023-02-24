@@ -11,15 +11,17 @@
 import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SignupView',
+	mixins: [showMessage],
+
 	components: {
 		AuthView,
 	},

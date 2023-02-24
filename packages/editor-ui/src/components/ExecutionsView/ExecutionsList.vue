@@ -46,7 +46,7 @@ import {
 	INodeTypeNameVersion,
 	NodeHelpers,
 } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
@@ -63,14 +63,10 @@ import { useSettingsStore } from '@/stores/settings';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
 
-export default mixins(
-	restApi,
-	showMessage,
-	executionHelpers,
-	debounceHelper,
-	workflowHelpers,
-).extend({
+export default defineComponent({
 	name: 'executions-view',
+	mixins: [restApi, showMessage, executionHelpers, debounceHelper, workflowHelpers],
+
 	components: {
 		ExecutionsSidebar,
 	},

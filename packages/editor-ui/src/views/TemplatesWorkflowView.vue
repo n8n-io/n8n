@@ -61,14 +61,16 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesWorkflowView',
+	mixins: [workflowHelpers],
+
 	components: {
 		TemplateDetails,
 		TemplatesView,

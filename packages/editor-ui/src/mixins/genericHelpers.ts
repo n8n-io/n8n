@@ -1,10 +1,11 @@
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import dateformat from 'dateformat';
 
 import { VIEWS } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 
-export const genericHelpers = mixins(showMessage).extend({
+export const genericHelpers = defineComponent({
+	mixins: [showMessage],
 	data() {
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any

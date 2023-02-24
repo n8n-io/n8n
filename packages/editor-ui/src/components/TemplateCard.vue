@@ -46,12 +46,14 @@
 
 <script lang="ts">
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateCard',
+	mixins: [genericHelpers],
+
 	props: {
 		lastItem: {
 			type: Boolean,

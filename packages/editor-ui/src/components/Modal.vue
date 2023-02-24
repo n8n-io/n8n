@@ -43,11 +43,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
+import { EventBus } from '@/event-bus/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Modal',
 	props: {
 		name: {
@@ -60,7 +61,7 @@ export default Vue.extend({
 			type: String,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		showClose: {
 			type: Boolean,

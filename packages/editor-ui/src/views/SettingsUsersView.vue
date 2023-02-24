@@ -46,7 +46,7 @@ import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/consta
 import PageAlert from '../components/PageAlert.vue';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import { IFakeDoor, IUser, IUserListAction } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
 import { mapStores } from 'pinia';
@@ -54,8 +54,10 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage, copyPaste).extend({
+export default defineComponent({
 	name: 'SettingsUsersView',
+	mixins: [showMessage, copyPaste],
+
 	components: {
 		PageAlert,
 		FeatureComingSoon,

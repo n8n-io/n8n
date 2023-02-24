@@ -41,7 +41,7 @@ import {
 	IWorkflowSettings,
 	NodeHelpers,
 } from 'n8n-workflow';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { useRootStore } from './n8nRootStore';
 import {
@@ -452,7 +452,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowPinData(pinData: IPinData): void {
 			Vue.set(this.workflow, 'pinData', pinData || {});
-			dataPinningEventBus.$emit('pin-data', pinData || {});
+			dataPinningEventBus.emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(tags: string[]): void {
@@ -513,7 +513,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
+			dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 
 		unpinData(payload: { node: INodeUi }): void {
@@ -527,7 +527,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+			dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
 		addConnection(data: { connection: IConnection[]; setStateDirty: boolean }): void {

@@ -55,7 +55,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { ComponentPublicInstance, defineComponent } from 'vue';
 
 import { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
@@ -68,8 +68,10 @@ import { useTagsStore } from '@/stores/tags';
 const MANAGE_KEY = '__manage';
 const CREATE_KEY = '__create';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'TagsDropdown',
+	mixins: [showMessage],
+
 	props: ['placeholder', 'currentTagIds', 'createEnabled', 'eventBus'],
 	data() {
 		return {
@@ -84,7 +86,7 @@ export default mixins(showMessage).extend({
 		// @ts-ignore
 		const select = (this.$refs.select &&
 			this.$refs.select.$refs &&
-			this.$refs.select.$refs.innerSelect) as Vue | undefined;
+			this.$refs.select.$refs.innerSelect) as ComponentPublicInstance | undefined;
 		if (select) {
 			const input = select.$refs.input as Element | undefined;
 			if (input) {
@@ -172,8 +174,8 @@ export default mixins(showMessage).extend({
 			}
 		},
 		focusOnTopOption() {
-			const tags = this.$refs.tag as Vue[] | undefined;
-			const create = this.$refs.create as Vue | undefined;
+			const tags = this.$refs.tag as ComponentPublicInstance[] | undefined;
+			const create = this.$refs.create as ComponentPublicInstance | undefined;
 			//@ts-ignore // focus on create option
 			if (create && create.hoverItem) {
 				// @ts-ignore
@@ -186,14 +188,14 @@ export default mixins(showMessage).extend({
 			}
 		},
 		focusOnTag(tagId: string) {
-			const tagOptions = (this.$refs.tag as Vue[]) || [];
+			const tagOptions = (this.$refs.tag as ComponentPublicInstance[]) || [];
 			if (tagOptions && tagOptions.length) {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const added = tagOptions.find((ref: any) => ref.value === tagId);
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.select as Vue | undefined;
+			const select = this.$refs.select as ComponentPublicInstance | undefined;
 			if (select) {
 				// @ts-ignore
 				select.focusOnInput();

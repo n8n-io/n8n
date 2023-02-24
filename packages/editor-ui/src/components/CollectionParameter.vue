@@ -54,13 +54,15 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { Component } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(nodeHelpers).extend({
+export default defineComponent({
 	name: 'CollectionParameter',
+	mixins: [nodeHelpers],
+
 	props: [
 		'hideDelete', // boolean
 		'nodeValues', // NodeParameters

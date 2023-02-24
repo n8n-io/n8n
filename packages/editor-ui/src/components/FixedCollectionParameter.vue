@@ -112,7 +112,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { Component, PropType } from 'vue';
+import { defineComponent, Component, PropType } from 'vue';
 import { IUpdateInformation } from '@/Interface';
 
 import {
@@ -126,7 +126,7 @@ import {
 
 import { get } from 'lodash';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'FixedCollectionParameter',
 	props: {
 		nodeValues: {

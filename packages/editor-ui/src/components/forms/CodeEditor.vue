@@ -3,10 +3,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import * as monaco from 'monaco-editor';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,

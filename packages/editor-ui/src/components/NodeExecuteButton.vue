@@ -21,7 +21,7 @@
 import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
@@ -30,7 +30,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(workflowRun, pinData).extend({
+export default defineComponent({
+	mixins: [workflowRun, pinData],
 	props: {
 		nodeName: {
 			type: String,
@@ -195,7 +196,7 @@ export default mixins(workflowRun, pinData).extend({
 					);
 
 					if (shouldUnpinAndExecute) {
-						dataPinningEventBus.$emit('data-unpinning', { source: 'unpin-and-execute-modal' });
+						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });
 						this.workflowsStore.unpinData({ node: this.node });
 					}
 				}

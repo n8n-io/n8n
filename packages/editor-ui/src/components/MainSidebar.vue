@@ -103,7 +103,7 @@ import { titleChange } from '@/mixins/titleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -115,7 +115,6 @@ import {
 } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -124,17 +123,19 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useVersionsStore } from '@/stores/versions';
 
-export default mixins(
-	genericHelpers,
-	restApi,
-	showMessage,
-	titleChange,
-	workflowHelpers,
-	workflowRun,
-	userHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'MainSidebar',
+	mixins: [
+		genericHelpers,
+		restApi,
+		showMessage,
+		titleChange,
+		workflowHelpers,
+		workflowRun,
+		userHelpers,
+		debounceHelper,
+	],
+
 	components: {
 		GiftNotificationIcon,
 		WorkflowSettings,

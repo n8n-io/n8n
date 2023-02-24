@@ -61,9 +61,8 @@ import { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from './ModalDrawer.vue';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -74,8 +73,10 @@ const GREAT_FEEDBACK_TITLE =
 const DEFAULT_FEEDBACK_TITLE =
 	"Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?";
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'ValueSurvey',
+	mixins: [workflowHelpers],
+
 	props: ['isActive'],
 	components: {
 		ModalDrawer,

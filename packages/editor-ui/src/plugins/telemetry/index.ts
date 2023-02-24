@@ -1,6 +1,6 @@
-import _Vue from 'vue';
+import { Plugin } from 'vue';
 import { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
-import { Route } from 'vue-router';
+import { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 
 export class Telemetry {
-	private pageEventQueue: Array<{ route: Route }>;
+	private pageEventQueue: Array<{ route: RouteLocation }>;
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -86,7 +86,7 @@ export class Telemetry {
 		this.rudderStack.track(event, updatedProperties);
 	}
 
-	page(route: Route) {
+	page(route: RouteLocation) {
 		if (this.rudderStack) {
 			if (route.path === this.previousPath) {
 				// avoid duplicate requests query is changed for example on search page
@@ -269,15 +269,8 @@ export class Telemetry {
 
 export const telemetry = new Telemetry();
 
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	Object.defineProperty(vue, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-}
+export const TelemetryPlugin: Plugin = {
+	install(app): void {
+		app.config.globalProperties.$telemetry = telemetry;
+	},
+};

@@ -1,16 +1,18 @@
 <template>
-	<fragment></fragment>
+	<span></span>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { showMessage } from '@/mixins/showMessage';
 import type { ElMessageComponent } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'PageAlert',
+	mixins: [showMessage],
+
 	props: {
 		message: {
 			type: String,

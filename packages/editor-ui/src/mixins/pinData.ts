@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription, IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
@@ -12,7 +12,7 @@ export interface IPinDataContext {
 	$showError(error: Error, title: string): void;
 }
 
-export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend({
+export const pinData = defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 		pinData(): IPinData[string] | undefined {

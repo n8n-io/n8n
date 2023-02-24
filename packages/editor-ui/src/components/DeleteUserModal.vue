@@ -66,16 +66,16 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import Vue from 'vue';
 import { IUser } from '../Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	mixins: [showMessage],
 	components: {
 		Modal,
 	},

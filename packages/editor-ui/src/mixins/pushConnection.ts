@@ -15,7 +15,7 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
@@ -25,13 +25,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 
-export const pushConnection = mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	titleChange,
-	workflowHelpers,
-).extend({
+export const pushConnection = defineComponent({
+	mixins: [externalHooks, nodeHelpers, showMessage, titleChange, workflowHelpers],
 	data() {
 		return {
 			eventSource: null as EventSource | null,
@@ -256,7 +251,7 @@ export const pushConnection = mixins(
 					runDataExecuted.data.resultData.error &&
 					runDataExecuted.data.resultData.error.lineNumber;
 
-				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {

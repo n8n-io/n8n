@@ -126,7 +126,7 @@ import ImportParameter from '@/components/ImportParameter.vue';
 
 import { get, set } from 'lodash';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { Component, PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
@@ -134,8 +134,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'ParameterInputList',
+	mixins: [workflowHelpers],
+
 	components: {
 		MultipleParameter,
 		ParameterInputFull,

@@ -33,10 +33,12 @@ import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'CollectionsCarousel',
+	mixins: [genericHelpers],
+
 	props: {
 		collections: {
 			type: Array as PropType<ITemplatesCollection[]>,

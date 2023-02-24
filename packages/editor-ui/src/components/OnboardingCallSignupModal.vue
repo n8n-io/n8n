@@ -48,17 +48,17 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants';
 import Modal from './Modal.vue';
 
-import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	mixins: [showMessage],
 	components: {
 		Modal,
 	},

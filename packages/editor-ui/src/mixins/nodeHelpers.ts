@@ -36,7 +36,7 @@ import { restApi } from '@/mixins/restApi';
 
 import { get } from 'lodash';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { isObjectLiteral } from '@/utils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
@@ -46,7 +46,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 
-export const nodeHelpers = mixins(restApi).extend({
+export const nodeHelpers = defineComponent({
+	mixins: [restApi],
 	computed: {
 		...mapStores(
 			useCredentialsStore,

@@ -109,7 +109,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import type { ICredentialsResponse, IUser, NewCredentialsModal } from '@/Interface';
 
@@ -129,7 +129,6 @@ import {
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
-import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
@@ -143,7 +142,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants
 import { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import { getCredentialPermissions, IPermissions } from '@/permissions';
-import { IMenuItem } from 'n8n-design-system';
+import { IMenuItem } from 'n8n-design-system-next';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -163,8 +162,10 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(showMessage, nodeHelpers).extend({
+export default defineComponent({
 	name: 'CredentialEdit',
+	mixins: [showMessage, nodeHelpers],
+
 	components: {
 		CredentialSharing,
 		CredentialConfig,

@@ -135,8 +135,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
-import mixins from 'vue-typed-mixins';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -157,14 +156,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	workflowHelpers,
-	workflowActivate,
-	pinData,
-).extend({
+export default defineComponent({
 	name: 'NodeDetailsView',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
+
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -200,7 +195,7 @@ export default mixins(
 		};
 	},
 	mounted() {
-		dataPinningEventBus.$on(
+		dataPinningEventBus.on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
 				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
@@ -208,7 +203,7 @@ export default mixins(
 		);
 	},
 	destroyed() {
-		dataPinningEventBus.$off('data-pinning-discovery');
+		dataPinningEventBus.off('data-pinning-discovery');
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
@@ -597,7 +592,7 @@ export default mixins(
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'data-too-large',
 							source: 'on-ndv-close-modal',
 						});
@@ -605,7 +600,7 @@ export default mixins(
 					}
 
 					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'invalid-json',
 							source: 'on-ndv-close-modal',
 						});

@@ -19,14 +19,16 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { restApi } from '@/mixins/restApi';
 import { IBinaryData, jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 
-export default mixins(restApi).extend({
+export default defineComponent({
 	name: 'BinaryDataDisplayEmbed',
+	mixins: [restApi],
+
 	components: {
 		VueJsonPretty,
 	},

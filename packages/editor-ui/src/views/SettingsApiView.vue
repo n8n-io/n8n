@@ -77,7 +77,7 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
@@ -86,8 +86,10 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useUsersStore } from '@/stores/users';
 import { DOCS_DOMAIN } from '@/constants';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsApiView',
+	mixins: [showMessage],
+
 	components: {
 		CopyInput,
 	},

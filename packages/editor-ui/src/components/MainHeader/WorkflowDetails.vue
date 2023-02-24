@@ -118,8 +118,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -164,8 +163,10 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(workflowHelpers, titleChange).extend({
+export default defineComponent({
 	name: 'WorkflowDetails',
+	mixins: [workflowHelpers, titleChange],
+
 	components: {
 		TagsContainer,
 		PushConnectionTracker,

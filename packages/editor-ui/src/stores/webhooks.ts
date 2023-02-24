@@ -1,6 +1,6 @@
 import { STORES } from '@/constants';
 import { IFakeDoor, INodeUi, IRootState, NestedRecord } from '@/Interface';
-import { IMenuItem } from 'n8n-design-system';
+import { IMenuItem } from 'n8n-design-system-next';
 import { IWorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';

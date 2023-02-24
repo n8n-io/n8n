@@ -1,5 +1,5 @@
 <template>
-	<fragment></fragment>
+	<span></span>
 </template>
 
 <script lang="ts">
@@ -8,11 +8,13 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'Telemetry',
+	mixins: [externalHooks],
+
 	data() {
 		return {
 			isTelemetryInitialized: false,

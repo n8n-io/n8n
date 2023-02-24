@@ -21,9 +21,10 @@
 <script lang="ts">
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
+import { EventBus } from '@/event-bus/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ModalDrawer',
 	props: {
 		name: {
@@ -33,7 +34,7 @@ export default Vue.extend({
 			type: Function,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		direction: {
 			type: String,

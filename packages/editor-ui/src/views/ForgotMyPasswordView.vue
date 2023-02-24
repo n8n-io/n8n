@@ -6,14 +6,16 @@
 import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { IFormBoxConfig } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'ForgotMyPasswordView',
+	mixins: [showMessage],
+
 	components: {
 		AuthView,
 	},

@@ -12,7 +12,7 @@
 
 <script lang="ts" setup>
 import GoogleAuthButton from './GoogleAuthButton.vue';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 defineProps<{
 	isGoogleOAuthType: boolean;

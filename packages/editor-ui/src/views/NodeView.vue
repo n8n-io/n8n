@@ -157,7 +157,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type {
 	OnConnectionBindInfo,
@@ -207,7 +207,6 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import {
 	deepCopy,
@@ -286,21 +285,23 @@ const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue'
 const NodeCreation = () => import('@/components/Node/NodeCreation.vue');
 const CanvasControls = () => import('@/components/CanvasControls.vue');
 
-export default mixins(
-	copyPaste,
-	externalHooks,
-	genericHelpers,
-	mouseSelect,
-	moveNodeWorkflow,
-	restApi,
-	showMessage,
-	titleChange,
-	workflowHelpers,
-	workflowRun,
-	newVersions,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'NodeView',
+	mixins: [
+		copyPaste,
+		externalHooks,
+		genericHelpers,
+		mouseSelect,
+		moveNodeWorkflow,
+		restApi,
+		showMessage,
+		titleChange,
+		workflowHelpers,
+		workflowRun,
+		newVersions,
+		debounceHelper,
+	],
+
 	components: {
 		NodeDetailsView,
 		Node,
@@ -3894,9 +3895,9 @@ export default mixins(
 		this.$root.$on('revertRenameNode', this.onRevertNameChange);
 		this.$root.$on('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+		dataPinningEventBus.on('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.on('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
 	},
@@ -3916,9 +3917,9 @@ export default mixins(
 		this.$root.$off('revertRenameNode', this.onRevertNameChange);
 		this.$root.$off('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+		dataPinningEventBus.off('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
 	destroyed() {
 		this.resetWorkspace();

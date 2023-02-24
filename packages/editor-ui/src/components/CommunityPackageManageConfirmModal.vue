@@ -35,8 +35,7 @@
 </template>
 
 <script>
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -46,8 +45,10 @@ import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 
-export default mixins(showMessage).extend({
+export default defineComponet({
 	name: 'CommunityPackageManageConfirmModal',
+	mixins: [showMessage],
+
 	components: {
 		Modal,
 	},

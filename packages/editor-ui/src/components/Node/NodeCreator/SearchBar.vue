@@ -24,13 +24,13 @@
 </template>
 
 <script setup lang="ts">
-import Vue, { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
+import { onMounted, reactive, toRefs, onBeforeUnmount, ComponentPublicInstance } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 
 export interface Props {
 	placeholder: string;
 	value: string;
-	eventBus?: Vue;
+	eventBus?: ComponentPublicInstance;
 }
 
 withDefaults(defineProps<Props>(), {

@@ -174,7 +174,7 @@
 <script lang="ts">
 import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent, PropType } from 'vue';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
 import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
@@ -193,7 +193,6 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import Vue from 'vue';
 import { LOG_STREAM_MODAL_KEY } from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { showMessage } from '@/mixins/showMessage';
@@ -210,9 +209,12 @@ import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { Checkbox } from 'element-ui';
+import { EventBus } from '@/event-bus/event-bus';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'event-destination-settings-modal',
+	mixins: [showMessage],
+
 	props: {
 		modalName: String,
 		destination: {
@@ -221,7 +223,7 @@ export default mixins(showMessage).extend({
 		},
 		isNew: Boolean,
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 	},
 	components: {

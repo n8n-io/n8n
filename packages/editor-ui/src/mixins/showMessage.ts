@@ -1,6 +1,6 @@
 // @ts-ignore
 import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { IExecuteContextData, IRunExecutionData } from 'n8n-workflow';
@@ -12,7 +12,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
-export const showMessage = mixins(externalHooks).extend({
+export const showMessage = defineComponent({
+	mixins: [externalHooks],
 	computed: {
 		...mapStores(useWorkflowsStore),
 	},

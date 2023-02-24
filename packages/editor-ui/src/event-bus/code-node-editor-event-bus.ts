@@ -1,3 +1,3 @@
-import Vue from 'vue';
+import { createEventBus } from '@/event-bus/event-bus';
 
-export const codeNodeEditorEventBus = new Vue();
+export const codeNodeEditorEventBus = createEventBus();

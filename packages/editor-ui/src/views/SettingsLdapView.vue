@@ -157,8 +157,7 @@ import {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 import humanizeDuration from 'humanize-duration';
 import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
@@ -205,8 +204,10 @@ type rowType = rowCallbackParams & tableRow;
 
 type cellType = cellCallbackParams & { property: keyof tableRow };
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsLdapView',
+	mixins: [showMessage],
+
 	components: {
 		InfiniteLoading,
 	},

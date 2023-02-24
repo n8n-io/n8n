@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
@@ -7,7 +7,7 @@ const DEFAULT_MATCHER = '$prevNode';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
-export const prevNodeCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const prevNodeCompletions = defineComponent({
 	methods: {
 		/**
 		 * Complete `$prevNode.` to `.name .outputIndex .runIndex`.

@@ -10,10 +10,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ParameterIssues',
 	components: {
 		TitledList,

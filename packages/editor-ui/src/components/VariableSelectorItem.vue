@@ -59,13 +59,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'VariableSelectorItem',
+	mixins: [externalHooks],
+
 	props: ['allowParentSelect', 'extendAll', 'item'],
 	mounted() {
 		if (this.extended) return;

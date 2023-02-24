@@ -51,7 +51,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
 const SURVEY_VERSION = 'v3';
 
@@ -127,7 +127,6 @@ import {
 	IPersonalizationSurveyAnswersV3,
 	IUser,
 } from '@/Interface';
-import Vue from 'vue';
 import { getAccountAge } from '@/utils';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
@@ -136,7 +135,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default defineComponent({
+	mixins: [showMessage, workflowHelpers],
 	components: { Modal },
 	name: 'PersonalizationModal',
 	data() {

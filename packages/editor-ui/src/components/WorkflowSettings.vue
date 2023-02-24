@@ -324,7 +324,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { restApi } from '@/mixins/restApi';
@@ -346,8 +346,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '../constants';
 
-import mixins from 'vue-typed-mixins';
-
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -356,8 +354,10 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
+export default defineComponent({
 	name: 'WorkflowSettings',
+	mixins: [externalHooks, genericHelpers, restApi, showMessage],
+
 	components: {
 		Modal,
 	},

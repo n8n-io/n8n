@@ -2,7 +2,7 @@ import { IExternalHooks } from '@/Interface';
 import { useWebhooksStore } from '@/stores/webhooks';
 import { IDataObject } from 'n8n-workflow';
 import { Store } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 declare global {
 	interface Window {
@@ -29,7 +29,7 @@ export async function runExternalHook(eventName: string, store: Store, metadata?
 	}
 }
 
-export const externalHooks = Vue.extend({
+export const externalHooks = defineComponent({
 	methods: {
 		$externalHooks(): IExternalHooks {
 			return {

@@ -1,7 +1,8 @@
 import { INodeUi } from '@/Interface';
 import { IConnection } from 'n8n-workflow';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { XYPosition } from '../Interface';
+import { EventBus } from '@/event-bus/event-bus';
 
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
@@ -26,9 +27,9 @@ export abstract class Undoable {}
 
 export abstract class Command extends Undoable {
 	readonly name: string;
-	eventBus: Vue;
+	eventBus: EventBus;
 
-	constructor(name: string, eventBus: Vue) {
+	constructor(name: string, eventBus: EventBus) {
 		super();
 		this.name = name;
 		this.eventBus = eventBus;
@@ -52,7 +53,12 @@ export class MoveNodeCommand extends Command {
 	oldPosition: XYPosition;
 	newPosition: XYPosition;
 
-	constructor(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition, eventBus: Vue) {
+	constructor(
+		nodeName: string,
+		oldPosition: XYPosition,
+		newPosition: XYPosition,
+		eventBus: EventBus,
+	) {
 		super(COMMANDS.MOVE_NODE, eventBus);
 		this.nodeName = nodeName;
 		this.newPosition = newPosition;
@@ -88,7 +94,7 @@ export class MoveNodeCommand extends Command {
 export class AddNodeCommand extends Command {
 	node: INodeUi;
 
-	constructor(node: INodeUi, eventBus: Vue) {
+	constructor(node: INodeUi, eventBus: EventBus) {
 		super(COMMANDS.ADD_NODE, eventBus);
 		this.node = node;
 	}
@@ -112,7 +118,7 @@ export class AddNodeCommand extends Command {
 export class RemoveNodeCommand extends Command {
 	node: INodeUi;
 
-	constructor(node: INodeUi, eventBus: Vue) {
+	constructor(node: INodeUi, eventBus: EventBus) {
 		super(COMMANDS.REMOVE_NODE, eventBus);
 		this.node = node;
 	}
@@ -136,7 +142,7 @@ export class RemoveNodeCommand extends Command {
 export class AddConnectionCommand extends Command {
 	connectionData: [IConnection, IConnection];
 
-	constructor(connectionData: [IConnection, IConnection], eventBus: Vue) {
+	constructor(connectionData: [IConnection, IConnection], eventBus: EventBus) {
 		super(COMMANDS.ADD_CONNECTION, eventBus);
 		this.connectionData = connectionData;
 	}
@@ -166,7 +172,7 @@ export class AddConnectionCommand extends Command {
 export class RemoveConnectionCommand extends Command {
 	connectionData: [IConnection, IConnection];
 
-	constructor(connectionData: [IConnection, IConnection], eventBus: Vue) {
+	constructor(connectionData: [IConnection, IConnection], eventBus: EventBus) {
 		super(COMMANDS.REMOVE_CONNECTION, eventBus);
 		this.connectionData = connectionData;
 	}
@@ -200,7 +206,7 @@ export class EnableNodeToggleCommand extends Command {
 	oldState: boolean;
 	newState: boolean;
 
-	constructor(nodeName: string, oldState: boolean, newState: boolean, eventBus: Vue) {
+	constructor(nodeName: string, oldState: boolean, newState: boolean, eventBus: EventBus) {
 		super(COMMANDS.ENABLE_NODE_TOGGLE, eventBus);
 		this.nodeName = nodeName;
 		this.newState = newState;
@@ -232,7 +238,7 @@ export class RenameNodeCommand extends Command {
 	currentName: string;
 	newName: string;
 
-	constructor(currentName: string, newName: string, eventBus: Vue) {
+	constructor(currentName: string, newName: string, eventBus: EventBus) {
 		super(COMMANDS.RENAME_NODE, eventBus);
 		this.currentName = currentName;
 		this.newName = newName;

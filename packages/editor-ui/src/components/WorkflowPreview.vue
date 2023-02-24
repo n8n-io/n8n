@@ -22,14 +22,16 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { showMessage } from '@/mixins/showMessage';
 import { IWorkflowDb } from '../Interface';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'WorkflowPreview',
+	mixins: [showMessage],
+
 	props: {
 		loading: {
 			type: Boolean,

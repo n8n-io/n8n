@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
@@ -13,7 +13,7 @@ function getAutocompletableNodeNames(nodes: INodeUi[]) {
 		.map((node: INodeUi) => node.name);
 }
 
-export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const baseCompletions = defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 	},
