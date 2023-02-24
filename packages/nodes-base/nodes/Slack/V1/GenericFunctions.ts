@@ -98,7 +98,7 @@ export async function slackApiRequestAllItems(
 		query.limit = 100;
 	}
 	do {
-		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
+		responseData = await slackApiRequest.call(this, method, endpoint, body as IDataObject, query);
 		query.cursor = get(responseData, 'response_metadata.next_cursor');
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);

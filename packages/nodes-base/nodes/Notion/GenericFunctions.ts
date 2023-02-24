@@ -259,7 +259,7 @@ function getTextBlocks(block: IDataObject) {
 		text:
 			block.richText === false
 				? formatText(block.textContent as string).text
-				: getTexts(((block.text as IDataObject).text as any) || []),
+				: getTexts(((block.text as IDataObject).text as TextData[]) || []),
 	};
 }
 

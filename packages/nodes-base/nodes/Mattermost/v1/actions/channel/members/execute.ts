@@ -34,7 +34,7 @@ export async function members(
 		if (resolveData) {
 			const userIds: string[] = [];
 			for (const data of responseData) {
-				userIds.push(data.user_id);
+				userIds.push(data.user_id as string);
 			}
 			if (userIds.length > 0) {
 				responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds, qs);
@@ -42,5 +42,5 @@ export async function members(
 		}
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

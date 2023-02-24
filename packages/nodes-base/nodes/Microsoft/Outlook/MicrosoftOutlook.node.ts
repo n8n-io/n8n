@@ -189,7 +189,11 @@ export class MicrosoftOutlook implements INodeType {
 
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
 							const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
-							const data = await downloadAttachments.call(this, responseData, prefix);
+							const data = await downloadAttachments.call(
+								this,
+								responseData as IDataObject,
+								prefix,
+							);
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(data),
 								{ itemData: { item: i } },
@@ -197,7 +201,7 @@ export class MicrosoftOutlook implements INodeType {
 							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
@@ -238,7 +242,7 @@ export class MicrosoftOutlook implements INodeType {
 							{},
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -285,7 +289,7 @@ export class MicrosoftOutlook implements INodeType {
 						responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -398,7 +402,7 @@ export class MicrosoftOutlook implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -502,7 +506,11 @@ export class MicrosoftOutlook implements INodeType {
 
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
 							const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
-							const data = await downloadAttachments.call(this, responseData, prefix);
+							const data = await downloadAttachments.call(
+								this,
+								responseData as IDataObject,
+								prefix,
+							);
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(data),
 								{ itemData: { item: i } },
@@ -510,7 +518,7 @@ export class MicrosoftOutlook implements INodeType {
 							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
@@ -828,7 +836,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -879,7 +887,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -925,7 +933,7 @@ export class MicrosoftOutlook implements INodeType {
 
 						responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -992,7 +1000,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1039,7 +1047,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1092,7 +1100,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1127,7 +1135,7 @@ export class MicrosoftOutlook implements INodeType {
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1177,7 +1185,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

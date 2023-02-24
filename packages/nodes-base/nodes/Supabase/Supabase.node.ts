@@ -233,7 +233,7 @@ export class Supabase implements INodeType {
 						throw error;
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows),
+						this.helpers.returnJsonArray(rows as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -273,7 +273,7 @@ export class Supabase implements INodeType {
 						throw error;
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows),
+						this.helpers.returnJsonArray(rows as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -316,7 +316,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(rows),
+							this.helpers.returnJsonArray(rows as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -392,7 +392,7 @@ export class Supabase implements INodeType {
 					try {
 						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(updatedRow),
+							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
