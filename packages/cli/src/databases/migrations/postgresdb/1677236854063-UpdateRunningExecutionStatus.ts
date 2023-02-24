@@ -9,10 +9,10 @@ export class UpdateRunningExecutionStatus1677236854063 implements MigrationInter
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'failed' WHERE "status" = 'running' AND "finished"=false AND "status" = 'running' AND "stoppedAt" IS NOT NULL;`,
+			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'failed' WHERE "status" = 'running' AND "finished"=false AND "stoppedAt" IS NOT NULL;`,
 		);
 		await queryRunner.query(
-			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'success' WHERE "status" = 'running' AND "finished"=true AND "status" = 'running' AND AND "stoppedAt" IS NOT NULL;`,
+			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'success' WHERE "status" = 'running' AND "finished"=true AND "stoppedAt" IS NOT NULL;`,
 		);
 
 		logMigrationEnd(this.name);
