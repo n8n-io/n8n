@@ -472,7 +472,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					fullExecutionData.status = 'running';
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-
 					await Db.collections.Execution.update(
 						this.executionId,
 						flattenedExecutionData as IExecutionFlattedDb,
@@ -578,7 +577,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							saveDataSuccessExecution;
 					}
 
-					const workflowDidSucceed = !fullRunData.data.resultData.error;
+					const workflowHasCrashed = fullRunData.status === 'crashed';
+					const workflowDidSucceed = !fullRunData.data.resultData.error && !workflowHasCrashed;
+					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
+					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
+
 					if (
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
@@ -626,7 +629,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: pristineWorkflowData,
 						waitTill: fullRunData.waitTill,
-						status: fullRunData.status,
+						status: workflowStatusFinal,
 					};
 
 					if (this.retryOf !== undefined) {
