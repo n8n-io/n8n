@@ -18,7 +18,10 @@ export function isSamlEnabled(): boolean {
 
 export function isSamlLicensed(): boolean {
 	const license = getLicense();
-	return isUserManagementEnabled() && license.isSamlEnabled();
+	return (
+		isUserManagementEnabled() &&
+		(license.isSamlEnabled() || config.getEnv('enterprise.features.saml'))
+	);
 }
 
 export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferences => {
