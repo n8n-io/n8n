@@ -481,10 +481,12 @@ export class ActionNetwork implements INodeType {
 					response =
 						operation === 'getAll'
 							? response.map((entry: Response) => simplifyResponse(entry, resource))
-							: simplifyResponse(response, resource);
+							: simplifyResponse(response as Response, resource);
 				}
 
-				Array.isArray(response) ? returnData.push(...response) : returnData.push(response);
+				Array.isArray(response)
+					? returnData.push(...(response as IDataObject[]))
+					: returnData.push(response as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

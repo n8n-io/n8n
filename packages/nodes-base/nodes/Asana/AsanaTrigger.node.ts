@@ -240,7 +240,7 @@ export class AsanaTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body.events)],
+			workflowData: [this.helpers.returnJsonArray(req.body.events as IDataObject[])],
 		};
 	}
 }
