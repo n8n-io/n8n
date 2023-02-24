@@ -13,7 +13,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { MFA_AUTHENTICATION_ENABLED, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
@@ -90,7 +90,7 @@ export default mixins(showMessage, genericHelpers).extend({
 
 				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
-				if (error.errorCode === 998) {
+				if (error.errorCode === MFA_AUTHENTICATION_ENABLED) {
 					this.$router.push({
 						name: VIEWS.MFA,
 						params: { email: values.email, password: values.password },
