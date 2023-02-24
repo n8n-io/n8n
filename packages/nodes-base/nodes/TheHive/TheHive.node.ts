@@ -36,7 +36,7 @@ import {
 	theHiveApiRequest,
 } from './GenericFunctions';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {

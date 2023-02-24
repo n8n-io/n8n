@@ -33,7 +33,7 @@ import type {
 } from './GenericFunctions';
 import { wiseApiRequest } from './GenericFunctions';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 import moment from 'moment-timezone';
 
