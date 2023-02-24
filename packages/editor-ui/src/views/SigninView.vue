@@ -81,6 +81,11 @@ export default mixins(showMessage).extend({
 				this.clearAllStickyNotifications();
 				this.loading = false;
 
+				this.$telemetry.track('User attempted to login', {
+					result: 'success',
+					mfaEnabled: false,
+				});
+
 				if (typeof this.$route.query.redirect === 'string') {
 					const redirect = decodeURIComponent(this.$route.query.redirect);
 					if (redirect.startsWith('/')) {
@@ -100,6 +105,12 @@ export default mixins(showMessage).extend({
 					});
 					return;
 				}
+
+				this.$telemetry.track('User attempted to login', {
+					result: 'credentials_error',
+					mfaEnabled: false,
+				});
+
 				this.$showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;
 			}

@@ -201,6 +201,12 @@ export default mixins(showMessage).extend({
 				this.formError = !this.showRecoveryCodeForm
 					? this.$locale.baseText('mfa.code.invalid')
 					: this.$locale.baseText('mfa.recovery.invalid');
+
+				this.$telemetry.track('User attempted to login', {
+					result: 'mfa_token_rejected',
+					mfaEnabled: true,
+				});
+
 				return;
 			}
 
@@ -213,6 +219,11 @@ export default mixins(showMessage).extend({
 					return;
 				}
 			}
+
+			this.$telemetry.track('User attempted to login', {
+				result: 'success',
+				mfaEnabled: true,
+			});
 
 			this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
