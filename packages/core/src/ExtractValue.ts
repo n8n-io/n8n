@@ -160,6 +160,7 @@ export function extractValue(
 	parameterName: string,
 	node: INode,
 	nodeType: INodeType,
+	extractRecursive = false,
 ): NodeParameterValueType | object {
 	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
 	try {
@@ -172,6 +173,20 @@ export function extractValue(
 
 		if (property.type === 'resourceLocator') {
 			return extractValueRLC(value, property, parameterName);
+		}
+
+		if (
+			extractRecursive &&
+			(property.type === 'collection' || property.type === 'fixedCollection')
+		) {
+			Object.entries(value as object).forEach(
+				([key, v]: [string, NodeParameterValueType | object]) => {
+					const childParameterName = `${parameterName}.${key}`;
+					const resolved = extractValue(v, childParameterName, node, nodeType, true);
+					(value as INodeParameters)[key] = resolved as NodeParameterValueType;
+				},
+			);
+			return value;
 		}
 		return extractValueOther(value, property, parameterName);
 	} catch (error) {
