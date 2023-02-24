@@ -629,7 +629,7 @@ export default mixins(
 			isExecutionPreview: false,
 			showTriggerMissingTooltip: false,
 			workflowData: null as INewWorkflowData | null,
- activeConnection: null as null | Connection,
+			activeConnection: null as null | Connection,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
