@@ -229,8 +229,8 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	display: flex;
 	grid-area: content;
 	overflow: auto;
-	width: 100%;
 	height: 100%;
+	width: 100%;
 	justify-content: center;
 }
 
