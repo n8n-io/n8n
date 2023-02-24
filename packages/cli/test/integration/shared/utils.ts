@@ -31,9 +31,7 @@ import { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { NodeTypes } from '@/NodeTypes';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -65,6 +63,7 @@ import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	LdapController,
 	MeController,
 	OwnerController,
 	PasswordResetController,
@@ -74,11 +73,12 @@ import { setupAuthMiddlewares } from '@/middlewares';
 import * as testDb from '../shared/testDb';
 
 import { v4 as uuid } from 'uuid';
-import { handleLdapInit } from '@/Ldap/helpers';
-import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED } from '@/Ldap/constants';
+import { handleLdapInit, encryptPassword } from '@/Ldap/helpers';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -158,7 +158,6 @@ export async function initTestServer({
 			nodes: { controller: nodesController, path: 'nodes' },
 			license: { controller: licenseController, path: 'license' },
 			eventBus: { controller: eventBusRouter, path: 'eventbus' },
-			ldap: { controller: ldapController, path: 'ldap' },
 		};
 
 		if (enablePublicAPI) {
@@ -188,6 +187,16 @@ export async function initTestServer({
 						testServer.app,
 						config,
 						new AuthController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'ldap':
+					config.set(LDAP_ENABLED, true);
+					await handleLdapInit();
+					const { service, sync } = LdapManager.getInstance();
+					registerController(
+						testServer.app,
+						config,
+						new LdapController(service, sync, internalHooks),
 					);
 					break;
 				case 'me':
@@ -246,15 +255,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = [
-		'credentials',
-		'nodes',
-		'workflows',
-		'publicApi',
-		'ldap',
-		'eventBus',
-		'license',
-	];
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'eventBus', 'license'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -318,13 +319,6 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	};
-}
-
-/**
- * Initialize LDAP manager.
- */
-export async function initLdapManager(): Promise<void> {
-	await handleLdapInit();
 }
 
 /**

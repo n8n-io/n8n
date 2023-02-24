@@ -83,6 +83,7 @@ import type {
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	LdapController,
 	MeController,
 	NodeTypesController,
 	OwnerController,
@@ -134,7 +135,6 @@ import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
-import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
@@ -149,6 +149,7 @@ import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/sam
 import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
+import { LdapManager } from './Ldap/LdapManager.ee';
 
 const exec = promisify(callbackExec);
 
@@ -375,7 +376,7 @@ class Server extends AbstractServer {
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
 
-		const controllers = [
+		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
@@ -394,6 +395,12 @@ class Server extends AbstractServer {
 				postHog,
 			}),
 		];
+
+		if (isLdapEnabled()) {
+			const { service, sync } = LdapManager.getInstance();
+			controllers.push(new LdapController(service, sync, internalHooks));
+		}
+
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
@@ -502,13 +509,6 @@ class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
-		// LDAP
-		// ----------------------------------------
-		if (isLdapEnabled()) {
-			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
-		}
-
-		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
 
@@ -526,7 +526,6 @@ class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
 
 		// ----------------------------------------
-
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(

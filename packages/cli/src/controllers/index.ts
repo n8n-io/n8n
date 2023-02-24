@@ -1,4 +1,5 @@
 export { AuthController } from './auth.controller';
+export { LdapController } from './ldap.controller';
 export { MeController } from './me.controller';
 export { NodeTypesController } from './nodeTypes.controller';
 export { OwnerController } from './owner.controller';
