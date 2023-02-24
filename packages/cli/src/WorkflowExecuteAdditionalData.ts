@@ -212,7 +212,9 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		const toPrune: FindOptionsWhere<IExecutionFlattedDb> = { stoppedAt: LessThanOrEqual(utcDate) };
+		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
+			{ stoppedAt: LessThanOrEqual(utcDate) },
+		];
 
 		if (maxCount > 0) {
 			const executions = await Db.collections.Execution.find({
@@ -223,7 +225,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			});
 
 			if (executions[0]) {
-				toPrune.id = LessThanOrEqual(executions[0].id);
+				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
 			}
 		}
 
