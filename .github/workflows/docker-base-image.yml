@@ -28,12 +28,13 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           context: ./docker/images/n8n-base
           build-args: |
             NODE_VERSION=${{github.event.inputs.node_version}}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
+          provenance: false
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/base:${{ github.event.inputs.node_version }}
