@@ -28,11 +28,7 @@ describe('Node Creator', () => {
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
-		nodeCreatorFeature.getters
-			.nodeCreator()
-			.contains('Select a trigger')
-			.should('be.visible');
-
+		nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
 	});
 
 	it('should navigate subcategory', () => {
@@ -86,20 +82,14 @@ describe('Node Creator', () => {
 
 		// TODO: Replace once we have canvas feature utils
 		cy.get('div').contains('Add first step').should('be.hidden');
-		nodeCreatorFeature.actions.openNodeCreator()
-		nodeCreatorFeature.getters
-			.nodeCreator()
-			.contains('What happens next?')
-			.should('be.visible');
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 
-			nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
-			nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
-			nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
-			nodeCreatorFeature.getters.activeSubcategory().find('button').click();
-			nodeCreatorFeature.getters
-				.nodeCreator()
-				.contains('What happens next?')
-				.should('be.visible');
+		nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
+		nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+		nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
+		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
+		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 	});
 
 	it('should add node to canvas from actions panel', () => {
@@ -110,7 +100,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', editImageNode);
 		nodeCreatorFeature.getters.getCreatorItem('Crop Image').click();
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Crop');
-	})
+	});
 
 	it('should search through actions and confirm added action', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
