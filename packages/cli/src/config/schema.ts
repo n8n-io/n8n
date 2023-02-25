@@ -813,6 +813,11 @@ export const schema = {
 				},
 			},
 		},
+		authenticationMethod: {
+			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
+			format: ['email', 'ldap', 'saml'] as const,
+			default: 'email',
+		},
 	},
 
 	externalFrontendHooksUrls: {
@@ -1006,6 +1011,27 @@ export const schema = {
 		},
 	},
 
+	sso: {
+		justInTimeProvisioning: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically create users when they login via SSO.',
+		},
+		redirectLoginToSso: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
+		},
+		saml: {
+			enabled: {
+				format: Boolean,
+				default: false,
+				doc: 'Whether to enable SAML SSO.',
+			},
+		},
+	},
+
+	// TODO: move into sso settings
 	ldap: {
 		loginEnabled: {
 			format: Boolean,
