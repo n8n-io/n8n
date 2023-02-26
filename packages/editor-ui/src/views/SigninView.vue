@@ -92,7 +92,7 @@ export default mixins(showMessage, genericHelpers).extend({
 			} catch (error) {
 				if (error.errorCode === MFA_AUTHENTICATION_ENABLED) {
 					this.$router.push({
-						name: VIEWS.MFA,
+						name: VIEWS.MFA_VIEW,
 						params: { email: values.email, password: values.password },
 					});
 					return;

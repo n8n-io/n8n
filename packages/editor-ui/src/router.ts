@@ -649,7 +649,7 @@ const router = new Router({
 		},
 		{
 			path: '/mfa',
-			name: VIEWS.MFA,
+			name: VIEWS.MFA_VIEW,
 			components: {
 				default: Mfa,
 			},

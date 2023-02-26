@@ -372,8 +372,7 @@ export enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
-	MFA = 'Mfa',
-	MFA_SETUP = 'MFA_SETUP',
+	MFA_VIEW = 'MfaView',
 }
 
 export enum FAKE_DOOR_FEATURES {
