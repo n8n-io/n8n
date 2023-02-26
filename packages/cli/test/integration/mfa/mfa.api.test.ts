@@ -9,7 +9,6 @@ import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
 
 jest.mock('@/telemetry');
-jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let globalOwnerRole: Role;
@@ -28,8 +27,6 @@ beforeEach(async () => {
 	await testDb.truncate(['User']);
 
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	jest.mock('@/telemetry');
 
 	config.set('userManagement.disabled', false);
 });

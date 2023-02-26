@@ -366,7 +366,7 @@ class Server extends AbstractServer {
 		const mfaService = Container.get(MultiFactorAuthService);
 
 		const controllers = [
-			new AuthController({ config, internalHooks, repositories, logger, postHog }),
+			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new MFAController(repositories.User, mfaService),

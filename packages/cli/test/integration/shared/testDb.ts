@@ -24,7 +24,7 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ICredentialsDb } from '@/Interfaces';
 import * as speakeasy from 'speakeasy';
-
+import { AES } from 'crypto-js';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { getPostgresSchemaSection } from './utils';
@@ -199,24 +199,30 @@ export function generateMfaOneTimeToken(secret: string) {
 export async function createUserWithMfaEnabled(
 	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
 ) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
 	const email = randomEmail();
 	const password = randomPassword();
 
-	const { base32 } = speakeasy.generateSecret({
-		name: email,
-	});
+	const mfaService = Container.get(MultiFactorAuthService);
+
+	const { secret } = mfaService.generateSecret({ label: email });
 
 	const codes = Array.from(Array(data.numberOfRecoveryCodes)).map(() => uuid());
+
+	const encryptedSecret = AES.encrypt(secret, encryptionKey).toString();
+
+	const encryptedRecoveryCodes = codes.map((code) => AES.encrypt(code, encryptionKey).toString());
 
 	return {
 		user: await createUser({
 			mfaEnabled: true,
 			password,
-			mfaSecret: base32,
-			mfaRecoveryCodes: codes,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
 		}),
 		rawPassword: password,
-		rawSecret: base32,
+		rawSecret: secret,
 		rawRecoveryCodes: codes,
 	};
 }

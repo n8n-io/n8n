@@ -189,7 +189,13 @@ export async function initTestServer({
 					registerController(
 						testServer.app,
 						config,
-						new AuthController({ config, logger, internalHooks, repositories }),
+						new AuthController({
+							config,
+							logger,
+							internalHooks,
+							repositories,
+							mfaService: Container.get(MultiFactorAuthService),
+						}),
 					);
 					break;
 				case 'me':

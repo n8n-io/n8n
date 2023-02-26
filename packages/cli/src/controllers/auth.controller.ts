@@ -1,5 +1,4 @@
 import validator from 'validator';
-import { totp } from 'speakeasy';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
@@ -22,6 +21,9 @@ import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 import { SamlUrls } from '../sso/saml/constants';
+import type { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { AES, enc } from 'crypto-js';
+import { UserSettings } from 'n8n-core';
 
 @RestController()
 export class AuthController {
@@ -35,24 +37,29 @@ export class AuthController {
 
 	private readonly postHog?: PostHogClient;
 
+	private readonly mfaService: MultiFactorAuthService;
+
 	constructor({
 		config,
 		logger,
 		internalHooks,
 		repositories,
 		postHog,
+		mfaService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
 		postHog?: PostHogClient;
+		mfaService: MultiFactorAuthService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.postHog = postHog;
+		this.mfaService = mfaService;
 	}
 
 	/**
@@ -88,11 +95,16 @@ export class AuthController {
 		} else {
 			user = (await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
 		}
+
 		if (user) {
 			if (user.mfaEnabled) {
+
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
 				const isMFATokenValid =
-					this.validateMfaToken(user, mfaToken) ||
-					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
+					(await this.validateMfaToken(user, mfaToken, encryptionKey)) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode, encryptionKey));
+
 				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
 
@@ -217,16 +229,25 @@ export class AuthController {
 		return { loggedOut: true };
 	}
 
-	private validateMfaToken(user: User, mfaToken: string) {
-		return totp.verify({
-			secret: user.mfaSecret ?? '',
-			encoding: 'base32',
+	private async validateMfaToken(user: User, mfaToken: string, encryptionKey: string) {
+		const decryptedSecret = AES.decrypt(user.mfaSecret ?? '', encryptionKey).toString(enc.Utf8);
+
+		return this.mfaService.verifySecret({
+			secret: decryptedSecret ?? '',
 			token: mfaToken,
 		});
 	}
 
-	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode: string) {
-		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
+	private async validateMfaRecoveryCode(
+		user: User,
+		mfaRecoveryCode: string,
+		encryptionKey: string,
+	) {
+		const decryptedRecoveryCodes = user.mfaRecoveryCodes.map((code) =>
+			AES.decrypt(code, encryptionKey).toString(enc.Utf8),
+		);
+
+		const index = decryptedRecoveryCodes.indexOf(mfaRecoveryCode);
 		if (index === -1) return false;
 
 		// remove used recovery code

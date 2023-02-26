@@ -5,6 +5,8 @@ import { AuthenticatedRequest, MFA } from '@/requests';
 import type { User } from '@db/entities/User';
 import { BadRequestError } from '@/ResponseHelper';
 import { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { UserSettings } from 'n8n-core';
+import { AES, enc } from 'crypto-js';
 
 const issuer = 'n8n';
 
@@ -29,9 +31,18 @@ export class MFAController {
 				secret: mfaSecret,
 				label: email,
 			});
+
+			const encryptionKey = await UserSettings.getEncryptionKey();
+
+			const decryptedSecret = AES.decrypt(mfaSecret, encryptionKey).toString(enc.Utf8);
+
+			const decryptedRecoveryCodes = mfaRecoveryCodes.map((code) =>
+				AES.decrypt(code, encryptionKey).toString(enc.Utf8),
+			);
+
 			return {
-				secret: mfaSecret,
-				recoveryCodes: mfaRecoveryCodes,
+				secret: decryptedSecret,
+				recoveryCodes: decryptedRecoveryCodes,
 				qrCode,
 			};
 		}
@@ -43,9 +54,15 @@ export class MFAController {
 			label: email,
 		});
 
+		const encryptionKey = await UserSettings.getEncryptionKey();
+
+		const encryptedSecret = AES.encrypt(secret, encryptionKey).toString();
+
+		const encryptedRecoveryCodes = codes.map((code) => AES.encrypt(code, encryptionKey).toString());
+
 		await this.userRepository.update(id, {
-			mfaSecret: secret,
-			mfaRecoveryCodes: codes,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
 		});
 
 		return {
@@ -68,7 +85,11 @@ export class MFAController {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
 		}
 
-		const verified = this.mfaService.verifySecret({ secret: mfaSecret, token });
+		const encryptionKey = await UserSettings.getEncryptionKey();
+
+		const decryptedSecret = AES.decrypt(mfaSecret, encryptionKey).toString(enc.Utf8);
+
+		const verified = this.mfaService.verifySecret({ secret: decryptedSecret, token });
 
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 
@@ -94,7 +115,11 @@ export class MFAController {
 
 		if (!secret) throw new BadRequestError('No MFA secret se for this user');
 
-		const verified = this.mfaService.verifySecret({ secret, token });
+		const encryptionKey = await UserSettings.getEncryptionKey();
+
+		const decryptedSecret = AES.decrypt(secret, encryptionKey).toString(enc.Utf8);
+
+		const verified = this.mfaService.verifySecret({ secret: decryptedSecret, token });
 
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 	}
