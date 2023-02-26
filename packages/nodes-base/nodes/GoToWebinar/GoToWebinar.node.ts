@@ -36,7 +36,8 @@ import {
 	loadWebinarSessions,
 } from './GenericFunctions';
 
-import { isEmpty, omit } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import moment from 'moment-timezone';
 

@@ -2,8 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { flags } from '@oclif/command';
-import type { IDataObject } from 'n8n-workflow';
+import type { FindOptionsWhere } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import * as Db from '@/Db';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 
 export class UpdateWorkflowCommand extends BaseCommand {
@@ -43,7 +45,7 @@ export class UpdateWorkflowCommand extends BaseCommand {
 			return;
 		}
 
-		const updateQuery: IDataObject = {};
+		const updateQuery: QueryDeepPartialEntity<WorkflowEntity> = {};
 		if (flags.active === undefined) {
 			console.info('No update flag like "--active=true" has been set!');
 			return;
@@ -56,7 +58,7 @@ export class UpdateWorkflowCommand extends BaseCommand {
 
 		updateQuery.active = flags.active === 'true';
 
-		const findQuery: IDataObject = {};
+		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
 		if (flags.id) {
 			this.logger.info(`Deactivating workflow with ID: ${flags.id}`);
 			findQuery.id = flags.id;

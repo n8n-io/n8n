@@ -18,7 +18,8 @@ interface N8nPlusEndpointParams extends EndpointRepresentationParams {
 }
 export const PlusStalkOverlay = 'plus-stalk';
 export const HoverMessageOverlay = 'hover-message';
-
+export const N8nPlusEndpointType = 'N8nPlus';
+export const EVENT_PLUS_ENDPOINT_CLICK = 'eventPlusEndpointClick';
 export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpoint> {
 	params: N8nPlusEndpointParams;
 	label: string;
@@ -38,7 +39,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.bindEvents();
 	}
 
-	static type = 'N8nPlus';
+	static type = N8nPlusEndpointType;
 	type = N8nPlusEndpoint.type;
 
 	setupOverlays() {
@@ -100,7 +101,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 	};
 	fireClickEvent = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint) {
-			this.instance.fire('plusEndpointClick', this.endpoint);
+			this.instance.fire(EVENT_PLUS_ENDPOINT_CLICK, this.endpoint);
 		}
 	};
 	setHoverMessageVisible = (endpoint: Endpoint) => {
