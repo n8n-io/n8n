@@ -95,10 +95,44 @@ export class Code implements INodeType {
 				displayOptions: {
 					show: {
 						'@version': [1],
+						mode: ['runOnceForAllItems'],
 					},
 				},
 				type: 'string',
-				default: '', // set by component
+				default: `
+// Loop over input items and add a new field
+// called 'myNewField' to the JSON of each one
+for (const item of $input.all()) {
+  item.json.myNewField = 1;
+}
+
+return $input.all();
+				`.trim(),
+				description:
+					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'JavaScript',
+				name: 'jsCode',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
+				},
+				displayOptions: {
+					show: {
+						'@version': [1],
+						mode: ['runOnceForEachItem'],
+					},
+				},
+				type: 'string',
+				default: `
+// Add a new field called 'myNewField' to the
+// JSON of the item
+$input.item.json.myNewField = 1;
+
+return $input.item;
+				`.trim(),
 				description:
 					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
@@ -257,7 +291,10 @@ return _input.item;
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
-		const language = this.getNodeParameter('language', 0) as string;
+		let language = 'javaScript';
+		if (this.getNode().typeVersion === 2) {
+			language = this.getNodeParameter('language', 0) as string;
+		}
 
 		if (language === 'python') {
 			// ----------------------------------
