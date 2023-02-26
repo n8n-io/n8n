@@ -20,6 +20,8 @@ import type {
 } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
+import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
+import { SamlUrls } from '../sso/saml/constants';
 
 @RestController()
 export class AuthController {
@@ -58,14 +60,34 @@ export class AuthController {
 	 * Authless endpoint.
 	 */
 	@Post('/login')
-	async login(req: LoginRequest, res: Response): Promise<PublicUser> {
+	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken = '', mfaRecoveryCode = '' } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
-		const user =
-			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+		let user: User | undefined;
 
+		if (isSamlCurrentAuthenticationMethod()) {
+			// attempt to fetch user data with the credentials, but don't log in yet
+			const preliminaryUser = await handleEmailLogin(email, password);
+			// if the user is an owner, continue with the login
+			if (preliminaryUser?.globalRole?.name === 'owner') {
+				user = preliminaryUser;
+			} else {
+				// TODO:SAML - uncomment this block when we have a way to redirect users to the SSO flow
+				// if (doRedirectUsersFromLoginToSsoFlow()) {
+				res.redirect(SamlUrls.restInitSSO);
+				return;
+				// return withFeatureFlags(this.postHog, sanitizeUser(preliminaryUser));
+				// } else {
+				// throw new AuthError(
+				// 	'Login with username and password is disabled due to SAML being the default authentication method. Please use SAML to log in.',
+				// );
+				// }
+			}
+		} else {
+			user = (await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+		}
 		if (user) {
 			if (user.mfaEnabled) {
 				const isMFATokenValid =

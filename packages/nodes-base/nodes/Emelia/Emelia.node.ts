@@ -14,7 +14,7 @@ import { campaignFields, campaignOperations } from './CampaignDescription';
 
 import { contactListFields, contactListOperations } from './ContactListDescription';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {

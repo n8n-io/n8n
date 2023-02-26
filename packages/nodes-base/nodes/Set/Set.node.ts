@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 export class Set implements INodeType {
 	description: INodeTypeDescription = {
