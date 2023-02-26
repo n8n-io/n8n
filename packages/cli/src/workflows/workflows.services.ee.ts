@@ -5,6 +5,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleService } from '@/role/role.service';
@@ -13,6 +14,7 @@ import { WorkflowsService } from './workflows.services';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
+	WorkflowForList,
 } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
@@ -87,6 +89,14 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
+	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role): void {
+		const ownerId = workflow.shared?.find(
+			({ roleId }) => String(roleId) === workflowOwnerRole.id,
+		)?.userId;
+		workflow.ownedBy = ownerId ? { id: ownerId } : null;
+		delete workflow.shared;
+	}
+
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
@@ -153,72 +163,6 @@ export class EEWorkflowsService extends WorkflowsService {
 				}
 			});
 			workflow.usedCredentials?.push(workflowCredential);
-		});
-	}
-
-	static async addCredentialsToWorkflows(
-		workflows: WorkflowWithSharingsAndCredentials[],
-		currentUser: User,
-	): Promise<void> {
-		// Create 2 maps: one with all the credential ids used by all workflows
-		// And another to match back workflow <> credentials
-		const allUsedCredentialIds = new Set<string>();
-		const mapsWorkflowsToUsedCredentials: string[][] = [];
-		workflows.forEach((workflow, idx) => {
-			workflow.nodes.forEach((node) => {
-				if (!node.credentials) {
-					return;
-				}
-				Object.keys(node.credentials).forEach((credentialType) => {
-					const credential = node.credentials?.[credentialType];
-					if (!credential?.id) {
-						return;
-					}
-					if (!mapsWorkflowsToUsedCredentials[idx]) {
-						mapsWorkflowsToUsedCredentials[idx] = [];
-					}
-					mapsWorkflowsToUsedCredentials[idx].push(credential.id);
-					allUsedCredentialIds.add(credential.id);
-				});
-			});
-		});
-
-		const usedWorkflowsCredentials = await EECredentials.getMany({
-			where: {
-				id: In(Array.from(allUsedCredentialIds)),
-			},
-			relations: ['shared', 'shared.user', 'shared.role'],
-		});
-		const userCredentials = await EECredentials.getAll(currentUser, { disableGlobalRole: true });
-		const userCredentialIds = userCredentials.map((credential) => credential.id);
-		const credentialsMap: Record<string, CredentialUsedByWorkflow> = {};
-		usedWorkflowsCredentials.forEach((credential) => {
-			const credentialId = credential.id;
-			credentialsMap[credentialId] = {
-				id: credentialId,
-				name: credential.name,
-				type: credential.type,
-				currentUserHasAccess: userCredentialIds.includes(credentialId),
-				sharedWith: [],
-				ownedBy: null,
-			};
-			credential.shared?.forEach(({ user, role }) => {
-				const { id, email, firstName, lastName } = user;
-				if (role.name === 'owner') {
-					credentialsMap[credentialId].ownedBy = { id, email, firstName, lastName };
-				} else {
-					credentialsMap[credentialId].sharedWith?.push({
-						id,
-						email,
-						firstName,
-						lastName,
-					});
-				}
-			});
-		});
-
-		mapsWorkflowsToUsedCredentials.forEach((usedCredentialIds, idx) => {
-			workflows[idx].usedCredentials = usedCredentialIds.map((id) => credentialsMap[id]);
 		});
 	}
 

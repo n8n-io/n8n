@@ -124,7 +124,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 
-import { get, set } from 'lodash';
+import { get, set } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { Component, PropType } from 'vue';

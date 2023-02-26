@@ -31,7 +31,8 @@ export class Code implements INodeType {
 		name: 'code',
 		icon: 'fa:code',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
+		defaultVersion: 1,
 		description: 'Run custom JavaScript code',
 		defaults: {
 			name: 'Code',
@@ -65,6 +66,11 @@ export class Code implements INodeType {
 				name: 'language',
 				type: 'options',
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 				options: [
 					{
 						name: 'JavaScript',
@@ -88,6 +94,25 @@ export class Code implements INodeType {
 				},
 				displayOptions: {
 					show: {
+						'@version': [1],
+					},
+				},
+				type: 'string',
+				default: '', // set by component
+				description:
+					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'JavaScript',
+				name: 'jsCode',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
+				},
+				displayOptions: {
+					show: {
+						'@version': [2],
 						language: ['javaScript'],
 						mode: ['runOnceForAllItems'],
 					},

@@ -20,6 +20,12 @@ import type { Role } from '@db/entities/Role';
 import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
+import { NodeTypes } from '@/NodeTypes';
+import { Push } from '@/push';
+
+const mockLoadNodesAndCredentials = utils.mockInstance(LoadNodesAndCredentials);
+utils.mockInstance(NodeTypes);
+utils.mockInstance(Push);
 
 jest.mock('@/CommunityNodes/helpers', () => {
 	return {
@@ -213,7 +219,7 @@ test('POST /nodes should allow installing packages that could not be loaded', as
 	mocked(hasPackageLoaded).mockReturnValueOnce(false);
 	mocked(checkNpmPackageStatus).mockResolvedValueOnce({ status: 'OK' });
 
-	jest.spyOn(LoadNodesAndCredentials(), 'loadNpmModule').mockImplementationOnce(mockedEmptyPackage);
+	mockLoadNodesAndCredentials.loadNpmModule.mockImplementationOnce(mockedEmptyPackage);
 
 	const { statusCode } = await authAgent(ownerShell).post('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
@@ -267,9 +273,7 @@ test('DELETE /nodes should reject if package is not installed', async () => {
 test('DELETE /nodes should uninstall package', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const removeSpy = jest
-		.spyOn(LoadNodesAndCredentials(), 'removeNpmModule')
-		.mockImplementationOnce(jest.fn());
+	const removeSpy = mockLoadNodesAndCredentials.removeNpmModule.mockImplementationOnce(jest.fn());
 
 	mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
 
@@ -310,9 +314,8 @@ test('PATCH /nodes reject if package is not installed', async () => {
 test('PATCH /nodes should update a package', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const updateSpy = jest
-		.spyOn(LoadNodesAndCredentials(), 'updateNpmModule')
-		.mockImplementationOnce(mockedEmptyPackage);
+	const updateSpy =
+		mockLoadNodesAndCredentials.updateNpmModule.mockImplementationOnce(mockedEmptyPackage);
 
 	mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
 

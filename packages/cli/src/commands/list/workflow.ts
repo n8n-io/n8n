@@ -1,6 +1,7 @@
 import { flags } from '@oclif/command';
-import type { IDataObject } from 'n8n-workflow';
+import type { FindOptionsWhere } from 'typeorm';
 import * as Db from '@/Db';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 
 export class ListWorkflowCommand extends BaseCommand {
@@ -30,12 +31,12 @@ export class ListWorkflowCommand extends BaseCommand {
 			this.error('The --active flag has to be passed using true or false');
 		}
 
-		const findQuery: IDataObject = {};
+		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
 		if (flags.active !== undefined) {
 			findQuery.active = flags.active === 'true';
 		}
 
-		const workflows = await Db.collections.Workflow.find(findQuery);
+		const workflows = await Db.collections.Workflow.findBy(findQuery);
 		if (flags.onlyId) {
 			workflows.forEach((workflow) => this.logger.info(workflow.id));
 		} else {

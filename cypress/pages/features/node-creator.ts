@@ -31,9 +31,6 @@ export class NodeCreator extends BasePage {
 		selectNode: (displayName: string) => {
 			this.getters.getCreatorItem(displayName).click();
 		},
-		selectTab: (tab: string) => {
-			this.getters.nodeCreatorTabs().contains(tab).click();
-		},
 		toggleCategory: (category: string) => {
 			this.getters.getCreatorItem(category).click();
 		},

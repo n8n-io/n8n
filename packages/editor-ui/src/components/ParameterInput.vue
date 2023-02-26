@@ -322,7 +322,7 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {

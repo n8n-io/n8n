@@ -5,7 +5,7 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('HTTP Request node', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
@@ -14,7 +14,7 @@ describe('HTTP Request node', () => {
 		cy.visit(workflowsPage.url);
 
 		workflowsPage.actions.createWorkflowFromCard();
-		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('HTTP Request');
 		workflowPage.actions.openNode('HTTP Request');
 		ndv.actions.typeIntoParameterInput('url', 'https://catfact.ninja/fact');
