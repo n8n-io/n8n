@@ -55,3 +55,4 @@ export const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 export const HORIZONTAL_CHARTS = ['bar', 'boxplot', 'violin'];
 export const ITEM_STYLE_CHARTS = ['boxplot', 'horizontalBoxplot', 'violin', 'horizontalViolin'];
 export const Fill_CHARTS = ['line'];
+export const POINT_STYLE_CHARTS = ['line'];

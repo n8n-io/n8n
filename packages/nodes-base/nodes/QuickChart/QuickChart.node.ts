@@ -9,7 +9,13 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { CHART_TYPE_OPTIONS, Fill_CHARTS, HORIZONTAL_CHARTS, ITEM_STYLE_CHARTS } from './constants';
+import {
+	CHART_TYPE_OPTIONS,
+	Fill_CHARTS,
+	HORIZONTAL_CHARTS,
+	ITEM_STYLE_CHARTS,
+	POINT_STYLE_CHARTS,
+} from './constants';
 import type { IDataset } from './types';
 
 import _ from 'lodash';
@@ -300,6 +306,11 @@ export class QuickChart implements INodeType {
 								value: 'triangle',
 							},
 						],
+						displayOptions: {
+							show: {
+								'/chartType': POINT_STYLE_CHARTS,
+							},
+						},
 					},
 				],
 			},
