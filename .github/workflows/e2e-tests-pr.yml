@@ -9,7 +9,7 @@ on:
 jobs:
   cancel-previous-runs:
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
 
     timeout-minutes: 30
     name: 'Run E2E tests'
@@ -23,10 +23,6 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.0
         with:
           access_token: ${{ github.token }}
-
-      - name: 'Cancel if PR is not approved'
-        if: github.event.review.state != 'approved'
-        uses: andymckay/cancel-action@0.2
 
   e2e-node-16:
     name: Electron - Node 16
