@@ -4,7 +4,7 @@ import { INode } from 'n8n-workflow';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { createWorkflow } from './shared/testDb';
+import {createTag, createWorkflow} from './shared/testDb';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
@@ -154,6 +154,7 @@ describe('GET /workflows', () => {
 	test('should return workflows without nodes, sharing and credential usage details', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const tag = await testDb.createTag({ name: 'test' });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -175,6 +176,7 @@ describe('GET /workflows', () => {
 						},
 					},
 				],
+				tags: [tag],
 			},
 			owner,
 		);
@@ -193,6 +195,14 @@ describe('GET /workflows', () => {
 		expect(fetchedWorkflow.sharedWith).not.toBeDefined()
 		expect(fetchedWorkflow.usedCredentials).not.toBeDefined()
 		expect(fetchedWorkflow.nodes).not.toBeDefined()
+		expect(fetchedWorkflow.tags).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: expect.any(String),
+					name: expect.any(String)
+				})
+			])
+		)
 	});
 });
 
