@@ -39,7 +39,13 @@ export function isSamlLicensed(): boolean {
 
 export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferences => {
 	const o = candidate as SamlPreferences;
-	return typeof o === 'object' && typeof o.metadata === 'string' && typeof o.mapping === 'object';
+	return (
+		typeof o === 'object' &&
+		typeof o.metadata === 'string' &&
+		typeof o.mapping === 'object' &&
+		o.mapping !== null &&
+		o.loginEnabled !== undefined
+	);
 };
 
 export function generatePassword(): string {
