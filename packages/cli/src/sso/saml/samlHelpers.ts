@@ -9,18 +9,23 @@ import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
+import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
-export function isSamlEnabled(): boolean {
-	return config.getEnv('sso.saml.enabled');
+export function isSamlLoginEnabled(): boolean {
+	return config.getEnv(SAML_LOGIN_ENABLED);
+}
+
+export function getSamlLoginLabel(): string {
+	return config.getEnv(SAML_LOGIN_LABEL);
 }
 
 export function isSamlLicensed(): boolean {
 	const license = getLicense();
 	return (
 		isUserManagementEnabled() &&
-		(license.isSamlEnabled() || config.getEnv('enterprise.features.saml'))
+		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
 	);
 }
 

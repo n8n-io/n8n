@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import type { AuthenticatedRequest } from '../../../requests';
 import { isSamlCurrentAuthenticationMethod } from '../../ssoHelpers';
-import { isSamlEnabled, isSamlLicensed } from '../samlHelpers';
+import { isSamlLoginEnabled, isSamlLicensed } from '../samlHelpers';
 
 export const samlLicensedOwnerMiddleware: RequestHandler = (
 	req: AuthenticatedRequest,
@@ -16,7 +16,7 @@ export const samlLicensedOwnerMiddleware: RequestHandler = (
 };
 
 export const samlLicensedAndEnabledMiddleware: RequestHandler = (req, res, next) => {
-	if (isSamlEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod()) {
+	if (isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod()) {
 		next();
 	} else {
 		res.status(401).json({ status: 'error', message: 'Unauthorized' });
