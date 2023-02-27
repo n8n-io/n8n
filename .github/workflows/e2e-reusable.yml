@@ -130,6 +130,5 @@ jobs:
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CYPRESS_N8N_E2E_TESTS: true
           E2E_TEST: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🐳 ${{ matrix.containers }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}

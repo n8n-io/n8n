@@ -7,11 +7,11 @@ import type { n8n } from 'n8n-core';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
-const { NODE_ENV, E2E_TESTS, CYPRESS_N8N_E2E_TESTS } = process.env;
+const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';
 export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
 export const inTest = NODE_ENV === 'test';
-export const inE2ETests = E2E_TESTS === 'true' || CYPRESS_N8N_E2E_TESTS === 'true';
+export const inE2ETests = E2E_TESTS === 'true';
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
