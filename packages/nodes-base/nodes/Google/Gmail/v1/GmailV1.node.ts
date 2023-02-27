@@ -29,7 +29,7 @@ import { labelFields, labelOperations } from './LabelDescription';
 
 import { draftFields, draftOperations } from './DraftDescription';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',

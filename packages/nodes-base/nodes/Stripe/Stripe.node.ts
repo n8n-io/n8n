@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 import {
 	adjustChargeFields,

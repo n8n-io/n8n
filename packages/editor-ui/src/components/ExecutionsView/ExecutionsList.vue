@@ -48,7 +48,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range as _range } from 'lodash';
+import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
 import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';

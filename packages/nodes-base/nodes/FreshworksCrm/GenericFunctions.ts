@@ -12,7 +12,7 @@ import type {
 	ViewsResponse,
 } from './types';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export async function freshworksCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

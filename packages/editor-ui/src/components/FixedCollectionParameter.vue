@@ -124,7 +124,7 @@ import {
 	isINodePropertyCollectionList,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 export default Vue.extend({
 	name: 'FixedCollectionParameter',
