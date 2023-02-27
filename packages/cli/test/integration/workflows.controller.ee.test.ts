@@ -4,7 +4,7 @@ import { INode } from 'n8n-workflow';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import {createTag, createWorkflow} from './shared/testDb';
+import { createWorkflow } from './shared/testDb';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
