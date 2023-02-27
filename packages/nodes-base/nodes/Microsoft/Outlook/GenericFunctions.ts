@@ -241,7 +241,7 @@ export async function binaryToAttachments(
 			if (binary[binaryPropertyName] === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
+					`Item has no binary property called "${binaryPropertyName}"`,
 					{ itemIndex: i },
 				);
 			}

@@ -115,8 +115,7 @@
 <script lang="ts">
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
-import { VIEWS } from '../../constants';
-import { range as _range } from 'lodash';
+import { VIEWS } from '@/constants';
 import { IExecutionsSummary } from '@/Interface';
 import { Route } from 'vue-router';
 import Vue from 'vue';
@@ -162,8 +161,6 @@ export default Vue.extend({
 		},
 		executionStatuses(): Array<{ id: string; name: string }> {
 			return [
-				{ id: 'crashed', name: this.$locale.baseText('executionsList.error') },
-				{ id: 'new', name: this.$locale.baseText('executionsList.new') },
 				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
 				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
 				{ id: 'success', name: this.$locale.baseText('executionsList.success') },

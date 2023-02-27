@@ -5,7 +5,6 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
@@ -198,7 +197,7 @@ export async function handleMatrixCall(
 			) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
+					`Item has no binary property called "${binaryPropertyName}"`,
 				);
 			}
 

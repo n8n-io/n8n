@@ -21,7 +21,8 @@ import { connect as imapConnect, getParts } from 'imap-simple';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
 
-import _ from 'lodash';
+import isEmpty from 'lodash.isempty';
+import find from 'lodash.find';
 import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
 import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 
@@ -240,7 +241,7 @@ export class EmailReadImapV2 implements INodeType {
 						if (credentials.secure) {
 							tlsOptions.servername = credentials.host;
 						}
-						if (!_.isEmpty(tlsOptions)) {
+						if (!isEmpty(tlsOptions)) {
 							config.imap.tlsOptions = tlsOptions;
 						}
 						const connection = await imapConnect(config);
@@ -393,7 +394,7 @@ export class EmailReadImapV2 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: '' });
+					const part = find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -482,7 +483,7 @@ export class EmailReadImapV2 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: 'TEXT' });
+					const part = find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -580,7 +581,7 @@ export class EmailReadImapV2 implements INodeType {
 				tlsOptions.servername = credentials.host;
 			}
 
-			if (!_.isEmpty(tlsOptions)) {
+			if (!isEmpty(tlsOptions)) {
 				config.imap.tlsOptions = tlsOptions;
 			}
 
