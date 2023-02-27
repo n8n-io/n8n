@@ -9,7 +9,7 @@ on:
 jobs:
   cancel-previous-runs:
     runs-on: ubuntu-latest
-    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
 
     timeout-minutes: 30
     name: 'Run E2E tests'
@@ -27,7 +27,7 @@ jobs:
   e2e-node-16:
     name: Electron - Node 16
     uses: ./.github/workflows/e2e-reusable.yml
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
