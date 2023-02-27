@@ -401,6 +401,7 @@ export async function createManyWorkflows(
 
 /**
  * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
+ * @param attributes workflow attributes
  * @param user user to assign the workflow to
  */
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
