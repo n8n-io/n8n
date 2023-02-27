@@ -38,7 +38,7 @@ jobs:
           [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
         shell: bash
 
-  e2e-node-16:
+  run-e2e-tests:
     name: E2E[Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
@@ -49,7 +49,7 @@ jobs:
       run-env: base:16.18.1
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-  e2e-node-14:
+  run-e2e-tests-node-14:
     name: E2E[Electron/Node 14]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ github.event.inputs.test-node-14 }}
