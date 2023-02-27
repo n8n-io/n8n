@@ -33,6 +33,7 @@ import {
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
+	FileNotFoundError,
 } from 'n8n-core';
 
 import type {
@@ -56,8 +57,6 @@ import history from 'connect-history-api-fallback';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { getCredentialTranslationPath } from '@/TranslationHelpers';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
@@ -67,7 +66,6 @@ import {
 	GENERATED_STATIC_DIR,
 	inDevelopment,
 	N8N_VERSION,
-	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
 } from '@/constants';
@@ -88,6 +86,7 @@ import {
 	MeController,
 	OwnerController,
 	PasswordResetController,
+	TranslationController,
 	UsersController,
 } from '@/controllers';
 
@@ -113,7 +112,7 @@ import type {
 	IExecutionsStopData,
 	IN8nUISettings,
 } from '@/Interfaces';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
@@ -122,11 +121,8 @@ import {
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
-import type { NodeTypesClass } from '@/NodeTypes';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { WaitTrackerClass } from '@/WaitTracker';
 import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -135,8 +131,7 @@ import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
-import type { Push } from '@/push';
-import { getPushInstance, setupPushServer, setupPushHandler } from '@/push';
+import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
 import { ldapController } from './Ldap/routes/ldap.controller.ee';
@@ -145,44 +140,54 @@ import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
+import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
-import { isSamlEnabled } from './Saml/helpers';
+import { Container } from 'typedi';
+import { InternalHooks } from './InternalHooks';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
+import { isSamlLicensed } from './sso/saml/samlHelpers';
+import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
+import { SamlService } from './sso/saml/saml.service.ee';
+import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 
 const exec = promisify(callbackExec);
 
 class Server extends AbstractServer {
 	endpointPresetCredentials: string;
 
-	waitTracker: WaitTrackerClass;
+	waitTracker: WaitTracker;
 
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+	activeExecutionsInstance: ActiveExecutions;
 
 	frontendSettings: IN8nUISettings;
 
 	presetCredentialsLoaded: boolean;
 
-	loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+	loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	nodeTypes: NodeTypesClass;
+	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
+
+	postHog: PostHogClient;
 
 	push: Push;
 
 	constructor() {
 		super();
 
-		this.nodeTypes = NodeTypes();
-		this.credentialTypes = CredentialTypes();
-		this.loadNodesAndCredentials = LoadNodesAndCredentials();
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		this.credentialTypes = Container.get(CredentialTypes);
+		this.nodeTypes = Container.get(NodeTypes);
 
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-		this.waitTracker = WaitTracker();
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
+		this.waitTracker = Container.get(WaitTracker);
+		this.postHog = Container.get(PostHogClient);
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		this.push = getPushInstance();
+		this.push = Container.get(Push);
 
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
@@ -232,6 +237,16 @@ class Server extends AbstractServer {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
+			posthog: {
+				enabled: config.getEnv('diagnostics.enabled'),
+				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				autocapture: false,
+				disableSessionRecording: config.getEnv(
+					'diagnostics.config.posthog.disableSessionRecording',
+				),
+				debug: config.getEnv('logs.level') === 'debug',
+			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
@@ -306,7 +321,7 @@ class Server extends AbstractServer {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
-			saml: isSamlEnabled(),
+			saml: isSamlLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -343,14 +358,16 @@ class Server extends AbstractServer {
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
 
 		const logger = LoggerProxy;
-		const internalHooks = InternalHooksManager.getInstance();
+		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
+		const postHog = this.postHog;
 
 		const controllers = [
-			new AuthController({ config, internalHooks, repositories, logger }),
+			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
 				mailer,
@@ -359,6 +376,7 @@ class Server extends AbstractServer {
 				repositories,
 				activeWorkflowRunner,
 				logger,
+				postHog,
 			}),
 		];
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -378,6 +396,7 @@ class Server extends AbstractServer {
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
 		await this.initLicense();
+		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
@@ -478,6 +497,19 @@ class Server extends AbstractServer {
 		if (isLdapEnabled()) {
 			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
 		}
+
+		// ----------------------------------------
+		// SAML
+		// ----------------------------------------
+
+		// initialize SamlService
+		await SamlService.getInstance().init();
+
+		// public SAML endpoints
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
+
+		// ----------------------------------------
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -585,48 +617,6 @@ class Server extends AbstractServer {
 					}
 
 					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/credential-translation`,
-			ResponseHelper.send(
-				async (
-					req: express.Request & { query: { credentialType: string } },
-					res: express.Response,
-				): Promise<object | null> => {
-					const translationPath = getCredentialTranslationPath({
-						locale: this.frontendSettings.defaultLocale,
-						credentialType: req.query.credentialType,
-					});
-
-					try {
-						return require(translationPath);
-					} catch (error) {
-						return null;
-					}
-				},
-			),
-		);
-
-		// Returns node information based on node names and versions
-		const headersPath = pathJoin(NODES_BASE_DIR, 'dist', 'nodes', 'headers');
-		this.app.get(
-			`/${this.restEndpoint}/node-translation-headers`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<object | void> => {
-					try {
-						await fsAccess(`${headersPath}.js`);
-					} catch (_) {
-						return; // no headers available
-					}
-
-					try {
-						return require(headersPath);
-					} catch (error) {
-						res.status(500).send('Failed to load headers file');
-					}
 				},
 			),
 		);
@@ -1013,6 +1003,9 @@ class Server extends AbstractServer {
 						if (!executions.length) return [];
 
 						return executions.map((execution) => {
+							if (!execution.status) {
+								execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+							}
 							return {
 								id: execution.id,
 								workflowId: execution.workflowId,
@@ -1047,6 +1040,7 @@ class Server extends AbstractServer {
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
+							status: data.status,
 						});
 					}
 
@@ -1099,6 +1093,7 @@ class Server extends AbstractServer {
 							startedAt: new Date(result.startedAt),
 							stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 							finished: result.finished,
+							status: result.status,
 						} as IExecutionsStopData;
 					}
 
@@ -1125,6 +1120,7 @@ class Server extends AbstractServer {
 							? new Date(fullExecutionData.stoppedAt)
 							: undefined,
 						finished: fullExecutionData.finished,
+						status: fullExecutionData.status,
 					};
 
 					return returnData;
@@ -1143,6 +1139,7 @@ class Server extends AbstractServer {
 						startedAt: new Date(result.startedAt),
 						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
+						status: result.status,
 					};
 				}
 
@@ -1173,21 +1170,26 @@ class Server extends AbstractServer {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				const binaryDataManager = BinaryDataManager.getInstance();
-				const binaryPath = binaryDataManager.getBinaryPath(identifier);
-				let { mode, fileName, mimeType } = req.query;
-				if (!fileName || !mimeType) {
-					try {
-						const metadata = await binaryDataManager.getBinaryMetadata(identifier);
-						fileName = metadata.fileName;
-						mimeType = metadata.mimeType;
-						res.setHeader('Content-Length', metadata.fileSize);
-					} catch {}
+				try {
+					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					let { mode, fileName, mimeType } = req.query;
+					if (!fileName || !mimeType) {
+						try {
+							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							fileName = metadata.fileName;
+							mimeType = metadata.mimeType;
+							res.setHeader('Content-Length', metadata.fileSize);
+						} catch {}
+					}
+					if (mimeType) res.setHeader('Content-Type', mimeType);
+					if (mode === 'download') {
+						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+					}
+					res.sendFile(binaryPath);
+				} catch (error) {
+					if (error instanceof FileNotFoundError) res.writeHead(404).end();
+					else throw error;
 				}
-				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (mode === 'download') {
-					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-				}
-				res.sendFile(binaryPath);
 			},
 		);
 
@@ -1200,9 +1202,7 @@ class Server extends AbstractServer {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
-						req.headers.sessionid as string,
-					);
+					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
 
 					return this.getSettingsForFrontend();
 				},
@@ -1373,6 +1373,6 @@ export async function start(): Promise<void> {
 		order: { createdAt: 'ASC' },
 		where: {},
 	}).then(async (workflow) =>
-		InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+		Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 	);
 }

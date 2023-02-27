@@ -26,7 +26,9 @@ import type {
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { Service } from 'typedi';
 
+@Service()
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
@@ -34,7 +36,6 @@ export class ActiveExecutions {
 
 	/**
 	 * Add a new active execution
-	 *
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
@@ -252,14 +253,4 @@ export class ActiveExecutions {
 
 		return this.activeExecutions[executionId].status;
 	}
-}
-
-let activeExecutionsInstance: ActiveExecutions | undefined;
-
-export function getInstance(): ActiveExecutions {
-	if (activeExecutionsInstance === undefined) {
-		activeExecutionsInstance = new ActiveExecutions();
-	}
-
-	return activeExecutionsInstance;
 }

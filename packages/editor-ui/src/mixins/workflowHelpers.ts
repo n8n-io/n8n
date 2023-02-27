@@ -48,7 +48,7 @@ import { restApi } from '@/mixins/restApi';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';

@@ -33,7 +33,7 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -49,25 +49,25 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import type { Push } from '@/push';
-import { getPushInstance } from '@/push';
+import { Push } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
+import { Container } from 'typedi';
+import { InternalHooks } from './InternalHooks';
 
 export class WorkflowRunner {
-	activeExecutions: ActiveExecutions.ActiveExecutions;
+	activeExecutions: ActiveExecutions;
 
 	push: Push;
 
 	jobQueue: Queue.JobQueue;
 
 	constructor() {
-		this.push = getPushInstance();
-		this.activeExecutions = ActiveExecutions.getInstance();
+		this.push = Container.get(Push);
+		this.activeExecutions = Container.get(ActiveExecutions);
 	}
 
 	/**
@@ -130,7 +130,7 @@ export class WorkflowRunner {
 
 			const executionFlattedData = await Db.collections.Execution.findOneBy({ id: executionId });
 
-			void InternalHooksManager.getInstance().onWorkflowCrashed(
+			void Container.get(InternalHooks).onWorkflowCrashed(
 				executionId,
 				executionMode,
 				executionFlattedData?.workflowData,
@@ -187,14 +187,14 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
-		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
+		void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		postExecutePromise
 			.then(async (executionData) => {
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId!,
 					data.workflowData,
 					executionData,
@@ -241,7 +241,7 @@ export class WorkflowRunner {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`

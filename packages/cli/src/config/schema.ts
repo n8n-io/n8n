@@ -325,6 +325,16 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
 		},
+
+		// Additional pruning option to delete executions if total count exceeds the configured max.
+		// Deletes the oldest entries first
+		// Default is 0 = No limit
+		pruneDataMaxCount: {
+			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			format: Number,
+			default: 0,
+			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
+		},
 	},
 
 	queue: {
@@ -803,6 +813,11 @@ export const schema = {
 				},
 			},
 		},
+		authenticationMethod: {
+			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
+			format: ['email', 'ldap', 'saml'] as const,
+			default: 'email',
+		},
 	},
 
 	externalFrontendHooksUrls: {
@@ -996,6 +1011,27 @@ export const schema = {
 		},
 	},
 
+	sso: {
+		justInTimeProvisioning: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically create users when they login via SSO.',
+		},
+		redirectLoginToSso: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
+		},
+		saml: {
+			enabled: {
+				format: Boolean,
+				default: false,
+				doc: 'Whether to enable SAML SSO.',
+			},
+		},
+	},
+
+	// TODO: move into sso settings
 	ldap: {
 		loginEnabled: {
 			format: Boolean,

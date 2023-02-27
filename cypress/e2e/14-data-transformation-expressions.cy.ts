@@ -4,15 +4,20 @@ const wf = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data transformation expressions', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		wf.actions.visit();
 		cy.waitForLoad();
 
 		cy.window()
 			// @ts-ignore
-			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload));
+			.then(
+				(win) => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload),
+			);
 	});
 
 	it('$json + native string methods', () => {
@@ -26,7 +31,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + n8n string methods', () => {
@@ -40,7 +46,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + native numeric methods', () => {
@@ -54,7 +61,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + n8n numeric methods', () => {
@@ -68,7 +76,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + native array methods', () => {
@@ -82,7 +91,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + n8n array methods', () => {
