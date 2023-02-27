@@ -164,7 +164,7 @@ export class WorkflowsService {
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
-			select.tags = { name: true };
+			select.tags = { id: true, name: true };
 		}
 
 		if (isSharingEnabled()) {
