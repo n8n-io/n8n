@@ -9,11 +9,7 @@ on:
 jobs:
   cancel-previous-runs:
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
-
-    timeout-minutes: 30
-    name: 'Run E2E tests'
-
+    name: 'Cancel previous e2e test runs'
     strategy:
       matrix:
         node-version: [16.x]
