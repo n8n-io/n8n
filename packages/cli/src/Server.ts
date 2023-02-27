@@ -189,10 +189,6 @@ class Server extends AbstractServer {
 
 		this.push = Container.get(Push);
 
-		console.log(
-			'🚀 ~ file: Server.ts:190 ~ Server ~ constructor ~ process.env.E2E_TESTS',
-			process.env.E2E_TESTS,
-		);
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
 		}
