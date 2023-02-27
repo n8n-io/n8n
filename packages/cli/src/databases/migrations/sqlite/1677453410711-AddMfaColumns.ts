@@ -1,8 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
-export class AddMfaColumns1677108582944 implements MigrationInterface {
-	name = 'AddMfaColumns1677108582944';
+export class AddMfaColumns1677453410711 implements MigrationInterface {
+	name = 'AddMfaColumns1677453410711';
 
 	transaction = false;
 

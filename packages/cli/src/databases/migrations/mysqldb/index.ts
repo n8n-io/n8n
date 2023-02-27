@@ -34,7 +34,7 @@ import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-Pu
 import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
-import { AddMfaColumns1677108582944 } from './1677108582944-AddMfaColumns';
+import { AddMfaColumns1677453410711 } from './1677453410711-AddMfaColumns';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -73,5 +73,5 @@ export const mysqlMigrations = [
 	AddStatusToExecutions1674138566000,
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677236788851,
-	AddMfaColumns1677108582944,
+	AddMfaColumns1677453410711,
 ];

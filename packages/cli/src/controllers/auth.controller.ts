@@ -98,7 +98,6 @@ export class AuthController {
 
 		if (user) {
 			if (user.mfaEnabled) {
-
 				const encryptionKey = await UserSettings.getEncryptionKey();
 
 				const isMFATokenValid =
