@@ -2,13 +2,14 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { QueryMode } from '../../helpers/interfaces';
-import type { PgpClient, PgpDatabase } from '../../helpers/utils';
+import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
+
 import {
 	generateReturning,
 	getItemCopy,
 	getItemsCopy,
-	prepareError,
+	parsePostgresError,
+	prepareErrorItem,
 	wrapData,
 } from '../../helpers/utils';
 
@@ -116,18 +117,32 @@ export async function execute(
 
 	let returnData: IDataObject[] = [];
 	if (mode === 'multiple') {
-		const query =
-			(pgp.helpers.update(updateItems, cs) as string) +
-			' WHERE ' +
-			updateKeys
-				.map((entry) => {
-					const key = pgp.as.name(entry.name);
-					return 'v.' + key + ' = t.' + key;
-				})
-				.join(' AND ') +
-			returning;
-		const updateResult = await db.any(query);
-		returnData = updateResult;
+		try {
+			const query =
+				(pgp.helpers.update(updateItems, cs) as string) +
+				' WHERE ' +
+				updateKeys
+					.map((entry) => {
+						const key = pgp.as.name(entry.name);
+						return 'v.' + key + ' = t.' + key;
+					})
+					.join(' AND ') +
+				returning;
+			const updateResult = await db.any(query);
+			returnData = updateResult;
+		} catch (err) {
+			const error = parsePostgresError.call(this, err);
+			if (!this.continueOnFail()) throw error;
+
+			return [
+				{
+					json: {
+						message: error.message,
+						error: { ...error },
+					},
+				},
+			];
+		}
 	}
 
 	const where =
@@ -152,8 +167,9 @@ export async function execute(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (!this.continueOnFail()) throw err;
-					result.push(prepareError(items, err, i));
+					const error = parsePostgresError.call(this, err);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
 					return result;
 				}
 			}
@@ -178,8 +194,9 @@ export async function execute(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (!this.continueOnFail()) throw err;
-					result.push(prepareError(items, err, i));
+					const error = parsePostgresError.call(this, err);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
 				}
 			}
 			return result;

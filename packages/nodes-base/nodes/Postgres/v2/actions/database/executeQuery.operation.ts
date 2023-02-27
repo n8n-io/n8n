@@ -2,9 +2,8 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { QueryMode } from '../../helpers/interfaces';
-import type { PgpClient, PgpDatabase } from '../../helpers/utils';
-import { prepareError, wrapData } from '../../helpers/utils';
+import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
+import { parsePostgresError, prepareErrorItem, wrapData } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 
@@ -88,13 +87,27 @@ export async function execute(
 	const mode = (options.mode as QueryMode) || 'multiple';
 
 	if (mode === 'multiple') {
-		returnData = (await db.multi(pgp.helpers.concat(allQueries)))
-			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(wrapData(result), {
-					itemData: { item: i },
-				});
-			})
-			.flat();
+		try {
+			returnData = (await db.multi(pgp.helpers.concat(allQueries)))
+				.map((result, i) => {
+					return this.helpers.constructExecutionMetaData(wrapData(result), {
+						itemData: { item: i },
+					});
+				})
+				.flat();
+		} catch (err) {
+			const error = parsePostgresError.call(this, err);
+			if (!this.continueOnFail()) throw error;
+
+			return [
+				{
+					json: {
+						message: error.message,
+						error: { ...error },
+					},
+				},
+			];
+		}
 	}
 
 	if (mode === 'transaction') {
@@ -109,8 +122,9 @@ export async function execute(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (!this.continueOnFail()) throw err;
-					result.push(prepareError(items, err, i));
+					const error = parsePostgresError.call(this, err);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
 					return result;
 				}
 			}
@@ -130,8 +144,9 @@ export async function execute(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (!this.continueOnFail()) throw err;
-					result.push(prepareError(items, err, i));
+					const error = parsePostgresError.call(this, err);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
 				}
 			}
 			return result;

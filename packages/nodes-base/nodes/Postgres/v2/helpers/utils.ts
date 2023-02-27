@@ -1,11 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-import type pg from 'pg-promise/typescript/pg-subset';
-
-export type PgpClient = pgPromise.IMain<{}, pg.IClient>;
-export type PgpDatabase = pgPromise.IDatabase<{}, pg.IClient>;
+import type { PgpClient } from './interfaces';
 
 export function getItemsCopy(
 	items: INodeExecutionData[],
@@ -101,12 +99,24 @@ export async function configurePostgres(this: IExecuteFunctions) {
 	return { db, pgp };
 }
 
-export function prepareError(items: INodeExecutionData[], error: IDataObject, index: number) {
-	const { code, message } = error;
+export function prepareErrorItem(
+	items: INodeExecutionData[],
+	error: IDataObject | NodeOperationError | Error,
+	index: number,
+) {
 	return {
-		json: { ...items[index].json },
-		code,
-		message,
+		json: { message: error.message, error: { ...error } },
 		pairedItem: { item: index },
 	} as INodeExecutionData;
+}
+
+export function parsePostgresError(this: IExecuteFunctions, error: any) {
+	let message = error.message;
+	const description = error.description ? error.description : error.detail || error.hint;
+
+	if ((error?.message as string).includes('ECONNREFUSED')) {
+		message = 'Connection refused';
+	}
+
+	return new NodeOperationError(this.getNode(), error, { message, description });
 }

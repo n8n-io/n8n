@@ -2,13 +2,14 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { QueryMode } from '../../helpers/interfaces';
-import type { PgpClient, PgpDatabase } from '../../helpers/utils';
+import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
+
 import {
 	generateReturning,
 	getItemCopy,
 	getItemsCopy,
-	prepareError,
+	parsePostgresError,
+	prepareErrorItem,
 	wrapData,
 } from '../../helpers/utils';
 
@@ -92,16 +93,30 @@ export async function execute(
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 
 	if (mode === 'multiple') {
-		const query =
-			pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
-		const queryResult = await db.any(query);
-		returnData = queryResult
-			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(wrapData(result), {
-					itemData: { item: i },
-				});
-			})
-			.flat();
+		try {
+			const query =
+				pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
+			const queryResult = await db.any(query);
+			returnData = queryResult
+				.map((result, i) => {
+					return this.helpers.constructExecutionMetaData(wrapData(result), {
+						itemData: { item: i },
+					});
+				})
+				.flat();
+		} catch (err) {
+			const error = parsePostgresError.call(this, err);
+			if (!this.continueOnFail()) throw error;
+
+			return [
+				{
+					json: {
+						message: error.message,
+						error: { ...error },
+					},
+				},
+			];
+		}
 	}
 
 	if (mode === 'transaction') {
@@ -117,8 +132,9 @@ export async function execute(
 						}),
 					);
 				} catch (err) {
-					if (!this.continueOnFail()) throw err;
-					result.push(prepareError(items, err, i));
+					const error = parsePostgresError.call(this, err);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
 					return result;
 				}
 			}
@@ -140,8 +156,9 @@ export async function execute(
 						result.push(...executionData);
 					}
 				} catch (err) {
-					if (!this.continueOnFail()) throw err;
-					result.push(prepareError(items, err, i));
+					const error = parsePostgresError.call(this, err);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
 				}
 			}
 			return result;
