@@ -127,7 +127,6 @@ jobs:
           ci-build-id: '${{ github.sha }}-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.run-env }}-e2e'
           spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
           config-file: /__w/n8n/n8n/cypress.config.js
-          browser: chrome
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
