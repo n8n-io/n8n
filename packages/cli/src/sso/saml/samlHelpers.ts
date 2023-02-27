@@ -21,6 +21,14 @@ export function getSamlLoginLabel(): string {
 	return config.getEnv(SAML_LOGIN_LABEL);
 }
 
+export function setSamlLoginEnabled(enabled: boolean): void {
+	config.set(SAML_LOGIN_ENABLED, enabled);
+}
+
+export function setSamlLoginLabel(label: string): void {
+	config.set(SAML_LOGIN_LABEL, label);
+}
+
 export function isSamlLicensed(): boolean {
 	const license = getLicense();
 	return (

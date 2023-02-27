@@ -180,6 +180,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 			this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
 			this.ldap.loginLabel = settings.sso.ldap.loginLabel;
+			this.saml.loginEnabled = settings.sso.saml.loginEnabled;
+			this.saml.loginLabel = settings.sso.saml.loginLabel;
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
