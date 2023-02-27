@@ -6,7 +6,7 @@
 import { defineComponent } from 'vue';
 
 import { showMessage } from '@/mixins/showMessage';
-import type { ElMessageComponent } from 'element-ui/types/message';
+import type { MessageInstance } from 'element-plus';
 import { sanitizeHtml } from '@/utils';
 
 export default defineComponent({
@@ -24,7 +24,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			alert: null as null | ElMessageComponent,
+			alert: null as null | MessageInstance,
 		};
 	},
 	mounted() {

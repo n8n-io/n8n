@@ -6,7 +6,7 @@
 			shadow="never"
 		>
 			<!-- <template #header> -->
-			<checkbox
+			<el-checkbox
 				:value="group.selected"
 				:indeterminate="!group.selected && group.indeterminate"
 				@input="onInput"
@@ -25,8 +25,8 @@
 						{{ groupLabelInfo(group.name) }}
 					</template>
 				</n8n-tooltip>
-			</checkbox>
-			<checkbox
+			</el-checkbox>
+			<el-checkbox
 				v-if="group.name === 'n8n.audit'"
 				:value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
 				@input="onInput"
@@ -40,7 +40,7 @@
 						{{ $locale.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
 				</n8n-tooltip>
-			</checkbox>
+			</el-checkbox>
 			<!-- </template> -->
 			<ul :class="$style.eventList">
 				<li
@@ -48,7 +48,7 @@
 					:key="event.name"
 					:class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`"
 				>
-					<checkbox
+					<el-checkbox
 						:value="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
 						:disabled="group.selected || readonly"
@@ -61,7 +61,7 @@
 								{{ event.name }}
 							</template>
 						</n8n-tooltip>
-					</checkbox>
+					</el-checkbox>
 				</li>
 			</ul>
 		</div>
@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts">
-import { Checkbox } from 'element-ui';
+import { ElCheckbox } from 'element-plus';
 import { mapStores } from 'pinia';
 import { BaseTextKey } from '../../plugins/i18n';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
@@ -84,7 +84,7 @@ export default {
 		readonly: Boolean,
 	},
 	components: {
-		Checkbox,
+		ElCheckbox,
 	},
 	data() {
 		return {

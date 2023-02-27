@@ -15,11 +15,9 @@ import { jsonFieldCompletions } from './completions/jsonField.completions';
 
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
-import type { CodeNodeEditorMixin } from './types';
 
 export const completerExtension = defineComponent({
 	mixins: [
-		Vue as CodeNodeEditorMixin,
 		baseCompletions,
 		requireCompletions,
 		executionCompletions,

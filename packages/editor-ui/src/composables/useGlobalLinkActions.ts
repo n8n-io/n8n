@@ -3,6 +3,7 @@
  * unsafe onclick attribute
  */
 import { reactive, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { globalLinkActionsEventBus } from '@/event-bus/global-link-actions-event-bus';
 
 const state = reactive({
 	customActions: {} as Record<string, Function>,
@@ -41,14 +42,16 @@ export default () => {
 
 	onMounted(() => {
 		const instance = getCurrentInstance();
+
+		console.log(instance);
 		window.addEventListener('click', delegateClick);
-		instance?.proxy.$root.$on('registerGlobalLinkAction', registerCustomAction);
+		globalLinkActionsEventBus.on('registerGlobalLinkAction', registerCustomAction);
 	});
 
 	onUnmounted(() => {
 		const instance = getCurrentInstance();
 		window.removeEventListener('click', delegateClick);
-		instance?.proxy.$root.$off('registerGlobalLinkAction', registerCustomAction);
+		globalLinkActionsEventBus.off('registerGlobalLinkAction', registerCustomAction);
 	});
 
 	return {

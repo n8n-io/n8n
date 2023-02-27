@@ -24,6 +24,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { globalLinkActionsEventBus } from '@/event-bus/global-link-actions-event-bus';
 
 export const pushConnection = defineComponent({
 	mixins: [externalHooks, nodeHelpers, showMessage, titleChange, workflowHelpers],
@@ -266,10 +267,14 @@ export const pushConnection = defineComponent({
 
 					let action;
 					if (!isSavingExecutions) {
-						this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
-							if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
-							this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-						});
+						globalLinkActionsEventBus.emit(
+							'registerGlobalLinkAction',
+							'open-settings',
+							async () => {
+								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+							},
+						);
 
 						action =
 							'<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';

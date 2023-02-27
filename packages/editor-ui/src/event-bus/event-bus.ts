@@ -1,4 +1,4 @@
-export type CallbackFn = (...args: any[]) => any;
+export type CallbackFn = (...args: any[]) => any | Promise<any>;
 
 export type UnregisterFn = () => void;
 
@@ -31,8 +31,8 @@ export function createEventBus() {
 		const eventFns = handlers.get(eventName);
 
 		if (eventFns) {
-			eventFns.slice().forEach((handler) => {
-				handler(event);
+			eventFns.slice().forEach(async (handler) => {
+				await handler(event);
 			});
 		}
 	}

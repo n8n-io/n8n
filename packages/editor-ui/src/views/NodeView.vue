@@ -166,7 +166,7 @@ import type {
 	N8nPlusEndpoint,
 	jsPlumbInstance,
 } from 'jsplumb';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-plus';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,

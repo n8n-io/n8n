@@ -208,7 +208,7 @@ import { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import { Checkbox } from 'element-ui';
+import { ElCheckbox } from 'element-plus';
 import { EventBus } from '@/event-bus/event-bus';
 
 export default defineComponent({
@@ -233,7 +233,7 @@ export default defineComponent({
 		InlineNameEdit,
 		SaveButton,
 		EventSelection,
-		Checkbox,
+		ElCheckbox,
 	},
 	data() {
 		return {

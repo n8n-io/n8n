@@ -24,7 +24,7 @@ import {
 	WorkflowCallerPolicyDefaultOption,
 	ILdapConfig,
 } from '@/Interface';
-import { ITelemetrySettings } from 'n8n-workflow';
+import { IDataObject, ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { defineComponent } from 'vue';
 import { useRootStore } from './n8nRootStore';
@@ -195,10 +195,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
 		stopShowingSetupPage(): void {
-			Vue.set(this.userManagement, 'showSetupOnFirstLoad', false);
+			this.userManagement = {
+				...this.userManagement,
+				showSetupOnFirstLoad: false,
+			};
 		},
 		setPromptsData(promptsData: IN8nPrompts): void {
-			Vue.set(this, 'promptsData', promptsData);
+			this.promptsData = promptsData;
 		},
 		setAllowedModules(allowedModules: { builtIn?: string; external?: string }): void {
 			this.settings.allowedModules = {
@@ -294,13 +297,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return await runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
-			Vue.set(this, 'saveDataErrorExecution', newValue);
+			this.saveDataErrorExecution = newValue;
 		},
 		setSaveDataSuccessExecution(newValue: string) {
-			Vue.set(this, 'saveDataSuccessExecution', newValue);
+			this.saveDataSuccessExecution = newValue;
 		},
 		setSaveManualExecutions(saveManualExecutions: boolean) {
-			Vue.set(this, 'saveManualExecutions', saveManualExecutions);
+			this.saveManualExecutions = saveManualExecutions;
 		},
 	},
 });

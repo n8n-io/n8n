@@ -160,7 +160,6 @@ import {
 import { defineComponent } from 'vue';
 
 import humanizeDuration from 'humanize-duration';
-import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
 import { capitalizeFirstLetter } from '@/utils';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
@@ -200,9 +199,17 @@ type tableRow = {
 	runMode: string;
 };
 
-type rowType = rowCallbackParams & tableRow;
+type rowType = {
+	row: object;
+	rowIndex: number;
+} & tableRow;
 
-type cellType = cellCallbackParams & { property: keyof tableRow };
+type cellType = {
+	row: object;
+	rowIndex: number;
+	column: object;
+	columnIndex: number;
+} & { property: keyof tableRow };
 
 export default defineComponent({
 	name: 'SettingsLdapView',

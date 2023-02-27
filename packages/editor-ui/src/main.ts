@@ -15,10 +15,10 @@ import '@fontsource/open-sans/latin-600.css';
 import '@fontsource/open-sans/latin-700.css';
 
 import App from '@/App.vue';
-// import router from './router';
+import router from './router';
 
 // import { runExternalHook } from '@/mixins/externalHooks';
-import { ComponentsPlugin, i18nInstance, TelemetryPlugin } from './plugins';
+import { ComponentsPlugin, i18nInstance, I18nPlugin, TelemetryPlugin } from './plugins';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
@@ -29,14 +29,14 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 
 const pinia = createPinia();
 
-const app = createApp(() => App, {
-	// router,
-	pinia,
-});
+const app = createApp(App);
 
+app.use(router);
 app.use(ComponentsPlugin);
 app.use(TelemetryPlugin);
+app.use(I18nPlugin);
 app.use(i18nInstance);
+app.use(pinia);
 app.use(PiniaVuePlugin);
 
 // app.use(Vue2TouchEvents);

@@ -71,10 +71,10 @@ export default mergeConfig(
 			alias: [
 				{ find: '@', replacement: resolve(__dirname, 'src') },
 				{ find: 'stream', replacement: 'stream-browserify' },
-				{
-					find: /^n8n-design-system\//,
-					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
-				},
+				// {
+				// 	find: /^n8n-design-system\//,
+				// 	replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
+				// },
 				{
 					find: /^n8n-design-system-next\//,
 					replacement: resolve(__dirname, '..', 'design-system-next', 'src') + '/',
@@ -88,18 +88,18 @@ export default mergeConfig(
 					find: /^lodash\.(.+)$/,
 					replacement: 'lodash-es/$1',
 				},
-				{
-					find: 'vue2-boring-avatars',
-					replacement: require.resolve('vue2-boring-avatars'),
-				},
-				{
-					find: /element-ui\/(packages|lib)\/button$/,
-					replacement: path.resolve(
-						__dirname,
-						'..',
-						'design-system/src/components/N8nButton/overrides/ElButton.ts',
-					),
-				},
+				// {
+				// 	find: 'vue2-boring-avatars',
+				// 	replacement: require.resolve('vue2-boring-avatars'),
+				// },
+				// {
+				// 	find: /element-ui\/(packages|lib)\/button$/,
+				// 	replacement: path.resolve(
+				// 		__dirname,
+				// 		'..',
+				// 		'design-system-next/src/components/N8nButton/overrides/ElButton.ts',
+				// 	),
+				// },
 			],
 		},
 		base: publicPath,

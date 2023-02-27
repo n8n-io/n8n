@@ -62,11 +62,6 @@ import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
 import { IVersionNode } from '@/Interface';
 
-Vue.component('NodeIcon', NodeIcon);
-Vue.component('TimeAgo', TimeAgo);
-Vue.component('Badge', Badge);
-Vue.component('WarningTooltip', WarningTooltip);
-
 export default defineComponent({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'VersionCard',

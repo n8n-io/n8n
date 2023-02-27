@@ -143,7 +143,7 @@ import { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Int
 
 import { saveAs } from 'file-saver';
 import { titleChange } from '@/mixins/titleChange';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-plus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';

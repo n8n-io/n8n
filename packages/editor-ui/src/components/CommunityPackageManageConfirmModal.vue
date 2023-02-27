@@ -45,7 +45,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 
-export default defineComponet({
+export default defineComponent({
 	name: 'CommunityPackageManageConfirmModal',
 	mixins: [showMessage],
 

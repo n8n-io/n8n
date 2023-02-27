@@ -1,16 +1,15 @@
-// @ts-ignore
-import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
 import { defineComponent } from 'vue';
+import { NotificationInstance, NotificationOptions } from 'element-plus';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { IExecuteContextData, IRunExecutionData } from 'n8n-workflow';
-import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
+import type { ElMessageBoxOptions } from 'element-plus';
+import type { MessageInstance, MessageOptions, MessageType } from 'element-plus';
 import { sanitizeHtml } from '@/utils';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-let stickyNotificationQueue: ElNotificationComponent[] = [];
+let stickyNotificationQueue: NotificationInstance[] = [];
 
 export const showMessage = defineComponent({
 	mixins: [externalHooks],
@@ -19,7 +18,7 @@ export const showMessage = defineComponent({
 	},
 	methods: {
 		$showMessage(
-			messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
+			messageData: Omit<NotificationOptions, 'message'> & { message?: string },
 			track = true,
 		) {
 			messageData.dangerouslyUseHTMLString = true;
@@ -31,7 +30,7 @@ export const showMessage = defineComponent({
 				messageData.position = 'bottom-right';
 			}
 
-			const notification = this.$notify(messageData as ElNotificationOptions);
+			const notification = this.$notify(messageData as NotificationOptions);
 
 			if (messageData.duration === 0) {
 				stickyNotificationQueue.push(notification);
@@ -60,7 +59,7 @@ export const showMessage = defineComponent({
 			type?: MessageType;
 		}) {
 			// eslint-disable-next-line prefer-const
-			let notification: ElNotificationComponent;
+			let notification: NotificationInstance;
 			if (config.closeOnClick) {
 				const cb = config.onClick;
 				config.onClick = () => {
@@ -86,7 +85,7 @@ export const showMessage = defineComponent({
 			return notification;
 		},
 
-		$showAlert(config: ElMessageOptions): ElMessageComponent {
+		$showAlert(config: MessageOptions): MessageInstance {
 			return this.$message(config);
 		},
 
@@ -194,7 +193,7 @@ export const showMessage = defineComponent({
 		},
 
 		clearAllStickyNotifications() {
-			stickyNotificationQueue.map((notification: ElNotificationComponent) => {
+			stickyNotificationQueue.map((notification: NotificationInstance) => {
 				if (notification) {
 					notification.close();
 				}

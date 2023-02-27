@@ -121,7 +121,7 @@ import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import { Dropdown as ElDropdown } from 'element-ui';
+import { ElDropdown } from 'element-plus';
 
 export default defineComponent({
 	name: 'execution-preview',

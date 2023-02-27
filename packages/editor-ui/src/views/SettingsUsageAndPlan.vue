@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Notification } from 'element-ui';
+import { ElNotification } from 'element-plus';
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
@@ -23,7 +23,7 @@ const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const showActivationSuccess = () => {
-	Notification.success({
+	ElNotification.success({
 		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
 		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
 			interpolate: {
@@ -38,7 +38,7 @@ const showActivationSuccess = () => {
 };
 
 const showActivationError = (error: Error) => {
-	Notification.error({
+	ElNotification.error({
 		title: locale.baseText('settings.usageAndPlan.license.activation.error.title'),
 		message: error.message,
 		position: 'bottom-right',
@@ -83,7 +83,7 @@ onMounted(async () => {
 		if (!error.name) {
 			error.name = locale.baseText('settings.usageAndPlan.error');
 		}
-		Notification.error({
+		ElNotification.error({
 			title: error.name,
 			message: error.message,
 			position: 'bottom-right',

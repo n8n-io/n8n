@@ -515,7 +515,7 @@ export default defineComponent({
 					let tempValue = get(this.nodeValues, nameParts.join('.')) as
 						| INodeParameters
 						| INodeParameters[];
-					Vue.delete(tempValue as object, lastNamePart as string);
+					this.$delete(tempValue as object, lastNamePart as string);
 
 					if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
 						// If a value from an array got delete and no values are left
@@ -528,7 +528,7 @@ export default defineComponent({
 					// Value should be set
 					if (typeof value === 'object') {
 						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
+						this.$set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
 					} else {
 						// @ts-ignore
 						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);

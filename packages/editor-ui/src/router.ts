@@ -1,5 +1,3 @@
-import { defineComponent } from 'vue';
-
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
@@ -20,7 +18,7 @@ import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
-import Router, { Route } from 'vue-router';
+import { createRouter, createWebHistory, RouteLocation, RouteRecordRaw } from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
@@ -28,29 +26,11 @@ import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import ExecutionsView from '@/views/ExecutionsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
-import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
-import { RouteConfigSingleView } from 'vue-router';
-import { EnterpriseEditionFeature, VIEWS } from './constants';
+import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
-
-Vue.use(Router);
-
-interface IRouteConfig extends RouteConfigSingleView {
-	meta: {
-		nodeView?: boolean;
-		templatesEnabled?: boolean;
-		getRedirect?: () => { name: string } | false;
-		permissions: IPermissions;
-		telemetry?: {
-			disabled?: true;
-			getProperties: (route: Route) => object;
-		};
-		scrollOffset?: number;
-	};
-}
 
 function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
@@ -62,9 +42,8 @@ function getTemplatesRedirect() {
 	return false;
 }
 
-const router = new Router({
-	mode: 'history',
-	base: import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/',
+const router = createRouter({
+	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
 	scrollBehavior(to, from, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
@@ -97,7 +76,7 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				telemetry: {
-					getProperties(route: Route) {
+					getProperties(route: RouteLocation) {
 						const templatesStore = useTemplatesStore();
 						return {
 							collection_id: route.params.id,
@@ -124,7 +103,7 @@ const router = new Router({
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
 				telemetry: {
-					getProperties(route: Route) {
+					getProperties(route: RouteLocation) {
 						const templatesStore = useTemplatesStore();
 						return {
 							template_id: route.params.id,
@@ -152,7 +131,7 @@ const router = new Router({
 				// Templates view remembers it's scroll position on back
 				scrollOffset: 0,
 				telemetry: {
-					getProperties(route: Route) {
+					getProperties(route: RouteLocation) {
 						const templatesStore = useTemplatesStore();
 						return {
 							wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -438,7 +417,7 @@ const router = new Router({
 					meta: {
 						telemetry: {
 							pageCategory: 'settings',
-							getProperties(route: Route) {
+							getProperties(route: RouteLocation) {
 								return {
 									feature: 'usage',
 								};
@@ -469,7 +448,7 @@ const router = new Router({
 					meta: {
 						telemetry: {
 							pageCategory: 'settings',
-							getProperties(route: Route) {
+							getProperties(route: RouteLocation) {
 								return {
 									feature: 'personal',
 								};
@@ -494,7 +473,7 @@ const router = new Router({
 					meta: {
 						telemetry: {
 							pageCategory: 'settings',
-							getProperties(route: Route) {
+							getProperties(route: RouteLocation) {
 								return {
 									feature: 'users',
 								};
@@ -522,7 +501,7 @@ const router = new Router({
 					meta: {
 						telemetry: {
 							pageCategory: 'settings',
-							getProperties(route: Route) {
+							getProperties(route: RouteLocation) {
 								return {
 									feature: 'api',
 								};
@@ -594,7 +573,7 @@ const router = new Router({
 					meta: {
 						telemetry: {
 							pageCategory: 'settings',
-							getProperties(route: Route) {
+							getProperties(route: RouteLocation) {
 								return {
 									feature: route.params['featureId'],
 								};
@@ -624,7 +603,7 @@ const router = new Router({
 			],
 		},
 		{
-			path: '*',
+			path: '/:pathMatch(.*)*',
 			name: VIEWS.NOT_FOUND,
 			component: ErrorView,
 			props: {
@@ -646,7 +625,7 @@ const router = new Router({
 				},
 			},
 		},
-	] as IRouteConfig[],
+	] as RouteRecordRaw[],
 });
 
 export default router;

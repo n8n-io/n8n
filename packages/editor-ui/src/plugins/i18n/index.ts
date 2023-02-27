@@ -29,7 +29,7 @@ export const I18nPlugin: Plugin = {
 
 export class I18nClass {
 	private get i18n(): VueI18n {
-		return i18nInstance;
+		return i18nInstance.global;
 	}
 
 	// ----------------------------------
