@@ -95,7 +95,7 @@ import {
 	onUnmounted,
 	nextTick,
 } from 'vue';
-import camelcase from 'lodash.camelcase';
+import { camelCase } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
 import { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
@@ -184,7 +184,7 @@ const activeSubcategoryTitle = computed<string>(() => {
 	if (!activeSubcategory.value || !activeSubcategory.value.properties) return '';
 
 	const subcategory = (activeSubcategory.value.properties as ISubcategoryItemProps).subcategory;
-	const subcategoryName = camelcase(subcategory);
+	const subcategoryName = camelCase(subcategory);
 
 	const titleLocaleKey = `nodeCreator.subcategoryTitles.${subcategoryName}` as BaseTextKey;
 	const nameLocaleKey = `nodeCreator.subcategoryNames.${subcategoryName}` as BaseTextKey;

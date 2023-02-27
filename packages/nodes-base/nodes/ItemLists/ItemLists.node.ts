@@ -11,7 +11,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
+import get from 'lodash.get';
+import isEmpty from 'lodash.isempty';
+import isEqual from 'lodash.isequal';
+import isObject from 'lodash.isobject';
+import lt from 'lodash.lt';
+import merge from 'lodash.merge';
+import pick from 'lodash.pick';
+import reduce from 'lodash.reduce';
+import set from 'lodash.set';
+import unset from 'lodash.unset';
 
 const compareItems = (
 	obj: INodeExecutionData,
