@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
@@ -63,7 +63,7 @@ export function wrapData(data: IDataObject[]): INodeExecutionData[] {
 	}));
 }
 
-export async function configurePostgres(this: IExecuteFunctions) {
+export async function configurePostgres(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('postgres');
 	const largeNumbersOutput = this.getNodeParameter('options.largeNumbersOutput', 0, '') as string;
 
@@ -105,12 +105,12 @@ export function prepareErrorItem(
 	index: number,
 ) {
 	return {
-		json: { message: error.message, error: { ...error } },
+		json: { message: error.message, item: { ...items[index].json }, error: { ...error } },
 		pairedItem: { item: index },
 	} as INodeExecutionData;
 }
 
-export function parsePostgresError(this: IExecuteFunctions, error: any) {
+export function parsePostgresError(this: IExecuteFunctions, error: any, itemIndex?: number) {
 	let message = error.message;
 	const description = error.description ? error.description : error.detail || error.hint;
 
@@ -118,5 +118,5 @@ export function parsePostgresError(this: IExecuteFunctions, error: any) {
 		message = 'Connection refused';
 	}
 
-	return new NodeOperationError(this.getNode(), error, { message, description });
+	return new NodeOperationError(this.getNode(), error, { message, description, itemIndex });
 }

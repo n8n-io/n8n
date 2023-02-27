@@ -54,3 +54,52 @@ export const optionsCollection: INodeProperties = {
 		},
 	],
 };
+
+export const schemaRLC: INodeProperties = {
+	displayName: 'Schema',
+	name: 'schema',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: 'public' },
+	required: true,
+	placeholder: 'e.g. public',
+	description: 'The schema that contains the table you want to work on',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'schemaSearch',
+			},
+		},
+		{
+			displayName: 'By Name',
+			name: 'name',
+			type: 'string',
+		},
+	],
+};
+
+export const tableRLC: INodeProperties = {
+	displayName: 'Table',
+	name: 'table',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'The table where to insert data to',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'tableSearch',
+			},
+		},
+		{
+			displayName: 'By Name',
+			name: 'name',
+			type: 'string',
+		},
+	],
+};

@@ -13,25 +13,11 @@ import {
 	wrapData,
 } from '../../helpers/utils';
 
-import { optionsCollection } from '../common.descriptions';
+import { optionsCollection, schemaRLC, tableRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Schema',
-		name: 'schema',
-		type: 'string',
-		default: 'public',
-		required: true,
-		description: 'Name of the schema the table belongs to',
-	},
-	{
-		displayName: 'Table',
-		name: 'table',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'Name of the table in which to insert data to',
-	},
+	schemaRLC,
+	tableRLC,
 	{
 		displayName: 'Columns',
 		name: 'columns',
@@ -70,8 +56,15 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
-	const table = this.getNodeParameter('table', 0) as string;
-	const schema = this.getNodeParameter('schema', 0) as string;
+
+	const schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const columnString = this.getNodeParameter('columns', 0) as string;
 	const guardedColumns: { [key: string]: string } = {};
 
@@ -132,7 +125,7 @@ export async function execute(
 						}),
 					);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err);
+					const error = parsePostgresError.call(this, err, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 					return result;
@@ -156,7 +149,7 @@ export async function execute(
 						result.push(...executionData);
 					}
 				} catch (err) {
-					const error = parsePostgresError.call(this, err);
+					const error = parsePostgresError.call(this, err, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 				}

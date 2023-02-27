@@ -42,7 +42,7 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Value',
+						displayName: '$',
 						name: 'value',
 						type: 'string',
 						default: '',
@@ -122,7 +122,7 @@ export async function execute(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err);
+					const error = parsePostgresError.call(this, err, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 					return result;
@@ -144,7 +144,7 @@ export async function execute(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err);
+					const error = parsePostgresError.call(this, err, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 				}
