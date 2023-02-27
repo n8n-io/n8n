@@ -9,7 +9,7 @@ on:
       branch:
         description: 'GitHub branch to test.'
         required: false
-        default: 'parallel_e2e'
+        default: 'master'
       user:
         description: 'User who kicked this off.'
         required: false
@@ -22,9 +22,9 @@ on:
 jobs:
   e2e-node-16:
     name: Electron - Node 16
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@master
     with:
-      branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
+      branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'schedule' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
       run-env: base:16.18.1

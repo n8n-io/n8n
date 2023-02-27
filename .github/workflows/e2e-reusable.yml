@@ -7,7 +7,7 @@ on:
         description: 'GitHub branch to test.'
         required: false
         type: string
-        default: 'parallel_e2e'
+        default: 'master'
       user:
         description: 'User who kicked this off.'
         required: false
