@@ -5,11 +5,12 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 	INodeParameterResourceLocator,
-	IResourceLocatorResult,
 	JsonObject,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
+import { v4 as uuid } from 'uuid';
+import type { IPostgresTrigger } from './PostgresInterface';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -343,7 +344,7 @@ export async function pgInsert(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {pgPromise.IDatabase<{}, pg.IClient>} db`` The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsertV2(
@@ -704,52 +705,73 @@ export async function pgUpdateV2(
 export async function pgTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-): Promise<IDataObject[]> {
+	triggers: IPostgresTrigger,
+): Promise<IDataObject[] | IPostgresTrigger> {
 	const tableName = this.getNodeParameter('tableName', 0) as INodeParameterResourceLocator;
 	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
 	const target = (schema.value as string) + '.' + (tableName.value as string);
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-	let functionName = (additionalFields.functionName as string) || 'n8n_trigger_function()';
+	let functionName =
+		(additionalFields.functionName as string) || `n8n_trigger_function_${uuid()}()`;
 	if (!functionName.includes('()')) {
 		functionName = functionName.concat('()');
 	}
-	const triggerName = additionalFields.triggerName || 'n8n_trigger';
-	const channelName = additionalFields.channelName || 'n8n_channel';
+	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${uuid()}`;
+	const channelName = (additionalFields.channelName as string) || `n8n_channel_${uuid()}`;
 	const replaceIfExists = additionalFields.replaceIfExists || false;
+	let createdTrigger: IPostgresTrigger;
+	if (!triggers) {
+		createdTrigger = {
+			functionName,
+			triggerName,
+			channelName,
+			target,
+		};
+	} else {
+		createdTrigger = {
+			functionName: triggers.functionName,
+			triggerName: triggers.triggerName,
+			channelName: triggers.channelName,
+			target,
+		};
+	}
 	const returnData: IDataObject[] = [];
 	try {
 		if (replaceIfExists) {
 			await db.any(
 				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
-				[functionName, channelName],
+				[createdTrigger.functionName, createdTrigger.channelName],
 			);
 			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
 			await db.any(
 				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[target, functionName, firesOn, triggerName],
+				[target, createdTrigger.functionName, firesOn, createdTrigger.triggerName],
 			);
 		} else {
 			await db.any(
 				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text + TG_OP::text); return null; end; $BODY$;",
-				[functionName, channelName],
+				[createdTrigger.functionName, createdTrigger.channelName],
 			);
 			await db.any(
 				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[target, functionName, firesOn, triggerName],
+				[target, createdTrigger.functionName, firesOn, createdTrigger.triggerName],
 			);
 		}
 	} catch (err) {
 		if (
 			err.message.includes(
-				`function "${functionName.replace('()', '')}" already exists with same argument types`,
+				`function "${createdTrigger.functionName.replace(
+					'()',
+					'',
+				)}" already exists with same argument types`,
 			)
 		) {
 			return returnData;
 		}
 		throw new Error(err);
 	}
-	return returnData;
+	return createdTrigger;
 }
 
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -819,4 +841,20 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 	}));
 	pgp.end();
 	return { results };
+}
+
+export async function dropTriggerFunction(
+	this: ITriggerFunctions,
+	db: pgPromise.IDatabase<{}, pg.IClient>,
+	triggers: IPostgresTrigger,
+): Promise<void> {
+	try {
+		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [
+			triggers.triggerName,
+			triggers.target,
+		]);
+		await db.any('DROP FUNCTION IF EXISTS $1:raw', [triggers.functionName]);
+	} catch (error) {
+		throw new Error(error);
+	}
 }

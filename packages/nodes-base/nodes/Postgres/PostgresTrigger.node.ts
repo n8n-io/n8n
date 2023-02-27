@@ -6,7 +6,13 @@ import type {
 	ITriggerResponse,
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
-import { pgTriggerFunction, searchSchema, searchTables } from './Postgres.node.functions';
+import {
+	dropTriggerFunction,
+	pgTriggerFunction,
+	searchSchema,
+	searchTables,
+} from './Postgres.node.functions';
+import type { IPostgresTrigger } from './PostgresInterface';
 
 export class PostgresTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -205,6 +211,9 @@ export class PostgresTrigger implements INodeType {
 		const credentials = await this.getCredentials('postgres');
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+		const staticData = this.getWorkflowStaticData('node') as {
+			triggers: IPostgresTrigger;
+		};
 		const pgp = pgPromise();
 
 		const config: IDataObject = {
@@ -226,7 +235,8 @@ export class PostgresTrigger implements INodeType {
 
 		const db = pgp(config);
 		if (triggerMode === 'createTrigger') {
-			await pgTriggerFunction.call(this, db);
+			await pgTriggerFunction.call(this, db, staticData.triggers);
+			console.log(staticData.triggers);
 		}
 		const channelName =
 			triggerMode === 'createTrigger'
@@ -249,7 +259,10 @@ export class PostgresTrigger implements INodeType {
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		const closeFunction = async () => {};
+		const closeFunction = async () => {
+			await dropTriggerFunction.call(this, db, staticData.triggers);
+			pgp.end();
+		};
 
 		return {
 			closeFunction,
