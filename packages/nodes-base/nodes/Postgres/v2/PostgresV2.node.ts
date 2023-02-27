@@ -9,7 +9,7 @@ import type {
 import { router } from './actions/router';
 
 import { versionDescription } from './actions/versionDescription';
-import { credentialTest, listSearch } from './methods';
+import { credentialTest, listSearch, loadOptions } from './methods';
 
 export class PostgresV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -21,7 +21,7 @@ export class PostgresV2 implements INodeType {
 		};
 	}
 
-	methods = { credentialTest, listSearch };
+	methods = { credentialTest, listSearch, loadOptions };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return router.call(this);
