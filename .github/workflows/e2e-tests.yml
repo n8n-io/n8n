@@ -22,6 +22,10 @@ on:
         description: 'URL to call after workflow is done.'
         required: false
         default: ''
+      test-node-14:
+        description: 'Whether or not to test node 14'
+        required: false
+        default: true
 
 jobs:
   calls-start-url:
@@ -48,6 +52,7 @@ jobs:
   e2e-node-14:
     name: E2E[Electron/Node 14]
     uses: ./.github/workflows/e2e-reusable.yml
+    if: ${{ github.event.inputs.test-node-14 }}
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'schedule' }}
