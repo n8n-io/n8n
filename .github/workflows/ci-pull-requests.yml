@@ -17,23 +17,10 @@ jobs:
       containers: '[1]'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-  e2e-node-14:
-    name: E2E[Electron/Node 14]
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
-    with:
-      branch: ${{ github.event.pull_request.base.ref }}
-      user: ${{ github.event.inputs.user || 'schedule' }}
-      spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
-      run-env: base:14.21.1
-      record: false
-      parallel: false
-      containers: '[1]'
-    secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   lint:
     runs-on: ubuntu-latest
-    needs: [e2e-node-16, e2e-node-14]
+    needs: [e2e-node-16]
     steps:
       - uses: actions/checkout@v3
         with:

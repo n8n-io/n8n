@@ -20,16 +20,6 @@ on:
         default: 'e2e/*'
 
 jobs:
-  e2e-node-14:
-    name: Electron - Node 14
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
-    with:
-      branch: ${{ github.event.inputs.branch || 'parallel_e2e' }}
-      user: ${{ github.event.inputs.user || 'schedule' }}
-      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
-      run-env: base:14.21.1
-    secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
   e2e-node-16:
     name: Electron - Node 16
     uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@parallel_e2e
