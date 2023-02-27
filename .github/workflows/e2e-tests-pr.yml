@@ -31,7 +31,7 @@ jobs:
   e2e-node-16:
     name: Electron - Node 16
     # TODO: Change to master branch before merge
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml@master
+    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
