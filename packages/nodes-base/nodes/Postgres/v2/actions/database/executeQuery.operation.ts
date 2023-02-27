@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
+import type { PgpClient, PgpDatabase, QueryMode, QueryWithValues } from '../../helpers/interfaces';
 import { parsePostgresError, prepareErrorItem, wrapData } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
@@ -72,7 +72,6 @@ export async function execute(
 	let returnData: INodeExecutionData[] = [];
 	const options = this.getNodeParameter('options', 0);
 
-	type QueryWithValues = { query: string; values?: string[] };
 	const allQueries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {

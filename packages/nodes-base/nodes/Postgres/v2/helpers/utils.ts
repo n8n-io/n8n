@@ -65,11 +65,11 @@ export function wrapData(data: IDataObject[]): INodeExecutionData[] {
 
 export async function configurePostgres(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('postgres');
-	const largeNumbersOutput = this.getNodeParameter('options.largeNumbersOutput', 0, '') as string;
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 	const pgp = pgPromise();
 
-	if (largeNumbersOutput === 'numbers') {
+	if (options.largeNumbersOutput === 'numbers') {
 		pgp.pg.types.setTypeParser(20, (value: string) => {
 			return parseInt(value, 10);
 		});
@@ -85,6 +85,10 @@ export async function configurePostgres(this: IExecuteFunctions | ILoadOptionsFu
 		user: credentials.user as string,
 		password: credentials.password as string,
 	};
+
+	if (options.connectionTimeoutMillis) {
+		config.connectionTimeoutMillis = options.connectionTimeoutMillis as number;
+	}
 
 	if (credentials.allowUnauthorizedCerts === true) {
 		config.ssl = {

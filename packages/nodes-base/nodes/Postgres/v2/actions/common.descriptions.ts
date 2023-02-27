@@ -8,6 +8,26 @@ export const optionsCollection: INodeProperties = {
 	default: {},
 	options: [
 		{
+			displayName: 'Cascade',
+			name: 'cascade',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to drop all objects that depend on the table, such as views and sequences',
+			displayOptions: {
+				show: {
+					'/operation': ['deleteTable'],
+				},
+			},
+		},
+		{
+			displayName: 'Connection Timeout',
+			name: 'connectionTimeoutMillis',
+			type: 'number',
+			default: 0,
+			description: 'Number of milliseconds reserved for connecting to the database',
+		},
+		{
 			displayName: 'Mode',
 			name: 'mode',
 			type: 'options',
@@ -51,6 +71,11 @@ export const optionsCollection: INodeProperties = {
 			],
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
+			displayOptions: {
+				show: {
+					'/operation': ['executeQuery'],
+				},
+			},
 		},
 	],
 };
