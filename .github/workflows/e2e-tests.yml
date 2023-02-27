@@ -39,7 +39,7 @@ jobs:
         shell: bash
 
   run-e2e-tests:
-    name: E2E[Electron/Node 16]
+    name: E2E [Chrome/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
@@ -50,7 +50,7 @@ jobs:
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
   run-e2e-tests-node-14:
-    name: E2E[Electron/Node 14]
+    name: E2E [Chrome/Node 14]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ github.event.inputs.test-node-14 }}
     with:
