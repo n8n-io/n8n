@@ -22,7 +22,7 @@ on:
 jobs:
   e2e-node-16:
     name: Electron - Node 16
-    uses: n8n-io/n8n/.github/workflows/e2e-reusable.yml
+    uses: ./.github/workflows/e2e-reusable.yml
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'schedule' }}
