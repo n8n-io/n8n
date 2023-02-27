@@ -29,7 +29,7 @@ jobs:
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
-      branch: ${{ github.event.pull_request.base.ref }}
+      branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
       spec: 'e2e/*'
       run-env: base:16.18.1
