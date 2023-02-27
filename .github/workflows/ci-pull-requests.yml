@@ -1,4 +1,4 @@
-name: Test Pull Requests
+name: Build, smoke test and lint branch
 
 on: [pull_request]
 
