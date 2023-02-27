@@ -1,3 +1,14 @@
+## [0.217.2](https://github.com/n8n-io/n8n/compare/n8n@0.217.1...n8n@0.217.2) (2023-02-27)
+
+
+### Bug Fixes
+
+* **core:** Fix execution pruning queries ([#5562](https://github.com/n8n-io/n8n/issues/5562)) ([2137ae2](https://github.com/n8n-io/n8n/commit/2137ae23d789af765a7555028e9651029f88cadc))
+* **core:** Fix Filtering of Workflow by Tags ([#5570](https://github.com/n8n-io/n8n/issues/5570)) ([51eedac](https://github.com/n8n-io/n8n/commit/51eedaccd427ec11b12fbf43d9dd3f0ebe9633d2))
+* **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([43eec66](https://github.com/n8n-io/n8n/commit/43eec66828b2e03418402742c9695e08b1165bdd))
+
+
+
 ## [0.217.1](https://github.com/n8n-io/n8n/compare/n8n@0.217.0...n8n@0.217.1) (2023-02-24)
 
 
