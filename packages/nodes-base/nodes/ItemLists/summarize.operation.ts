@@ -321,7 +321,6 @@ function isEmpty<T>(value: T) {
 }
 
 function parseReturnData(returnData: IDataObject) {
-	//console.log('\n First', returnData);
 	const regexBrackets = /[\]\["]/g;
 	const regexSpaces = /[ .]/g;
 	for (const key of Object.keys(returnData)) {
@@ -338,17 +337,17 @@ function parseReturnData(returnData: IDataObject) {
 			delete returnData[key];
 		}
 	}
-	//console.log('After', returnData);
 }
 
 function parseFieldName(fieldName: string[]) {
 	const regexBrackets = /[\]\["]/g;
 	const regexSpaces = /[ .]/g;
-	fieldName.map((field) => {
+	fieldName = fieldName.map((field) => {
 		field = field.replace(regexBrackets, '');
 		field = field.replace(regexSpaces, '_');
 		return field;
 	});
+	return fieldName;
 }
 
 const fieldValueGetter = (disableDotNotation?: boolean) => {
@@ -517,7 +516,7 @@ function aggregationToArray(
 	previousStage: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	parseFieldName(fieldsToSplitBy);
+	fieldsToSplitBy = parseFieldName(fieldsToSplitBy);
 	const splitFieldName = fieldsToSplitBy[0];
 	const isNext = fieldsToSplitBy[1];
 
