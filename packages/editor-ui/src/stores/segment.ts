@@ -3,7 +3,6 @@ import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { INodeTypeDescription, IRun } from 'n8n-workflow';
-import { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 

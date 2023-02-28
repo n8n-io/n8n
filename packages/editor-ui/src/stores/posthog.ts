@@ -7,6 +7,7 @@ import { FeatureFlags } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, ONBOARDING_EXPERIMENT } from '@/constants';
 import { useTelemetryStore } from './telemetry';
 import { useSegment } from './segment';
+import { debounce } from 'lodash-es';
 
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
@@ -76,12 +77,19 @@ export const usePostHog = defineStore('posthog', () => {
 			debug: config.debug,
 		};
 
-		if (evaluatedFeatureFlags) {
+		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
 			options.bootstrap = {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
+			setTimeout(() => trackExperiments(evaluatedFeatureFlags), 0);
+		} else {
+			// depend on client side evaluation if serverside evaluation fails
+			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
+				featureFlags.value = map;
+				debouncedTrackExperiments(map);
+			});
 		}
 
 		window.posthog?.init(config.apiKey, options);
@@ -91,19 +99,15 @@ export const usePostHog = defineStore('posthog', () => {
 		initialized.value = true;
 	};
 
-	const trackExperiment = (name: string) => {
-		const curr = featureFlags.value;
-		const prev = trackedDemoExp.value;
 
-		if (!curr || curr[name] === undefined) {
-			return;
-		}
+	const trackExperiments = (featureFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
+	};
 
-		if (curr[name] === prev[name]) {
-			return;
-		}
+	const debouncedTrackExperiments = debounce(trackExperiments, 2000);
 
-		const variant = curr[name];
+	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
+		const variant = featureFlags[name];
 		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
@@ -115,15 +119,6 @@ export const usePostHog = defineStore('posthog', () => {
 			segmentStore.showAppCuesChecklist();
 		}
 	};
-
-	watch(
-		() => featureFlags.value,
-		() => {
-			setTimeout(() => {
-				EXPERIMENTS_TO_TRACK.forEach(trackExperiment);
-			}, 0);
-		},
-	);
 
 	return {
 		init,
