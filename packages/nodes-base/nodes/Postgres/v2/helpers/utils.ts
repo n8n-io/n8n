@@ -122,5 +122,9 @@ export function parsePostgresError(this: IExecuteFunctions, error: any, itemInde
 		message = 'Connection refused';
 	}
 
-	return new NodeOperationError(this.getNode(), error, { message, description, itemIndex });
+	return new NodeOperationError(this.getNode(), error as Error, {
+		message,
+		description,
+		itemIndex,
+	});
 }

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
@@ -92,7 +92,7 @@ export async function execute(
 			const queryResult = await db.any(query);
 			returnData = queryResult
 				.map((result, i) => {
-					return this.helpers.constructExecutionMetaData(wrapData(result), {
+					return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 						itemData: { item: i },
 					});
 				})
@@ -120,7 +120,7 @@ export async function execute(
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
 					result.push(
-						...this.helpers.constructExecutionMetaData(wrapData(insertResult), {
+						...this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
 							itemData: { item: i },
 						}),
 					);
@@ -143,9 +143,12 @@ export async function execute(
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
-						const executionData = this.helpers.constructExecutionMetaData(wrapData(insertResult), {
-							itemData: { item: i },
-						});
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData(insertResult as IDataObject[]),
+							{
+								itemData: { item: i },
+							},
+						);
 						result.push(...executionData);
 					}
 				} catch (err) {

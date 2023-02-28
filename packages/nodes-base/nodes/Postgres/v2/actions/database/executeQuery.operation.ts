@@ -89,7 +89,7 @@ export async function execute(
 		try {
 			returnData = (await db.multi(pgp.helpers.concat(allQueries)))
 				.map((result, i) => {
-					return this.helpers.constructExecutionMetaData(wrapData(result), {
+					return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 						itemData: { item: i },
 					});
 				})
@@ -116,7 +116,7 @@ export async function execute(
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
 					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(transactionResult),
+						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
@@ -138,7 +138,7 @@ export async function execute(
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
 					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(transactionResult),
+						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);

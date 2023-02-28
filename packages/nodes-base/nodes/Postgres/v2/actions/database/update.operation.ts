@@ -155,7 +155,7 @@ export async function execute(
 							returning,
 					);
 					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(transactionResult),
+						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
@@ -182,7 +182,7 @@ export async function execute(
 							returning,
 					);
 					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(independentResult),
+						wrapData(independentResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
