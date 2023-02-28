@@ -191,10 +191,6 @@ export default mixins(showMessage).extend({
 	height: 100%;
 	display: flex;
 	justify-content: center;
-
-	appcues-checklist {
-		display: none;
-	}
 }
 
 .workflow {
