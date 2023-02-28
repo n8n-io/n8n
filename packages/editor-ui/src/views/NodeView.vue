@@ -1926,7 +1926,7 @@ export default mixins(
 				});
 			} else {
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-				useSegment().trackAddedNode(nodeTypeName);
+				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
 					is_auto_add: isAutoAdd,

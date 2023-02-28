@@ -31,14 +31,15 @@ export const useSegment = defineStore('segment', () => {
 	};
 
 	const showAppCuesChecklist = () => {
-		if (window.location.pathname.startsWith('/workflows/demo')) {
+		const isInIframe = window.location !== window.parent.location;
+		if (isInIframe) {
 			return;
 		}
 
 		track(EVENTS.SHOW_CHECKLIST);
 	};
 
-	const trackAddedNode = (nodeTypeName: string) => {
+	const trackAddedTrigger = (nodeTypeName: string) => {
 		if (!nodeTypesStore.isTriggerNode(nodeTypeName)) {
 			return;
 		}
@@ -120,17 +121,17 @@ export const useSegment = defineStore('segment', () => {
 		}
 	};
 
-	const isManualTriggerNode = (nodeType: INodeTypeDescription | null) => {
-		return nodeType && nodeType.name === MANUAL_TRIGGER_NODE_TYPE;
+	const isManualTriggerNode = (nodeType: INodeTypeDescription | null): boolean => {
+		return !!nodeType && nodeType.name === MANUAL_TRIGGER_NODE_TYPE;
 	};
 
-	const isScheduleTriggerNode = (nodeType: INodeTypeDescription | null) => {
-		return nodeType && nodeType.name === SCHEDULE_TRIGGER_NODE_TYPE;
+	const isScheduleTriggerNode = (nodeType: INodeTypeDescription | null): boolean => {
+		return !!nodeType && nodeType.name === SCHEDULE_TRIGGER_NODE_TYPE;
 	};
 
-	const isDataNodeType = (nodeType: INodeTypeDescription | null) => {
+	const isDataNodeType = (nodeType: INodeTypeDescription | null): boolean => {
 		if (!nodeType) {
-			return;
+			return false;
 		}
 		const includeCoreNodes = [
 			HTTP_REQUEST_NODE_TYPE,
@@ -144,7 +145,7 @@ export const useSegment = defineStore('segment', () => {
 	return {
 		showAppCuesChecklist,
 		track,
-		trackAddedNode,
+		trackAddedTrigger,
 		trackSuccessfulNodeExecution,
 		trackSuccessfulWorkflowExecution,
 		EVENTS,
