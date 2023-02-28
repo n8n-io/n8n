@@ -14,11 +14,12 @@ import {
 	stripExcessParens,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { ExtensionTypeName, FnToDoc, Resolved } from './types';
+import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import { sanitizeHtml } from '@/utils';
 import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
-
-type AutocompleteOptionType = 'function' | 'keyword';
+import { isFunctionOption } from './typeGuards';
+import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
+import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -59,7 +60,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	if (options.length === 0) return null;
 
 	if (tail !== '') {
-		options = options.filter((o) => prefixMatch(o.label, tail));
+		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
 	}
 
 	return {
@@ -103,7 +104,6 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 
 			return arrayMethods.filter((m) => !NUMBER_ONLY_ARRAY_EXTENSIONS.has(m.label));
 		}
-
 		return arrayMethods;
 	}
 
@@ -120,7 +120,7 @@ export const natives = (typeName: ExtensionTypeName): Completion[] => {
 	if (!natives) return [];
 
 	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
-	const nativeMethods = toOptions(natives.functions, typeName, 'function');
+	const nativeMethods = toOptions(natives.functions, typeName, 'native-function');
 
 	return [...nativeProps, ...nativeMethods];
 };
@@ -131,67 +131,75 @@ export const extensions = (typeName: ExtensionTypeName) => {
 	if (!extensions) return [];
 
 	const fnToDoc = Object.entries(extensions.functions).reduce<FnToDoc>((acc, [fnName, fn]) => {
-		if (fn.length !== 1) return acc; // @TODO_NEXT_PHASE: Remove to allow extensions which take args
-
 		return { ...acc, [fnName]: { doc: fn.doc } };
 	}, {});
 
-	return toOptions(fnToDoc, typeName);
+	return toOptions(fnToDoc, typeName, 'extension-function');
 };
 
 export const toOptions = (
 	fnToDoc: FnToDoc,
 	typeName: ExtensionTypeName,
-	optionType: AutocompleteOptionType = 'function',
+	optionType: AutocompleteOptionType = 'native-function',
 ) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([fnName, fn]) => {
-			const option: Completion = {
-				label: optionType === 'function' ? fnName + '()' : fnName,
-				type: optionType,
-			};
-
-			option.info = () => {
-				const tooltipContainer = document.createElement('div');
-				tooltipContainer.classList.add('autocomplete-info-container');
-
-				if (!fn.doc?.description) return null;
-
-				const header =
-					optionType === 'function'
-						? createFunctionHeader(typeName, fn)
-						: createPropHeader(typeName, fn);
-				header.classList.add('autocomplete-info-header');
-				tooltipContainer.appendChild(header);
-
-				const descriptionBody = document.createElement('div');
-				descriptionBody.classList.add('autocomplete-info-description');
-				const descriptionText = document.createElement('p');
-				descriptionText.innerHTML = sanitizeHtml(
-					fn.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-				);
-				descriptionBody.appendChild(descriptionText);
-				if (fn.doc.docURL) {
-					const descriptionLink = document.createElement('a');
-					descriptionLink.setAttribute('target', '_blank');
-					descriptionLink.setAttribute('href', fn.doc.docURL);
-					descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
-					descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
-						// This will prevent documentation popup closing before click
-						// event gets to links
-						event.preventDefault();
-					});
-					descriptionLink.classList.add('autocomplete-info-doc-link');
-					descriptionBody.appendChild(descriptionLink);
-				}
-				tooltipContainer.appendChild(descriptionBody);
-
-				return tooltipContainer;
-			};
-
-			return option;
+			return createCompletionOption(typeName, fnName, optionType, fn);
 		});
+};
+
+const createCompletionOption = (
+	typeName: string,
+	name: string,
+	optionType: AutocompleteOptionType,
+	docInfo: { doc?: DocMetadata | undefined },
+): Completion => {
+	const option: Completion = {
+		label: isFunctionOption(optionType) ? name + '()' : name,
+		type: optionType,
+	};
+
+	option.info = () => {
+		const tooltipContainer = document.createElement('div');
+		tooltipContainer.classList.add('autocomplete-info-container');
+
+		if (!docInfo.doc) return null;
+
+		const header = isFunctionOption(optionType)
+			? createFunctionHeader(typeName, docInfo)
+			: createPropHeader(typeName, docInfo);
+		header.classList.add('autocomplete-info-header');
+		tooltipContainer.appendChild(header);
+
+		if (docInfo.doc.description) {
+			const descriptionBody = document.createElement('div');
+			descriptionBody.classList.add('autocomplete-info-description');
+			const descriptionText = document.createElement('p');
+			descriptionText.innerHTML = sanitizeHtml(
+				docInfo.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
+			);
+			descriptionBody.appendChild(descriptionText);
+			if (docInfo.doc.docURL) {
+				const descriptionLink = document.createElement('a');
+				descriptionLink.setAttribute('target', '_blank');
+				descriptionLink.setAttribute('href', docInfo.doc.docURL);
+				descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
+				descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
+					// This will prevent documentation popup closing before click
+					// event gets to links
+					event.preventDefault();
+				});
+				descriptionLink.classList.add('autocomplete-info-doc-link');
+				descriptionBody.appendChild(descriptionLink);
+			}
+			tooltipContainer.appendChild(descriptionBody);
+		}
+
+		return tooltipContainer;
+	};
+
+	return option;
 };
 
 const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefined }) => {
@@ -199,10 +207,12 @@ const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefi
 	if (fn.doc) {
 		const typeNameSpan = document.createElement('span');
 		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+		header.appendChild(typeNameSpan);
 
 		const functionNameSpan = document.createElement('span');
 		functionNameSpan.classList.add('autocomplete-info-name');
 		functionNameSpan.innerHTML = `${fn.doc.name}`;
+		header.appendChild(functionNameSpan);
 		let functionArgs = '(';
 		if (fn.doc.args) {
 			functionArgs += fn.doc.args
@@ -219,14 +229,12 @@ const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefi
 		const argsSpan = document.createElement('span');
 		argsSpan.classList.add('autocomplete-info-name-args');
 		argsSpan.innerText = functionArgs;
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
-
-		header.appendChild(typeNameSpan);
-		header.appendChild(functionNameSpan);
 		header.appendChild(argsSpan);
-		header.appendChild(returnTypeSpan);
+		if (fn.doc.returnType) {
+			const returnTypeSpan = document.createElement('span');
+			returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
+			header.appendChild(returnTypeSpan);
+		}
 	}
 	return header;
 };
@@ -285,9 +293,18 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 			};
 
 			const infoKey = [name, key].join('.');
-			const info = i18n.proxyVars[infoKey];
-
-			if (info) option.info = info;
+			option.info = createCompletionOption(
+				'Object',
+				key,
+				isFunction ? 'native-function' : 'keyword',
+				{
+					doc: {
+						name: key,
+						returnType: typeof resolved[key],
+						description: i18n.proxyVars[infoKey],
+					},
+				},
+			).info;
 
 			return option;
 		});
@@ -325,17 +342,8 @@ export const luxonInstanceOptions = () => {
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([key, descriptor]) => {
 			const isFunction = typeof descriptor.value === 'function';
-
-			const option: Completion = {
-				label: isFunction ? key + '()' : key,
-				type: isFunction ? 'function' : 'keyword',
-			};
-
-			const info = i18n.luxonInstance[key];
-
-			if (info) option.info = info;
-
-			return option;
+			const optionType = isFunction ? 'native-function' : 'keyword';
+			return createLuxonAutocompleteOption(key, optionType, luxonInstanceDocs, i18n.luxonInstance);
 		});
 };
 
@@ -349,17 +357,47 @@ export const luxonStaticOptions = () => {
 		.filter((key) => !SKIP.has(key) && !key.includes('_'))
 		.sort((a, b) => a.localeCompare(b))
 		.map((key) => {
-			const option: Completion = {
-				label: key + '()',
-				type: 'function',
-			};
-
-			const info = i18n.luxonStatic[key];
-
-			if (info) option.info = info;
-
-			return option;
+			return createLuxonAutocompleteOption(
+				key,
+				'native-function',
+				luxonStaticDocs,
+				i18n.luxonStatic,
+			);
 		});
+};
+
+const createLuxonAutocompleteOption = (
+	name: string,
+	type: AutocompleteOptionType,
+	docDefinition: NativeDoc,
+	translations: Record<string, string | undefined>,
+): Completion => {
+	const option: Completion = {
+		label: isFunctionOption(type) ? name + '()' : name,
+		type,
+	};
+
+	let doc: DocMetadata | undefined;
+	if (docDefinition.properties && docDefinition.properties.hasOwnProperty(name)) {
+		doc = docDefinition.properties[name].doc;
+	} else if (docDefinition.functions.hasOwnProperty(name)) {
+		doc = docDefinition.functions[name].doc;
+	} else {
+		// Use inferred/default values if docs are still not updated
+		// This should happen when our doc specification becomes
+		// out-od-date with Luxon implementation
+		const optionType = typeof DateTime.prototype[name as keyof DateTime];
+		doc = {
+			name,
+			returnType: !optionType || optionType === 'undefined' ? '' : optionType,
+			docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetime',
+		};
+	}
+	option.info = createCompletionOption('DateTime', name, type, {
+		// Add translated description
+		doc: { ...doc, description: translations[name] } as DocMetadata,
+	}).info;
+	return option;
 };
 
 /**
