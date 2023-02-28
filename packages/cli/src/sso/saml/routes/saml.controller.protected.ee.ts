@@ -8,7 +8,7 @@ import { SamlUrls } from '../constants';
 import type { SamlConfiguration } from '../types/requests';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { issueCookie } from '../../../auth/jwt';
-import { isSamlPreferences } from '../samlHelpers';
+import { validate } from 'class-validator';
 
 export const samlControllerProtected = express.Router();
 
@@ -27,17 +27,38 @@ samlControllerProtected.get(
 
 /**
  * POST /sso/saml/config
- * Return SAML config
+ * Set SAML config
  */
 samlControllerProtected.post(
 	SamlUrls.config,
 	samlLicensedOwnerMiddleware,
 	async (req: SamlConfiguration.Update, res: express.Response) => {
-		if (isSamlPreferences(req.body)) {
+		const validationResult = await validate(req.body);
+		if (validationResult.length === 0) {
 			const result = await SamlService.getInstance().setSamlPreferences(req.body);
 			return res.send(result);
 		} else {
-			throw new BadRequestError('Body is not a SamlPreferences object');
+			throw new BadRequestError(
+				'Body is not a valid SamlPreferences object: ' +
+					validationResult.map((e) => e.toString()).join(','),
+			);
+		}
+	},
+);
+
+/**
+ * POST /sso/saml/config/toggle
+ * Set SAML config
+ */
+samlControllerProtected.post(
+	SamlUrls.configToggleEnabled,
+	samlLicensedOwnerMiddleware,
+	async (req: SamlConfiguration.Toggle, res: express.Response) => {
+		if (req.body.enabled !== undefined) {
+			await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.enabled });
+			res.sendStatus(200);
+		} else {
+			throw new BadRequestError('Body should contain a boolean "enabled" property');
 		}
 	},
 );

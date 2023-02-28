@@ -2,7 +2,7 @@ import type express from 'express';
 import * as Db from '@/Db';
 import type { User } from '@/databases/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import { AuthError } from '@/ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
@@ -20,6 +20,8 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
+import type { Settings } from '../../databases/entities/Settings';
+import axios from 'axios';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -44,6 +46,8 @@ export class SamlService {
 
 	private _metadata = '';
 
+	private metadataUrl = '';
+
 	public get metadata(): string {
 		return this._metadata;
 	}
@@ -53,7 +57,7 @@ export class SamlService {
 	}
 
 	constructor() {
-		this.loadSamlPreferences()
+		this.loadFromDbAndApplySamlPreferences()
 			.then(() => {
 				LoggerProxy.debug('Initializing SAML service');
 			})
@@ -70,7 +74,7 @@ export class SamlService {
 	}
 
 	async init(): Promise<void> {
-		await this.loadSamlPreferences();
+		await this.loadFromDbAndApplySamlPreferences();
 	}
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
@@ -150,21 +154,30 @@ export class SamlService {
 		return {
 			mapping: this.attributeMapping,
 			metadata: this.metadata,
+			metadataUrl: this.metadataUrl,
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
 		};
 	}
 
-	async setSamlPreferences(prefs: SamlPreferences): Promise<void> {
-		this.attributeMapping = prefs.mapping;
-		this.metadata = prefs.metadata;
-		setSamlLoginEnabled(prefs.loginEnabled);
-		setSamlLoginLabel(prefs.loginLabel);
+	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
+		this.metadata = prefs.metadata ?? this.metadata;
+		this.attributeMapping = prefs.mapping ?? this.attributeMapping;
+		if (prefs.metadataUrl) {
+			this.metadataUrl = prefs.metadataUrl;
+			const fetchedMetadata = await this.fetchMetadataFromUrl();
+			if (fetchedMetadata) {
+				this.metadata = fetchedMetadata;
+			}
+		}
+		setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 		this.getIdentityProviderInstance(true);
-		await this.saveSamlPreferences();
+		const result = await this.saveSamlPreferencesToDb();
+		return result;
 	}
 
-	async loadSamlPreferences(): Promise<SamlPreferences | undefined> {
+	async loadFromDbAndApplySamlPreferences(): Promise<SamlPreferences | undefined> {
 		const samlPreferences = await Db.collections.Settings.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
@@ -178,21 +191,42 @@ export class SamlService {
 		return;
 	}
 
-	async saveSamlPreferences(): Promise<void> {
+	async saveSamlPreferencesToDb(): Promise<SamlPreferences | undefined> {
 		const samlPreferences = await Db.collections.Settings.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
 		const settingsValue = JSON.stringify(this.getSamlPreferences());
+		let result: Settings;
 		if (samlPreferences) {
 			samlPreferences.value = settingsValue;
-			await Db.collections.Settings.save(samlPreferences);
+			result = await Db.collections.Settings.save(samlPreferences);
 		} else {
-			await Db.collections.Settings.save({
+			result = await Db.collections.Settings.save({
 				key: SAML_PREFERENCES_DB_KEY,
 				value: settingsValue,
 				loadOnStartup: true,
 			});
 		}
+		if (result) return jsonParse<SamlPreferences>(result.value);
+		return;
+	}
+
+	async fetchMetadataFromUrl(): Promise<string | undefined> {
+		try {
+			const prevRejectStatus = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+			process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+			const response = await axios.get(this.metadataUrl);
+			process.env.NODE_TLS_REJECT_UNAUTHORIZED = prevRejectStatus;
+			if (response.status === 200 && response.data) {
+				const xml = (await response.data) as string;
+				// TODO: SAML: validate XML
+				// throw new BadRequestError('Received XML is not valid SAML metadata.');
+				return xml;
+			}
+		} catch (error) {
+			throw new BadRequestError('SAML Metadata URL is invalid or response is .');
+		}
+		return;
 	}
 
 	async getAttributesFromLoginResponse(
