@@ -53,7 +53,6 @@ export const useSegment = defineStore('segment', () => {
 	};
 
 	const trackSuccessfulWorkflowExecution = (runData: IRun) => {
-		// Prepare data for tracking events that need to be sent only ones
 		const dataNodeTypes: Set<string> = new Set<string>();
 		const multipleOutputNodes: Set<string> = new Set<string>();
 		let hasManualTrigger = false;
