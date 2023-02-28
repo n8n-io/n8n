@@ -16,5 +16,5 @@ export async function getCustomer(
 	const body = {} as IDataObject;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-	return this.helpers.returnJsonArray(responseData.customer);
+	return this.helpers.returnJsonArray(responseData.customer as IDataObject);
 }

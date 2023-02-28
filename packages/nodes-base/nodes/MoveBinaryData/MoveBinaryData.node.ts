@@ -23,7 +23,7 @@ iconv.encodingExists('utf8');
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
 const encodings = (iconv as any).encodings;
-Object.keys(encodings).forEach((encoding) => {
+Object.keys(encodings as IDataObject).forEach((encoding) => {
 	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) {
 		// only encodings without direct alias or internals
 		if (encodings[encoding].bomAware) {

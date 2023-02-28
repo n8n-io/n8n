@@ -49,7 +49,7 @@ export async function clockifyApiRequestAllItems(
 	do {
 		responseData = await clockifyApiRequest.call(this, method, endpoint, body, query);
 
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 
 		if (query.limit && returnData.length >= query.limit) {
 			return returnData;

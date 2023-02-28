@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import get from 'lodash.get';
@@ -36,13 +36,13 @@ export async function helpscoutApiRequest(
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'helpScoutOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -58,12 +58,12 @@ export async function helpscoutApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let uri;
+	let uri: undefined | string = undefined;
 
 	do {
 		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = get(responseData, '_links.next.href');
-		returnData.push.apply(returnData, get(responseData, propertyName));
+		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}

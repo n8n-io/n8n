@@ -436,7 +436,7 @@ export class Pushbullet implements INodeType {
 							});
 
 							//upload the file
-							await pushbulletApiRequest.call(this, 'POST', '', {}, {}, uploadUrl, {
+							await pushbulletApiRequest.call(this, 'POST', '', {}, {}, uploadUrl as string, {
 								formData: {
 									file: {
 										value: dataBuffer,
@@ -504,7 +504,7 @@ export class Pushbullet implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

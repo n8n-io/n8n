@@ -632,6 +632,7 @@ export class Egoi implements INodeType {
 						}
 
 						if (simple) {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							const data = (await simplify.call(this, [responseData], listId))[0];
 
 							responseData = {
@@ -675,6 +676,7 @@ export class Egoi implements INodeType {
 						}
 
 						if (simple) {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							responseData = await simplify.call(this, responseData, listId);
 						}
 					}
@@ -749,7 +751,7 @@ export class Egoi implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

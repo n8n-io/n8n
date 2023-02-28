@@ -221,9 +221,11 @@ export class Mindee implements INodeType {
 						}
 						if (!rawData) {
 							if (version === 1) {
-								responseData = cleanDataPreviousApiVersions(responseData.predictions);
+								responseData = cleanDataPreviousApiVersions(
+									responseData.predictions as IDataObject[],
+								);
 							} else if (version === 3) {
-								responseData = cleanData(responseData.document);
+								responseData = cleanData(responseData.document as IDataObject);
 							}
 						}
 					}
@@ -295,9 +297,11 @@ export class Mindee implements INodeType {
 						}
 						if (!rawData) {
 							if (version === 1) {
-								responseData = cleanDataPreviousApiVersions(responseData.predictions);
+								responseData = cleanDataPreviousApiVersions(
+									responseData.predictions as IDataObject[],
+								);
 							} else if (version === 3) {
-								responseData = cleanData(responseData.document);
+								responseData = cleanData(responseData.document as IDataObject);
 							}
 						}
 					}

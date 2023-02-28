@@ -43,7 +43,7 @@ export async function mailjetApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -69,7 +69,7 @@ export async function mailjetApiRequestAllItems(
 		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		query.Offset = query.Offset + query.Limit;
 	} while (responseData.length !== 0);
 	return returnData;
