@@ -230,5 +230,4 @@ export default mixins(showMessage).extend({
 .executionPreview {
 	height: 100%;
 }
-
 </style>

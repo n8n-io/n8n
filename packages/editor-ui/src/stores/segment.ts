@@ -1,4 +1,11 @@
-import { CODE_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, SET_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import {
+	CODE_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
@@ -44,11 +51,11 @@ export const useSegment = defineStore('segment', () => {
 		}
 
 		if (nodeTypeName === MANUAL_TRIGGER_NODE_TYPE) {
-				track(EVENTS.ADDED_MANUAL_TRIGGER);
+			track(EVENTS.ADDED_MANUAL_TRIGGER);
 		} else if (nodeTypeName === SCHEDULE_TRIGGER_NODE_TYPE) {
-				track(EVENTS.ADDED_SCHEDULE_TRIGGER);
+			track(EVENTS.ADDED_SCHEDULE_TRIGGER);
 		} else {
-				track(EVENTS.ADDED_DATA_TRIGGER);
+			track(EVENTS.ADDED_DATA_TRIGGER);
 		}
 	};
 
