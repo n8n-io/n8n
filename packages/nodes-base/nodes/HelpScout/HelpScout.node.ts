@@ -217,7 +217,7 @@ export class HelpScout implements INodeType {
 						const id = responseData.headers['resource-id'];
 						const uri = responseData.headers.location;
 						if (resolveData) {
-							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri);
+							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri as string);
 						} else {
 							responseData = {
 								id,
@@ -335,7 +335,7 @@ export class HelpScout implements INodeType {
 						const id = responseData.headers['resource-id'];
 						const uri = responseData.headers.location;
 						if (resolveData) {
-							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri);
+							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri as string);
 						} else {
 							responseData = {
 								id,
@@ -573,7 +573,7 @@ export class HelpScout implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

@@ -402,7 +402,7 @@ export class YouTube implements INodeType {
 						if (item.binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`Item has no binary property called "${binaryProperty}"`,
 								{ itemIndex: i },
 							);
 						}
@@ -430,7 +430,7 @@ export class YouTube implements INodeType {
 							requestOptions,
 						);
 
-						const { url } = JSON.parse(response);
+						const { url } = JSON.parse(response as string);
 
 						qs.part = 'brandingSettings';
 
@@ -867,7 +867,7 @@ export class YouTube implements INodeType {
 						if (binaryData === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`Item has no binary property called "${binaryProperty}"`,
 								{ itemIndex: i },
 							);
 						}
@@ -1105,7 +1105,7 @@ export class YouTube implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

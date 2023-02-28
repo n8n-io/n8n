@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -604,7 +605,7 @@ export class FileMaker implements INodeType {
 				try {
 					returnData = await layoutsApiRequest.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 
 				return returnData;
@@ -620,7 +621,7 @@ export class FileMaker implements INodeType {
 				try {
 					layouts = await layoutsApiRequest.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				for (const layout of layouts) {
 					returnData.push({
@@ -638,7 +639,7 @@ export class FileMaker implements INodeType {
 				try {
 					fields = await getFields.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				for (const field of fields) {
 					returnData.push({
@@ -656,7 +657,7 @@ export class FileMaker implements INodeType {
 				try {
 					scripts = await getScripts.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				for (const script of scripts) {
 					if (!script.isFolder) {
@@ -676,9 +677,9 @@ export class FileMaker implements INodeType {
 				try {
 					portals = await getPortals.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
-				Object.keys(portals).forEach((portal) => {
+				Object.keys(portals as IDataObject).forEach((portal) => {
 					returnData.push({
 						name: portal,
 						value: portal,
@@ -830,7 +831,7 @@ export class FileMaker implements INodeType {
 				returnData.push({ json: response });
 			}
 		} catch (error) {
-			await logout.call(this, token);
+			await logout.call(this, token as string);
 
 			if (error.node) {
 				throw error;

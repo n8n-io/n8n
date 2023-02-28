@@ -2,7 +2,7 @@ import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function postmarkApiRequest(
@@ -23,7 +23,7 @@ export async function postmarkApiRequest(
 		uri: 'https://api.postmarkapp.com' + endpoint,
 		json: true,
 	};
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	options = Object.assign({}, options, option);
@@ -31,7 +31,7 @@ export async function postmarkApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

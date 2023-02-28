@@ -121,7 +121,7 @@ export async function execute(
 
 		existingSheetNames.push(sheetTitle);
 
-		returnData.push(responseData);
+		returnData.push(responseData as IDataObject);
 	}
 	return this.helpers.returnJsonArray(returnData);
 }

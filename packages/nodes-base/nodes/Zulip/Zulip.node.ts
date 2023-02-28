@@ -200,7 +200,7 @@ export class Zulip implements INodeType {
 						if (items[i].binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`Item has no binary property called "${binaryProperty}"`,
 								{ itemIndex: i },
 							);
 						}
@@ -465,7 +465,7 @@ export class Zulip implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
