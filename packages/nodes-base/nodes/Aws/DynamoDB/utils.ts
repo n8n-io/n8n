@@ -96,7 +96,7 @@ function decodeAttribute(type: AttributeValueType, attribute: string | IAttribut
 
 export function validateJSON(input: any): object {
 	try {
-		return JSON.parse(input);
+		return JSON.parse(input as string);
 	} catch (error) {
 		throw new Error('Items must be a valid JSON');
 	}

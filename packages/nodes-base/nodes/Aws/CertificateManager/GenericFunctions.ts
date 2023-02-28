@@ -7,7 +7,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import type { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
@@ -37,7 +37,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -52,7 +52,7 @@ export async function awsApiRequestREST(
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, query, headers);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (e) {
 		return response;
 	}
@@ -80,7 +80,7 @@ export async function awsApiRequestAllItems(
 			});
 			data.NextToken = responseData.NextToken;
 		}
-		returnData.push.apply(returnData, get(responseData, propertyName));
+		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 	} while (responseData.NextToken !== undefined);
 
 	return returnData;

@@ -81,14 +81,16 @@ export async function handleListing(
 	do {
 		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
 		const items = responseData._embedded[itemsKey];
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);
 		}
 
 		if (responseData._links?.next?.href) {
-			const queryString = new URLSearchParams(responseData._links.next.href.split('?')[1]);
+			const queryString = new URLSearchParams(
+				responseData._links.next.href.split('?')[1] as string,
+			);
 			qs.page = queryString.get('page') as string;
 		}
 	} while (responseData._links?.next);

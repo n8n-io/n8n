@@ -97,7 +97,7 @@ export async function hubspotApiRequestAllItems(
 		if (responseData.paging) {
 			body.after = responseData.paging.next.after;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
 		if (query.limit && query.limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;

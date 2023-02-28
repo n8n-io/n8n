@@ -1,11 +1,13 @@
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { mailchimpApiRequest } from './GenericFunctions';
@@ -201,7 +203,7 @@ export class MailchimpTrigger implements INodeType {
 						}
 						throw error;
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				return true;
 			},
@@ -285,7 +287,7 @@ export class MailchimpTrigger implements INodeType {
 			return {};
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

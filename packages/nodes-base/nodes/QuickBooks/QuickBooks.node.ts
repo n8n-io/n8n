@@ -50,7 +50,7 @@ import { capitalCase } from 'change-case';
 
 import isEmpty from 'lodash.isempty';
 
-import type { QuickBooksOAuth2Credentials, TransactionFields } from './types';
+import type { QuickBooksOAuth2Credentials, TransactionFields, TransactionReport } from './types';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -1046,12 +1046,12 @@ export class QuickBooks implements INodeType {
 
 						const simplifyResponse = this.getNodeParameter('simple', i, true) as boolean;
 
-						if (!Object.keys(responseData?.Rows).length) {
+						if (!Object.keys(responseData?.Rows as IDataObject).length) {
 							responseData = [];
 						}
 
 						if (simplifyResponse && !Array.isArray(responseData)) {
-							responseData = simplifyTransactionReport(responseData);
+							responseData = simplifyTransactionReport(responseData as TransactionReport);
 						}
 					}
 				} else if (resource === 'vendor') {
@@ -1148,7 +1148,7 @@ export class QuickBooks implements INodeType {
 				throw error;
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 
@@ -1162,7 +1162,7 @@ export class QuickBooks implements INodeType {
 			['get'].includes(operation) &&
 			download
 		) {
-			return this.prepareOutputData(responseData);
+			return this.prepareOutputData(responseData as INodeExecutionData[]);
 		} else {
 			return this.prepareOutputData(returnData);
 		}

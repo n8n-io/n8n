@@ -570,7 +570,7 @@ export class Webhook implements INodeType {
 					workflowData: [[returnItem]],
 				};
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			} finally {
 				await binaryFile.cleanup();
 			}

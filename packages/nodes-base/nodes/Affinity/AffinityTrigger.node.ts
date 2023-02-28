@@ -167,7 +167,10 @@ export class AffinityTrigger implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 
 				for (const webhook of responseData) {
-					if (eventsExist(webhook.subscriptions, events) && webhook.webhook_url === webhookUrl) {
+					if (
+						eventsExist(webhook.subscriptions as string[], events) &&
+						webhook.webhook_url === webhookUrl
+					) {
 						// Set webhook-id to be sure that it can be deleted
 						const webhookData = this.getWorkflowStaticData('node');
 						webhookData.webhookId = webhook.id as string;

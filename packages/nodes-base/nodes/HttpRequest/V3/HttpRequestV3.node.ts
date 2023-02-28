@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
@@ -1307,9 +1308,9 @@ export class HttpRequestV3 implements INodeType {
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
-						response.reason.error = Buffer.from(response.reason.error).toString();
+						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response);
+					throw new NodeApiError(this.getNode(), response as JsonObject);
 				} else {
 					// Return the actual reason as error
 					returnItems.push({
@@ -1349,7 +1350,7 @@ export class HttpRequestV3 implements INodeType {
 						0,
 						false,
 					) as boolean;
-					const data = Buffer.from(response.body).toString();
+					const data = Buffer.from(response.body as Buffer).toString();
 					response.body = jsonParse(data, {
 						...(neverError
 							? { fallbackValue: {} }
@@ -1359,7 +1360,7 @@ export class HttpRequestV3 implements INodeType {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					const data = Buffer.from(response.body).toString();
+					const data = Buffer.from(response.body as Buffer).toString();
 					response.body = !data ? undefined : data;
 				}
 			}
@@ -1408,14 +1409,14 @@ export class HttpRequestV3 implements INodeType {
 					newItem.json = returnItem;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body,
+						response!.body as Buffer,
 						fileName,
 					);
 				} else {
 					newItem.json = items[itemIndex].json;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!,
+						response! as Buffer,
 						fileName,
 					);
 				}

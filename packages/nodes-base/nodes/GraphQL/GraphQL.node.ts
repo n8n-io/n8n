@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -392,7 +393,9 @@ export class GraphQL implements INodeType {
 						};
 						if (typeof requestOptions.body.variables === 'string') {
 							try {
-								requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
+								requestOptions.body.variables = JSON.parse(
+									(requestOptions.body.variables as string) || '{}',
+								);
 							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -448,10 +451,10 @@ export class GraphQL implements INodeType {
 						const message =
 							response.errors?.map((error: IDataObject) => error.message).join(', ') ||
 							'Unexpected error';
-						throw new NodeApiError(this.getNode(), response.errors, { message });
+						throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: itemIndex } },
 					);
 					returnItems.push(...executionData);
