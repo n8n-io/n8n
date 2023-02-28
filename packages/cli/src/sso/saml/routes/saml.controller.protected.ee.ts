@@ -54,11 +54,11 @@ samlControllerProtected.post(
 	SamlUrls.configToggleEnabled,
 	samlLicensedOwnerMiddleware,
 	async (req: SamlConfiguration.Toggle, res: express.Response) => {
-		if (req.body.enabled !== undefined) {
-			await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.enabled });
+		if (req.body.loginEnabled !== undefined) {
+			await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.loginEnabled });
 			res.sendStatus(200);
 		} else {
-			throw new BadRequestError('Body should contain a boolean "enabled" property');
+			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
 		}
 	},
 );
