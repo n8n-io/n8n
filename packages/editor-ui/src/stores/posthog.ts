@@ -103,10 +103,6 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		if (window.location.pathname.startsWith('/templates/')) {
-			return;
-		}
-
 		const variant = curr[name];
 		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
