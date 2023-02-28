@@ -5,7 +5,6 @@ import { IWorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';
 import { useNDVStore } from './ndv';
-import { useNodeTypesStore } from './nodeTypes';
 import { useSettingsStore } from './settings';
 import { useUIStore } from './ui';
 import { useUsersStore } from './users';
@@ -56,11 +55,6 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 			},
 		allNodes(): INodeUi[] {
 			return useWorkflowsStore().allNodes;
-		},
-		isTriggerNode() {
-			return (nodeType: string): boolean => {
-				return useNodeTypesStore().isTriggerNode(nodeType);
-			};
 		},
 	},
 	actions: {
