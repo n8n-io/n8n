@@ -14,7 +14,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 
 	try {
 		const columns = await db.any(
-			'SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+			'SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
 			[schema, table],
 		);
 
@@ -23,6 +23,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		return columns.map((column: IDataObject) => ({
 			name: column.column_name as string,
 			value: column.column_name as string,
+			description: column.data_type as string,
 		}));
 	} catch (error) {
 		pgp.end();

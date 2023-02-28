@@ -18,6 +18,9 @@ export const optionsCollection: INodeProperties = {
 				show: {
 					'/operation': ['deleteTable'],
 				},
+				hide: {
+					'/deleteCommand': ['delete'],
+				},
 			},
 		},
 		{
@@ -125,6 +128,102 @@ export const tableRLC: INodeProperties = {
 			displayName: 'By Name',
 			name: 'name',
 			type: 'string',
+		},
+	],
+};
+
+export const whereFixedCollection: INodeProperties = {
+	displayName: 'Where',
+	name: 'where',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	placeholder: 'Add Where Clause',
+	default: {},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					default: '',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['schema.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Condition',
+					name: 'condition',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+					options: [
+						{
+							name: 'Equal',
+							value: 'equal',
+						},
+						{
+							name: 'Not Equal',
+							value: '!=',
+						},
+						{
+							name: 'Greater Than',
+							value: '>',
+						},
+						{
+							name: 'Less Than',
+							value: '<',
+						},
+						{
+							name: 'Greater Than Or Equal',
+							value: '>=',
+						},
+						{
+							name: 'Less Than Or Equal',
+							value: '<=',
+						},
+						{
+							name: 'Is Null',
+							value: 'IS NULL',
+						},
+						{
+							name: 'Like',
+							value: 'LIKE',
+						},
+					],
+					default: 'equal',
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Operator',
+					name: 'operator',
+					type: 'options',
+					hint: 'How to combine with next clause, operator from last clause will be ignored',
+					options: [
+						{
+							name: 'AND',
+							value: 'AND',
+						},
+						{
+							name: 'OR',
+							value: 'OR',
+						},
+					],
+					default: 'AND',
+				},
+			],
 		},
 	],
 };

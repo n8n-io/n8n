@@ -1,9 +1,21 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { PgpClient, PgpDatabase, QueryMode, QueryWithValues } from '../../helpers/interfaces';
-import { parsePostgresError, prepareErrorItem } from '../../helpers/utils';
-import { optionsCollection, schemaRLC, tableRLC } from '../common.descriptions';
+import type {
+	PgpClient,
+	PgpDatabase,
+	QueryMode,
+	QueryWithValues,
+	WhereClause,
+} from '../../helpers/interfaces';
+import { parsePostgresError, prepareErrorItem, prepareWhereClauses } from '../../helpers/utils';
+import {
+	optionsCollection,
+	schemaRLC,
+	tableRLC,
+	whereFixedCollection,
+} from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	schemaRLC,
@@ -21,12 +33,39 @@ const properties: INodeProperties[] = [
 					"Truncate command only removes the table's data and preserves the table's structure",
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description:
+					"Delete rows that satisfy the 'Where' clause from the table. If the 'Where' clause is absent, the effect is to delete all rows in the table.",
+			},
+			{
 				name: 'Drop',
 				value: 'drop',
 				description:
 					"Drop command not only deletes the table's data but also deletes the table's structure permanently",
 			},
 		],
+	},
+	{
+		displayName: 'Restart Sequences',
+		name: 'restartSequences',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to restart sequences owned by columns of the truncated table, default false',
+		displayOptions: {
+			show: {
+				deleteCommand: ['truncate'],
+			},
+		},
+	},
+	{
+		...whereFixedCollection,
+		displayOptions: {
+			show: {
+				deleteCommand: ['delete'],
+			},
+		},
 	},
 	optionsCollection,
 ];
@@ -61,15 +100,43 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
+		const values: string[] = [schema, table];
+
 		const cascade = options.cascade ? ' CASCADE' : '';
-		const query =
-			deleteCommand === 'truncate'
-				? `TRUNCATE TABLE $1:name.$2:name${cascade}`
-				: `DROP TABLE IF EXISTS $1:name.$2:name${cascade}`;
-		const queryWithValues = {
-			query,
-			values: [schema, table],
-		};
+		let query = '';
+
+		if (deleteCommand === 'drop') {
+			query = `DROP TABLE IF EXISTS $1:name.$2:name${cascade}`;
+		}
+
+		if (deleteCommand === 'truncate') {
+			const identity = this.getNodeParameter('restartSequences', i, false)
+				? ' RESTART IDENTITY'
+				: '';
+			query = `TRUNCATE TABLE $1:name.$2:name${identity}${cascade}`;
+		}
+
+		if (deleteCommand === 'delete') {
+			const where =
+				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
+
+			const [whereQuery, whereValues] = prepareWhereClauses(where);
+
+			query = `DELETE FROM $1:name.$2:name${whereQuery}`;
+
+			values.push(...whereValues);
+		}
+
+		if (query === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Invalid delete command, only drop, delete and truncate are supported ',
+				{ itemIndex: i },
+			);
+		}
+
+		const queryWithValues = { query, values };
+
 		queries.push(queryWithValues);
 	}
 

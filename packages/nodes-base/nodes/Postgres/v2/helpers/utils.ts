@@ -3,7 +3,7 @@ import type { IDataObject, ILoadOptionsFunctions, INodeExecutionData } from 'n8n
 import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-import type { PgpClient } from './interfaces';
+import type { PgpClient, WhereClause } from './interfaces';
 
 export function getItemsCopy(
 	items: INodeExecutionData[],
@@ -127,4 +127,11 @@ export function parsePostgresError(this: IExecuteFunctions, error: any, itemInde
 		description,
 		itemIndex,
 	});
+}
+
+export function prepareWhereClauses(clauses: WhereClause[]) {
+	console.log('prepareWhereClauses', clauses);
+	const query = '';
+	const values: string[] = [];
+	return [query, values];
 }
