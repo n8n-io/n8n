@@ -10,6 +10,7 @@ import N8nButton from '../Button.vue';
 
 const classToTypeMap = {
 	'btn--cancel': 'secondary',
+	'el-picker-panel__link-btn': 'secondary',
 };
 
 export default Vue.extend({
@@ -26,8 +27,8 @@ export default Vue.extend({
 			});
 
 			return {
-				type,
 				...this.$attrs,
+				...(type ? { type } : {}),
 			};
 		},
 	},
