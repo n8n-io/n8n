@@ -12,7 +12,7 @@ const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
 
-export const usePostHogStore = defineStore('posthog', () => {
+export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();

@@ -305,7 +305,7 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
-import { usePostHogStore } from '@/stores/posthog';
+import { usePostHog } from '@/stores/posthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2501,7 +2501,7 @@ export default mixins(
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
 			if (
-				usePostHogStore().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)
+				usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)
 			) {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
