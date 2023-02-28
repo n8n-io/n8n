@@ -338,7 +338,6 @@ export const pushConnection = mixins(
 				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
-				// This should stop sending multiple telemetry events for nodes when full workflow is being executed
 				if (runDataExecuted.waitTill !== undefined) {
 					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
