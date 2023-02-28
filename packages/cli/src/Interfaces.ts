@@ -44,6 +44,7 @@ import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
+import type { Variables } from './databases/entities/Variables';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
@@ -88,6 +89,7 @@ export interface IDatabaseCollections {
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 	EventDestinations: Repository<EventDestinations>;
+	Variables: Repository<Variables>;
 }
 
 // ----------------------------------

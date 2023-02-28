@@ -170,6 +170,7 @@ export async function init(
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
 	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
 	collections.EventDestinations = linkRepository(entities.EventDestinations);
+	collections.Variables = linkRepository(entities.Variables);
 
 	isInitialized = true;
 

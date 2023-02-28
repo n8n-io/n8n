@@ -12,6 +12,7 @@ import { SharedCredentials } from './SharedCredentials';
 import { SharedWorkflow } from './SharedWorkflow';
 import { TagEntity } from './TagEntity';
 import { User } from './User';
+import { Variables } from './Variables';
 import { WebhookEntity } from './WebhookEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 import { WorkflowStatistics } from './WorkflowStatistics';
@@ -30,6 +31,7 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	Variables,
 	WebhookEntity,
 	WorkflowEntity,
 	WorkflowStatistics,
