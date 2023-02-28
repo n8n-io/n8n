@@ -147,6 +147,5 @@ export const useSegment = defineStore('segment', () => {
 		trackAddedNode,
 		trackSuccessfulNodeExecution,
 		trackSuccessfulWorkflowExecution,
-		EVENTS,
 	};
 });
