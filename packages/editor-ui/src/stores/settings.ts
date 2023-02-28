@@ -100,6 +100,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.deployment?.type.startsWith('desktop_');
 		},
 		isCloudDeployment(): boolean {
+			return true;
 			if (!this.settings.deployment) {
 				return false;
 			}

@@ -10,7 +10,7 @@ declare module 'vue/types/vue' {
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
-		posthog: {
+		posthog?: {
 			people: {
 				set(metadata: Record<string, unknown>): void;
 			};

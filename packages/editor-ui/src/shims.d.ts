@@ -18,7 +18,7 @@ declare global {
 
 	interface Window {
 		BASE_PATH: string;
-		analytics: {
+		analytics?: {
 			track: (eventName: string, properties: ITelemetryTrackProperties) => void;
 			identify: (userId: string | null) => void;
 			page: (category: string, name: string, properties: ITelemetryTrackProperties) => void;

@@ -5,7 +5,8 @@ import Vue from 'vue';
 export interface ExternalHookFn<T extends IDataObject> {
 	(metadata: T): Promise<void> | void;
 }
-export type ExternalHooks = Record<string, Record<string, Array<ExternalHookFn<never>>>>;
+
+export interface ExternalHooks {}
 
 declare global {
 	interface Window {
