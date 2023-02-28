@@ -161,6 +161,43 @@ const onFilterReset = () => {
 						/>
 					</div>
 				</div>
+				<div>
+					<n8n-tooltip placement="top">
+						<span :class="$style.label">
+							{{ $locale.baseText('executionsFilter.savedData') }}
+							<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="small" />
+						</span>
+						<template #content> xxxx </template>
+					</n8n-tooltip>
+					<div :class="$style.group">
+						<div>
+							<label for="execution-filter-saved-data-key">{{
+								$locale.baseText('executionsFilter.savedDataKey')
+							}}</label>
+							<n8n-input
+								id="execution-filter-saved-data-key"
+								name="execution-filter-saved-data-key"
+								type="text"
+								size="medium"
+								:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
+								@change="onFilterPropChange('savedDataKey', $event)"
+							/>
+						</div>
+						<div>
+							<label for="execution-filter-saved-data-value">{{
+								$locale.baseText('executionsFilter.savedDataValue')
+							}}</label>
+							<n8n-input
+								id="execution-filter-saved-data-value"
+								name="execution-filter-saved-data-value"
+								type="text"
+								size="medium"
+								:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
+								@change="onFilterPropChange('savedDataValue', $event)"
+							/>
+						</div>
+					</div>
+				</div>
 				<n8n-button
 					v-if="statusFilterApplied"
 					:class="$style.resetBtn"
@@ -180,6 +217,10 @@ const onFilterReset = () => {
 	display: inline-block;
 }
 
+.group {
+	padding: 0 0 var(--spacing-xs) var(--spacing-s);
+}
+
 .dates {
 	display: flex;
 	border: 1px solid var(--color-foreground-base);
@@ -193,14 +234,20 @@ const onFilterReset = () => {
 	line-height: 100%;
 }
 
+.label,
 label {
 	display: inline-block;
+	font-size: var(--font-size-2xs);
 	margin: var(--spacing-xs) 0 var(--spacing-3xs);
 }
 
 .resetBtn {
 	padding: 0;
 	margin: var(--spacing-xs) 0 0;
+}
+
+.tooltipIcon {
+	color: var(--color-text-light);
 }
 </style>
 
