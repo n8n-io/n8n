@@ -89,6 +89,7 @@ import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } 
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import { useSegment } from '@/stores/segment';
 import { externalHooks } from '@/mixins/externalHooks';
 
 export default mixins(showMessage, externalHooks).extend({
@@ -328,7 +329,8 @@ export default mixins(showMessage, externalHooks).extend({
 						success: true,
 					});
 
-					this.$externalHooks().run('parameterInputFull.mappedData');
+					const segment = useSegment();
+					segment.track(segment.EVENTS.MAPPED_DATA);
 				}
 				this.forceShowExpression = false;
 			}, 200);

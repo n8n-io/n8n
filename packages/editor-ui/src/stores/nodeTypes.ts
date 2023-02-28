@@ -80,6 +80,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return !!(nodeType && nodeType.group.includes('trigger'));
 			};
 		},
+		isCoreNodeType() {
+			return (nodeType: INodeTypeDescription) => {
+				return nodeType.codex?.categories?.includes('Core Nodes');
+			};
+		},
 		visibleNodeTypes(): INodeTypeDescription[] {
 			return this.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
 		},

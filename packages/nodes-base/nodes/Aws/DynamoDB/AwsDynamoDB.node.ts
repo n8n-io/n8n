@@ -17,6 +17,7 @@ import { itemFields, itemOperations } from './ItemDescription';
 import type {
 	FieldsUiValues,
 	IAttributeNameUi,
+	IAttributeValue,
 	IAttributeValueUi,
 	IRequestBody,
 	PutItemUi,
@@ -229,10 +230,10 @@ export class AwsDynamoDB implements INodeType {
 
 						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
 
-						if (!Object.keys(responseData).length) {
+						if (!Object.keys(responseData as IDataObject).length) {
 							responseData = { success: true };
 						} else if (simple) {
-							responseData = decodeItem(responseData.Attributes);
+							responseData = decodeItem(responseData.Attributes as IAttributeValue);
 						}
 					} else if (operation === 'get') {
 						// ----------------------------------
@@ -293,7 +294,7 @@ export class AwsDynamoDB implements INodeType {
 						responseData = responseData.Item;
 
 						if (simple && responseData) {
-							responseData = decodeItem(responseData);
+							responseData = decodeItem(responseData as IAttributeValue);
 						}
 					} else if (operation === 'getAll') {
 						// ----------------------------------
@@ -392,7 +393,7 @@ export class AwsDynamoDB implements INodeType {
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

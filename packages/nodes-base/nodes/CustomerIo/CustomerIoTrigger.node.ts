@@ -244,7 +244,10 @@ export class CustomerIoTrigger implements INodeType {
 				}
 
 				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl && eventExists(currentEvents, webhook.events)) {
+					if (
+						webhook.endpoint === webhookUrl &&
+						eventExists(currentEvents, webhook.events as IDataObject)
+					) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}

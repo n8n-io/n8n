@@ -256,7 +256,10 @@ export class Html implements INodeType {
 					let html = this.getNodeParameter('html', itemIndex) as string;
 
 					for (const resolvable of getResolvables(html)) {
-						html = html.replace(resolvable, this.evaluateExpression(resolvable, itemIndex) as any);
+						html = html.replace(
+							resolvable,
+							this.evaluateExpression(resolvable, itemIndex) as string,
+						);
 					}
 
 					const result = this.helpers.constructExecutionMetaData(

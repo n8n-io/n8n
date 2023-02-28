@@ -2069,7 +2069,7 @@ export class GoogleDrive implements INodeType {
 						});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2115,7 +2115,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2176,7 +2176,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2217,7 +2217,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2320,8 +2320,8 @@ export class GoogleDrive implements INodeType {
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							response.body as unknown as Readable,
-							fileName,
-							mimeType,
+							fileName as string,
+							mimeType as string,
 						);
 					} else if (operation === 'list') {
 						// ----------------------------------
@@ -2412,7 +2412,7 @@ export class GoogleDrive implements INodeType {
 						const version = this.getNode().typeVersion;
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(files),
+							this.helpers.returnJsonArray(files as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2496,7 +2496,7 @@ export class GoogleDrive implements INodeType {
 									json: false,
 								},
 							);
-							uploadId = JSON.parse(response).id;
+							uploadId = JSON.parse(response as string).id;
 						} else {
 							const resumableUpload = await googleApiRequest.call(
 								this,
@@ -2591,7 +2591,7 @@ export class GoogleDrive implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -2636,7 +2636,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -2664,7 +2664,7 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -2729,7 +2729,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

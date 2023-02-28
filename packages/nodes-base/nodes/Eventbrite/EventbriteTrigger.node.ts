@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -248,7 +249,7 @@ export class EventbriteTrigger implements INodeType {
 				};
 
 				for (const webhook of webhooks) {
-					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions)) {
+					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions as string[])) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -297,7 +298,7 @@ export class EventbriteTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		if (req.body.api_url === undefined) {
-			throw new NodeApiError(this.getNode(), req.body, {
+			throw new NodeApiError(this.getNode(), req.body as JsonObject, {
 				message: 'The received data does not contain required "api_url" property!',
 			});
 		}
@@ -307,7 +308,7 @@ export class EventbriteTrigger implements INodeType {
 		if (!resolveData) {
 			// Return the data as it got received
 			return {
-				workflowData: [this.helpers.returnJsonArray(req.body)],
+				workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 			};
 		}
 
@@ -328,11 +329,11 @@ export class EventbriteTrigger implements INodeType {
 			'',
 			{},
 			undefined,
-			req.body.api_url,
+			req.body.api_url as string,
 		);
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(responseData)],
+			workflowData: [this.helpers.returnJsonArray(responseData as IDataObject)],
 		};
 	}
 }

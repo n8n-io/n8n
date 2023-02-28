@@ -149,11 +149,11 @@ export class Box implements INodeType {
 
 						items[i] = newItem;
 
-						const data = Buffer.from(responseData.body);
+						const data = Buffer.from(responseData.body as string);
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							data as unknown as Buffer,
-							fileName,
+							fileName as string,
 							mimeType,
 						);
 					}
@@ -524,7 +524,7 @@ export class Box implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

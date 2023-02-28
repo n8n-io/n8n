@@ -3,7 +3,7 @@ import type { OptionsWithUri } from 'request';
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
@@ -41,14 +41,13 @@ export async function microsoftApiRequest(
 			options.headers = Object.assign({}, options.headers, headers);
 		}
 
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -79,7 +78,7 @@ export async function microsoftApiRequestAllItems(
 			headers,
 		);
 		uri = responseData['@odata.nextLink'];
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
@@ -112,7 +111,7 @@ export async function microsoftApiRequestAllItemsSkip(
 			headers,
 		);
 		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
 
 	return returnData;
@@ -208,8 +207,8 @@ export async function downloadAttachments(
 				const data = Buffer.from(response.body as string, 'utf8');
 				element.binary![`${prefix}${index}`] = await this.helpers.prepareBinaryData(
 					data as unknown as Buffer,
-					attachment.name,
-					attachment.contentType,
+					attachment.name as string,
+					attachment.contentType as string,
 				);
 			}
 		}

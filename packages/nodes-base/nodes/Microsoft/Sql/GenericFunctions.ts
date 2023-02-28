@@ -88,7 +88,7 @@ export async function executeQueryQueue(
  * @param {IDataObject} item The item to extract
  */
 export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item as any)
+	return `(${Object.values(item)
 		.map((val) => {
 			//the column cannot be found in the input
 			//so, set it to null in the sql query

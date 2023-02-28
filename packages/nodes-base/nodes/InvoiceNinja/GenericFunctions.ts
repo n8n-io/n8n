@@ -74,7 +74,7 @@ export async function invoiceNinjaApiRequestAllItems(
 		if (next) {
 			uri = next;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.meta?.pagination?.links?.next);
 
 	return returnData;
