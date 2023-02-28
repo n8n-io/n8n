@@ -251,13 +251,6 @@ export class PostgresTrigger implements INodeType {
 			.catch(function (error) {
 				console.error('Error:', error);
 			});
-
-		// Manually close the connection whenever the workflow gets manually stopped.
-		const manualTriggerFunction = async () => {
-			await dropTriggerFunction.call(this, db, staticData.triggers);
-			pgp.end();
-		};
-
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		const closeFunction = async () => {
@@ -267,7 +260,6 @@ export class PostgresTrigger implements INodeType {
 
 		return {
 			closeFunction,
-			manualTriggerFunction,
 		};
 	}
 }
