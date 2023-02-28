@@ -100,12 +100,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
-		const values: string[] = [schema, table];
 
-		const cascade = options.cascade ? ' CASCADE' : '';
 		let query = '';
+		let values: string[] = [schema, table];
 
 		if (deleteCommand === 'drop') {
+			const cascade = options.cascade ? ' CASCADE' : '';
 			query = `DROP TABLE IF EXISTS $1:name.$2:name${cascade}`;
 		}
 
@@ -113,18 +113,22 @@ export async function execute(
 			const identity = this.getNodeParameter('restartSequences', i, false)
 				? ' RESTART IDENTITY'
 				: '';
+			const cascade = options.cascade ? ' CASCADE' : '';
 			query = `TRUNCATE TABLE $1:name.$2:name${identity}${cascade}`;
 		}
 
 		if (deleteCommand === 'delete') {
-			const where =
+			const whereClauses =
 				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-			const [whereQuery, whereValues] = prepareWhereClauses(where);
+			const [whereQuery, whereValues] = prepareWhereClauses(
+				'DELETE FROM $1:name.$2:name',
+				whereClauses,
+				values,
+			);
 
-			query = `DELETE FROM $1:name.$2:name${whereQuery}`;
-
-			values.push(...whereValues);
+			query = whereQuery;
+			values = whereValues;
 		}
 
 		if (query === '') {

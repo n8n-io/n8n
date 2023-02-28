@@ -129,9 +129,34 @@ export function parsePostgresError(this: IExecuteFunctions, error: any, itemInde
 	});
 }
 
-export function prepareWhereClauses(clauses: WhereClause[]) {
-	console.log('prepareWhereClauses', clauses);
-	const query = '';
+export function prepareWhereClauses(
+	query: string,
+	clauses: WhereClause[],
+	replacements: string[],
+): [string, string[]] {
+	if (clauses.length === 0) return [query, replacements];
+
+	let replacementIndex = replacements.length + 1;
+
+	let whereQuery = ' WHERE';
 	const values: string[] = [];
-	return [query, values];
+
+	clauses.forEach((clause, index) => {
+		if (clause.condition === 'equal') {
+			clause.condition = '=';
+		}
+		const columnReplacement = `$${replacementIndex}:name`;
+		values.push(clause.column);
+		replacementIndex = replacementIndex + 1;
+
+		const valueReplacement = `$${replacementIndex}`;
+		values.push(clause.value);
+		replacementIndex = replacementIndex + 1;
+
+		const operator = index === clauses.length - 1 ? '' : ` ${clause.operator}`;
+
+		whereQuery += ` ${columnReplacement} ${clause.condition} ${valueReplacement}${operator}`;
+	});
+
+	return [`${query}${whereQuery}`, replacements.concat(...values)];
 }
