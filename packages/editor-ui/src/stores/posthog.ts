@@ -3,23 +3,21 @@ import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
-import { FeatureFlags, INodeTypeDescription, IRun } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK } from '@/constants';
+import { FeatureFlags } from 'n8n-workflow';
+import { EXPERIMENTS_TO_TRACK, ONBOARDING_EXPERIMENT } from '@/constants';
 import { useTelemetryStore } from './telemetry';
-import { runExternalHook } from '@/mixins/externalHooks';
-import { useWebhooksStore } from '@/stores/webhooks';
-import { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useSegment } from './segment';
+
+const EVENTS = {
+	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
+};
 
 export const usePostHogStore = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
-	const nodeTypesStore = useNodeTypesStore();
-	const webhookstore = useWebhooksStore();
-	const workflowsStore = useWorkflowsStore();
+	const segmentStore = useSegment();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const initialized: Ref<boolean> = ref(false);
@@ -93,96 +91,6 @@ export const usePostHogStore = defineStore('posthog', () => {
 		initialized.value = true;
 	};
 
-	const trackSuccessfulWorkflowExecution = (runData: IRun) => {
-		// Prepare data for tracking events that need to be sent only ones
-		const dataNodeTypes: Set<string> = new Set<string>();
-		const multipleOutputNodes: Set<string> = new Set<string>();
-		let hasManualTrigger = false;
-		let hasScheduleTrigger = false;
-		for (const nodeName of Object.keys(runData.data.resultData.runData)) {
-			const nodeRunData = runData.data.resultData.runData[nodeName];
-			const node = workflowsStore.getNodeByName(nodeName);
-			const nodeTypeName = node ? node.type : 'unknown';
-			if (nodeRunData[0].data && nodeRunData[0].data.main.some((out) => out && out?.length > 1)) {
-				multipleOutputNodes.add(nodeTypeName);
-			}
-			if (node && !node.disabled) {
-				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-				if (isDataNodeType(nodeType)) {
-					dataNodeTypes.add(nodeTypeName);
-				}
-				if (isManualTriggerNode(nodeType)) {
-					hasManualTrigger = true;
-				}
-				if (isScheduleTriggerNode(nodeType)) {
-					hasScheduleTrigger = true;
-				}
-			}
-		}
-		if (multipleOutputNodes.size > 0) {
-			runExternalHook('nodeView.userExecutedMultiOutputNode', webhookstore, {
-				nodeTypes: Array.from(multipleOutputNodes),
-			});
-		}
-		if (dataNodeTypes.size > 0) {
-			runExternalHook('nodeView.userExecutedDataNode', webhookstore, {
-				nodeTypes: Array.from(dataNodeTypes),
-			});
-		}
-		if (hasManualTrigger) {
-			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'manual' });
-		}
-		if (hasScheduleTrigger) {
-			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'schedule' });
-		}
-	};
-
-	const trackSuccessfulNodeExecution = (node: INodeUi) => {
-		if (!node) {
-			return;
-		}
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		trackNodeExecution(nodeType);
-	};
-
-	const trackNodeExecution = (nodeType: INodeTypeDescription | null) => {
-		if (!nodeType) {
-			return;
-		}
-		if (isDataNodeType(nodeType)) {
-			runExternalHook('nodeView.userExecutedDataNode', webhookstore, {
-				nodeTypes: [nodeType.name],
-			});
-		}
-		if (isManualTriggerNode(nodeType)) {
-			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'manual' });
-		}
-		if (isScheduleTriggerNode(nodeType)) {
-			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'schedule' });
-		}
-	};
-
-	const isManualTriggerNode = (nodeType: INodeTypeDescription | null) => {
-		return nodeType && nodeType.name === 'n8n-nodes-base.manualTrigger';
-	};
-
-	const isScheduleTriggerNode = (nodeType: INodeTypeDescription | null) => {
-		return nodeType && nodeType.name === 'n8n-nodes-base.scheduleTrigger';
-	};
-
-	const isDataNodeType = (nodeType: INodeTypeDescription | null) => {
-		if (!nodeType) {
-			return;
-		}
-		const includeCoreNodes = [
-			'n8n-nodes-base.httpRequest',
-			'n8n-nodes-base.code',
-			'n8n-nodes-base.set',
-			'n8n-nodes-base.webhook',
-		];
-		return !nodeTypesStore.isCoreNodeType(nodeType) || includeCoreNodes.includes(nodeType.name);
-	};
-
 	const trackExperiment = (name: string) => {
 		const curr = featureFlags.value;
 		const prev = trackedDemoExp.value;
@@ -200,16 +108,16 @@ export const usePostHogStore = defineStore('posthog', () => {
 		}
 
 		const variant = curr[name];
-		telemetryStore.track('User is part of experiment', {
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
 
 		trackedDemoExp.value[name] = variant;
-		runExternalHook('posthog.featureFlagsUpdated', webhookstore, {
-			name,
-			variant,
-		});
+
+		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
+			segmentStore.showAppCuesChecklist();
+		}
 	};
 
 	watch(
@@ -226,7 +134,5 @@ export const usePostHogStore = defineStore('posthog', () => {
 		isVariantEnabled,
 		getVariant,
 		reset,
-		trackSuccessfulWorkflowExecution,
-		trackSuccessfulNodeExecution,
 	};
 });

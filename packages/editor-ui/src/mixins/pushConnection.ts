@@ -33,7 +33,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useSettingsStore } from '@/stores/settings';
 import { parse } from 'flatted';
-import { usePostHogStore } from '@/stores/posthog';
+import { useSegment } from '@/stores/segment';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -59,7 +59,7 @@ export const pushConnection = mixins(
 			useUIStore,
 			useWorkflowsStore,
 			useSettingsStore,
-			usePostHogStore,
+			useSegment,
 		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
@@ -478,7 +478,7 @@ export const pushConnection = mixins(
 							});
 						}
 						if (node) {
-							this.posthogStore.trackSuccessfulNodeExecution(node);
+							this.segmentStore.trackSuccessfulNodeExecution(node);
 						}
 					} else {
 						this.$showMessage({
@@ -524,7 +524,7 @@ export const pushConnection = mixins(
 					resultDataError: runDataExecuted.data.resultData.error,
 				});
 				if (!runDataExecuted.data.resultData.error && fullWorkflowExecution) {
-					this.posthogStore.trackSuccessfulWorkflowExecution(runDataExecuted);
+					this.segmentStore.trackSuccessfulWorkflowExecution(runDataExecuted);
 				}
 			} else if (receivedData.type === 'executionStarted') {
 				const pushData = receivedData.data;

@@ -1,0 +1,152 @@
+import { CODE_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, SET_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { ITelemetryTrackProperties } from 'n8n-workflow';
+import { defineStore } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { INodeTypeDescription, IRun } from 'n8n-workflow';
+import { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+
+const EVENTS = {
+	SHOW_CHECKLIST: 'Show checklist',
+	ADDED_MANUAL_TRIGGER: 'User added manual trigger',
+	ADDED_SCHEDULE_TRIGGER: 'User added schedule trigger',
+	ADDED_DATA_TRIGGER: 'User added data trigger',
+	RECEIEVED_MULTIPLE_DATA_ITEMS: 'User received multiple data items',
+	EXECUTED_MANUAL_TRIGGER: 'User executed manual trigger successfully',
+	EXECUTED_SCHEDULE_TRIGGER: 'User executed schedule trigger successfully',
+	EXECUTED_DATA_NODE_TRIGGER: 'User executed data node successfully',
+};
+
+export const useSegment = defineStore('segment', () => {
+	const nodeTypesStore = useNodeTypesStore();
+	const workflowsStore = useWorkflowsStore();
+	const settingsStore = useSettingsStore();
+
+	const track = (eventName: string, properties?: ITelemetryTrackProperties) => {
+		if (settingsStore.telemetry.enabled) {
+			window.analytics?.track(eventName, properties);
+		}
+	};
+
+	const showAppCuesChecklist = () => {
+		if (window.location.pathname.startsWith('/workflows/demo')) {
+			return;
+		}
+
+		track(EVENTS.SHOW_CHECKLIST);
+	};
+
+	const trackAddedNode = (nodeTypeName: string) => {
+		if (!nodeTypesStore.isTriggerNode(nodeTypeName)) {
+			return;
+		}
+
+		if (nodeTypeName === MANUAL_TRIGGER_NODE_TYPE) {
+				track(EVENTS.ADDED_MANUAL_TRIGGER);
+		} else if (nodeTypeName === SCHEDULE_TRIGGER_NODE_TYPE) {
+				track(EVENTS.ADDED_SCHEDULE_TRIGGER);
+		} else {
+				track(EVENTS.ADDED_DATA_TRIGGER);
+		}
+	};
+
+	const trackSuccessfulWorkflowExecution = (runData: IRun) => {
+		// Prepare data for tracking events that need to be sent only ones
+		const dataNodeTypes: Set<string> = new Set<string>();
+		const multipleOutputNodes: Set<string> = new Set<string>();
+		let hasManualTrigger = false;
+		let hasScheduleTrigger = false;
+		for (const nodeName of Object.keys(runData.data.resultData.runData)) {
+			const nodeRunData = runData.data.resultData.runData[nodeName];
+			const node = workflowsStore.getNodeByName(nodeName);
+			const nodeTypeName = node ? node.type : 'unknown';
+			if (nodeRunData[0].data && nodeRunData[0].data.main.some((out) => out && out?.length > 1)) {
+				multipleOutputNodes.add(nodeTypeName);
+			}
+			if (node && !node.disabled) {
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (isDataNodeType(nodeType)) {
+					dataNodeTypes.add(nodeTypeName);
+				}
+				if (isManualTriggerNode(nodeType)) {
+					hasManualTrigger = true;
+				}
+				if (isScheduleTriggerNode(nodeType)) {
+					hasScheduleTrigger = true;
+				}
+			}
+		}
+		if (multipleOutputNodes.size > 0) {
+			track(EVENTS.RECEIEVED_MULTIPLE_DATA_ITEMS, {
+				nodeTypes: Array.from(multipleOutputNodes),
+			});
+		}
+		if (dataNodeTypes.size > 0) {
+			track(EVENTS.EXECUTED_DATA_NODE_TRIGGER, {
+				nodeTypes: Array.from(dataNodeTypes),
+			});
+		}
+		if (hasManualTrigger) {
+			track(EVENTS.EXECUTED_MANUAL_TRIGGER);
+		}
+		if (hasScheduleTrigger) {
+			track(EVENTS.EXECUTED_SCHEDULE_TRIGGER);
+		}
+	};
+
+	const trackSuccessfulNodeExecution = (node: INodeUi) => {
+		if (!node) {
+			return;
+		}
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		trackNodeExecution(nodeType);
+	};
+
+	const trackNodeExecution = (nodeType: INodeTypeDescription | null) => {
+		if (!nodeType) {
+			return;
+		}
+		if (isDataNodeType(nodeType)) {
+			track(EVENTS.EXECUTED_DATA_NODE_TRIGGER, {
+				nodeTypes: [nodeType.name],
+			});
+		}
+		if (isManualTriggerNode(nodeType)) {
+			track(EVENTS.EXECUTED_MANUAL_TRIGGER);
+		}
+		if (isScheduleTriggerNode(nodeType)) {
+			track(EVENTS.EXECUTED_SCHEDULE_TRIGGER);
+		}
+	};
+
+	const isManualTriggerNode = (nodeType: INodeTypeDescription | null) => {
+		return nodeType && nodeType.name === 'n8n-nodes-base.manualTrigger';
+	};
+
+	const isScheduleTriggerNode = (nodeType: INodeTypeDescription | null) => {
+		return nodeType && nodeType.name === 'n8n-nodes-base.scheduleTrigger';
+	};
+
+	const isDataNodeType = (nodeType: INodeTypeDescription | null) => {
+		if (!nodeType) {
+			return;
+		}
+		const includeCoreNodes = [
+			HTTP_REQUEST_NODE_TYPE,
+			CODE_NODE_TYPE,
+			SET_NODE_TYPE,
+			WEBHOOK_NODE_TYPE,
+		];
+		return !nodeTypesStore.isCoreNodeType(nodeType) || includeCoreNodes.includes(nodeType.name);
+	};
+
+	return {
+		showAppCuesChecklist,
+		track,
+		trackAddedNode,
+		trackSuccessfulNodeExecution,
+		trackSuccessfulWorkflowExecution,
+		EVENTS,
+	};
+});
