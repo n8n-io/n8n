@@ -13,14 +13,39 @@ import {
 	wrapData,
 } from '../../helpers/utils';
 
-import { optionsCollection, schemaRLC, tableRLC } from '../common.descriptions';
+import { optionsCollection, outpurSelector, schemaRLC, tableRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	schemaRLC,
 	tableRLC,
 	{
-		displayName: 'Columns',
-		name: 'columns',
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Map Each Column Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Select Properties From Input',
+				value: 'selectProperties',
+				description:
+					'Select properties from input, properties should match destination column names',
+			},
+		],
+		default: 'defineBelow',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	{
+		displayName: 'Properties',
+		name: 'inputProperties',
 		type: 'string',
 		default: '',
 		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
@@ -28,15 +53,13 @@ const properties: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 		description:
 			'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
+		displayOptions: {
+			show: {
+				dataMode: ['selectProperties'],
+			},
+		},
 	},
-	{
-		displayName: 'Return Fields',
-		name: 'returnFields',
-		type: 'string',
-		requiresDataPath: 'multiple',
-		default: '*',
-		description: 'Comma-separated list of the fields that the operation will return',
-	},
+	...outpurSelector,
 	optionsCollection,
 ];
 
@@ -65,10 +88,18 @@ export async function execute(
 		extractValue: true,
 	}) as string;
 
-	const columnString = this.getNodeParameter('columns', 0) as string;
+	const inputProperties = this.getNodeParameter('inputProperties', 0) as string;
+
+	// const dataMode = this.getNodeParameter('dataMode', 0) as string;
+
+	// if (dataMode === 'selectProperties') {
+	// 	inputProperties = this.getNodeParameter('inputProperties', 0) as string;
+	// }
+
+	//---------------------------------------------------------------------
 	const guardedColumns: { [key: string]: string } = {};
 
-	const columns = columnString
+	const columns = inputProperties
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
@@ -83,7 +114,14 @@ export async function execute(
 	const options = this.getNodeParameter('options', 0);
 	const mode = (options.mode as QueryMode) || 'multiple';
 
-	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
+	const output = this.getNodeParameter('output', 0) as string;
+
+	let outputColumns = '*';
+	if (output === 'columns') {
+		outputColumns = (this.getNodeParameter('returnColumns', 0, []) as string[]).join(', ');
+	}
+
+	const returning = generateReturning(pgp, outputColumns);
 
 	if (mode === 'multiple') {
 		try {

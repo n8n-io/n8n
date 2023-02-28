@@ -2,8 +2,10 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+
 import type { PgpClient, PgpDatabase, QueryMode, QueryWithValues } from '../../helpers/interfaces';
-import { parsePostgresError, prepareErrorItem, wrapData } from '../../helpers/utils';
+
+import { runQueries } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 
@@ -69,10 +71,9 @@ export async function execute(
 	db: PgpDatabase,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	let returnData: INodeExecutionData[] = [];
 	const options = this.getNodeParameter('options', 0);
 
-	const allQueries: QueryWithValues[] = [];
+	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const query = this.getNodeParameter('query', i) as string;
@@ -80,77 +81,10 @@ export async function execute(
 			(entry) => entry.value as string,
 		);
 		const queryFormat = { query, values };
-		allQueries.push(queryFormat);
+		queries.push(queryFormat);
 	}
 
 	const mode = (options.mode as QueryMode) || 'multiple';
 
-	if (mode === 'multiple') {
-		try {
-			returnData = (await db.multi(pgp.helpers.concat(allQueries)))
-				.map((result, i) => {
-					return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
-						itemData: { item: i },
-					});
-				})
-				.flat();
-		} catch (err) {
-			const error = parsePostgresError.call(this, err);
-			if (!this.continueOnFail()) throw error;
-
-			return [
-				{
-					json: {
-						message: error.message,
-						error: { ...error },
-					},
-				},
-			];
-		}
-	}
-
-	if (mode === 'transaction') {
-		returnData = await db.tx(async (t) => {
-			const result: INodeExecutionData[] = [];
-			for (let i = 0; i < allQueries.length; i++) {
-				try {
-					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
-					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(transactionResult as IDataObject[]),
-						{ itemData: { item: i } },
-					);
-					result.push(...executionData);
-				} catch (err) {
-					const error = parsePostgresError.call(this, err, i);
-					if (!this.continueOnFail()) throw error;
-					result.push(prepareErrorItem(items, error, i));
-					return result;
-				}
-			}
-			return result;
-		});
-	}
-
-	if (mode === 'independently') {
-		returnData = await db.task(async (t) => {
-			const result: INodeExecutionData[] = [];
-			for (let i = 0; i < allQueries.length; i++) {
-				try {
-					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
-					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(transactionResult as IDataObject[]),
-						{ itemData: { item: i } },
-					);
-					result.push(...executionData);
-				} catch (err) {
-					const error = parsePostgresError.call(this, err, i);
-					if (!this.continueOnFail()) throw error;
-					result.push(prepareErrorItem(items, error, i));
-				}
-			}
-			return result;
-		});
-	}
-
-	return returnData;
+	return runQueries.call(this, pgp, db, queries, items, mode);
 }

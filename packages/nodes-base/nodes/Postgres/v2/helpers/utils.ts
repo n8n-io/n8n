@@ -3,7 +3,14 @@ import type { IDataObject, ILoadOptionsFunctions, INodeExecutionData } from 'n8n
 import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-import type { PgpClient, SortRule, WhereClause } from './interfaces';
+import type {
+	PgpClient,
+	PgpDatabase,
+	QueryMode,
+	QueryWithValues,
+	SortRule,
+	WhereClause,
+} from './interfaces';
 
 export function getItemsCopy(
 	items: INodeExecutionData[],
@@ -187,4 +194,89 @@ export function addSortRules(
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat(...values)];
+}
+
+export async function runQueries(
+	this: IExecuteFunctions,
+	pgp: PgpClient,
+	db: PgpDatabase,
+	queries: QueryWithValues[],
+	items: INodeExecutionData[],
+	mode: QueryMode,
+) {
+	let returnData: INodeExecutionData[] = [];
+
+	if (mode === 'multiple') {
+		try {
+			returnData = (await db.multi(pgp.helpers.concat(queries)))
+				.map((result, i) => {
+					return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
+						itemData: { item: i },
+					});
+				})
+				.flat();
+			returnData = returnData.length ? returnData : [{ json: { success: true } }];
+		} catch (err) {
+			const error = parsePostgresError.call(this, err);
+			if (!this.continueOnFail()) throw error;
+
+			return [
+				{
+					json: {
+						message: error.message,
+						error: { ...error },
+					},
+				},
+			];
+		}
+	}
+
+	if (mode === 'transaction') {
+		returnData = await db.tx(async (t) => {
+			const result: INodeExecutionData[] = [];
+			for (let i = 0; i < queries.length; i++) {
+				try {
+					const transactionResult: IDataObject[] = await t.any(queries[i].query, queries[i].values);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
+						{ itemData: { item: i } },
+					);
+
+					result.push(...executionData);
+				} catch (err) {
+					const error = parsePostgresError.call(this, err, i);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
+					return result;
+				}
+			}
+			return result;
+		});
+	}
+
+	if (mode === 'independently') {
+		returnData = await db.task(async (t) => {
+			const result: INodeExecutionData[] = [];
+			for (let i = 0; i < queries.length; i++) {
+				try {
+					const transactionResult: IDataObject[] = await t.any(queries[i].query, queries[i].values);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
+						{ itemData: { item: i } },
+					);
+
+					result.push(...executionData);
+				} catch (err) {
+					const error = parsePostgresError.call(this, err, i);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
+				}
+			}
+			return result;
+		});
+	}
+
+	return returnData;
 }

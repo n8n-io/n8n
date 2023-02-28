@@ -304,3 +304,42 @@ export const sortFixedCollection: INodeProperties = {
 		},
 	],
 };
+
+export const outpurSelector: INodeProperties[] = [
+	{
+		displayName: 'Output',
+		name: 'output',
+		type: 'options',
+		default: 'all',
+		options: [
+			{
+				name: 'All Columns',
+				value: 'all',
+				description: 'All columns in the table',
+			},
+			{
+				name: 'Selected Columns',
+				value: 'columns',
+				description: 'Only selected columns in the table',
+			},
+		],
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Columns',
+		name: 'returnColumns',
+		type: 'multiOptions',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getColumns',
+			loadOptionsDependsOn: ['schema.value', 'table.value'],
+		},
+		default: [],
+		displayOptions: {
+			show: {
+				output: ['columns'],
+			},
+		},
+	},
+];
