@@ -1,7 +1,16 @@
 <template>
-	<resources-list-layout ref="layout" resource-key="workflows" :resources="allWorkflows" :initialize="initialize"
-		:filters="filters" :additional-filters-handler="onFilter" :show-aside="allWorkflows.length > 0"
-		:shareable="isShareable" @click:add="addWorkflow" @update:filters="filters = $event">
+	<resources-list-layout
+		ref="layout"
+		resource-key="workflows"
+		:resources="allWorkflows"
+		:initialize="initialize"
+		:filters="filters"
+		:additional-filters-handler="onFilter"
+		:show-aside="allWorkflows.length > 0"
+		:shareable="isShareable"
+		@click:add="addWorkflow"
+		@update:filters="filters = $event"
+	>
 		<template #callout v-if="!hasActiveWorkflows && isDemoTest">
 			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-xs">
 				{{ $locale.baseText('workflows.viewDemoNotice') }}
@@ -14,8 +23,13 @@
 			</n8n-callout>
 		</template>
 		<template #default="{ data, updateItemSize }">
-			<workflow-card data-test-id="resources-list-item" class="mb-2xs" :data="data" @expand:tags="updateItemSize(data)"
-				@click:tag="onClickTag" />
+			<workflow-card
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				@expand:tags="updateItemSize(data)"
+				@click:tag="onClickTag"
+			/>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
@@ -34,16 +48,27 @@
 				</n8n-text>
 			</div>
 			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-				<n8n-card :class="[$style.emptyStateCard, 'mr-s']" hoverable @click="addWorkflow"
-					data-test-id="new-workflow-card">
+				<n8n-card
+					:class="[$style.emptyStateCard, 'mr-s']"
+					hoverable
+					@click="addWorkflow"
+					data-test-id="new-workflow-card"
+				>
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
 					</n8n-text>
 				</n8n-card>
-				<n8n-card :class="$style.emptyStateCard" hoverable @click="goToTemplates"
-					data-test-id="new-workflow-template-card">
-					<n8n-icon :class="$style.emptyStateCardIcon" :icon="isDemoTest ? 'graduation-cap' : 'box-open'" />
+				<n8n-card
+					:class="$style.emptyStateCard"
+					hoverable
+					@click="goToTemplates"
+					data-test-id="new-workflow-template-card"
+				>
+					<n8n-icon
+						:class="$style.emptyStateCardIcon"
+						:icon="isDemoTest ? 'graduation-cap' : 'box-open'"
+					/>
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{
 							$locale.baseText(
@@ -56,17 +81,35 @@
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
-				<n8n-input-label :label="$locale.baseText('workflows.filters.tags')" :bold="false" size="small" color="text-base"
-					class="mb-3xs" />
-				<TagsDropdown :placeholder="$locale.baseText('workflowOpen.filterWorkflows')" :currentTagIds="filters.tags"
-					:createEnabled="false" @update="setKeyValue('tags', $event)" />
+				<n8n-input-label
+					:label="$locale.baseText('workflows.filters.tags')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<TagsDropdown
+					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
+					:currentTagIds="filters.tags"
+					:createEnabled="false"
+					@update="setKeyValue('tags', $event)"
+				/>
 			</div>
 			<div class="mb-s">
-				<n8n-input-label :label="$locale.baseText('workflows.filters.status')" :bold="false" size="small"
-					color="text-base" class="mb-3xs" />
+				<n8n-input-label
+					:label="$locale.baseText('workflows.filters.status')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
 				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="medium">
-					<n8n-option v-for="option in statusFilterOptions" :key="option.label" :label="option.label"
-						:value="option.value">
+					<n8n-option
+						v-for="option in statusFilterOptions"
+						:key="option.label"
+						:label="option.label"
+						:value="option.value"
+					>
 					</n8n-option>
 				</n8n-select>
 			</div>
@@ -142,10 +185,7 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
-			return usePostHog().isVariantEnabled(
-				ASSUMPTION_EXPERIMENT.name,
-				ASSUMPTION_EXPERIMENT.demo,
-			);
+			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
