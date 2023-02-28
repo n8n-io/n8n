@@ -235,7 +235,6 @@ export class PostgresTrigger implements INodeType {
 		const db = pgp(config);
 		if (triggerMode === 'createTrigger') {
 			staticData.triggers = await pgTriggerFunction.call(this, db, staticData.triggers);
-			console.log(staticData.triggers);
 		}
 		const channelName =
 			triggerMode === 'createTrigger'

@@ -739,7 +739,6 @@ export async function pgTriggerFunction(
 			target,
 		};
 	}
-	console.log(createdTrigger);
 	try {
 		if (replaceIfExists) {
 			await db.any(
