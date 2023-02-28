@@ -589,7 +589,7 @@ export class GmailV1 implements INodeType {
 						}
 
 						if (format !== 'resolved') {
-							responseData = this.helpers.returnJsonArray(responseData);
+							responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 						}
 					}
 					if (operation === 'delete') {
@@ -821,13 +821,13 @@ export class GmailV1 implements INodeType {
 						}
 
 						if (format !== 'resolved') {
-							responseData = this.helpers.returnJsonArray(responseData);
+							responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 						}
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

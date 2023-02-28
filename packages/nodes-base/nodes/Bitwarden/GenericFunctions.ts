@@ -1,6 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -61,7 +66,7 @@ export async function bitwardenApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -95,7 +100,7 @@ export async function getAccessToken(
 		const { access_token } = await this.helpers.request(options);
 		return access_token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -130,7 +135,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 	const token = await getAccessToken.call(this);
 	const endpoint = `/public/${resource}`;
 
-	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
+	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token as string);
 
 	data.forEach(({ id, name, externalId }: { id: string; name: string; externalId?: string }) => {
 		returnData.push({

@@ -27,7 +27,7 @@ export async function download(this: IExecuteFunctions, index: number) {
 	mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 	const contentDisposition = response.headers['content-disposition'];
 	const fileNameRegex = /(?<=filename=").*\b/;
-	const match = fileNameRegex.exec(contentDisposition);
+	const match = fileNameRegex.exec(contentDisposition as string);
 	let fileName = '';
 
 	// file name was found

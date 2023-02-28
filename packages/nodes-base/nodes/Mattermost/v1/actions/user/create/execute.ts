@@ -35,5 +35,5 @@ export async function create(
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

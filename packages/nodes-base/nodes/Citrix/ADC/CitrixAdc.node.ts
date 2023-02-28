@@ -130,8 +130,8 @@ export class CitrixAdc implements INodeType {
 						const file = systemfile[0];
 
 						const binaryData = await this.helpers.prepareBinaryData(
-							Buffer.from(file.filecontent, 'base64'),
-							file.filename,
+							Buffer.from(file.filecontent as string, 'base64'),
+							file.filename as string,
 						);
 
 						responseData = {

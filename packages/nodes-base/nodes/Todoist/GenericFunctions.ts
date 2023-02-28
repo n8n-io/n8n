@@ -2,7 +2,7 @@ import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
@@ -17,8 +17,7 @@ export async function todoistApiRequest(
 	this: Context,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
@@ -40,7 +39,7 @@ export async function todoistApiRequest(
 		const credentialType = authentication === 'apiKey' ? 'todoistApi' : 'todoistOAuth2Api';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -59,7 +58,7 @@ export async function todoistSyncRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length !== 0) {
+	if (Object.keys(body as IDataObject).length !== 0) {
 		options.body = body;
 	}
 
@@ -67,6 +66,6 @@ export async function todoistSyncRequest(
 		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

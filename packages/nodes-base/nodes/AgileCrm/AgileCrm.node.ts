@@ -191,6 +191,7 @@ export class AgileCrm implements INodeType {
 					}
 
 					if (simple) {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						responseData = simplifyResponse(responseData);
 					}
 				} else if (operation === 'create') {
