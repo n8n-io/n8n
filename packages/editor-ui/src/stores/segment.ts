@@ -16,6 +16,7 @@ const EVENTS = {
 	EXECUTED_MANUAL_TRIGGER: 'User executed manual trigger successfully',
 	EXECUTED_SCHEDULE_TRIGGER: 'User executed schedule trigger successfully',
 	EXECUTED_DATA_NODE_TRIGGER: 'User executed data node successfully',
+	MAPPED_DATA: 'User mapped data',
 };
 
 export const useSegment = defineStore('segment', () => {
@@ -147,5 +148,6 @@ export const useSegment = defineStore('segment', () => {
 		trackAddedNode,
 		trackSuccessfulNodeExecution,
 		trackSuccessfulWorkflowExecution,
+		EVENTS,
 	};
 });

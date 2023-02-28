@@ -329,7 +329,8 @@ export default mixins(showMessage, externalHooks).extend({
 						success: true,
 					});
 
-					useSegment().track('User mapped data');
+					const segment = useSegment();
+					segment.track(segment.EVENTS.MAPPED_DATA);
 				}
 				this.forceShowExpression = false;
 			}, 200);
