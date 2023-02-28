@@ -121,11 +121,11 @@ export const useSegment = defineStore('segment', () => {
 	};
 
 	const isManualTriggerNode = (nodeType: INodeTypeDescription | null) => {
-		return nodeType && nodeType.name === 'n8n-nodes-base.manualTrigger';
+		return nodeType && nodeType.name === MANUAL_TRIGGER_NODE_TYPE;
 	};
 
 	const isScheduleTriggerNode = (nodeType: INodeTypeDescription | null) => {
-		return nodeType && nodeType.name === 'n8n-nodes-base.scheduleTrigger';
+		return nodeType && nodeType.name === SCHEDULE_TRIGGER_NODE_TYPE;
 	};
 
 	const isDataNodeType = (nodeType: INodeTypeDescription | null) => {
