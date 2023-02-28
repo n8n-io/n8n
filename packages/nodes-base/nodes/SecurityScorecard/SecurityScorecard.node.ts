@@ -353,7 +353,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -387,7 +387,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -456,7 +456,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -492,7 +492,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);

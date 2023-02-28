@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -50,7 +50,7 @@ export async function msGraphSecurityApiRequest(
 		const nestedMessage = error?.error?.error?.message;
 
 		if (nestedMessage.startsWith('{"')) {
-			error = JSON.parse(nestedMessage);
+			error = JSON.parse(nestedMessage as string);
 		}
 
 		if (nestedMessage.startsWith('Http request failed with statusCode=BadRequest')) {
@@ -58,16 +58,16 @@ export async function msGraphSecurityApiRequest(
 		} else if (nestedMessage.startsWith('Http request failed with')) {
 			const stringified = nestedMessage.split(': ').pop();
 			if (stringified) {
-				error = JSON.parse(stringified);
+				error = JSON.parse(stringified as string);
 			}
 		}
 
-		if (['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage)) {
+		if (['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage as string)) {
 			error.error.error.message +=
 				' - Please check that your query parameter syntax is correct: https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

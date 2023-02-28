@@ -323,8 +323,8 @@ export class EmailReadImapV1 implements INodeType {
 					.then(async (partData) => {
 						// Return it in the format n8n expects
 						return this.helpers.prepareBinaryData(
-							partData,
-							attachmentPart.disposition.params.filename,
+							partData as Buffer,
+							attachmentPart.disposition.params.filename as string,
 						);
 					});
 
@@ -393,7 +393,7 @@ export class EmailReadImapV1 implements INodeType {
 					}
 					const parsedEmail = await parseRawEmail.call(
 						this,
-						part.body,
+						part.body as Buffer,
 						dataPropertyAttachmentsPrefixName,
 					);
 
@@ -437,7 +437,7 @@ export class EmailReadImapV1 implements INodeType {
 					});
 
 					messageBody = messageHeader[0].body;
-					for (propertyName of Object.keys(messageBody)) {
+					for (propertyName of Object.keys(messageBody as IDataObject)) {
 						if (messageBody[propertyName].length) {
 							if (topLevelProperties.includes(propertyName)) {
 								newEmail.json[propertyName] = messageBody[propertyName][0];
@@ -579,7 +579,7 @@ export class EmailReadImapV1 implements INodeType {
 			return imapConnect(config).then(async (conn) => {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
-					if (['ECONNRESET', 'EPIPE'].includes(errorCode)) {
+					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {
 						Logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, { error });
 						try {
 							connection = await establishConnection();
@@ -591,7 +591,7 @@ export class EmailReadImapV1 implements INodeType {
 						}
 					} else {
 						Logger.error('Email Read Imap node encountered a connection error', { error });
-						this.emitError(error);
+						this.emitError(error as Error);
 					}
 				});
 				return conn;

@@ -34,7 +34,7 @@ export async function serviceNowApiRequest(
 		uri: uri || `https://${credentials.subdomain}.service-now.com/api${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 
@@ -73,7 +73,7 @@ export async function serviceNowRequestAllItems(
 	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
 		resolveWithFullResponse: true,
 	});
-	returnData.push.apply(returnData, responseData.body.result);
+	returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
 
 	const quantity = responseData.headers['x-total-count'];
 	const iterations = Math.round(quantity / page) + (quantity % page ? 1 : 0);
@@ -85,7 +85,7 @@ export async function serviceNowRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 
-		returnData.push.apply(returnData, responseData.body.result);
+		returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
 	}
 
 	return returnData;

@@ -1,6 +1,7 @@
 import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
@@ -39,11 +40,11 @@ export async function apiTemplateIoApiRequest(
 			options,
 		);
 		if (response.status === 'error') {
-			throw new NodeApiError(this.getNode(), response.message);
+			throw new NodeApiError(this.getNode(), response.message as JsonObject);
 		}
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
