@@ -1,4 +1,3 @@
-// eslint-disable-next-line n8n-nodes-base/node-dirname-against-convention
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
