@@ -320,7 +320,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
 					const clonedNode = deepCopy(node);
 					const actions = node.actions || [];
-					// Do not merge core nodes
+
 					const normalizedName = node.name.toLowerCase().replace('trigger', '');
 					const existingNode = acc[normalizedName];
 
