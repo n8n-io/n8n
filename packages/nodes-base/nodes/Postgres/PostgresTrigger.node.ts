@@ -210,7 +210,6 @@ export class PostgresTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('postgres');
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
-		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 		const staticData = this.getWorkflowStaticData('node') as {
 			triggers: IPostgresTrigger;
 		};
@@ -253,9 +252,11 @@ export class PostgresTrigger implements INodeType {
 				console.error('Error:', error);
 			});
 
-		const startConsumer = async () => {};
-
-		await startConsumer();
+		// Manually close the connection whenever the workflow gets manually stopped.
+		const manualTriggerFunction = async () => {
+			await dropTriggerFunction.call(this, db, staticData.triggers);
+			pgp.end();
+		};
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -266,6 +267,7 @@ export class PostgresTrigger implements INodeType {
 
 		return {
 			closeFunction,
+			manualTriggerFunction,
 		};
 	}
 }
