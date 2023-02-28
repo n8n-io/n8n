@@ -32,6 +32,7 @@ import {
 	IAbstractEventMessage,
 	FeatureFlags,
 	ExecutionStatus,
+	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
@@ -66,6 +67,9 @@ declare global {
 			reset?(resetDeviceId?: boolean): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
+		};
+		analytics?: {
+			track(event: string, proeprties?: ITelemetryTrackProperties): void;
 		};
 	}
 }
