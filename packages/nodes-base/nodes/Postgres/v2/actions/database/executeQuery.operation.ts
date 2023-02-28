@@ -3,7 +3,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import type { PgpClient, PgpDatabase, QueryMode, QueryWithValues } from '../../helpers/interfaces';
+import type { PgpClient, PgpDatabase, QueryWithValues } from '../../helpers/interfaces';
 
 import { runQueries } from '../../helpers/utils';
 
@@ -84,7 +84,5 @@ export async function execute(
 		queries.push(queryFormat);
 	}
 
-	const mode = (options.mode as QueryMode) || 'multiple';
-
-	return runQueries.call(this, pgp, db, queries, items, mode);
+	return runQueries.call(this, pgp, db, queries, items, options);
 }

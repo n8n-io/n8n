@@ -202,9 +202,11 @@ export async function runQueries(
 	db: PgpDatabase,
 	queries: QueryWithValues[],
 	items: INodeExecutionData[],
-	mode: QueryMode,
+	options: IDataObject,
 ) {
 	let returnData: INodeExecutionData[] = [];
+
+	const mode = (options.mode as QueryMode) || 'multiple';
 
 	if (mode === 'multiple') {
 		try {
