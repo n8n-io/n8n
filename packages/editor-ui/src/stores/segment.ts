@@ -96,31 +96,6 @@ export const useSegment = defineStore('segment', () => {
 		}
 	};
 
-	const trackSuccessfulNodeExecution = (node: INodeUi) => {
-		if (!node) {
-			return;
-		}
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		trackNodeExecution(nodeType);
-	};
-
-	const trackNodeExecution = (nodeType: INodeTypeDescription | null) => {
-		if (!nodeType) {
-			return;
-		}
-		if (isDataNodeType(nodeType)) {
-			track(EVENTS.EXECUTED_DATA_NODE_TRIGGER, {
-				nodeTypes: [nodeType.name],
-			});
-		}
-		if (isManualTriggerNode(nodeType)) {
-			track(EVENTS.EXECUTED_MANUAL_TRIGGER);
-		}
-		if (isScheduleTriggerNode(nodeType)) {
-			track(EVENTS.EXECUTED_SCHEDULE_TRIGGER);
-		}
-	};
-
 	const isManualTriggerNode = (nodeType: INodeTypeDescription | null): boolean => {
 		return !!nodeType && nodeType.name === MANUAL_TRIGGER_NODE_TYPE;
 	};
@@ -146,7 +121,6 @@ export const useSegment = defineStore('segment', () => {
 		showAppCuesChecklist,
 		track,
 		trackAddedTrigger,
-		trackSuccessfulNodeExecution,
 		trackSuccessfulWorkflowExecution,
 		EVENTS,
 	};

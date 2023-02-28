@@ -339,7 +339,6 @@ export const pushConnection = mixins(
 
 				const workflow = this.getCurrentWorkflow();
 				// This should stop sending multiple telemetry events for nodes when full workflow is being executed
-				let fullWorkflowExecution = true;
 				if (runDataExecuted.waitTill !== undefined) {
 					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
@@ -447,7 +446,6 @@ export const pushConnection = mixins(
 
 					const execution = this.workflowsStore.getWorkflowExecution;
 					if (execution && execution.executedNode) {
-						fullWorkflowExecution = false;
 						const node = this.workflowsStore.getNodeByName(execution.executedNode);
 						const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 						const nodeOutput =
@@ -476,9 +474,6 @@ export const pushConnection = mixins(
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
-						}
-						if (node) {
-							this.segmentStore.trackSuccessfulNodeExecution(node);
 						}
 					} else {
 						this.$showMessage({
@@ -523,7 +518,7 @@ export const pushConnection = mixins(
 					runDataExecutedStartData: runDataExecuted.data.startData,
 					resultDataError: runDataExecuted.data.resultData.error,
 				});
-				if (!runDataExecuted.data.resultData.error && fullWorkflowExecution) {
+				if (!runDataExecuted.data.resultData.error) {
 					this.segmentStore.trackSuccessfulWorkflowExecution(runDataExecuted);
 				}
 			} else if (receivedData.type === 'executionStarted') {
