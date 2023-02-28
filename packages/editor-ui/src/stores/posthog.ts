@@ -21,7 +21,6 @@ export const usePostHog = defineStore('posthog', () => {
 	const segmentStore = useSegment();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
-	const initialized: Ref<boolean> = ref(false);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
 	const reset = () => {
@@ -77,34 +76,28 @@ export const usePostHog = defineStore('posthog', () => {
 			debug: config.debug,
 		};
 
+		window.posthog?.init(config.apiKey, options);
+		identify();
+
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
 			options.bootstrap = {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
-			setTimeout(() => trackExperiments(evaluatedFeatureFlags), 0);
+			trackExperiments(evaluatedFeatureFlags);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
-				debouncedTrackExperiments(map);
+				trackExperiments(map);
 			});
 		}
-
-		window.posthog?.init(config.apiKey, options);
-
-		identify();
-
-		initialized.value = true;
 	};
 
-
-	const trackExperiments = (featureFlags: FeatureFlags) => {
+	const trackExperiments = debounce((featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	};
-
-	const debouncedTrackExperiments = debounce(trackExperiments, 2000);
+	}, 2000);
 
 	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
 		const variant = featureFlags[name];
