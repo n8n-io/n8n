@@ -9,7 +9,7 @@ import type {
 	QueryWithValues,
 	WhereClause,
 } from '../../helpers/interfaces';
-import { parsePostgresError, prepareErrorItem, prepareWhereClauses } from '../../helpers/utils';
+import { parsePostgresError, prepareErrorItem, addWhereClauses } from '../../helpers/utils';
 import {
 	optionsCollection,
 	schemaRLC,
@@ -88,17 +88,17 @@ export async function execute(
 	let returnData: INodeExecutionData[] = [];
 	const options = this.getNodeParameter('options', 0);
 
-	const schema = this.getNodeParameter('schema', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
-	const table = this.getNodeParameter('table', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
+		const schema = this.getNodeParameter('schema', i, undefined, {
+			extractValue: true,
+		}) as string;
+
+		const table = this.getNodeParameter('table', i, undefined, {
+			extractValue: true,
+		}) as string;
+
 		const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
 
 		let query = '';
@@ -121,14 +121,7 @@ export async function execute(
 			const whereClauses =
 				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-			const [whereQuery, whereValues] = prepareWhereClauses(
-				'DELETE FROM $1:name.$2:name',
-				whereClauses,
-				values,
-			);
-
-			query = whereQuery;
-			values = whereValues;
+			[query, values] = addWhereClauses('DELETE FROM $1:name.$2:name', whereClauses, values);
 		}
 
 		if (query === '') {

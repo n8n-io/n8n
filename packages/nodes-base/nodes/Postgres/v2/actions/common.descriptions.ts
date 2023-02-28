@@ -4,7 +4,7 @@ export const optionsCollection: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Field',
+	placeholder: 'Add Option',
 	default: {},
 	options: [
 		{
@@ -174,6 +174,10 @@ export const whereFixedCollection: INodeProperties = {
 							value: '!=',
 						},
 						{
+							name: 'Like',
+							value: 'LIKE',
+						},
+						{
 							name: 'Greater Than',
 							value: '>',
 						},
@@ -193,10 +197,6 @@ export const whereFixedCollection: INodeProperties = {
 							name: 'Is Null',
 							value: 'IS NULL',
 						},
-						{
-							name: 'Like',
-							value: 'LIKE',
-						},
 					],
 					default: 'equal',
 				},
@@ -205,6 +205,35 @@ export const whereFixedCollection: INodeProperties = {
 					name: 'value',
 					type: 'string',
 					default: '',
+					displayOptions: {
+						show: {
+							condition: ['equal', '!='],
+						},
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. Jen%',
+					hint: 'Percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character',
+					displayOptions: {
+						show: {
+							condition: ['LIKE'],
+						},
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'number',
+					default: 0,
+					displayOptions: {
+						show: {
+							condition: ['>', '<', '>=', '<='],
+						},
+					},
 				},
 				{
 					displayName: 'Operator',
@@ -222,6 +251,54 @@ export const whereFixedCollection: INodeProperties = {
 						},
 					],
 					default: 'AND',
+				},
+			],
+		},
+	],
+};
+
+export const sortFixedCollection: INodeProperties = {
+	displayName: 'Sort',
+	name: 'sort',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	placeholder: 'Add Sort Rule',
+	default: {},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					default: '',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['schema.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Direction',
+					name: 'direction',
+					type: 'options',
+					options: [
+						{
+							name: 'ASC',
+							value: 'ASC',
+						},
+						{
+							name: 'DESC',
+							value: 'DESC',
+						},
+					],
+					default: 'ASC',
 				},
 			],
 		},

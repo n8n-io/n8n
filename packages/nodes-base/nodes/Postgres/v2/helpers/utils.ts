@@ -3,7 +3,7 @@ import type { IDataObject, ILoadOptionsFunctions, INodeExecutionData } from 'n8n
 import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-import type { PgpClient, WhereClause } from './interfaces';
+import type { PgpClient, SortRule, WhereClause } from './interfaces';
 
 export function getItemsCopy(
 	items: INodeExecutionData[],
@@ -129,7 +129,7 @@ export function parsePostgresError(this: IExecuteFunctions, error: any, itemInde
 	});
 }
 
-export function prepareWhereClauses(
+export function addWhereClauses(
 	query: string,
 	clauses: WhereClause[],
 	replacements: string[],
@@ -149,14 +149,42 @@ export function prepareWhereClauses(
 		values.push(clause.column);
 		replacementIndex = replacementIndex + 1;
 
-		const valueReplacement = `$${replacementIndex}`;
-		values.push(clause.value);
-		replacementIndex = replacementIndex + 1;
+		let valueReplacement = '';
+		if (clause.condition !== 'IS NULL') {
+			valueReplacement = ` $${replacementIndex}`;
+			values.push(clause.value);
+			replacementIndex = replacementIndex + 1;
+		}
 
 		const operator = index === clauses.length - 1 ? '' : ` ${clause.operator}`;
 
-		whereQuery += ` ${columnReplacement} ${clause.condition} ${valueReplacement}${operator}`;
+		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
 	});
 
 	return [`${query}${whereQuery}`, replacements.concat(...values)];
+}
+
+export function addSortRules(
+	query: string,
+	rules: SortRule[],
+	replacements: string[],
+): [string, string[]] {
+	if (rules.length === 0) return [query, replacements];
+
+	let replacementIndex = replacements.length + 1;
+
+	let orderByQuery = ' ORDER BY';
+	const values: string[] = [];
+
+	rules.forEach((rule, index) => {
+		const columnReplacement = `$${replacementIndex}:name`;
+		values.push(rule.column);
+		replacementIndex = replacementIndex + 1;
+
+		const endWith = index === rules.length - 1 ? '' : ', ';
+
+		orderByQuery += ` ${columnReplacement} ${rule.direction}${endWith}`;
+	});
+
+	return [`${query}${orderByQuery}`, replacements.concat(...values)];
 }
