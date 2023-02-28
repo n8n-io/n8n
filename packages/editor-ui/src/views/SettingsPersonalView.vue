@@ -58,7 +58,7 @@
 								? $locale.baseText('settings.personal.mfa.button.disabled.infobox')
 								: $locale.baseText('settings.personal.mfa.infobox.enabled.infobox')
 						}}
-						<n8n-link :to="MfaDocsUrl" size="small" :bold="true">
+						<n8n-link :to="mfaDocsUrl" size="small" :bold="true">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
@@ -115,6 +115,7 @@ export default mixins(showMessage).extend({
 			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
 			readyToSubmit: false,
+			mfaDocsUrl: MFA_DOCS_URL,
 		};
 	},
 	mounted() {
@@ -172,9 +173,6 @@ export default mixins(showMessage).extend({
 		mfaDisabled(): boolean {
 			return !this.usersStore.mfaEnabled;
 		},
-		MfaDocsUrl(): string {
-			return MFA_DOCS_URL;
-		},
 	},
 	methods: {
 		onInput() {
@@ -214,14 +212,21 @@ export default mixins(showMessage).extend({
 			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
 		},
 		async onMfaDisableClick() {
-			const settingStore = useSettingsStore();
-			await settingStore.disabledMfa();
-			this.$showToast({
-				title: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.title'),
-				message: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.message'),
-				type: 'success',
-				duration: 0,
-			});
+			try {
+				await this.usersStore.disabledMfa();
+				this.$showToast({
+					title: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+					message: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.message'),
+					type: 'success',
+					duration: 0,
+				});
+			} catch (e) {
+				this.$showMessage({
+					title: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.error.message'),
+					type: 'error',
+					duration: 0,
+				});
+			}
 		},
 	},
 });
@@ -265,14 +270,18 @@ export default mixins(showMessage).extend({
 }
 
 .disableMfaButton {
-	--button-color: #f45959;
-	font-weight: var(--font-weight-bold) !important;
+	--button-color: var(--color-danger);
 	margin-top: var(--spacing-2xs);
+	> span {
+		font-weight: var(--font-weight-bold);
+	}
 }
 
 .button {
 	font-size: var(--spacing-xs);
-	font-weight: var(--font-weight-bold) !important;
+	> span {
+		font-weight: var(--font-weight-bold);
+	}
 }
 
 .mfaSection {

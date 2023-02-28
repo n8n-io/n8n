@@ -26,7 +26,7 @@
 						:bold="false"
 						v-if="!showRecoveryCodeForm && !formError"
 						>{{ $locale.baseText('mfa.code.input.info') }}
-						<a @click="OnRecoveryCodeClick">{{
+						<a @click="onRecoveryCodeClick">{{
 							$locale.baseText('mfa.code.input.info.action')
 						}}</a></n8n-text
 					>
@@ -34,7 +34,7 @@
 						>{{ formError }}
 						<a
 							v-if="!showRecoveryCodeForm"
-							@click="OnRecoveryCodeClick"
+							@click="onRecoveryCodeClick"
 							:class="$style.recoveryCodeLink"
 						>
 							{{ $locale.baseText('mfa.recovery.input.info.action') }}</a
@@ -79,8 +79,10 @@ import { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
+
+const TOKEN_INPUT_MAX_LENGTH = 6;
+const RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
 export default mixins(showMessage, genericHelpers).extend({
 	name: 'MfaView',
@@ -99,7 +101,7 @@ export default mixins(showMessage, genericHelpers).extend({
 				properties: {
 					label: this.$locale.baseText('mfa.code.input.label'),
 					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-					maxlength: 6,
+					maxlength: TOKEN_INPUT_MAX_LENGTH,
 					capitalize: true,
 					validateOnBlur: false,
 				},
@@ -119,10 +121,10 @@ export default mixins(showMessage, genericHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore),
 	},
 	methods: {
-		OnRecoveryCodeClick() {
+		onRecoveryCodeClick() {
 			this.formError = '';
 			this.showRecoveryCodeForm = true;
 			this.hasAnyChanges = false;
@@ -133,7 +135,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					properties: {
 						label: this.$locale.baseText('mfa.recovery.input.label'),
 						placeholder: this.$locale.baseText('mfa.recovery.input.placeholder'),
-						maxlength: 36,
+						maxlength: RECOVERY_CODE_INPUT_MAX_LENGTH,
 						capitalize: true,
 						validateOnBlur: false,
 					},
@@ -143,39 +145,41 @@ export default mixins(showMessage, genericHelpers).extend({
 		onBackClick() {
 			if (!this.showRecoveryCodeForm) {
 				this.$router.push({ name: VIEWS.SIGNIN });
-			} else {
-				this.showRecoveryCodeForm = false;
-				this.hasAnyChanges = true;
-				this.formInputs = [
-					{
-						name: 'token',
-						initialValue: '',
-						properties: {
-							label: this.$locale.baseText('mfa.code.input.label'),
-							placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-							maxlength: 6,
-							capitalize: true,
-						},
-					},
-				];
-			}
-		},
-		onInput({ value, name }: { name: string; value: string }) {
-			const isSubmittingMfaToken = name === 'token';
-			const inputValidLength = isSubmittingMfaToken ? 6 : 36;
-
-			if (value.length === inputValidLength) {
-				this.hasAnyChanges = true;
-				this.verifyingMfaToken = true;
-
-				this.onSubmit({ token: value, recoveryCode: value })
-					.catch(() => {})
-					.finally(() => (this.verifyingMfaToken = false));
-
 				return;
 			}
 
-			this.hasAnyChanges = false;
+			this.showRecoveryCodeForm = false;
+			this.hasAnyChanges = true;
+			this.formInputs = [
+				{
+					name: 'token',
+					initialValue: '',
+					properties: {
+						label: this.$locale.baseText('mfa.code.input.label'),
+						placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
+						maxlength: TOKEN_INPUT_MAX_LENGTH,
+						capitalize: true,
+					},
+				},
+			];
+		},
+		onInput({ value, name }: { name: string; value: string }) {
+			const isSubmittingMfaToken = name === 'token';
+			const inputValidLength = isSubmittingMfaToken
+				? TOKEN_INPUT_MAX_LENGTH
+				: RECOVERY_CODE_INPUT_MAX_LENGTH;
+
+			if (value.length !== inputValidLength) {
+				this.hasAnyChanges = false;
+				return;
+			}
+
+			this.verifyingMfaToken = true;
+			this.hasAnyChanges = true;
+
+			this.onSubmit({ token: value, recoveryCode: value })
+				.catch(() => {})
+				.finally(() => (this.verifyingMfaToken = false));
 		},
 		async onSubmit(form: { token: string; recoveryCode: string }) {
 			try {
@@ -267,7 +271,7 @@ body {
 }
 
 .formError input {
-	border-color: #f45959;
+	border-color: var(--color-danger);
 }
 
 .recoveryCodeLink {

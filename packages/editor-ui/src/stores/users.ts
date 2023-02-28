@@ -37,6 +37,7 @@ import { useRootStore } from './n8nRootStore';
 import { usePostHogStore } from './posthog';
 import { useSettingsStore } from './settings';
 import { useUIStore } from './ui';
+import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -65,7 +66,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			return isInstanceOwner(this.currentUser);
 		},
 		mfaEnabled(): boolean {
-			return this.currentUser?.mfaEnabled;
+			return this.currentUser?.mfaEnabled ?? false;
 		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
@@ -302,6 +303,34 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				settingsStore.stopShowingSetupPage();
 				await skipOwnerSetup(rootStore.getRestApiContext);
 			} catch (error) {}
+		},
+		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
+			const rootStore = useRootStore();
+			return await getMfaQR(rootStore.getRestApiContext);
+		},
+		async verifyMfaToken(data: { token: string }): Promise<void> {
+			const rootStore = useRootStore();
+			return await verifyMfaToken(rootStore.getRestApiContext, data);
+		},
+		async enableMfa(data: { token: string }) {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await enableMfa(rootStore.getRestApiContext, data);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = true;
+				usersStore.addUsers([currentUser]);
+			}
+		},
+		async disabledMfa() {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await disableMfa(rootStore.getRestApiContext);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = false;
+				usersStore.addUsers([currentUser]);
+			}
 		},
 	},
 });

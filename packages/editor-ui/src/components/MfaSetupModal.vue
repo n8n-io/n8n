@@ -19,13 +19,20 @@
 					}}</n8n-text>
 				</div>
 				<div>
-					<n8n-text size="medium" :bold="false"
-						>{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle').split('|')[0] }}
-						<a :class="$style.secret" @click="onCopySecretToClipboard">{{
-							$locale.baseText('mfa.setup.step1.instruction1.subtitle').split('|')[1]
-						}}</a>
-						{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle').split('|')[2] }}
-						<span style="display: none" ref="codeSecret">{{ secret }}</span>
+					<n8n-text size="medium" :bold="false">
+						<i18n path="mfa.setup.step1.instruction1.subtitle" tag="span">
+							<template #part1>
+								{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
+							</template>
+							<template #part2>
+								<a :class="$style.secret" @click="onCopySecretToClipboard">{{
+									$locale.baseText('mfa.setup.step1.instruction1.subtitle.part2')
+								}}</a>
+							</template>
+							<template #part3>
+								<span style="display: none" ref="codeSecret">{{ secret }}</span>
+							</template>
+						</i18n>
 					</n8n-text>
 				</div>
 				<div :class="$style.qrContainer">
@@ -69,10 +76,16 @@
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					{{ $locale.baseText('mfa.setup.step2.infobox.description').split('|')[0] }}
-					<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
-						{{ $locale.baseText('mfa.setup.step2.infobox.description').split('|')[1] }}
-					</n8n-text>
+					<i18n path="mfa.setup.step2.infobox.description" tag="span">
+						<template #part1>
+							{{ $locale.baseText('mfa.setup.step2.infobox.description.part1') }}
+						</template>
+						<template #part2>
+							<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
+								{{ $locale.baseText('mfa.setup.step2.infobox.description.part2') }}
+							</n8n-text>
+						</template>
+					</i18n>
 				</n8n-info-tip>
 				<div>
 					<n8n-button
@@ -118,15 +131,16 @@ import Modal from './Modal.vue';
 import { MFA_SETUP_MODAL_KEY } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
-import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 import CopyInput from '@/components/CopyInput.vue';
 import { copyPaste } from '@/mixins/copyPaste';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
+
+const TOKEN_INPUT_MAX_LENGTH = 6;
 
 export default mixins(showMessage, copyPaste).extend({
 	name: 'MfaSetupModal',
@@ -153,21 +167,18 @@ export default mixins(showMessage, copyPaste).extend({
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useUIStore, useSettingsStore),
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
+		...mapStores(useNDVStore, useUIStore, useUsersStore),
 	},
 	methods: {
 		closeDialog(): void {
 			this.modalBus.$emit('close');
 		},
 		onInput(value: string) {
-			if (value.length !== 6) {
+			if (value.length !== TOKEN_INPUT_MAX_LENGTH) {
 				this.infoTextErrorMessage = '';
 				return;
 			}
-			this.settingsStore
+			this.usersStore
 				.verifyMfaToken({ token: value })
 				.then(() => {
 					this.showRecoveryCodes = true;
@@ -187,7 +198,7 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		async onSubmit(form: { authenticatorCode: string }) {
 			try {
-				await this.settingsStore.verifyMfaToken({ token: form.authenticatorCode });
+				await this.usersStore.verifyMfaToken({ token: form.authenticatorCode });
 				this.showRecoveryCodes = true;
 				this.authenticatorCode = form.authenticatorCode;
 			} catch (error) {
@@ -213,29 +224,34 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		async onSetupClick() {
 			try {
-				await this.settingsStore.enableMfa({ token: this.authenticatorCode });
+				await this.usersStore.enableMfa({ token: this.authenticatorCode });
 				this.closeDialog();
 				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.message'),
 				});
-			} catch (e) {}
+			} catch (e) {
+				this.$showMessage({
+					type: 'error',
+					title: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.error.message'),
+				});
+			}
 		},
-		async getMfaQr() {
+		async getMfaQR() {
 			try {
-				const { secret, qrCode, recoveryCodes } = await this.settingsStore.getMfaQr();
+				const { secret, qrCode, recoveryCodes } = await this.usersStore.getMfaQR();
 				this.qrCode = qrCode;
 				this.secret = secret;
 				this.recoveryCodes = recoveryCodes;
-				this.loadingQrCode = false;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+			} finally {
+				this.loadingQrCode = false;
 			}
 		},
-		onCopy() {},
 	},
 	async mounted() {
-		await this.getMfaQr();
+		await this.getMfaQR();
 	},
 });
 </script>
@@ -299,16 +315,16 @@ export default mixins(showMessage, copyPaste).extend({
 }
 
 .loseAccessText {
-	color: #f45959;
+	color: var(--color-danger);
 }
 
 .error {
 	input {
-		border-color: #f45959;
+		border-color: var(--color-danger);
 	}
 }
 .error > div > span {
-	color: #f45959;
+	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
 }
 

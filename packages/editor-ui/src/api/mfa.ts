@@ -1,7 +1,7 @@
 import { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 
-export function getMfaQr(
+export function getMfaQR(
 	context: IRestApiContext,
 ): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 	return makeRestApiRequest(context, 'GET', '/mfa/qr');

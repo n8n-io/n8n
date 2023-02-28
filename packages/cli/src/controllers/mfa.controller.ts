@@ -27,11 +27,6 @@ export class MFAController {
 			);
 
 		if (mfaSecret && mfaRecoveryCodes.length) {
-			const qrCode = this.mfaService.createQrUrlFromSecret({
-				secret: mfaSecret,
-				label: email,
-			});
-
 			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			const decryptedSecret = AES.decrypt(mfaSecret, encryptionKey).toString(enc.Utf8);
@@ -39,6 +34,11 @@ export class MFAController {
 			const decryptedRecoveryCodes = mfaRecoveryCodes.map((code) =>
 				AES.decrypt(code, encryptionKey).toString(enc.Utf8),
 			);
+
+			const qrCode = this.mfaService.createQrUrlFromSecret({
+				secret: decryptedSecret,
+				label: email,
+			});
 
 			return {
 				secret: decryptedSecret,

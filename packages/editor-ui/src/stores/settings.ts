@@ -1,5 +1,4 @@
 import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
-import { disableMfa, enableMfa, getMfaQr, verifyMfaToken } from '@/api/mfa';
 import {
 	getLdapConfig,
 	getLdapSynchronizations,
@@ -273,30 +272,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			const rootStore = useRootStore();
 			const { apiKey } = await createApiKey(rootStore.getRestApiContext);
 			return apiKey;
-		},
-		async getMfaQr(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
-			const rootStore = useRootStore();
-			return await getMfaQr(rootStore.getRestApiContext);
-		},
-		async verifyMfaToken(data: { token: string }): Promise<void> {
-			const rootStore = useRootStore();
-			return await verifyMfaToken(rootStore.getRestApiContext, data);
-		},
-		async enableMfa(data: { token: string }) {
-			const rootStore = useRootStore();
-			const usersStore = useUsersStore();
-			await enableMfa(rootStore.getRestApiContext, data);
-			const currentUser = usersStore.currentUser as IUserResponse;
-			currentUser.mfaEnabled = true;
-			usersStore.addUsers([currentUser]);
-		},
-		async disabledMfa() {
-			const rootStore = useRootStore();
-			const usersStore = useUsersStore();
-			await disableMfa(rootStore.getRestApiContext);
-			const currentUser = usersStore.currentUser as IUserResponse;
-			currentUser.mfaEnabled = false;
-			usersStore.addUsers([currentUser]);
 		},
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
