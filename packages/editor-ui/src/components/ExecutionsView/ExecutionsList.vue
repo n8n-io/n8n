@@ -50,7 +50,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
+import { getNodeViewTab, isEmpty, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -74,7 +74,7 @@ export default mixins(
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: { finished: true, status: 'all' },
+			filter: { status: 'all', startDate: '', endDate: '', tags: [] as string[] },
 		};
 	},
 	computed: {
@@ -106,6 +106,10 @@ export default mixins(
 				rFilter.waitTill = true;
 			} else if (this.filter.status !== 'all') {
 				rFilter.finished = this.filter.status === 'success';
+			}
+
+			if (!isEmpty(this.filter.tags)) {
+				rFilter.tags = this.filter.tags;
 			}
 
 			switch (this.filter.status as ExecutionStatus) {

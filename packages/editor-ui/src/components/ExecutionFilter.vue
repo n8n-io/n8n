@@ -1,13 +1,20 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import dateformat from 'dateformat';
 import { IWorkflowShortResponse } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
+import TagsDropdown from '@/components/TagsDropdown.vue';
+
+const dateTimeMask = 'yyyy-MM-dd HH:mm:ss';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
 	filter: {
 		status: string;
 		workflowId: string;
+		startDate: string;
+		endDate: string;
+		tags: string[];
 	};
 };
 
@@ -20,7 +27,10 @@ const emit = defineEmits<{
 const statusFilterApplied = computed(() => {
 	return (
 		props.filter.status !== 'all' ||
-		(!!props.workflows?.length && props.filter.workflowId !== 'all')
+		(!!props.workflows?.length && props.filter.workflowId !== 'all') ||
+		!!props.filter.tags.length ||
+		!!props.filter.startDate ||
+		!!props.filter.endDate
 	);
 });
 
@@ -32,17 +42,18 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
-const onFilterWorkflowIdChange = (value: string) => {
-	emit('filterChanged', {
-		...props.filter,
-		workflowId: value,
-	});
-};
+const startDate = computed(() =>
+	props.filter.startDate ? dateformat(props.filter.startDate, dateTimeMask) : '',
+);
+const endDate = computed(() =>
+	props.filter.endDate ? dateformat(props.filter.endDate, dateTimeMask) : '',
+);
 
-const onFilterStatusChange = (value: string) => {
+const onFilterPropChange = (prop: keyof ExecutionFilterProps['filter'], value: string) => {
+	console.log('onFilterPropChange', prop, value);
 	emit('filterChanged', {
 		...props.filter,
-		status: value,
+		[prop]: value,
 	});
 };
 
@@ -50,11 +61,14 @@ const onFilterReset = () => {
 	emit('filterChanged', {
 		status: 'all',
 		workflowId: 'all',
+		startDate: '',
+		endDate: '',
+		tags: [],
 	});
 };
 </script>
 <template>
-	<div :class="$style.executionFilter">
+	<div :class="$style.filter">
 		<n8n-popover trigger="click">
 			<template #reference>
 				<n8n-button
@@ -70,14 +84,16 @@ const onFilterReset = () => {
 			</template>
 			<div>
 				<div v-if="workflows?.length">
-					<label for="execution-filter-workflows">Workflows</label>
+					<label for="execution-filter-workflows">{{
+						$locale.baseText('workflows.heading')
+					}}</label>
 					<n8n-select
 						id="execution-filter-workflows"
 						:value="filter.workflowId"
 						:placeholder="$locale.baseText('executionsFilter.selectWorkflow')"
 						size="medium"
 						filterable
-						@change="onFilterWorkflowIdChange"
+						@change="onFilterPropChange('workflowId', $event)"
 					>
 						<div class="ph-no-capture">
 							<n8n-option
@@ -90,13 +106,28 @@ const onFilterReset = () => {
 					</n8n-select>
 				</div>
 				<div>
-					<label for="execution-filter-status">Status</label>
+					<label for="execution-filter-tags">{{
+						$locale.baseText('workflows.filters.tags')
+					}}</label>
+					<TagsDropdown
+						id="execution-filter-tags"
+						:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
+						:currentTagIds="filter.tags"
+						:createEnabled="false"
+						@update="onFilterPropChange('tags', $event)"
+					/>
+				</div>
+				<div>
+					<label for="execution-filter-status">{{
+						$locale.baseText('executionsList.status')
+					}}</label>
 					<n8n-select
+						id="execution-filter-status"
 						:value="filter.status"
 						:placeholder="$locale.baseText('executionsFilter.selectStatus')"
 						size="medium"
 						filterable
-						@change="onFilterStatusChange"
+						@change="onFilterPropChange('status', $event)"
 					>
 						<n8n-option
 							v-for="item in statuses"
@@ -106,9 +137,33 @@ const onFilterReset = () => {
 						/>
 					</n8n-select>
 				</div>
+				<div>
+					<label for="execution-filter-start-date">{{
+						$locale.baseText('executionsFilter.start')
+					}}</label>
+					<div :class="$style.dates">
+						<el-date-picker
+							id="execution-filter-start-date"
+							type="datetime"
+							:format="dateTimeMask"
+							:value="startDate"
+							:placeholder="$locale.baseText('executionsFilter.startDate')"
+							@change="onFilterPropChange('startDate', $event)"
+						/>
+						<span :class="$style.divider">to</span>
+						<el-date-picker
+							id="execution-filter-end-date"
+							type="datetime"
+							:format="dateTimeMask"
+							:value="endDate"
+							:placeholder="$locale.baseText('executionsFilter.endDate')"
+							@change="onFilterPropChange('endDate', $event)"
+						/>
+					</div>
+				</div>
 				<n8n-button
 					v-if="statusFilterApplied"
-					:class="$style.executionResetButton"
+					:class="$style.resetBtn"
 					@click="onFilterReset"
 					size="large"
 					text
@@ -121,8 +176,21 @@ const onFilterReset = () => {
 	</div>
 </template>
 <style lang="scss" module>
-.executionFilter {
+.filter {
 	display: inline-block;
+}
+
+.dates {
+	display: flex;
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	white-space: nowrap;
+	align-items: center;
+}
+
+.divider {
+	padding: 0 var(--spacing-m);
+	line-height: 100%;
 }
 
 label {
@@ -130,8 +198,32 @@ label {
 	margin: var(--spacing-xs) 0 var(--spacing-3xs);
 }
 
-.executionResetButton {
+.resetBtn {
 	padding: 0;
 	margin: var(--spacing-xs) 0 0;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-date-editor) {
+	input {
+		height: 36px;
+		border: 0;
+		padding-right: 0;
+	}
+
+	.el-input__prefix {
+		color: var(--color-foreground-dark);
+	}
+
+	&:last-of-type {
+		input {
+			padding-left: 0;
+		}
+
+		.el-input__prefix {
+			display: none;
+		}
+	}
 }
 </style>

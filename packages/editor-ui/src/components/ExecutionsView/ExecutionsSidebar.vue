@@ -94,6 +94,9 @@ export default Vue.extend({
 			VIEWS,
 			filter: {
 				status: 'all',
+				startDate: '',
+				endDate: '',
+				tags: [] as string[],
 			},
 			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
@@ -149,9 +152,14 @@ export default Vue.extend({
 		onRefresh(): void {
 			this.$emit('refresh');
 		},
-		onFilterChanged(filter: { status: string; workflowId: string }) {
+		onFilterChanged(filter: {
+			status: string;
+			startDate: string;
+			endDate: string;
+			tags: string[];
+		}) {
 			this.filter = filter;
-			this.$emit('filterUpdated', this.prepareFilter());
+			this.$emit('filterUpdated', filter);
 		},
 		reloadExecutions(): void {
 			this.$emit('reloadExecutions');
@@ -168,14 +176,13 @@ export default Vue.extend({
 			}
 		},
 		async resetFilters(): Promise<void> {
-			this.filter.status = 'all';
-			this.$emit('filterUpdated', this.prepareFilter());
-		},
-		prepareFilter(): object {
-			return {
-				finished: this.filter.status !== 'running',
-				status: this.filter.status,
+			this.filter = {
+				status: 'all',
+				startDate: '',
+				endDate: '',
+				tags: [] as string[],
 			};
+			this.$emit('filterUpdated', this.filter);
 		},
 		checkListSize(): void {
 			const sidebarContainer = this.$refs.container as HTMLElement;

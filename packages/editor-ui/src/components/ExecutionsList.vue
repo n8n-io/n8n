@@ -248,7 +248,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { setPageTitle } from '@/utils';
+import { isEmpty, setPageTitle } from '@/utils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -271,6 +271,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				filter: {
 					status: 'all',
 					workflowId: 'all',
+					startDate: '',
+					endDate: '',
+					tags: [] as string[],
 				},
 
 				isDataLoading: false,
@@ -347,6 +350,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				if (this.filter.workflowId !== 'all') {
 					queryFilter.workflowId = this.filter.workflowId;
 				}
+
+				if (!isEmpty(this.filter.tags)) {
+					queryFilter.tags = this.filter.tags;
+				}
+
 				switch (this.filter.status as ExecutionStatus) {
 					case 'waiting':
 						queryFilter.status = ['waiting'];
@@ -493,7 +501,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.checkAll = false;
 				this.handleCheckAllChange();
 			},
-			onFilterChanged(filter: { status: string; workflowId: string }) {
+			onFilterChanged(filter: {
+				status: string;
+				workflowId: string;
+				startDate: string;
+				endDate: string;
+				tags: string[];
+			}) {
+				console.log('onFilterChanged', filter);
 				this.filter = filter;
 				this.refreshData();
 			},
