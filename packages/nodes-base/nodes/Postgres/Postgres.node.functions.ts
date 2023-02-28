@@ -706,19 +706,22 @@ export async function pgTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	triggers: IPostgresTrigger,
-): Promise<IDataObject[] | IPostgresTrigger> {
+): Promise<IPostgresTrigger> {
 	const tableName = this.getNodeParameter('tableName', 0) as INodeParameterResourceLocator;
 	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
 	const target = (schema.value as string) + '.' + (tableName.value as string);
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	let functionName =
-		(additionalFields.functionName as string) || `n8n_trigger_function_${uuid()}()`;
+		(additionalFields.functionName as string) ||
+		`n8n_trigger_function_${uuid().replace(/-/g, '_')}()`;
 	if (!functionName.includes('()')) {
 		functionName = functionName.concat('()');
 	}
-	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${uuid()}`;
-	const channelName = (additionalFields.channelName as string) || `n8n_channel_${uuid()}`;
+	const triggerName =
+		(additionalFields.triggerName as string) || `n8n_trigger_${uuid().replace(/-/g, '_')}`;
+	const channelName =
+		(additionalFields.channelName as string) || `n8n_channel_${uuid().replace(/-/g, '_')}`;
 	const replaceIfExists = additionalFields.replaceIfExists || false;
 	let createdTrigger: IPostgresTrigger;
 	if (!triggers) {
@@ -736,7 +739,7 @@ export async function pgTriggerFunction(
 			target,
 		};
 	}
-	const returnData: IDataObject[] = [];
+	console.log(createdTrigger);
 	try {
 		if (replaceIfExists) {
 			await db.any(
@@ -750,7 +753,7 @@ export async function pgTriggerFunction(
 			);
 		} else {
 			await db.any(
-				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text + TG_OP::text); return null; end; $BODY$;",
+				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
 				[createdTrigger.functionName, createdTrigger.channelName],
 			);
 			await db.any(
@@ -759,16 +762,6 @@ export async function pgTriggerFunction(
 			);
 		}
 	} catch (err) {
-		if (
-			err.message.includes(
-				`function "${createdTrigger.functionName.replace(
-					'()',
-					'',
-				)}" already exists with same argument types`,
-			)
-		) {
-			return returnData;
-		}
 		throw new Error(err);
 	}
 	return createdTrigger;

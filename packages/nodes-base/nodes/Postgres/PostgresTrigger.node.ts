@@ -235,12 +235,12 @@ export class PostgresTrigger implements INodeType {
 
 		const db = pgp(config);
 		if (triggerMode === 'createTrigger') {
-			await pgTriggerFunction.call(this, db, staticData.triggers);
+			staticData.triggers = await pgTriggerFunction.call(this, db, staticData.triggers);
 			console.log(staticData.triggers);
 		}
 		const channelName =
 			triggerMode === 'createTrigger'
-				? additionalFields.channelName || 'n8n_channel'
+				? staticData.triggers.channelName || 'n8n_channel'
 				: (this.getNodeParameter('channelName', 0) as string);
 		db.connect({ direct: true })
 			.then(async (connection) => {
