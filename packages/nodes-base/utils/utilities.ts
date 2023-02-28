@@ -48,7 +48,7 @@ export function chunk(array: any[], size = 1) {
 export function flatten(nestedArray: any[][]) {
 	const result = [];
 
-	(function loop(array: any[]) {
+	(function loop(array: any[] | any) {
 		for (let i = 0; i < array.length; i++) {
 			if (Array.isArray(array[i])) {
 				loop(array[i]);

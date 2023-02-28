@@ -116,7 +116,7 @@ const formatValue = (value: any, format: string): any => {
 		value = toString(value);
 
 		// Parse geoPoints
-		const geoPoint = parseGeoPoint(value);
+		const geoPoint = parseGeoPoint(value as string);
 		if (geoPoint) {
 			return {
 				type: 'Point',
@@ -126,12 +126,13 @@ const formatValue = (value: any, format: string): any => {
 
 		// Check if it's a closed polygon geo-shape: -1.954117 30.085159 0 0;-1.955005 30.084622 0 0;-1.956057 30.08506 0 0;-1.956393 30.086229 0 0;-1.955853 30.087143 0 0;-1.954609 30.08725 0 0;-1.953966 30.086735 0 0;-1.953805 30.085897 0 0;-1.954117 30.085159 0 0
 		const points = value.split(';');
-		if (points.length >= 2 && /^[-\d\.\s;]+$/.test(value)) {
+		if (points.length >= 2 && /^[-\d\.\s;]+$/.test(value as string)) {
 			// Using the GeoJSON format as per https://geojson.org/
-			const coordinates = compact(points.map(parseGeoPoint));
+			const coordinates = compact(points.map(parseGeoPoint) as number[]);
 			// Only return if all values are properly parsed
 			if (coordinates.length === points.length) {
 				// If the shape is closed, declare it as Polygon, otherwise as LineString
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				if (first(points) === last(points)) {
 					return {
 						type: 'Polygon',
@@ -284,8 +285,8 @@ export async function downloadAttachments(
 				}
 
 				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(
-					response.body,
-					fileName,
+					response.body as Buffer,
+					fileName as string,
 				);
 			}
 		}

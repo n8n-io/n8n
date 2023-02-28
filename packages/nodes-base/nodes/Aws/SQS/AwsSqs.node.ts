@@ -8,6 +8,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -255,7 +256,7 @@ export class AwsSqs implements INodeType {
 					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
@@ -385,7 +386,7 @@ export class AwsSqs implements INodeType {
 						`${queuePath}?${params.join('&')}`,
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const result = responseData.SendMessageResponse.SendMessageResult;

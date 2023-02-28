@@ -327,9 +327,9 @@ export class Jira implements INodeType {
 					.find((o: any) => o.id === projectId)
 					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
 
-				for (const key of Object.keys(fields)) {
+				for (const key of Object.keys(fields as IDataObject)) {
 					const field = fields[key];
-					if (field.schema && Object.keys(field.schema).includes('customId')) {
+					if (field.schema && Object.keys(field.schema as IDataObject).includes('customId')) {
 						returnData.push({
 							name: field.name,
 							value: field.key || field.fieldId,
@@ -599,7 +599,7 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issue', 'POST', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -784,7 +784,7 @@ export class Jira implements INodeType {
 						if (
 							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
 							responseData.renderedFields &&
-							Object.keys(responseData.renderedFields).length
+							Object.keys(responseData.renderedFields as IDataObject[]).length
 						) {
 							responseData.fields = mergeWith(
 								responseData.fields,
@@ -793,6 +793,7 @@ export class Jira implements INodeType {
 							);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(simplifyIssueOutput(responseData)),
 							{ itemData: { item: i } },
 						);
@@ -800,7 +801,7 @@ export class Jira implements INodeType {
 						returnData.push(...executionData);
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -848,7 +849,7 @@ export class Jira implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -880,7 +881,7 @@ export class Jira implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -985,7 +986,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1016,7 +1017,7 @@ export class Jira implements INodeType {
 					responseData = responseData.transitions;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1094,7 +1095,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1135,7 +1136,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1158,7 +1159,7 @@ export class Jira implements INodeType {
 
 						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
 							await this.helpers.prepareBinaryData(
-								buffer,
+								buffer as Buffer,
 								attachment.json.filename as string,
 								attachment.json.mimeType as string,
 							);
@@ -1187,7 +1188,7 @@ export class Jira implements INodeType {
 					responseData = responseData.map((data: IDataObject) => ({ json: data }));
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1208,7 +1209,7 @@ export class Jira implements INodeType {
 						);
 						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
 							await this.helpers.prepareBinaryData(
-								buffer,
+								buffer as Buffer,
 								attachment.json.filename as string,
 								attachment.json.mimeType as string,
 							);
@@ -1277,7 +1278,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1300,7 +1301,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1338,7 +1339,7 @@ export class Jira implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1422,7 +1423,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1456,7 +1457,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1501,7 +1502,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
