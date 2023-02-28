@@ -7,6 +7,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -61,548 +62,546 @@ const shuffleArray = (array: any[]) => {
 
 import * as summarize from './summarize.operation';
 
-export class ItemLists implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Item Lists',
-		name: 'itemLists',
-		icon: 'file:itemLists.svg',
-		group: ['input'],
-		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Helper for working with lists of items and transforming arrays',
-		defaults: {
-			name: 'Item Lists',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [],
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'hidden',
-				options: [
-					{
-						name: 'Item List',
-						value: 'itemList',
-					},
-				],
-				default: 'itemList',
+export class ItemListsV2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			version: 2,
+			defaults: {
+				name: 'Item Lists',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Concatenate Items',
-						value: 'aggregateItems',
-						description: 'Combine fields into a list in a single new item',
-						action: 'Combine fields into a list in a single new item',
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'hidden',
+					options: [
+						{
+							name: 'Item List',
+							value: 'itemList',
+						},
+					],
+					default: 'itemList',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Concatenate Items',
+							value: 'aggregateItems',
+							description: 'Combine fields into a list in a single new item',
+							action: 'Combine fields into a list in a single new item',
+						},
+						{
+							name: 'Limit',
+							value: 'limit',
+							description: 'Remove items if there are too many',
+							action: 'Remove items if there are too many',
+						},
+						{
+							name: 'Remove Duplicates',
+							value: 'removeDuplicates',
+							description: 'Remove extra items that are similar',
+							action: 'Remove extra items that are similar',
+						},
+						{
+							name: 'Sort',
+							value: 'sort',
+							description: 'Change the item order',
+							action: 'Change the item order',
+						},
+						{
+							name: 'Split Out Items',
+							value: 'splitOutItems',
+							description: 'Turn a list inside item(s) into separate items',
+							action: 'Turn a list inside item(s) into separate items',
+						},
+						{
+							name: 'Summarize',
+							value: 'summarize',
+							description: 'Aggregate items together (pivot table)',
+							action: 'Aggregate items together (pivot table)',
+						},
+					],
+					default: 'splitOutItems',
+				},
+				// Split out items - Fields
+				{
+					displayName: 'Field To Split Out',
+					name: 'fieldToSplitOut',
+					type: 'string',
+					default: '',
+					required: true,
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['splitOutItems'],
+						},
 					},
-					{
-						name: 'Limit',
-						value: 'limit',
-						description: 'Remove items if there are too many',
-						action: 'Remove items if there are too many',
-					},
-					{
-						name: 'Remove Duplicates',
-						value: 'removeDuplicates',
-						description: 'Remove extra items that are similar',
-						action: 'Remove extra items that are similar',
-					},
-					{
-						name: 'Sort',
-						value: 'sort',
-						description: 'Change the item order',
-						action: 'Change the item order',
-					},
-					{
-						name: 'Split Out Items',
-						value: 'splitOutItems',
-						description: 'Turn a list inside item(s) into separate items',
-						action: 'Turn a list inside item(s) into separate items',
-					},
-					{
-						name: 'Summarize',
-						value: 'summarize',
-						description: 'Aggregate items together (pivot table)',
-						action: 'Aggregate items together (pivot table)',
-					},
-				],
-				default: 'splitOutItems',
-			},
-			// Split out items - Fields
-			{
-				displayName: 'Field To Split Out',
-				name: 'fieldToSplitOut',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['splitOutItems'],
+					description: 'The name of the input field to break out into separate items',
+					requiresDataPath: 'single',
+				},
+				{
+					displayName: 'Include',
+					name: 'include',
+					type: 'options',
+					options: [
+						{
+							name: 'No Other Fields',
+							value: 'noOtherFields',
+						},
+						{
+							name: 'All Other Fields',
+							value: 'allOtherFields',
+						},
+						{
+							name: 'Selected Other Fields',
+							value: 'selectedOtherFields',
+						},
+					],
+					default: 'noOtherFields',
+					description: 'Whether to copy any other fields into the new items',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['splitOutItems'],
+						},
 					},
 				},
-				description: 'The name of the input field to break out into separate items',
-				requiresDataPath: 'single',
-			},
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'No Other Fields',
-						value: 'noOtherFields',
+				{
+					displayName: 'Fields To Include',
+					name: 'fieldsToInclude',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
 					},
-					{
-						name: 'All Other Fields',
-						value: 'allOtherFields',
+					placeholder: 'Add Field To Include',
+					default: {},
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['splitOutItems'],
+							include: ['selectedOtherFields'],
+						},
 					},
-					{
-						name: 'Selected Other Fields',
-						value: 'selectedOtherFields',
-					},
-				],
-				default: 'noOtherFields',
-				description: 'Whether to copy any other fields into the new items',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['splitOutItems'],
-					},
-				},
-			},
-			{
-				displayName: 'Fields To Include',
-				name: 'fieldsToInclude',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Include',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['splitOutItems'],
-						include: ['selectedOtherFields'],
-					},
-				},
-				options: [
-					{
-						displayName: '',
-						name: 'fields',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								description: 'A field in the input items to aggregate together',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-						],
-					},
-				],
-			},
-			// Aggregate Items
-			{
-				displayName: 'Aggregate',
-				name: 'aggregate',
-				type: 'options',
-				default: 'aggregateIndividualFields',
-				options: [
-					{
-						name: 'Individual Fields',
-						value: 'aggregateIndividualFields',
-					},
-					{
-						name: 'All Item Data (Into a Single List)',
-						value: 'aggregateAllItemData',
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['aggregateItems'],
-					},
-				},
-			},
-			// Aggregate Individual Fields
-			{
-				displayName: 'Fields To Aggregate',
-				name: 'fieldsToAggregate',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Aggregate',
-				default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['aggregateItems'],
-						aggregate: ['aggregateIndividualFields'],
-					},
-				},
-				options: [
-					{
-						displayName: '',
-						name: 'fieldToAggregate',
-						values: [
-							{
-								displayName: 'Input Field Name',
-								name: 'fieldToAggregate',
-								type: 'string',
-								default: '',
-								description: 'The name of a field in the input items to aggregate together',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-							{
-								displayName: 'Rename Field',
-								name: 'renameField',
-								type: 'boolean',
-								default: false,
-								description: 'Whether to give the field a different name in the output',
-							},
-							{
-								displayName: 'Output Field Name',
-								name: 'outputFieldName',
-								displayOptions: {
-									show: {
-										renameField: [true],
-									},
+					options: [
+						{
+							displayName: '',
+							name: 'fields',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									type: 'string',
+									default: '',
+									description: 'A field in the input items to aggregate together',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
 								},
-								type: 'string',
-								default: '',
-								description:
-									'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
-								requiresDataPath: 'single',
-							},
-						],
-					},
-				],
-			},
-			// Aggregate All Item Data
-			{
-				displayName: 'Put Output in Field',
-				name: 'destinationFieldName',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['aggregateItems'],
-						aggregate: ['aggregateAllItemData'],
+							],
+						},
+					],
+				},
+				// Aggregate Items
+				{
+					displayName: 'Aggregate',
+					name: 'aggregate',
+					type: 'options',
+					default: 'aggregateIndividualFields',
+					options: [
+						{
+							name: 'Individual Fields',
+							value: 'aggregateIndividualFields',
+						},
+						{
+							name: 'All Item Data (Into a Single List)',
+							value: 'aggregateAllItemData',
+						},
+					],
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['aggregateItems'],
+						},
 					},
 				},
-				default: 'data',
-				description: 'The name of the output field to put the data in',
-			},
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				default: 'allFields',
-				options: [
-					{
-						name: 'All Fields',
-						value: 'allFields',
+				// Aggregate Individual Fields
+				{
+					displayName: 'Fields To Aggregate',
+					name: 'fieldsToAggregate',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
 					},
-					{
-						name: 'Specified Fields',
-						value: 'specifiedFields',
+					placeholder: 'Add Field To Aggregate',
+					default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['aggregateItems'],
+							aggregate: ['aggregateIndividualFields'],
+						},
 					},
-					{
-						name: 'All Fields Except',
-						value: 'allFieldsExcept',
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['aggregateItems'],
-						aggregate: ['aggregateAllItemData'],
-					},
-				},
-			},
-			{
-				displayName: 'Fields To Exclude',
-				name: 'fieldsToExclude',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Exclude',
-				default: {},
-				options: [
-					{
-						displayName: '',
-						name: 'fields',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								description: 'A field in the input to exclude from the object in output array',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-						],
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['aggregateItems'],
-						aggregate: ['aggregateAllItemData'],
-						include: ['allFieldsExcept'],
-					},
-				},
-			},
-			{
-				displayName: 'Fields To Include',
-				name: 'fieldsToInclude',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Include',
-				default: {},
-				options: [
-					{
-						displayName: '',
-						name: 'fields',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								description: 'Specify fields that will be included in output array',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-						],
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['aggregateItems'],
-						aggregate: ['aggregateAllItemData'],
-						include: ['specifiedFields'],
-					},
-				},
-			},
-			// Remove duplicates - Fields
-			{
-				displayName: 'Compare',
-				name: 'compare',
-				type: 'options',
-				options: [
-					{
-						name: 'All Fields',
-						value: 'allFields',
-					},
-					{
-						name: 'All Fields Except',
-						value: 'allFieldsExcept',
-					},
-					{
-						name: 'Selected Fields',
-						value: 'selectedFields',
-					},
-				],
-				default: 'allFields',
-				description: 'The fields of the input items to compare to see if they are the same',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['removeDuplicates'],
-					},
-				},
-			},
-			{
-				displayName: 'Fields To Exclude',
-				name: 'fieldsToExclude',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Exclude',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['removeDuplicates'],
-						compare: ['allFieldsExcept'],
-					},
-				},
-				options: [
-					{
-						displayName: '',
-						name: 'fields',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								description: 'A field in the input to exclude from the comparison',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Fields To Compare',
-				name: 'fieldsToCompare',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Compare',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['removeDuplicates'],
-						compare: ['selectedFields'],
-					},
-				},
-				options: [
-					{
-						displayName: '',
-						name: 'fields',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								description: 'A field in the input to add to the comparison',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-						],
-					},
-				],
-			},
-			// Sort - Fields
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Simple',
-						value: 'simple',
-					},
-					{
-						name: 'Random',
-						value: 'random',
-					},
-					{
-						name: 'Code',
-						value: 'code',
-					},
-				],
-				default: 'simple',
-				description: 'The fields of the input items to compare to see if they are the same',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['sort'],
-					},
-				},
-			},
-			{
-				displayName: 'Fields To Sort By',
-				name: 'sortFieldsUi',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Field To Sort By',
-				options: [
-					{
-						displayName: '',
-						name: 'sortField',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								required: true,
-								default: '',
-								description: 'The field to sort by',
-								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-								placeholder: 'e.g. id',
-								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
-							},
-							{
-								displayName: 'Order',
-								name: 'order',
-								type: 'options',
-								options: [
-									{
-										name: 'Ascending',
-										value: 'ascending',
+					options: [
+						{
+							displayName: '',
+							name: 'fieldToAggregate',
+							values: [
+								{
+									displayName: 'Input Field Name',
+									name: 'fieldToAggregate',
+									type: 'string',
+									default: '',
+									description: 'The name of a field in the input items to aggregate together',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+								{
+									displayName: 'Rename Field',
+									name: 'renameField',
+									type: 'boolean',
+									default: false,
+									description: 'Whether to give the field a different name in the output',
+								},
+								{
+									displayName: 'Output Field Name',
+									name: 'outputFieldName',
+									displayOptions: {
+										show: {
+											renameField: [true],
+										},
 									},
-									{
-										name: 'Descending',
-										value: 'descending',
-									},
-								],
-								default: 'ascending',
-								description: 'The order to sort by',
-							},
-						],
+									type: 'string',
+									default: '',
+									description:
+										'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
+									requiresDataPath: 'single',
+								},
+							],
+						},
+					],
+				},
+				// Aggregate All Item Data
+				{
+					displayName: 'Put Output in Field',
+					name: 'destinationFieldName',
+					type: 'string',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['aggregateItems'],
+							aggregate: ['aggregateAllItemData'],
+						},
 					},
-				],
-				default: {},
-				description: 'The fields of the input items to compare to see if they are the same',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['sort'],
-						type: ['simple'],
+					default: 'data',
+					description: 'The name of the output field to put the data in',
+				},
+				{
+					displayName: 'Include',
+					name: 'include',
+					type: 'options',
+					default: 'allFields',
+					options: [
+						{
+							name: 'All Fields',
+							value: 'allFields',
+						},
+						{
+							name: 'Specified Fields',
+							value: 'specifiedFields',
+						},
+						{
+							name: 'All Fields Except',
+							value: 'allFieldsExcept',
+						},
+					],
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['aggregateItems'],
+							aggregate: ['aggregateAllItemData'],
+						},
 					},
 				},
-			},
-			{
-				displayName: 'Code',
-				name: 'code',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-					editor: 'code',
-					rows: 10,
+				{
+					displayName: 'Fields To Exclude',
+					name: 'fieldsToExclude',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Field To Exclude',
+					default: {},
+					options: [
+						{
+							displayName: '',
+							name: 'fields',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									type: 'string',
+									default: '',
+									description: 'A field in the input to exclude from the object in output array',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+							],
+						},
+					],
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['aggregateItems'],
+							aggregate: ['aggregateAllItemData'],
+							include: ['allFieldsExcept'],
+						},
+					},
 				},
-				default: `// The two items to compare are in the variables a and b
+				{
+					displayName: 'Fields To Include',
+					name: 'fieldsToInclude',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Field To Include',
+					default: {},
+					options: [
+						{
+							displayName: '',
+							name: 'fields',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									type: 'string',
+									default: '',
+									description: 'Specify fields that will be included in output array',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+							],
+						},
+					],
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['aggregateItems'],
+							aggregate: ['aggregateAllItemData'],
+							include: ['specifiedFields'],
+						},
+					},
+				},
+				// Remove duplicates - Fields
+				{
+					displayName: 'Compare',
+					name: 'compare',
+					type: 'options',
+					options: [
+						{
+							name: 'All Fields',
+							value: 'allFields',
+						},
+						{
+							name: 'All Fields Except',
+							value: 'allFieldsExcept',
+						},
+						{
+							name: 'Selected Fields',
+							value: 'selectedFields',
+						},
+					],
+					default: 'allFields',
+					description: 'The fields of the input items to compare to see if they are the same',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['removeDuplicates'],
+						},
+					},
+				},
+				{
+					displayName: 'Fields To Exclude',
+					name: 'fieldsToExclude',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Field To Exclude',
+					default: {},
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['removeDuplicates'],
+							compare: ['allFieldsExcept'],
+						},
+					},
+					options: [
+						{
+							displayName: '',
+							name: 'fields',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									type: 'string',
+									default: '',
+									description: 'A field in the input to exclude from the comparison',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+							],
+						},
+					],
+				},
+				{
+					displayName: 'Fields To Compare',
+					name: 'fieldsToCompare',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Field To Compare',
+					default: {},
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['removeDuplicates'],
+							compare: ['selectedFields'],
+						},
+					},
+					options: [
+						{
+							displayName: '',
+							name: 'fields',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									type: 'string',
+									default: '',
+									description: 'A field in the input to add to the comparison',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+							],
+						},
+					],
+				},
+				// Sort - Fields
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{
+							name: 'Simple',
+							value: 'simple',
+						},
+						{
+							name: 'Random',
+							value: 'random',
+						},
+						{
+							name: 'Code',
+							value: 'code',
+						},
+					],
+					default: 'simple',
+					description: 'The fields of the input items to compare to see if they are the same',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['sort'],
+						},
+					},
+				},
+				{
+					displayName: 'Fields To Sort By',
+					name: 'sortFieldsUi',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+					},
+					placeholder: 'Add Field To Sort By',
+					options: [
+						{
+							displayName: '',
+							name: 'sortField',
+							values: [
+								{
+									displayName: 'Field Name',
+									name: 'fieldName',
+									type: 'string',
+									required: true,
+									default: '',
+									description: 'The field to sort by',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+								{
+									displayName: 'Order',
+									name: 'order',
+									type: 'options',
+									options: [
+										{
+											name: 'Ascending',
+											value: 'ascending',
+										},
+										{
+											name: 'Descending',
+											value: 'descending',
+										},
+									],
+									default: 'ascending',
+									description: 'The order to sort by',
+								},
+							],
+						},
+					],
+					default: {},
+					description: 'The fields of the input items to compare to see if they are the same',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['sort'],
+							type: ['simple'],
+						},
+					},
+				},
+				{
+					displayName: 'Code',
+					name: 'code',
+					type: 'string',
+					typeOptions: {
+						alwaysOpenEditWindow: true,
+						editor: 'code',
+						rows: 10,
+					},
+					default: `// The two items to compare are in the variables a and b
 // Access the fields in a.json and b.json
 // Return -1 if a should go before b
 // Return 1 if b should go before a
@@ -617,184 +616,185 @@ if (a.json[fieldName] > b.json[fieldName]) {
 		return 1;
 }
 return 0;`,
-				description: 'Javascript code to determine the order of any two items',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['sort'],
-						type: ['code'],
-					},
-				},
-			},
-			// Limit - Fields
-			{
-				displayName: 'Max Items',
-				name: 'maxItems',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				default: 1,
-				description: 'If there are more items than this number, some are removed',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['limit'],
-					},
-				},
-			},
-			{
-				displayName: 'Keep',
-				name: 'keep',
-				type: 'options',
-				options: [
-					{
-						name: 'First Items',
-						value: 'firstItems',
-					},
-					{
-						name: 'Last Items',
-						value: 'lastItems',
-					},
-				],
-				default: 'firstItems',
-				description: 'When removing items, whether to keep the ones at the start or the ending',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['limit'],
-					},
-				},
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['removeDuplicates'],
-						compare: ['allFieldsExcept', 'selectedFields'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Remove Other Fields',
-						name: 'removeOtherFields',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
-					},
-					{
-						displayName: 'Disable Dot Notation',
-						name: 'disableDotNotation',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to disallow referencing child fields using `parent.child` in the field name',
-					},
-				],
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['sort'],
-						type: ['simple'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Disable Dot Notation',
-						name: 'disableDotNotation',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to disallow referencing child fields using `parent.child` in the field name',
-					},
-				],
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-						operation: ['splitOutItems', 'aggregateItems'],
-					},
-					hide: {
-						aggregate: ['aggregateAllItemData'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Disable Dot Notation',
-						name: 'disableDotNotation',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': ['splitOutItems', 'aggregateItems'],
-							},
+					description: 'Javascript code to determine the order of any two items',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['sort'],
+							type: ['code'],
 						},
-						default: false,
-						description:
-							'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
-					{
-						displayName: 'Destination Field Name',
-						name: 'destinationFieldName',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': ['splitOutItems'],
-							},
+				},
+				// Limit - Fields
+				{
+					displayName: 'Max Items',
+					name: 'maxItems',
+					type: 'number',
+					typeOptions: {
+						minValue: 1,
+					},
+					default: 1,
+					description: 'If there are more items than this number, some are removed',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['limit'],
 						},
-						default: '',
-						description: 'The field in the output under which to put the split field contents',
 					},
-					{
-						displayName: 'Merge Lists',
-						name: 'mergeLists',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': ['aggregateItems'],
-							},
+				},
+				{
+					displayName: 'Keep',
+					name: 'keep',
+					type: 'options',
+					options: [
+						{
+							name: 'First Items',
+							value: 'firstItems',
 						},
-						default: false,
-						description:
-							'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
-					},
-					{
-						displayName: 'Keep Missing And Null Values',
-						name: 'keepMissing',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': ['aggregateItems'],
-							},
+						{
+							name: 'Last Items',
+							value: 'lastItems',
 						},
-						default: false,
-						description:
-							'Whether to add a null entry to the aggregated list when there is a missing or null value',
+					],
+					default: 'firstItems',
+					description: 'When removing items, whether to keep the ones at the start or the ending',
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['limit'],
+						},
 					},
-				],
-			},
-			// Remove duplicates - Fields
-			...summarize.description,
-		],
-	};
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Field',
+					default: {},
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['removeDuplicates'],
+							compare: ['allFieldsExcept', 'selectedFields'],
+						},
+					},
+					options: [
+						{
+							displayName: 'Remove Other Fields',
+							name: 'removeOtherFields',
+							type: 'boolean',
+							default: false,
+							description:
+								'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
+						},
+						{
+							displayName: 'Disable Dot Notation',
+							name: 'disableDotNotation',
+							type: 'boolean',
+							default: false,
+							description:
+								'Whether to disallow referencing child fields using `parent.child` in the field name',
+						},
+					],
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Field',
+					default: {},
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['sort'],
+							type: ['simple'],
+						},
+					},
+					options: [
+						{
+							displayName: 'Disable Dot Notation',
+							name: 'disableDotNotation',
+							type: 'boolean',
+							default: false,
+							description:
+								'Whether to disallow referencing child fields using `parent.child` in the field name',
+						},
+					],
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Field',
+					default: {},
+					displayOptions: {
+						show: {
+							resource: ['itemList'],
+							operation: ['splitOutItems', 'aggregateItems'],
+						},
+						hide: {
+							aggregate: ['aggregateAllItemData'],
+						},
+					},
+					options: [
+						{
+							displayName: 'Disable Dot Notation',
+							name: 'disableDotNotation',
+							type: 'boolean',
+							displayOptions: {
+								show: {
+									'/operation': ['splitOutItems', 'aggregateItems'],
+								},
+							},
+							default: false,
+							description:
+								'Whether to disallow referencing child fields using `parent.child` in the field name',
+						},
+						{
+							displayName: 'Destination Field Name',
+							name: 'destinationFieldName',
+							type: 'string',
+							displayOptions: {
+								show: {
+									'/operation': ['splitOutItems'],
+								},
+							},
+							default: '',
+							description: 'The field in the output under which to put the split field contents',
+						},
+						{
+							displayName: 'Merge Lists',
+							name: 'mergeLists',
+							type: 'boolean',
+							displayOptions: {
+								show: {
+									'/operation': ['aggregateItems'],
+								},
+							},
+							default: false,
+							description:
+								'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
+						},
+						{
+							displayName: 'Keep Missing And Null Values',
+							name: 'keepMissing',
+							type: 'boolean',
+							displayOptions: {
+								show: {
+									'/operation': ['aggregateItems'],
+								},
+							},
+							default: false,
+							description:
+								'Whether to add a null entry to the aggregated list when there is a missing or null value',
+						},
+					],
+				},
+				// Remove duplicates - Fields
+				...summarize.description,
+			],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
