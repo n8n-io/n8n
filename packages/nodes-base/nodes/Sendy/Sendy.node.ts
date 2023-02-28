@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -141,10 +142,10 @@ export class Sendy implements INodeType {
 
 					const success = ['Campaign created', 'Campaign created and now sending'];
 
-					if (success.includes(responseData)) {
+					if (success.includes(responseData as string)) {
 						responseData = { message: responseData };
 					} else {
-						throw new NodeApiError(this.getNode(), responseData, { httpCode: '400' });
+						throw new NodeApiError(this.getNode(), responseData as JsonObject, { httpCode: '400' });
 					}
 				}
 			}
@@ -199,7 +200,7 @@ export class Sendy implements INodeType {
 						'List does not exist',
 					];
 
-					if (!errors.includes(responseData)) {
+					if (!errors.includes(responseData as string)) {
 						responseData = { count: responseData };
 					} else {
 						throw new NodeOperationError(
@@ -287,7 +288,7 @@ export class Sendy implements INodeType {
 						'Complained',
 					];
 
-					if (status.includes(responseData)) {
+					if (status.includes(responseData as string)) {
 						responseData = { status: responseData };
 					} else {
 						throw new NodeOperationError(

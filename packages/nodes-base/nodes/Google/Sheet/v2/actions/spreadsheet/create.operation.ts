@@ -146,7 +146,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
 		const response = await apiRequest.call(this, 'POST', '/v4/spreadsheets', body);
-		returnData.push(response);
+		returnData.push(response as IDataObject);
 	}
 
 	return this.helpers.returnJsonArray(returnData);

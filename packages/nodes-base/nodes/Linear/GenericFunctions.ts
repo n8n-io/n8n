@@ -59,7 +59,7 @@ export async function linearApiRequestAllItems(
 
 	do {
 		responseData = await linearApiRequest.call(this, body);
-		returnData.push.apply(returnData, get(responseData, `${propertyName}.nodes`));
+		returnData.push.apply(returnData, get(responseData, `${propertyName}.nodes`) as IDataObject[]);
 		body.variables.after = get(responseData, `${propertyName}.pageInfo.endCursor`);
 	} while (get(responseData, `${propertyName}.pageInfo.hasNextPage`));
 	return returnData;

@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 interface IContact {
@@ -43,14 +43,14 @@ export async function egoiApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -80,7 +80,7 @@ export async function egoiApiRequestAllItems(
 
 	do {
 		responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 
