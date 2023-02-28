@@ -126,7 +126,7 @@ export class MeController {
 				userId: req.user?.id,
 			});
 			throw new BadRequestError(
-				'With SAML enabled, the users must use the SAML provider to change their password',
+				'With SAML enabled, users need to use their SAML provider to change passwords',
 			);
 		}
 
