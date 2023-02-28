@@ -268,7 +268,7 @@ import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
-import { useSegement } from '@/stores/segment';
+import { useSegment } from '@/stores/segment';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
@@ -1926,7 +1926,7 @@ export default mixins(
 				});
 			} else {
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-				useSegement().trackAddedNode(nodeTypeName);
+				useSegment().trackAddedNode(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
 					is_auto_add: isAutoAdd,
