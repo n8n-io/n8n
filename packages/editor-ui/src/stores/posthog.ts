@@ -133,7 +133,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'manual' });
 		}
 		if (hasScheduleTrigger) {
-			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'manual' });
+			runExternalHook('nodeView.userExecutedTriggerNode', webhookstore, { type: 'schedule' });
 		}
 	};
 
