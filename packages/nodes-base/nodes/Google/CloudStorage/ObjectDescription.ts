@@ -160,7 +160,7 @@ export const objectOperations: INodeProperties[] = [
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exist on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 											{ itemIndex: this.getItemIndex() },
 										);
 									}

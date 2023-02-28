@@ -22,7 +22,6 @@ import { access as fsAccess, mkdir, readdir as fsReaddir, stat as fsStat } from 
 import path from 'path';
 import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { executeCommand } from '@/CommunityNodes/helpers';
 import {
 	CLI_DIR,
@@ -32,13 +31,11 @@ import {
 	CUSTOM_API_CALL_NAME,
 	inTest,
 } from '@/constants';
-import {
-	persistInstalledPackageData,
-	removePackageFromDatabase,
-} from '@/CommunityNodes/packageModel';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { Service } from 'typedi';
 
-export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
+@Service()
+export class LoadNodesAndCredentials implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -198,23 +195,14 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		const { loadedNodes, packageJson } = await this.runDirectoryLoader(
-			PackageDirectoryLoader,
-			finalNodeUnpackedPath,
-		);
+		const loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 
-		if (loadedNodes.length > 0) {
+		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				const installedPackage = await persistInstalledPackageData(
-					packageJson.name,
-					packageJson.version,
-					loadedNodes,
-					this.loaded.nodes,
-					packageJson.author?.name,
-					packageJson.author?.email,
-				);
-				this.attachNodesToNodeTypes(installedPackage.installedNodes);
+				const { persistInstalledPackageData } = await import('@/CommunityNodes/packageModel');
+				const installedPackage = await persistInstalledPackageData(loader);
+				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
 				return installedPackage;
 			} catch (error) {
@@ -240,11 +228,16 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 		await executeCommand(command);
 
+		const { removePackageFromDatabase } = await import('@/CommunityNodes/packageModel');
 		await removePackageFromDatabase(installedPackage);
 
-		await this.generateTypesForFrontend();
+		if (packageName in this.loaders) {
+			this.loaders[packageName].reset();
+			delete this.loaders[packageName];
+		}
 
-		this.unloadNodes(installedPackage.installedNodes);
+		await this.postProcessLoaders();
+		await this.generateTypesForFrontend();
 	}
 
 	async updateNpmModule(
@@ -264,33 +257,20 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 			throw error;
 		}
 
-		this.unloadNodes(installedPackage.installedNodes);
-
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		const { loadedNodes, packageJson } = await this.runDirectoryLoader(
-			PackageDirectoryLoader,
-			finalNodeUnpackedPath,
-		);
+		const loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 
-		if (loadedNodes.length > 0) {
+		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				await removePackageFromDatabase(installedPackage);
-
-				const newlyInstalledPackage = await persistInstalledPackageData(
-					packageJson.name,
-					packageJson.version,
-					loadedNodes,
-					this.loaded.nodes,
-					packageJson.author?.name,
-					packageJson.author?.email,
+				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
+					'@/CommunityNodes/packageModel'
 				);
-
-				this.attachNodesToNodeTypes(newlyInstalledPackage.installedNodes);
-
+				await removePackageFromDatabase(installedPackage);
+				const newlyInstalledPackage = await persistInstalledPackageData(loader);
+				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
-
 				return newlyInstalledPackage;
 			} catch (error) {
 				LoggerProxy.error('Failed to save installed packages and nodes', {
@@ -363,20 +343,6 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		});
 	}
 
-	private unloadNodes(installedNodes: InstalledNodes[]): void {
-		installedNodes.forEach((installedNode) => {
-			delete this.loaded.nodes[installedNode.type];
-		});
-	}
-
-	private attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
-		const loadedNodes = this.loaded.nodes;
-		installedNodes.forEach((installedNode) => {
-			const { type, sourcePath } = loadedNodes[installedNode.type];
-			loadedNodes[installedNode.type] = { type, sourcePath };
-		});
-	}
-
 	/**
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
@@ -386,16 +352,18 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		await loader.loadAll();
-		this.loaders[dir] = loader;
+		this.loaders[loader.packageName] = loader;
 		return loader;
 	}
 
 	async postProcessLoaders() {
-		this.types.nodes = [];
-		this.types.credentials = [];
-		for (const [dir, loader] of Object.entries(this.loaders)) {
+		this.known = { nodes: {}, credentials: {} };
+		this.loaded = { nodes: {}, credentials: {} };
+		this.types = { nodes: [], credentials: [] };
+
+		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { types } = loader;
+			const { types, directory } = loader;
 			this.types.nodes = this.types.nodes.concat(types.nodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
@@ -416,7 +384,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					const { className, sourcePath } = known.nodes[type];
 					this.known.nodes[type] = {
 						className,
-						sourcePath: path.join(dir, sourcePath),
+						sourcePath: path.join(directory, sourcePath),
 					};
 				}
 
@@ -424,7 +392,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					const { className, sourcePath, nodesToTestWith } = known.credentials[type];
 					this.known.credentials[type] = {
 						className,
-						sourcePath: path.join(dir, sourcePath),
+						sourcePath: path.join(directory, sourcePath),
 						nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
 					};
 				}
@@ -454,15 +422,4 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 		throw new Error('Could not find "node_modules" folder!');
 	}
-}
-
-let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function LoadNodesAndCredentials(): LoadNodesAndCredentialsClass {
-	if (packagesInformationInstance === undefined) {
-		packagesInformationInstance = new LoadNodesAndCredentialsClass();
-	}
-
-	return packagesInformationInstance;
 }

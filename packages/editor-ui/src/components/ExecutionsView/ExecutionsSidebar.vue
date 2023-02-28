@@ -115,8 +115,7 @@
 <script lang="ts">
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
-import { VIEWS } from '../../constants';
-import { range as _range } from 'lodash';
+import { VIEWS } from '@/constants';
 import { IExecutionsSummary } from '@/Interface';
 import { Route } from 'vue-router';
 import Vue from 'vue';

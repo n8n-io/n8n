@@ -4,7 +4,6 @@ import { useNodeTypesStore } from './../stores/nodeTypes';
 import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
-	RECOMMENDED_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
 	SUBCATEGORY_DESCRIPTIONS,
 	UNCATEGORIZED_CATEGORY,
@@ -72,7 +71,7 @@ const addNodeToCategory = (
 	}
 	accu[category][subcategory].nodes.push({
 		type: nodeType.actionKey ? 'action' : 'node',
-		key: `${category}_${nodeType.name}`,
+		key: `${nodeType.name}`,
 		category,
 		properties: {
 			nodeType,
@@ -85,17 +84,12 @@ const addNodeToCategory = (
 
 export const getCategoriesWithNodes = (
 	nodeTypes: INodeTypeDescription[],
-	personalizedNodeTypes: string[],
 	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
 ): ICategoriesWithNodes => {
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
 		a.displayName > b.displayName ? 1 : -1,
 	);
 	const result = sorted.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-		if (personalizedNodeTypes.includes(nodeType.name)) {
-			addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, uncategorizedSubcategory);
-		}
-
 		if (!nodeType.codex || !nodeType.codex.categories) {
 			addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
 			return accu;
@@ -125,14 +119,12 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 		CUSTOM_NODES_CATEGORY,
 		UNCATEGORIZED_CATEGORY,
 		PERSONALIZED_CATEGORY,
-		RECOMMENDED_CATEGORY,
 	];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
 	sorted.sort();
 
 	return [
-		RECOMMENDED_CATEGORY,
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
 		PERSONALIZED_CATEGORY,
@@ -155,8 +147,9 @@ export const getCategorizedList = (
 		const categoryEl: INodeCreateElement = {
 			type: 'category',
 			key: category,
-			category,
 			properties: {
+				category,
+				name: category,
 				expanded: categoryIsExpanded,
 			},
 		};
@@ -179,7 +172,6 @@ export const getCategorizedList = (
 				const subcategoryEl: INodeCreateElement = {
 					type: 'subcategory',
 					key: `${category}_${subcategory}`,
-					category,
 					properties: {
 						subcategory,
 						description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
@@ -277,15 +269,15 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
-	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
+export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
+	if (selectedView === REGULAR_NODE_FILTER && el.includedByRegular) {
 		return true;
 	}
-	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
+	if (selectedView === TRIGGER_NODE_FILTER && el.includedByTrigger) {
 		return true;
 	}
 
-	return selectedType === ALL_NODE_FILTER;
+	return selectedView === ALL_NODE_FILTER;
 };
 
 const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {

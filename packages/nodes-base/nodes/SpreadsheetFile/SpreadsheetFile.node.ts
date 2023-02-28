@@ -69,7 +69,7 @@ export class SpreadsheetFile implements INodeType {
 						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
-						action: 'Write the workflow data to a spreadsheet file',
+						action: 'Write data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
@@ -456,7 +456,7 @@ export class SpreadsheetFile implements INodeType {
 						[sheetName]: ws,
 					},
 				};
-				const wbout = xlsxWrite(wb, wopts);
+				const wbout: Buffer = xlsxWrite(wb, wopts);
 
 				// Create a new item with only the binary spreadsheet data
 				const newItem: INodeExecutionData = {

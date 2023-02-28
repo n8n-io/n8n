@@ -2,6 +2,7 @@ import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -209,7 +210,6 @@ export class PipedriveTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -353,7 +353,7 @@ export class PipedriveTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

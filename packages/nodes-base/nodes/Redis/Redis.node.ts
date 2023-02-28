@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 import redis from 'redis';
 
 import util from 'util';

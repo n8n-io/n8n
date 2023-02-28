@@ -2,7 +2,7 @@ import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function uptimeRobotApiRequest(
@@ -30,10 +30,10 @@ export async function uptimeRobotApiRequest(
 	try {
 		const responseData = await this.helpers.request(options);
 		if (responseData.stat !== 'ok') {
-			throw new NodeOperationError(this.getNode(), responseData);
+			throw new NodeOperationError(this.getNode(), responseData as Error);
 		}
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

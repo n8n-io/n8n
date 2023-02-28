@@ -4,10 +4,12 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
+export * from './Authentication';
 export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './MessageEventBus';
+export * from './ExecutionStatus';
 export * from './Expression';
 export * from './ExpressionError';
 export * from './NodeErrors';

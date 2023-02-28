@@ -370,7 +370,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							);
 						}
 
-						const contentDisposition = responseData.headers['content-disposition'];
+						const contentDisposition: string = responseData.headers['content-disposition'];
 						const fileNameRegex = /(?<=filename=").*\b/;
 						const match = fileNameRegex.exec(contentDisposition);
 						let fileName = '';
@@ -380,7 +380,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						}
 
 						const binaryData = await this.helpers.prepareBinaryData(
-							Buffer.from(responseData.body),
+							Buffer.from(responseData.body as Buffer),
 							fileName,
 						);
 
@@ -474,9 +474,12 @@ export class VenafiTlsProtectCloud implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-						itemData: { item: i },
-					}),
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: { item: i },
+						},
+					),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

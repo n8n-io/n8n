@@ -71,7 +71,7 @@ export class UnleashedSoftware implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
-		let responseData;
+		let responseData: IDataObject | IDataObject[] = [];
 
 		for (let i = 0; i < length; i++) {
 			const resource = this.getNodeParameter('resource', 0);
@@ -113,8 +113,15 @@ export class UnleashedSoftware implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', '/SalesOrders', {}, qs, 1);
-						responseData = responseData.Items;
+						responseData = (await unleashedApiRequest.call(
+							this,
+							'GET',
+							'/SalesOrders',
+							{},
+							qs,
+							1,
+						)) as IDataObject;
+						responseData = responseData.Items as IDataObject[];
 					}
 					convertNETDates(responseData);
 					responseData = this.helpers.constructExecutionMetaData(
@@ -157,8 +164,15 @@ export class UnleashedSoftware implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', '/StockOnHand', {}, qs, 1);
-						responseData = responseData.Items;
+						responseData = (await unleashedApiRequest.call(
+							this,
+							'GET',
+							'/StockOnHand',
+							{},
+							qs,
+							1,
+						)) as IDataObject;
+						responseData = responseData.Items as IDataObject[];
 					}
 
 					convertNETDates(responseData);

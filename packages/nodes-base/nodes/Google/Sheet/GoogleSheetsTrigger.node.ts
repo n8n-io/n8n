@@ -597,7 +597,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				const previousRevisionSheetData =
 					sheetBinaryToArrayOfArrays(
 						previousRevisionBinaryData,
-						sheetName,
+						sheetName as string,
 						rangeDefinition === 'specifyRangeA1' ? range : undefined,
 					) || [];
 

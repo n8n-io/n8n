@@ -587,7 +587,7 @@ export class SlackV2 implements INodeType {
 									{},
 									{ user: member },
 								);
-								data.push(user);
+								data.push(user as IDataObject);
 							}
 							responseData = data;
 						}
@@ -1068,7 +1068,7 @@ export class SlackV2 implements INodeType {
 							) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -1325,7 +1325,7 @@ export class SlackV2 implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

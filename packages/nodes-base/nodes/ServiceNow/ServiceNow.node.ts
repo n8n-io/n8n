@@ -536,8 +536,8 @@ export class ServiceNow implements INodeType {
 									[outputField]: await serviceNowDownloadAttachment.call(
 										this,
 										endpoint,
-										fileMetadata.file_name,
-										fileMetadata.content_type,
+										fileMetadata.file_name as string,
+										fileMetadata.content_type as string,
 									),
 								},
 							};
@@ -612,7 +612,7 @@ export class ServiceNow implements INodeType {
 						} else {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${inputDataFieldName}" does not exists on item!`,
+								`Item has no binary property called "${inputDataFieldName}"`,
 								{ itemIndex: i },
 							);
 						}

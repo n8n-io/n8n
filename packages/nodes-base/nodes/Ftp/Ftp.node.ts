@@ -9,6 +9,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { createWriteStream } from 'fs';
@@ -637,7 +638,7 @@ export class Ftp implements INodeType {
 							if (itemBinaryData === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -763,7 +764,7 @@ export class Ftp implements INodeType {
 							if (itemBinaryData === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -783,7 +784,7 @@ export class Ftp implements INodeType {
 									await ftp!.mkdir(dirPath, true);
 									await ftp!.put(uploadData, remotePath);
 								} else {
-									throw new NodeApiError(this.getNode(), error);
+									throw new NodeApiError(this.getNode(), error as JsonObject);
 								}
 							}
 						} else {
@@ -797,7 +798,7 @@ export class Ftp implements INodeType {
 									await ftp!.mkdir(dirPath, true);
 									await ftp!.put(buffer, remotePath);
 								} else {
-									throw new NodeApiError(this.getNode(), error);
+									throw new NodeApiError(this.getNode(), error as JsonObject);
 								}
 							}
 						}

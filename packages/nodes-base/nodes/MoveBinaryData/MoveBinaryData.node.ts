@@ -1,4 +1,6 @@
-import { get, set, unset } from 'lodash';
+import get from 'lodash.get';
+import set from 'lodash.set';
+import unset from 'lodash.unset';
 import prettyBytes from 'pretty-bytes';
 
 import type { IExecuteFunctions } from 'n8n-core';
@@ -21,7 +23,7 @@ iconv.encodingExists('utf8');
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
 const encodings = (iconv as any).encodings;
-Object.keys(encodings).forEach((encoding) => {
+Object.keys(encodings as IDataObject).forEach((encoding) => {
 	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) {
 		// only encodings without direct alias or internals
 		if (encodings[encoding].bomAware) {
