@@ -14,7 +14,7 @@ import { documentFields, documentOperations, indexFields, indexOperations } from
 
 import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
@@ -331,7 +331,9 @@ export class Elasticsearch implements INodeType {
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
-					responseData = Object.keys(responseData).map((index) => ({ indexId: index }));
+					responseData = Object.keys(responseData as IDataObject).map((index) => ({
+						indexId: index,
+					}));
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -342,7 +344,7 @@ export class Elasticsearch implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

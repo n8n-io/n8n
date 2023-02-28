@@ -50,8 +50,8 @@ jobs:
         run: |
           git fetch origin
           git checkout --track origin/master
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git merge --ff origin/${{github.event.pull_request.base.ref}}
+          git config user.name "Jan Oberhauser"
+          git config user.email jan.oberhauser@gmail.com
+          git merge --ff n8n@${{env.RELEASE}}
           git push origin master
           git push origin :${{github.event.pull_request.base.ref}}

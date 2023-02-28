@@ -9,7 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { isEmpty, omit } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import { raindropApiRequest } from './GenericFunctions';
 
@@ -429,8 +430,8 @@ export class Raindrop implements INodeType {
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+					? returnData.push(...(responseData as IDataObject[]))
+					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

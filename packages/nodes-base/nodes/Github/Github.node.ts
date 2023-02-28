@@ -1835,7 +1835,7 @@ export class Github implements INodeType {
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -2250,7 +2250,7 @@ export class Github implements INodeType {
 					overwriteDataOperationsArray.includes(fullOperation)
 				) {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

@@ -106,7 +106,7 @@ export class Line implements INodeType {
 								if (items[i].binary[image.binaryProperty] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${image.binaryProperty}" does not exists on item!`,
+										`Item has no binary property called "${image.binaryProperty}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -143,7 +143,7 @@ export class Line implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

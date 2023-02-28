@@ -18,7 +18,7 @@ import { responderFields, respondersOperations } from './ResponderDescription';
 
 import { jobFields, jobOperations } from './JobDescription';
 
-import { upperFirst } from 'lodash';
+import upperFirst from 'lodash.upperfirst';
 
 import type { IJob } from './AnalyzerInterface';
 
@@ -206,7 +206,7 @@ export class Cortex implements INodeType {
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -295,7 +295,7 @@ export class Cortex implements INodeType {
 
 							body = {
 								responderId,
-								label: getEntityLabel(entityJson),
+								label: getEntityLabel(entityJson as IDataObject),
 								dataType: `thehive:${entityType}`,
 								data: entityJson,
 								tlp: entityJson.tlp || 2,
@@ -352,7 +352,7 @@ export class Cortex implements INodeType {
 												if (item.binary[binaryPropertyName] === undefined) {
 													throw new NodeOperationError(
 														this.getNode(),
-														`No binary data property '${binaryPropertyName}' does not exists on item!`,
+														`Item has no binary property called "${binaryPropertyName}"`,
 														{ itemIndex: i },
 													);
 												}
@@ -386,7 +386,7 @@ export class Cortex implements INodeType {
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 											{ itemIndex: i },
 										);
 									}

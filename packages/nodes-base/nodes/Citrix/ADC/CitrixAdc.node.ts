@@ -83,7 +83,7 @@ export class CitrixAdc implements INodeType {
 						if (item.binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`The binary data property "${binaryProperty}" does not exists on item!`,
 							);
 						}
 
@@ -130,8 +130,8 @@ export class CitrixAdc implements INodeType {
 						const file = systemfile[0];
 
 						const binaryData = await this.helpers.prepareBinaryData(
-							Buffer.from(file.filecontent, 'base64'),
-							file.filename,
+							Buffer.from(file.filecontent as string, 'base64'),
+							file.filename as string,
 						);
 
 						responseData = {

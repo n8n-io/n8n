@@ -93,7 +93,6 @@ export class WiseTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -186,7 +185,7 @@ export class WiseTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

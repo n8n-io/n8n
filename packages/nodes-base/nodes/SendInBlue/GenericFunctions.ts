@@ -91,7 +91,7 @@ export namespace SendInBlueNode {
 					if (item.binary![binaryPropertyAttachmentName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
+							`Item has no binary property called "${binaryPropertyName}"`,
 						);
 					}
 
@@ -121,7 +121,7 @@ export namespace SendInBlueNode {
 
 				return requestOptions;
 			} catch (err) {
-				throw new NodeOperationError(this.getNode(), err);
+				throw new NodeOperationError(this.getNode(), err as Error);
 			}
 		}
 
@@ -367,7 +367,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return jsonParse(webhookId);
+		return jsonParse(webhookId as string);
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {

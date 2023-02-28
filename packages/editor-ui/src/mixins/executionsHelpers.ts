@@ -43,13 +43,19 @@ export const executionHelpers = mixins(genericHelpers).extend({
 			if (execution.status === 'waiting' || execution.waitTill) {
 				status.name = 'waiting';
 				status.label = this.$locale.baseText('executionsList.waiting');
-			} else if (execution.status === 'running' || execution.stoppedAt === undefined) {
+			} else if (
+				execution.status === 'running' ||
+				execution.status === 'new' ||
+				execution.stoppedAt === undefined
+			) {
 				status.name = 'running';
 				status.label = this.$locale.baseText('executionsList.running');
-				status.runningTime = this.displayTimer(
-					new Date().getTime() - new Date(execution.startedAt).getTime(),
-					true,
-				);
+				if (execution.startedAt) {
+					status.runningTime = this.displayTimer(
+						new Date().getTime() - new Date(execution.startedAt).getTime(),
+						true,
+					);
+				}
 			} else if (execution.status === 'success' || execution.finished) {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');
@@ -59,21 +65,9 @@ export const executionHelpers = mixins(genericHelpers).extend({
 						true,
 					);
 				}
-			} else if (execution.status === 'crashed') {
-				status.name = 'crashed';
-				status.label = this.$locale.baseText('executionsList.error');
-				if (execution.stoppedAt) {
-					status.runningTime = this.displayTimer(
-						new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(),
-						true,
-					);
-				}
-			} else if (execution.status === 'new') {
-				status.name = 'new';
-				status.label = this.$locale.baseText('executionsList.new');
 			} else if (
-				execution.status === 'error' ||
 				execution.status === 'failed' ||
+				execution.status === 'crashed' ||
 				execution.stoppedAt !== null
 			) {
 				status.name = 'error';

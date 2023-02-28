@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions } from 'n8n-core';
 
-import { merge } from 'lodash';
+import merge from 'lodash.merge';
 
 import type {
 	IDataObject,

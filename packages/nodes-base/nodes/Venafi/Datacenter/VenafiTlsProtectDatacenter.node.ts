@@ -138,8 +138,8 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						);
 
 						const binaryData = await this.helpers.prepareBinaryData(
-							Buffer.from(responseData.CertificateData, 'base64'),
-							responseData.Filename,
+							Buffer.from(responseData.CertificateData as BufferEncoding, 'base64'),
+							responseData.Filename as string,
 						);
 
 						responseData = {
@@ -238,9 +238,12 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-						itemData: { item: i },
-					}),
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: { item: i },
+						},
+					),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

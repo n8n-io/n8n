@@ -119,6 +119,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
+import { newVersions } from '@/mixins/newVersions';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -137,7 +138,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { usePostHogStore } from '@/stores/posthog';
+import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -147,7 +148,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper).extend({
+export default mixins(showMessage, debounceHelper, newVersions).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -184,10 +185,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
-			return usePostHogStore().isVariantEnabled(
-				ASSUMPTION_EXPERIMENT.name,
-				ASSUMPTION_EXPERIMENT.demo,
-			);
+			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
@@ -271,6 +269,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
+		this.checkForNewVersions();
 		this.usersStore.showPersonalizationSurvey();
 	},
 });
