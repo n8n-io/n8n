@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { JsonObject, IDataObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { IRelation } from './Interfaces';
@@ -39,7 +39,7 @@ export async function orbitApiRequest(
 
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -100,14 +100,14 @@ export async function orbitApiRequestAllItems(
 
 	do {
 		responseData = await orbitApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 
 		if (query.resolveIdentities === true) {
-			resolveIdentities(responseData);
+			resolveIdentities(responseData as IRelation);
 		}
 
 		if (query.resolveMember === true) {
-			resolveMember(responseData);
+			resolveMember(responseData as IRelation);
 		}
 
 		query.page++;

@@ -145,13 +145,15 @@ export class KoBoToolboxTrigger implements INodeType {
 
 		// prettier-ignore
 		const responseData = formatOptions.reformat
-			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
+			? formatSubmission(req.body as IDataObject, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
 			: req.body;
 
 		if (formatOptions.download) {
 			// Download related attachments
 			return {
-				workflowData: [[await downloadAttachments.call(this, responseData, formatOptions)]],
+				workflowData: [
+					[await downloadAttachments.call(this, responseData as IDataObject, formatOptions)],
+				],
 			};
 		} else {
 			return {

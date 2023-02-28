@@ -25,7 +25,7 @@ export async function discourseApiRequest(
 	};
 
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'discourseApi', options);
@@ -48,7 +48,7 @@ export async function discourseApiRequestAllItems(
 	query.page = 1;
 	do {
 		responseData = await discourseApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 		query.page++;
 	} while (responseData.length !== 0);
 	return returnData;

@@ -395,7 +395,7 @@ export class MicrosoftSql implements INodeType {
 									.request()
 									.query(
 										`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-											deleteValues,
+											deleteValues as IDataObject[],
 											deleteKey,
 										)};`,
 									);

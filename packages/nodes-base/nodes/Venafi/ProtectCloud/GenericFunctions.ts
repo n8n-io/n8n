@@ -66,9 +66,9 @@ export async function venafiApiRequestAllItems(
 	method: string,
 	endpoint: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -76,7 +76,7 @@ export async function venafiApiRequestAllItems(
 	do {
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
 		endpoint = get(responseData, '_links[0].Next');
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData._links?.[0].Next);
 
 	return returnData;
@@ -119,14 +119,14 @@ export async function encryptPassphrase(
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
 					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
-					encryptedKeyPass = Buffer.from(keyPassBuffer).toString('base64');
+					encryptedKeyPass = Buffer.from(keyPassBuffer as Buffer).toString('base64');
 
 					const storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
 					const keyStorePassBuffer = nacl.crypto_box_seal(
 						storePassphraseUTF8,
 						Buffer.from(pubKey, 'base64'),
 					);
-					encryptedKeyStorePass = Buffer.from(keyStorePassBuffer).toString('base64');
+					encryptedKeyStorePass = Buffer.from(keyStorePassBuffer as Buffer).toString('base64');
 
 					return resolve([encryptedKeyPass, encryptedKeyStorePass]);
 				} catch (error) {

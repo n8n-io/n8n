@@ -7,7 +7,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function strapiApiRequest(
@@ -15,11 +15,11 @@ export async function strapiApiRequest(
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('strapiApi');
 
 	try {
@@ -44,10 +44,9 @@ export async function strapiApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -78,11 +77,10 @@ export async function strapiApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 	const { apiVersion } = await this.getCredentials('strapiApi');
 
@@ -101,7 +99,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			));
 			query['pagination[page]'] += query['pagination[pageSize]'];
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	} else {
 		query._limit = 20;
@@ -117,7 +115,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			);
 			query._start += query._limit;
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	}
 	return returnData;

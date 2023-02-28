@@ -246,7 +246,7 @@ export class GoogleChat implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-							responseData,
+							responseData as Buffer,
 							endpoint,
 						);
 					}
@@ -536,7 +536,7 @@ export class GoogleChat implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
