@@ -44,7 +44,7 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
-		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
+		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
@@ -84,7 +84,7 @@ export class WorkflowPage extends BasePage {
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
