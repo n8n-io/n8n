@@ -7,7 +7,6 @@ import { FeatureFlags } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK } from '@/constants';
 import { useTelemetryStore } from './telemetry';
 import { runExternalHook } from '@/mixins/externalHooks';
-import { useWebhooksStore } from './webhooks';
 
 export const usePostHogStore = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
@@ -106,7 +105,7 @@ export const usePostHogStore = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
-		runExternalHook('posthog.featureFlagsUpdated', useWebhooksStore(), {
+		runExternalHook('posthog.featureFlagsUpdated', {
 			name,
 			variant,
 		});
