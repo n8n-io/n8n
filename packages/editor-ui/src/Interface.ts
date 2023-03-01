@@ -37,6 +37,7 @@ import {
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
+import { ExternalHooks } from '@/mixins/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -142,8 +143,14 @@ export interface INodeTypesMaxCount {
 	};
 }
 
+export type ExtractArrayType<T> = T extends Array<infer U> ? U : () => void;
+export type FunctionWithParams<T> = T extends (...args: any[]) => any ? T : never;
+
 export interface IExternalHooks {
-	run(eventName: string, metadata?: IDataObject): Promise<void>;
+	run<Context extends keyof ExternalHooks, Event extends keyof ExternalHooks[Context]>(
+		eventName: `${Context}.${Event extends string ? Event : never}`,
+		metadata?: Parameters<FunctionWithParams<ExtractArrayType<ExternalHooks[Context][Event]>>>[0],
+	): Promise<void>;
 }
 
 /**
