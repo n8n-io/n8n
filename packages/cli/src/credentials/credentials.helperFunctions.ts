@@ -1,3 +1,6 @@
+import querystring from 'querystring';
+import axios from 'axios';
+import { IDataObject } from 'n8n-workflow';
 export interface OAuth2Parameters {
 	clientId?: string;
 	clientSecret?: string;
@@ -70,6 +73,20 @@ const DEFAULT_HEADERS = {
 	'Content-type': 'application/x-www-form-urlencoded',
 };
 
+export function getAuthError(body: IDataObject) {
+	const message = (ERROR_RESPONSES[body.error as string] ||
+		body.error_description ||
+		body.error) as string;
+	if (message) {
+		const error = new Error(message);
+		// err.body = body;
+		// err.code = body.error;
+		return error;
+	} else {
+		return null;
+	}
+}
+
 export function getUri(options: OAuth2Parameters, tokenType: string) {
 	if (!options.clientId || !options.authorizationUri) {
 		return Error('Options incomplete, expecting clientId and authorizationUri');
@@ -94,7 +111,6 @@ export async function getToken(
 	incOptions: object,
 	oAuth2Parameters: OAuth2Parameters,
 ) {
-	const self = oAuth2Parameters;
 	const options = Object.assign({}, oAuth2Parameters, incOptions);
 
 	const url = new URL(uri);
@@ -109,20 +125,20 @@ export async function getToken(
 		);
 	}
 
-	if (!url.search || !url.search.substr(1)) {
+	if (!url.search?.substr(1)) {
 		return Promise.reject(new TypeError('Unable to process uri: ' + uri));
 	}
 
 	const data =
 		typeof url.search === 'string' ? querystring.parse(url.search.substr(1)) : url.search || {};
-	const err = getAuthError(data);
+	const error = getAuthError(data);
 
-	if (err) {
-		return Promise.reject(err);
+	if (error) {
+		return Promise.reject(error);
 	}
 
-	if (options.state != null && data.state !== options.state) {
-		return Promise.reject(new TypeError('Invalid state: ' + data.state));
+	if (options.state !== null && data.state !== options.state) {
+		return Promise.reject(new TypeError(`Invalid state: ${data.state as string}`));
 	}
 
 	// Check whether the response code is set.
@@ -210,19 +226,6 @@ export function mergeRequestOptions(requestOptions: any, options: any) {
 		body: Object.assign({}, requestOptions.body, options.body),
 		query: Object.assign({}, requestOptions.query, options.query),
 	};
-}
-
-export function getAuthError(body: any) {
-	// @ts-ignore
-	const message = ERROR_RESPONSES[body.error] || body.error_description || body.error;
-	if (message) {
-		const err = new Error(message);
-		// err.body = body;
-		// err.code = body.error;
-		return err;
-	} else {
-		return null;
-	}
 }
 
 export function auth(username: string, password: string) {
