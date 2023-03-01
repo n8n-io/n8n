@@ -83,6 +83,9 @@ declare global {
 			get(flagName: string): boolean | string;
 			isEnabled(flagName: string): boolean | undefined;
 		};
+		analytics?: {
+			track(event: string, proeprties?: ITelemetryTrackProperties): void;
+		};
 	}
 }
 
@@ -1131,6 +1134,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
