@@ -186,7 +186,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			Vue.set(this[payload.panel].data, 'isEmpty', payload.isEmpty);
 		},
 		disableMappingHint() {
-			this.isMappingOnboarded = false;
+			this.isMappingOnboarded = true;
 			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
 		},
 	},
