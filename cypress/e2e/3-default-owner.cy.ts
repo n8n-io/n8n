@@ -34,10 +34,8 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Default owner', () => {
-	before(() => {
-		cy.resetAll();
-	});
 	beforeEach(() => {
+		cy.resetAll();
 		cy.visit('/');
 	});
 
