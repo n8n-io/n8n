@@ -11,7 +11,6 @@
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="!readOnly"
-		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
