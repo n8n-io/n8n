@@ -245,7 +245,11 @@ export default mixins(showMessage, externalHooks).extend({
 							.trim();
 
 						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
-							updatedValue = `${prevValue}, ${newValue}`;
+							if (typeof prevValue === 'string' && prevValue.trim() === '=') {
+								updatedValue = newValue;
+							} else {
+								updatedValue = `${prevValue}, ${newValue}`;
+							}
 						} else {
 							updatedValue = newValue;
 						}
