@@ -81,8 +81,7 @@ describe('Data transformation expressions', () => {
 	});
 
 	// Support of Array.prototype.at() is only available in Node 16+
-	console.log("🚀 ~ file: 14-data-transformation-expressions.cy.ts:85 ~ process.env.CYPRESS_RUN_ENV:", process.env.CYPRESS_RUN_ENV)
-	if(!(process.env.CYPRESS_RUN_ENV || '').includes('node14')) {
+	if(!(process.env.CYPRESS_RUN_ENV || '').includes(':14')) {
 		it('$json + native array methods', () => {
 			console.log('ENV', process.env)
 			wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });

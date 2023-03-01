@@ -46,9 +46,8 @@ describe('Default owner', () => {
 	});
 
 	it('should be able to create workflows', () => {
-		workflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		workflowsPage.getters.newWorkflowButtonCard().click();
-
+		workflowsPage.getters.createWorkflowButton().click();
+		cy.waitForLoad();
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
 
 		// reload page, ensure owner still has access
