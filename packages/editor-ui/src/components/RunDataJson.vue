@@ -70,7 +70,6 @@
 import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson, isString, shorten } from '@/utils';
@@ -157,8 +156,7 @@ export default mixins(externalHooks).extend({
 		showHint(): boolean {
 			return (
 				!this.draggingPath &&
-				((this.showMappingHint && this.mappingHintVisible) ||
-					window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true')
+				((this.showMappingHint && this.mappingHintVisible) || !this.ndvStore.isMappingOnboarded)
 			);
 		},
 	},
