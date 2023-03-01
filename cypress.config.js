@@ -11,9 +11,6 @@ module.exports = defineConfig({
 	},
 	defaultCommandTimeout: 10000,
 	requestTimeout: 12000,
-	env: {
-		E2E_TESTS: 'true',
-	},
 	e2e: {
 		baseUrl: BASE_URL,
 		video: true,

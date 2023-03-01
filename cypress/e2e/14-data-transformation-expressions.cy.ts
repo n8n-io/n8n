@@ -16,7 +16,7 @@ describe('Data transformation expressions', () => {
 		cy.window()
 			// @ts-ignore
 			.then(
-				(win) => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload),
+				(win) => win.onbeforeunload && win.removeEventListener('beforeunload', win.onbeforeunload),
 			);
 	});
 
@@ -80,20 +80,24 @@ describe('Data transformation expressions', () => {
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
-	it('$json + native array methods', () => {
-		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
-		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
-		ndv.actions.close();
-		addSet();
+	// Support of Array.prototype.at() is only available in Node 16+
+	console.log("🚀 ~ file: 14-data-transformation-expressions.cy.ts:85 ~ process.env.CYPRESS_RUN_ENV:", process.env.CYPRESS_RUN_ENV)
+	if(!(process.env.CYPRESS_RUN_ENV || '').includes('node14')) {
+		it('$json + native array methods', () => {
+			console.log('ENV', process.env)
+			wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
+			ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
+			ndv.actions.close();
+			addSet();
+			const input = '{{$json.myArr.includes(1) + " " + $json.myArr.at(2)';
+			const output = 'true 3';
 
-		const input = '{{$json.myArr.includes(1) + " " + $json.myArr.at(2)';
-		const output = 'true 3';
-
-		ndv.getters.inlineExpressionEditorInput().clear().type(input);
-		ndv.actions.execute();
-		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
-		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
-	});
+			ndv.getters.inlineExpressionEditorInput().clear().type(input);
+			ndv.actions.execute();
+			ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+			ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
+		});
+	}
 
 	it('$json + n8n array methods', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });

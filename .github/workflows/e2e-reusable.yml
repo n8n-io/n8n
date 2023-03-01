@@ -1,47 +1,6 @@
 name: Reusable e2e workflow
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'GitHub branch to test.'
-        required: false
-        type: string
-        default: 'master'
-      user:
-        description: 'User who kicked this off.'
-        required: false
-        type: string
-        default: 'schedule'
-      spec:
-        description: 'Specify specs.'
-        required: false
-        default: 'e2e/*'
-        type: string
-      run-env:
-        description: 'Node env version to run tests with.'
-        required: false
-        default: 'browsers:node16.18.0-chrome90-ff88'
-        type: string
-      record:
-        description: 'Record test run.'
-        required: false
-        default: true
-        type: boolean
-      parallel:
-        description: 'Run tests in parallel.'
-        required: false
-        default: true
-        type: boolean
-      containers:
-        description: 'Number of containers to run tests in.'
-        required: false
-        default: '[1, 2, 3, 4, 5, 6]'
-        type: string
-    secrets:
-      CYPRESS_RECORD_KEY:
-        description: 'Cypress record key.'
-        required: true
   workflow_call:
     inputs:
       branch:
@@ -165,10 +124,9 @@ jobs:
           ci-build-id: '${{ github.sha }}-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.run-env }}-e2e'
           spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
           config-file: /__w/n8n/n8n/cypress.config.js
-          env: E2E_TESTS=true
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CYPRESS_E2E_TESTS: 'true'
-          E2E_TESTS: 'true'
+          CYPRESS_RUN_ENV: ${{ inputs.run-env }}
+          E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
