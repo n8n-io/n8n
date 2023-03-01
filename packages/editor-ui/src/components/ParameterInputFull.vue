@@ -77,7 +77,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -106,7 +105,6 @@ export default mixins(showMessage, externalHooks).extend({
 			forceShowExpression: false,
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
-			localStorageMappingFlag: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true',
 		};
 	},
 	props: {
@@ -187,10 +185,10 @@ export default mixins(showMessage, externalHooks).extend({
 		showMappingTooltip(): boolean {
 			return (
 				this.mappingTooltipEnabled &&
+				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
-				!this.isInputDataEmpty &&
-				!this.localStorageMappingFlag
+				!this.isInputDataEmpty
 			);
 		},
 	},
@@ -306,14 +304,14 @@ export default mixins(showMessage, externalHooks).extend({
 
 					this.$emit('valueChanged', parameterData);
 
-					if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
+					if (!this.ndvStore.isMappingOnboarded) {
 						this.$showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
 						});
 
-						window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						this.ndvStore.disableMappingHint();
 					}
 
 					this.ndvStore.setMappingTelemetry({

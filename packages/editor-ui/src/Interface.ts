@@ -1119,6 +1119,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
