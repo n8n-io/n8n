@@ -111,13 +111,6 @@ export async function execute(
 			extractValue: true,
 		}) as string;
 
-		const output = this.getNodeParameter('output', 0) as string;
-
-		let outputColumns: string | string[] = '*';
-		if (output === 'columns') {
-			outputColumns = this.getNodeParameter('returnColumns', 0, []) as string[];
-		}
-
 		let onConflict = '';
 		if (options.skipOnConflict) {
 			onConflict = ' ON CONFLICT DO NOTHING';
@@ -142,6 +135,13 @@ export async function execute(
 			}, {} as IDataObject);
 
 			values.push(item);
+		}
+
+		const output = this.getNodeParameter('output', 0) as string;
+
+		let outputColumns: string | string[] = '*';
+		if (output === 'columns') {
+			outputColumns = this.getNodeParameter('returnColumns', 0, []) as string[];
 		}
 
 		[query, values] = addReturning(query, outputColumns, values);

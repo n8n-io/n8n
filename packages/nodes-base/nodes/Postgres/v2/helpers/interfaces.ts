@@ -5,7 +5,7 @@ import type pg from 'pg-promise/typescript/pg-subset';
 export type QueryMode = 'multiple' | 'transaction' | 'independently';
 
 export type QueryValues = Array<string | IDataObject | string[]>;
-export type QueryWithValues = { query: string; values?: QueryValues };
+export type QueryWithValues = { query: string; values?: QueryValues | IDataObject };
 
 export type WhereClause = { column: string; condition: string; value: string; operator: string };
 export type SortRule = { column: string; direction: string };
