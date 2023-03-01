@@ -161,7 +161,7 @@ export class Bannerbear implements INodeType {
 							});
 						};
 
-						responseData = await promise(responseData.uid);
+						responseData = await promise(responseData.uid as string);
 					}
 				}
 				//https://developers.bannerbear.com/#get-a-specific-image
@@ -184,7 +184,7 @@ export class Bannerbear implements INodeType {
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
-				returnData.push(responseData);
+				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

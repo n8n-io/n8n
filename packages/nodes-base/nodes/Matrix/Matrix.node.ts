@@ -146,7 +146,7 @@ export class Matrix implements INodeType {
 			try {
 				const responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

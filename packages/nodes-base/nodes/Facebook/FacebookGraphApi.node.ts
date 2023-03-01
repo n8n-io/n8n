@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -413,7 +414,7 @@ export class FacebookGraphApi implements INodeType {
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let errorItem;

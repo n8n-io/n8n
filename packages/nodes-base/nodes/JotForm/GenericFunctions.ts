@@ -6,7 +6,7 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function jotformApiRequest(
@@ -36,7 +36,7 @@ export async function jotformApiRequest(
 		uri: uri || `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
@@ -44,6 +44,6 @@ export async function jotformApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

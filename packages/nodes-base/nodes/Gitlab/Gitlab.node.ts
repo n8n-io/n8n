@@ -1302,7 +1302,7 @@ export class Gitlab implements INodeType {
 			if (this.continueOnFail()) {
 				return [this.helpers.returnJsonArray([{ error: error.message }])];
 			}
-			throw new NodeOperationError(this.getNode(), error);
+			throw new NodeOperationError(this.getNode(), error as Error);
 		}
 
 		// Operations which overwrite the returned data
@@ -1720,7 +1720,7 @@ export class Gitlab implements INodeType {
 					overwriteDataOperationsArray.includes(fullOperation)
 				) {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

@@ -160,7 +160,7 @@ export class TheHive implements INodeType {
 				const customFields =
 					version === 'v1'
 						? requestResult
-						: Object.keys(requestResult).map((key) => requestResult[key]);
+						: Object.keys(requestResult as IDataObject).map((key) => requestResult[key]);
 
 				for (const field of customFields) {
 					returnData.push({
@@ -219,7 +219,7 @@ export class TheHive implements INodeType {
 						};
 					});
 				} else {
-					returnData = Object.keys(dataTypes).map((key) => {
+					returnData = Object.keys(dataTypes as IDataObject).map((key) => {
 						const dataType = dataTypes[key] as string;
 
 						return {
@@ -325,7 +325,7 @@ export class TheHive implements INodeType {
 				if (resource === 'alert') {
 					if (operation === 'count') {
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const countQueryAttributs: any = prepareOptional(filters);
+						const countQueryAttributs = prepareOptional(filters);
 
 						const _countSearchQuery: IQueryObject = And();
 
@@ -537,7 +537,7 @@ export class TheHive implements INodeType {
 						const version = credentials.apiVersion;
 
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const queryAttributs: any = prepareOptional(filters);
+						const queryAttributs = prepareOptional(filters);
 						const options = this.getNodeParameter('options', i);
 
 						const _searchQuery: IQueryObject = And();
@@ -741,7 +741,7 @@ export class TheHive implements INodeType {
 
 				if (resource === 'observable') {
 					if (operation === 'count') {
-						const countQueryAttributs: any = prepareOptional(
+						const countQueryAttributs = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
 						const _countSearchQuery: IQueryObject = And();
@@ -759,8 +759,12 @@ export class TheHive implements INodeType {
 								(_countSearchQuery['_and'] as IQueryObject[]).push(
 									Between(
 										'startDate',
-										countQueryAttributs['range']['dateRange']['fromDate'],
-										countQueryAttributs['range']['dateRange']['toDate'],
+										((countQueryAttributs['range'] as IDataObject)['dateRange'] as IDataObject)[
+											'fromDate'
+										],
+										((countQueryAttributs['range'] as IDataObject)['dateRange'] as IDataObject)[
+											'toDate'
+										],
 									),
 								);
 							} else {
@@ -1060,7 +1064,7 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						const queryAttributs: any = prepareOptional(
+						const queryAttributs = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
 
@@ -1081,8 +1085,12 @@ export class TheHive implements INodeType {
 								(_searchQuery['_and'] as IQueryObject[]).push(
 									Between(
 										'startDate',
-										queryAttributs['range']['dateRange']['fromDate'],
-										queryAttributs['range']['dateRange']['toDate'],
+										((queryAttributs['range'] as IDataObject)['dateRange'] as IDataObject)[
+											'fromDate'
+										],
+										((queryAttributs['range'] as IDataObject)['dateRange'] as IDataObject)[
+											'toDate'
+										],
 									),
 								);
 							} else {
@@ -1169,7 +1177,7 @@ export class TheHive implements INodeType {
 				if (resource === 'case') {
 					if (operation === 'count') {
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const countQueryAttributs: any = prepareOptional(filters);
+						const countQueryAttributs = prepareOptional(filters);
 
 						const _countSearchQuery: IQueryObject = And();
 
@@ -1338,7 +1346,7 @@ export class TheHive implements INodeType {
 						const version = credentials.apiVersion;
 
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const queryAttributs: any = prepareOptional(filters);
+						const queryAttributs = prepareOptional(filters);
 
 						const _searchQuery: IQueryObject = And();
 
@@ -1439,7 +1447,7 @@ export class TheHive implements INodeType {
 
 				if (resource === 'task') {
 					if (operation === 'count') {
-						const countQueryAttributs: any = prepareOptional(
+						const countQueryAttributs = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
 
@@ -1653,7 +1661,7 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						const queryAttributs: any = prepareOptional(
+						const queryAttributs = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
 
@@ -1955,7 +1963,7 @@ export class TheHive implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
