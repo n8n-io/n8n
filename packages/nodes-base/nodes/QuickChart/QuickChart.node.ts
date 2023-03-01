@@ -232,14 +232,6 @@ export class QuickChart implements INodeType {
 						description: 'Color used for lines of the dataset',
 					},
 					{
-						displayName: 'Chart Type',
-						name: 'chartType',
-						type: 'options',
-						default: 'bar',
-						options: CHART_TYPE_OPTIONS,
-						description: 'The type of chart to use for the dataset',
-					},
-					{
 						displayName: 'Fill',
 						name: 'fill',
 						type: 'boolean',
@@ -320,15 +312,7 @@ export class QuickChart implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const datasets: IDataset[] = [];
-		let chartType = this.getNodeParameter('chartType', 0) as string;
-
-		if (HORIZONTAL_CHARTS.includes(chartType)) {
-			const horizontal = this.getNodeParameter('chartOptions.horizontal', 0, false) as boolean;
-			if (horizontal) {
-				chartType =
-					'horizontal' + chartType[0].toUpperCase() + chartType.substring(1, chartType.length);
-			}
-		}
+		let chartType = '';
 
 		// tslint:disable-next-line:no-any
 		const labels: string[] = [];
@@ -366,17 +350,24 @@ export class QuickChart implements INodeType {
 			const datasetOptions = this.getNodeParameter('datasetOptions', i) as IDataObject;
 			const backgroundColor = datasetOptions.backgroundColor as string;
 			const borderColor = datasetOptions.borderColor as string | undefined;
-			const datasetChartType = datasetOptions.chartType as string | undefined;
 			const fill = datasetOptions.fill as boolean | undefined;
 			const label = datasetOptions.label as string | undefined;
 			const pointStyle = datasetOptions.pointStyle as string | undefined;
 
+			chartType = this.getNodeParameter('chartType', i) as string;
+
+			if (HORIZONTAL_CHARTS.includes(chartType)) {
+				const horizontal = this.getNodeParameter('chartOptions.horizontal', i, false) as boolean;
+				if (horizontal) {
+					chartType =
+						'horizontal' + chartType[0].toUpperCase() + chartType.substring(1, chartType.length);
+				}
+			}
+
 			// Boxplots and Violins are an addon that uses the name 'itemStyle'
 			// instead of 'pointStyle'.
 			let pointStyleName = 'pointStyle';
-			if (datasetChartType !== undefined && ITEM_STYLE_CHARTS.includes(datasetChartType)) {
-				pointStyleName = 'itemStyle';
-			} else if (ITEM_STYLE_CHARTS.includes(chartType)) {
+			if (ITEM_STYLE_CHARTS.includes(chartType)) {
 				pointStyleName = 'itemStyle';
 			}
 
@@ -385,7 +376,7 @@ export class QuickChart implements INodeType {
 				data,
 				backgroundColor,
 				borderColor,
-				type: datasetChartType,
+				type: chartType,
 				fill,
 				[pointStyleName]: pointStyle,
 			});
