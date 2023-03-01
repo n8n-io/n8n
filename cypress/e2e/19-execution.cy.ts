@@ -255,6 +255,7 @@ describe('Execution', () => {
 			});
 		});
 
+		workflowPage.getters.stopExecutionButton().click();
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
@@ -271,8 +272,6 @@ describe('Execution', () => {
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
-		cy.wait(1000);
-		workflowPage.getters.stopExecutionWaitingForWebhookButton().click();
 
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters

@@ -91,8 +91,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible');
-		ndv.getters.outputDataContainer().contains(output);
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
 	});
 
 	it('$json + n8n array methods', () => {
@@ -106,7 +106,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
 	});
 });
 
