@@ -1426,3 +1426,27 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
+
+export type ExecutionFilterMetadata = {
+	key: string;
+	value: string;
+};
+
+export type ExecutionFilterType = {
+	status: string;
+	workflowId: string;
+	startDate: string | Date;
+	endDate: string | Date;
+	tags: string[];
+	metadata: ExecutionFilterMetadata[];
+};
+
+export type ExecutionsQueryFilter = {
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	finished?: boolean;
+	waitTill?: boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
+};

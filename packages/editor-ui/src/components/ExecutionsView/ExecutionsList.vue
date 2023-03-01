@@ -31,9 +31,14 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { IExecutionsListResponse, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import {
-	ExecutionStatus,
+	ExecutionFilterType,
+	IExecutionsListResponse,
+	INodeUi,
+	ITag,
+	IWorkflowDb,
+} from '@/Interface';
+import {
 	IExecutionsSummary,
 	IConnection,
 	IConnections,
@@ -58,6 +63,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(
 	restApi,
@@ -70,11 +76,22 @@ export default mixins(
 	components: {
 		ExecutionsSidebar,
 	},
-	data() {
+	data(): {
+		loading: boolean;
+		loadingMore: boolean;
+		filter: ExecutionFilterType;
+	} {
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: { status: 'all', startDate: '', endDate: '', tags: [] as string[] },
+			filter: {
+				status: 'all',
+				workflowId: '',
+				startDate: '',
+				endDate: '',
+				tags: [],
+				metadata: [],
+			},
 		};
 	},
 	computed: {
@@ -101,33 +118,8 @@ export default mixins(
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
 		},
 		requestFilter(): IDataObject {
-			const rFilter: IDataObject = { workflowId: this.currentWorkflow };
-			if (this.filter.status === 'waiting') {
-				rFilter.waitTill = true;
-			} else if (this.filter.status !== 'all') {
-				rFilter.finished = this.filter.status === 'success';
-			}
-
-			if (!isEmpty(this.filter.tags)) {
-				rFilter.tags = this.filter.tags;
-			}
-
-			switch (this.filter.status as ExecutionStatus) {
-				case 'waiting':
-					rFilter.status = ['waiting'];
-					break;
-				case 'error':
-					rFilter.status = ['failed', 'crashed'];
-					break;
-				case 'success':
-					rFilter.status = ['success'];
-					break;
-				case 'running':
-					rFilter.status = ['running'];
-					break;
-			}
-
-			return rFilter;
+			this.filter.workflowId = this.currentWorkflow;
+			return executionFilterToQueryFilter(this.filter);
 		},
 	},
 	watch: {
@@ -321,7 +313,7 @@ export default mixins(
 				);
 			}
 		},
-		onFilterUpdated(newFilter: { finished: boolean; status: string }): void {
+		onFilterUpdated(newFilter: ExecutionFilterType): void {
 			this.filter = newFilter;
 			this.setExecutions();
 		},

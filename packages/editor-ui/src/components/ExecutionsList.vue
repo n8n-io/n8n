@@ -241,6 +241,7 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
 	IWorkflowShortResponse,
+	ExecutionFilterType,
 } from '@/Interface';
 import type { ExecutionStatus, IDataObject, IExecutionsSummary } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
@@ -249,6 +250,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { isEmpty, setPageTitle } from '@/utils';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -273,8 +275,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					workflowId: 'all',
 					startDate: '',
 					endDate: '',
-					tags: [] as string[],
-				},
+					tags: [],
+					metadata: [],
+				} as ExecutionFilterType,
 
 				isDataLoading: false,
 
@@ -346,30 +349,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return filter;
 			},
 			workflowFilterPast(): IDataObject {
-				const queryFilter: IDataObject = {};
-				if (this.filter.workflowId !== 'all') {
-					queryFilter.workflowId = this.filter.workflowId;
-				}
-
-				if (!isEmpty(this.filter.tags)) {
-					queryFilter.tags = this.filter.tags;
-				}
-
-				switch (this.filter.status as ExecutionStatus) {
-					case 'waiting':
-						queryFilter.status = ['waiting'];
-						break;
-					case 'error':
-						queryFilter.status = ['failed', 'crashed'];
-						break;
-					case 'success':
-						queryFilter.status = ['success'];
-						break;
-					case 'running':
-						queryFilter.status = ['running'];
-						break;
-				}
-				return queryFilter;
+				return executionFilterToQueryFilter(this.filter);
 			},
 			pageTitle() {
 				return this.$locale.baseText('executionsList.workflowExecutions');

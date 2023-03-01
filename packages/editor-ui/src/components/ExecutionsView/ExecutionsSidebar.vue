@@ -67,6 +67,7 @@ import { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { ExecutionFilterType } from '@/Interface';
 
 export default Vue.extend({
 	name: 'executions-sidebar',
@@ -94,10 +95,11 @@ export default Vue.extend({
 			VIEWS,
 			filter: {
 				status: 'all',
+				workflowId: '',
 				startDate: '',
 				endDate: '',
 				tags: [] as string[],
-			},
+			} as ExecutionFilterType,
 			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 		};
@@ -152,12 +154,7 @@ export default Vue.extend({
 		onRefresh(): void {
 			this.$emit('refresh');
 		},
-		onFilterChanged(filter: {
-			status: string;
-			startDate: string;
-			endDate: string;
-			tags: string[];
-		}) {
+		onFilterChanged(filter: ExecutionFilterType) {
 			this.filter = filter;
 			this.$emit('filterUpdated', filter);
 		},
@@ -178,6 +175,7 @@ export default Vue.extend({
 		async resetFilters(): Promise<void> {
 			this.filter = {
 				status: 'all',
+				workflowId: '',
 				startDate: '',
 				endDate: '',
 				tags: [] as string[],

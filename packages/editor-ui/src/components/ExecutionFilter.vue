@@ -1,27 +1,24 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import dateformat from 'dateformat';
-import { IWorkflowShortResponse } from '@/Interface';
+import type {
+	ExecutionFilterType,
+	ExecutionFilterMetadata,
+	IWorkflowShortResponse,
+} from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 
-const dateTimeMask = 'yyyy-MM-dd HH:mm:ss';
+const dateTimeMask = 'yyyy-MM-dd HH:mm';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
-	filter: {
-		status: string;
-		workflowId: string;
-		startDate: string;
-		endDate: string;
-		tags: string[];
-	};
+	filter: ExecutionFilterType;
 };
 
 const props = defineProps<ExecutionFilterProps>();
 
 const emit = defineEmits<{
-	(event: 'filterChanged', value: object): void;
+	(event: 'filterChanged', value: ExecutionFilterType): void;
 }>();
 
 const statusFilterApplied = computed(() => {
@@ -30,7 +27,8 @@ const statusFilterApplied = computed(() => {
 		(!!props.workflows?.length && props.filter.workflowId !== 'all') ||
 		!!props.filter.tags.length ||
 		!!props.filter.startDate ||
-		!!props.filter.endDate
+		!!props.filter.endDate ||
+		!!props.filter.metadata.length
 	);
 });
 
@@ -42,18 +40,54 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
-const startDate = computed(() =>
-	props.filter.startDate ? dateformat(props.filter.startDate, dateTimeMask) : '',
-);
-const endDate = computed(() =>
-	props.filter.endDate ? dateformat(props.filter.endDate, dateTimeMask) : '',
-);
+const startDate = computed({
+	get() {
+		return props.filter.startDate ? new Date(props.filter.startDate) : '';
+	},
+
+	set(value) {
+		emit('filterChanged', {
+			...props.filter,
+			startDate: value,
+		});
+	},
+});
+
+const endDate = computed({
+	get() {
+		return props.filter.endDate ? new Date(props.filter.endDate) : '';
+	},
+
+	set(value) {
+		emit('filterChanged', {
+			...props.filter,
+			endDate: value,
+		});
+	},
+});
 
 const onFilterPropChange = (prop: keyof ExecutionFilterProps['filter'], value: string) => {
-	console.log('onFilterPropChange', prop, value);
 	emit('filterChanged', {
 		...props.filter,
 		[prop]: value,
+	});
+};
+
+const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, value: string) => {
+	const metadata = [...props.filter.metadata];
+
+	if (!metadata[index]) {
+		metadata[index] = {
+			key: '',
+			value: '',
+		};
+	}
+
+	metadata[index][prop] = value;
+
+	emit('filterChanged', {
+		...props.filter,
+		metadata,
 	});
 };
 
@@ -64,6 +98,7 @@ const onFilterReset = () => {
 		startDate: '',
 		endDate: '',
 		tags: [],
+		metadata: [],
 	});
 };
 </script>
@@ -145,19 +180,17 @@ const onFilterReset = () => {
 						<el-date-picker
 							id="execution-filter-start-date"
 							type="datetime"
+							v-model="startDate"
 							:format="dateTimeMask"
-							:value="startDate"
 							:placeholder="$locale.baseText('executionsFilter.startDate')"
-							@change="onFilterPropChange('startDate', $event)"
 						/>
 						<span :class="$style.divider">to</span>
 						<el-date-picker
 							id="execution-filter-end-date"
 							type="datetime"
+							v-model="endDate"
 							:format="dateTimeMask"
-							:value="endDate"
 							:placeholder="$locale.baseText('executionsFilter.endDate')"
-							@change="onFilterPropChange('endDate', $event)"
 						/>
 					</div>
 				</div>
@@ -180,7 +213,8 @@ const onFilterReset = () => {
 								type="text"
 								size="medium"
 								:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-								@change="onFilterPropChange('savedDataKey', $event)"
+								:value="filter.metadata[0]?.key"
+								@input="onFilterMetaChange(0, 'key', $event)"
 							/>
 						</div>
 						<div>
@@ -193,7 +227,8 @@ const onFilterReset = () => {
 								type="text"
 								size="medium"
 								:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-								@change="onFilterPropChange('savedDataValue', $event)"
+								:value="filter.metadata[0]?.value"
+								@input="onFilterMetaChange(0, 'value', $event)"
 							/>
 						</div>
 					</div>
