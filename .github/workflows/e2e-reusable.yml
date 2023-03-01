@@ -101,9 +101,6 @@ jobs:
         with:
           run_install: true
 
-      - name: Echo spec input
-        run: echo ${{ inputs.spec }}
-
       - name: Cache pnpm modules
         uses: actions/cache@v3
         with:
