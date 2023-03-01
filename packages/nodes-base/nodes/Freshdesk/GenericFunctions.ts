@@ -3,7 +3,7 @@ import type { OptionsWithUri } from 'request';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(
@@ -33,7 +33,7 @@ export async function freshdeskApiRequest(
 		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 	if (!Object.keys(query).length) {
@@ -43,7 +43,7 @@ export async function freshdeskApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -67,7 +67,7 @@ export async function freshdeskApiRequestAllItems(
 		if (responseData.headers.link) {
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }

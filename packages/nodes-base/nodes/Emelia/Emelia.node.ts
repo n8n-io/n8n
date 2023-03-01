@@ -165,7 +165,7 @@ export class Emelia implements INodeType {
 						});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.data.createCampaign),
+							this.helpers.returnJsonArray(responseData.data.createCampaign as IDataObject),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -210,7 +210,7 @@ export class Emelia implements INodeType {
 						});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.data.campaign),
+							this.helpers.returnJsonArray(responseData.data.campaign as IDataObject),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -252,7 +252,7 @@ export class Emelia implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(campaigns),
+							this.helpers.returnJsonArray(campaigns as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -423,7 +423,7 @@ export class Emelia implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(contactLists),
+							this.helpers.returnJsonArray(contactLists as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

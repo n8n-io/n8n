@@ -278,7 +278,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -314,7 +314,7 @@ export class HaloPSA implements INodeType {
 							response = clients;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -385,7 +385,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -421,7 +421,7 @@ export class HaloPSA implements INodeType {
 							response = sites;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -494,7 +494,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -530,7 +530,7 @@ export class HaloPSA implements INodeType {
 							response = tickets;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -602,7 +602,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -638,7 +638,7 @@ export class HaloPSA implements INodeType {
 							response = users;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -661,7 +661,7 @@ export class HaloPSA implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

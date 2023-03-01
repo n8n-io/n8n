@@ -456,7 +456,7 @@ export class SpreadsheetFile implements INodeType {
 						[sheetName]: ws,
 					},
 				};
-				const wbout = xlsxWrite(wb, wopts);
+				const wbout: Buffer = xlsxWrite(wb, wopts);
 
 				// Create a new item with only the binary spreadsheet data
 				const newItem: INodeExecutionData = {

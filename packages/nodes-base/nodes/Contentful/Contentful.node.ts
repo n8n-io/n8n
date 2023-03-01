@@ -201,7 +201,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -221,7 +221,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -300,7 +300,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -320,7 +320,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -359,7 +359,7 @@ export class Contentful implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

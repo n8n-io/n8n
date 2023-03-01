@@ -34,7 +34,7 @@ import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/uti
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';
-import { usePostHogStore } from './posthog';
+import { usePostHog } from './posthog';
 import { useSettingsStore } from './settings';
 import { useUIStore } from './ui';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
@@ -153,7 +153,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.addUsers([user]);
 			this.currentUserId = user.id;
 
-			usePostHogStore().init(user.featureFlags);
+			usePostHog().init(user.featureFlags);
 		},
 		async loginWithCreds(params: {
 			email: string;
@@ -170,13 +170,13 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.addUsers([user]);
 			this.currentUserId = user.id;
 
-			usePostHogStore().init(user.featureFlags);
+			usePostHog().init(user.featureFlags);
 		},
 		async logout(): Promise<void> {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
-			usePostHogStore().reset();
+			usePostHog().reset();
 		},
 		async preOwnerSetup() {
 			return preOwnerSetup(useRootStore().getRestApiContext);
@@ -217,7 +217,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.currentUserId = user.id;
 			}
 
-			usePostHogStore().init(user.featureFlags);
+			usePostHog().init(user.featureFlags);
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();

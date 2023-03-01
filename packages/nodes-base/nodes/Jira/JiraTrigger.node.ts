@@ -373,8 +373,8 @@ export class JiraTrigger implements INodeType {
 				const webhooks = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
 
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && eventExists(events, webhook.events)) {
-						webhookData.webhookId = getId(webhook.self);
+					if (webhook.url === webhookUrl && eventExists(events, webhook.events as string[])) {
+						webhookData.webhookId = getId(webhook.self as string);
 						return true;
 					}
 				}
@@ -443,14 +443,14 @@ export class JiraTrigger implements INodeType {
 					}
 				}
 
-				if (Object.keys(parameters).length) {
-					const params = new URLSearchParams(parameters).toString();
+				if (Object.keys(parameters as IDataObject).length) {
+					const params = new URLSearchParams(parameters as string).toString();
 					body.url = `${body.url}?${decodeURIComponent(params)}`;
 				}
 
 				const responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'POST', body);
 
-				webhookData.webhookId = getId(responseData.self);
+				webhookData.webhookId = getId(responseData.self as string);
 
 				return true;
 			},

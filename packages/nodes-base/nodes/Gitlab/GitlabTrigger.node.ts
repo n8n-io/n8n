@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -250,12 +251,12 @@ export class GitlabTrigger implements INodeType {
 				try {
 					responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
-					throw new NodeApiError(this.getNode(), responseData, {
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 						message: 'GitLab webhook creation response did not contain the expected data.',
 					});
 				}
