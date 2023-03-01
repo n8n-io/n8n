@@ -23,7 +23,7 @@ describe('NDV', () => {
 	});
 
 	// Why clipboard doesn't work?
-	it.skip('should test webhook node', () => {
+	it('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
@@ -50,11 +50,12 @@ describe('NDV', () => {
 		workflowPage.getters.canvasNodes().last().dblclick();
 		ndv.getters.inputSelect().click();
 		ndv.getters.inputOption().last().click();
+		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist')
 		ndv.getters.inputDataContainer().should('contain', 'start');
 	});
 
 	it('should show correct validation state for resource locator params', () => {
-		workflowPage.actions.addNodeToCanvas('Typeform', true, false);
+		workflowPage.actions.addNodeToCanvas('Typeform', true, true);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
 		cy.get('[class*=hasIssues]').should('have.length', 0);

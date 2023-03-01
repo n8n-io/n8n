@@ -139,7 +139,7 @@ describe('Execution', () => {
 	});
 
 	// TODO: Check why clipboard is failing
-	it.skip('should test webhook workflow', () => {
+	it('should test webhook workflow', () => {
 		// Import workflow
 		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
@@ -218,7 +218,7 @@ describe('Execution', () => {
 		workflowPage.getters.successToast().should('be.visible');
 	});
 
-	it.skip('should test webhook workflow stop', () => {
+	it('should test webhook workflow stop', () => {
 		// Import workflow
 		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
