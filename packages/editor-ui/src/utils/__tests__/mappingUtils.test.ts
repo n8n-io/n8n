@@ -1,6 +1,36 @@
 import { INodeProperties } from 'n8n-workflow';
 import { getMappedResult } from '../mappingUtils';
 
+const RLC_PARAM: INodeProperties = {
+	displayName: 'Base',
+	name: 'application',
+	type: 'resourceLocator',
+	default: {
+		mode: 'url',
+		value: '',
+	},
+	required: true,
+	description: 'The Airtable Base in which to operate on',
+	modes: [
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9]{2,}',
+						errorMessage: 'Not a valid Airtable Base ID',
+					},
+				},
+			],
+			placeholder: 'appD3dfaeidke',
+			url: '=https://airtable.com/{{$value}}',
+		},
+	],
+};
+
 const STRING_PARAM: INodeProperties = {
 	displayName: 'Value',
 	name: 'value',
@@ -161,6 +191,12 @@ describe('Mapping Utils', () => {
 					'=   ',
 				),
 			).toEqual('=    {{ $node["Schedule Trigger"].json["Day of week"] }}');
+		});
+
+		it('handles RLC values', () => {
+			expect(getMappedResult(RLC_PARAM, '{{ test }}', '')).toEqual('={{ test }}');
+			expect(getMappedResult(RLC_PARAM, '{{ test }}', '=')).toEqual('={{ test }}');
+			expect(getMappedResult(RLC_PARAM, '{{ test }}', '=test')).toEqual('=test {{ test }}');
 		});
 	});
 });
