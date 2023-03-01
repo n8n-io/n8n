@@ -164,7 +164,7 @@ export class Automizy implements INodeType {
 					);
 					responseData = responseData.contacts;
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -186,7 +186,7 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/contacts/${contactId}`);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -228,7 +228,7 @@ export class Automizy implements INodeType {
 					}
 
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -258,7 +258,7 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'PATCH', `/contacts/${email}`, body);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -274,7 +274,7 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'POST', '/smart-lists', body);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -296,7 +296,7 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists/${listId}`);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -332,7 +332,7 @@ export class Automizy implements INodeType {
 					}
 
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -354,7 +354,7 @@ export class Automizy implements INodeType {
 					);
 
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}

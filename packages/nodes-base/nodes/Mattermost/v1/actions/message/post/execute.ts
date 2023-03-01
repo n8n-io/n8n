@@ -84,5 +84,5 @@ export async function post(this: IExecuteFunctions, index: number): Promise<INod
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

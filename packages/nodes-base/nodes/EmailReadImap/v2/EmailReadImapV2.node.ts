@@ -331,8 +331,8 @@ export class EmailReadImapV2 implements INodeType {
 					.then(async (partData) => {
 						// Return it in the format n8n expects
 						return this.helpers.prepareBinaryData(
-							partData,
-							attachmentPart.disposition.params.filename,
+							partData as Buffer,
+							attachmentPart.disposition.params.filename as string,
 						);
 					});
 
@@ -401,7 +401,7 @@ export class EmailReadImapV2 implements INodeType {
 					}
 					const parsedEmail = await parseRawEmail.call(
 						this,
-						part.body,
+						part.body as Buffer,
 						dataPropertyAttachmentsPrefixName,
 					);
 
@@ -445,7 +445,7 @@ export class EmailReadImapV2 implements INodeType {
 					});
 
 					messageBody = messageHeader[0].body;
-					for (propertyName of Object.keys(messageBody)) {
+					for (propertyName of Object.keys(messageBody as IDataObject)) {
 						if (messageBody[propertyName].length) {
 							if (topLevelProperties.includes(propertyName)) {
 								newEmail.json[propertyName] = messageBody[propertyName][0];
@@ -567,7 +567,7 @@ export class EmailReadImapV2 implements INodeType {
 					}
 				},
 				onupdate: async (seqno: number, info) => {
-					Logger.verbose(`Email Read Imap:update ${seqno}`, info);
+					Logger.verbose(`Email Read Imap:update ${seqno}`, info as IDataObject);
 				},
 			};
 
@@ -603,7 +603,7 @@ export class EmailReadImapV2 implements INodeType {
 					Logger.verbose(`IMAP connection experienced an error: (${errorCode})`, { error });
 					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					await closeFunction();
-					this.emitError(error);
+					this.emitError(error as Error);
 				});
 				return conn;
 			});
@@ -625,7 +625,7 @@ export class EmailReadImapV2 implements INodeType {
 					connection = await establishConnection();
 					await connection.openBox(mailbox);
 				} catch (error) {
-					Logger.error(error);
+					Logger.error(error as string);
 				} finally {
 					isCurrentlyReconnecting = false;
 				}

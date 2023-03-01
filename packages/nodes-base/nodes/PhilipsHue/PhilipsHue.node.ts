@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -65,11 +66,11 @@ export class PhilipsHue implements INodeType {
 
 				const groups = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/groups`);
 
-				for (const light of Object.keys(lights)) {
+				for (const light of Object.keys(lights as IDataObject)) {
 					let lightName = lights[light].name;
 					const lightId = light;
 
-					for (const groupId of Object.keys(groups)) {
+					for (const groupId of Object.keys(groups as IDataObject)) {
 						if (groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
@@ -156,7 +157,7 @@ export class PhilipsHue implements INodeType {
 
 					const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
 
-					responseData = Object.values(lights);
+					responseData = Object.values(lights as IDataObject);
 
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i);
@@ -176,7 +177,7 @@ export class PhilipsHue implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

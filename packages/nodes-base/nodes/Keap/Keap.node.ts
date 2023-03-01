@@ -181,7 +181,7 @@ export class Keap implements INodeType {
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { countries } = await keapApiRequest.call(this, 'GET', '/locales/countries');
-				for (const key of Object.keys(countries)) {
+				for (const key of Object.keys(countries as IDataObject)) {
 					const countryName = countries[key];
 					const countryId = key;
 					returnData.push({
@@ -201,7 +201,7 @@ export class Keap implements INodeType {
 					'GET',
 					`/locales/countries/${countryCode}/provinces`,
 				);
-				for (const key of Object.keys(provinces)) {
+				for (const key of Object.keys(provinces as IDataObject)) {
 					const provinceName = provinces[key];
 					const provinceId = key;
 					returnData.push({
@@ -858,7 +858,7 @@ export class Keap implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
