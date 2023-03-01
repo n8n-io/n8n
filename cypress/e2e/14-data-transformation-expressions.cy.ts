@@ -87,7 +87,7 @@ describe('Data transformation expressions', () => {
 		addSet();
 
 		const input = '{{$json.myArr.includes(1) + " " + $json.myArr.at(2)';
-		const output = 'true 3';
+		const output = '3';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();

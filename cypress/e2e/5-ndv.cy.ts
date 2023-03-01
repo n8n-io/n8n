@@ -1,23 +1,19 @@
-import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
+import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 
-const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('NDV', () => {
 
 	beforeEach(() => {
-		cy.visit(workflowPage.url)
-		workflowPage.actions.renameWorkflow(uuid());
-		workflowPage.actions.saveWorkflowOnButtonClick();
-	});
-	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
 		cy.visit(workflowPage.url)
+		cy.waitForLoad();
+		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
-
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.getters.canvasNodes().first().dblclick();

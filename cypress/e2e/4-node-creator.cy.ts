@@ -1,13 +1,7 @@
 import { NodeCreator } from '../pages/features/node-creator';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
 const NDVModal = new NDV();
@@ -15,12 +9,10 @@ const NDVModal = new NDV();
 describe('Node Creator', () => {
 	before(() => {
 		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
+		cy.skipSetup();
 	});
 
 	beforeEach(() => {
-		cy.signin({ email, password });
-
 		cy.visit(nodeCreatorFeature.url);
 		cy.waitForLoad();
 	});

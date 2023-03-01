@@ -181,8 +181,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.workflowNameInput().clear().type(name).type('{enter}');
 		},
 		activateWorkflow: () => {
+			cy.intercept('PATCH', '/rest/workflows/*').as('activateWorkflow');
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
 			this.getters.activatorSwitch().click();
+			cy.wait('@activateWorkflow');
 			cy.get('body').type('{esc}');
 		},
 		renameWorkflow: (newName: string) => {

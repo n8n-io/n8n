@@ -5,7 +5,7 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Schedule Trigger node', async () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
