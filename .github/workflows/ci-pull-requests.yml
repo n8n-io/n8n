@@ -19,6 +19,7 @@ jobs:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   lint:
+    name: Units Tests & Lint
     runs-on: ubuntu-latest
     needs: [e2e-node-16]
     steps:
@@ -27,7 +28,7 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Cache pnpm modules
+      - name: Restore cached pnpm modules
         uses: actions/cache@v3
         with:
           path: |
@@ -44,6 +45,9 @@ jobs:
 
       - name: Fetch base branch for `git diff`
         run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+
+      - name: Build
+        run: pnpm build
 
       - name: Test
         run: pnpm test
