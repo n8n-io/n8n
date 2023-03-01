@@ -174,4 +174,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CYPRESS_E2E_TESTS: 'true'
           E2E_TESTS: 'true'
-          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🐳 ${{ matrix.containers }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
