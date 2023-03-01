@@ -68,7 +68,7 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha	}}-${{ inputs.run-env }}-e2e-modules
+          key: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
 
       - name: Cypress build
         uses: cypress-io/github-action@v5
@@ -108,7 +108,7 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha	}}-${{ inputs.run-env }}-e2e-modules
+          key: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
 
       - name: Cypress run
         uses: cypress-io/github-action@v5

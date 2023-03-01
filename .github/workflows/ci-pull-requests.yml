@@ -16,7 +16,9 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
         with:
-          run_install: true
+          run_install: |
+            - recursive: true
+              args: [--frozen-lockfile]
 
       - name: Build
         run: pnpm build
@@ -29,7 +31,7 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha	}}-base:16.18.1-e2e-modules
+          key: ${{ github.sha }}-base:16.18.1-e2e-modules
 
       - name: Test
         run: pnpm test
