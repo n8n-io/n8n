@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeType,
@@ -8,13 +8,8 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	getTriggerName,
-	livePublicKey,
-	Profile,
-	testPublicKey,
-	wiseApiRequest,
-} from './GenericFunctions';
+import type { Profile } from './GenericFunctions';
+import { getTriggerName, livePublicKey, testPublicKey, wiseApiRequest } from './GenericFunctions';
 
 import { createVerify } from 'crypto';
 
@@ -98,7 +93,6 @@ export class WiseTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -191,7 +185,7 @@ export class WiseTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

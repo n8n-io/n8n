@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	createDeferredPromise,
+import type { ITriggerFunctions } from 'n8n-core';
+import type {
 	IBinaryData,
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
@@ -15,20 +14,52 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { createDeferredPromise, LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
-import {
-	connect as imapConnect,
-	getParts,
-	ImapSimple,
-	ImapSimpleOptions,
-	Message,
-} from 'imap-simple';
-import { simpleParser, Source as ParserSource } from 'mailparser';
+import type { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import { connect as imapConnect, getParts } from 'imap-simple';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
 
-import _ from 'lodash';
+import isEmpty from 'lodash.isempty';
+import find from 'lodash.find';
+
+export async function parseRawEmail(
+	this: ITriggerFunctions,
+	messageEncoded: ParserSource,
+	dataPropertyNameDownload: string,
+): Promise<INodeExecutionData> {
+	const responseData = await simpleParser(messageEncoded);
+	const headers: IDataObject = {};
+	for (const header of responseData.headerLines) {
+		headers[header.key] = header.line;
+	}
+
+	// @ts-ignore
+	responseData.headers = headers;
+	// @ts-ignore
+	responseData.headerLines = undefined;
+
+	const binaryData: IBinaryKeyData = {};
+	if (responseData.attachments) {
+		for (let i = 0; i < responseData.attachments.length; i++) {
+			const attachment = responseData.attachments[i];
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+				attachment.content,
+				attachment.filename,
+				attachment.contentType,
+			);
+		}
+		// @ts-ignore
+		responseData.attachments = undefined;
+	}
+
+	return {
+		json: responseData as unknown as IDataObject,
+		binary: Object.keys(binaryData).length ? binaryData : undefined,
+	} as INodeExecutionData;
+}
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
@@ -211,7 +242,7 @@ export class EmailReadImapV1 implements INodeType {
 					if (credentials.secure) {
 						tlsOptions.servername = credentials.host as string;
 					}
-					if (!_.isEmpty(tlsOptions)) {
+					if (!isEmpty(tlsOptions)) {
 						config.imap.tlsOptions = tlsOptions;
 					}
 					const conn = imapConnect(config).then(async (entry) => {
@@ -272,7 +303,6 @@ export class EmailReadImapV1 implements INodeType {
 		// Returns the email attachments
 		const getAttachment = async (
 			imapConnection: ImapSimple,
-			// tslint:disable-next-line:no-any
 			parts: any[],
 			message: Message,
 		): Promise<IBinaryData[]> => {
@@ -293,8 +323,8 @@ export class EmailReadImapV1 implements INodeType {
 					.then(async (partData) => {
 						// Return it in the format n8n expects
 						return this.helpers.prepareBinaryData(
-							partData,
-							attachmentPart.disposition.params.filename,
+							partData as Buffer,
+							attachmentPart.disposition.params.filename as string,
 						);
 					});
 
@@ -356,14 +386,14 @@ export class EmailReadImapV1 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: '' });
+					const part = find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					const parsedEmail = await parseRawEmail.call(
 						this,
-						part.body,
+						part.body as Buffer,
 						dataPropertyAttachmentsPrefixName,
 					);
 
@@ -407,7 +437,7 @@ export class EmailReadImapV1 implements INodeType {
 					});
 
 					messageBody = messageHeader[0].body;
-					for (propertyName of Object.keys(messageBody)) {
+					for (propertyName of Object.keys(messageBody as IDataObject)) {
 						if (messageBody[propertyName].length) {
 							if (topLevelProperties.includes(propertyName)) {
 								newEmail.json[propertyName] = messageBody[propertyName][0];
@@ -445,7 +475,7 @@ export class EmailReadImapV1 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: 'TEXT' });
+					const part = find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -540,7 +570,7 @@ export class EmailReadImapV1 implements INodeType {
 				tlsOptions.servername = credentials.host as string;
 			}
 
-			if (!_.isEmpty(tlsOptions)) {
+			if (!isEmpty(tlsOptions)) {
 				config.imap.tlsOptions = tlsOptions;
 			}
 
@@ -549,7 +579,7 @@ export class EmailReadImapV1 implements INodeType {
 			return imapConnect(config).then(async (conn) => {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
-					if (['ECONNRESET', 'EPIPE'].includes(errorCode)) {
+					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {
 						Logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, { error });
 						try {
 							connection = await establishConnection();
@@ -561,7 +591,7 @@ export class EmailReadImapV1 implements INodeType {
 						}
 					} else {
 						Logger.error('Email Read Imap node encountered a connection error', { error });
-						this.emitError(error);
+						this.emitError(error as Error);
 					}
 				});
 				return conn;
@@ -598,40 +628,4 @@ export class EmailReadImapV1 implements INodeType {
 			closeFunction,
 		};
 	}
-}
-
-export async function parseRawEmail(
-	this: ITriggerFunctions,
-	messageEncoded: ParserSource,
-	dataPropertyNameDownload: string,
-): Promise<INodeExecutionData> {
-	const responseData = await simpleParser(messageEncoded);
-	const headers: IDataObject = {};
-	for (const header of responseData.headerLines) {
-		headers[header.key] = header.line;
-	}
-
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
-
-	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-		// @ts-ignore
-		responseData.attachments = undefined;
-	}
-
-	return {
-		json: responseData as unknown as IDataObject,
-		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
 }

@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -6,24 +5,22 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
-import axios, { AxiosRequestConfig, Method } from 'axios';
-import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageTypes } from '../EventMessageClasses';
-import {
-	jsonParse,
-	LoggerProxy,
+import axios from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
+import { jsonParse, LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type {
 	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 } from 'n8n-workflow';
-import { CredentialsHelper } from '../../CredentialsHelper';
+import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
-import config from '../../config';
+import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -75,8 +72,11 @@ export class MessageEventBusDestinationWebhook
 
 	axiosRequestOptions: AxiosRequestConfig;
 
-	constructor(options: MessageEventBusDestinationWebhookOptions) {
-		super(options);
+	constructor(
+		eventBusInstance: MessageEventBus,
+		options: MessageEventBusDestinationWebhookOptions,
+	) {
+		super(eventBusInstance, options);
 		this.url = options.url;
 		this.label = options.label ?? 'Webhook Endpoint';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.webhook;
@@ -192,8 +192,6 @@ export class MessageEventBusDestinationWebhook
 				} catch (_) {
 					console.log('JSON parameter need to be an valid JSON');
 				}
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
 			}
 		}
@@ -212,8 +210,6 @@ export class MessageEventBusDestinationWebhook
 				} catch (_) {
 					console.log('JSON parameter need to be an valid JSON');
 				}
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
 			}
 		}
@@ -222,7 +218,6 @@ export class MessageEventBusDestinationWebhook
 		if (this.axiosRequestOptions.headers === undefined) {
 			this.axiosRequestOptions.headers = {};
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.axiosRequestOptions.headers['Content-Type'] = 'application/json';
 	}
 
@@ -252,6 +247,7 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	static deserialize(
+		eventBusInstance: MessageEventBus,
 		data: MessageEventBusDestinationOptions,
 	): MessageEventBusDestinationWebhook | null {
 		if (
@@ -259,12 +255,13 @@ export class MessageEventBusDestinationWebhook
 			data.__type === MessageEventBusDestinationTypeNames.webhook &&
 			isMessageEventBusDestinationWebhookOptions(data)
 		) {
-			return new MessageEventBusDestinationWebhook(data);
+			return new MessageEventBusDestinationWebhook(eventBusInstance, data);
 		}
 		return null;
 	}
 
-	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
+	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
+		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
 			if (!isLogStreamingEnabled()) return sendResult;
@@ -336,10 +333,8 @@ export class MessageEventBusDestinationWebhook
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
 		} else if (httpQueryAuth) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
 		} else if (httpDigestAuth) {
 			this.axiosRequestOptions.auth = {
@@ -353,13 +348,13 @@ export class MessageEventBusDestinationWebhook
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.status === this.expectedStatusCode) {
-						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						confirmCallback(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					} else {
 						sendResult = false;
 					}
 				} else {
-					await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+					confirmCallback(msg, { id: this.id, name: this.label });
 					sendResult = true;
 				}
 			}

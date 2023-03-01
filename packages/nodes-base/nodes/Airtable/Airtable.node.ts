@@ -1,13 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 export class Airtable implements INodeType {
@@ -186,6 +187,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						addAllFields: [false],
@@ -264,6 +266,7 @@ export class Airtable implements INodeType {
 				name: 'downloadFieldNames',
 				type: 'string',
 				required: true,
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['list'],
@@ -291,6 +294,7 @@ export class Airtable implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'single',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Field',
@@ -419,6 +423,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						updateAllFields: [false],
@@ -461,6 +466,7 @@ export class Airtable implements INodeType {
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						displayOptions: {
 							show: {
 								'/operation': ['update'],
@@ -538,7 +544,7 @@ export class Airtable implements INodeType {
 					if (addAllFields) {
 						// Add all the fields the item has
 						row.fields = { ...items[i].json };
-						delete (row.fields! as any).id;
+						delete (row.fields as any).id;
 					} else {
 						// Add only the specified fields
 						row.fields = {} as IDataObject;
@@ -562,7 +568,7 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -604,7 +610,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -649,7 +655,7 @@ export class Airtable implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				returnData.push.apply(returnData, responseData.records);
+				returnData.push.apply(returnData, responseData.records as INodeExecutionData[]);
 
 				if (downloadAttachments === true) {
 					const downloadFieldNames = (
@@ -657,7 +663,7 @@ export class Airtable implements INodeType {
 					).split(',');
 					const data = await downloadRecordAttachments.call(
 						this,
-						responseData.records,
+						responseData.records as IRecord[],
 						downloadFieldNames,
 					);
 					return [data];
@@ -699,7 +705,7 @@ export class Airtable implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -739,7 +745,7 @@ export class Airtable implements INodeType {
 						// Update all the fields the item has
 						row.fields = { ...items[i].json };
 						// remove id field
-						delete (row.fields! as any).id;
+						delete (row.fields as any).id;
 
 						if (options.ignoreFields && options.ignoreFields !== '') {
 							const ignoreFields = (options.ignoreFields as string)
@@ -781,7 +787,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 

@@ -1,11 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -85,6 +86,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				typeOptions: {
 					rows: 5,
+					editor: 'htmlEditor',
 				},
 				default: '',
 				description: 'HTML text message of email',
@@ -183,11 +185,11 @@ export class Mailgun implements INodeType {
 						options,
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: itemIndex } },
 				);
 

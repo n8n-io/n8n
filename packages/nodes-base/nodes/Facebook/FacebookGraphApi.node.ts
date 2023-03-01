@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -387,7 +387,7 @@ export class FacebookGraphApi implements INodeType {
 				if (item.binary[binaryPropertyName] === undefined) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`No binary data property "${binaryPropertyName}" does not exists on item!`,
+						`Item has no binary property called "${binaryPropertyName}"`,
 						{ itemIndex },
 					);
 				}
@@ -414,7 +414,7 @@ export class FacebookGraphApi implements INodeType {
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let errorItem;

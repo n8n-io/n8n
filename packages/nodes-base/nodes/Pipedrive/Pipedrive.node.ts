@@ -1,15 +1,15 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { ICustomProperties } from './GenericFunctions';
 import {
-	ICustomProperties,
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
 	pipedriveEncodeCustomProperties,
@@ -4350,7 +4350,7 @@ export class Pipedrive implements INodeType {
 						if (item.binary[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`Item has no binary property called "${binaryPropertyName}"`,
 								{ itemIndex: i },
 							);
 						}
@@ -4850,7 +4850,7 @@ export class Pipedrive implements INodeType {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-						responseData.data,
+						responseData.data as Buffer,
 					);
 				} else {
 					if (responseData.data === null) {
@@ -4878,7 +4878,7 @@ export class Pipedrive implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

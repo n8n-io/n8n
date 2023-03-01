@@ -1,8 +1,8 @@
-import { IExecuteFunctions, IPollFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IPollFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -86,7 +86,7 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.records);
+		returnData.push.apply(returnData, responseData.records as IDataObject[]);
 
 		query.offset = responseData.offset;
 	} while (responseData.offset !== undefined);
@@ -113,7 +113,7 @@ export async function downloadRecordAttachments(
 						encoding: null,
 					});
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
-						Buffer.from(file),
+						Buffer.from(file as string),
 						attachment.filename,
 						attachment.type,
 					);

@@ -21,8 +21,6 @@ export class AddTriggerCountColumn1669823906994 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN triggerCount`,
-		);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN triggerCount`);
 	}
 }

@@ -1,17 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IContactUpdate } from './ContactInterface';
+import type { IContactUpdate } from './ContactInterface';
 
-import { IFilterRules, ISearchConditions } from './FilterInterface';
+import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -50,7 +51,7 @@ export async function agileCrmApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -78,7 +79,7 @@ export async function agileCrmApiRequestAllItems(
 			sendAsForm,
 		);
 		if (responseData.length !== 0) {
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (sendAsForm) {
 				body.cursor = responseData[responseData.length - 1].cursor;
 			} else {
@@ -168,9 +169,9 @@ export async function agileCrmApiRequestUpdate(
 		return lastSuccesfulUpdateReturn;
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		} else {
-			throw new NodeApiError(this.getNode(), error, {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
 				message: `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')}`,
 				description: error.message,
 				httpCode: error.statusCode,

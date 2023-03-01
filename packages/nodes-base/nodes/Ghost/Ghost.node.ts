@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -341,7 +341,7 @@ export class Ghost implements INodeType {
 					}
 				}
 
-				responseData = this.helpers.returnJsonArray(responseData);
+				responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },

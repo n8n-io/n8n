@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
 import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { AbstractEventPayload } from './AbstractEventPayload';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { EventNamesTypes } from '.';
 
 function modifyUnderscoredKeys(
 	input: { [key: string]: any },
@@ -86,7 +86,7 @@ export abstract class AbstractEventMessage {
 
 	ts: DateTime;
 
-	eventName: string;
+	eventName: EventNamesTypes;
 
 	message: string;
 

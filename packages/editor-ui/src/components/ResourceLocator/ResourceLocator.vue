@@ -81,6 +81,7 @@
 								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
+									:path="path"
 									isForRecordLocator
 									@valueChanged="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
@@ -684,6 +685,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			if (!this.isSearchable || this.currentQueryError) {
 				this.showResourceDropdown = false;
 			}
+			this.$emit('blur');
 		},
 	},
 });

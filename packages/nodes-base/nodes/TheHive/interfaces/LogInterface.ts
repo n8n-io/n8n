@@ -1,4 +1,4 @@
-import { IAttachment } from './ObservableInterface';
+import type { IAttachment } from './ObservableInterface';
 export enum LogStatus {
 	OK = 'Ok',
 	DELETED = 'Deleted',

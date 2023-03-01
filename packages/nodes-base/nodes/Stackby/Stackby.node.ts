@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems, IRecord } from './GenericFunction';
+import type { IRecord } from './GenericFunction';
+import { apiRequest, apiRequestAllItems } from './GenericFunction';
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
@@ -188,8 +189,7 @@ export class Stackby implements INodeType {
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					returnData.push.apply(
 						returnData,
-
-						responseData.map((data: any) => data.field),
+						responseData.map((data: any) => data.field) as INodeExecutionData[],
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -222,7 +222,7 @@ export class Stackby implements INodeType {
 					responseData = responseData.records;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 
@@ -279,8 +279,7 @@ export class Stackby implements INodeType {
 
 				returnData.push.apply(
 					returnData,
-
-					responseData.map((data: any) => data.field),
+					responseData.map((data: any) => data.field) as INodeExecutionData[],
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -329,8 +328,7 @@ export class Stackby implements INodeType {
 
 					returnData.push.apply(
 						returnData,
-
-						responseData.map((data: any) => data.field),
+						responseData.map((data: any) => data.field) as INodeExecutionData[],
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {

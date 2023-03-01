@@ -6,20 +6,24 @@ import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
+import { mockInstance } from '../shared/utils';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
 
-let testDbName = '';
+const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
+mockInstance(NodeTypes);
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow'], testDbName);
+	await testDb.truncate(['Workflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('should report risky official nodes', async () => {
@@ -70,9 +74,9 @@ test('should not report non-risky official nodes', async () => {
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await audit(['nodes']);
+	if (Array.isArray(testAudit)) return;
 
-	const report = testAudit?.[toReportTitle('nodes')];
-
+	const report = testAudit[toReportTitle('nodes')];
 	if (!report) return;
 
 	for (const section of report.sections) {

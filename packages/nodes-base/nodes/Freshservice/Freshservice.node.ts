@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -56,7 +56,7 @@ import {
 	ticketOperations,
 } from './descriptions';
 
-import { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
+import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
 
 import { tz } from 'moment-timezone';
 
@@ -237,6 +237,7 @@ export class Freshservice implements INodeType {
 				fields = fields
 					.concat(...asset_type_fields.map((data) => data.fields))
 					.map((data) => ({ name: data.label, id: data.name }));
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return toOptions(fields);
 			},
 
@@ -1384,7 +1385,7 @@ export class Freshservice implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

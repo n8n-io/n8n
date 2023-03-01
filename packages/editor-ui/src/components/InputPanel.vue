@@ -85,6 +85,7 @@
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
 						@execute="onNodeExecute"
 						telemetrySource="inputs"
+						data-test-id="execute-previous-node"
 					/>
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
@@ -115,6 +116,17 @@
 			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 				$locale.baseText('ndv.input.noOutputData')
 			}}</n8n-text>
+		</template>
+
+		<template #recovered-artifical-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
 		</template>
 	</RunData>
 </template>
@@ -383,6 +395,16 @@ export default mixins(workflowHelpers).extend({
 
 	> * {
 		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.recoveredOutputData {
+	margin: auto;
+	max-width: 250px;
+	text-align: center;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
 	}
 }
 

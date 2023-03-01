@@ -1,12 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { flow, sortBy } from 'lodash';
+import flow from 'lodash.flow';
+import sortBy from 'lodash.sortby';
 
-import {
+import type {
 	AllFields,
 	CamelCaseResource,
 	DateType,
@@ -21,6 +23,15 @@ import {
 	SnakeCaseResource,
 	ZohoOAuth2ApiCredentials,
 } from './types';
+
+export function throwOnErrorStatus(
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	responseData: { data?: Array<{ status: string; message: string }> },
+) {
+	if (responseData?.data?.[0].status === 'error') {
+		throw new NodeOperationError(this.getNode(), responseData as Error);
+	}
+}
 
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -40,7 +51,7 @@ export async function zohoApiRequest(
 		},
 		method,
 		qs,
-		uri: uri ?? `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
+		uri: uri || `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -57,11 +68,11 @@ export async function zohoApiRequest(
 
 		if (responseData === undefined) return [];
 
-		throwOnErrorStatus.call(this, responseData);
+		throwOnErrorStatus.call(this, responseData as IDataObject);
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -84,7 +95,7 @@ export async function zohoApiRequestAllItems(
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 		qs.page++;
 	} while (responseData.info.more_records !== undefined && responseData.info.more_records === true);
 
@@ -133,18 +144,15 @@ export function throwOnMissingProducts(
 	}
 }
 
-export function throwOnErrorStatus(
-	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	responseData: { data?: Array<{ status: string; message: string }> },
-) {
-	if (responseData?.data?.[0].status === 'error') {
-		throw new NodeOperationError(this.getNode(), responseData as Error);
-	}
-}
-
 // ----------------------------------------
 //        required field adjusters
 // ----------------------------------------
+
+/**
+ * Create a copy of an object without a specific property.
+ */
+const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) =>
+	remainingObject;
 
 /**
  * Place a product ID at a nested position in a product details field.
@@ -318,16 +326,27 @@ export const adjustProductPayload = adjustCustomFields;
 // ----------------------------------------
 
 /**
- * Create a copy of an object without a specific property.
- */
-const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) =>
-	remainingObject;
-
-/**
  * Convert items in a Zoho CRM API response into n8n load options.
  */
 export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
 	items.map((item) => ({ name: item[nameProperty], value: item.id }));
+
+export function getModuleName(resource: string) {
+	const map: { [key: string]: string } = {
+		account: 'Accounts',
+		contact: 'Contacts',
+		deal: 'Deals',
+		invoice: 'Invoices',
+		lead: 'Leads',
+		product: 'Products',
+		purchaseOrder: 'Purchase_Orders',
+		salesOrder: 'Sales_Orders',
+		vendor: 'Vendors',
+		quote: 'Quotes',
+	};
+
+	return map[resource];
+}
 
 /**
  * Retrieve all fields for a resource, sorted alphabetically.
@@ -359,21 +378,13 @@ export async function getFields(
 	return sortBy(options, (o) => o.name);
 }
 
-export function getModuleName(resource: string) {
-	const map: { [key: string]: string } = {
-		account: 'Accounts',
-		contact: 'Contacts',
-		deal: 'Deals',
-		invoice: 'Invoices',
-		lead: 'Leads',
-		product: 'Products',
-		purchaseOrder: 'Purchase_Orders',
-		salesOrder: 'Sales_Orders',
-		vendor: 'Vendors',
-		quote: 'Quotes',
-	};
+export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);
 
-	return map[resource];
+function getSectionApiName(resource: string) {
+	if (resource === 'purchaseOrder') return 'Purchase Order Information';
+	if (resource === 'salesOrder') return 'Sales Order Information';
+
+	return `${capitalizeInitial(resource)} Information`;
 }
 
 export async function getPicklistOptions(
@@ -402,13 +413,6 @@ export async function getPicklistOptions(
 	}));
 }
 
-function getSectionApiName(resource: string) {
-	if (resource === 'purchaseOrder') return 'Purchase Order Information';
-	if (resource === 'salesOrder') return 'Sales Order Information';
-
-	return `${capitalizeInitial(resource)} Information`;
-}
-
 /**
  * Add filter options to a query string object.
  */
@@ -418,5 +422,3 @@ export const addGetAllFilterOptions = (qs: IDataObject, options: GetAllFilterOpt
 		Object.assign(qs, fields && { fields: fields.join(',') }, rest);
 	}
 };
-
-export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);

@@ -1,6 +1,7 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function kitemakerRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -23,10 +24,20 @@ export async function kitemakerRequest(
 	const responseData = await this.helpers.request.call(this, options);
 
 	if (responseData.errors) {
-		throw new NodeApiError(this.getNode(), responseData);
+		throw new NodeApiError(this.getNode(), responseData as JsonObject);
 	}
 
 	return responseData;
+}
+
+function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
+	const map: { [key: string]: { [key: string]: string } } = {
+		space: { group: 'organization', items: 'spaces' },
+		user: { group: 'organization', items: 'users' },
+		workItem: { group: 'workItems', items: 'workItems' },
+	};
+
+	return [map[resource].group, map[resource].items];
 }
 
 export async function kitemakerRequestAllItems(
@@ -45,7 +56,7 @@ export async function kitemakerRequestAllItems(
 	do {
 		responseData = await kitemakerRequest.call(this, body);
 		body.variables.cursor = responseData.data[group].cursor;
-		returnData.push(...responseData.data[group][items]);
+		returnData.push(...(responseData.data[group][items] as IDataObject[]));
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
@@ -55,18 +66,9 @@ export async function kitemakerRequestAllItems(
 	return returnData;
 }
 
-function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
-	const map: { [key: string]: { [key: string]: string } } = {
-		space: { group: 'organization', items: 'spaces' },
-		user: { group: 'organization', items: 'users' },
-		workItem: { group: 'workItems', items: 'workItems' },
-	};
-
-	return [map[resource].group, map[resource].items];
-}
-
+export type LoadOptions = { name?: string; username?: string; title?: string; id: string };
 export function createLoadOptions(
-	resources: Array<{ name?: string; username?: string; title?: string; id: string }>,
+	resources: LoadOptions[],
 ): Array<{ name: string; value: string }> {
 	return resources.map((option) => {
 		if (option.username) return { name: option.username, value: option.id };

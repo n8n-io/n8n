@@ -1,8 +1,8 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
@@ -22,7 +22,7 @@ export async function beeminderApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 
@@ -48,7 +48,7 @@ export async function beeminderApiRequestAllItems(
 	do {
 		responseData = await beeminderApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

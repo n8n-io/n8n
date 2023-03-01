@@ -48,7 +48,7 @@ import { restApi } from '@/mixins/restApi';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
@@ -82,6 +82,7 @@ export function resolveParameter(
 
 	const inputName = 'main';
 	const activeNode = useNDVStore().activeNode;
+
 	const workflow = getCurrentWorkflow();
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
@@ -929,7 +930,6 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
-				this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 				if (
 					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
@@ -953,6 +953,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 				this.workflowsStore.setActive(workflowData.active || false);
 				this.workflowsStore.setWorkflowId(workflowData.id);
+				this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
 				this.workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 				this.uiStore.stateIsDirty = false;

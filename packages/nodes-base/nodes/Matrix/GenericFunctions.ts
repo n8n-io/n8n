@@ -1,10 +1,10 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
@@ -46,9 +46,9 @@ export async function matrixApiRequest(
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
 		//@ts-ignore
-		return options.overridePrefix === 'media' ? JSON.parse(response) : response;
+		return options.overridePrefix === 'media' ? JSON.parse(response as string) : response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -148,7 +148,7 @@ export async function handleMatrixCall(
 						{},
 						qs,
 					);
-					returnData.push.apply(returnData, responseData.chunk);
+					returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
 					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
@@ -169,7 +169,7 @@ export async function handleMatrixCall(
 					{},
 					qs,
 				);
-				returnData.push.apply(returnData, responseData.chunk);
+				returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
 			}
 
 			return returnData;
@@ -197,7 +197,7 @@ export async function handleMatrixCall(
 			) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
+					`Item has no binary property called "${binaryPropertyName}"`,
 				);
 			}
 

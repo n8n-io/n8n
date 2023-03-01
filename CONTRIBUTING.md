@@ -11,15 +11,16 @@ Great that you are here and you want to contribute to n8n
   - [Development setup](#development-setup)
     - [Requirements](#requirements)
       - [Node.js](#nodejs)
+      - [pnpm](#pnpm)
+        - [pnpm workspaces](#pnpm-workspaces)
+      - [corepack](#corepack)
       - [Build tools](#build-tools)
-      - [pnpm workspaces](#pnpm-workspaces)
     - [Actual n8n setup](#actual-n8n-setup)
     - [Start](#start)
   - [Development cycle](#development-cycle)
     - [Test suite](#test-suite)
+  - [Releasing](#releasing)
   - [Create custom nodes](#create-custom-nodes)
-  - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
-  - [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
   - [Extend documentation](#extend-documentation)
   - [Contributor License Agreement](#contributor-license-agreement)
 
@@ -60,9 +61,23 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Node.js
 
-We suggest using [Node.js](https://nodejs.org/en/) version 16.9 or newer for development purposes.
+[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
 
-After that we recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`, and [pnpm](https://pnpm.io/) with `corepack prepare pnpm --activate`.
+#### pnpm
+
+[pnpm](https://pnpm.io/) version 7.18 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+
+##### pnpm workspaces
+
+n8n is split up in different modules which are all in a single mono repository.
+To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
+This automatically sets up file-links between modules which depend on each other.
+
+#### corepack
+
+We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
+
+With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 7.18 of pnpm via: `corepack prepare pnpm@7.18.0 --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
@@ -90,11 +105,9 @@ Windows:
 npm add -g windows-build-tools
 ```
 
-#### pnpm workspaces
+MacOS:
 
-n8n is split up in different modules which are all in a single mono repository.
-To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
-This automatically sets up file-links between modules which depend on each other.
+No additional packages required.
 
 ### Actual n8n setup
 
@@ -182,6 +195,22 @@ pnpm test
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
+
+## Releasing
+
+To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then
+
+1. Bump versions of packages that have changed or have dependencies that have changed
+2. Update the Changelog
+3. Create a new branch called `release/${VERSION}`, and
+4. Create a new pull-request to track any further changes that need to be included in this release
+
+Once ready to release, simply merge the pull-request.
+This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will
+
+1. Build and publish the packages that have a new version in this release
+2. Create a new tag, and GitHub release from squashed release commit
+3. Merge the squashed release commit back into `master`
 
 ## Create custom nodes
 

@@ -1,15 +1,16 @@
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -67,7 +68,7 @@ export async function awsApiRequestREST(
 		region,
 	);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (e) {
 		return response;
 	}
@@ -97,7 +98,7 @@ export async function awsApiRequestSOAP(
 	);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseString(response as string, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
@@ -148,9 +149,9 @@ export async function awsApiRequestSOAPAllItems(
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName));
+				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 			} else {
-				returnData.push(get(responseData, propertyName));
+				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
 	} while (

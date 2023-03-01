@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
 
@@ -106,7 +106,7 @@ export class Line implements INodeType {
 								if (items[i].binary[image.binaryProperty] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${image.binaryProperty}" does not exists on item!`,
+										`Item has no binary property called "${image.binaryProperty}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -143,7 +143,7 @@ export class Line implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

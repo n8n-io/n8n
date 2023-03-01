@@ -4,11 +4,10 @@
 import express from 'express';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
-import {
-	EventMessageWorkflow,
-	EventMessageWorkflowOptions,
-} from './EventMessageClasses/EventMessageWorkflow';
-import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
+import type { EventMessageWorkflowOptions } from './EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
+import type { EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
+import { eventBus } from './MessageEventBus/MessageEventBus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
@@ -19,19 +18,19 @@ import {
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import { eventNamesAll } from './EventMessageClasses';
-import {
-	EventMessageAudit,
-	EventMessageAuditOptions,
-} from './EventMessageClasses/EventMessageAudit';
+import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
 import { BadRequestError } from '../ResponseHelper';
-import {
-	MessageEventBusDestinationTypeNames,
+import type {
 	MessageEventBusDestinationWebhookOptions,
-	EventMessageTypeNames,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
-import { User } from '../databases/entities/User';
+import { MessageEventBusDestinationTypeNames, EventMessageTypeNames } from 'n8n-workflow';
+import type { User } from '../databases/entities/User';
 import * as ResponseHelper from '@/ResponseHelper';
+import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
+import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 
 export const eventBusRouter = express.Router();
 
@@ -55,17 +54,14 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationWebhookOptions => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const o = candidate as MessageEventBusDestinationWebhookOptions;
 	if (!o) return false;
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	return o.url !== undefined;
 };
 
 const isMessageEventBusDestinationOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationOptions => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const o = candidate as MessageEventBusDestinationOptions;
 	if (!o) return false;
 	return o.__type !== undefined;
@@ -107,6 +103,32 @@ eventBusRouter.get(
 	}),
 );
 
+eventBusRouter.get(
+	'/execution-recover/:id',
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (req.params?.id) {
+			let logHistory;
+			let applyToDb = true;
+			if (req.query?.logHistory) {
+				logHistory = parseInt(req.query.logHistory as string, 10);
+			}
+			if (req.query?.applyToDb) {
+				applyToDb = !!req.query.applyToDb;
+			}
+			const messages = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
+			if (messages.length > 0) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const recoverResult = await recoverExecutionDataFromEventLogMessages(
+					req.params.id,
+					messages,
+					applyToDb,
+				);
+				return recoverResult;
+			}
+		}
+	}),
+);
+
 eventBusRouter.post(
 	'/event',
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
@@ -118,6 +140,9 @@ eventBusRouter.post(
 					break;
 				case EventMessageTypeNames.audit:
 					msg = new EventMessageAudit(req.body as EventMessageAuditOptions);
+					break;
+				case EventMessageTypeNames.node:
+					msg = new EventMessageNode(req.body as EventMessageNodeOptions);
 					break;
 				case EventMessageTypeNames.generic:
 				default:
@@ -138,23 +163,20 @@ eventBusRouter.post(
 
 eventBusRouter.get(
 	'/destination',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		let result = [];
 		if (isWithIdString(req.query)) {
 			result = await eventBus.findDestination(req.query.id);
 		} else {
 			result = await eventBus.findDestination();
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return result;
 	}),
 );
 
 eventBusRouter.post(
 	'/destination',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}
@@ -164,17 +186,23 @@ eventBusRouter.post(
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:
 					if (isMessageEventBusDestinationSentryOptions(req.body)) {
-						result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationSentry(eventBus, req.body),
+						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.webhook:
 					if (isMessageEventBusDestinationWebhookOptions(req.body)) {
-						result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationWebhook(eventBus, req.body),
+						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.syslog:
 					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
-						result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationSyslog(eventBus, req.body),
+						);
 					}
 					break;
 				default:
@@ -185,7 +213,10 @@ eventBusRouter.post(
 			}
 			if (result) {
 				await result.saveToDb();
-				return result;
+				return {
+					...result,
+					eventBusInstance: undefined,
+				};
 			}
 			throw new BadRequestError('There was an error adding the destination');
 		}
@@ -195,8 +226,7 @@ eventBusRouter.post(
 
 eventBusRouter.get(
 	'/testmessage',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		let result = false;
 		if (isWithIdString(req.query)) {
 			result = await eventBus.testDestination(req.query.id);
@@ -207,8 +237,7 @@ eventBusRouter.get(
 
 eventBusRouter.delete(
 	'/destination',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}

@@ -22,8 +22,14 @@
 				</template>
 			</n8n-callout>
 		</template>
-		<template #default="{ data }">
-			<workflow-card :data="data" @click:tag="onClickTag" />
+		<template #default="{ data, updateItemSize }">
+			<workflow-card
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				@expand:tags="updateItemSize(data)"
+				@click:tag="onClickTag"
+			/>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
@@ -113,6 +119,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
+import { newVersions } from '@/mixins/newVersions';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -121,7 +128,7 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
-import { EnterpriseEditionFeature, POSTHOG_ASSUMPTION_TEST, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, ASSUMPTION_EXPERIMENT, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
 import { ITag, IUser, IWorkflowDb } from '@/Interface';
@@ -131,6 +138,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -140,7 +148,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper).extend({
+export default mixins(showMessage, debounceHelper, newVersions).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -177,7 +185,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
-			return window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-demo';
+			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
@@ -261,6 +269,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
+		this.checkForNewVersions();
 		this.usersStore.showPersonalizationSurvey();
 	},
 });

@@ -1,19 +1,19 @@
 // eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { IAuthDataSanitizeKeys, replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
+import type { OptionsWithUri } from 'request';
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
+import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -23,6 +23,8 @@ interface OptionData {
 interface OptionDataParamters {
 	[key: string]: OptionData;
 }
+
+type OptionsWithUriKeys = keyof OptionsWithUri;
 
 export class HttpRequestV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -750,7 +752,7 @@ export class HttpRequestV1 implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex },
 									);
 								}
@@ -788,7 +790,7 @@ export class HttpRequestV1 implements INodeType {
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 										);
 									}
 
@@ -827,7 +829,9 @@ export class HttpRequestV1 implements INodeType {
 						// If it is not an object && bodyContentType is not 'raw' it must be JSON so parse it
 						try {
 							// @ts-ignore
-							requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
+							requestOptions[optionData.name] = JSON.parse(
+								requestOptions[optionData.name as OptionsWithUriKeys] as string,
+							);
 						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -986,7 +990,7 @@ export class HttpRequestV1 implements INodeType {
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					// throw error;
-					throw new NodeApiError(this.getNode(), response);
+					throw new NodeApiError(this.getNode(), response as JsonObject);
 				} else {
 					// Return the actual reason as error
 					returnItems.push({
@@ -1041,14 +1045,14 @@ export class HttpRequestV1 implements INodeType {
 					newItem.json = returnItem;
 
 					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body,
+						response!.body as Buffer,
 						fileName,
 					);
 				} else {
 					newItem.json = items[itemIndex].json;
 
 					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response!,
+						response! as Buffer,
 						fileName,
 					);
 				}

@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -245,7 +244,7 @@ export class RespondToWebhook implements INodeType {
 			if (binaryData === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`No binary data property "${responseBinaryPropertyName}" does not exists on item!`,
+					`Item has no binary property called "${responseBinaryPropertyName}"`,
 				);
 			}
 

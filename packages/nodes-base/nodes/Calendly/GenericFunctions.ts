@@ -1,14 +1,20 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+
+export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
+	// The access token is a JWT, so it will always include dots to separate
+	// header, payoload and signature.
+	return data.includes('.') ? 'accessToken' : 'apiKey';
+}
 
 export async function calendlyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -44,7 +50,7 @@ export async function calendlyApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {
@@ -52,12 +58,6 @@ export async function calendlyApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	return this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
-}
-
-export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
-	// The access token is a JWT, so it will always include dots to separate
-	// header, payoload and signature.
-	return data.includes('.') ? 'accessToken' : 'apiKey';
 }
 
 export async function validateCredentials(

@@ -1,6 +1,7 @@
-import { BINARY_ENCODING, IExecuteFunctions, WAIT_TIME_UNLIMITED } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
@@ -8,8 +9,8 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
@@ -757,7 +758,7 @@ export class Wait implements INodeType {
 					workflowData: [[returnItem]],
 				};
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			} finally {
 				await binaryFile.cleanup();
 			}

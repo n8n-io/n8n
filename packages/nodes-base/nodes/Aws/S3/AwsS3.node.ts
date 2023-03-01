@@ -4,17 +4,16 @@ import { createHash } from 'crypto';
 
 import { Builder } from 'xml2js';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
 
@@ -84,7 +83,7 @@ export class AwsS3 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -150,8 +149,11 @@ export class AwsS3 implements INodeType {
 							qs,
 							headers,
 						);
-
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 
 					// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
@@ -167,7 +169,11 @@ export class AwsS3 implements INodeType {
 							{},
 							headers,
 						);
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
@@ -194,7 +200,11 @@ export class AwsS3 implements INodeType {
 							);
 							responseData = responseData.slice(0, qs.limit);
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -263,11 +273,11 @@ export class AwsS3 implements INodeType {
 							);
 							responseData = responseData.ListBucketResult.Contents;
 						}
-						if (Array.isArray(responseData)) {
-							returnData.push.apply(returnData, responseData);
-						} else {
-							returnData.push(responseData);
-						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'folder') {
@@ -304,9 +314,13 @@ export class AwsS3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region,
+							region as string,
 						);
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 					if (operation === 'delete') {
@@ -329,7 +343,7 @@ export class AwsS3 implements INodeType {
 							{ 'list-type': 2, prefix: folderKey },
 							{},
 							{},
-							region,
+							region as string,
 						);
 
 						// folder empty then just delete it
@@ -343,7 +357,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 
 							responseData = { deleted: [{ Key: folderKey }] };
@@ -381,12 +395,16 @@ export class AwsS3 implements INodeType {
 								{ delete: '' },
 								headers,
 								{},
-								region,
+								region as string,
 							);
 
 							responseData = { deleted: responseData.DeleteResult.Deleted };
 						}
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -421,7 +439,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -435,7 +453,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						}
 						if (Array.isArray(responseData)) {
@@ -446,7 +464,11 @@ export class AwsS3 implements INodeType {
 							if (qs.limit) {
 								responseData = responseData.splice(0, qs.limit as number);
 							}
-							returnData.push.apply(returnData, responseData);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
 					}
 				}
@@ -552,9 +574,13 @@ export class AwsS3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region,
+							region as string,
 						);
-						returnData.push(responseData.CopyObjectResult);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
@@ -586,7 +612,7 @@ export class AwsS3 implements INodeType {
 							qs,
 							{},
 							{ encoding: null, resolveWithFullResponse: true },
-							region,
+							region as string,
 						);
 
 						let mimeType: string | undefined;
@@ -645,10 +671,13 @@ export class AwsS3 implements INodeType {
 							qs,
 							{},
 							{},
-							region,
+							region as string,
 						);
-
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -685,7 +714,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -699,7 +728,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 							responseData = responseData.splice(0, qs.limit);
 						}
@@ -710,7 +739,11 @@ export class AwsS3 implements INodeType {
 							if (qs.limit) {
 								responseData = responseData.splice(0, qs.limit as number);
 							}
-							returnData.push.apply(returnData, responseData);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
@@ -814,7 +847,7 @@ export class AwsS3 implements INodeType {
 							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -840,7 +873,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
@@ -860,15 +893,23 @@ export class AwsS3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region,
+								region as string,
 							);
 						}
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
@@ -878,7 +919,7 @@ export class AwsS3 implements INodeType {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

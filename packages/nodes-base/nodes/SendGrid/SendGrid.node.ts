@@ -1,20 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { listFields, listOperations } from './ListDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { mailFields, mailOperations, SendMailBody } from './MailDescription';
+import type { SendMailBody } from './MailDescription';
+import { mailFields, mailOperations } from './MailDescription';
 
 import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
 
@@ -168,7 +169,7 @@ export class SendGrid implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -209,7 +210,7 @@ export class SendGrid implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -304,7 +305,7 @@ export class SendGrid implements INodeType {
 						{ list_ids: lists, contacts },
 						qs,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
@@ -330,7 +331,7 @@ export class SendGrid implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -367,7 +368,7 @@ export class SendGrid implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -398,7 +399,7 @@ export class SendGrid implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -428,7 +429,7 @@ export class SendGrid implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -489,7 +490,7 @@ export class SendGrid implements INodeType {
 							qs,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

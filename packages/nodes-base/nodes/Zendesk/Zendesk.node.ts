@@ -1,15 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 
@@ -21,7 +21,7 @@ import { userFields, userOperations } from './UserDescription';
 
 import { organizationFields, organizationOperations } from './OrganizationDescription';
 
-import { IComment, ITicket } from './TicketInterface';
+import type { IComment, ITicket } from './TicketInterface';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -142,7 +142,7 @@ export class Zendesk implements INodeType {
 					'/ticket_fields',
 				);
 				for (const field of fields) {
-					if (customFields.includes(field.type)) {
+					if (customFields.includes(field.type as string)) {
 						const fieldName = field.title;
 						const fieldId = field.id;
 						returnData.push({
@@ -478,7 +478,7 @@ export class Zendesk implements INodeType {
 							);
 							responseData = responseData.ticket;
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -788,7 +788,7 @@ export class Zendesk implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

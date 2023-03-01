@@ -1,22 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	JSON2SheetOpts,
-	read as xlsxRead,
-	Sheet2JSONOpts,
-	utils as xlsxUtils,
-	WorkBook,
-	write as xlsxWrite,
-	WritingOptions,
-} from 'xlsx';
+import type { JSON2SheetOpts, Sheet2JSONOpts, WorkBook, WritingOptions } from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
 /**
  * Flattens an object with deep data
@@ -52,7 +45,7 @@ export class SpreadsheetFile implements INodeType {
 		icon: 'fa:table',
 		group: ['transform'],
 		version: 1,
-		description: 'Reads and writes data from a spreadsheet file',
+		description: 'Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc',
 		defaults: {
 			name: 'Spreadsheet File',
 			color: '#2244FF',
@@ -76,7 +69,7 @@ export class SpreadsheetFile implements INodeType {
 						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
-						action: 'Write the workflow data to a spreadsheet file',
+						action: 'Write data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
@@ -463,7 +456,7 @@ export class SpreadsheetFile implements INodeType {
 						[sheetName]: ws,
 					},
 				};
-				const wbout = xlsxWrite(wb, wopts);
+				const wbout: Buffer = xlsxWrite(wb, wopts);
 
 				// Create a new item with only the binary spreadsheet data
 				const newItem: INodeExecutionData = {

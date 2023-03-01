@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
@@ -29,7 +29,7 @@ import { fileFields, fileOperations } from './FileDescription';
 
 import { companyFields, companyOperations } from './CompanyDescription';
 
-import {
+import type {
 	IAddress,
 	IContact,
 	IEmailContact,
@@ -38,17 +38,17 @@ import {
 	ISocialAccount,
 } from './ConctactInterface';
 
-import { IAttachment, IEmail } from './EmaiIInterface';
+import type { IAttachment, IEmail } from './EmaiIInterface';
 
-import { INote } from './ContactNoteInterface';
+import type { INote } from './ContactNoteInterface';
 
-import { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
+import type { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
 
-import { IEcommerceProduct } from './EcommerceProductInterface';
+import type { IEcommerceProduct } from './EcommerceProductInterface';
 
-import { IFile } from './FileInterface';
+import type { IFile } from './FileInterface';
 
-import { ICompany } from './CompanyInterface';
+import type { ICompany } from './CompanyInterface';
 
 import { capitalCase, pascalCase } from 'change-case';
 
@@ -181,7 +181,7 @@ export class Keap implements INodeType {
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { countries } = await keapApiRequest.call(this, 'GET', '/locales/countries');
-				for (const key of Object.keys(countries)) {
+				for (const key of Object.keys(countries as IDataObject)) {
 					const countryName = countries[key];
 					const countryId = key;
 					returnData.push({
@@ -201,7 +201,7 @@ export class Keap implements INodeType {
 					'GET',
 					`/locales/countries/${countryCode}/provinces`,
 				);
-				for (const key of Object.keys(provinces)) {
+				for (const key of Object.keys(provinces as IDataObject)) {
 					const provinceName = provinces[key];
 					const provinceId = key;
 					returnData.push({
@@ -758,7 +758,7 @@ export class Keap implements INodeType {
 								if (item[property as string] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary data property "${property}" does not exists on item!`,
+										`Item has no binary property called "${property}"`,
 										{ itemIndex: i },
 									);
 								}
@@ -840,7 +840,7 @@ export class Keap implements INodeType {
 						if (item[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`Item has no binary property called "${binaryPropertyName}"`,
 								{ itemIndex: i },
 							);
 						}
@@ -858,7 +858,7 @@ export class Keap implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

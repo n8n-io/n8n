@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import type { Application } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -19,15 +20,22 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	ExecutionStatus,
+	IExecutionsSummary,
+	FeatureFlags,
 } from 'n8n-workflow';
 
-import { WorkflowExecute } from 'n8n-core';
+import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-import PCancelable from 'p-cancelable';
+import type { WorkflowExecute } from 'n8n-core';
+
+import type PCancelable from 'p-cancelable';
 import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
+import type { AuthIdentity, AuthProviderType } from '@db/entities/AuthIdentity';
+import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
@@ -64,6 +72,8 @@ export interface ICredentialsOverwrite {
 }
 
 export interface IDatabaseCollections {
+	AuthIdentity: Repository<AuthIdentity>;
+	AuthProviderSyncHistory: Repository<AuthProviderSyncHistory>;
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;
@@ -146,6 +156,7 @@ export interface IExecutionBase {
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
+	status: ExecutionStatus;
 }
 
 // Data in regular format with references
@@ -181,6 +192,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	data: string;
 	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -213,19 +225,7 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date;
-}
-
-export interface IExecutionsSummary {
-	id: string;
-	finished?: boolean;
-	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionsCurrentSummary {
@@ -234,6 +234,7 @@ export interface IExecutionsCurrentSummary {
 	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
+	status?: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
@@ -249,6 +250,7 @@ export interface IExecutingWorkflowData {
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
+	status: ExecutionStatus;
 }
 
 export interface IExternalHooks {
@@ -318,6 +320,7 @@ export interface IDiagnosticInfo {
 	binaryDataMode: string;
 	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
+	ldap_allowed: boolean;
 }
 
 export interface ITelemetryUserDeletionData {
@@ -360,6 +363,7 @@ export interface IInternalHooksClass {
 		user: User;
 		target_user_id: string[];
 		public_api: boolean;
+		email_sent: boolean;
 	}): Promise<void>;
 	onUserReinvite(userReinviteData: {
 		user: User;
@@ -373,6 +377,7 @@ export interface IInternalHooksClass {
 		userTransactionalEmailData: {
 			user_id: string;
 			message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+			public_api: boolean;
 		},
 		user?: User,
 	): Promise<void>;
@@ -400,7 +405,13 @@ export interface IInternalHooksClass {
 	}): Promise<void>;
 	onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void>;
 	onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }, user?: User): Promise<void>;
-	onUserSignup(userSignupData: { user: User }): Promise<void>;
+	onUserSignup(
+		user: User,
+		userSignupData: {
+			user_type: AuthProviderType;
+			was_disabled_ldap_user: boolean;
+		},
+	): Promise<void>;
 	onCommunityPackageInstallFinished(installationData: {
 		user: User;
 		input_string: string;
@@ -431,56 +442,6 @@ export interface IInternalHooksClass {
 	}): Promise<void>;
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
-}
-
-export interface IN8nConfig {
-	database: IN8nConfigDatabase;
-	endpoints: IN8nConfigEndpoints;
-	executions: IN8nConfigExecutions;
-	generic: IN8nConfigGeneric;
-	host: string;
-	nodes: IN8nConfigNodes;
-	port: number;
-	protocol: 'http' | 'https';
-}
-
-export interface IN8nConfigDatabase {
-	type: DatabaseType;
-	postgresdb: {
-		host: string;
-		password: string;
-		port: number;
-		user: string;
-	};
-}
-
-export interface IN8nConfigEndpoints {
-	rest: string;
-	webhook: string;
-	webhookTest: string;
-}
-
-// eslint-disable-next-line import/export
-export interface IN8nConfigExecutions {
-	saveDataOnError: SaveExecutionDataType;
-	saveDataOnSuccess: SaveExecutionDataType;
-	saveDataManualExecutions: boolean;
-}
-
-// eslint-disable-next-line import/export
-export interface IN8nConfigExecutions {
-	saveDataOnError: SaveExecutionDataType;
-	saveDataOnSuccess: SaveExecutionDataType;
-	saveDataManualExecutions: boolean;
-}
-
-export interface IN8nConfigGeneric {
-	timezone: string;
-}
-
-export interface IN8nConfigNodes {
-	errorTriggerType: string;
-	exclude: string[];
 }
 
 export interface IVersionNotificationSettings {
@@ -516,9 +477,21 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
+	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
@@ -530,6 +503,7 @@ export interface IN8nUISettings {
 	onboardingCallPromptEnabled: boolean;
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	deployment: {
 		type: string;
@@ -541,6 +515,8 @@ export interface IN8nUISettings {
 	};
 	enterprise: {
 		sharing: boolean;
+		ldap: boolean;
+		saml: boolean;
 		logStreaming: boolean;
 	};
 	hideUsagePage: boolean;
@@ -550,6 +526,7 @@ export interface IN8nUISettings {
 }
 
 export interface IPersonalizationSurveyAnswers {
+	email: string | null;
 	codingSkill: string | null;
 	companyIndustry: string[];
 	companySize: string | null;
@@ -566,6 +543,9 @@ export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+}
+export interface IActiveDirectorySettings {
+	enabled: boolean;
 }
 export interface IPublicApiSettings {
 	enabled: boolean;
@@ -590,7 +570,14 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataNodeDescriptionUpdated
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -631,6 +618,15 @@ type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
+
+type PushDataNodeDescriptionUpdated = {
+	data: undefined;
+	type: 'nodeDescriptionUpdated';
+};
+
+export interface IPushDataExecutionRecovered {
+	executionId: string;
+}
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
@@ -821,4 +817,42 @@ export interface ILicenseReadResponse {
 
 export interface ILicensePostResponse extends ILicenseReadResponse {
 	managementToken: string;
+}
+
+export interface JwtToken {
+	token: string;
+	expiresIn: number;
+}
+
+export interface JwtPayload {
+	id: string;
+	email: string | null;
+	password: string | null;
+}
+
+export interface PublicUser {
+	id: string;
+	email?: string;
+	firstName?: string;
+	lastName?: string;
+	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+	password?: string;
+	passwordResetToken?: string;
+	createdAt: Date;
+	isPending: boolean;
+	globalRole?: Role;
+	signInType: AuthProviderType;
+	disabled: boolean;
+	inviteAcceptUrl?: string;
+}
+
+export interface CurrentUser extends PublicUser {
+	featureFlags?: FeatureFlags;
+}
+
+export interface N8nApp {
+	app: Application;
+	restEndpoint: string;
+	externalHooks: IExternalHooksClass;
+	activeWorkflowRunner: ActiveWorkflowRunner;
 }

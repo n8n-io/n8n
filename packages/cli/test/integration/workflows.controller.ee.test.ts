@@ -14,7 +14,6 @@ import { randomCredentialPayload } from './shared/random';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -25,12 +24,7 @@ let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['workflows'],
-		applyAuth: true,
-	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['workflows'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
@@ -39,9 +33,6 @@ beforeAll(async () => {
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
@@ -53,11 +44,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow'], testDbName);
+	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('Router should switch dynamically', async () => {
@@ -160,9 +151,10 @@ describe('PUT /workflows/:id', () => {
 });
 
 describe('GET /workflows', () => {
-	test('should return workflows with ownership, sharing and credential usage details', async () => {
+	test('should return workflows without nodes, sharing and credential usage details', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const tag = await testDb.createTag({ name: 'test' });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -184,6 +176,7 @@ describe('GET /workflows', () => {
 						},
 					},
 				],
+				tags: [tag],
 			},
 			owner,
 		);
@@ -197,32 +190,19 @@ describe('GET /workflows', () => {
 		expect(response.statusCode).toBe(200);
 		expect(fetchedWorkflow.ownedBy).toMatchObject({
 			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
 		});
 
-		expect(fetchedWorkflow.sharedWith).toHaveLength(1);
-
-		const [sharee] = fetchedWorkflow.sharedWith;
-
-		expect(sharee).toMatchObject({
-			id: member.id,
-			email: member.email,
-			firstName: member.firstName,
-			lastName: member.lastName,
-		});
-
-		expect(fetchedWorkflow.usedCredentials).toHaveLength(1);
-
-		const [usedCredential] = fetchedWorkflow.usedCredentials;
-
-		expect(usedCredential).toMatchObject({
-			id: savedCredential.id,
-			name: savedCredential.name,
-			type: savedCredential.type,
-			currentUserHasAccess: true,
-		});
+		expect(fetchedWorkflow.sharedWith).not.toBeDefined()
+		expect(fetchedWorkflow.usedCredentials).not.toBeDefined()
+		expect(fetchedWorkflow.nodes).not.toBeDefined()
+		expect(fetchedWorkflow.tags).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: expect.any(String),
+					name: expect.any(String)
+				})
+			])
+		)
 	});
 });
 

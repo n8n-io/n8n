@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
 
@@ -240,7 +240,7 @@ export class AsanaTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body.events)],
+			workflowData: [this.helpers.returnJsonArray(req.body.events as IDataObject[])],
 		};
 	}
 }

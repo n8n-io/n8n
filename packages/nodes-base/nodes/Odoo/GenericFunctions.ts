@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
@@ -124,7 +125,7 @@ export async function odooJSONRPCRequest(
 
 		const responce = await this.helpers.request(options);
 		if (responce.error) {
-			throw new NodeApiError(this.getNode(), responce.error.data, {
+			throw new NodeApiError(this.getNode(), responce.error.data as JsonObject, {
 				message: responce.error.data.message,
 			});
 		}

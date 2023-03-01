@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,9 +14,10 @@ import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
 
 import { itemFields, itemOperations } from './ItemDescription';
 
-import {
+import type {
 	FieldsUiValues,
 	IAttributeNameUi,
+	IAttributeValue,
 	IAttributeValueUi,
 	IRequestBody,
 	PutItemUi,
@@ -91,7 +92,7 @@ export class AwsDynamoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -229,10 +230,10 @@ export class AwsDynamoDB implements INodeType {
 
 						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
 
-						if (!Object.keys(responseData).length) {
+						if (!Object.keys(responseData as IDataObject).length) {
 							responseData = { success: true };
 						} else if (simple) {
-							responseData = decodeItem(responseData.Attributes);
+							responseData = decodeItem(responseData.Attributes as IAttributeValue);
 						}
 					} else if (operation === 'get') {
 						// ----------------------------------
@@ -293,7 +294,7 @@ export class AwsDynamoDB implements INodeType {
 						responseData = responseData.Item;
 
 						if (simple && responseData) {
-							responseData = decodeItem(responseData);
+							responseData = decodeItem(responseData as IAttributeValue);
 						}
 					} else if (operation === 'getAll') {
 						// ----------------------------------
@@ -391,14 +392,19 @@ export class AwsDynamoDB implements INodeType {
 							responseData = responseData.map(simplify);
 						}
 					}
-
-					Array.isArray(responseData)
-						? returnData.push(...responseData)
-						: returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 
@@ -406,6 +412,6 @@ export class AwsDynamoDB implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

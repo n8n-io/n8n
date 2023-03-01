@@ -13,7 +13,7 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
-				<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
+				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
 				<n8n-tooltip
 					v-if="!!$slots.tooltip"
 					placement="top"
@@ -36,7 +36,6 @@
 
 <script setup lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import TriggerIcon from './TriggerIcon.vue';
 import N8nTooltip from '../N8nTooltip';
 
 export interface Props {
@@ -60,14 +59,14 @@ defineEmits<{
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: 11px 8px 11px 0;
+	padding: var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs) 0;
 
 	&.hasAction {
 		user-select: none;
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--color-text-light);
+	color: var(--action-arrow-color-hover, var(--color-text-light));
 }
 
 .panelIcon {
@@ -76,7 +75,7 @@ defineEmits<{
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: var(--spacing-2xs);
-	color: var(--color-text-lighter);
+	color: var(--action-arrow-color, var(--color-text-lighter));
 	cursor: pointer;
 	background: transparent;
 	border: none;
@@ -110,11 +109,12 @@ defineEmits<{
 	font-size: var(--font-size-2xs);
 	line-height: 1rem;
 	font-weight: 400;
-	color: var(--node-creator-description-colo, var(--color-text-base));
+	color: var(--node-creator-description-colos, var(--color-text-base));
 }
 
 .triggerIcon {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing-3xs);
+	color: var(--color-primary);
 }
 </style>
 

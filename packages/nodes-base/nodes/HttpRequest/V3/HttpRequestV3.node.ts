@@ -1,26 +1,32 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
+	JsonObject,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request-promise-native';
+import type { OptionsWithUri } from 'request-promise-native';
 
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
-	IAuthDataSanitizeKeys,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+
+function toText<T>(data: T) {
+	if (typeof data === 'object' && data !== null) {
+		return JSON.stringify(data);
+	}
+	return data;
+}
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -1101,19 +1107,23 @@ export class HttpRequestV3 implements INodeType {
 					);
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
-					try {
-						JSON.parse(jsonBodyParameter);
-					} catch (_) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'JSON parameter need to be an valid JSON',
-							{
-								runIndex: itemIndex,
-							},
-						);
-					}
+					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
+						try {
+							JSON.parse(jsonBodyParameter);
+						} catch (_) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'JSON parameter need to be an valid JSON',
+								{
+									runIndex: itemIndex,
+								},
+							);
+						}
 
-					requestOptions.body = jsonParse(jsonBodyParameter);
+						requestOptions.body = jsonParse(jsonBodyParameter);
+					} else {
+						requestOptions.body = jsonBodyParameter;
+					}
 				} else if (specifyBody === 'string') {
 					//form urlencoded
 					requestOptions.body = Object.fromEntries(new URLSearchParams(body));
@@ -1289,20 +1299,18 @@ export class HttpRequestV3 implements INodeType {
 			}
 		}
 
-		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			// @ts-ignore
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
-						response.reason.error = Buffer.from(response.reason.error).toString();
+						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response);
+					throw new NodeApiError(this.getNode(), response as JsonObject);
 				} else {
 					// Return the actual reason as error
 					returnItems.push({
@@ -1337,12 +1345,22 @@ export class HttpRequestV3 implements INodeType {
 				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
-					response.body = jsonParse(Buffer.from(response.body).toString());
+					const neverError = this.getNodeParameter(
+						'options.response.response.neverError',
+						0,
+						false,
+					) as boolean;
+					const data = Buffer.from(response.body as Buffer).toString();
+					response.body = jsonParse(data, {
+						...(neverError
+							? { fallbackValue: {} }
+							: { errorMessage: 'Invalid JSON in response body' }),
+					});
 				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					const data = Buffer.from(response.body).toString();
+					const data = Buffer.from(response.body as Buffer).toString();
 					response.body = !data ? undefined : data;
 				}
 			}
@@ -1374,8 +1392,7 @@ export class HttpRequestV3 implements INodeType {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
-					// @ts-ignore
-					Object.assign(newItem.binary, items[itemIndex].binary);
+					Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
 				}
 
 				const fileName = url.split('/').pop();
@@ -1392,14 +1409,14 @@ export class HttpRequestV3 implements INodeType {
 					newItem.json = returnItem;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body,
+						response!.body as Buffer,
 						fileName,
 					);
 				} else {
 					newItem.json = items[itemIndex].json;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!,
+						response! as Buffer,
 						fileName,
 					);
 				}
@@ -1415,7 +1432,7 @@ export class HttpRequestV3 implements INodeType {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
-							returnItem[outputPropertyName] = response![property];
+							returnItem[outputPropertyName] = toText(response![property]);
 							continue;
 						}
 
@@ -1430,7 +1447,7 @@ export class HttpRequestV3 implements INodeType {
 				} else {
 					returnItems.push({
 						json: {
-							[outputPropertyName]: response,
+							[outputPropertyName]: toText(response),
 						},
 						pairedItem: {
 							item: itemIndex,

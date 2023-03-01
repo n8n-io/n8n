@@ -1,8 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
-import { IAlias, IEvent, IIdentity, ITrack, posthogApiRequest } from './GenericFunctions';
+import type { IAlias, IEvent, IIdentity, ITrack } from './GenericFunctions';
+import { posthogApiRequest } from './GenericFunctions';
 
 import { aliasFields, aliasOperations } from './AliasDescription';
 
@@ -115,7 +121,7 @@ export class PostHog implements INodeType {
 
 						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -167,7 +173,7 @@ export class PostHog implements INodeType {
 
 					responseData = await posthogApiRequest.call(this, 'POST', '/capture', { batch: events });
 
-					returnData.push(responseData);
+					returnData.push(responseData as IDataObject);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.message });
@@ -211,7 +217,7 @@ export class PostHog implements INodeType {
 
 						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -267,7 +273,7 @@ export class PostHog implements INodeType {
 
 						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });

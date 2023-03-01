@@ -1,16 +1,17 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeProperties,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { upperFirst } from 'lodash';
+import upperFirst from 'lodash.upperfirst';
 
 import { createHash } from 'crypto';
 
@@ -35,7 +36,7 @@ export async function webexApiRequest(
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -46,7 +47,7 @@ export async function webexApiRequest(
 			tokenType: 'Bearer',
 		});
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -73,7 +74,7 @@ export async function webexApiRequestAllItems(
 		if (responseData.headers.link) {
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName]);
+		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
@@ -126,6 +127,12 @@ export function mapResource(event: string) {
 			all: 'all',
 		} as { [key: string]: string }
 	)[event];
+}
+
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAttachemnts(attachements: IDataObject[]) {
@@ -619,12 +626,6 @@ export function getInputTextProperties(): INodeProperties[] {
 			description: 'The initial value for this field',
 		},
 	];
-}
-
-function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {

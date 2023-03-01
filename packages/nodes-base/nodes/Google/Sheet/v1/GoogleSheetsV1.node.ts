@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -11,24 +11,20 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	GoogleSheet,
+import type {
 	ILookupValues,
 	ISheetUpdateData,
 	IToDelete,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheet';
+import { GoogleSheet } from './GoogleSheet';
 
-import {
-	getAccessToken,
-	googleApiRequest,
-	hexToRgb,
-	IGoogleAuthCredentials,
-} from './GenericFunctions';
+import type { IGoogleAuthCredentials } from './GenericFunctions';
+import { getAccessToken, googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
 
@@ -205,7 +201,7 @@ export class GoogleSheetsV1 implements INodeType {
 							Object.assign(responseData, responseData.replies[0].addSheet.properties);
 							delete responseData.replies;
 						}
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -370,7 +366,7 @@ export class GoogleSheetsV1 implements INodeType {
 							{ requests },
 						);
 						delete responseData.replies;
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -483,7 +479,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });

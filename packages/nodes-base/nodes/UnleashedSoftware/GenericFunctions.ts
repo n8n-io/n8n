@@ -1,13 +1,14 @@
-import { OptionsWithUrl } from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { createHmac } from 'crypto';
 
@@ -17,12 +18,11 @@ export async function unleashedApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	pageNumber?: number,
 	headers?: object,
-): Promise<any> {
+) {
 	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
 
 	const options: OptionsWithUrl = {
@@ -55,7 +55,7 @@ export async function unleashedApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -64,10 +64,9 @@ export async function unleashedApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 	let responseData;
 	let pageNumber = 1;
@@ -76,7 +75,7 @@ export async function unleashedApiRequestAllItems(
 
 	do {
 		responseData = await unleashedApiRequest.call(this, method, endpoint, body, query, pageNumber);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		pageNumber++;
 	} while (
 		(responseData.Pagination.PageNumber as number) <
@@ -100,7 +99,7 @@ export function convertNETDates(item: { [key: string]: any }) {
 			}
 		}
 		if (type === 'object' && item[path]) {
-			convertNETDates(item[path]);
+			convertNETDates(item[path] as IDataObject);
 		}
 	});
 }

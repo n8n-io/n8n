@@ -1,12 +1,13 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { googleApiRequest } from './GenericFunctions';
 
 import { utils as xlsxUtils } from 'xlsx';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export interface ISheetOptions {
 	scope: string[];

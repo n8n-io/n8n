@@ -1,7 +1,6 @@
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
@@ -15,8 +14,11 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
-import { IExecutionPushResponse } from '@/Interfaces';
+import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
+import { In } from 'typeorm';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -74,7 +76,7 @@ EEWorkflowController.put(
 			}
 		});
 
-		void InternalHooksManager.getInstance().onWorkflowSharingUpdate(
+		void Container.get(InternalHooks).onWorkflowSharingUpdate(
 			workflowId,
 			req.user.id,
 			shareWithIds,
@@ -125,13 +127,16 @@ EEWorkflowController.post(
 
 		await validateEntity(newWorkflow);
 
-		await ExternalHooks().run('workflow.create', [newWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
+			newWorkflow.tags = await Db.collections.Tag.find({
 				select: ['id', 'name'],
+				where: {
+					id: In(tagIds),
+				},
 			});
 		}
 
@@ -157,7 +162,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneOrFail({
+			const role = await Db.collections.Role.findOneByOrFail({
 				name: 'owner',
 				scope: 'workflow',
 			});
@@ -186,8 +191,8 @@ EEWorkflowController.post(
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
+		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
+		void Container.get(InternalHooks).onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;
 	}),
@@ -199,12 +204,16 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
-		await EEWorkflows.addCredentialsToWorkflows(workflows, req.user);
+		const [workflows, workflowOwnerRole] = await Promise.all([
+			EEWorkflows.getMany(req.user, req.query.filter),
+			Db.collections.Role.findOneOrFail({
+				select: ['id'],
+				where: { name: 'owner', scope: 'workflow' },
+			}),
+		]);
 
 		return workflows.map((workflow) => {
-			EEWorkflows.addOwnerAndSharings(workflow);
-			workflow.nodes = [];
+			EEWorkflows.addOwnerId(workflow, workflowOwnerRole);
 			return workflow;
 		});
 	}),
