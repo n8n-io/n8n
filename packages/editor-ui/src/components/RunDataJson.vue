@@ -70,7 +70,6 @@
 import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson, isString, shorten } from '@/utils';
@@ -114,9 +113,6 @@ export default mixins(externalHooks).extend({
 		distanceFromActive: {
 			type: Number,
 		},
-		showMappingHint: {
-			type: Boolean,
-		},
 		runIndex: {
 			type: Number,
 		},
@@ -127,39 +123,14 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			selectedJsonPath: null as null | string,
-			mappingHintVisible: false,
-			showHintWithDelay: false,
 			draggingPath: null as null | string,
 			displayMode: 'json',
 		};
-	},
-	mounted() {
-		if (this.showMappingHint) {
-			this.mappingHintVisible = true;
-
-			setTimeout(() => {
-				this.mappingHintVisible = false;
-			}, 6000);
-		}
-
-		if (this.showMappingHint && this.showHint) {
-			setTimeout(() => {
-				this.showHintWithDelay = this.showHint;
-				this.$telemetry.track('User viewed JSON mapping tooltip', { type: 'param focus' });
-			}, 500);
-		}
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
-		},
-		showHint(): boolean {
-			return (
-				!this.draggingPath &&
-				((this.showMappingHint && this.mappingHintVisible) ||
-					window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true')
-			);
 		},
 	},
 	methods: {
