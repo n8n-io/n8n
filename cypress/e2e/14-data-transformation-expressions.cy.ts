@@ -80,10 +80,11 @@ describe('Data transformation expressions', () => {
 		ndv.getters.outputDataContainer().contains(output);
 	});
 
-	// Support of Array.prototype.at() is only available in Node 16+
-	if(!(process.env.CYPRESS_RUN_ENV || '').includes(':14')) {
+	// Support of Array.prototype.at() is only available in Node 16+ so we include this spec
+	// only if node is not v14
+	console.log('CYPRESS_RUN_ENV', process.env.CYPRESS_RUN_ENV)
+	if(!((process.env.CYPRESS_RUN_ENV || '').includes(':14'))) {
 		it('$json + native array methods', () => {
-			console.log('ENV', process.env)
 			wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 			ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
 			ndv.actions.close();
