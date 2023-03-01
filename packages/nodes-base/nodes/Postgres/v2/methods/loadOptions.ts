@@ -31,3 +31,11 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		throw error;
 	}
 }
+
+export async function getColumnsWithoutColumnToMatchOn(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const columnToMatchOn = this.getNodeParameter('columnToMatchOn') as string;
+	const returnData = await getColumns.call(this);
+	return returnData.filter((column) => column.value !== columnToMatchOn);
+}

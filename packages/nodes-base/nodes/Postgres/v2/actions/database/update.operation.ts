@@ -3,9 +3,14 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import type { PgpClient, PgpDatabase, QueryWithValues } from '../../helpers/interfaces';
+import type {
+	PgpClient,
+	PgpDatabase,
+	QueryValues,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 
-import { runQueries } from '../../helpers/utils';
+import { addReturning, runQueries } from '../../helpers/utils';
 
 import { optionsCollection, outpurSelector, schemaRLC, tableRLC } from '../common.descriptions';
 
@@ -85,7 +90,7 @@ const properties: INodeProperties[] = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsMethod: 'getColumns',
+							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
 							loadOptionsDependsOn: ['schema.value', 'table.value'],
 						},
 						default: [],
@@ -134,48 +139,56 @@ export async function execute(
 
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
-		let query = '';
-		const values: IDataObject = { schema, table };
-
 		const dataMode = this.getNodeParameter('dataMode', i) as string;
 
+		let item: IDataObject = {};
+		let valueToMatchOn: string | IDataObject = '';
+
 		if (dataMode === 'autoMapInputData') {
-			values.item = { ...items[i].json };
-			values.columnToMatchOn = columnToMatchOn;
-			const condition = `$<${columnToMatchOn}:name> = $<item.${columnToMatchOn}>`;
-
-			const updateColumns = Object.keys(values.item).filter((column) => column !== columnToMatchOn);
-
-			const updates: string[] = [];
-
-			for (const column of updateColumns) {
-				updates.push(`$<${column}:name> = $<item.${column}>`);
-			}
-
-			query = `UPDATE $<schema:name>.$<table:name> SET ${updates.join(', ')} WHERE ${condition}`;
+			item = items[i].json;
+			valueToMatchOn = item[columnToMatchOn] as string;
 		}
 
-		// if (dataMode === 'defineBelow') {
-		// 	const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-		// 		.values as IDataObject[];
+		if (dataMode === 'defineBelow') {
+			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+				.values as IDataObject[];
 
-		// 	const item = valuesToSend.reduce((acc, { column, value }) => {
-		// 		acc[column as string] = value;
-		// 		return acc;
-		// 	}, {} as IDataObject);
+			item = valuesToSend.reduce((acc, { column, value }) => {
+				acc[column as string] = value;
+				return acc;
+			}, {} as IDataObject);
 
-		// 	values.push(item);
-		// }
+			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+		}
 
-		const output = this.getNodeParameter('output', 0) as string;
+		let values: QueryValues = [schema, table];
 
+		let valuesLength = values.length + 1;
+
+		const condition = `$${valuesLength}:name = $${valuesLength + 1}`;
+		valuesLength = valuesLength + 2;
+		values.push(columnToMatchOn, valueToMatchOn);
+
+		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
+
+		const updates: string[] = [];
+
+		for (const column of updateColumns) {
+			updates.push(`$${valuesLength}:name = $${valuesLength + 1}`);
+			valuesLength = valuesLength + 2;
+			values.push(column, item[column] as string);
+		}
+
+		let query = `UPDATE $1:name.$2:name SET ${updates.join(', ')} WHERE ${condition}`;
+
+		const output = this.getNodeParameter('output', i) as string;
+
+		let outputColumns: string | string[] = '*';
 		if (output === 'columns') {
-			const outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
-			values.outputColumns = outputColumns;
-			query = `${query} RETURNING $<outputColumns:name>`;
-		} else {
-			query = `${query} RETURNING *`;
+			outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
 		}
+
+		[query, values] = addReturning(query, outputColumns, values);
 
 		queries.push({ query, values });
 	}

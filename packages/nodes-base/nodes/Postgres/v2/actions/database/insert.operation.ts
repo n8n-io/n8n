@@ -137,11 +137,11 @@ export async function execute(
 			values.push(item);
 		}
 
-		const output = this.getNodeParameter('output', 0) as string;
+		const output = this.getNodeParameter('output', i) as string;
 
 		let outputColumns: string | string[] = '*';
 		if (output === 'columns') {
-			outputColumns = this.getNodeParameter('returnColumns', 0, []) as string[];
+			outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
 		}
 
 		[query, values] = addReturning(query, outputColumns, values);
