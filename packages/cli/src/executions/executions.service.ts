@@ -38,6 +38,7 @@ import { Container } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import type { TagEntity } from '@db/entities/TagEntity';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -52,6 +53,7 @@ interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	tags?: Array<TagEntity['id']>;
 }
 
 const schemaGetExecutionsQueryFilter = {
@@ -72,6 +74,7 @@ const schemaGetExecutionsQueryFilter = {
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
+		tags: { type: 'array', items: { type: 'string' } },
 	},
 	$defs: {
 		metadata: {
@@ -193,6 +196,10 @@ export class ExecutionsService {
 
 			if ('startedBefore' in filter) {
 				delete filter.startedBefore;
+			}
+
+			if ('tags' in filter) {
+				delete filter.tags;
 			}
 		}
 	}
