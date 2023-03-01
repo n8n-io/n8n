@@ -295,4 +295,41 @@ export class SamlService {
 		}
 		return attributes;
 	}
+
+	async testSamlConnection(): Promise<boolean> {
+		try {
+			const requestContext = this.getLoginRequestUrl();
+			if (!requestContext) return false;
+			if (requestContext.binding === 'redirect') {
+				const fetchResult = await axios.get(requestContext.context.context);
+				if (fetchResult.status !== 200) {
+					LoggerProxy.debug('SAML: Error while testing SAML connection.');
+					return false;
+				}
+			} else if (requestContext.binding === 'post') {
+				const context = requestContext.context as PostBindingContext;
+				const endpoint = context.entityEndpoint;
+				const params = new URLSearchParams();
+				params.append(context.type, context.context);
+				if (context.relayState) {
+					params.append('RelayState', context.relayState);
+				}
+				const fetchResult = await axios.post(endpoint, params, {
+					headers: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Content-type': 'application/x-www-form-urlencoded',
+					},
+				});
+				if (fetchResult.status !== 200) {
+					LoggerProxy.debug('SAML: Error while testing SAML connection.');
+					return false;
+				}
+			}
+			return true;
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			LoggerProxy.debug('SAML: Error while testing SAML connection: ', error);
+		}
+		return false;
+	}
 }

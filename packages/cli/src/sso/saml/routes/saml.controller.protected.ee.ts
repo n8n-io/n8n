@@ -132,3 +132,11 @@ samlControllerProtected.get(
 		}
 	},
 );
+
+samlControllerProtected.get(
+	SamlUrls.configTest,
+	async (req: express.Request, res: express.Response) => {
+		const testResult = await SamlService.getInstance().testSamlConnection();
+		return res.send(testResult);
+	},
+);
