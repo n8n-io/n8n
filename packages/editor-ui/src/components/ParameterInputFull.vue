@@ -90,6 +90,7 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useSegment } from '@/stores/segment';
 import { externalHooks } from '@/mixins/externalHooks';
+import { getMappedResult } from '../utils/mappingUtils';
 
 export default mixins(showMessage, externalHooks).extend({
 	name: 'parameter-input-full',
@@ -228,43 +229,19 @@ export default mixins(showMessage, externalHooks).extend({
 				param?.$emit('optionSelected', 'addExpression');
 			}
 		},
-		onDrop(data: string) {
-			const useDataPath = !!this.parameter.requiresDataPath && data.startsWith('{{ $json');
-			if (!useDataPath) {
+		onDrop(newParamValue: string) {
+			const updatedValue = getMappedResult({
+				parameter: this.parameter,
+				newParamValue,
+				prevParamValue: this.value,
+			});
+			const prevValue = this.isResourceLocator ? this.value.value : this.value;
+
+			if (updatedValue.startsWith('=')) {
 				this.forceShowExpression = true;
 			}
 			setTimeout(() => {
 				if (this.node) {
-					const prevValue = this.isResourceLocator ? this.value.value : this.value;
-					let updatedValue: string;
-					if (useDataPath) {
-						const newValue = data
-							.replace('{{ $json', '')
-							.replace(new RegExp('^\\.'), '')
-							.replace(new RegExp('}}$'), '')
-							.trim();
-
-						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
-							if (typeof prevValue === 'string' && prevValue.trim() === '=') {
-								updatedValue = newValue;
-							} else {
-								updatedValue = `${prevValue}, ${newValue}`;
-							}
-						} else {
-							updatedValue = newValue;
-						}
-					} else if (
-						typeof prevValue === 'string' &&
-						prevValue.startsWith('=') &&
-						prevValue.length > 1
-					) {
-						updatedValue = `${prevValue} ${data}`;
-					} else if (prevValue && ['string', 'json'].includes(this.parameter.type)) {
-						updatedValue = prevValue === '=' ? `=${data}` : `=${prevValue} ${data}`;
-					} else {
-						updatedValue = `=${data}`;
-					}
-
 					let parameterData;
 					if (this.isResourceLocator) {
 						if (!isResourceLocatorValue(this.value)) {
@@ -338,7 +315,7 @@ export default mixins(showMessage, externalHooks).extend({
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			this.localStorageMappingFlag = true;
+			this.ndvStore.disableMappingHint(false);
 		},
 	},
 	watch: {
