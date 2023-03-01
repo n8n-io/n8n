@@ -92,12 +92,15 @@ export async function execute(
 
 		const output = this.getNodeParameter('output', i) as string;
 
-		let outputColumns = '*';
-		if (output === 'columns') {
-			outputColumns = (this.getNodeParameter('returnColumns', i, []) as string[]).join(', ');
-		}
+		let query = '';
 
-		let query = `SELECT ${outputColumns} FROM $1:name.$2:name`;
+		if (output === 'columns') {
+			const outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
+			values.push(outputColumns);
+			query = `SELECT $${values.length}:name FROM $1:name.$2:name`;
+		} else {
+			query = 'SELECT * FROM $1:name.$2:name';
+		}
 
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
