@@ -51,6 +51,7 @@ interface IGetExecutionsQueryFilter {
 	waitTill?: FindOperator<any> | boolean;
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
+	startedBefore?: string;
 }
 
 const schemaGetExecutionsQueryFilter = {
@@ -70,6 +71,7 @@ const schemaGetExecutionsQueryFilter = {
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
+		startedBefore: { type: 'date-time' },
 	},
 	$defs: {
 		metadata: {
@@ -187,6 +189,10 @@ export class ExecutionsService {
 
 			if ('startedAfter' in filter) {
 				delete filter.startedAfter;
+			}
+
+			if ('startedBefore' in filter) {
+				delete filter.startedBefore;
 			}
 		}
 	}
@@ -329,6 +335,14 @@ export class ExecutionsService {
 			query = query.andWhere({
 				startedAt: MoreThanOrEqual(
 					DateUtils.mixedDateToUtcDatetimeString(new Date(filter.startedAfter)),
+				),
+			});
+		}
+
+		if (filter?.startedBefore) {
+			query = query.andWhere({
+				startedAt: LessThanOrEqual(
+					DateUtils.mixedDateToUtcDatetimeString(new Date(filter.startedBefore)),
 				),
 			});
 		}
