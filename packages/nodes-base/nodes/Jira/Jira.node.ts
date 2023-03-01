@@ -1,6 +1,8 @@
+import type { Readable } from 'stream';
 import mergeWith from 'lodash.mergewith';
 
 import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
 import type {
 	IBinaryKeyData,
@@ -1061,18 +1063,21 @@ export class Jira implements INodeType {
 							itemIndex: i,
 						});
 					}
-
+					let uploadData: Buffer | Readable;
 					const item = items[i].binary as IBinaryKeyData;
-
 					const binaryData = item[binaryPropertyName];
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
 					if (binaryData === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`Item has no binary property called "${binaryPropertyName}"`,
 							{ itemIndex: i },
 						);
+					}
+
+					if (binaryData.id) {
+						uploadData = this.helpers.getBinaryStream(binaryData.id);
+					} else {
+						uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(
@@ -1085,7 +1090,7 @@ export class Jira implements INodeType {
 						{
 							formData: {
 								file: {
-									value: binaryDataBuffer,
+									value: uploadData,
 									options: {
 										filename: binaryData.fileName,
 									},
@@ -1154,7 +1159,7 @@ export class Jira implements INodeType {
 							{},
 							{},
 							attachment?.json.content as string,
-							{ json: false, encoding: null },
+							{ json: false, encoding: null, useStream: true },
 						);
 
 						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
@@ -1205,7 +1210,7 @@ export class Jira implements INodeType {
 							{},
 							{},
 							attachment.json.content as string,
-							{ json: false, encoding: null },
+							{ json: false, encoding: null, useStream: true },
 						);
 						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
 							await this.helpers.prepareBinaryData(
