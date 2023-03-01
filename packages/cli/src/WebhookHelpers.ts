@@ -13,13 +13,12 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
-import express from 'express';
+import type express from 'express';
 import get from 'lodash.get';
 
 import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
-import {
-	createDeferredPromise,
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -32,14 +31,17 @@ import {
 	IWebhookResponseData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
-	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
 import {
+	createDeferredPromise,
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy as Logger,
+	NodeHelpers,
+} from 'n8n-workflow';
+
+import type {
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
@@ -50,10 +52,11 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import * as ActiveExecutions from '@/ActiveExecutions';
-import { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { Container } from 'typedi';
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -142,6 +145,7 @@ export async function executeWebhook(
 	req: express.Request,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
+	destinationNode?: string,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -166,7 +170,7 @@ export async function executeWebhook(
 		user = (workflowData as WorkflowEntity).shared[0].user;
 	} else {
 		try {
-			user = await getWorkflowOwner(workflowData.id.toString());
+			user = await getWorkflowOwner(workflowData.id);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Cannot find workflow');
 		}
@@ -379,6 +383,10 @@ export async function executeWebhook(
 				},
 			} as IRunExecutionData);
 
+		if (destinationNode && runExecutionData.startData) {
+			runExecutionData.startData.destinationNode = destinationNode;
+		}
+
 		if (executionId !== undefined) {
 			// Set the data the webhook node did return on the waiting node if executionId
 			// already exists as it means that we are restarting an existing execution.
@@ -453,7 +461,7 @@ export async function executeWebhook(
 		);
 
 		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = ActiveExecutions.getInstance().getPostExecutePromise(
+		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
 			executionId,
 		) as Promise<IExecutionDb | undefined>;
 		executePromise

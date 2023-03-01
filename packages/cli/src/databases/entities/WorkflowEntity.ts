@@ -1,37 +1,33 @@
 import { Length } from 'class-validator';
 
-import type {
-	IBinaryKeyData,
-	IConnections,
-	IDataObject,
-	INode,
-	IPairedItemData,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
+import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
 import {
 	Column,
 	Entity,
+	Generated,
 	Index,
 	JoinColumn,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 } from 'typeorm';
 
 import config from '@/config';
 import type { TagEntity } from './TagEntity';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
-import { objectRetriever, sqlite } from '../utils/transformers';
+import { idStringifier, objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	// TODO: Add XSS check
 	@Index({ unique: true })
@@ -83,9 +79,6 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })
 	statistics: WorkflowStatistics[];
-
-	@Column({ default: false })
-	dataLoaded: boolean;
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',

@@ -1,10 +1,15 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { apiRequest, getImageBySize } from './GenericFunctions';
 
-import { IEvent } from './IEvent';
+import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +41,7 @@ export class TelegramTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Updates',
+				displayName: 'Trigger On',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
@@ -81,6 +86,7 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Poll',
 						value: 'poll',
+						action: 'On Poll Change',
 						description:
 							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
@@ -99,7 +105,6 @@ export class TelegramTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The update types to listen to',
 			},
 			{
 				displayName:
@@ -159,7 +164,6 @@ export class TelegramTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -276,7 +280,7 @@ export class TelegramTrigger implements INodeType {
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					data as unknown as Buffer,
-					fileName,
+					fileName as string,
 				);
 
 				return {

@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -46,9 +46,9 @@ export async function getAll(
 
 	//return limited result
 	if (!returnAll && responseData.categories.length > limit) {
-		return this.helpers.returnJsonArray(responseData.categories.slice(0, limit));
+		return this.helpers.returnJsonArray(responseData.categories.slice(0, limit) as IDataObject[]);
 	}
 
 	//return
-	return this.helpers.returnJsonArray(responseData.categories);
+	return this.helpers.returnJsonArray(responseData.categories as IDataObject[]);
 }

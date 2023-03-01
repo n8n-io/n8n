@@ -122,11 +122,11 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 				const proxy = dataProxy.getDataProxy();
 
 				const autoCompleteItems = [
-					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
-					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
-					`function getWorkflowStaticData(type: string): {};`,
-					`function $item(itemIndex: number, runIndex?: number): {};`,
-					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};`,
+					'function $evaluateExpression(expression: string, itemIndex?: number): any {};',
+					'function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};',
+					'function getWorkflowStaticData(type: string): {};',
+					'function $item(itemIndex: number, runIndex?: number): {};',
+					'function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};',
 				];
 
 				const baseKeys = [
@@ -194,7 +194,7 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 					} catch (error) {}
 				}
 				autoCompleteItems.push(`const $node = ${JSON.stringify(nodes)}`);
-				autoCompleteItems.push(`function $jmespath(jsonDoc: object, query: string): {};`);
+				autoCompleteItems.push('function $jmespath(jsonDoc: object, query: string): {};');
 
 				if (this.codeAutocomplete === 'function') {
 					if (connectionInputData) {
@@ -204,13 +204,13 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 							)}`,
 						);
 					} else {
-						autoCompleteItems.push(`const items: {json: {[key: string]: any}}[] = []`);
+						autoCompleteItems.push('const items: {json: {[key: string]: any}}[] = []');
 					}
 				} else if (this.codeAutocomplete === 'functionItem') {
 					if (connectionInputData) {
-						autoCompleteItems.push(`const item = $json`);
+						autoCompleteItems.push('const item = $json');
 					} else {
-						autoCompleteItems.push(`const item: {[key: string]: any} = {}`);
+						autoCompleteItems.push('const item: {[key: string]: any} = {}');
 					}
 				}
 

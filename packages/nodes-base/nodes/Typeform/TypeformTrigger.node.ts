@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,16 +9,15 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	getForms,
+import type {
 	ITypeformAnswer,
 	ITypeformAnswerField,
 	ITypeformDefinition,
 } from './GenericFunctions';
+import { apiRequest, getForms } from './GenericFunctions';
 
 export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {

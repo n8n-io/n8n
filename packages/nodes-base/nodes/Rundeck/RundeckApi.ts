@@ -1,6 +1,7 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
@@ -23,7 +24,7 @@ export class RundeckApi {
 			rejectUnauthorized: false,
 			method,
 			qs: query,
-			uri: this.credentials?.url + endpoint,
+			uri: (this.credentials?.url as string) + endpoint,
 			body,
 			json: true,
 		};
@@ -35,7 +36,7 @@ export class RundeckApi {
 				options,
 			);
 		} catch (error) {
-			throw new NodeApiError(this.executeFunctions.getNode(), error);
+			throw new NodeApiError(this.executeFunctions.getNode(), error as JsonObject);
 		}
 	}
 
@@ -54,7 +55,7 @@ export class RundeckApi {
 
 		if (args) {
 			for (const arg of args) {
-				params += '-' + arg.name + ' ' + arg.value + ' ';
+				params += '-' + (arg.name as string) + ' ' + (arg.value as string) + ' ';
 			}
 		}
 

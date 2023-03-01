@@ -1,5 +1,5 @@
-import { ITriggerFunctions } from 'n8n-core';
-import { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
 
 import { watch } from 'chokidar';
 
@@ -197,7 +197,7 @@ export class LocalFileTrigger implements INodeType {
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString));
+			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
 		}
 
 		async function closeFunction() {

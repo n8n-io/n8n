@@ -1,8 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -23,17 +24,17 @@ import {
 	transferOperations,
 } from './descriptions';
 
-import {
+import type {
 	BorderlessAccount,
 	ExchangeRateAdditionalFields,
 	Profile,
 	Recipient,
 	StatementAdditionalFields,
 	TransferFilters,
-	wiseApiRequest,
 } from './GenericFunctions';
+import { wiseApiRequest } from './GenericFunctions';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 import moment from 'moment-timezone';
 
@@ -256,7 +257,7 @@ export class Wise implements INodeType {
 
 							items[i].binary = items[i].binary ?? {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-								data,
+								data as Buffer,
 								this.getNodeParameter('fileName', i) as string,
 							);
 
@@ -484,7 +485,7 @@ export class Wise implements INodeType {
 
 							items[i].binary = items[i].binary ?? {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-								data,
+								data as Buffer,
 								this.getNodeParameter('fileName', i) as string,
 							);
 
@@ -539,12 +540,12 @@ export class Wise implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+				? returnData.push(...(responseData as IDataObject[]))
+				: returnData.push(responseData as IDataObject);
 		}
 
 		if (binaryOutput && responseData !== undefined) {
-			return this.prepareOutputData(responseData);
+			return this.prepareOutputData(responseData as INodeExecutionData[]);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

@@ -48,10 +48,16 @@
 			</n8n-card>
 			<div :class="$style.hint">
 				<n8n-text size="small">
-					{{ $locale.baseText('settings.api.view.tryapi') }}
+					{{
+						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
+					}}
 				</n8n-text>
-				<n8n-link :to="apiPlaygroundPath" :newWindow="true" size="small">
-					{{ $locale.baseText('settings.api.view.apiPlayground') }}
+				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
+					{{
+						$locale.baseText(
+							`settings.api.view.${swaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
+						)
+					}}
 				</n8n-link>
 			</div>
 		</div>
@@ -78,9 +84,10 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useUsersStore } from '@/stores/users';
+import { DOCS_DOMAIN } from '@/constants';
 
 export default mixins(showMessage).extend({
-	name: 'SettingsPersonalView',
+	name: 'SettingsApiView',
 	components: {
 		CopyInput,
 	},
@@ -89,7 +96,8 @@ export default mixins(showMessage).extend({
 			loading: false,
 			mounted: false,
 			apiKey: '',
-			apiPlaygroundPath: '',
+			swaggerUIEnabled: false,
+			apiDocsURL: '',
 		};
 	},
 	mounted() {
@@ -97,7 +105,10 @@ export default mixins(showMessage).extend({
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
-		this.apiPlaygroundPath = `${baseUrl}${apiPath}/v${latestVersion}/docs`;
+		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;
+		this.apiDocsURL = this.swaggerUIEnabled
+			? `${baseUrl}${apiPath}/v${latestVersion}/docs`
+			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUsersStore),

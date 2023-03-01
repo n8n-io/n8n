@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -195,7 +196,7 @@ export class GoogleTranslate implements INodeType {
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, {
+					const response = await googleApiRequest.call(this, 'POST', '/language/translate/v2', {
 						q: text,
 						target: translateTo,
 					});
@@ -203,7 +204,7 @@ export class GoogleTranslate implements INodeType {
 					const [translation] = response.data.translations;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(translation),
+						this.helpers.returnJsonArray(translation as IDataObject),
 						{ itemData: { item: i } },
 					);
 

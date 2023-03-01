@@ -28,6 +28,7 @@
 						:truncateAt="3"
 						truncate
 						@click="onClickTag"
+						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
 					/>
 				</span>
@@ -35,7 +36,7 @@
 		</div>
 		<template #append>
 			<div :class="$style.cardActions">
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
 					</n8n-badge>
@@ -188,6 +189,9 @@ export default mixins(showMessage, restApi).extend({
 			event.stopPropagation();
 
 			this.$emit('click:tag', tagId, event);
+		},
+		onExpandTags() {
+			this.$emit('expand:tags');
 		},
 		async onAction(action: string) {
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {

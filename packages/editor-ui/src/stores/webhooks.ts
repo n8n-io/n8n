@@ -15,8 +15,8 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		globalRoleName(): string {
 			return useUsersStore().globalRoleName;
 		},
-		getDynamicTranslations() {
-			return useUIStore().dynamicTranslations;
+		getContextBasedTranslationKeys() {
+			return useUIStore().contextBasedTranslationKeys;
 		},
 		getFakeDoorFeatures() {
 			return useUIStore().fakeDoorFeatures;
@@ -66,8 +66,8 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		setFakeDoorFeatures(fakeDoors: IFakeDoor[]): void {
 			useUIStore().fakeDoorFeatures = fakeDoors;
 		},
-		setDynamicTranslations(translations: NestedRecord<string>): void {
-			useUIStore().dynamicTranslations = translations;
+		setContextBasedTranslationKeys(translations: NestedRecord<string>): void {
+			useUIStore().contextBasedTranslationKeys = translations;
 		},
 	},
 });

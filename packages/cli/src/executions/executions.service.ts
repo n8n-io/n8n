@@ -3,16 +3,26 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse, Workflow } from 'n8n-workflow';
-import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import type {
+	IDataObject,
+	IWorkflowBase,
+	JsonObject,
+	ExecutionStatus,
+	IRunExecutionData,
+	NodeOperationError,
+	IExecutionsSummary,
+} from 'n8n-workflow';
+import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
+import type { FindOperator, FindOptionsWhere } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
-import { User } from '@/databases/entities/User';
-import {
+import type { User } from '@db/entities/User';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -21,9 +31,11 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import type { DatabaseType } from '@/Interfaces';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
+import { parse } from 'flatted';
+import { Container } from 'typedi';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -31,7 +43,8 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
-	workflowId?: number | string;
+	status?: ExecutionStatus[];
+	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 }
@@ -44,6 +57,10 @@ const schemaGetExecutionsQueryFilter = {
 		mode: { type: 'string' },
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
+		status: {
+			type: 'array',
+			items: { type: 'string' },
+		},
 		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 	},
@@ -68,7 +85,7 @@ export class ExecutionsService {
 		countFilter: IDataObject,
 		user: User,
 	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
@@ -155,7 +172,7 @@ export class ExecutionsService {
 					filter: req.query.filter,
 				});
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
@@ -180,18 +197,27 @@ export class ExecutionsService {
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+			const queue = await Queue.getInstance();
+			const currentJobs = await queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
 
 		// We may have manual executions even with queue so we must account for these.
 		executingWorkflowIds.push(
-			...ActiveExecutions.getInstance()
+			...Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id),
 		);
 
-		const findWhere = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = {
+			workflowId: In(sharedWorkflowIds),
+		};
+		if (filter?.status) {
+			Object.assign(findWhere, { status: In(filter.status) });
+		}
+		if (filter?.finished) {
+			Object.assign(findWhere, { finished: filter.finished });
+		}
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -211,7 +237,7 @@ export class ExecutionsService {
 		}
 
 		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+			rangeQuery.push('id NOT IN (:...executingWorkflowIds)');
 			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
 		}
 
@@ -221,13 +247,30 @@ export class ExecutionsService {
 			});
 		}
 
-		let query = Db.collections.Execution.createQueryBuilder()
-			.select()
+		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		let query = Db.collections.Execution.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.waitTill',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowData',
+				'execution.status',
+			])
 			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);
 
 		const countFilter = deepCopy(filter ?? {});
+		// deepcopy breaks the In operator so we need to reapply it
+		if (filter?.status) {
+			Object.assign(filter, { status: In(filter.status) });
+			Object.assign(countFilter, { status: In(filter.status) });
+		}
 
 		if (filter) {
 			this.massageFilters(filter as IDataObject);
@@ -244,9 +287,48 @@ export class ExecutionsService {
 			req.user,
 		);
 
-		const formattedExecutions = executions.map((execution) => {
+		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
+			// inject potential node execution errors into the execution response
+			const nodeExecutionStatus = {};
+			let lastNodeExecuted;
+			let executionError;
+			// fill execution status for old executions that will return null
+			if (!execution.status) {
+				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+			}
+			try {
+				const data = parse(execution.data) as IRunExecutionData;
+				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
+				executionError = data?.resultData?.error;
+				if (data?.resultData?.runData) {
+					for (const key of Object.keys(data.resultData.runData)) {
+						const errors = data.resultData.runData[key]
+							?.filter((taskdata) => taskdata.error?.name)
+							?.map((taskdata) => {
+								if (taskdata.error?.name === 'NodeOperationError') {
+									return {
+										name: (taskdata.error as NodeOperationError).name,
+										message: (taskdata.error as NodeOperationError).message,
+										description: (taskdata.error as NodeOperationError).description,
+									};
+								} else {
+									return {
+										name: taskdata.error?.name,
+									};
+								}
+							});
+						Object.assign(nodeExecutionStatus, {
+							[key]: {
+								executionStatus: data.resultData.runData[key][0].executionStatus,
+								errors,
+								data: data.resultData.runData[key][0].data ?? undefined,
+							},
+						});
+					}
+				}
+			} catch {}
 			return {
-				id: execution.id.toString(),
+				id: execution.id,
 				finished: execution.finished,
 				mode: execution.mode,
 				retryOf: execution.retryOf?.toString(),
@@ -254,11 +336,14 @@ export class ExecutionsService {
 				waitTill: execution.waitTill as Date | undefined,
 				startedAt: execution.startedAt,
 				stoppedAt: execution.stoppedAt,
-				workflowId: execution.workflowData?.id?.toString() ?? '',
+				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
-			};
+				status: execution.status,
+				lastNodeExecuted,
+				executionError,
+				nodeExecutionStatus,
+			} as IExecutionsSummary;
 		});
-
 		return {
 			count,
 			results: formattedExecutions,
@@ -288,17 +373,16 @@ export class ExecutionsService {
 			return undefined;
 		}
 
+		if (!execution.status) {
+			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+		}
+
 		if (req.query.unflattedResponse === 'true') {
 			return ResponseHelper.unflattenExecutionData(execution);
 		}
 
-		const { id, ...rest } = execution;
-
 		// @ts-ignore
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return execution;
 	}
 
 	static async retryExecution(req: ExecutionRequest.Retry): Promise<boolean> {
@@ -366,7 +450,9 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = fullExecutionData.workflowData.id as string;
-			const workflowData = (await Db.collections.Workflow.findOne(workflowId)) as IWorkflowBase;
+			const workflowData = (await Db.collections.Workflow.findOneBy({
+				id: workflowId,
+			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
 				throw new Error(
@@ -375,7 +461,7 @@ export class ExecutionsService {
 			}
 
 			data.workflowData = workflowData;
-			const nodeTypes = NodeTypes();
+			const nodeTypes = Container.get(NodeTypes);
 			const workflowInstance = new Workflow({
 				id: workflowData.id as string,
 				name: workflowData.name,
@@ -410,7 +496,7 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData = await ActiveExecutions.getInstance().getPostExecutePromise(
+		const executionData = await Container.get(ActiveExecutions).getPostExecutePromise(
 			retriedExecutionId,
 		);
 
@@ -440,7 +526,7 @@ export class ExecutionsService {
 				}
 			} catch (error) {
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
@@ -449,66 +535,39 @@ export class ExecutionsService {
 			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 		}
 
-		const binaryDataManager = BinaryDataManager.getInstance();
-
-		// delete executions by date, if user may access the underlying workflows
+		const where: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		if (deleteBefore) {
-			const filters: IDataObject = {
-				startedAt: LessThanOrEqual(deleteBefore),
-			};
+			// delete executions by date, if user may access the underlying workflows
+			where.startedAt = LessThanOrEqual(deleteBefore);
+			Object.assign(where, requestFilters);
+		} else if (ids) {
+			// delete executions by IDs, if user may access the underlying workflows
+			where.id = In(ids);
+		} else return;
 
-			let query = Db.collections.Execution.createQueryBuilder()
-				.select()
-				.where({
-					...filters,
-					workflowId: In(sharedWorkflowIds),
-				});
+		const executions = await Db.collections.Execution.find({
+			select: ['id'],
+			where,
+		});
 
-			if (requestFilters) {
-				query = query.andWhere(requestFilters);
-			}
-
-			const executions = await query.getMany();
-
-			if (!executions.length) return;
-
-			const idsToDelete = executions.map(({ id }) => id.toString());
-
-			await Promise.all(
-				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-			);
-
-			await Db.collections.Execution.delete({ id: In(idsToDelete) });
-
-			return;
-		}
-
-		// delete executions by IDs, if user may access the underlying workflows
-
-		if (ids) {
-			const executions = await Db.collections.Execution.find({
-				where: {
-					id: In(ids),
-					workflowId: In(sharedWorkflowIds),
-				},
-			});
-
-			if (!executions.length) {
+		if (!executions.length) {
+			if (ids) {
 				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
 					userId: req.user.id,
 					executionIds: ids,
 				});
-				return;
 			}
-
-			const idsToDelete = executions.map(({ id }) => id.toString());
-
-			await Promise.all(
-				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-			);
-
-			await Db.collections.Execution.delete(idsToDelete);
+			return;
 		}
+
+		const idsToDelete = executions.map(({ id }) => id);
+
+		const binaryDataManager = BinaryDataManager.getInstance();
+		await Promise.all(
+			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+		);
+
+		await Db.collections.Execution.delete(idsToDelete);
 	}
 }

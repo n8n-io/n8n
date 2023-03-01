@@ -1,24 +1,25 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function tapfiliateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('tapfiliateApi');
 
 	const options: OptionsWithUri = {
@@ -40,9 +41,9 @@ export async function tapfiliateApiRequest(
 		Object.assign(options, option);
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -51,9 +52,9 @@ export async function tapfiliateApiRequestAllItems(
 	method: string,
 	endpoint: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -64,7 +65,7 @@ export async function tapfiliateApiRequestAllItems(
 		responseData = await tapfiliateApiRequest.call(this, method, endpoint, body, query, '', {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		query.page++;
 	} while (responseData.headers.link.includes('next'));
 

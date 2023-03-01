@@ -14,11 +14,14 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 	},
 	getters: {
 		getWorkflowOwnerName() {
-			return (workflowId: string): string => {
+			return (
+				workflowId: string,
+				fallback = i18n.baseText('workflows.shareModal.info.sharee.fallback'),
+			): string => {
 				const workflow = useWorkflowsStore().getWorkflowById(workflowId);
 				return workflow && workflow.ownedBy && workflow.ownedBy.firstName
 					? `${workflow.ownedBy.firstName} ${workflow.ownedBy.lastName} (${workflow.ownedBy.email})`
-					: i18n.baseText('workflows.shareModal.info.sharee.fallback');
+					: fallback;
 			};
 		},
 	},
@@ -67,7 +70,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setWorkflowSharedWith(rootStore.getRestApiContext, payload.workflowId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id as string),
 				});

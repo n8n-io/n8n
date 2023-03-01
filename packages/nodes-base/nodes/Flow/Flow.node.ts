@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
-import { ITask, TaskInfo } from './TaskInterface';
+import type { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
 	description: INodeTypeDescription = {
@@ -124,7 +125,7 @@ export class Flow implements INodeType {
 						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
 						responseData = responseData.task;
 					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_update-a-task
@@ -192,7 +193,7 @@ export class Flow implements INodeType {
 						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
 						responseData = responseData.task;
 					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-task
@@ -206,7 +207,7 @@ export class Flow implements INodeType {
 					try {
 						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
 					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-tasks
@@ -257,13 +258,13 @@ export class Flow implements INodeType {
 							responseData = responseData.tasks;
 						}
 					} catch (error) {
-						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

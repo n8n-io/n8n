@@ -1,34 +1,33 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	LoggerProxy as Logger,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { accountFields, accountOperations } from './AccountDescription';
 
-import { IAccount } from './AccountInterface';
+import type { IAccount } from './AccountInterface';
 
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
 
-import { IAttachment } from './AttachmentInterface';
+import type { IAttachment } from './AttachmentInterface';
 
-import { ICampaignMember } from './CampaignMemberInterface';
+import type { ICampaignMember } from './CampaignMemberInterface';
 
 import { caseFields, caseOperations } from './CaseDescription';
 
-import { ICase, ICaseComment } from './CaseInterface';
+import type { ICase, ICaseComment } from './CaseInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IContact } from './ContactInterface';
+import type { IContact } from './ContactInterface';
 
 import { customObjectFields, customObjectOperations } from './CustomObjectDescription';
 
@@ -43,19 +42,19 @@ import {
 
 import { leadFields, leadOperations } from './LeadDescription';
 
-import { ILead } from './LeadInterface';
+import type { ILead } from './LeadInterface';
 
-import { INote } from './NoteInterface';
+import type { INote } from './NoteInterface';
 
 import { opportunityFields, opportunityOperations } from './OpportunityDescription';
 
-import { IOpportunity } from './OpportunityInterface';
+import type { IOpportunity } from './OpportunityInterface';
 
 import { searchFields, searchOperations } from './SearchDescription';
 
 import { taskFields, taskOperations } from './TaskDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
 import { userFields, userOperations } from './UserDescription';
 
@@ -303,7 +302,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -349,7 +348,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -891,7 +890,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/account/describe`,
+					'/sobjects/account/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -912,7 +911,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/attachment/describe`,
+					'/sobjects/attachment/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -930,7 +929,7 @@ export class Salesforce implements INodeType {
 			async getCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/case/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -947,7 +946,7 @@ export class Salesforce implements INodeType {
 			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/lead/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -967,7 +966,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/opportunity/describe`,
+					'/sobjects/opportunity/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -985,7 +984,7 @@ export class Salesforce implements INodeType {
 			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/task/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -1002,7 +1001,7 @@ export class Salesforce implements INodeType {
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/user/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/user/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -1022,7 +1021,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/contact/describe`,
+					'/sobjects/contact/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -1083,6 +1082,9 @@ export class Salesforce implements INodeType {
 							Company: company,
 							LastName: lastname,
 						};
+						if (additionalFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
+						}
 						if (additionalFields.email !== undefined) {
 							body.Email = additionalFields.email as string;
 						}
@@ -1157,8 +1159,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1186,6 +1187,9 @@ export class Salesforce implements INodeType {
 								'You must add at least one update field',
 								{ itemIndex: i },
 							);
+						}
+						if (updateFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
 						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;
@@ -1267,8 +1271,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1312,7 +1315,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/delete-lead-id
@@ -1325,7 +1328,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/lead/${leadId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/get-lead
@@ -1478,8 +1481,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1609,8 +1611,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1658,7 +1659,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/delete-contact-id
@@ -1671,7 +1672,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/contact/${contactId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/get-contact
@@ -1729,8 +1730,7 @@ export class Salesforce implements INodeType {
 							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1763,8 +1763,7 @@ export class Salesforce implements INodeType {
 							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1812,7 +1811,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'delete') {
@@ -1825,7 +1824,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/${customObject}/${recordId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -1834,7 +1833,7 @@ export class Salesforce implements INodeType {
 					if (operation === 'upload') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						let data;
 						const body: { entity_content: { [key: string]: string } } = {
 							entity_content: {
@@ -1938,8 +1937,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2008,8 +2006,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2057,7 +2054,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/delete-opportunity-id
@@ -2070,7 +2067,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/opportunity/${opportunityId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/get-opportunity
@@ -2189,8 +2186,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2298,8 +2294,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2347,7 +2342,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/delete-account-id
@@ -2360,7 +2355,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/account/${accountId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account
@@ -2450,7 +2445,7 @@ export class Salesforce implements INodeType {
 							if (customFields) {
 								for (const customField of customFields) {
 									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2562,7 +2557,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/delete-case-id
@@ -2575,7 +2570,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/case/${caseId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/get-case
@@ -2825,7 +2820,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/delete-task-id
@@ -2838,7 +2833,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/task/${taskId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task
@@ -2852,7 +2847,7 @@ export class Salesforce implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const body: IAttachment = {
 							Name: name,
 							ParentId: parentId,
@@ -2957,7 +2952,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/delete-attachment-id
@@ -2970,7 +2965,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/attachment/${attachmentId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
@@ -3012,7 +3007,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -3080,7 +3075,7 @@ export class Salesforce implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

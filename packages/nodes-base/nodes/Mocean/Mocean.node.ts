@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,8 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { moceanApiRequest } from './GenericFunctions';
 
@@ -18,7 +18,7 @@ export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mocean',
 		name: 'mocean',
-		subtitle: `={{$parameter["operation"] + ": " + $parameter["resource"]}}`,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		icon: 'file:mocean.svg',
 		group: ['transform'],
 		version: 1,
@@ -196,11 +196,11 @@ export class Mocean implements INodeType {
 				const options = {
 					method: 'GET',
 					qs: query,
-					uri: `https://rest.moceanapi.com/rest/2/account/balance`,
+					uri: 'https://rest.moceanapi.com/rest/2/account/balance',
 					json: true,
 				};
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 				} catch (error) {
 					return {
 						status: 'Error',

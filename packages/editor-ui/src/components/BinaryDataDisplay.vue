@@ -111,19 +111,5 @@ export default mixins(nodeHelpers, restApi).extend({
 			height: 100%;
 		}
 	}
-
-	.binary-data {
-		background-color: var(--color-foreground-xlight);
-
-		&.image {
-			max-height: calc(100% - 1em);
-			max-width: calc(100% - 1em);
-		}
-
-		&.other {
-			height: calc(100% - 1em);
-			width: calc(100% - 1em);
-		}
-	}
 }
 </style>

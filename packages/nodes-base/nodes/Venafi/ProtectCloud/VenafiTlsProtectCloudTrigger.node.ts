@@ -1,4 +1,4 @@
-import {
+import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -139,7 +139,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					},
 				};
 
-				const responseData = await venafiApiRequest.call(this, 'POST', `/v1/connectors`, body);
+				const responseData = await venafiApiRequest.call(this, 'POST', '/v1/connectors', body);
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful

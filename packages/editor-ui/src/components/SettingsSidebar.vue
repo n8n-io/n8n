@@ -74,6 +74,14 @@ export default mixins(userHelpers, pushConnection).extend({
 					available: this.canAccessApiSettings(),
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
+				{
+					id: 'settings-ldap',
+					icon: 'network-wired',
+					label: this.$locale.baseText('settings.ldap'),
+					position: 'top',
+					available: this.canAccessLdapSettings(),
+					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -88,6 +96,15 @@ export default mixins(userHelpers, pushConnection).extend({
 					});
 				}
 			}
+
+			menuItems.push({
+				id: 'settings-log-streaming',
+				icon: 'sign-in-alt',
+				label: this.$locale.baseText('settings.log-streaming'),
+				position: 'top',
+				available: this.canAccessLogStreamingSettings(),
+				activateOnRouteNames: [VIEWS.LOG_STREAMING_SETTINGS],
+			});
 
 			menuItems.push({
 				id: 'settings-community-nodes',
@@ -117,6 +134,12 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
+		canAccessLdapSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
+		},
+		canAccessLogStreamingSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
+		},
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
@@ -141,6 +164,16 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-api':
 					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
 						this.$router.push({ name: VIEWS.API_SETTINGS });
+					}
+					break;
+				case 'settings-ldap':
+					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
+						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
+					}
+					break;
+				case 'settings-log-streaming':
+					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
+						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud

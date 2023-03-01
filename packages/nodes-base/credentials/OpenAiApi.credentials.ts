@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -10,7 +10,7 @@ export class OpenAiApi implements ICredentialType {
 
 	displayName = 'OpenAi';
 
-	documentationUrl = 'openAiApi';
+	documentationUrl = 'openAi';
 
 	properties: INodeProperties[] = [
 		{

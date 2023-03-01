@@ -1,17 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { getOAuth2AdditionalParameters, replaceNullValues } from '../GenericFunctions';
+import type { OptionsWithUri } from 'request';
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
+import {
+	getOAuth2AdditionalParameters,
+	replaceNullValues,
+	sanitizeUiMessage,
+} from '../GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -22,6 +26,7 @@ interface OptionDataParamters {
 	[key: string]: OptionData;
 }
 
+type OptionsWithUriKeys = keyof OptionsWithUri;
 export class HttpRequestV2 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -780,14 +785,11 @@ export class HttpRequestV2 implements INodeType {
 							}
 
 							if (options.bodyContentType === 'raw') {
-								const binaryPropertyName = this.getNodeParameter(
-									'binaryPropertyName',
-									itemIndex,
-								) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
+										`Item has no binary property called "${binaryPropertyName}"`,
 										{ itemIndex },
 									);
 								}
@@ -802,7 +804,7 @@ export class HttpRequestV2 implements INodeType {
 								const binaryPropertyNameFull = this.getNodeParameter(
 									'binaryPropertyName',
 									itemIndex,
-								) as string;
+								);
 								const binaryPropertyNames = binaryPropertyNameFull
 									.split(',')
 									.map((key) => key.trim());
@@ -825,7 +827,7 @@ export class HttpRequestV2 implements INodeType {
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 										);
 									}
 
@@ -864,7 +866,9 @@ export class HttpRequestV2 implements INodeType {
 						// If it is not an object && bodyContentType is not 'raw' it must be JSON so parse it
 						try {
 							// @ts-ignore
-							requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
+							requestOptions[optionData.name] = JSON.parse(
+								requestOptions[optionData.name as OptionsWithUriKeys] as string,
+							);
 						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -948,21 +952,26 @@ export class HttpRequestV2 implements INodeType {
 				requestOptions.headers['Content-Type'] = options.bodyContentCustomMimeType;
 			}
 
+			const authDataKeys: IAuthDataSanitizeKeys = {};
+
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpBasicAuth.user as string,
 					pass: httpBasicAuth.password as string,
 				};
+				authDataKeys.auth = ['pass'];
 			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+				authDataKeys.headers = [httpHeaderAuth.name as string];
 			}
 			if (httpQueryAuth !== undefined) {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
 				}
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
+				authDataKeys.qs = [httpQueryAuth.name as string];
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -970,6 +979,7 @@ export class HttpRequestV2 implements INodeType {
 					pass: httpDigestAuth.password as string,
 					sendImmediately: false,
 				};
+				authDataKeys.auth = ['pass'];
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
@@ -985,15 +995,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			try {
-				let sendRequest: any = requestOptions;
-				// Protect browser from sending large binary data
-				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
-					sendRequest = {
-						...requestOptions,
-						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
-					};
-				}
-				this.sendMessageToUI(sendRequest);
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
 			} catch (e) {}
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {
@@ -1039,7 +1041,7 @@ export class HttpRequestV2 implements INodeType {
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					// throw error;
-					throw new NodeApiError(this.getNode(), response);
+					throw new NodeApiError(this.getNode(), response as JsonObject);
 				} else {
 					// Return the actual reason as error
 					returnItems.push({
@@ -1062,7 +1064,7 @@ export class HttpRequestV2 implements INodeType {
 			const fullResponse = !!options.fullResponse;
 
 			if (responseFormat === 'file') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				const newItem: INodeExecutionData = {
 					json: {},
@@ -1094,21 +1096,21 @@ export class HttpRequestV2 implements INodeType {
 					newItem.json = returnItem;
 
 					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body,
+						response!.body as Buffer,
 						fileName,
 					);
 				} else {
 					newItem.json = items[itemIndex].json;
 
 					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response!,
+						response! as Buffer,
 						fileName,
 					);
 				}
 
 				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};

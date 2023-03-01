@@ -1,18 +1,23 @@
 <template>
 	<Modal
 		width="460px"
-		:title="
-			$locale.baseText(dynamicTranslations.workflows.shareModal.title, {
-				interpolate: { name: workflow.name },
-			})
-		"
+		:title="modalTitle"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
 		:beforeClose="onCloseModal"
 	>
 		<template #content>
-			<div v-if="isDefaultUser" :class="$style.container">
+			<div v-if="!isSharingEnabled" :class="$style.container">
+				<n8n-text>
+					{{
+						$locale.baseText(
+							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
+						)
+					}}
+				</n8n-text>
+			</div>
+			<div v-else-if="isDefaultUser" :class="$style.container">
 				<n8n-text>
 					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
 				</n8n-text>
@@ -25,7 +30,7 @@
 						})
 					}}
 				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
@@ -33,6 +38,7 @@
 						:users="usersList"
 						:currentUserId="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+						data-test-id="workflow-sharing-modal-users-select"
 						@input="onAddSharee"
 					>
 						<template #prefix>
@@ -45,7 +51,6 @@
 						:currentUserId="currentUser.id"
 						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 						:readonly="!workflowPermissions.updateSharing"
-						@delete="onRemoveSharee"
 					>
 						<template #actions="{ user }">
 							<n8n-select
@@ -66,7 +71,9 @@
 					<template #fallback>
 						<n8n-text>
 							<i18n
-								:path="dynamicTranslations.workflows.sharing.unavailable.description"
+								:path="
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+								"
 								tag="span"
 							>
 								<template #action />
@@ -78,14 +85,23 @@
 		</template>
 
 		<template #footer>
-			<div v-if="isDefaultUser" :class="$style.actionButtons">
+			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
+				<n8n-button @click="goToUpgrade">
+					{{
+						$locale.baseText(
+							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+						)
+					}}
+				</n8n-button>
+			</div>
+			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
 				<n8n-button @click="goToUsersSettings">
 					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
 				</n8n-button>
 			</div>
 			<enterprise-edition
 				v-else
-				:features="[EnterpriseEditionFeature.WorkflowSharing]"
+				:features="[EnterpriseEditionFeature.Sharing]"
 				:class="$style.actionButtons"
 			>
 				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
@@ -93,21 +109,14 @@
 				</n8n-text>
 				<n8n-button
 					v-show="workflowPermissions.updateSharing"
-					@click="onSave"
 					:loading="loading"
 					:disabled="!isDirty"
 					size="medium"
+					data-test-id="workflow-sharing-modal-save-button"
+					@click="onSave"
 				>
 					{{ $locale.baseText('workflows.shareModal.save') }}
 				</n8n-button>
-
-				<template #fallback>
-					<n8n-link :to="dynamicTranslations.workflows.sharing.unavailable.linkURL">
-						<n8n-button :loading="loading" size="medium">
-							{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button) }}
-						</n8n-button>
-					</n8n-link>
-				</template>
 			</enterprise-edition>
 		</template>
 	</Modal>
@@ -122,7 +131,7 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, NestedRecord } from '@/Interface';
+import { IUser, IWorkflowDb, UIState } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
@@ -134,6 +143,9 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
+import { useUsageStore } from '@/stores/usage';
+import { BaseTextKey } from '@/plugins/i18n';
+import { isNavigationFailure } from 'vue-router';
 
 export default mixins(showMessage).extend({
 	name: 'workflow-share-modal',
@@ -155,7 +167,7 @@ export default mixins(showMessage).extend({
 
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
-			loading: false,
+			loading: true,
 			modalBus: new Vue(),
 			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
@@ -166,11 +178,31 @@ export default mixins(showMessage).extend({
 			useSettingsStore,
 			useUIStore,
 			useUsersStore,
+			useUsageStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
+		},
+		isSharingEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		fallbackLinkUrl(): string {
+			return `${this.$locale.baseText(
+				this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey,
+			)}${true ? '&utm_campaign=upgrade-workflow-sharing' : ''}`;
+		},
+		modalTitle(): string {
+			return this.$locale.baseText(
+				this.isSharingEnabled
+					? (this.uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
+					: (this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
+							.title as BaseTextKey),
+				{
+					interpolate: { name: this.workflow.name },
+				},
+			);
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
@@ -208,15 +240,6 @@ export default mixins(showMessage).extend({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
-		isSharingAvailable(): boolean {
-			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) ===
-				true
-			);
-		},
-		dynamicTranslations(): NestedRecord<string> {
-			return this.uiStore.dynamicTranslations;
-		},
 		isDirty(): boolean {
 			const previousSharedWith = this.workflow.sharedWith || [];
 
@@ -240,10 +263,10 @@ export default mixins(showMessage).extend({
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
-							resolve(this.workflowsStore.workflowId);
+							resolve(this.workflow.id);
 						});
 					} else {
-						resolve(this.workflowsStore.workflowId);
+						resolve(this.workflow.id);
 					}
 				});
 			};
@@ -349,13 +372,13 @@ export default mixins(showMessage).extend({
 			if (!isNewSharee && isLastUserWithAccessToCredentials) {
 				confirm = await this.confirmMessage(
 					this.$locale.baseText(
-						`workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message`,
+						'workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message',
 						{
 							interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 						},
 					),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', {
-						interpolate: { name: user.fullName },
+						interpolate: { name: user.fullName as string },
 					}),
 					null,
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.confirmButtonText'),
@@ -400,7 +423,11 @@ export default mixins(showMessage).extend({
 			await this.usersStore.fetchUsers();
 		},
 		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			this.$router.push({ name: VIEWS.USERS_SETTINGS }).catch((failure) => {
+				if (!isNavigationFailure(failure)) {
+					console.error(failure);
+				}
+			});
 			this.modalBus.$emit('close');
 		},
 		trackTelemetry(data: ITelemetryTrackProperties) {
@@ -411,11 +438,41 @@ export default mixins(showMessage).extend({
 				...data,
 			});
 		},
+		goToUpgrade() {
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-workflow-sharing`;
+			}
+
+			window.open(linkUrl, '_blank');
+		},
+		async initialize() {
+			if (this.isSharingEnabled) {
+				await this.loadUsers();
+
+				if (
+					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+					!this.workflow.sharedWith?.length // Sharing info already loaded
+				) {
+					await this.workflowsStore.fetchWorkflow(this.workflow.id);
+				}
+			}
+
+			this.loading = false;
+		},
 	},
 	mounted() {
-		if (this.isSharingAvailable) {
-			this.loadUsers();
-		}
+		this.initialize();
+	},
+	watch: {
+		workflow(workflow) {
+			this.sharedWith = workflow.sharedWith;
+		},
 	},
 });
 </script>

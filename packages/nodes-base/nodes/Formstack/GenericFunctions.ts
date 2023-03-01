@@ -1,13 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -74,12 +75,12 @@ export async function apiRequest(
 			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
 
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'formstackOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -114,7 +115,7 @@ export async function apiRequestAllItems(
 		query.page += 1;
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.items.push.apply(returnData.items, responseData[dataKey]);
+		returnData.items.push.apply(returnData.items, responseData[dataKey] as IDataObject[]);
 	} while (
 		responseData.total !== undefined &&
 		Math.ceil(responseData.total / query.per_page) > query.page

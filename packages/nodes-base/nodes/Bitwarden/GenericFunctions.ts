@@ -1,13 +1,34 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
+
+/**
+ * Return the access token URL based on the user's environment.
+ */
+async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
+	const { environment, domain } = await this.getCredentials('bitwardenApi');
+
+	return environment === 'cloudHosted'
+		? 'https://identity.bitwarden.com/connect/token'
+		: `${domain}/identity/connect/token`;
+}
+
+/**
+ * Return the base API URL based on the user's environment.
+ */
+async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
+	const { environment, domain } = await this.getCredentials('bitwardenApi');
+
+	return environment === 'cloudHosted' ? 'https://api.bitwarden.com' : `${domain}/api`;
+}
 
 /**
  * Make an authenticated API request to Bitwarden.
@@ -43,9 +64,9 @@ export async function bitwardenApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -76,10 +97,10 @@ export async function getAccessToken(
 	};
 
 	try {
-		const { access_token } = await this.helpers.request!(options);
+		const { access_token } = await this.helpers.request(options);
 		return access_token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -107,26 +128,6 @@ export async function handleGetAll(
 }
 
 /**
- * Return the access token URL based on the user's environment.
- */
-async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain } = await this.getCredentials('bitwardenApi');
-
-	return environment === 'cloudHosted'
-		? 'https://identity.bitwarden.com/connect/token'
-		: `${domain}/identity/connect/token`;
-}
-
-/**
- * Return the base API URL based on the user's environment.
- */
-async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain } = await this.getCredentials('bitwardenApi');
-
-	return environment === 'cloudHosted' ? 'https://api.bitwarden.com' : `${domain}/api`;
-}
-
-/**
  * Load a resource so that it can be selected by name from a dropdown.
  */
 export async function loadResource(this: ILoadOptionsFunctions, resource: string) {
@@ -134,7 +135,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 	const token = await getAccessToken.call(this);
 	const endpoint = `/public/${resource}`;
 
-	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
+	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token as string);
 
 	data.forEach(({ id, name, externalId }: { id: string; name: string; externalId?: string }) => {
 		returnData.push({

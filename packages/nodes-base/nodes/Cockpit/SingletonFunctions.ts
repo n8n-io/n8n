@@ -1,4 +1,4 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { cockpitApiRequest } from './GenericFunctions';
 
 export async function getSingleton(
@@ -11,5 +11,5 @@ export async function getSingleton(
 export async function getAllSingletonNames(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 ): Promise<string[]> {
-	return cockpitApiRequest.call(this, 'GET', `/singletons/listSingletons`, {});
+	return cockpitApiRequest.call(this, 'GET', '/singletons/listSingletons', {});
 }

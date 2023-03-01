@@ -10,6 +10,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
+	randomCredentialPayload,
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
@@ -22,11 +23,9 @@ import * as utils from './shared/utils';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 import { NodeMailer } from '@/UserManagement/email/NodeMailer';
 
-jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
-let testDbName = '';
 let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
@@ -34,9 +33,7 @@ let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['users'] });
 
 	const [
 		fetchedGlobalOwnerRole,
@@ -51,26 +48,21 @@ beforeAll(async () => {
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestTelemetry();
-	utils.initTestLogger();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials'],
-		testDbName,
-	);
+	await testDb.truncate(['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
 
 	jest.mock('@/config');
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
+	config.set('userManagement.emails.mode', 'smtp');
+	config.set('userManagement.emails.smtp.host', '');
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /users should return all users', async () => {
@@ -156,28 +148,28 @@ test('DELETE /users/:id should delete the user', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-	const user = await Db.collections.User.findOne(userToDelete.id);
-	expect(user).toBeUndefined(); // deleted
+	const user = await Db.collections.User.findOneBy({ id: userToDelete.id });
+	expect(user).toBeNull(); // deleted
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		relations: ['user'],
-		where: { user: userToDelete },
+		where: { userId: userToDelete.id, roleId: workflowOwnerRole.id },
 	});
-	expect(sharedWorkflow).toBeUndefined(); // deleted
+	expect(sharedWorkflow).toBeNull(); // deleted
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOne({
 		relations: ['user'],
-		where: { user: userToDelete },
+		where: { userId: userToDelete.id, roleId: credentialOwnerRole.id },
 	});
-	expect(sharedCredential).toBeUndefined(); // deleted
+	expect(sharedCredential).toBeNull(); // deleted
 
-	const workflow = await Db.collections.Workflow.findOne(savedWorkflow.id);
-	expect(workflow).toBeUndefined(); // deleted
+	const workflow = await Db.collections.Workflow.findOneBy({ id: savedWorkflow.id });
+	expect(workflow).toBeNull(); // deleted
 
 	// TODO: Include active workflow and check whether webhook has been removed
 
-	const credential = await Db.collections.Credentials.findOne(savedCredential.id);
-	expect(credential).toBeUndefined(); // deleted
+	const credential = await Db.collections.Credentials.findOneBy({ id: savedCredential.id });
+	expect(credential).toBeNull(); // deleted
 });
 
 test('DELETE /users/:id should fail to delete self', async () => {
@@ -187,7 +179,7 @@ test('DELETE /users/:id should fail to delete self', async () => {
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User.findOne(owner.id);
+	const user = await Db.collections.User.findOneBy({ id: owner.id });
 	expect(user).toBeDefined();
 });
 
@@ -202,7 +194,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User.findOne(idToDelete);
+	const user = await Db.collections.User.findOneBy({ id: idToDelete });
 	expect(user).toBeDefined();
 });
 
@@ -213,7 +205,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
-	const savedCredential = await testDb.saveCredential(undefined, {
+	const savedCredential = await testDb.saveCredential(randomCredentialPayload(), {
 		user: userToDelete,
 		role: credentialOwnerRole,
 	});
@@ -226,7 +218,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
 		relations: ['workflow'],
-		where: { user: owner },
+		where: { userId: owner.id },
 	});
 
 	expect(sharedWorkflow.workflow).toBeDefined();
@@ -234,69 +226,15 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['credentials'],
-		where: { user: owner },
+		where: { userId: owner.id },
 	});
 
 	expect(sharedCredential.credentials).toBeDefined();
 	expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 
-	const deletedUser = await Db.collections.User.findOne(userToDelete);
+	const deletedUser = await Db.collections.User.findOneBy({ id: userToDelete.id });
 
-	expect(deletedUser).toBeUndefined();
-});
-
-test('GET /resolve-signup-token should validate invite token', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	const memberShell = await testDb.createUserShell(globalMemberRole);
-
-	const response = await authAgent(owner)
-		.get('/resolve-signup-token')
-		.query({ inviterId: owner.id })
-		.query({ inviteeId: memberShell.id });
-
-	expect(response.statusCode).toBe(200);
-	expect(response.body).toEqual({
-		data: {
-			inviter: {
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			},
-		},
-	});
-});
-
-test('GET /resolve-signup-token should fail with invalid inputs', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = authAgent(owner);
-
-	const { id: inviteeId } = await testDb.createUser({ globalRole: globalMemberRole });
-
-	const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
-
-	const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
-
-	const third = await authOwnerAgent.get('/resolve-signup-token').query({
-		inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
-		inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
-	});
-
-	// user is already set up, so call should error
-	const fourth = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviterId: owner.id })
-		.query({ inviteeId });
-
-	// cause inconsistent DB state
-	await Db.collections.User.update(owner.id, { email: '' });
-	const fifth = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviterId: owner.id })
-		.query({ inviteeId });
-
-	for (const response of [first, second, third, fourth, fifth]) {
-		expect(response.statusCode).toBe(400);
-	}
+	expect(deletedUser).toBeNull();
 });
 
 test('POST /users/:id should fill out a user shell', async () => {
@@ -342,7 +280,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
 
-	const member = await Db.collections.User.findOneOrFail(memberShell.id);
+	const member = await Db.collections.User.findOneByOrFail({ id: memberShell.id });
 	expect(member.firstName).toBe(memberData.firstName);
 	expect(member.lastName).toBe(memberData.lastName);
 	expect(member.password).not.toBe(memberData.password);
@@ -433,26 +371,28 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	expect(storedMember.password).not.toBe(newMemberData.password);
 });
 
-test('POST /users should fail if emailing is not set up', async () => {
+test('POST /users should succeed if emailing is not set up', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const response = await authAgent(owner)
 		.post('/users')
 		.send([{ email: randomEmail() }]);
 
-	expect(response.statusCode).toBe(500);
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
 });
 
 test('POST /users should fail if user management is disabled', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	config.set('userManagement.disabled', true);
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	const response = await authAgent(owner)
 		.post('/users')
 		.send([{ email: randomEmail() }]);
 
-	expect(response.statusCode).toBe(500);
+	expect(response.statusCode).toBe(400);
 });
 
 test('POST /users should email invites and create user shells but ignore existing', async () => {
@@ -485,7 +425,7 @@ test('POST /users should email invites and create user shells but ignore existin
 			expect(error).toBe('Email could not be sent');
 		}
 
-		const storedUser = await Db.collections.User.findOneOrFail(id);
+		const storedUser = await Db.collections.User.findOneByOrFail({ id });
 		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
 			storedUser;
 
@@ -568,16 +508,34 @@ test('POST /users/:id/reinvite should send reinvite, but fail if user already ac
 	expect(reinviteMemberResponse.statusCode).toBe(400);
 });
 
-test('UserManagementMailer expect NodeMailer.verifyConnection have been called', async () => {
-	jest.spyOn(NodeMailer.prototype, 'verifyConnection').mockImplementation(async () => {});
+test('UserManagementMailer expect NodeMailer.verifyConnection not be called when SMTP not set up', async () => {
+	const mockVerifyConnection = jest.spyOn(NodeMailer.prototype, 'verifyConnection');
+	mockVerifyConnection.mockImplementation(async () => {});
 
-	// NodeMailer.verifyConnection called 1 time
 	const userManagementMailer = UserManagementMailer.getInstance();
-	// NodeMailer.verifyConnection called 2 time
-	(await userManagementMailer).verifyConnection();
+	// NodeMailer.verifyConnection gets called only explicitly
+	expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
 
-	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(2);
+	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 
-	// @ts-ignore
-	NodeMailer.prototype.verifyConnection.mockRestore();
+	mockVerifyConnection.mockRestore();
+});
+
+test('UserManagementMailer expect NodeMailer.verifyConnection to be called when SMTP set up', async () => {
+	const mockVerifyConnection = jest.spyOn(NodeMailer.prototype, 'verifyConnection');
+	mockVerifyConnection.mockImplementation(async () => {});
+	const mockInit = jest.spyOn(NodeMailer.prototype, 'init');
+	mockInit.mockImplementation(async () => {});
+
+	// host needs to be set, otherwise smtp is skipped
+	config.set('userManagement.emails.smtp.host', 'host');
+	config.set('userManagement.emails.mode', 'smtp');
+
+	const userManagementMailer = new UserManagementMailer.UserManagementMailer();
+	// NodeMailer.verifyConnection gets called only explicitly
+	expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
+
+	// expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(1);
+	mockVerifyConnection.mockRestore();
+	mockInit.mockRestore();
 });

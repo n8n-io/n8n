@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -17,8 +17,8 @@ import {
 } from './GenericFunctions';
 import { productFields, productOperations } from './ProductDescription';
 import { orderFields, orderOperations } from './OrderDescription';
-import { IDimension, IImage, IProduct } from './ProductInterface';
-import {
+import type { IDimension, IImage, IProduct } from './ProductInterface';
+import type {
 	IAddress,
 	ICouponLine,
 	IFeeLine,
@@ -419,7 +419,6 @@ export class WooCommerce implements INodeType {
 						body.line_items = lineItems;
 						setMetadata(lineItems);
 						toSnakeCase(lineItems);
-						//@ts-ignore
 					}
 					const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject)
 						.metadataValues as IDataObject[];
@@ -579,7 +578,7 @@ export class WooCommerce implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

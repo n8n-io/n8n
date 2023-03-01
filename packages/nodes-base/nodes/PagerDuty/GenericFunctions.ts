@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import type { JsonObject, IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -32,7 +33,7 @@ export async function pagerDutyApiRequest(
 		},
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {
@@ -47,12 +48,12 @@ export async function pagerDutyApiRequest(
 
 			options.headers.Authorization = `Token token=${credentials.apiToken}`;
 
-			return this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return this.helpers.requestOAuth2!.call(this, 'pagerDutyOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'pagerDutyOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -74,7 +75,7 @@ export async function pagerDutyApiRequestAllItems(
 	do {
 		responseData = await pagerDutyApiRequest.call(this, method, endpoint, body, query);
 		query.offset++;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.more);
 
 	return returnData;

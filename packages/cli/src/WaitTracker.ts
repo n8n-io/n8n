@@ -10,24 +10,26 @@ import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+import type { FindManyOptions, ObjectLiteral } from 'typeorm';
+import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
+import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as GenericHelpers from '@/GenericHelpers';
-import * as ActiveExecutions from '@/ActiveExecutions';
-import {
-	DatabaseType,
+import { ActiveExecutions } from '@/ActiveExecutions';
+import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { Container, Service } from 'typedi';
 
-export class WaitTrackerClass {
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+@Service()
+export class WaitTracker {
+	activeExecutionsInstance: ActiveExecutions;
 
 	private waitingExecutions: {
 		[key: string]: {
@@ -39,7 +41,7 @@ export class WaitTrackerClass {
 	mainTimer: NodeJS.Timeout;
 
 	constructor() {
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
@@ -57,12 +59,14 @@ export class WaitTrackerClass {
 			select: ['id', 'waitTill'],
 			where: {
 				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				status: Not('crashed'),
 			},
 			order: {
 				waitTill: 'ASC',
 			},
 		};
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+
+		const dbType = config.getEnv('database.type');
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -77,7 +81,7 @@ export class WaitTrackerClass {
 			return;
 		}
 
-		const executionIds = executions.map((execution) => execution.id.toString()).join(', ');
+		const executionIds = executions.map((execution) => execution.id).join(', ');
 		Logger.debug(
 			`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
 		);
@@ -85,7 +89,7 @@ export class WaitTrackerClass {
 		// Add timers for each waiting execution that they get started at the correct time
 		// eslint-disable-next-line no-restricted-syntax
 		for (const execution of executions) {
-			const executionId = execution.id.toString();
+			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
@@ -107,9 +111,9 @@ export class WaitTrackerClass {
 		}
 
 		// Also check in database
-		const execution = await Db.collections.Execution.findOne(executionId);
+		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
 
-		if (execution === undefined || !execution.waitTill) {
+		if (execution === null || !execution.waitTill) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
@@ -126,10 +130,13 @@ export class WaitTrackerClass {
 
 		fullExecutionData.stoppedAt = new Date();
 		fullExecutionData.waitTill = undefined;
+		fullExecutionData.status = 'canceled';
 
 		await Db.collections.Execution.update(
 			executionId,
-			ResponseHelper.flattenExecutionData(fullExecutionData),
+			ResponseHelper.flattenExecutionData({
+				...fullExecutionData,
+			}),
 		);
 
 		return {
@@ -137,6 +144,7 @@ export class WaitTrackerClass {
 			startedAt: new Date(fullExecutionData.startedAt),
 			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
 			finished: fullExecutionData.finished,
+			status: fullExecutionData.status,
 		};
 	}
 
@@ -146,9 +154,11 @@ export class WaitTrackerClass {
 
 		(async () => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution.findOne(executionId);
+			const fullExecutionDataFlatted = await Db.collections.Execution.findOneBy({
+				id: executionId,
+			});
 
-			if (fullExecutionDataFlatted === undefined) {
+			if (fullExecutionDataFlatted === null) {
 				throw new Error(`The execution with the id "${executionId}" does not exist.`);
 			}
 
@@ -161,7 +171,7 @@ export class WaitTrackerClass {
 			if (!fullExecutionData.workflowData.id) {
 				throw new Error('Only saved workflows can be resumed.');
 			}
-			const user = await getWorkflowOwner(fullExecutionData.workflowData.id.toString());
+			const user = await getWorkflowOwner(fullExecutionData.workflowData.id);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
@@ -181,14 +191,4 @@ export class WaitTrackerClass {
 			);
 		});
 	}
-}
-
-let waitTrackerInstance: WaitTrackerClass | undefined;
-
-export function WaitTracker(): WaitTrackerClass {
-	if (waitTrackerInstance === undefined) {
-		waitTrackerInstance = new WaitTrackerClass();
-	}
-
-	return waitTrackerInstance;
 }

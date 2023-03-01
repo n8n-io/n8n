@@ -8,22 +8,18 @@ import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({
+		endpointGroups: ['publicApi'],
+		applyAuth: false,
+		enablePublicAPI: true,
+	});
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
-
-	utils.initTestTelemetry();
-	utils.initTestLogger();
 
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();
@@ -32,29 +28,26 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		[
-			'SharedCredentials',
-			'SharedWorkflow',
-			'User',
-			'Workflow',
-			'Credentials',
-			'Execution',
-			'Settings',
-		],
-		testDbName,
-	);
+	await testDb.truncate([
+		'SharedCredentials',
+		'SharedWorkflow',
+		'User',
+		'Workflow',
+		'Credentials',
+		'Execution',
+		'Settings',
+	]);
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 afterEach(async () => {
-	await workflowRunner.removeAll();
+	await workflowRunner?.removeAll();
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /executions/:id should fail due to missing API Key', async () => {
@@ -463,7 +456,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 	await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
 	const response = await authOwnerAgent.get(`/executions`).query({
-		workflowId: workflow.id.toString(),
+		workflowId: workflow.id,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -490,7 +483,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 		expect(retryOf).toBeNull();
 		expect(startedAt).not.toBeNull();
 		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(workflow.id.toString());
+		expect(workflowId).toBe(workflow.id);
 		expect(waitTill).toBeNull();
 	}
 });

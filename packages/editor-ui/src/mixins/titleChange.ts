@@ -1,6 +1,6 @@
 import Vue from 'vue';
 
-import { WorkflowTitleStatus } from '../../Interface';
+import { WorkflowTitleStatus } from '@/Interface';
 
 export const titleChange = Vue.extend({
 	methods: {
@@ -22,7 +22,7 @@ export const titleChange = Vue.extend({
 		},
 
 		$titleReset() {
-			document.title = `n8n - Workflow Automation`;
+			document.title = 'n8n - Workflow Automation';
 		},
 	},
 });

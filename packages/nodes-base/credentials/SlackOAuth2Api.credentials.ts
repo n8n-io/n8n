@@ -1,7 +1,8 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
+	'channels:read',
 	'channels:write',
 	'chat:write',
 	'files:read',
@@ -66,6 +67,13 @@ export class SlackOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
+		},
+		{
+			displayName:
+				'If you get an Invalid Scopes error, make sure you add the correct one <a target="_blank" href="https://docs.n8n.io/integrations/builtin/credentials/slack/#using-oauth">here</a> to your Slack integration',
+			name: 'notice',
+			type: 'notice',
+			default: '',
 		},
 	];
 }

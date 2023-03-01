@@ -1,26 +1,26 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
 
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { responderFields, respondersOperations } from './ResponderDescription';
 
 import { jobFields, jobOperations } from './JobDescription';
 
-import { upperFirst } from 'lodash';
+import upperFirst from 'lodash.upperfirst';
 
-import { IJob } from './AnalyzerInterface';
+import type { IJob } from './AnalyzerInterface';
 
 import { createHash } from 'crypto';
 
@@ -88,7 +88,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search?range=all`,
+					'/analyzer/_search?range=all',
 				);
 
 				const returnData: INodePropertyOptions[] = [];
@@ -106,7 +106,7 @@ export class Cortex implements INodeType {
 
 			async loadActiveResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// request the enabled responders from instance
-				const requestResult = await cortexApiRequest.call(this, 'GET', `/responder`);
+				const requestResult = await cortexApiRequest.call(this, 'GET', '/responder');
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const responder of requestResult) {
@@ -201,12 +201,12 @@ export class Cortex implements INodeType {
 								});
 							}
 
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -295,7 +295,7 @@ export class Cortex implements INodeType {
 
 							body = {
 								responderId,
-								label: getEntityLabel(entityJson),
+								label: getEntityLabel(entityJson as IDataObject),
 								dataType: `thehive:${entityType}`,
 								data: entityJson,
 								tlp: entityJson.tlp || 2,
@@ -352,7 +352,7 @@ export class Cortex implements INodeType {
 												if (item.binary[binaryPropertyName] === undefined) {
 													throw new NodeOperationError(
 														this.getNode(),
-														`No binary data property '${binaryPropertyName}' does not exists on item!`,
+														`Item has no binary property called "${binaryPropertyName}"`,
 														{ itemIndex: i },
 													);
 												}
@@ -386,7 +386,7 @@ export class Cortex implements INodeType {
 									if (item.binary[binaryPropertyName] === undefined) {
 										throw new NodeOperationError(
 											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
+											`Item has no binary property called "${binaryPropertyName}"`,
 											{ itemIndex: i },
 										);
 									}

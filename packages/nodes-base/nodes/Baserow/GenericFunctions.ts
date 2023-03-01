@@ -1,10 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { Accumulator, BaserowCredentials, LoadedResource } from './types';
+import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
 /**
  * Make a request to Baserow API.
@@ -39,9 +40,9 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -67,7 +68,7 @@ export async function baserowApiRequestAllItems(
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
-		returnData.push(...responseData.results);
+		returnData.push(...(responseData.results as IDataObject[]));
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
@@ -97,10 +98,10 @@ export async function getJwtToken(
 	};
 
 	try {
-		const { token } = (await this.helpers.request!(options)) as { token: string };
+		const { token } = (await this.helpers.request(options)) as { token: string };
 		return token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

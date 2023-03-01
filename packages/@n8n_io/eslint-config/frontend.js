@@ -12,16 +12,6 @@ module.exports = {
 		node: true,
 	},
 
-	parser: 'vue-eslint-parser',
-	parserOptions: {
-		parser: {
-			ts: '@typescript-eslint/parser',
-			js: '@typescript-eslint/parser',
-			vue: 'vue-eslint-parser',
-			template: 'vue-eslint-parser',
-		},
-	},
-
 	ignorePatterns: ['**/*.js', '**/*.d.ts', 'vite.config.ts', '**/*.ts.snap'],
 
 	rules: {

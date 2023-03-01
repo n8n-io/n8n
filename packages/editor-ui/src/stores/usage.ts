@@ -8,7 +8,7 @@ import { useUsersStore } from '@/stores/users';
 
 export type UsageTelemetry = {
 	instance_id: string;
-	action: 'view_plans' | 'manage_plan' | 'add_activation_key';
+	action: 'view_plans' | 'manage_plan' | 'add_activation_key' | 'desktop_view_plans';
 	plan_name_current: string;
 	usage: number;
 	quota: number;
@@ -120,5 +120,6 @@ export const useUsageStore = defineStore('usage', () => {
 			usage: executionCount.value,
 			quota: executionLimit.value,
 		})),
+		isDesktop: computed(() => settingsStore.isDesktopDeployment),
 	};
 });

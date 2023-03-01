@@ -5,7 +5,7 @@ const BASE_URL = 'http://localhost:5678';
 
 module.exports = defineConfig({
 	retries: {
-		openMode: 1,
+		openMode: 0,
 		runMode: 3,
 	},
 	e2e: {
@@ -24,6 +24,8 @@ module.exports = defineConfig({
 						body: JSON.stringify(payload),
 						headers: { 'Content-Type': 'application/json' },
 					}),
+				'enable-feature': (feature) =>
+					fetch(BASE_URL + `/e2e/enable-feature/${feature}`, { method: 'POST' }),
 			});
 		},
 	},

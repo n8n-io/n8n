@@ -1,10 +1,10 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
@@ -41,14 +41,14 @@ export async function matrixApiRequest(
 			option.overridePrefix || 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
 		//@ts-ignore
-		return options.overridePrefix === 'media' ? JSON.parse(response) : response;
+		return options.overridePrefix === 'media' ? JSON.parse(response as string) : response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -75,7 +75,7 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return matrixApiRequest.call(this, 'POST', `/createRoom`, body);
+			return matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
 			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
@@ -148,7 +148,7 @@ export async function handleMatrixCall(
 						{},
 						qs,
 					);
-					returnData.push.apply(returnData, responseData.chunk);
+					returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
 					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
@@ -169,7 +169,7 @@ export async function handleMatrixCall(
 					{},
 					qs,
 				);
-				returnData.push.apply(returnData, responseData.chunk);
+				returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
 			}
 
 			return returnData;
@@ -184,7 +184,7 @@ export async function handleMatrixCall(
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 
 			let body;
 			const qs: IDataObject = {};
@@ -197,7 +197,7 @@ export async function handleMatrixCall(
 			) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
+					`Item has no binary property called "${binaryPropertyName}"`,
 				);
 			}
 
@@ -214,7 +214,7 @@ export async function handleMatrixCall(
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,
 				'POST',
-				`/upload`,
+				'/upload',
 				body,
 				qs,
 				headers,

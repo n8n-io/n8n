@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,9 +8,9 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
@@ -25,7 +25,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: `={{$parameter["operation"]}}`,
+		subtitle: '={{$parameter["operation"]}}',
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
@@ -249,14 +249,14 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const params = ['Version=2012-11-05', `Action=ListQueues`];
+				const params = ['Version=2012-11-05', 'Action=ListQueues'];
 
 				let data;
 				try {
 					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
@@ -386,7 +386,7 @@ export class AwsSqs implements INodeType {
 						`${queuePath}?${params.join('&')}`,
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const result = responseData.SendMessageResponse.SendMessageResult;

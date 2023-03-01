@@ -1,15 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { iterableApiRequest } from './GenericFunctions';
 
@@ -143,7 +143,7 @@ export class Iterable implements INodeType {
 
 				responseData = await iterableApiRequest.call(this, 'POST', '/events/trackBulk', { events });
 
-				returnData.push(responseData);
+				returnData.push(responseData as IDataObject);
 			}
 		}
 
@@ -190,7 +190,7 @@ export class Iterable implements INodeType {
 						}
 					}
 
-					returnData.push(responseData);
+					returnData.push(responseData as IDataObject);
 				}
 			}
 
@@ -214,11 +214,11 @@ export class Iterable implements INodeType {
 
 					if (!this.continueOnFail()) {
 						if (responseData.code !== 'Success') {
-							throw new NodeApiError(this.getNode(), responseData);
+							throw new NodeApiError(this.getNode(), responseData as JsonObject);
 						}
 					}
 
-					returnData.push(responseData);
+					returnData.push(responseData as IDataObject);
 				}
 			}
 
@@ -232,7 +232,7 @@ export class Iterable implements INodeType {
 
 					if (by === 'email') {
 						const email = this.getNodeParameter('email', i) as string;
-						endpoint = `/users/getByEmail`;
+						endpoint = '/users/getByEmail';
 						qs.email = email;
 					} else {
 						const userId = this.getNodeParameter('userId', i) as string;
@@ -242,16 +242,16 @@ export class Iterable implements INodeType {
 					responseData = await iterableApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 					if (!this.continueOnFail()) {
-						if (Object.keys(responseData).length === 0) {
-							throw new NodeApiError(this.getNode(), responseData, {
-								message: `User not found`,
+						if (Object.keys(responseData as IDataObject).length === 0) {
+							throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+								message: 'User not found',
 								httpCode: '404',
 							});
 						}
 					}
 
 					responseData = responseData.user || {};
-					returnData.push(responseData);
+					returnData.push(responseData as IDataObject);
 				}
 			}
 		}
@@ -284,7 +284,7 @@ export class Iterable implements INodeType {
 
 				responseData = await iterableApiRequest.call(this, 'POST', '/lists/subscribe', body);
 
-				returnData.push(responseData);
+				returnData.push(responseData as IDataObject);
 			}
 
 			if (operation === 'remove') {
@@ -318,7 +318,7 @@ export class Iterable implements INodeType {
 
 				responseData = await iterableApiRequest.call(this, 'POST', '/lists/unsubscribe', body);
 
-				returnData.push(responseData);
+				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

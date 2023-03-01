@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -68,7 +68,7 @@ export class Demio implements INodeType {
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await demioApiRequest.call(this, 'GET', `/events`, {}, { type: 'upcoming' });
+				const events = await demioApiRequest.call(this, 'GET', '/events', {}, { type: 'upcoming' });
 				for (const event of events) {
 					returnData.push({
 						name: event.name,
@@ -136,7 +136,7 @@ export class Demio implements INodeType {
 
 						Object.assign(qs, filters);
 
-						responseData = await demioApiRequest.call(this, 'GET', `/events`, {}, qs);
+						responseData = await demioApiRequest.call(this, 'GET', '/events', {}, qs);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
@@ -169,7 +169,7 @@ export class Demio implements INodeType {
 							delete additionalFields.customFields;
 						}
 
-						responseData = await demioApiRequest.call(this, 'PUT', `/event/register`, body);
+						responseData = await demioApiRequest.call(this, 'PUT', '/event/register', body);
 					}
 				}
 				if (resource === 'report') {

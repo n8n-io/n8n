@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,6 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { Metrics } from './GenericFunctions';
 import {
 	profitWellApiRequest,
 	simplifyDailyMetrics,
@@ -94,7 +95,7 @@ export class ProfitWell implements INodeType {
 			try {
 				if (resource === 'company') {
 					if (operation === 'getSetting') {
-						responseData = await profitWellApiRequest.call(this, 'GET', `/company/settings/`);
+						responseData = await profitWellApiRequest.call(this, 'GET', '/company/settings/');
 					}
 				}
 				if (resource === 'metric') {
@@ -121,7 +122,7 @@ export class ProfitWell implements INodeType {
 						}
 
 						responseData = await profitWellApiRequest.call(this, 'GET', `/metrics/${type}`, {}, qs);
-						responseData = responseData.data;
+						responseData = responseData.data as Metrics;
 
 						if (simple) {
 							if (type === 'daily') {

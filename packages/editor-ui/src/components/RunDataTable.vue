@@ -40,7 +40,7 @@
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
-									<MappingPill :html="shorten(column, 16, 2)"	:can-drop="canDrop" />
+									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
 								</template>
 								<template #default="{ isDragging }">
 									<div
@@ -97,7 +97,10 @@
 				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
-					<MappingPill :html="shorten(getPathNameFromTarget(el) || '', 16, 2)"	:can-drop="canDrop" />
+					<MappingPill
+						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
+						:can-drop="canDrop"
+					/>
 				</template>
 				<template>
 					<tr
@@ -167,6 +170,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -312,11 +316,11 @@ export default mixins(externalHooks).extend({
 				return '';
 			}
 
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"] }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column],
+			});
 		},
 		getPathNameFromTarget(el: HTMLElement) {
 			if (!el) {
@@ -340,21 +344,12 @@ export default mixins(externalHooks).extend({
 			if (!this.node) {
 				return '';
 			}
-
-			const expr = path.reduce((accu: string, key: string | number) => {
-				if (typeof key === 'number') {
-					return `${accu}[${key}]`;
-				}
-
-				return `${accu}["${key}"]`;
-			}, '');
 			const column = this.tableData.columns[colIndex];
-
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"]${expr} }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column, ...path],
+			});
 		},
 		isEmpty(value: unknown): boolean {
 			return (
@@ -372,19 +367,15 @@ export default mixins(externalHooks).extend({
 			if (typeof value === 'string') {
 				return value.replaceAll('\n', '\\n');
 			}
-
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
 			}
-
 			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
 				return this.$locale.baseText('runData.emptyObject');
 			}
-
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
-
 			return value;
 		},
 		onDragStart() {
@@ -479,8 +470,8 @@ export default mixins(externalHooks).extend({
 							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
 							false;
 					} else {
-						// Entry does not have key so add null
-						entryRows.push(null);
+						// Entry does not have key so add undefined
+						entryRows.push(undefined);
 					}
 				});
 
