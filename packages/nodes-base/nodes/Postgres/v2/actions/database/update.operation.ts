@@ -99,7 +99,7 @@ export async function execute(
 	});
 
 	const options = this.getNodeParameter('options', 0);
-	const mode = (options.mode as QueryMode) || 'multiple';
+	const queryBatching = (options.queryBatching as QueryMode) || 'multiple';
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
@@ -110,7 +110,7 @@ export async function execute(
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 
 	let returnData: IDataObject[] = [];
-	if (mode === 'multiple') {
+	if (queryBatching === 'multiple') {
 		try {
 			const query =
 				(pgp.helpers.update(updateItems, cs) as string) +
@@ -144,7 +144,7 @@ export async function execute(
 		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 		updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 
-	if (mode === 'transaction') {
+	if (queryBatching === 'transaction') {
 		returnData = await db.tx(async (t) => {
 			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
@@ -171,7 +171,7 @@ export async function execute(
 		});
 	}
 
-	if (mode === 'independently') {
+	if (queryBatching === 'independently') {
 		returnData = await db.task(async (t) => {
 			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {

@@ -7,6 +7,7 @@ import type {
 	PgpClient,
 	PgpDatabase,
 	QueryMode,
+	QueryValues,
 	QueryWithValues,
 	SortRule,
 	WhereClause,
@@ -139,8 +140,8 @@ export function parsePostgresError(this: IExecuteFunctions, error: any, itemInde
 export function addWhereClauses(
 	query: string,
 	clauses: WhereClause[],
-	replacements: string[],
-): [string, string[]] {
+	replacements: QueryValues,
+): [string, QueryValues] {
 	if (clauses.length === 0) return [query, replacements];
 
 	let replacementIndex = replacements.length + 1;
@@ -174,8 +175,8 @@ export function addWhereClauses(
 export function addSortRules(
 	query: string,
 	rules: SortRule[],
-	replacements: string[],
-): [string, string[]] {
+	replacements: QueryValues,
+): [string, QueryValues] {
 	if (rules.length === 0) return [query, replacements];
 
 	let replacementIndex = replacements.length + 1;
@@ -196,6 +197,18 @@ export function addSortRules(
 	return [`${query}${orderByQuery}`, replacements.concat(...values)];
 }
 
+export function addReturning(
+	query: string,
+	outputColumns: string | string[],
+	replacements: QueryValues,
+): [string, QueryValues] {
+	if (outputColumns === '*') return [`${query} RETURNING *`, replacements];
+
+	const replacementIndex = replacements.length + 1;
+
+	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
+}
+
 export async function runQueries(
 	this: IExecuteFunctions,
 	pgp: PgpClient,
@@ -206,9 +219,9 @@ export async function runQueries(
 ) {
 	let returnData: INodeExecutionData[] = [];
 
-	const mode = (options.mode as QueryMode) || 'multiple';
+	const queryBatching = (options.queryBatching as QueryMode) || 'multiple';
 
-	if (mode === 'multiple') {
+	if (queryBatching === 'multiple') {
 		try {
 			returnData = (await db.multi(pgp.helpers.concat(queries)))
 				.map((result, i) => {
@@ -233,12 +246,15 @@ export async function runQueries(
 		}
 	}
 
-	if (mode === 'transaction') {
-		returnData = await db.tx(async (t) => {
+	if (queryBatching === 'transaction') {
+		returnData = await db.tx(async (transaction) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < queries.length; i++) {
 				try {
-					const transactionResult: IDataObject[] = await t.any(queries[i].query, queries[i].values);
+					const transactionResult: IDataObject[] = await transaction.any(
+						queries[i].query,
+						queries[i].values,
+					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
@@ -257,7 +273,7 @@ export async function runQueries(
 		});
 	}
 
-	if (mode === 'independently') {
+	if (queryBatching === 'independently') {
 		returnData = await db.task(async (t) => {
 			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < queries.length; i++) {

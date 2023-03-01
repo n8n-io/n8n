@@ -6,6 +6,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type {
 	PgpClient,
 	PgpDatabase,
+	QueryValues,
 	QueryWithValues,
 	SortRule,
 	WhereClause,
@@ -87,7 +88,7 @@ export async function execute(
 			extractValue: true,
 		}) as string;
 
-		let values: string[] = [schema, table];
+		let values: QueryValues = [schema, table];
 
 		const output = this.getNodeParameter('output', i) as string;
 

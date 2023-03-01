@@ -1,37 +1,52 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import type { PgpClient, PgpDatabase, QueryWithValues } from '../../helpers/interfaces';
+import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
 
-import { runQueries } from '../../helpers/utils';
+import {
+	generateReturning,
+	getItemCopy,
+	getItemsCopy,
+	parsePostgresError,
+	prepareErrorItem,
+	wrapData,
+} from '../../helpers/utils';
 
-import { optionsCollection, outpurSelector, schemaRLC, tableRLC } from '../common.descriptions';
+import { optionsCollection, schemaRLC, tableRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	schemaRLC,
 	tableRLC,
 	{
-		displayName: 'Data Mode',
-		name: 'dataMode',
-		type: 'options',
-		options: [
-			{
-				name: 'Auto-Map Input Data to Columns',
-				value: 'autoMapInputData',
-				description: 'Use when node input properties match destination column names',
-			},
-			{
-				name: 'Map Each Column Below',
-				value: 'defineBelow',
-				description: 'Set the value for each destination column',
-			},
-		],
-		default: 'defineBelow',
-		description: 'Whether to insert the input data this node receives in the new row',
+		displayName: 'Update Key',
+		name: 'updateKey',
+		type: 'string',
+		default: 'id',
+		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+		description:
+			'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 	},
-	...outpurSelector,
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'string',
+		default: '',
+		placeholder: 'name:text,description',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+		description:
+			'Comma-separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.',
+	},
+	{
+		displayName: 'Return Fields',
+		name: 'returnFields',
+		type: 'string',
+		requiresDataPath: 'multiple',
+		default: '*',
+		description: 'Comma-separated list of the fields that the operation will return',
+	},
 	optionsCollection,
 ];
 
@@ -50,34 +65,137 @@ export async function execute(
 	db: PgpDatabase,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0);
+	const schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
 
-	const queries: QueryWithValues[] = [];
+	const table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		const schema = this.getNodeParameter('schema', i, undefined, {
-			extractValue: true,
-		}) as string;
+	const updateKey = this.getNodeParameter('updateKey', 0) as string;
+	const columnString = this.getNodeParameter('columns', 0) as string;
+	const guardedColumns: { [key: string]: string } = {};
 
-		const table = this.getNodeParameter('table', i, undefined, {
-			extractValue: true,
-		}) as string;
+	const columns: Array<{ name: string; cast: string; prop: string }> = columnString
+		.split(',')
+		.map((column) => column.trim().split(':'))
+		.map(([name, cast], i) => {
+			guardedColumns[`column${i}`] = name;
+			return { name, cast, prop: `column${i}` };
+		});
 
-		const _query = '';
-		const _values: string[] = [schema, table];
-
-		const dataMode = this.getNodeParameter('dataMode', i) as string;
-
-		if (dataMode === 'autoMapInputData') {
+	const updateKeys = updateKey.split(',').map((key, i) => {
+		const [name, cast] = key.trim().split(':');
+		const targetCol = columns.find((column) => column.name === name);
+		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
+		if (!targetCol) {
+			guardedColumns[updateColumn.prop] = name;
+			columns.unshift(updateColumn);
+		} else if (!targetCol.cast) {
+			targetCol.cast = updateColumn.cast || targetCol.cast;
 		}
+		return updateColumn;
+	});
 
-		const output = this.getNodeParameter('output', 0) as string;
+	const options = this.getNodeParameter('options', 0);
+	const queryBatching = (options.queryBatching as QueryMode) || 'multiple';
 
-		let _outputColumns = '*';
-		if (output === 'columns') {
-			_outputColumns = (this.getNodeParameter('returnColumns', 0, []) as string[]).join(', ');
+	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
+
+	// Prepare the data to update and copy it to be returned
+	const columnNames = columns.map((column) => column.name);
+	const updateItems = getItemsCopy(items, columnNames, guardedColumns);
+
+	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
+
+	let returnData: IDataObject[] = [];
+	if (queryBatching === 'multiple') {
+		try {
+			const query =
+				(pgp.helpers.update(updateItems, cs) as string) +
+				' WHERE ' +
+				updateKeys
+					.map((entry) => {
+						const key = pgp.as.name(entry.name);
+						return 'v.' + key + ' = t.' + key;
+					})
+					.join(' AND ') +
+				returning;
+			const updateResult = await db.any(query);
+			returnData = updateResult;
+		} catch (err) {
+			const error = parsePostgresError.call(this, err);
+			if (!this.continueOnFail()) throw error;
+
+			return [
+				{
+					json: {
+						message: error.message,
+						error: { ...error },
+					},
+				},
+			];
 		}
 	}
 
-	return runQueries.call(this, pgp, db, queries, items, options);
+	const where =
+		' WHERE ' +
+		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+		updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
+
+	if (queryBatching === 'transaction') {
+		returnData = await db.tx(async (t) => {
+			const result: IDataObject[] = [];
+			for (let i = 0; i < items.length; i++) {
+				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
+				try {
+					const transactionResult = await t.any(
+						(pgp.helpers.update(itemCopy, cs) as string) +
+							pgp.as.format(where, itemCopy) +
+							returning,
+					);
+					const executionData = this.helpers.constructExecutionMetaData(
+						wrapData(transactionResult as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					result.push(...executionData);
+				} catch (err) {
+					const error = parsePostgresError.call(this, err, i);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
+					return result;
+				}
+			}
+			return result;
+		});
+	}
+
+	if (queryBatching === 'independently') {
+		returnData = await db.task(async (t) => {
+			const result: IDataObject[] = [];
+			for (let i = 0; i < items.length; i++) {
+				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
+				try {
+					const independentResult = await t.any(
+						(pgp.helpers.update(itemCopy, cs) as string) +
+							pgp.as.format(where, itemCopy) +
+							returning,
+					);
+					const executionData = this.helpers.constructExecutionMetaData(
+						wrapData(independentResult as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					result.push(...executionData);
+				} catch (err) {
+					const error = parsePostgresError.call(this, err, i);
+					if (!this.continueOnFail()) throw error;
+					result.push(prepareErrorItem(items, error, i));
+				}
+			}
+			return result;
+		});
+	}
+
+	return wrapData(returnData);
 }

@@ -7,6 +7,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type {
 	PgpClient,
 	PgpDatabase,
+	QueryValues,
 	QueryWithValues,
 	WhereClause,
 } from '../../helpers/interfaces';
@@ -104,7 +105,7 @@ export async function execute(
 		const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
 
 		let query = '';
-		let values: string[] = [schema, table];
+		let values: QueryValues = [schema, table];
 
 		if (deleteCommand === 'drop') {
 			const cascade = options.cascade ? ' CASCADE' : '';

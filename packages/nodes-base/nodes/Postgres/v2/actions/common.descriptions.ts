@@ -31,30 +31,31 @@ export const optionsCollection: INodeProperties = {
 			description: 'Number of milliseconds reserved for connecting to the database',
 		},
 		{
-			displayName: 'Mode',
-			name: 'mode',
+			displayName: 'Query Batching',
+			name: 'queryBatching',
 			type: 'options',
 			noDataExpression: true,
 			options: [
-				{
-					name: 'Independently',
-					value: 'independently',
-					description: 'Execute each query independently',
-				},
 				{
 					name: 'Multiple Queries',
 					value: 'multiple',
 					description: '<b>Default</b>. Sends multiple queries at once to database.',
 				},
 				{
+					name: 'Independently',
+					value: 'independently',
+					description: 'Execute each query independently',
+				},
+				{
 					name: 'Transaction',
 					value: 'transaction',
-					description: 'Executes all queries in a single transaction',
+					description:
+						'Executes all queries in a transaction, in case any of them fails, all changes would be rolled back',
 				},
 			],
 			default: 'multiple',
 			description:
-				'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
+				'The way queries should be sent to database.<a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>',
 		},
 		{
 			displayName: 'Output Large-Format Numbers As',
@@ -74,9 +75,17 @@ export const optionsCollection: INodeProperties = {
 			],
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
+		},
+		{
+			displayName: 'Skip on Conflict',
+			name: 'skipOnConflict',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to skip the row and do not throw error if a unique constraint or exclusion constraint is violated',
 			displayOptions: {
 				show: {
-					'/operation': ['executeQuery'],
+					'/operation': ['insert'],
 				},
 			},
 		},

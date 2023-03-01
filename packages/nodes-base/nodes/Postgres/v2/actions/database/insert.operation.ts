@@ -3,16 +3,14 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import type { PgpClient, PgpDatabase, QueryMode } from '../../helpers/interfaces';
+import type {
+	PgpClient,
+	PgpDatabase,
+	QueryValues,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 
-import {
-	generateReturning,
-	getItemCopy,
-	getItemsCopy,
-	parsePostgresError,
-	prepareErrorItem,
-	wrapData,
-} from '../../helpers/utils';
+import { addReturning, runQueries } from '../../helpers/utils';
 
 import { optionsCollection, outpurSelector, schemaRLC, tableRLC } from '../common.descriptions';
 
@@ -34,31 +32,52 @@ const properties: INodeProperties[] = [
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
-			{
-				name: 'Select Properties From Input',
-				value: 'selectProperties',
-				description:
-					'Select properties from input, properties should match destination column names',
-			},
 		],
-		default: 'defineBelow',
+		default: 'autoMapInputData',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Properties',
-		name: 'inputProperties',
-		type: 'string',
-		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-		placeholder: 'id:int,name:text,description',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-		description:
-			'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
+		displayName: 'Values to Send',
+		name: 'valuesToSend',
+		placeholder: 'Add Value',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Value',
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
-				dataMode: ['selectProperties'],
+				dataMode: ['defineBelow'],
 			},
 		},
+		default: {},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getColumns',
+							loadOptionsDependsOn: ['schema.value', 'table.value'],
+						},
+						default: [],
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	...outpurSelector,
 	optionsCollection,
@@ -79,126 +98,56 @@ export async function execute(
 	db: PgpDatabase,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	let returnData: INodeExecutionData[] = [];
-
-	const schema = this.getNodeParameter('schema', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
-	const table = this.getNodeParameter('table', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
-	const inputProperties = this.getNodeParameter('inputProperties', 0) as string;
-
-	// const dataMode = this.getNodeParameter('dataMode', 0) as string;
-
-	// if (dataMode === 'selectProperties') {
-	// 	inputProperties = this.getNodeParameter('inputProperties', 0) as string;
-	// }
-
-	//---------------------------------------------------------------------
-	const guardedColumns: { [key: string]: string } = {};
-
-	const columns = inputProperties
-		.split(',')
-		.map((column) => column.trim().split(':'))
-		.map(([name, cast], i) => {
-			guardedColumns[`column${i}`] = name;
-			return { name, cast, prop: `column${i}` };
-		});
-
-	const columnNames = columns.map((column) => column.name);
-
-	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
-
 	const options = this.getNodeParameter('options', 0);
-	const mode = (options.mode as QueryMode) || 'multiple';
 
-	const output = this.getNodeParameter('output', 0) as string;
+	const queries: QueryWithValues[] = [];
 
-	let outputColumns = '*';
-	if (output === 'columns') {
-		outputColumns = (this.getNodeParameter('returnColumns', 0, []) as string[]).join(', ');
-	}
+	for (let i = 0; i < items.length; i++) {
+		const schema = this.getNodeParameter('schema', i, undefined, {
+			extractValue: true,
+		}) as string;
 
-	const returning = generateReturning(pgp, outputColumns);
+		const table = this.getNodeParameter('table', i, undefined, {
+			extractValue: true,
+		}) as string;
 
-	if (mode === 'multiple') {
-		try {
-			const query =
-				pgp.helpers.insert(getItemsCopy(items, columnNames, guardedColumns), cs) + returning;
-			const queryResult = await db.any(query);
-			returnData = queryResult
-				.map((result, i) => {
-					return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
-						itemData: { item: i },
-					});
-				})
-				.flat();
-		} catch (err) {
-			const error = parsePostgresError.call(this, err);
-			if (!this.continueOnFail()) throw error;
+		const output = this.getNodeParameter('output', 0) as string;
 
-			return [
-				{
-					json: {
-						message: error.message,
-						error: { ...error },
-					},
-				},
-			];
+		let outputColumns: string | string[] = '*';
+		if (output === 'columns') {
+			outputColumns = this.getNodeParameter('returnColumns', 0, []) as string[];
 		}
+
+		let onConflict = '';
+		if (options.skipOnConflict) {
+			onConflict = ' ON CONFLICT DO NOTHING';
+		}
+
+		let query = `INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv)${onConflict}`;
+		let values: QueryValues = [schema, table];
+
+		const dataMode = this.getNodeParameter('dataMode', i) as string;
+
+		if (dataMode === 'autoMapInputData') {
+			values.push(items[i].json);
+		}
+
+		if (dataMode === 'defineBelow') {
+			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+				.values as IDataObject[];
+
+			const item = valuesToSend.reduce((acc, { column, value }) => {
+				acc[column as string] = value;
+				return acc;
+			}, {} as IDataObject);
+
+			values.push(item);
+		}
+
+		[query, values] = addReturning(query, outputColumns, values);
+
+		queries.push({ query, values });
 	}
 
-	if (mode === 'transaction') {
-		returnData = await db.tx(async (t) => {
-			const result: INodeExecutionData[] = [];
-			for (let i = 0; i < items.length; i++) {
-				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
-				try {
-					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
-					result.push(
-						...this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
-							itemData: { item: i },
-						}),
-					);
-				} catch (err) {
-					const error = parsePostgresError.call(this, err, i);
-					if (!this.continueOnFail()) throw error;
-					result.push(prepareErrorItem(items, error, i));
-					return result;
-				}
-			}
-			return result;
-		});
-	}
-
-	if (mode === 'independently') {
-		returnData = await db.task(async (t) => {
-			const result: INodeExecutionData[] = [];
-			for (let i = 0; i < items.length; i++) {
-				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
-				try {
-					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
-					if (insertResult !== null) {
-						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(insertResult as IDataObject[]),
-							{
-								itemData: { item: i },
-							},
-						);
-						result.push(...executionData);
-					}
-				} catch (err) {
-					const error = parsePostgresError.call(this, err, i);
-					if (!this.continueOnFail()) throw error;
-					result.push(prepareErrorItem(items, error, i));
-				}
-			}
-			return result;
-		});
-	}
-
-	return returnData;
+	return runQueries.call(this, pgp, db, queries, items, options);
 }
