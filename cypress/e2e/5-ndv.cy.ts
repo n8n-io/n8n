@@ -22,7 +22,6 @@ describe('NDV', () => {
 		ndv.getters.container().should('not.be.visible');
 	});
 
-	// Why clipboard doesn't work?
 	it('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();

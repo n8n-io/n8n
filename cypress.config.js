@@ -16,6 +16,7 @@ module.exports = defineConfig({
 		video: true,
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
+		experimentalSessionAndOrigin: true,
 
 		setupNodeEvents(on, config) {
 			on('task', {

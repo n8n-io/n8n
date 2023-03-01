@@ -32,6 +32,14 @@ describe('Credentials', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
+
+		// Always intercept the request to test credentials and return a success
+		cy.intercept('POST', '/rest/credentials/test', {
+			statusCode: 200,
+			body: {
+				data: { status: 'success', message: 'Tested successfully' },
+			}
+		});
 	});
 
 	beforeEach(() => {

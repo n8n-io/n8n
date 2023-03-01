@@ -449,7 +449,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		setWidth() {
 			const containerRef = this.$refs.container as HTMLElement;
 			if (containerRef) {
-				this.width = containerRef.offsetWidth;
+				this.width = containerRef?.offsetWidth;
 			}
 		},
 		getLinkAlt(entity: string) {
