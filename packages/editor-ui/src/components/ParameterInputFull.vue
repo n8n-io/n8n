@@ -230,11 +230,7 @@ export default mixins(showMessage, externalHooks).extend({
 			}
 		},
 		onDrop(newParamValue: string) {
-			const updatedValue = getMappedResult({
-				parameter: this.parameter,
-				newParamValue,
-				prevParamValue: this.value,
-			});
+			const updatedValue = getMappedResult(this.parameter, newParamValue, this.value);
 			const prevValue = this.isResourceLocator ? this.value.value : this.value;
 
 			if (updatedValue.startsWith('=')) {

@@ -1,4 +1,4 @@
-import { INodeParameters, INodeProperties } from 'n8n-workflow';
+import { INodeProperties, isResourceLocatorValue, NodeParameterValueType } from 'n8n-workflow';
 
 export function generatePath(root: string, path: Array<string | number>): string {
 	return path.reduce((accu: string, part: string | number) => {
@@ -32,19 +32,17 @@ export function getMappedExpression({
 	return `{{ ${generatePath(root, path)} }}`;
 }
 
-export function getMappedResult({
-	newParamValue,
-	prevParamValue,
-	parameter,
-}: {
-	parameter: INodeProperties;
-	newParamValue: string;
-	prevParamValue: INodeParameters;
-}): string {
+export function getMappedResult(
+	parameter: INodeProperties,
+	newParamValue: string,
+	prevParamValue: NodeParameterValueType,
+): string {
 	const useDataPath = !!parameter.requiresDataPath && newParamValue.startsWith('{{ $json'); // ignore when mapping from grand-parent-node
-	const prevValue = parameter.type === 'resourceLocator' ? prevParamValue.value : prevParamValue;
+	const prevValue =
+		parameter.type === 'resourceLocator' && isResourceLocatorValue(prevParamValue)
+			? prevParamValue.value
+			: prevParamValue;
 
-	let updatedValue: string;
 	if (useDataPath) {
 		const newValue = newParamValue
 			.replace('{{ $json', '')
@@ -54,20 +52,18 @@ export function getMappedResult({
 
 		if (prevValue && parameter.requiresDataPath === 'multiple') {
 			if (typeof prevValue === 'string' && prevValue.trim() === '=') {
-				updatedValue = newValue;
+				return newValue;
 			} else {
-				updatedValue = `${prevValue}, ${newValue}`;
+				return `${prevValue}, ${newValue}`;
 			}
 		} else {
-			updatedValue = newValue;
+			return newValue;
 		}
 	} else if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
-		updatedValue = `${prevValue} ${newParamValue}`;
+		return `${prevValue} ${newParamValue}`;
 	} else if (prevValue && ['string', 'json'].includes(parameter.type)) {
-		updatedValue = prevValue === '=' ? `=${newParamValue}` : `=${prevValue} ${newParamValue}`;
-	} else {
-		updatedValue = `=${newParamValue}`;
+		return prevValue === '=' ? `=${newParamValue}` : `=${prevValue} ${newParamValue}`;
 	}
 
-	return updatedValue;
+	return `=${newParamValue}`;
 }
