@@ -9,6 +9,9 @@ import type { SamlConfiguration } from '../types/requests';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { issueCookie } from '../../../auth/jwt';
 import { validate } from 'class-validator';
+import type { PostBindingContext } from 'samlify/types/src/entity';
+import { getInitSSOFormView } from '../views/initSsoPost';
+import { getInitSSOPostView } from '../views/initSsoRedirect';
 
 export const samlControllerProtected = express.Router();
 
@@ -117,10 +120,13 @@ samlControllerProtected.get(
 	SamlUrls.initSSO,
 	samlLicensedAndEnabledMiddleware,
 	async (req: express.Request, res: express.Response) => {
-		const url = SamlService.getInstance().getRedirectLoginRequestUrl();
-		if (url) {
-			// TODO:SAML: redirect to the URL on the client side
-			return res.status(301).send(url);
+		const result = SamlService.getInstance().getLoginRequestUrl();
+		if (result?.binding === 'redirect') {
+			// forced client side redirect
+			return res.send(getInitSSOPostView(result.context));
+			// return res.status(301).send(result.context.context);
+		} else if (result?.binding === 'post') {
+			return res.send(getInitSSOFormView(result.context as PostBindingContext));
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}

@@ -1,4 +1,5 @@
 import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import { SamlLoginBinding } from '.';
 import { SamlAttributeMapping } from './samlAttributeMapping';
 
 export class SamlPreferences {
@@ -13,6 +14,10 @@ export class SamlPreferences {
 	@IsString()
 	@IsOptional()
 	metadataUrl?: string;
+
+	@IsString()
+	@IsOptional()
+	loginBinding?: SamlLoginBinding = 'redirect';
 
 	@IsBoolean()
 	@IsOptional()

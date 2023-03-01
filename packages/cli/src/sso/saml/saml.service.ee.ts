@@ -22,6 +22,8 @@ import {
 } from './samlHelpers';
 import type { Settings } from '../../databases/entities/Settings';
 import axios from 'axios';
+import type { SamlLoginBinding } from './types';
+import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -47,6 +49,8 @@ export class SamlService {
 	private _metadata = '';
 
 	private metadataUrl = '';
+
+	private loginBinding: SamlLoginBinding = 'post';
 
 	public get metadata(): string {
 		return this._metadata;
@@ -87,19 +91,48 @@ export class SamlService {
 		return this.identityProviderInstance;
 	}
 
-	getRedirectLoginRequestUrl(): string {
+	getLoginRequestUrl(binding?: SamlLoginBinding): {
+		binding: SamlLoginBinding;
+		context: BindingContext | PostBindingContext;
+	} {
+		if (binding === undefined) binding = this.loginBinding;
+		if (binding === 'post') {
+			return {
+				binding,
+				context: this.getPostLoginRequestUrl(),
+			};
+		} else {
+			return {
+				binding,
+				context: this.getRedirectLoginRequestUrl(),
+			};
+		}
+	}
+
+	private getRedirectLoginRequestUrl(): BindingContext {
 		const loginRequest = getServiceProviderInstance().createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'redirect',
 		);
 		//TODO:SAML: debug logging
 		LoggerProxy.debug(loginRequest.context);
-		return loginRequest.context;
+		return loginRequest;
+	}
+
+	private getPostLoginRequestUrl(): PostBindingContext {
+		const loginRequest = getServiceProviderInstance().createLoginRequest(
+			this.getIdentityProviderInstance(),
+			'post',
+		) as PostBindingContext;
+		//TODO:SAML: debug logging
+
+		LoggerProxy.debug(loginRequest.context);
+		return loginRequest;
 	}
 
 	async handleSamlLogin(
 		req: express.Request,
-		binding: 'post' | 'redirect',
+		binding: SamlLoginBinding,
 	): Promise<
 		| {
 				authenticatedUser: User | undefined;
@@ -155,12 +188,14 @@ export class SamlService {
 			mapping: this.attributeMapping,
 			metadata: this.metadata,
 			metadataUrl: this.metadataUrl,
+			loginBinding: this.loginBinding,
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
 		};
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
+		this.loginBinding = prefs.loginBinding ?? this.loginBinding;
 		this.metadata = prefs.metadata ?? this.metadata;
 		this.attributeMapping = prefs.mapping ?? this.attributeMapping;
 		if (prefs.metadataUrl) {
@@ -231,7 +266,7 @@ export class SamlService {
 
 	async getAttributesFromLoginResponse(
 		req: express.Request,
-		binding: 'post' | 'redirect',
+		binding: SamlLoginBinding,
 	): Promise<SamlUserAttributes> {
 		let parsedSamlResponse;
 		try {
