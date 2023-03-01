@@ -24,5 +24,5 @@ export async function search(
 		responseData = responseData.slice(0, limit);
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

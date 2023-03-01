@@ -1,6 +1,11 @@
 import type { OptionsWithUri } from 'request';
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { ICredentialTestFunctions, IDataObject, IPollFunctions } from 'n8n-workflow';
+import type {
+	ICredentialTestFunctions,
+	IDataObject,
+	IPollFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
@@ -129,10 +134,10 @@ export async function apiRequest(
 			const message = 'Missing permissions for Google Sheet';
 			const description =
 				"Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)";
-			throw new NodeApiError(this.getNode(), error, { message, description });
+			throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -153,7 +158,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

@@ -28,5 +28,5 @@ export async function addAlert(
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.alert);
+	return this.helpers.returnJsonArray(responseData.alert as IDataObject);
 }

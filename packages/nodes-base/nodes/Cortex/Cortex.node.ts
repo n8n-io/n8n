@@ -295,7 +295,7 @@ export class Cortex implements INodeType {
 
 							body = {
 								responderId,
-								label: getEntityLabel(entityJson),
+								label: getEntityLabel(entityJson as IDataObject),
 								dataType: `thehive:${entityType}`,
 								data: entityJson,
 								tlp: entityJson.tlp || 2,
