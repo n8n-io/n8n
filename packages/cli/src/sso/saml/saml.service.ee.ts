@@ -10,7 +10,7 @@ import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
 import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import type { IdentityProviderInstance } from 'samlify';
-import { IdentityProvider } from 'samlify';
+import { IdentityProvider, setSchemaValidator } from 'samlify';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
@@ -24,6 +24,7 @@ import type { Settings } from '../../databases/entities/Settings';
 import axios from 'axios';
 import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import { validateMetadata, validateResponse } from './samlValidator';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -46,19 +47,13 @@ export class SamlService {
 		this._attributeMapping = mapping;
 	}
 
-	private _metadata = '';
+	private metadata = '';
 
 	private metadataUrl = '';
 
+	private ignoreSSL = false;
+
 	private loginBinding: SamlLoginBinding = 'post';
-
-	public get metadata(): string {
-		return this._metadata;
-	}
-
-	public set metadata(metadata: string) {
-		this._metadata = metadata;
-	}
 
 	constructor() {
 		this.loadFromDbAndApplySamlPreferences()
@@ -66,19 +61,32 @@ export class SamlService {
 				LoggerProxy.debug('Initializing SAML service');
 			})
 			.catch(() => {
-				LoggerProxy.error('Error initializing SAML service');
+				LoggerProxy.warn('Error initializing SAML service');
 			});
 	}
 
 	static getInstance(): SamlService {
 		if (!SamlService.instance) {
 			SamlService.instance = new SamlService();
+			SamlService.instance.init().catch((error) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				LoggerProxy.error(error);
+			});
 		}
 		return SamlService.instance;
 	}
 
 	async init(): Promise<void> {
 		await this.loadFromDbAndApplySamlPreferences();
+		setSchemaValidator({
+			validate: async (response: string) => {
+				const valid = await validateResponse(response);
+				if (!valid) {
+					return Promise.reject(new Error('Invalid SAML response'));
+				}
+				return Promise.resolve();
+			},
+		});
 	}
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
@@ -125,7 +133,6 @@ export class SamlService {
 			'post',
 		) as PostBindingContext;
 		//TODO:SAML: debug logging
-
 		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
@@ -188,6 +195,7 @@ export class SamlService {
 			mapping: this.attributeMapping,
 			metadata: this.metadata,
 			metadataUrl: this.metadataUrl,
+			ignoreSSL: this.ignoreSSL,
 			loginBinding: this.loginBinding,
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
@@ -198,12 +206,19 @@ export class SamlService {
 		this.loginBinding = prefs.loginBinding ?? this.loginBinding;
 		this.metadata = prefs.metadata ?? this.metadata;
 		this.attributeMapping = prefs.mapping ?? this.attributeMapping;
+		this.ignoreSSL = prefs.ignoreSSL ?? this.ignoreSSL;
 		if (prefs.metadataUrl) {
 			this.metadataUrl = prefs.metadataUrl;
 			const fetchedMetadata = await this.fetchMetadataFromUrl();
 			if (fetchedMetadata) {
 				this.metadata = fetchedMetadata;
 			}
+		} else if (prefs.metadata) {
+			const validationResult = await validateMetadata(prefs.metadata);
+			if (!validationResult) {
+				throw new Error('Invalid SAML metadata');
+			}
+			this.metadata = prefs.metadata;
 		}
 		setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
@@ -249,17 +264,22 @@ export class SamlService {
 	async fetchMetadataFromUrl(): Promise<string | undefined> {
 		try {
 			const prevRejectStatus = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-			process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+			if (this.ignoreSSL) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 			const response = await axios.get(this.metadataUrl);
-			process.env.NODE_TLS_REJECT_UNAUTHORIZED = prevRejectStatus;
+			if (this.ignoreSSL) process.env.NODE_TLS_REJECT_UNAUTHORIZED = prevRejectStatus;
 			if (response.status === 200 && response.data) {
 				const xml = (await response.data) as string;
-				// TODO: SAML: validate XML
-				// throw new BadRequestError('Received XML is not valid SAML metadata.');
+				const validationResult = await validateMetadata(xml);
+				if (!validationResult) {
+					throw new BadRequestError(
+						`Data received from ${this.metadataUrl} is not valid SAML metadata.`,
+					);
+				}
 				return xml;
 			}
 		} catch (error) {
-			throw new BadRequestError('SAML Metadata URL is invalid or response is .');
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+			throw new BadRequestError(`Error fetching SAML Metadata from ${this.metadataUrl}: ${error}`);
 		}
 		return;
 	}

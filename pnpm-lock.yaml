@@ -250,6 +250,7 @@ importers:
       validator: 13.7.0
       winston: ^3.3.3
       ws: ^8.12.0
+      xmllint-wasm: ^3.0.1
       yamljs: ^0.3.0
     dependencies:
       '@n8n_io/license-sdk': 1.8.0
@@ -337,12 +338,13 @@ importers:
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
-      typedi: 0.10.0
+      typedi: 0.10.0_syy565ld7euwcedfbmx53j2qc4
       typeorm: 0.3.12_pgelcv6ef3switkrteavpif3pq
       uuid: 8.3.2
       validator: 13.7.0
       winston: 3.8.2
       ws: 8.12.0
+      xmllint-wasm: 3.0.1
       yamljs: 0.3.0
     devDependencies:
       '@apidevtools/swagger-cli': 4.0.0
@@ -19971,9 +19973,10 @@ packages:
   /typedarray/0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  /typedi/0.10.0:
+  /typedi/0.10.0_syy565ld7euwcedfbmx53j2qc4:
     resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
     dev: false
+    patched: true
 
   /typeorm/0.3.12_pgelcv6ef3switkrteavpif3pq:
     resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
@@ -21646,6 +21649,11 @@ packages:
   /xmlchars/2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
     dev: true
+
+  /xmllint-wasm/3.0.1:
+    resolution: {integrity: sha512-t+aKQXJQNAt9/qLgCjhHUmCnPXAyqBKiyh8oV0ZwBMar/uB+5F40tqOJZ97JwLADcqQr5WB2bjCxLKrm+DHz1g==}
+    engines: {node: '>=10.5.0'}
+    dev: false
 
   /xpath/0.0.32:
     resolution: {integrity: sha512-rxMJhSIoiO8vXcWvSifKqhvV96GjiD5wYb8/QHdoRyQvraTpp4IEv944nhGausZZ3u7dhQXteZuZbaqfpB7uYw==}

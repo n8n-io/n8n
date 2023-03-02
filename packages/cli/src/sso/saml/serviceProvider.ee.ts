@@ -1,17 +1,9 @@
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { ServiceProviderInstance } from 'samlify';
-import { ServiceProvider, setSchemaValidator } from 'samlify';
+import { ServiceProvider } from 'samlify';
 import { SamlUrls } from './constants';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;
-
-setSchemaValidator({
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	validate: async (response: string) => {
-		// TODO:SAML: implment validation
-		return Promise.resolve('skipped');
-	},
-});
 
 const metadata = `
 <EntityDescriptor

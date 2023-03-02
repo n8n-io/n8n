@@ -516,7 +516,11 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 
 		// initialize SamlService
-		await SamlService.getInstance().init();
+		try {
+			await SamlService.getInstance().init();
+		} catch (error) {
+			LoggerProxy.error(`SAML initialization failed: ${error.message}`);
+		}
 
 		// public SAML endpoints
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
