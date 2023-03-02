@@ -4,6 +4,7 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
+			:filter="filter"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@loadMore="loadMore"
@@ -86,7 +87,7 @@ export default mixins(
 			loadingMore: false,
 			filter: {
 				status: 'all',
-				workflowId: '',
+				workflowId: 'all',
 				startDate: '',
 				endDate: '',
 				tags: [],
@@ -118,8 +119,10 @@ export default mixins(
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
 		},
 		requestFilter(): IDataObject {
-			this.filter.workflowId = this.currentWorkflow;
-			return executionFilterToQueryFilter(this.filter);
+			return executionFilterToQueryFilter({
+				...this.filter,
+				workflowId: this.currentWorkflow,
+			});
 		},
 	},
 	watch: {
@@ -313,8 +316,8 @@ export default mixins(
 				);
 			}
 		},
-		onFilterUpdated(newFilter: ExecutionFilterType): void {
-			this.filter = newFilter;
+		onFilterUpdated(filter: ExecutionFilterType): void {
+			this.filter = filter;
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {

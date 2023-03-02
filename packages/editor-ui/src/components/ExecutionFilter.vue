@@ -7,13 +7,15 @@ import type {
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-
-const dateTimeMask = 'yyyy-MM-dd HH:mm';
+import { isEmpty } from '@/utils';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
 	filter: ExecutionFilterType;
 };
+
+const dateTimeMask = 'yyyy-MM-dd HH:mm';
+const showTags = computed(() => false);
 
 const props = defineProps<ExecutionFilterProps>();
 
@@ -44,7 +46,6 @@ const startDate = computed({
 	get() {
 		return props.filter.startDate ? new Date(props.filter.startDate) : '';
 	},
-
 	set(value) {
 		emit('filterChanged', {
 			...props.filter,
@@ -57,13 +58,39 @@ const endDate = computed({
 	get() {
 		return props.filter.endDate ? new Date(props.filter.endDate) : '';
 	},
-
 	set(value) {
 		emit('filterChanged', {
 			...props.filter,
 			endDate: value,
 		});
 	},
+});
+
+const viewPlansLink = computed(() => {
+	return 'https://app.n8n.cloud/manage?edition=cloud';
+});
+
+const countSelectedFilterProps = computed(() => {
+	let count = 0;
+	if (props.filter.status !== 'all') {
+		count++;
+	}
+	if (props.filter.workflowId !== 'all') {
+		count++;
+	}
+	if (!isEmpty(props.filter.tags)) {
+		count++;
+	}
+	if (!isEmpty(props.filter.metadata)) {
+		count++;
+	}
+	if (!!props.filter.startDate) {
+		count++;
+	}
+	if (!!props.filter.endDate) {
+		count++;
+	}
+	return count;
 });
 
 const onFilterPropChange = (prop: keyof ExecutionFilterProps['filter'], value: string) => {
@@ -113,7 +140,9 @@ const onFilterReset = () => {
 					:active="statusFilterApplied"
 					data-test-id="executions-filter-button"
 				>
-					<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
+					<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">{{
+						countSelectedFilterProps
+					}}</n8n-badge>
 					{{ $locale.baseText('executionsList.filters') }}
 				</n8n-button>
 			</template>
@@ -140,7 +169,7 @@ const onFilterReset = () => {
 						</div>
 					</n8n-select>
 				</div>
-				<div>
+				<div v-if="showTags">
 					<label for="execution-filter-tags">{{
 						$locale.baseText('workflows.filters.tags')
 					}}</label>
@@ -196,40 +225,70 @@ const onFilterReset = () => {
 				</div>
 				<div>
 					<n8n-tooltip placement="top">
+						<template #content>
+							<i18n tag="span" path="executionsFilter.customData.docsTooltip">
+								<template #link>
+									<a target="_blank" href="https://docs.n8n.io/workflows/executions/">{{
+										$locale.baseText('executionsFilter.customData.docsTooltip.link')
+									}}</a>
+								</template>
+							</i18n>
+						</template>
 						<span :class="$style.label">
 							{{ $locale.baseText('executionsFilter.savedData') }}
 							<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="small" />
 						</span>
-						<template #content> xxxx </template>
 					</n8n-tooltip>
 					<div :class="$style.group">
 						<div>
 							<label for="execution-filter-saved-data-key">{{
 								$locale.baseText('executionsFilter.savedDataKey')
 							}}</label>
-							<n8n-input
-								id="execution-filter-saved-data-key"
-								name="execution-filter-saved-data-key"
-								type="text"
-								size="medium"
-								:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-								:value="filter.metadata[0]?.key"
-								@input="onFilterMetaChange(0, 'key', $event)"
-							/>
+							<n8n-tooltip disabled placement="top">
+								<template #content>
+									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
+										<template #link>
+											<a target="_blank" :href="viewPlansLink">{{
+												$locale.baseText('executionsFilter.customData.inputTooltip.link')
+											}}</a>
+										</template>
+									</i18n>
+								</template>
+								<n8n-input
+									id="execution-filter-saved-data-key"
+									name="execution-filter-saved-data-key"
+									type="text"
+									size="medium"
+									:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
+									:value="filter.metadata[0]?.key"
+									@input="onFilterMetaChange(0, 'key', $event)"
+								/>
+							</n8n-tooltip>
 						</div>
 						<div>
 							<label for="execution-filter-saved-data-value">{{
 								$locale.baseText('executionsFilter.savedDataValue')
 							}}</label>
-							<n8n-input
-								id="execution-filter-saved-data-value"
-								name="execution-filter-saved-data-value"
-								type="text"
-								size="medium"
-								:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-								:value="filter.metadata[0]?.value"
-								@input="onFilterMetaChange(0, 'value', $event)"
-							/>
+							<n8n-tooltip disabled placement="top">
+								<template #content>
+									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
+										<template #link>
+											<a target="_blank" :href="viewPlansLink">{{
+												$locale.baseText('executionsFilter.customData.inputTooltip.link')
+											}}</a>
+										</template>
+									</i18n>
+								</template>
+								<n8n-input
+									id="execution-filter-saved-data-value"
+									name="execution-filter-saved-data-value"
+									type="text"
+									size="medium"
+									:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
+									:value="filter.metadata[0]?.value"
+									@input="onFilterMetaChange(0, 'value', $event)"
+								/>
+							</n8n-tooltip>
 						</div>
 					</div>
 				</div>
