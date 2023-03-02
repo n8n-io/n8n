@@ -21,7 +21,7 @@ describe('Data mapping', () => {
 		cy.window()
 			// @ts-ignore
 			.then(
-				(win) => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload),
+				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
 			);
 	});
 
