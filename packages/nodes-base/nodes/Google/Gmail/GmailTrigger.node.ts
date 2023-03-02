@@ -294,7 +294,9 @@ export class GmailTrigger implements INodeType {
 			}
 
 			if (simple) {
-				responseData = this.helpers.returnJsonArray(await simplifyOutput.call(this, responseData));
+				responseData = this.helpers.returnJsonArray(
+					await simplifyOutput.call(this, responseData as IDataObject[]),
+				);
 			}
 		} catch (error) {
 			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {

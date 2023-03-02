@@ -12,7 +12,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import get from 'lodash.get';
@@ -67,7 +67,7 @@ export async function awsApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
+		throw new NodeApiError(this.getNode(), error as JsonObject); // no XML parsing needed
 	}
 }
 
@@ -81,7 +81,7 @@ export async function awsApiRequestREST(
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (error) {
 		return response;
 	}
@@ -116,9 +116,9 @@ export async function awsApiRequestRESTAllItems(
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName));
+				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 			} else {
-				returnData.push(get(responseData, propertyName));
+				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
 	} while (

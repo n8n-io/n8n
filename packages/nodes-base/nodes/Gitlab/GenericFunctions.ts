@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
@@ -47,7 +47,7 @@ export async function gitlabApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'gitlabOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -67,11 +67,11 @@ export async function gitlabApiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await gitlabApiRequest.call(this, method, endpoint, body, query, {
+		responseData = await gitlabApiRequest.call(this, method, endpoint, body as IDataObject, query, {
 			resolveWithFullResponse: true,
 		});
 		query.page++;
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }
