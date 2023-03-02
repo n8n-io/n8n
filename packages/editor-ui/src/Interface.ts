@@ -766,9 +766,15 @@ export interface IN8nUISettings {
 			enabled: boolean;
 		};
 	};
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1194,6 +1200,10 @@ export interface ISettingsState {
 		};
 	};
 	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
 	};

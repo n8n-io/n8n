@@ -9,24 +9,43 @@ import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
+import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
-export function isSamlEnabled(): boolean {
-	return config.getEnv('sso.saml.enabled');
+export function isSamlLoginEnabled(): boolean {
+	return config.getEnv(SAML_LOGIN_ENABLED);
+}
+
+export function getSamlLoginLabel(): string {
+	return config.getEnv(SAML_LOGIN_LABEL);
+}
+
+export function setSamlLoginEnabled(enabled: boolean): void {
+	config.set(SAML_LOGIN_ENABLED, enabled);
+}
+
+export function setSamlLoginLabel(label: string): void {
+	config.set(SAML_LOGIN_LABEL, label);
 }
 
 export function isSamlLicensed(): boolean {
 	const license = getLicense();
 	return (
 		isUserManagementEnabled() &&
-		(license.isSamlEnabled() || config.getEnv('enterprise.features.saml'))
+		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
 	);
 }
 
 export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferences => {
 	const o = candidate as SamlPreferences;
-	return typeof o === 'object' && typeof o.metadata === 'string' && typeof o.mapping === 'object';
+	return (
+		typeof o === 'object' &&
+		typeof o.metadata === 'string' &&
+		typeof o.mapping === 'object' &&
+		o.mapping !== null &&
+		o.loginEnabled !== undefined
+	);
 };
 
 export function generatePassword(): string {
