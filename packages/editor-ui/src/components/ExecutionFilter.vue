@@ -224,13 +224,16 @@ const onFilterReset = () => {
 					</div>
 				</div>
 				<div :class="$style.group">
-					<n8n-tooltip placement="top">
+					<n8n-tooltip placement="right">
 						<template #content>
 							<i18n tag="span" path="executionsFilter.customData.docsTooltip">
 								<template #link>
-									<a target="_blank" href="https://docs.n8n.io/workflows/executions/custom-executions-data/">{{
-										$locale.baseText('executionsFilter.customData.docsTooltip.link')
-									}}</a>
+									<a
+										target="_blank"
+										href="https://docs.n8n.io/workflows/executions/custom-executions-data/"
+									>
+										{{ $locale.baseText('executionsFilter.customData.docsTooltip.link') }}
+									</a>
 								</template>
 							</i18n>
 						</template>
