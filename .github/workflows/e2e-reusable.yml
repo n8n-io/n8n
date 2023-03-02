@@ -23,6 +23,11 @@ on:
         required: false
         default: 'browsers:node16.18.0-chrome90-ff88'
         type: string
+      cache-key:
+        description: 'Cache key for modules and build artifacts.'
+        required: false
+        default: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
+        type: string
       record:
         description: 'Record test run.'
         required: false
@@ -68,7 +73,7 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
+          key: ${{ inputs.cache-key }}
 
       - name: Cypress build
         uses: cypress-io/github-action@v5
@@ -108,7 +113,7 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
+          key: ${{ inputs.cache-key }}
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
