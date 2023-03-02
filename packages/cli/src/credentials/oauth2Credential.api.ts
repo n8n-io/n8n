@@ -286,7 +286,9 @@ oauth2CredentialController.get(
 			//const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
-
+			if (oAuth2Parameters.redirectUri === undefined) {
+				throw new Error('No redirect URI defined!');
+			}
 			const oauthToken = await getToken(
 				`${oAuth2Parameters.redirectUri}?${queryParameters}`,
 				options,
