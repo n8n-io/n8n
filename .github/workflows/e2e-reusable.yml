@@ -62,9 +62,6 @@ jobs:
         # "sha-5d3fe...35d3-time-1620841214"
         run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
 
-      - name: Print unique ID 🖨`
-        run: echo "generated id ${{ steps.uuid.outputs.value }}"
-
   install:
     runs-on: ubuntu-latest
     needs: ['prepare']
@@ -131,9 +128,6 @@ jobs:
             ./node_modules
             ./packages
           key: ${{ inputs.cache-key }}
-
-      - name: Print custom build id 🖨
-        run: echo "Custom build id is ${{ needs.prepare.outputs.uuid }}"
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
