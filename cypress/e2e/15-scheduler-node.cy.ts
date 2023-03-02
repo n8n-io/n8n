@@ -9,11 +9,11 @@ describe('Schedule Trigger node', async () => {
 		cy.resetAll();
 		cy.skipSetup();
 		cy.visit(workflowsPage.url);
-		cy.waitForLoad();
 	});
 
 	it('should execute and return the execution timestamp', () => {
 		workflowsPage.actions.createWorkflowFromCard();
+		cy.waitForLoad();
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.openNode('Schedule Trigger');
 		ndv.actions.execute();
@@ -23,6 +23,7 @@ describe('Schedule Trigger node', async () => {
 
 	it('should execute once per second when activated', () => {
 		workflowsPage.actions.createWorkflowFromCard();
+		cy.waitForLoad();
 		workflowPage.actions.renameWorkflow('Schedule Trigger Workflow');
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.openNode('Schedule Trigger');

@@ -12,8 +12,7 @@ export class CredentialsModal extends BasePage {
 		connectionParameter: (fieldName: string) =>
 			this.getters
 				.connectionParameters()
-				.find(`:contains('${fieldName}')`)
-				.find('.n8n-input input'),
+				.find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		// Saving of the credentials takes a while on the CI so we need to increase the timeout

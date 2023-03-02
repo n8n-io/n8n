@@ -61,7 +61,6 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
@@ -79,7 +78,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
+		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('Airtable Account');
