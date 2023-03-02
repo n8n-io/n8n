@@ -3,50 +3,8 @@ name: Build, smoke test and lint branch
 on: [pull_request]
 
 jobs:
-  lint:
-    name: Units Tests & Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
-
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2.2.4
-        with:
-          run_install: |
-            - recursive: true
-              args: [--frozen-lockfile]
-
-      - name: Build
-        run: pnpm build
-
-      - name: Cache pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ github.sha }}-base:16.18.1-e2e-modules
-
-      - name: Test
-        run: pnpm test
-
-      - name: Fetch base branch for `git diff`
-        run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-
-      - name: Run ESLint on changes only
-        env:
-          ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
-        run: pnpm lint
-
   e2e-node-16:
     name: E2E [Electron/Node 16]
-    needs: [lint]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
@@ -59,3 +17,42 @@ jobs:
       containers: '[1]'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+
+  lint:
+    name: Units Tests & Lint
+    runs-on: ubuntu-latest
+    needs: [e2e-node-16]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.branch }}
+
+      - name: Restore cached pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages
+          key: ${{ github.sha }}-base:16.18.1-e2e-modules
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Fetch base branch for `git diff`
+        run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+
+      - name: Run ESLint on changes only
+        env:
+          ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
+        run: pnpm lint
