@@ -1,6 +1,6 @@
 import querystring from 'querystring';
 import axios from 'axios';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 export interface OAuth2Parameters {
 	clientId?: string;
 	clientSecret?: string;
@@ -20,7 +20,11 @@ export interface OAuth2Parameters {
 	};
 }
 
-const ERROR_RESPONSES = {
+export function auth(username: string, password: string) {
+	return 'Basic ' + Buffer.from(username + ':' + password).toString('base64');
+}
+
+const ERROR_RESPONSES: IDataObject = {
 	invalid_request: [
 		'The request is missing a required parameter, includes an',
 		'invalid parameter value, includes a parameter more than',
@@ -73,9 +77,34 @@ const DEFAULT_HEADERS = {
 	'Content-type': 'application/x-www-form-urlencoded',
 };
 
+export interface ClientOAuth2Token {
+	data: IDataObject;
+	accessToken?: string;
+	refreshToken?: string;
+	tokenType?: string;
+	expiresIn?: number;
+}
+
+export function createToken(data: IDataObject) {
+	const token: ClientOAuth2Token = {
+		data,
+	};
+	return token;
+}
+
+export function mergeRequestOptions(requestOptions: IDataObject, options: IDataObject) {
+	return {
+		url: requestOptions.url,
+		method: requestOptions.method,
+		headers: Object.assign({}, requestOptions.headers, options.headers),
+		body: Object.assign({}, requestOptions.body, options.body),
+		query: Object.assign({}, requestOptions.query, options.query),
+	};
+}
+
 export function getAuthError(body: IDataObject) {
-	const message = (ERROR_RESPONSES[body.error as string] ||
-		body.error_description ||
+	const message = (ERROR_RESPONSES[body.error as string] ??
+		body.error_description ??
 		body.error) as string;
 	if (message) {
 		const error = new Error(message);
@@ -104,6 +133,32 @@ export function getUri(options: OAuth2Parameters, tokenType: string) {
 
 	const sep = options.authorizationUri.includes('?') ? '&' : '?';
 	return options.authorizationUri + sep + querystring.stringify(Object.assign(qs, options.query));
+}
+
+export async function request(options: IDataObject) {
+	let url = options.url as string;
+	const body = querystring.stringify(options.body);
+	const query = querystring.stringify(options.query);
+
+	if (query) {
+		url += (url.indexOf('?') === -1 ? '?' : '&') + query;
+	}
+
+	return axios
+		.post(url, body, {
+			headers: options.headers,
+		})
+		.then((response) => {
+			const data = response.data;
+			if (getAuthError(data)) {
+				return Promise.reject(getAuthError(data));
+			}
+			if (response.status < 200 || response.status >= 300) {
+				return Promise.reject(new Error('Request failed with status code ' + response.status));
+			}
+
+			return data;
+		});
 }
 
 export async function getToken(
@@ -157,6 +212,7 @@ export async function getToken(
 	// authorization server as described in Section 3.2.1.
 	// Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
 	if (options.clientSecret && options.clientId) {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Object.assign(headers, { Authorization: auth(options.clientId, options.clientSecret) });
 	} else {
 		Object.assign(body, { client_id: options.clientId });
@@ -175,59 +231,4 @@ export async function getToken(
 	).then(function (data) {
 		return createToken(data);
 	});
-}
-
-export async function request(options: any) {
-	let url = options.url;
-	const body = querystring.stringify(options.body);
-	const query = querystring.stringify(options.query);
-
-	if (query) {
-		url += (url.indexOf('?') === -1 ? '?' : '&') + query;
-	}
-
-	return axios
-		.post(url, body, {
-			headers: options.headers,
-		})
-		.then((response) => {
-			const data = response.data;
-			if (getAuthError(data)) {
-				return Promise.reject(getAuthError(data));
-			}
-			if (response.status < 200 || response.status >= 300) {
-				return Promise.reject(new Error('Request failed with status code ' + response.status));
-			}
-
-			return data;
-		});
-}
-
-export interface ClientOAuth2Token {
-	data: any;
-	accessToken?: string;
-	refreshToken?: string;
-	tokenType?: string;
-	expiresIn?: number;
-}
-
-export function createToken(data: any) {
-	const token: ClientOAuth2Token = {
-		data,
-	};
-	return token;
-}
-
-export function mergeRequestOptions(requestOptions: any, options: any) {
-	return {
-		url: requestOptions.url,
-		method: requestOptions.method,
-		headers: Object.assign({}, requestOptions.headers, options.headers),
-		body: Object.assign({}, requestOptions.body, options.body),
-		query: Object.assign({}, requestOptions.query, options.query),
-	};
-}
-
-export function auth(username: string, password: string) {
-	return 'Basic ' + Buffer.from(username + ':' + password).toString('base64');
 }
