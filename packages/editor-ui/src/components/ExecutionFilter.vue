@@ -147,7 +147,7 @@ const onFilterReset = () => {
 				</n8n-button>
 			</template>
 			<div>
-				<div v-if="workflows?.length">
+				<div v-if="workflows?.length" :class="$style.group">
 					<label for="execution-filter-workflows">{{
 						$locale.baseText('workflows.heading')
 					}}</label>
@@ -169,7 +169,7 @@ const onFilterReset = () => {
 						</div>
 					</n8n-select>
 				</div>
-				<div v-if="showTags">
+				<div v-if="showTags" :class="$style.group">
 					<label for="execution-filter-tags">{{
 						$locale.baseText('workflows.filters.tags')
 					}}</label>
@@ -181,7 +181,7 @@ const onFilterReset = () => {
 						@update="onFilterPropChange('tags', $event)"
 					/>
 				</div>
-				<div>
+				<div :class="$style.group">
 					<label for="execution-filter-status">{{
 						$locale.baseText('executionsList.status')
 					}}</label>
@@ -201,7 +201,7 @@ const onFilterReset = () => {
 						/>
 					</n8n-select>
 				</div>
-				<div>
+				<div :class="$style.group">
 					<label for="execution-filter-start-date">{{
 						$locale.baseText('executionsFilter.start')
 					}}</label>
@@ -223,7 +223,7 @@ const onFilterReset = () => {
 						/>
 					</div>
 				</div>
-				<div>
+				<div :class="$style.group">
 					<n8n-tooltip placement="top">
 						<template #content>
 							<i18n tag="span" path="executionsFilter.customData.docsTooltip">
@@ -239,8 +239,8 @@ const onFilterReset = () => {
 							<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="small" />
 						</span>
 					</n8n-tooltip>
-					<div :class="$style.group">
-						<div>
+					<div :class="$style.subGroup">
+						<div :class="$style.group">
 							<label for="execution-filter-saved-data-key">{{
 								$locale.baseText('executionsFilter.savedDataKey')
 							}}</label>
@@ -265,7 +265,7 @@ const onFilterReset = () => {
 								/>
 							</n8n-tooltip>
 						</div>
-						<div>
+						<div :class="$style.group">
 							<label for="execution-filter-saved-data-value">{{
 								$locale.baseText('executionsFilter.savedDataValue')
 							}}</label>
@@ -312,6 +312,15 @@ const onFilterReset = () => {
 }
 
 .group {
+	label,
+	.label {
+		display: inline-block;
+		font-size: var(--font-size-2xs);
+		margin: var(--spacing-xs) 0 var(--spacing-3xs);
+	}
+}
+
+.subGroup {
 	padding: 0 0 var(--spacing-xs) var(--spacing-s);
 }
 
@@ -326,13 +335,6 @@ const onFilterReset = () => {
 .divider {
 	padding: 0 var(--spacing-m);
 	line-height: 100%;
-}
-
-.label,
-label {
-	display: inline-block;
-	font-size: var(--font-size-2xs);
-	margin: var(--spacing-xs) 0 var(--spacing-3xs);
 }
 
 .resetBtn {
