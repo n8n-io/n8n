@@ -1,4 +1,5 @@
 import querystring from 'querystring';
+import type { AxiosResponse } from 'axios';
 import axios from 'axios';
 import type { IDataObject } from 'n8n-workflow';
 export interface OAuth2Parameters {
@@ -92,7 +93,7 @@ export function createToken(data: IDataObject) {
 	return token;
 }
 
-export function mergeRequestOptions(requestOptions: IDataObject, options: IDataObject) {
+export function mergeRequestOptions(requestOptions: IDataObject, options: OAuth2Parameters) {
 	return {
 		url: requestOptions.url,
 		method: requestOptions.method,
@@ -137,8 +138,9 @@ export function getUri(options: OAuth2Parameters, tokenType: string) {
 
 export async function request(options: IDataObject) {
 	let url = options.url as string;
-	const body = querystring.stringify(options.body);
-	const query = querystring.stringify(options.query);
+	// const body = querystring.stringify(options.body);
+	const body = new URLSearchParams(options.body as string).toString();
+	const query = new URLSearchParams(options.query as string).toString();
 
 	if (query) {
 		url += (url.indexOf('?') === -1 ? '?' : '&') + query;
@@ -148,13 +150,13 @@ export async function request(options: IDataObject) {
 		.post(url, body, {
 			headers: options.headers,
 		})
-		.then((response) => {
-			const data = response.data;
+		.then((response: AxiosResponse) => {
+			const data = response.data as IDataObject;
 			if (getAuthError(data)) {
 				return Promise.reject(getAuthError(data));
 			}
 			if (response.status < 200 || response.status >= 300) {
-				return Promise.reject(new Error('Request failed with status code ' + response.status));
+				return Promise.reject(new Error(`Request failed with status code ${response.status}`));
 			}
 
 			return data;
@@ -228,7 +230,7 @@ export async function getToken(
 			},
 			options,
 		),
-	).then(function (data) {
-		return createToken(data);
+	).then(function (returnedData: IDataObject) {
+		return createToken(returnedData);
 	});
 }
