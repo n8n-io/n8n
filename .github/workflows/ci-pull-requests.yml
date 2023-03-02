@@ -23,23 +23,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # - name: Setup pnpm
-      #   uses: pnpm/action-setup@v2.2.4
-      #   with:
-      #     run_install: true
-
       - name: Build
         run: pnpm build
-
-      - name: Restore cached pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ github.sha }}-base:16.18.1-e2e-modules
 
       - name: Test
         run: pnpm test
@@ -56,7 +41,6 @@ jobs:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
-    needs: [lint]
     with:
       branch: ${{ github.event.pull_request.base.ref }}
       user: ${{ github.event.inputs.user || 'PR User' }}
