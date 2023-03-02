@@ -32,6 +32,14 @@ describe('Credentials', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
+
+		// Always intercept the request to test credentials and return a success
+		cy.intercept('POST', '/rest/credentials/test', {
+			statusCode: 200,
+			body: {
+				data: { status: 'success', message: 'Tested successfully' },
+			}
+		});
 	});
 
 	beforeEach(() => {
@@ -53,7 +61,6 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
@@ -71,7 +78,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
+		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('Airtable Account');
@@ -259,7 +266,7 @@ describe('Credentials', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
-	})
+	});
 
 	it('should render custom node with custom credential', () => {
 		workflowPage.actions.visit();
@@ -269,5 +276,5 @@ describe('Credentials', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
-	})
+	});
 });

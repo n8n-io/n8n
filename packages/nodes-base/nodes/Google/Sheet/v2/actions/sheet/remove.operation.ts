@@ -27,7 +27,7 @@ export async function execute(
 			{ requests },
 		);
 		delete responseData.replies;
-		returnData.push(responseData);
+		returnData.push(responseData as IDataObject);
 	}
 
 	return this.helpers.returnJsonArray(returnData);

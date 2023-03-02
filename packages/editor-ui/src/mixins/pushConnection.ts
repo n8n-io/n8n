@@ -33,6 +33,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useSettingsStore } from '@/stores/settings';
 import { parse } from 'flatted';
+import { useSegment } from '@/stores/segment';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -58,6 +59,7 @@ export const pushConnection = mixins(
 			useUIStore,
 			useWorkflowsStore,
 			useSettingsStore,
+			useSegment,
 		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
@@ -515,6 +517,9 @@ export const pushConnection = mixins(
 					runDataExecutedStartData: runDataExecuted.data.startData,
 					resultDataError: runDataExecuted.data.resultData.error,
 				});
+				if (!runDataExecuted.data.resultData.error) {
+					this.segmentStore.trackSuccessfulWorkflowExecution(runDataExecuted);
+				}
 			} else if (receivedData.type === 'executionStarted') {
 				const pushData = receivedData.data;
 

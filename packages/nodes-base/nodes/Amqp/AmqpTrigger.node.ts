@@ -168,23 +168,23 @@ export class AmqpTrigger implements INodeType {
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
 				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data);
+				data.body = String.fromCharCode.apply(null, cont.data as number[]);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
 				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data);
+				data.body = String.fromCharCode.apply(null, cont.data as number[]);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
 				const content = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, content.data);
+				data.body = String.fromCharCode.apply(null, content.data as number[]);
 			}
 
 			if (options.jsonParseBody === true) {
-				data.body = jsonParse(data.body);
+				data.body = jsonParse(data.body as string);
 			}
 			if (options.onlyBody === true) {
 				data = data.body;

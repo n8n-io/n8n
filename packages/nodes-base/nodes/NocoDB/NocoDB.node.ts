@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -334,7 +335,7 @@ export class NocoDB implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
 
@@ -354,7 +355,13 @@ export class NocoDB implements INodeType {
 				}
 
 				try {
-					responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
+					responseData = (await apiRequest.call(
+						this,
+						requestMethod,
+						endPoint,
+						body,
+						qs,
+					)) as number[];
 					if (version === 1) {
 						returnData.push(...items.map((item) => item.json));
 					} else if (version === 2) {
@@ -381,7 +388,7 @@ export class NocoDB implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
 
@@ -426,7 +433,7 @@ export class NocoDB implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -437,7 +444,7 @@ export class NocoDB implements INodeType {
 							).split(',');
 							const response = await downloadRecordAttachments.call(
 								this,
-								responseData,
+								responseData as IDataObject[],
 								downloadFieldNames,
 							);
 							data.push(...response);
@@ -475,7 +482,7 @@ export class NocoDB implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 
 						if (version === 2) {
-							if (Object.keys(responseData).length === 0) {
+							if (Object.keys(responseData as IDataObject).length === 0) {
 								// Get did fail
 								const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
 								if (this.continueOnFail()) {
@@ -498,7 +505,7 @@ export class NocoDB implements INodeType {
 							).split(',');
 							const data = await downloadRecordAttachments.call(
 								this,
-								[responseData],
+								[responseData as IDataObject],
 								downloadFieldNames,
 							);
 							const newItem = {
@@ -514,7 +521,7 @@ export class NocoDB implements INodeType {
 							newItems.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 
@@ -530,7 +537,7 @@ export class NocoDB implements INodeType {
 							newItems.push(...executionData);
 							continue;
 						}
-						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
 				return this.prepareOutputData(newItems);
@@ -630,7 +637,13 @@ export class NocoDB implements INodeType {
 				}
 
 				try {
-					responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
+					responseData = (await apiRequest.call(
+						this,
+						requestMethod,
+						endPoint,
+						body,
+						qs,
+					)) as number[];
 
 					if (version === 1) {
 						returnData.push(...body);
@@ -658,7 +671,7 @@ export class NocoDB implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
 		}

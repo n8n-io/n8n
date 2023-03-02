@@ -355,7 +355,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -497,7 +496,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			const data: Buffer[] = [];
 
 			req.on('data', (chunk) => {
-				data.push(chunk);
+				data.push(chunk as Buffer);
 			});
 
 			req.on('end', async () => {
@@ -542,7 +541,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						);
 
 						for (const page of pages) {
-							questions.push.apply(questions, page.questions);
+							questions.push.apply(questions, page.questions as IQuestion[]);
 						}
 
 						for (const page of responseData.pages as IDataObject[]) {

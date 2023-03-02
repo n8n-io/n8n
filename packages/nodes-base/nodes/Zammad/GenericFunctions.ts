@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -76,7 +76,7 @@ export async function zammadApiRequest(
 			error.error.error = 'An entity with this name already exists.';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -98,7 +98,7 @@ export async function zammadApiRequestAllItems(
 
 	do {
 		responseData = await zammadApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...responseData);
+		returnData.push(...(responseData as IDataObject[]));
 
 		if (limit && returnData.length > limit) {
 			return returnData.slice(0, limit);
