@@ -86,6 +86,9 @@ export class NDV extends BasePage {
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
 			this.getters.parameterInput(parameterName).find('.option-headline').contains(content).click();
 		},
+		dismissMappingTooltip: () => {
+			cy.getByTestId('dismiss-mapping-tooltip').click();
+		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
 			this.getters.nodeRenameInput().should('be.visible').type('{selectall}').type(newName);

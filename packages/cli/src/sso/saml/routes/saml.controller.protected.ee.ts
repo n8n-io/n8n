@@ -6,8 +6,9 @@ import {
 import { SamlService } from '../saml.service.ee';
 import { SamlUrls } from '../constants';
 import type { SamlConfiguration } from '../types/requests';
-import { AuthError } from '../../../ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { issueCookie } from '../../../auth/jwt';
+import { isSamlPreferences } from '../samlHelpers';
 
 export const samlControllerProtected = express.Router();
 
@@ -18,8 +19,8 @@ export const samlControllerProtected = express.Router();
 samlControllerProtected.get(
 	SamlUrls.config,
 	samlLicensedOwnerMiddleware,
-	async (req: SamlConfiguration.Read, res: express.Response) => {
-		const prefs = await SamlService.getInstance().getSamlPreferences();
+	(req: SamlConfiguration.Read, res: express.Response) => {
+		const prefs = SamlService.getInstance().getSamlPreferences();
 		return res.send(prefs);
 	},
 );
@@ -32,11 +33,12 @@ samlControllerProtected.post(
 	SamlUrls.config,
 	samlLicensedOwnerMiddleware,
 	async (req: SamlConfiguration.Update, res: express.Response) => {
-		const result = await SamlService.getInstance().setSamlPreferences({
-			metadata: req.body.metadata,
-			mapping: req.body.mapping,
-		});
-		return res.send(result);
+		if (isSamlPreferences(req.body)) {
+			const result = await SamlService.getInstance().setSamlPreferences(req.body);
+			return res.send(result);
+		} else {
+			throw new BadRequestError('Body is not a SamlPreferences object');
+		}
 	},
 );
 
