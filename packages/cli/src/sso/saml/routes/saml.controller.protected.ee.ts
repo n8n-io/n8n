@@ -133,6 +133,10 @@ samlControllerProtected.get(
 	},
 );
 
+/**
+ * GET /sso/saml/config/test
+ * Test SAML config
+ */
 samlControllerProtected.get(
 	SamlUrls.configTest,
 	async (req: express.Request, res: express.Response) => {
