@@ -9,11 +9,12 @@ describe('Execution', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+		// Import workflow
+		workflowsPage.getters.newWorkflowButtonCard().click();
+		cy.waitForLoad();
 	});
 
 	it('should test manual workflow', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -74,8 +75,6 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow stop', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -139,8 +138,6 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -218,8 +215,6 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow stop', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
 
 		// Check workflow buttons
