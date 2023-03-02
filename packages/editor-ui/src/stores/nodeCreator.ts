@@ -324,6 +324,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				const app = apps.find((node) => node.name.toLowerCase() === normalizedName);
 				const newNode = deepCopy(node);
 				if (app && app.actions?.length) {
+					// merge triggers into regular nodes that match
 					app?.actions?.push(...(newNode.actions || []));
 					app.description = newNode.description; // default to trigger description
 				} else {
