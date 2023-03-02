@@ -14,6 +14,10 @@ import { IdentityProvider } from 'samlify';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
+	getSamlLoginLabel,
+	isSamlLoginEnabled,
+	setSamlLoginEnabled,
+	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
 
@@ -142,16 +146,20 @@ export class SamlService {
 		return undefined;
 	}
 
-	async getSamlPreferences(): Promise<SamlPreferences> {
+	getSamlPreferences(): SamlPreferences {
 		return {
 			mapping: this.attributeMapping,
 			metadata: this.metadata,
+			loginEnabled: isSamlLoginEnabled(),
+			loginLabel: getSamlLoginLabel(),
 		};
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<void> {
 		this.attributeMapping = prefs.mapping;
 		this.metadata = prefs.metadata;
+		setSamlLoginEnabled(prefs.loginEnabled);
+		setSamlLoginLabel(prefs.loginLabel);
 		this.getIdentityProviderInstance(true);
 		await this.saveSamlPreferences();
 	}
@@ -163,10 +171,9 @@ export class SamlService {
 		if (samlPreferences) {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
 			if (prefs) {
-				this.attributeMapping = prefs.mapping;
-				this.metadata = prefs.metadata;
+				await this.setSamlPreferences(prefs);
+				return prefs;
 			}
-			return prefs;
 		}
 		return;
 	}
@@ -175,20 +182,14 @@ export class SamlService {
 		const samlPreferences = await Db.collections.Settings.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
+		const settingsValue = JSON.stringify(this.getSamlPreferences());
 		if (samlPreferences) {
-			samlPreferences.value = JSON.stringify({
-				mapping: this.attributeMapping,
-				metadata: this.metadata,
-			});
-			samlPreferences.loadOnStartup = true;
+			samlPreferences.value = settingsValue;
 			await Db.collections.Settings.save(samlPreferences);
 		} else {
 			await Db.collections.Settings.save({
 				key: SAML_PREFERENCES_DB_KEY,
-				value: JSON.stringify({
-					mapping: this.attributeMapping,
-					metadata: this.metadata,
-				}),
+				value: settingsValue,
 				loadOnStartup: true,
 			});
 		}
