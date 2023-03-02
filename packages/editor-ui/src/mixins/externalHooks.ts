@@ -60,7 +60,9 @@ export interface ExternalHooks {
 		saveSettings: Array<(meta: UpdatedWorkflowSettingsEventData) => void>;
 	};
 	dataDisplay: {
-		onDocumentationUrlClick: Array<(meta: { nodeType: INodeTypeDescription }) => void>;
+		onDocumentationUrlClick: Array<
+			(meta: { nodeType: INodeTypeDescription; documentationUrl: string }) => void
+		>;
 		nodeTypeChanged: Array<(meta: NodeTypeChangedEventData) => void>;
 		nodeEditingFinished: Array<(meta: {}) => void>;
 	};

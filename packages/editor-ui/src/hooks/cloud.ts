@@ -15,18 +15,7 @@ import {
 	getNodeRemovedEventData,
 	getNodeEditingFinishedEventData,
 	getExecutionStartedEventData,
-	AuthenticationModalEventData,
-	ExpressionEditorEventsData,
-	InsertedItemFromExpEditorEventData,
-	NodeTypeChangedEventData,
-	OutputModeChangedEventData,
-	UpdatedWorkflowSettingsEventData,
-	UserSavedCredentialsEventData,
-	ExecutionFinishedEventData,
-	NodeRemovedEventData,
-	ExecutionStartedEventData,
 } from '@/hooks/telemetry';
-import { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useWorkflowsStore } from '@/stores/workflows';
 import {
@@ -34,13 +23,12 @@ import {
 	hooksResetNodesPanelSession,
 	nodesPanelSession,
 } from '@/hooks/utils/hooksNodesPanel';
-import type { Route } from 'vue-router/types/router';
 import { ExternalHooks } from '@/mixins/externalHooks';
 
 export const n8nCloudHooks: ExternalHooks = {
 	parameterInput: {
 		mount: [
-			(meta: { inputFieldRef: { $el: HTMLElement }; parameter: { name: string } }) => {
+			(meta) => {
 				if (!meta.parameter || !meta.inputFieldRef) {
 					return;
 				}
@@ -59,7 +47,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	nodeCreatorSearchBar: {
 		mount: [
-			(meta: { inputRef: HTMLElement }) => {
+			(meta) => {
 				if (!meta.inputRef) {
 					return;
 				}
@@ -88,7 +76,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		createNodeActiveChanged: [
-			(meta: { source: string }) => {
+			(meta) => {
 				hooksResetNodesPanelSession();
 				const eventData = {
 					eventName: 'User opened nodes panel',
@@ -103,7 +91,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		addNodeButton: [
-			(meta: { nodeTypeName: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'User added node to workflow canvas',
 					properties: {
@@ -118,7 +106,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	main: {
 		routeChange: [
-			(meta: { to: Route; from: Route }) => {
+			(meta) => {
 				const splitPath = meta.to.path.split('/');
 				if (meta.from.path !== '/' && splitPath[1] === 'workflow') {
 					const eventData = {
@@ -132,19 +120,14 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	credential: {
 		saved: [
-			(meta: UserSavedCredentialsEventData) => {
+			(meta) => {
 				hooksTelemetryTrack(getUserSavedCredentialsEventData(meta));
 			},
 		],
 	},
 	credentialsEdit: {
 		credentialTypeChanged: [
-			(meta: {
-				newValue: string;
-				setCredentialType: string;
-				credentialType: string;
-				editCredentials: string;
-			}) => {
+			(meta) => {
 				if (meta.newValue) {
 					const eventData = {
 						eventName: 'User opened Credentials modal',
@@ -161,7 +144,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		credentialModalOpened: [
-			(meta: { activeNode: INode; isEditingCredential: boolean; credentialType: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'User opened Credentials modal',
 					properties: {
@@ -188,7 +171,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		dialogVisibleChanged: [
-			(meta: { dialogVisible: boolean }) => {
+			(meta) => {
 				if (meta.dialogVisible) {
 					const eventData = {
 						eventName: 'User opened global Credentials panel',
@@ -202,21 +185,21 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	workflowSettings: {
 		dialogVisibleChanged: [
-			(meta: { dialogVisible: boolean }) => {
+			(meta) => {
 				if (meta.dialogVisible) {
 					hooksTelemetryTrack(getOpenWorkflowSettingsEventData());
 				}
 			},
 		],
 		saveSettings: [
-			(meta: UpdatedWorkflowSettingsEventData) => {
+			(meta) => {
 				hooksTelemetryTrack(getUpdatedWorkflowSettingsEventData(meta));
 			},
 		],
 	},
 	dataDisplay: {
 		onDocumentationUrlClick: [
-			(meta: { nodeType: INodeTypeDescription; documentationUrl: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'User clicked node modal docs link',
 					properties: {
@@ -229,7 +212,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		nodeTypeChanged: [
-			(meta: NodeTypeChangedEventData) => {
+			(meta) => {
 				const store = useNDVStore();
 
 				hooksTelemetryTrack(getNodeTypeChangedEventData(meta));
@@ -268,7 +251,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	showMessage: {
 		showError: [
-			(meta: { title: string; message: string; errorMessage: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'Instance FE emitted error',
 					properties: {
@@ -284,7 +267,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	expressionEdit: {
 		itemSelected: [
-			(meta: InsertedItemFromExpEditorEventData) => {
+			(meta) => {
 				const eventData = getInsertedItemFromExpEditorEventData(meta);
 
 				if (meta.selectedItem.variable.startsWith('Object.keys')) {
@@ -299,7 +282,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		dialogVisibleChanged: [
-			(meta: ExpressionEditorEventsData) => {
+			(meta) => {
 				const currentValue = meta.value.slice(1);
 				let isValueDefault = false;
 
@@ -325,7 +308,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	nodeSettings: {
 		valueChanged: [
-			(meta: AuthenticationModalEventData) => {
+			(meta) => {
 				if (meta.parameterPath !== 'authentication') {
 					return;
 				}
@@ -336,7 +319,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		credentialSelected: [
-			(meta: { updateInformation: { properties: { credentials: Record<string, string> } } }) => {
+			(meta) => {
 				const creds = Object.keys(meta.updateInformation.properties.credentials || {});
 				if (creds.length < 1) {
 					return;
@@ -356,14 +339,14 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	workflowRun: {
 		runWorkflow: [
-			(meta: ExecutionStartedEventData) => {
+			(meta) => {
 				const eventData = getExecutionStartedEventData(meta);
 
 				hooksTelemetryTrack(eventData);
 			},
 		],
 		runError: [
-			(meta: { errorMessages: string[]; nodeName: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: meta.nodeName
 						? 'Node execution finished'
@@ -383,7 +366,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	runData: {
 		displayModeChanged: [
-			(meta: OutputModeChangedEventData) => {
+			(meta) => {
 				const eventData = getOutputModeChangedEventData(meta);
 
 				hooksTelemetryTrack(eventData);
@@ -392,7 +375,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	pushConnection: {
 		executionFinished: [
-			(meta: ExecutionFinishedEventData) => {
+			(meta) => {
 				const eventData = getExecutionFinishedEventData(meta);
 
 				hooksTelemetryTrack(eventData);
@@ -401,7 +384,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	node: {
 		deleteNode: [
-			(meta: NodeRemovedEventData) => {
+			(meta) => {
 				const eventData = getNodeRemovedEventData(meta);
 
 				hooksTelemetryTrack(eventData);
@@ -410,7 +393,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	workflow: {
 		activeChange: [
-			(meta: { active: boolean; workflowId: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: (meta.active && 'User activated workflow') || 'User deactivated workflow',
 					properties: {
@@ -423,7 +406,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		activeChangeCurrent: [
-			(meta: { workflowId: string; active: boolean }) => {
+			(meta) => {
 				const store = useWorkflowsStore();
 
 				const eventData = {
@@ -440,7 +423,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		afterUpdate: [
-			(meta: { workflowData: { id: string; workflowName: string; nodes: INode[] } }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'User saved workflow',
 					properties: {
@@ -456,7 +439,7 @@ export const n8nCloudHooks: ExternalHooks = {
 	},
 	execution: {
 		open: [
-			(meta: { workflowId: string; workflowName: string; executionId: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'User opened read-only execution',
 					properties: {
@@ -484,7 +467,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		selectedTypeChanged: [
-			(meta: { oldValue: string; newValue: string }) => {
+			(meta) => {
 				const eventData = {
 					eventName: 'User changed nodes panel filter',
 					properties: {
@@ -499,11 +482,7 @@ export const n8nCloudHooks: ExternalHooks = {
 			},
 		],
 		nodeFilterChanged: [
-			(meta: {
-				newValue: string;
-				oldValue: string;
-				filteredNodes: Array<{ name: string; key: string }>;
-			}) => {
+			(meta) => {
 				if (meta.newValue.length === 0 && nodesPanelSession.data.nodeFilter.length > 0) {
 					const eventData = hooksGenerateNodesPanelEvent();
 
