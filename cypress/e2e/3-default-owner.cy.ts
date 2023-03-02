@@ -46,7 +46,7 @@ describe('Default owner', () => {
 
 		// reload page, ensure owner still has access
 		cy.reload();
-
+		cy.waitForLoad();
 		workflowPage.getters.workflowNameInput().should('contain.value', 'Test workflow');
 	});
 
