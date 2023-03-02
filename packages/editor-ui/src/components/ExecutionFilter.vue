@@ -228,7 +228,7 @@ const onFilterReset = () => {
 						<template #content>
 							<i18n tag="span" path="executionsFilter.customData.docsTooltip">
 								<template #link>
-									<a target="_blank" href="https://docs.n8n.io/workflows/executions/">{{
+									<a target="_blank" href="https://docs.n8n.io/workflows/executions/custom-executions-data/">{{
 										$locale.baseText('executionsFilter.customData.docsTooltip.link')
 									}}</a>
 								</template>
