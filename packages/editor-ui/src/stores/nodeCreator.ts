@@ -338,16 +338,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				actions: filterActions(node.actions || []),
 			}));
 
-			filteredNodes.sort((a, b) => {
-				if (a.displayName < b.displayName) {
-					return -1;
-				}
-				if (a.displayName > b.displayName) {
-					return 1;
-				}
-				return 0;
-			});
-
 			return filteredNodes;
 		},
 		getNodeTypesWithManualTrigger:
