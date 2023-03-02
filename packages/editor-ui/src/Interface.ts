@@ -586,6 +586,10 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
+	settings?: {
+		isOnboarded?: boolean;
+		hasSavedWorkflow?: boolean;
+	};
 	signInType?: SignInType;
 }
 

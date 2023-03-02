@@ -3,7 +3,6 @@
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
-		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
@@ -148,7 +147,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper, newVersions).extend({
+const WorkflowsView = mixins(showMessage, debounceHelper, newVersions).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -158,6 +157,20 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 		SettingsView,
 		WorkflowCard,
 		TagsDropdown,
+	},
+	beforeRouteEnter(to, from, next) {
+		next(async (vm) => {
+			const componentInstance = vm as unknown as InstanceType<typeof WorkflowsView>;
+			await componentInstance.initialize();
+
+			// If the user has no workflows and has not saved a workflow, redirect to the new workflow view
+			if (
+				!componentInstance.currentUser.settings?.hasSavedWorkflow &&
+				componentInstance.allWorkflows.length === 0
+			) {
+				componentInstance.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
+		});
 	},
 	data() {
 		return {
@@ -224,9 +237,8 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 			}
 		},
 		async initialize() {
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
-
 			return await Promise.all([
+				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
@@ -273,6 +285,8 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 		this.usersStore.showPersonalizationSurvey();
 	},
 });
+
+export default WorkflowsView;
 </script>
 
 <style lang="scss" module>
