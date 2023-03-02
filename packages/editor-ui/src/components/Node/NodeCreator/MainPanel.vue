@@ -262,6 +262,7 @@ function transformCreateElements(
 	});
 
 	return sorted.map((nodeType) => {
+		// todo
 		// N8n node is a special case since it's the only core node that is both trigger and regular
 		// if we have more cases like this we should add more robust logic
 		const isN8nNode = nodeType.name.includes(N8N_NODE_TYPE);
