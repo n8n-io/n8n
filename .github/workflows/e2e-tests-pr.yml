@@ -7,18 +7,19 @@ on:
       - 'master'
 
 jobs:
-  cancel-previous-runs:
-    runs-on: ubuntu-latest
-    name: 'Cancel previous e2e test runs'
-    strategy:
-      matrix:
-        node-version: [16.x]
+  # We disable this for now because cancelling runs makes the Cypress Cloud tests to hang.
+  # cancel-previous-runs:
+  #   runs-on: ubuntu-latest
+  #   name: 'Cancel previous e2e test runs'
+  #   strategy:
+  #     matrix:
+  #       node-version: [16.x]
 
-    steps:
-      - name: 'Cancel previous runs'
-        uses: styfle/cancel-workflow-action@0.9.0
-        with:
-          access_token: ${{ github.token }}
+  #   steps:
+  #     - name: 'Cancel previous runs'
+  #       uses: styfle/cancel-workflow-action@0.9.0
+  #       with:
+  #         access_token: ${{ github.token }}
 
   run-e2e-tests:
     name: E2E [Electron/Node 16]

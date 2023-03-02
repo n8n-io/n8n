@@ -16,7 +16,7 @@ describe('Data transformation expressions', () => {
 		cy.window()
 			// @ts-ignore
 			.then(
-				(win) => win.onbeforeunload && win.removeEventListener('beforeunload', win.onbeforeunload),
+				(win) => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload),
 			);
 	});
 

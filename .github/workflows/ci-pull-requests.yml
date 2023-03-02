@@ -1,4 +1,4 @@
-name: Build, smoke test and lint branch
+name: Build, unit/smoke test and lint branch
 
 on: [pull_request]
 
@@ -103,7 +103,7 @@ jobs:
           ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
         run: pnpm lint
 
-  e2e-node-16:
+  smoke-test:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
