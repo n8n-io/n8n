@@ -574,3 +574,12 @@ export function validateWorkflowCredentialUsage(
 
 	return newWorkflowVersion;
 }
+
+export async function getVariables(): Promise<IDataObject> {
+	return Object.freeze(
+		(await Db.collections.Variables.find()).reduce((prev, curr) => {
+			prev[curr.key] = curr.value;
+			return prev;
+		}, {} as IDataObject),
+	);
+}

@@ -1598,6 +1598,7 @@ export function getAdditionalKeys(
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
 		},
+		$variables: additionalData.variables,
 
 		// deprecated
 		$executionId: executionId,
