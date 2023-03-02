@@ -38,6 +38,19 @@ export class RabbitMQ implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'hidden',
+				noDataExpression: true,
+				default: 'send_message',
+				options: [
+					{
+						name: 'Send a message to RabbitMQ',
+						value: 'send_message',
+					},
+				],
+			},
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
