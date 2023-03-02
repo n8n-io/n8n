@@ -104,12 +104,10 @@ jobs:
         run: pnpm lint
 
   e2e-node-16:
-    needs: install
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
-      cache-key: ${{ github.sha }}-base:16.18.1-test-lint
       branch: ${{ github.event.pull_request.base.ref }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
