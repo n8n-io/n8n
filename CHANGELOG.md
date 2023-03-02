@@ -5,7 +5,6 @@
 
 * **core:** Fix execution pruning queries ([#5562](https://github.com/n8n-io/n8n/issues/5562)) ([88de661](https://github.com/n8n-io/n8n/commit/88de6613bda2d4f133410b05c5c2a8d2f1ba838f))
 * **core:** Fix Filtering of Workflow by Tags ([#5570](https://github.com/n8n-io/n8n/issues/5570)) ([ea2035b](https://github.com/n8n-io/n8n/commit/ea2035b5102853d2aa7e5e01d70e06acf4abd3d8))
-* **core:** Remove linting exceptions in nodes-base, @typescript-eslint/no-unsafe-argument (no-changelog) ([bb4db58](https://github.com/n8n-io/n8n/commit/bb4db58819b6624de98249125f1ffb8c491d21ef))
 * **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([a19ec6a](https://github.com/n8n-io/n8n/commit/a19ec6ac94ac2ed6ab96bf7fe2216cdd2324228b))
 * Fix issues with nodes missing in nodes panel ([#5599](https://github.com/n8n-io/n8n/issues/5599)) ([5040fea](https://github.com/n8n-io/n8n/commit/5040fea93ecc36017d25f237fe9b3e23bc9d623d))
 * Fix mapping paths when appending to empty expression ([#5591](https://github.com/n8n-io/n8n/issues/5591)) ([1f7b478](https://github.com/n8n-io/n8n/commit/1f7b478920ee2b8b4f6affcfd0b42f79b2cd8cd1))
@@ -25,7 +24,6 @@
 * **editor:** Add missing documentation to autocomplete items for inline code editor ([#5560](https://github.com/n8n-io/n8n/issues/5560)) ([ae63440](https://github.com/n8n-io/n8n/commit/ae634407a47de33d77cb81ae7ce11362e8485fd4))
 * **editor:** Show parameter hint on multilines ([#5014](https://github.com/n8n-io/n8n/issues/5014)) ([1942fd8](https://github.com/n8n-io/n8n/commit/1942fd82323183fb31af671ccb8d22f6a4798d7f))
 * **Jira Software Node:** Support binary streaming for very large binary files ([#5589](https://github.com/n8n-io/n8n/issues/5589)) ([f61d779](https://github.com/n8n-io/n8n/commit/f61d779667f25a411b51ee61ddd3fe4698f05934))
-* Migrate packages from lodash to lodash-es (no-changelog) ([#5538](https://github.com/n8n-io/n8n/issues/5538)) ([f069582](https://github.com/n8n-io/n8n/commit/f0695827f5bc3a1076184ce8d539cecd4449cec6))
 * **OpenAI Node:** Add support for ChatGPT ([#5596](https://github.com/n8n-io/n8n/issues/5596)) ([06c5ecb](https://github.com/n8n-io/n8n/commit/06c5ecbdf3031a7773e698294ae701a7e501ef50))
 * **Telegram Node:** Add Parse Mode to Send Document operation ([#5554](https://github.com/n8n-io/n8n/issues/5554)) ([f3c943e](https://github.com/n8n-io/n8n/commit/f3c943ef8191bd16e16a61ffbed6b1caca0d75a5))
 
