@@ -21,8 +21,9 @@ const properties: INodeProperties[] = [
 			"The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with 'Query Values Replacement'.",
 	},
 	{
-		displayName:
-			'You can use replacement values in query, $1 to reference first value, $2 second and so on, if value is SQL name or identifier use :name or ~, e.g. $1:name',
+		displayName: `
+		You can use <strong>Query Values Replacement</strong> to map values in <strong>Query</strong>, to reference first value use $1,to reference second $2 and so on, if value is SQL name or identifier add :name or ~,<br/>
+		e.g. SELECT * FROM $1:name WHERE id = $2;`,
 		name: 'notice',
 		type: 'notice',
 		default: '',
@@ -37,14 +38,14 @@ const properties: INodeProperties[] = [
 		default: [],
 		placeholder: 'Add Value',
 		description:
-			'Value has to be of type number, bigint, string, boolean, Date and null, types Array and Object are not supported',
+			'Value has to be of type number, bigint, string, boolean, Date and null, types Array and Object will be converted to string',
 		options: [
 			{
 				displayName: 'Values',
 				name: 'values',
 				values: [
 					{
-						displayName: '$',
+						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
