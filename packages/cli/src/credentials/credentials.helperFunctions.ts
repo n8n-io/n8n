@@ -138,7 +138,6 @@ export function getUri(options: OAuth2Parameters, tokenType: string) {
 
 export async function request(options: IDataObject) {
 	let url = options.url as string;
-	// const body = querystring.stringify(options.body);
 	const body = new URLSearchParams(options.body as string).toString();
 	const query = new URLSearchParams(options.query as string).toString();
 
