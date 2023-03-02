@@ -147,6 +147,7 @@ export default mixins(showMessage, externalHooks).extend({
 			{
 				attrs: {
 					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
 					click: mappingTooltipDismissHandler,

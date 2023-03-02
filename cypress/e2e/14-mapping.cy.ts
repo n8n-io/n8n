@@ -271,8 +271,11 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set');
 
 		ndv.actions.typeIntoParameterInput('value', 'delete me');
-		cy.get('body').type('{esc}'); // lose focus so value gets updated
+		ndv.actions.dismissMappingTooltip();
 
+		ndv.actions.typeIntoParameterInput('name', 'test');
+
+		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
