@@ -262,4 +262,34 @@ describe('Data mapping', () => {
 			.find('input')
 			.should('have.value', 'input[0]["hello.world"]["my count"]');
 	});
+
+	it('maps expressions to updated fields correctly', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		workflowPage.actions.openNode('Set');
+
+		ndv.actions.typeIntoParameterInput('value', 'delete me');
+		ndv.actions.dismissMappingTooltip();
+
+		ndv.actions.typeIntoParameterInput('name', 'test');
+
+		ndv.actions.typeIntoParameterInput('value', 'fun');
+		ndv.actions.clearParameterInput('value'); // keep focus on param
+
+		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+
+		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+		ndv.getters
+			.inlineExpressionEditorInput()
+			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+	});
 });
