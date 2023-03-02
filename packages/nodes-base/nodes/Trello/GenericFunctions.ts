@@ -45,7 +45,7 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 		if (responseData.length !== 0) {
 			query.before = responseData[responseData.length - 1].id;
 		}

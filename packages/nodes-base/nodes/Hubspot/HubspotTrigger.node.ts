@@ -436,7 +436,7 @@ export class HubspotTrigger implements INodeType {
 			delete bodyData[i].objectId;
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(bodyData)],
+			workflowData: [this.helpers.returnJsonArray(bodyData as IDataObject[])],
 		};
 	}
 }

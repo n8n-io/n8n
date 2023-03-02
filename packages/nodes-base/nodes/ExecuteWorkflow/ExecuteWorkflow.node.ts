@@ -27,6 +27,19 @@ export class ExecuteWorkflow implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'hidden',
+				noDataExpression: true,
+				default: 'call_workflow',
+				options: [
+					{
+						name: 'Call Another Workflow',
+						value: 'call_workflow',
+					},
+				],
+			},
+			{
 				displayName: 'Source',
 				name: 'source',
 				type: 'options',

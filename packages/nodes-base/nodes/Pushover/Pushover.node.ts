@@ -285,7 +285,7 @@ export class Pushover implements INodeType {
 			async getSounds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { sounds } = await pushoverApiRequest.call(this, 'GET', '/sounds.json', {});
 				const returnData: INodePropertyOptions[] = [];
-				for (const key of Object.keys(sounds)) {
+				for (const key of Object.keys(sounds as IDataObject)) {
 					returnData.push({
 						name: sounds[key],
 						value: key,
@@ -373,7 +373,7 @@ export class Pushover implements INodeType {
 
 						responseData = await pushoverApiRequest.call(this, 'POST', '/messages.json', body);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

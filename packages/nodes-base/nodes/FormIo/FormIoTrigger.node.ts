@@ -1,6 +1,7 @@
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -139,7 +140,7 @@ export class FormIoTrigger implements INodeType {
 						if (
 							action.settings.url === webhookUrl &&
 							action.method.length === method.length &&
-							action.method.every((value: any) => method.includes(value))
+							action.method.every((value: any) => method.includes(value as string))
 						) {
 							webhookData.webhookId = action._id;
 							return true;
@@ -205,7 +206,7 @@ export class FormIoTrigger implements INodeType {
 			response = response.data;
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(response)],
+			workflowData: [this.helpers.returnJsonArray(response as IDataObject[])],
 		};
 	}
 }

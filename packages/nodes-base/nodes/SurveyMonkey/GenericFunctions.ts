@@ -2,7 +2,7 @@ import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function surveyMonkeyApiRequest(
@@ -10,11 +10,11 @@ export async function surveyMonkeyApiRequest(
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const endpoint = 'https://api.surveymonkey.com/v3';
@@ -41,15 +41,15 @@ export async function surveyMonkeyApiRequest(
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('surveyMonkeyApi');
-			// @ts-ignore
-			options.headers.Authorization = `bearer ${credentials.accessToken}`;
+
+			(options.headers as IDataObject).Authorization = `bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -59,7 +59,7 @@ export async function surveyMonkeyRequestAllItems(
 	method: string,
 	endpoint: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
@@ -72,7 +72,7 @@ export async function surveyMonkeyRequestAllItems(
 	do {
 		responseData = await surveyMonkeyApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData.links.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.links.next);
 
 	return returnData;

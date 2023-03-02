@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -55,7 +55,7 @@ export async function elasticSecurityApiRequest(
 			error.error.error = `${error.error.error}: ${error.error.message}`;
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -78,7 +78,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 	} while (returnData.length < responseData.total);
 
 	return returnData;
