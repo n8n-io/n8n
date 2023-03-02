@@ -12,11 +12,21 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
+      - uses: pnpm/action-setup@v2.2.4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2.2.4
+      - name: Use Node.js 16
+        uses: actions/setup-node@v3
         with:
-          run_install: true
+          node-version: 16.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # - name: Setup pnpm
+      #   uses: pnpm/action-setup@v2.2.4
+      #   with:
+      #     run_install: true
 
       - name: Build
         run: pnpm build
