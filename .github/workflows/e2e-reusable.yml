@@ -49,8 +49,25 @@ on:
         required: true
 
 jobs:
+  # single job that generates and outputs a common id
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      uuid: ${{ steps.uuid.outputs.value }}
+    steps:
+      - name: Generate unique ID 💎
+        id: uuid
+        # take the current commit + timestamp together
+        # the typical value would be something like
+        # "sha-5d3fe...35d3-time-1620841214"
+        run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
+
+      - name: Print unique ID 🖨`
+        run: echo "generated id ${{ steps.uuid.outputs.value }}"
+
   install:
     runs-on: ubuntu-latest
+    needs: ['prepare']
     container:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
@@ -91,7 +108,7 @@ jobs:
     container:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
-    needs: install
+    needs: ['prepare', 'install']
     strategy:
       fail-fast: false
       matrix:
@@ -115,6 +132,9 @@ jobs:
             ./packages
           key: ${{ inputs.cache-key }}
 
+      - name: Print custom build id 🖨
+        run: echo "Custom build id is ${{ needs.prepare.outputs.uuid }}"
+
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
@@ -126,7 +146,7 @@ jobs:
           parallel: ${{ inputs.parallel }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
-          ci-build-id: '${{ github.sha }}-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.run-env }}-e2e'
+          ci-build-id: ${{ needs.prepare.outputs.uuid }}
           spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
