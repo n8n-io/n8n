@@ -13,7 +13,8 @@ export class CreateVariables1677501636753 implements MigrationInterface {
 				id int(11) auto_increment NOT NULL PRIMARY KEY,
 				\`key\` TEXT NOT NULL,
 				\`type\` TEXT DEFAULT 'string' NOT NULL,
-				value TEXT NULL
+				value TEXT NULL,
+				UNIQUE (\`key\`)
 			)
 			ENGINE=InnoDB;
 		`);

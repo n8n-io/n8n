@@ -8,7 +8,7 @@ export class Variables {
 	@Column('text')
 	key: string;
 
-	@Column('text')
+	@Column('text', { default: 'string' })
 	type: string;
 
 	@Column('text')

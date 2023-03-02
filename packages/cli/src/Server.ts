@@ -149,6 +149,7 @@ import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/sam
 import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
+import { variablesController } from './environments/variables.controller';
 
 const exec = promisify(callbackExec);
 
@@ -521,6 +522,12 @@ class Server extends AbstractServer {
 		// public SAML endpoints
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
+
+		// ----------------------------------------
+		// Variables
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
 
 		// ----------------------------------------
 

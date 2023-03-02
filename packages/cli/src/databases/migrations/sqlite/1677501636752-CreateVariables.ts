@@ -13,7 +13,8 @@ export class CreateVariables1677501636752 implements MigrationInterface {
 				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 				"key" TEXT NOT NULL,
 				"type" TEXT NOT NULL DEFAULT ('string'),
-				value TEXT
+				value TEXT,
+				UNIQUE("key")
 			);
 		`);
 

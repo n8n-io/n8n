@@ -13,7 +13,8 @@ export class CreateVariables1677501636754 implements MigrationInterface {
 				id serial4 NOT NULL PRIMARY KEY,
 				"key" text NOT NULL,
 				"type" text NOT NULL DEFAULT 'string',
-				value text NULL
+				value text NULL,
+				UNIQUE ("key")
 			);
 		`);
 

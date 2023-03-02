@@ -79,6 +79,7 @@ import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { variablesController } from '@/environments/variables.controller';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -159,6 +160,7 @@ export async function initTestServer({
 			license: { controller: licenseController, path: 'license' },
 			eventBus: { controller: eventBusRouter, path: 'eventbus' },
 			ldap: { controller: ldapController, path: 'ldap' },
+			variables: { controller: variablesController, path: 'variables' },
 		};
 
 		if (enablePublicAPI) {
@@ -254,6 +256,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 		'ldap',
 		'eventBus',
 		'license',
+		'variables',
 	];
 
 	endpointGroups.forEach((group) =>
