@@ -17,6 +17,7 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve primitive resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('1 + 2');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^3$/);
@@ -35,6 +36,7 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve object resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters
 			.inlineExpressionEditorInput()
