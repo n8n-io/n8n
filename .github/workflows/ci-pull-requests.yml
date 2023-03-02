@@ -3,30 +3,23 @@ name: Build, smoke test and lint branch
 on: [pull_request]
 
 jobs:
-  e2e-node-16:
-    name: E2E [Electron/Node 16]
-    uses: ./.github/workflows/e2e-reusable.yml
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
-    with:
-      branch: ${{ github.event.pull_request.base.ref }}
-      user: ${{ github.event.inputs.user || 'PR User' }}
-      spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
-      run-env: base:16.18.1
-      record: false
-      parallel: false
-      containers: '[1]'
-    secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-
   lint:
     name: Units Tests & Lint
     runs-on: ubuntu-latest
-    needs: [e2e-node-16]
     steps:
       - uses: actions/checkout@v3
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
+
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
+
+      - name: Build
+        run: pnpm build
 
       - name: Restore cached pnpm modules
         uses: actions/cache@v3
@@ -38,14 +31,6 @@ jobs:
             ./packages
           key: ${{ github.sha }}-base:16.18.1-e2e-modules
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2.2.4
-        with:
-          run_install: true
-
-      - name: Build
-        run: pnpm build
-
       - name: Test
         run: pnpm test
 
@@ -56,3 +41,19 @@ jobs:
         env:
           ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
         run: pnpm lint
+
+  e2e-node-16:
+    name: E2E [Electron/Node 16]
+    uses: ./.github/workflows/e2e-reusable.yml
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    needs: [lint]
+    with:
+      branch: ${{ github.event.pull_request.base.ref }}
+      user: ${{ github.event.inputs.user || 'PR User' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
+      run-env: base:16.18.1
+      record: false
+      parallel: false
+      containers: '[1]'
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
