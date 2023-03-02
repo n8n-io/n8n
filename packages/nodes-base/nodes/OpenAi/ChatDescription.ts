@@ -35,7 +35,7 @@ const completeOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will generate the edited version. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model to use. Currently, only gpt-3.5-turbo and gpt-3.5-turbo-0301 are supported.',
 		displayOptions: {
 			show: {
 				operation: ['complete'],
