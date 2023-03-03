@@ -236,7 +236,7 @@
 			<n8n-button
 				:label="$locale.baseText('executionsList.clearSelection')"
 				type="tertiary"
-				@click="handleClearSelection"
+				@click="handleCheckAllChange"
 			/>
 		</div>
 	</div>
@@ -515,10 +515,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.checkAll = false;
 
 				this.refreshData();
-			},
-			handleClearSelection() {
-				this.checkAll = false;
-				this.handleCheckAllChange();
 			},
 			handleFilterChanged() {
 				this.refreshData();
