@@ -1064,14 +1064,13 @@ export class HttpRequestV3 implements INodeType {
 				});
 			}
 
-			const parmetersToKeyValue = async (
-				acc: Promise<{ [key: string]: any }>,
+			const parametersToKeyValue = (
+				accumulator: { [key: string]: any },
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
-				const acumulator = await acc;
 				if (cur.parameterType === 'formBinaryData') {
 					const binaryDataOnInput = items[itemIndex]?.binary;
-					if (!cur.inputDataFieldName) return acumulator;
+					if (!cur.inputDataFieldName) return accumulator;
 
 					if (!binaryDataOnInput?.[cur.inputDataFieldName]) {
 						throw new NodeOperationError(
@@ -1083,7 +1082,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					if (!cur.inputDataFieldName) return acumulator;
+					if (!cur.inputDataFieldName) return accumulator;
 
 					const binaryData = binaryDataOnInput[cur.inputDataFieldName];
 					let uploadData: Buffer | Readable;
@@ -1093,26 +1092,23 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
-					acumulator[cur.name] = {
+					accumulator[cur.name] = {
 						value: uploadData,
 						options: {
 							filename: binaryData.fileName,
 							contentType: binaryData.mimeType,
 						},
 					};
-					return acumulator;
+					return accumulator;
 				}
-				acumulator[cur.name] = cur.value;
-				return acumulator;
+				accumulator[cur.name] = cur.value;
+				return accumulator;
 			};
 
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.body = await bodyParameters.reduce(
-						parmetersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.body = bodyParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
@@ -1167,10 +1163,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = await queryParameters.reduce(
-						parmetersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1192,10 +1185,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
 				if (specifyHeaders === 'keypair') {
-					requestOptions.headers = await headerParameters.reduce(
-						parmetersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.headers = headerParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
