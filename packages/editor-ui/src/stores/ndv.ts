@@ -185,9 +185,11 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setNDVPanelDataIsEmpty(payload: { panel: 'input' | 'output'; isEmpty: boolean }): void {
 			Vue.set(this[payload.panel].data, 'isEmpty', payload.isEmpty);
 		},
-		disableMappingHint() {
+		disableMappingHint(store = true) {
 			this.isMappingOnboarded = true;
-			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+			if (store) {
+				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+			}
 		},
 	},
 });

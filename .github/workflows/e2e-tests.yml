@@ -24,54 +24,46 @@ on:
         default: ''
 
 jobs:
-  build:
+  calls-start-url:
+    name: Calls start URL
     runs-on: ubuntu-latest
-
-    timeout-minutes: 30
-
-    strategy:
-      matrix:
-        node-version: [14.x, 16.x]
-
+    if: ${{ github.event.inputs.start-url != '' }}
     steps:
-      - name: Call Start URL - optionally
+      - name: Calls start URL
         run: |
           [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
         shell: bash
 
-      - uses: actions/checkout@v3
-        with:
-          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
-          ref: ${{ github.event.inputs.branch || 'master' }}
+  run-e2e-tests:
+    name: E2E [Electron/Node 16]
+    uses: ./.github/workflows/e2e-reusable.yml
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    with:
+      branch: ${{ github.event.inputs.branch || 'master' }}
+      user: ${{ github.event.inputs.user || 'PR User' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
+      run-env: base:16.18.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
-      - uses: pnpm/action-setup@v2.2.4
+  run-e2e-tests-node-14:
+    name: E2E [Electron/Node 14]
+    uses: ./.github/workflows/e2e-reusable.yml
+    if: ${{ github.event_name == 'schedule' }}
+    with:
+      branch: ${{ github.event.inputs.branch || 'master' }}
+      user: ${{ github.event.inputs.user || 'schedule' }}
+      spec: ${{ github.event.inputs.spec || 'e2e/*' }}
+      run-env: base:14.21.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test E2E
-        run: |
-          pnpm cypress:install
-          pnpm test:e2e:all
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: cypress-screenshots
-          path: |
-            cypress/screenshots
-          retention-days: 1
-
+  calls-success-url-notify:
+    name: Calls success URL and notifies
+    runs-on: ubuntu-latest
+    needs: [run-e2e-tests, run-e2e-tests-node-14]
+    if: ${{ github.event.inputs.success-url != '' }}
+    steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
         if: failure()

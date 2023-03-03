@@ -17,6 +17,7 @@ import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunction
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
+		// eslint-disable-next-line
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
@@ -37,6 +38,19 @@ export class RabbitMQ implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'hidden',
+				noDataExpression: true,
+				default: 'send_message',
+				options: [
+					{
+						name: 'Send a Message to RabbitMQ',
+						value: 'send_message',
+					},
+				],
+			},
 			{
 				displayName: 'Mode',
 				name: 'mode',

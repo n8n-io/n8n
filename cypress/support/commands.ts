@@ -206,9 +206,8 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 		);
 	}
 });
-Cypress.Commands.add('readClipboard', () =>
-	cy.window().its('navigator.clipboard').invoke('readText'),
-);
+
+Cypress.Commands.add('readClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()))
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
