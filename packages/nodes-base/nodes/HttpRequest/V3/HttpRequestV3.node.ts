@@ -798,7 +798,7 @@ export class HttpRequestV3 implements INodeType {
 											type: 'boolean',
 											default: false,
 											description:
-												'Whether to return the full reponse (headers and response status code) data instead of only the body',
+												'Whether to return the full response (headers and response status code) data instead of only the body',
 										},
 										{
 											displayName: 'Never Error',
@@ -879,7 +879,7 @@ export class HttpRequestV3 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
+		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
 		let authentication;
 
@@ -1061,14 +1061,14 @@ export class HttpRequestV3 implements INodeType {
 				});
 			}
 
-			const parmetersToKeyValue = async (
+			const parametersToKeyValue = async (
 				acc: Promise<{ [key: string]: any }>,
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
-				const acumulator = await acc;
+				const accumulator = await acc;
 				if (cur.parameterType === 'formBinaryData') {
 					const binaryDataOnInput = items[itemIndex]?.binary;
-					if (!cur.inputDataFieldName) return acumulator;
+					if (!cur.inputDataFieldName) return accumulator;
 
 					if (!binaryDataOnInput?.[cur.inputDataFieldName]) {
 						throw new NodeOperationError(
@@ -1080,29 +1080,29 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					if (!cur.inputDataFieldName) return acumulator;
+					if (!cur.inputDataFieldName) return accumulator;
 
 					const binaryData = binaryDataOnInput[cur.inputDataFieldName];
 					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, cur.inputDataFieldName);
 
-					acumulator[cur.name] = {
+					accumulator[cur.name] = {
 						value: buffer,
 						options: {
 							filename: binaryData.fileName,
 							contentType: binaryData.mimeType,
 						},
 					};
-					return acumulator;
+					return accumulator;
 				}
-				acumulator[cur.name] = cur.value;
-				return acumulator;
+				accumulator[cur.name] = cur.value;
+				return accumulator;
 			};
 
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
 					requestOptions.body = await bodyParameters.reduce(
-						parmetersToKeyValue,
+						parametersToKeyValue,
 						Promise.resolve({}),
 					);
 				} else if (specifyBody === 'json') {
@@ -1156,7 +1156,7 @@ export class HttpRequestV3 implements INodeType {
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
 					requestOptions.qs = await queryParameters.reduce(
-						parmetersToKeyValue,
+						parametersToKeyValue,
 						Promise.resolve({}),
 					);
 				} else if (specifyQuery === 'json') {
@@ -1181,7 +1181,7 @@ export class HttpRequestV3 implements INodeType {
 			if (sendHeaders && headerParameters) {
 				if (specifyHeaders === 'keypair') {
 					requestOptions.headers = await headerParameters.reduce(
-						parmetersToKeyValue,
+						parametersToKeyValue,
 						Promise.resolve({}),
 					);
 				} else if (specifyHeaders === 'json') {
@@ -1399,7 +1399,7 @@ export class HttpRequestV3 implements INodeType {
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						if (property === 'body') {
 							continue;
 						}
@@ -1430,7 +1430,7 @@ export class HttpRequestV3 implements INodeType {
 				) as string;
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						if (property === 'body') {
 							returnItem[outputPropertyName] = toText(response![property]);
 							continue;
@@ -1458,7 +1458,7 @@ export class HttpRequestV3 implements INodeType {
 				// responseFormat: 'json'
 				if (requestOptions.resolveWithFullResponse === true) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						returnItem[property] = response![property];
 					}
 

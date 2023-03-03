@@ -49,13 +49,13 @@ export class MailchimpTrigger implements INodeType {
 			{
 				name: 'setup',
 				httpMethod: 'GET',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
