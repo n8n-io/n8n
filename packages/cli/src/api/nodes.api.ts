@@ -202,7 +202,7 @@ nodesController.get(
 			if (missingPackages) {
 				hydratedPackages = matchMissingPackages(hydratedPackages, missingPackages);
 			}
-		} catch (_) {
+		} catch {
 			// Do nothing if setting is missing
 		}
 
