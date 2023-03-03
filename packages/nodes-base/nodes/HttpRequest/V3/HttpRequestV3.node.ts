@@ -888,7 +888,7 @@ export class HttpRequestV3 implements INodeType {
 				| 'predefinedCredentialType'
 				| 'genericCredentialType'
 				| 'none';
-		} catch (_) {}
+		} catch {}
 
 		let httpBasicAuth;
 		let httpDigestAuth;
@@ -904,32 +904,32 @@ export class HttpRequestV3 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
 					httpDigestAuth = await this.getCredentials('httpDigestAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpHeaderAuth') {
 				try {
 					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.getCredentials('oAuth1Api');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'oAuth2Api') {
 				try {
 					oAuth2Api = await this.getCredentials('oAuth2Api');
-				} catch (_) {}
+				} catch {}
 			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			} catch (_) {}
+			} catch {}
 		}
 
 		let requestOptions: OptionsWithUri = {
@@ -1110,7 +1110,7 @@ export class HttpRequestV3 implements INodeType {
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
 						try {
 							JSON.parse(jsonBodyParameter);
-						} catch (_) {
+						} catch {
 							throw new NodeOperationError(
 								this.getNode(),
 								'JSON parameter need to be an valid JSON',
@@ -1163,7 +1163,7 @@ export class HttpRequestV3 implements INodeType {
 					// query is specified using JSON
 					try {
 						JSON.parse(jsonQueryParameter);
-					} catch (_) {
+					} catch {
 						throw new NodeOperationError(
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
@@ -1188,7 +1188,7 @@ export class HttpRequestV3 implements INodeType {
 					// body is specified using JSON
 					try {
 						JSON.parse(jsonHeadersParameter);
-					} catch (_) {
+					} catch {
 						throw new NodeOperationError(
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
