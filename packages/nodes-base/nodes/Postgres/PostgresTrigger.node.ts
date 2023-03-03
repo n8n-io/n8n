@@ -11,7 +11,7 @@ import {
 	pgTriggerFunction,
 	searchSchema,
 	searchTables,
-} from './Postgres.node.functions';
+} from './PostgresTrigger.functions';
 import type { IPostgresTrigger } from './PostgresInterface';
 
 export class PostgresTrigger implements INodeType {
