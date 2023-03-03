@@ -77,23 +77,29 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	try {
 		const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
-		const columnString = this.getNodeParameter('columns', 0) as string;
-		const columns = columnString.split(',').map((column) => column.trim());
-		const insertItems = copyInputItems(items, columns);
-		const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
 		const options = this.getNodeParameter('options', 0);
-		const insertIgnore = options.ignore as boolean;
-		const insertPriority = options.priority as string;
 
-		const insertSQL = `INSERT ${insertPriority || ''} ${
-			insertIgnore ? 'IGNORE' : ''
-		} INTO ${table}(${columnString}) VALUES ${items.map((_item) => insertPlaceholder).join(',')};`;
-		const queryItems = insertItems.reduce(
-			(collection: IDataObject[], item) => collection.concat(Object.values(item) as IDataObject[]),
+		const columns = (this.getNodeParameter('columns', 0) as string)
+			.split(',')
+			.map((column) => column.trim());
+
+		const insertItems = copyInputItems(items, columns);
+
+		const priority = (options.priority as string) || '';
+		const ignore = (options.ignore as boolean) ? 'IGNORE' : '';
+
+		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+		const placeholder = `(${columns.map(() => '?').join(',')})`;
+		const replacements = items.map(() => placeholder).join(',');
+
+		const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements};`;
+
+		const values = insertItems.reduce(
+			(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
 			[],
 		);
 
-		const queryResult = await connection.query(insertSQL, queryItems);
+		const queryResult = await connection.query(query, values);
 
 		returnData = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 	} catch (error) {

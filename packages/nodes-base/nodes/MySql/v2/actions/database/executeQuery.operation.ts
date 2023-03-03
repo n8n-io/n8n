@@ -3,6 +3,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type { Mysql2OkPacket } from '../../helpers/interfaces';
+import { prepareQueryAndReplacements } from '../../helpers/utils';
 import { createConnection } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -14,6 +15,40 @@ const properties: INodeProperties[] = [
 		placeholder: 'SELECT id, name FROM product WHERE id < 40',
 		required: true,
 		description: 'The SQL query to execute',
+	},
+	{
+		displayName: `
+		You can use <strong>Query Values Replacement</strong> to map values in <strong>Query</strong>, to reference first value use $1,to reference second $2 and so on, if value is SQL name or identifier add :name,<br/>
+		e.g. SELECT * FROM $1:name WHERE id = $2;`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+	},
+	{
+		displayName: 'Query Values Replacement',
+		name: 'queryReplacement',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: [],
+		placeholder: 'Add Value',
+		description:
+			'Value has to be of type number, bigint, string, boolean, Date and null, types Array and Object will be converted to string',
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 ];
 
@@ -37,11 +72,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		const queryQueue = items.map(async (_item, index) => {
 			const rawQuery = this.getNodeParameter('query', index) as string;
 
-			return connection.query(rawQuery);
+			const values = (
+				this.getNodeParameter('queryReplacement.values', index, []) as IDataObject[]
+			).map((entry) => entry.value as string);
+
+			const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
+
+			const formattedQuery = connection.format(newQuery, newValues);
+
+			return connection.query(formattedQuery);
 		});
 
 		returnData = ((await Promise.all(queryQueue)) as Mysql2OkPacket[][]).reduce(
-			(collection, result, index) => {
+			(acc, result, index) => {
 				const [rows] = result;
 
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -49,9 +92,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					{ itemData: { item: index } },
 				);
 
-				collection.push(...executionData);
+				acc.push(...executionData);
 
-				return collection;
+				return acc;
 			},
 			[] as INodeExecutionData[],
 		);
