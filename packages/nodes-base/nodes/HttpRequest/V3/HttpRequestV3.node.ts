@@ -934,7 +934,8 @@ export class HttpRequestV3 implements INodeType {
 			} catch (_) {}
 		}
 
-		let requestOptions: OptionsWithUri = {
+		type RequestOptions = OptionsWithUri & { useStream?: boolean };
+		let requestOptions: RequestOptions = {
 			uri: '',
 		};
 
@@ -1216,8 +1217,10 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || responseFormat === 'file') {
 				requestOptions.encoding = null;
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else if (bodyContentType === 'raw') {
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
@@ -1420,14 +1423,14 @@ export class HttpRequestV3 implements INodeType {
 					newItem.json = returnItem;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body as Buffer,
+						response!.body as Buffer | Readable,
 						fileName,
 					);
 				} else {
 					newItem.json = items[itemIndex].json;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response! as Buffer,
+						response! as Buffer | Readable,
 						fileName,
 					);
 				}
