@@ -621,7 +621,7 @@ export class HttpRequestV2 implements INodeType {
 				| 'predefinedCredentialType'
 				| 'genericCredentialType'
 				| 'none';
-		} catch (_) {}
+		} catch {}
 
 		let httpBasicAuth;
 		let httpDigestAuth;
@@ -637,32 +637,32 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
 					httpDigestAuth = await this.getCredentials('httpDigestAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpHeaderAuth') {
 				try {
 					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.getCredentials('oAuth1Api');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'oAuth2Api') {
 				try {
 					oAuth2Api = await this.getCredentials('oAuth2Api');
-				} catch (_) {}
+				} catch {}
 			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			} catch (_) {}
+			} catch {}
 		}
 
 		let requestOptions: OptionsWithUri;
