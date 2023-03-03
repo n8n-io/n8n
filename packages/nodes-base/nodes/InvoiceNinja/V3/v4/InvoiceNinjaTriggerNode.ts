@@ -60,7 +60,6 @@ export const InvoiceNinjaTriggerV4 = {
 		properties: [...headProperties],
 	},
 
-	// @ts-ignore (because of request)
 	webhookMethods: {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

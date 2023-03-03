@@ -326,11 +326,11 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						json: responseData,
 						binary: {
 							data: await this.helpers.prepareBinaryData(
-								await invoiceNinjaApiDownloadFile.call(
+								(await invoiceNinjaApiDownloadFile.call(
 									this,
 									'GET',
 									`/recurring_invoice/${responseData.invitations[0].key}/download`,
-								),
+								)) as Buffer,
 								'recurring_invoice.pdf',
 								'application/pdf',
 							),
@@ -403,7 +403,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

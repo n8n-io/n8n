@@ -38,7 +38,7 @@ import { quoteFields, quoteOperations } from './QuoteDescription';
 
 import type { IQuote } from './QuoteInterface';
 
-export class InvoiceNinja implements INodeType {
+export class InvoiceNinjaV1u2 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -1019,7 +1019,7 @@ export class InvoiceNinja implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

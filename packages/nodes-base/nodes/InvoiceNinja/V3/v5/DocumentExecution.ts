@@ -75,15 +75,19 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 						json: responseData,
 						binary: {
 							data: await this.helpers.prepareBinaryData(
-								await invoiceNinjaApiDownloadFile.call(
+								(await invoiceNinjaApiDownloadFile.call(
 									this,
 									'GET',
 									'', // `/documents/${responseData.id}/download`,
 									{},
 									{},
-									{ uri: new URL(responseData.url).origin + `/documents/${responseData.hash}` }, // workarount to avoid endpoint with timeout, should be tested if working in the future
-								),
-								responseData.name,
+									{
+										uri:
+											new URL(responseData.url as string).origin +
+											`/documents/${responseData.hash}`,
+									}, // workarount to avoid endpoint with timeout, should be tested if working in the future
+								)) as Buffer,
+								responseData.name as string,
 							),
 						},
 					});
@@ -124,7 +128,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

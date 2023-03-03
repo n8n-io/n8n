@@ -298,7 +298,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 					const endDate = this.getNodeParameter('endDate', i) as string;
 					const showPaymentsTable = this.getNodeParameter('showPaymentsTable', i) as string;
 					const showAgingTable = this.getNodeParameter('showAgingTable', i) as string;
-					const sendEmail = this.getNodeParameter('sendEmail', i) as string;
+					const sendEmail = this.getNodeParameter('sendEmail', i) as boolean;
 					const body: IDataObject = {
 						start_date: moment(startDate).format('YYYY-MM-DD'),
 						end_date: moment(endDate).format('YYYY-MM-DD'),
@@ -311,9 +311,9 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 							json: body,
 							binary: {
 								data: await this.helpers.prepareBinaryData(
-									await invoiceNinjaApiDownloadFile.call(this, 'POST', '/client_statement', body, {
+									(await invoiceNinjaApiDownloadFile.call(this, 'POST', '/client_statement', body, {
 										send_email: sendEmail,
-									}),
+									})) as Buffer,
 									'client_statement.pdf',
 									'application/pdf',
 								),
@@ -342,7 +342,7 @@ export const execute = async function (this: IExecuteFunctions): Promise<INodeEx
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

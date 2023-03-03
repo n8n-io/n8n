@@ -1,5 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
+import { NodeOperationError } from 'n8n-workflow';
+
 import type {
 	INodeExecutionData,
 	INodeType,
@@ -11,7 +13,7 @@ import { InvoiceNinjaV4 } from './v4/InvoiceNinjaNode';
 
 import { InvoiceNinjaV5 } from './v5/InvoiceNinjaNode';
 
-export class InvoiceNinja implements INodeType {
+export class InvoiceNinjaV3 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -85,6 +87,6 @@ export class InvoiceNinja implements INodeType {
 
 		if (apiVersion == 'v4') return InvoiceNinjaV4.execute.call(this);
 		else if (apiVersion == 'v5') return InvoiceNinjaV5.execute.call(this);
-		else throw new Error('Invalid Version Parameter');
+		else throw new NodeOperationError(this.getNode(), 'Invalid Version Parameter');
 	}
 }

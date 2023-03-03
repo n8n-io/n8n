@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type {
@@ -13,7 +14,7 @@ import {
 	invoiceNinjaApiRequestAllItems,
 } from './GenericFunctions';
 
-export class InvoiceNinjaTrigger implements INodeType {
+export class InvoiceNinjaTriggerV1u2 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -28,7 +29,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 			defaults: {
 				name: 'Invoice Ninja Trigger',
 			},
-			inputs: [],
+			inputs: ['main'],
 			outputs: ['main'],
 			credentials: [
 				{
@@ -134,7 +135,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 		};
 	}
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

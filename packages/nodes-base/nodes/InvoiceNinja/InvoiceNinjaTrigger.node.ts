@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { InvoiceNinjaTrigger as InvoiceNinjaTriggerV1u2 } from './V1u2/InvoiceNinjaTrigger.node';
-import { InvoiceNinjaTrigger as InvoiceNinjaTriggerV3 } from './V3/InvoiceNinjaTrigger.node';
+import { InvoiceNinjaTriggerV1u2 } from './V1u2/InvoiceNinjaTriggerV1u2.node';
+import { InvoiceNinjaTriggerV3 } from './V3/InvoiceNinjaTriggerV3.node';
 
 export class InvoiceNinjaTrigger extends VersionedNodeType {
 	constructor() {

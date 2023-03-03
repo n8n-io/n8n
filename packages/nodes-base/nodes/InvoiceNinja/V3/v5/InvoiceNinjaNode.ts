@@ -238,7 +238,7 @@ export const InvoiceNinjaV5 = {
 			async getCurrenciesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (let i = 0; i < currencies.length; i++) {
-					const currencyName = currencies[i].code + ' - ' + currencies[i].name;
+					const currencyName = `${currencies[i].code} - ${currencies[i].name}`;
 					const currencyId = currencies[i].id as string;
 					returnData.push({
 						name: currencyName,

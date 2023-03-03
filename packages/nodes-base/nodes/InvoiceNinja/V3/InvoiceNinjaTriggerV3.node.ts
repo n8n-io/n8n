@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type {
@@ -7,11 +8,13 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { NodeOperationError } from 'n8n-workflow';
+
 import { InvoiceNinjaTriggerV4 } from './v4/InvoiceNinjaTriggerNode';
 
 import { InvoiceNinjaTriggerV5 } from './v5/InvoiceNinjaTriggerNode';
 
-export class InvoiceNinjaTrigger implements INodeType {
+export class InvoiceNinjaTriggerV3 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -26,7 +29,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 			defaults: {
 				name: 'Invoice Ninja Trigger',
 			},
-			inputs: [],
+			inputs: ['main'],
 			outputs: ['main'],
 			credentials: [
 				{
@@ -70,7 +73,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 		};
 	}
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -81,7 +83,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				else if (apiVersion == 'v5')
 					return InvoiceNinjaTriggerV5.webhookMethods.default.checkExists.call(this);
 
-				throw new Error('Invalid API Version');
+				throw new NodeOperationError(this.getNode(), 'Invalid API Version');
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
@@ -91,7 +93,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				else if (apiVersion == 'v5')
 					return InvoiceNinjaTriggerV5.webhookMethods.default.create.call(this);
 
-				throw new Error('Invalid API Version');
+				throw new NodeOperationError(this.getNode(), 'Invalid API Version');
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
@@ -101,7 +103,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				else if (apiVersion == 'v5')
 					return InvoiceNinjaTriggerV5.webhookMethods.default.delete.call(this);
 
-				throw new Error('Invalid API Version');
+				throw new NodeOperationError(this.getNode(), 'Invalid API Version');
 			},
 		},
 	};
@@ -112,6 +114,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 		if (apiVersion == 'v4') return InvoiceNinjaTriggerV4.webhook.call(this);
 		else if (apiVersion == 'v5') return InvoiceNinjaTriggerV5.webhook.call(this);
 
-		throw new Error('Invalid API Version');
+		throw new NodeOperationError(this.getNode(), 'Invalid API Version');
 	}
 }
