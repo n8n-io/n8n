@@ -21,9 +21,14 @@ export default Vue.extend({
 		attrs() {
 			let type = this.$attrs.type || 'primary';
 
-			// Element UI Button can have 'text' type which is not supported by n8n-button so render it as 'secondary'
+			/* Element UI Button can have 'text' or 'info' type which is not supported by n8n-button
+			 so render it as 'secondary' or 'tertiary' */
 			if (type === 'text') {
 				type = 'secondary';
+			}
+
+			if (type === 'info') {
+				type = 'tertiary';
 			}
 
 			Object.entries(classToTypeMap).forEach(([className, mappedType]) => {

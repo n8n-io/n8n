@@ -96,6 +96,19 @@ describe('components', () => {
 
 				expect(wrapper.html()).toMatchSnapshot();
 			});
+
+			it('should render as `tertiary` when `info` is given as type', () => {
+				const wrapper = render(ElButton, {
+					props: {
+						icon: 'plus-circle',
+						type: 'info',
+					},
+					slots,
+					stubs,
+				});
+
+				expect(wrapper.html()).toMatchSnapshot();
+			});
 		});
 	});
 });
