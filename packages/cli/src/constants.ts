@@ -18,7 +18,7 @@ export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
-export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
+export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
 export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 

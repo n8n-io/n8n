@@ -24,12 +24,12 @@ import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import { executeCommand } from '@/CommunityNodes/helpers';
 import {
-	CLI_DIR,
 	GENERATED_STATIC_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
 	inTest,
+	NODES_BASE_DIR,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { Service } from 'typedi';
@@ -110,12 +110,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 	}
 
 	private async loadNodesFromBasePackages() {
-		const nodeModulesPath = await this.getNodeModulesPath();
-		const nodePackagePaths = await this.getN8nNodePackages(nodeModulesPath);
-
-		for (const packagePath of nodePackagePaths) {
-			await this.runDirectoryLoader(LazyPackageDirectoryLoader, packagePath);
-		}
+		await this.runDirectoryLoader(LazyPackageDirectoryLoader, NODES_BASE_DIR);
 	}
 
 	private async loadNodesFromDownloadedPackages(): Promise<void> {
@@ -398,28 +393,5 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				}
 			}
 		}
-	}
-
-	private async getNodeModulesPath(): Promise<string> {
-		// Get the path to the node-modules folder to be later able
-		// to load the credentials and nodes
-		const checkPaths = [
-			// In case "n8n" package is in same node_modules folder.
-			path.join(CLI_DIR, '..', 'n8n-workflow'),
-			// In case "n8n" package is the root and the packages are
-			// in the "node_modules" folder underneath it.
-			path.join(CLI_DIR, 'node_modules', 'n8n-workflow'),
-			// In case "n8n" package is installed using npm/yarn workspaces
-			// the node_modules folder is in the root of the workspace.
-			path.join(CLI_DIR, '..', '..', 'node_modules', 'n8n-workflow'),
-		];
-		for (const checkPath of checkPaths) {
-			try {
-				await fsAccess(checkPath);
-				// Folder exists, so use it.
-				return path.dirname(checkPath);
-			} catch {} // Folder does not exist so get next one
-		}
-		throw new Error('Could not find "node_modules" folder!');
 	}
 }
