@@ -517,8 +517,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.refreshData();
 			},
 			handleClearSelection() {
-				this.checkAll = true;
-				this.handleCheckAllChange();
+				this.checkAll = false;
+				Vue.set(this, 'selectedItems', {});
 			},
 			handleFilterChanged() {
 				this.refreshData();
