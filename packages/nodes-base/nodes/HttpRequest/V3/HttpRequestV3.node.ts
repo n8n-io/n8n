@@ -1,4 +1,6 @@
+import type { Readable } from 'form-data';
 import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
 import type {
 	IBinaryKeyData,
@@ -1083,10 +1085,16 @@ export class HttpRequestV3 implements INodeType {
 					if (!cur.inputDataFieldName) return acumulator;
 
 					const binaryData = binaryDataOnInput[cur.inputDataFieldName];
-					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, cur.inputDataFieldName);
-
+					let uploadData: Buffer | Readable;
+					const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+					}
+					console.log('passed in acc', itemBinaryData.id);
 					acumulator[cur.name] = {
-						value: buffer,
+						value: uploadData,
 						options: {
 							filename: binaryData.fileName,
 							contentType: binaryData.mimeType,
@@ -1143,10 +1151,15 @@ export class HttpRequestV3 implements INodeType {
 						'inputDataFieldName',
 						itemIndex,
 					) as string;
-					requestOptions.body = await this.helpers.getBinaryDataBuffer(
-						itemIndex,
-						inputDataFieldName,
-					);
+					let uploadData: Buffer | Readable;
+					const itemBinaryData = items[itemIndex].binary![inputDataFieldName];
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+					}
+					console.log('passed in body creation', itemBinaryData.id);
+					requestOptions.body = uploadData;
 				} else if (bodyContentType === 'raw') {
 					requestOptions.body = body;
 				}
