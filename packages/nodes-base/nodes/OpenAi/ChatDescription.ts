@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { chatBodyPresend } from './ChatFunctions';
 
 export const chatOperations: INodeProperties[] = [
 	{
@@ -114,7 +115,7 @@ const completeOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'messages',
-				value: '={{ $parameter.prompt.messages }}',
+				preSend: [chatBodyPresend],
 			},
 		},
 	},
