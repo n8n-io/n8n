@@ -1092,7 +1092,6 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
-					console.log('passed in acc', itemBinaryData.id);
 					acumulator[cur.name] = {
 						value: uploadData,
 						options: {
@@ -1158,7 +1157,6 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
-					console.log('passed in body creation', itemBinaryData.id);
 					requestOptions.body = uploadData;
 				} else if (bodyContentType === 'raw') {
 					requestOptions.body = body;
