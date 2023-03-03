@@ -78,7 +78,6 @@ export async function validateResponse(response: string): Promise<boolean> {
 			schema: [xmlProtocol],
 			preload: [xmlMetadata, xmlAssertion, xmldsigCore, xmlXenc, xml],
 		});
-		console.log(validationResult, response);
 		if (validationResult.valid) {
 			LoggerProxy.debug('SAML Response is valid');
 			return true;
