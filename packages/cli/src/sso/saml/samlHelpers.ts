@@ -10,6 +10,7 @@ import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
+import { isSamlCurrentAuthenticationMethod } from '../ssoHelpers';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -35,6 +36,10 @@ export function isSamlLicensed(): boolean {
 		isUserManagementEnabled() &&
 		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
 	);
+}
+
+export function isSamlLicensedAndEnabled(): boolean {
+	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
 }
 
 export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferences => {
