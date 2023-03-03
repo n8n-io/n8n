@@ -213,12 +213,12 @@ export const triggerPlaceholders = [
 		description: 'Your notes, stored in your profile',
 	},
 	{
-		name: 'Satisfation Current Rating',
+		name: 'Satisfaction Current Rating',
 		value: 'satisfaction.current_rating',
 		description: 'The text of the current satisfaction rating',
 	},
 	{
-		name: 'Satisfation Current Comment',
+		name: 'Satisfaction Current Comment',
 		value: 'satisfaction.current_comment',
 		description: 'The text of the current satisfaction rating comment',
 	},
