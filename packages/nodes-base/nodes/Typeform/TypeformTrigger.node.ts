@@ -212,7 +212,7 @@ export class TypeformTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -240,16 +240,16 @@ export class TypeformTrigger implements INodeType {
 		const answers = (bodyData.form_response as IDataObject).answers as ITypeformAnswer[];
 
 		// Some fields contain lower level fields of which we are only interested of the values
-		const subvalueKeys = ['label', 'labels'];
+		const subValueKeys = ['label', 'labels'];
 
 		if (simplifyAnswers) {
 			// Convert the answers to simple key -> value pairs
 			const definition = (bodyData.form_response as IDataObject).definition as ITypeformDefinition;
 
 			// Create a dictionary to get the field title by its ID
-			const defintitionsById: { [key: string]: string } = {};
+			const definitionsById: { [key: string]: string } = {};
 			for (const field of definition.fields) {
-				defintitionsById[field.id] = field.title.replace(/\{\{/g, '[').replace(/\}\}/g, ']');
+				definitionsById[field.id] = field.title.replace(/\{\{/g, '[').replace(/\}\}/g, ']');
 			}
 
 			// Convert the answers to key -> value pair
@@ -257,14 +257,14 @@ export class TypeformTrigger implements INodeType {
 			for (const answer of answers) {
 				let value = answer[answer.type];
 				if (typeof value === 'object') {
-					for (const key of subvalueKeys) {
+					for (const key of subValueKeys) {
 						if ((value as IDataObject)[key] !== undefined) {
 							value = (value as ITypeformAnswerField)[key];
 							break;
 						}
 					}
 				}
-				convertedAnswers[defintitionsById[answer.field.id]] = value;
+				convertedAnswers[definitionsById[answer.field.id]] = value;
 			}
 
 			if (onlyAnswers) {

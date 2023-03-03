@@ -266,8 +266,8 @@ export namespace SendInBlueNode {
 				'additionalFields.templateParameters.parameterValues',
 			);
 			const { body } = requestOptions;
-			const { parmeters } = parameterData as JsonObject;
-			const params = (parmeters as string)
+			const { parameters } = parameterData as JsonObject;
+			const params = (parameters as string)
 				.split(',')
 				.filter((parameter) => {
 					return parameter.split('=').length === 2;
