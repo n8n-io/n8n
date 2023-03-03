@@ -52,7 +52,7 @@ export async function validateMetadata(metadata: string): Promise<boolean> {
 			preload: [xmlProtocol, xmlAssertion, xmldsigCore, xmlXenc, xml],
 		});
 		if (validationResult.valid) {
-			console.log(validationResult);
+			LoggerProxy.debug('SAML Metadata is valid');
 			return true;
 		} else {
 			LoggerProxy.warn('SAML Validate Metadata: Invalid metadata');
@@ -79,6 +79,7 @@ export async function validateResponse(response: string): Promise<boolean> {
 			preload: [xmlMetadata, xmlAssertion, xmldsigCore, xmlXenc, xml],
 		});
 		if (validationResult.valid) {
+			LoggerProxy.debug('SAML Response is valid');
 			return true;
 		} else {
 			LoggerProxy.warn('SAML Validate Response: Failed');

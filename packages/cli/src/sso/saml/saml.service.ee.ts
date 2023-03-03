@@ -22,6 +22,7 @@ import {
 } from './samlHelpers';
 import type { Settings } from '../../databases/entities/Settings';
 import axios from 'axios';
+import https from 'https';
 import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
@@ -55,23 +56,9 @@ export class SamlService {
 
 	private loginBinding: SamlLoginBinding = 'post';
 
-	constructor() {
-		this.loadFromDbAndApplySamlPreferences()
-			.then(() => {
-				LoggerProxy.debug('Initializing SAML service');
-			})
-			.catch(() => {
-				LoggerProxy.warn('Error initializing SAML service');
-			});
-	}
-
 	static getInstance(): SamlService {
 		if (!SamlService.instance) {
 			SamlService.instance = new SamlService();
-			SamlService.instance.init().catch((error) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				LoggerProxy.error(error);
-			});
 		}
 		return SamlService.instance;
 	}
@@ -263,10 +250,11 @@ export class SamlService {
 
 	async fetchMetadataFromUrl(): Promise<string | undefined> {
 		try {
-			const prevRejectStatus = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-			if (this.ignoreSSL) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-			const response = await axios.get(this.metadataUrl);
-			if (this.ignoreSSL) process.env.NODE_TLS_REJECT_UNAUTHORIZED = prevRejectStatus;
+			// TODO:SAML: this will not work once axios is upgraded to > 1.2.0 (see checkServerIdentity)
+			const agent = new https.Agent({
+				rejectUnauthorized: !this.ignoreSSL,
+			});
+			const response = await axios.get(this.metadataUrl, { httpsAgent: agent });
 			if (response.status === 200 && response.data) {
 				const xml = (await response.data) as string;
 				const validationResult = await validateMetadata(xml);
@@ -318,10 +306,14 @@ export class SamlService {
 
 	async testSamlConnection(): Promise<boolean> {
 		try {
+			// TODO:SAML: this will not work once axios is upgraded to > 1.2.0 (see checkServerIdentity)
+			const agent = new https.Agent({
+				rejectUnauthorized: !this.ignoreSSL,
+			});
 			const requestContext = this.getLoginRequestUrl();
 			if (!requestContext) return false;
 			if (requestContext.binding === 'redirect') {
-				const fetchResult = await axios.get(requestContext.context.context);
+				const fetchResult = await axios.get(requestContext.context.context, { httpsAgent: agent });
 				if (fetchResult.status !== 200) {
 					LoggerProxy.debug('SAML: Error while testing SAML connection.');
 					return false;
@@ -339,6 +331,7 @@ export class SamlService {
 						// eslint-disable-next-line @typescript-eslint/naming-convention
 						'Content-type': 'application/x-www-form-urlencoded',
 					},
+					httpsAgent: agent,
 				});
 				if (fetchResult.status !== 200) {
 					LoggerProxy.debug('SAML: Error while testing SAML connection.');
