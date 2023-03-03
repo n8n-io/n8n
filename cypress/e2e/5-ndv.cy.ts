@@ -1,22 +1,19 @@
-import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
+import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 
-const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('NDV', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
 
 	beforeEach(() => {
-		workflowsPage.actions.createWorkflowFromCard();
+		cy.resetAll();
+		cy.skipSetup();
+		cy.visit(workflowPage.url)
+		cy.waitForLoad();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
-
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.getters.canvasNodes().first().dblclick();
@@ -52,11 +49,12 @@ describe('NDV', () => {
 		workflowPage.getters.canvasNodes().last().dblclick();
 		ndv.getters.inputSelect().click();
 		ndv.getters.inputOption().last().click();
+		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist')
 		ndv.getters.inputDataContainer().should('contain', 'start');
 	});
 
 	it('should show correct validation state for resource locator params', () => {
-		workflowPage.actions.addNodeToCanvas('Typeform', true, false);
+		workflowPage.actions.addNodeToCanvas('Typeform', true, true);
 		ndv.getters.container().should('be.visible');
 		cy.get('.has-issues').should('have.length', 0);
 		cy.get('[class*=hasIssues]').should('have.length', 0);
