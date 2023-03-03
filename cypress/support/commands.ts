@@ -130,6 +130,10 @@ Cypress.Commands.add('interceptREST', (method, url) => {
 	cy.intercept(method, `http://localhost:5678/rest${url}`);
 });
 
+Cypress.Commands.add('generateToken', (mfaSecret: string) => {
+	return cy.task<string>('generate-otp', mfaSecret);
+})
+
 Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
 	const settingsUsersPage = new SettingsUsersPage();
 
@@ -186,6 +190,7 @@ Cypress.Commands.add('resetAll', () => {
 });
 
 Cypress.Commands.add('setupOwner', (payload) => {
+	console.log(payload);
 	cy.task('setup-owner', payload);
 });
 

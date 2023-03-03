@@ -26,6 +26,7 @@ module.exports = defineConfig({
 					}),
 				'enable-feature': (feature) =>
 					fetch(BASE_URL + `/e2e/enable-feature/${feature}`, { method: 'POST' }),
+				'generate-otp': require("cypress-otp"),
 			});
 		},
 	},

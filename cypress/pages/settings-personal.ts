@@ -1,10 +1,15 @@
 import { ChangePasswordModal } from './modals/change-password-modal';
+import { MfaSetupModal } from './modals/mfa-setup-modal';
 import { BasePage } from './base';
 
 const changePasswordModal = new ChangePasswordModal();
+const mfaSetupModal = new MfaSetupModal();
 
 export class PersonalSettingsPage extends BasePage {
 	url = '/settings/personal';
+	secret = '';
+
+
 	getters = {
 		currentUserName: () => cy.getByTestId('current-user-name'),
 		firstNameInput: () => cy.getByTestId('firstName').find('input').first(),
@@ -13,6 +18,8 @@ export class PersonalSettingsPage extends BasePage {
 		emailInput: () => cy.getByTestId('email').find('input').first(),
 		changePasswordLink: () => cy.getByTestId('change-password-link').find('a').first(),
 		saveSettingsButton: () => cy.getByTestId('save-settings-button'),
+		enableMfaButton: () => cy.getByTestId('enable-mfa-button'),
+		disableMfaButton: () => cy.getByTestId('disable-mfa-button'),
 	};
 	actions = {
 		loginAndVisit: (email: string, password: string) => {
@@ -34,7 +41,10 @@ export class PersonalSettingsPage extends BasePage {
 		},
 		tryToSetWeakPassword: (oldPassword: string, newPassword: string) => {
 			this.actions.updatePassword(oldPassword, newPassword);
-			changePasswordModal.getters.newPasswordInputContainer().find('div[class^="_errorInput"]').should('exist');
+			changePasswordModal.getters
+				.newPasswordInputContainer()
+				.find('div[class^="_errorInput"]')
+				.should('exist');
 		},
 		updateEmail: (newEmail: string) => {
 			this.getters.emailInput().type('{selectall}').type(newEmail).type('{enter}');
@@ -47,6 +57,23 @@ export class PersonalSettingsPage extends BasePage {
 			cy.signout();
 			this.actions.loginAndVisit(email, password);
 			cy.url().should('match', new RegExp(this.url));
+		},
+		enableMfa: () => {
+			cy.visit(this.url);
+			this.getters.enableMfaButton().click();
+			mfaSetupModal.getters.copySecretToClipboardButton().click();
+			mfaSetupModal.getters.secretInput().then($value => {
+				const secret = $value.text();
+				cy.generateToken(secret).then((token) => {
+					mfaSetupModal.getters.tokenInput().type(token);
+					mfaSetupModal.getters.downloadRecoveryCodesButton().click();
+					mfaSetupModal.getters.saveButton().click();
+				});
+			})
+		},
+		disableMfa: () => {
+			cy.visit(this.url);
+			this.getters.disableMfaButton().click();
 		},
 	};
 }

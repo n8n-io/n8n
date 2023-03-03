@@ -12,6 +12,9 @@ import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { UserSettings } from 'n8n-core';
+import { AES } from 'crypto-js';
+import { User } from '@/databases/entities/User';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -110,12 +113,24 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 
 	const owner = await Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 
-	await Db.collections.User.update(owner.id, {
+	const user: Partial<User> = {
 		email: req.body.email,
 		password: await hashPassword(req.body.password),
 		firstName: req.body.firstName,
 		lastName: req.body.lastName,
-	});
+	};
+
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	if (req.body.mfaSecret) {
+		user.mfaSecret = AES.encrypt(req.body.mfaSecret, encryptionKey).toString();
+	}
+
+	if (req.body.mfaRecoveryCodes) {
+		user.mfaRecoveryCodes = [AES.encrypt(req.body.mfaRecoveryCodes[0], encryptionKey).toString()];
+	}
+
+	await Db.collections.User.update(owner.id, user);
 
 	await Db.collections.Settings.update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },

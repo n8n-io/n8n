@@ -69,6 +69,7 @@
 						float="left"
 						type="tertiary"
 						:label="$locale.baseText('settings.personal.mfa.button.enabled')"
+						data-test-id="enable-mfa-button"
 						@click="onMfaEnableClick"
 					/>
 				</div>
@@ -78,6 +79,7 @@
 						float="left"
 						type="tertiary"
 						:label="$locale.baseText('settings.personal.mfa.button.disabled')"
+						data-test-id="disable-mfa-button"
 						@click="onMfaDisableClick"
 					/>
 				</div>

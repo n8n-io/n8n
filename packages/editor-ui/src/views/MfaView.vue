@@ -13,6 +13,7 @@
 			</div>
 			<div :class="[$style.formContainer, formError ? $style.formError : '']">
 				<n8n-form-inputs
+					data-test-id="mfa-login-form"
 					v-if="formInputs"
 					:inputs="formInputs"
 					:eventBus="formBus"
@@ -26,7 +27,9 @@
 						:bold="false"
 						v-if="!showRecoveryCodeForm && !formError"
 						>{{ $locale.baseText('mfa.code.input.info') }}
-						<a @click="onRecoveryCodeClick">{{
+						<a
+						data-test-id="mfa-enter-recovery-code-button"
+						@click="onRecoveryCodeClick">{{
 							$locale.baseText('mfa.code.input.info.action')
 						}}</a></n8n-text
 					>

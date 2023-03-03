@@ -34,6 +34,7 @@
     "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
+    "cypress-otp": "^1.0.3",
     "n8n": "workspace:*"
   },
   "devDependencies": {

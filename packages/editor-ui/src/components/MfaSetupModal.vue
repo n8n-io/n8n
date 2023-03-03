@@ -25,12 +25,17 @@
 								{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
 							</template>
 							<template #part2>
-								<a :class="$style.secret" @click="onCopySecretToClipboard">{{
-									$locale.baseText('mfa.setup.step1.instruction1.subtitle.part2')
-								}}</a>
+								<a
+									:class="$style.secret"
+									@click="onCopySecretToClipboard"
+									data-test-id="mfa-secret-button"
+									>{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
+								>
 							</template>
 							<template #part3>
-								<span style="display: none" ref="codeSecret">{{ secret }}</span>
+								<span data-test-id="mfa-secret-input" style="display: none" ref="codeSecret">{{
+									secret
+								}}</span>
 							</template>
 						</i18n>
 					</n8n-text>
@@ -57,6 +62,7 @@
 							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
 							@input="onInput"
 							:required="true"
+							data-test-id="mfa-token-input"
 						/>
 					</n8n-input-label>
 					<div :class="[$style.infoText, 'mt-4xs']">
@@ -93,6 +99,7 @@
 						icon="download"
 						float="right"
 						:label="$locale.baseText('mfa.setup.step2.button.download')"
+						data-test-id="mfa-recovery-codes-button"
 						@click="onDownloadClick"
 					/>
 				</div>
@@ -106,6 +113,7 @@
 						:disabled="!recoveryCodesDownloaded"
 						:label="$locale.baseText('mfa.setup.step2.button.save')"
 						size="large"
+						data-test-id="mfa-save-button"
 						@click="onSetupClick"
 					/>
 				</div>
