@@ -82,6 +82,7 @@ describe('Sharing', () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.newWorkflowButtonCard().click();
+		cy.waitForLoad();
 		workflowPage.actions.setWorkflowName('Workflow W1');
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('Notion', true, true);

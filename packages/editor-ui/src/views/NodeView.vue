@@ -2594,7 +2594,7 @@ export default mixins(
 
 			// allow to be overriden in e2e tests
 			// @ts-ignore
-			window.onBeforeUnload = (e) => {
+			window.onBeforeUnloadNodeView = (e) => {
 				if (this.isDemo) {
 					return;
 				} else if (this.uiStore.stateIsDirty) {
@@ -2608,7 +2608,7 @@ export default mixins(
 					return;
 				}
 			};
-			window.addEventListener('beforeunload', window.onBeforeUnload);
+			window.addEventListener('beforeunload', window.onBeforeUnloadNodeView);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
