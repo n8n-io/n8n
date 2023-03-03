@@ -40,12 +40,7 @@
 				<thead>
 					<tr>
 						<th>
-							<el-checkbox
-								:indeterminate="isIndeterminate"
-								v-model="checkAll"
-								@change="handleCheckAllChange"
-								label=""
-							/>
+							<el-checkbox :value="checkAll" @change="handleCheckAllChange" label="" />
 						</th>
 						<th>{{ $locale.baseText('executionsList.name') }}</th>
 						<th>{{ $locale.baseText('executionsList.startedAt') }}</th>
@@ -229,7 +224,7 @@
 			</div>
 			<div v-else :class="$style.loadedAll">{{ $locale.baseText('executionsList.loadedAll') }}</div>
 		</div>
-		<div v-if="checkAll === true || isIndeterminate === true" :class="$style.selectionOptions">
+		<div v-if="numSelected > 0" :class="$style.selectionOptions">
 			<span>
 				{{ $locale.baseText('executionsList.selected', { interpolate: { numSelected } }) }}
 			</span>
@@ -261,10 +256,9 @@ import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
-	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { IExecutionsSummary, ExecutionStatus, IDataObject } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
@@ -353,7 +347,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return this.workflowsStore.activeExecutions;
 			},
 			combinedExecutions(): IExecutionsSummary[] {
-				const returnData: IExecutionsSummary[] = [];
+				const returnData = [];
 
 				if (['ALL', 'running'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
@@ -363,22 +357,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 				return returnData;
 			},
-			combinedExecutionsCount(): number {
-				return 0 + this.activeExecutions.length + this.finishedExecutionsCount;
-			},
 			numSelected(): number {
-				if (this.checkAll) {
-					return this.finishedExecutionsCount;
-				}
-
 				return Object.keys(this.selectedItems).length;
-			},
-			isIndeterminate(): boolean {
-				if (this.checkAll) {
-					return false;
-				}
-
-				return this.numSelected > 0;
 			},
 			workflowFilterCurrent(): IDataObject {
 				const filter: IDataObject = {};
@@ -435,8 +415,13 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 			},
 			handleCheckAllChange() {
+				this.checkAll = !this.checkAll;
 				if (!this.checkAll) {
 					Vue.set(this, 'selectedItems', {});
+				} else {
+					this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+						Vue.set(this.selectedItems, execution.id, true);
+					});
 				}
 			},
 			handleCheckboxChanged(executionId: string) {
@@ -445,6 +430,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else {
 					Vue.set(this.selectedItems, executionId, true);
 				}
+				this.checkAll = Object.keys(this.selectedItems).length === this.combinedExecutions.length;
 			},
 			async handleDeleteSelected() {
 				const deleteExecutions = await this.confirmMessage(
