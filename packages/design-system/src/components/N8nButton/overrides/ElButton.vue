@@ -10,6 +10,7 @@ import N8nButton from '../Button.vue';
 
 const classToTypeMap = {
 	'btn--cancel': 'secondary',
+	'el-picker-panel__link-btn': 'secondary',
 };
 
 export default Vue.extend({
@@ -18,16 +19,24 @@ export default Vue.extend({
 	},
 	computed: {
 		attrs() {
-			let type = 'primary';
+			let type = this.$attrs.type || 'primary';
+
+			// Element UI Button can have 'text' type which is not supported by n8n-button so render it as 'secondary'
+			if (type === 'text') {
+				type = 'secondary';
+			}
+
 			Object.entries(classToTypeMap).forEach(([className, mappedType]) => {
 				if (this.$refs.button && (this.$refs.button as Vue).$el.classList.contains(className)) {
 					type = mappedType;
 				}
 			});
 
+			delete this.$attrs.type;
+
 			return {
-				type,
 				...this.$attrs,
+				type,
 			};
 		},
 	},
