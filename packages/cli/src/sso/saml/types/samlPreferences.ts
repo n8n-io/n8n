@@ -1,8 +1,29 @@
-import type { SamlAttributeMapping } from './samlAttributeMapping';
+import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import { SamlLoginBinding } from '.';
+import { SamlAttributeMapping } from './samlAttributeMapping';
 
-export interface SamlPreferences {
-	mapping: SamlAttributeMapping;
-	metadata: string;
-	loginEnabled: boolean;
-	loginLabel: string;
+export class SamlPreferences {
+	@IsObject()
+	@IsOptional()
+	mapping?: SamlAttributeMapping;
+
+	@IsString()
+	@IsOptional()
+	metadata?: string;
+
+	@IsString()
+	@IsOptional()
+	metadataUrl?: string;
+
+	@IsString()
+	@IsOptional()
+	loginBinding?: SamlLoginBinding = 'redirect';
+
+	@IsBoolean()
+	@IsOptional()
+	loginEnabled?: boolean;
+
+	@IsString()
+	@IsOptional()
+	loginLabel?: string;
 }
