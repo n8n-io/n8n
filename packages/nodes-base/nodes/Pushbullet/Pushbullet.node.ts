@@ -416,7 +416,7 @@ export class Pushbullet implements INodeType {
 							if (items[i].binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -436,7 +436,7 @@ export class Pushbullet implements INodeType {
 							});
 
 							//upload the file
-							await pushbulletApiRequest.call(this, 'POST', '', {}, {}, uploadUrl, {
+							await pushbulletApiRequest.call(this, 'POST', '', {}, {}, uploadUrl as string, {
 								formData: {
 									file: {
 										value: dataBuffer,
@@ -504,7 +504,7 @@ export class Pushbullet implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

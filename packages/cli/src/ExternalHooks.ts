@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
+import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type {
 	IExternalHooksClass,
@@ -10,7 +11,8 @@ import type {
 
 import config from '@/config';
 
-class ExternalHooksClass implements IExternalHooksClass {
+@Service()
+export class ExternalHooks implements IExternalHooksClass {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};
@@ -102,15 +104,4 @@ class ExternalHooksClass implements IExternalHooksClass {
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
 	}
-}
-
-let externalHooksInstance: ExternalHooksClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function ExternalHooks(): ExternalHooksClass {
-	if (externalHooksInstance === undefined) {
-		externalHooksInstance = new ExternalHooksClass();
-	}
-
-	return externalHooksInstance;
 }

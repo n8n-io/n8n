@@ -40,10 +40,7 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	WorkflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-	WorkflowPage.getters.workflowNameInput().should('be.disabled');
-	WorkflowPage.getters.workflowNameInput().parent().click();
-	WorkflowPage.getters.workflowNameInput().should('be.enabled');
-	WorkflowPage.getters.workflowNameInput().clear().type(workflowName).type('{enter}');
+	WorkflowPage.actions.setWorkflowName(workflowName);
 
 	WorkflowPage.getters.saveButton().should('contain', 'Saved');
 });
@@ -209,9 +206,8 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 		);
 	}
 });
-Cypress.Commands.add('readClipboard', () =>
-	cy.window().its('navigator.clipboard').invoke('readText'),
-);
+
+Cypress.Commands.add('readClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()))
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event

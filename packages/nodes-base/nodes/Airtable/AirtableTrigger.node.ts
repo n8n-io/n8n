@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { IRecord } from './GenericFunctions';
 import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 import moment from 'moment';
@@ -163,6 +164,7 @@ export class AirtableTrigger implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 						description:
@@ -244,7 +246,11 @@ export class AirtableTrigger implements INodeType {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
 					',',
 				);
-				const data = await downloadRecordAttachments.call(this, records, downloadFieldNames);
+				const data = await downloadRecordAttachments.call(
+					this,
+					records as IRecord[],
+					downloadFieldNames,
+				);
 				return [data];
 			}
 

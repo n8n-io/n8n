@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 async function getMetadata(
@@ -51,7 +51,7 @@ export async function mailchimpApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -78,7 +78,7 @@ export async function mailchimpApiRequest(
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -100,7 +100,7 @@ export async function mailchimpApiRequestAllItems(
 
 	do {
 		responseData = await mailchimpApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 

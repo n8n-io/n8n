@@ -1,87 +1,7 @@
 import { ExpressionError, ExpressionExtensionError } from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
-import { compact as oCompact, merge as oMerge } from './ObjectExtensions';
-
-function deepCompare(left: unknown, right: unknown): boolean {
-	if (left === right) {
-		return true;
-	}
-
-	// Check to see if they're the basic type
-	if (typeof left !== typeof right) {
-		return false;
-	}
-
-	if (typeof left === 'number' && isNaN(left) && isNaN(right as number)) {
-		return true;
-	}
-
-	// Explicitly return false if certain primitives don't equal each other
-	if (['number', 'string', 'bigint', 'boolean', 'symbol'].includes(typeof left) && left !== right) {
-		return false;
-	}
-
-	// Quickly check how many properties each has to avoid checking obviously mismatching
-	// objects
-	if (Object.keys(left as object).length !== Object.keys(right as object).length) {
-		return false;
-	}
-
-	// Quickly check if they're arrays
-	if (Array.isArray(left) !== Array.isArray(right)) {
-		return false;
-	}
-
-	// Check if arrays are equal, ordering is important
-	if (Array.isArray(left)) {
-		if (left.length !== (right as unknown[]).length) {
-			return false;
-		}
-		return left.every((v, i) => deepCompare(v, (right as object[])[i]));
-	}
-
-	// Check right first quickly. This is to see if we have mismatched properties.
-	// We'll check the left more indepth later to cover all our bases.
-	for (const key in right as object) {
-		if ((left as object).hasOwnProperty(key) !== (right as object).hasOwnProperty(key)) {
-			return false;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		} else if (typeof (left as any)[key] !== typeof (right as any)[key]) {
-			return false;
-		}
-	}
-
-	// Check left more in depth
-	for (const key in left as object) {
-		if ((left as object).hasOwnProperty(key) !== (right as object).hasOwnProperty(key)) {
-			return false;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		} else if (typeof (left as any)[key] !== typeof (right as any)[key]) {
-			return false;
-		}
-
-		if (
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			typeof (left as any)[key] === 'object'
-		) {
-			if (
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-				(left as any)[key] !== (right as any)[key] &&
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-				!deepCompare((left as any)[key], (right as any)[key])
-			) {
-				return false;
-			}
-		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			if ((left as any)[key] !== (right as any)[key]) {
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
+import { compact as oCompact } from './ObjectExtensions';
+import deepEqual from 'deep-equal';
 
 function first(value: unknown[]): unknown {
 	return value[0];
@@ -103,18 +23,26 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionError('arguments must be passed to pluck');
 	}
-	const fieldsToPluck = extraArgs;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return (value as any[]).map((element: object) => {
-		const entries = Object.entries(element);
-		return entries.reduce((p, c) => {
-			const [key, val] = c as [string, Date | string | number];
-			if (fieldsToPluck.includes(key)) {
-				Object.assign(p, { [key]: val });
+	if (!extraArgs || extraArgs.length === 0) {
+		return value;
+	}
+	const plucked = value.reduce<unknown[]>((pluckedFromObject, current) => {
+		if (current && typeof current === 'object') {
+			const p: unknown[] = [];
+			Object.keys(current).forEach((k) => {
+				extraArgs.forEach((field: string) => {
+					if (current && field === k) {
+						p.push((current as { [key: string]: unknown })[k]);
+					}
+				});
+			});
+			if (p.length > 0) {
+				pluckedFromObject.push(p.length === 1 ? p[0] : p);
 			}
-			return p;
-		}, {});
-	}) as unknown[];
+		}
+		return pluckedFromObject;
+	}, new Array<unknown>());
+	return plucked;
 }
 
 function randomItem(value: unknown[]): unknown {
@@ -127,8 +55,13 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		return value.reduce<unknown[]>((l, v) => {
 			if (typeof v === 'object' && v !== null && extraArgs.every((i) => i in v)) {
 				const alreadySeen = l.find((i) =>
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-					extraArgs.every((j) => deepCompare((i as any)[j], (v as any)[j])),
+					extraArgs.every((j) =>
+						deepEqual(
+							(i as Record<string, unknown>)[j],
+							(v as Record<string, unknown>, { strict: true })[j],
+							{ strict: true },
+						),
+					),
 				);
 				if (!alreadySeen) {
 					l.push(v);
@@ -138,7 +71,7 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 		}, []);
 	}
 	return value.reduce<unknown[]>((l, v) => {
-		if (l.findIndex((i) => deepCompare(i, v)) === -1) {
+		if (l.findIndex((i) => deepEqual(i, v, { strict: true })) === -1) {
 			l.push(v);
 		}
 		return l;
@@ -281,28 +214,58 @@ function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 	});
 }
 
-function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
+function mergeObjects(value: Record<string, unknown>, extraArgs: unknown[]): unknown {
+	const [other] = extraArgs;
+
+	if (!other) {
+		return value;
+	}
+
+	if (typeof other !== 'object') {
+		throw new ExpressionExtensionError('merge(): expected object arg');
+	}
+
+	const newObject = { ...value };
+	for (const [key, val] of Object.entries(other)) {
+		if (!(key in newObject)) {
+			newObject[key] = val;
+		}
+	}
+	return newObject;
+}
+
+function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	const [others] = extraArgs;
+
+	if (others === undefined) {
+		// If there are no arguments passed, merge all objects within the array
+		const merged = value.reduce((combined, current) => {
+			if (current !== null && typeof current === 'object' && !Array.isArray(current)) {
+				combined = mergeObjects(combined as Record<string, unknown>, [current]);
+			}
+			return combined;
+		}, {});
+		return merged;
+	}
+
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
 			'merge(): expected array arg, e.g. .merge([{ id: 1, otherValue: 3 }])',
 		);
 	}
 	const listLength = value.length > others.length ? value.length : others.length;
-	const newList = new Array(listLength);
+	let merged = {};
 	for (let i = 0; i < listLength; i++) {
 		if (value[i] !== undefined) {
 			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				newList[i] = oMerge(value[i] as object, [others[i]]);
-			} else {
-				newList[i] = value[i];
+				merged = Object.assign(
+					merged,
+					mergeObjects(value[i] as Record<string, unknown>, [others[i]]),
+				);
 			}
-		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			newList[i] = others[i];
 		}
 	}
-	return newList;
+	return merged;
 }
 
 function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
@@ -312,7 +275,8 @@ function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
-		if (newArr.findIndex((w) => deepCompare(w, v)) === -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (newArr.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -328,7 +292,7 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		if (others.findIndex((w) => deepCompare(w, v)) === -1) {
+		if (others.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
 			newArr.push(v);
 		}
 	}
@@ -344,12 +308,13 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		if (others.findIndex((w) => deepCompare(w, v)) !== -1) {
+		if (others.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
 			newArr.push(v);
 		}
 	}
 	for (const v of others) {
-		if (value.findIndex((w) => deepCompare(w, v)) !== -1) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (value.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
 			newArr.push(v);
 		}
 	}
@@ -358,120 +323,193 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 
 average.doc = {
 	name: 'average',
-	description: 'Returns the mean average of all values in the array',
+	description: 'Returns the mean average of all values in the array.',
 	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-average',
 };
 
 compact.doc = {
 	name: 'compact',
-	description: 'Removes all empty values from the array',
-	returnType: 'array',
+	description: 'Removes all empty values from the array.',
+	returnType: 'Array',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-compact',
 };
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Checks if the array doesn’t have any elements',
+	description: 'Checks if the array doesn’t have any elements.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
-	description: 'Checks if the array has elements',
+	description: 'Checks if the array has elements.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-isNotEmpty',
 };
 
 first.doc = {
 	name: 'first',
-	description: 'Returns the first element of the array',
-	returnType: 'array item',
+	description: 'Returns the first element of the array.',
+	returnType: 'Element',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-first',
 };
 
 last.doc = {
 	name: 'last',
-	description: 'Returns the last element of the array',
-	returnType: 'array item',
+	description: 'Returns the last element of the array.',
+	returnType: 'Element',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-last',
 };
 
 max.doc = {
 	name: 'max',
-	description: 'Gets the maximum value from a number-only array',
+	description: 'Gets the maximum value from a number-only array.',
 	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-max',
 };
 
 min.doc = {
 	name: 'min',
-	description: 'Gets the minimum value from a number-only array',
+	description: 'Gets the minimum value from a number-only array.',
 	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-min',
 };
 
 randomItem.doc = {
 	name: 'randomItem',
-	description: 'Returns a random element from an array',
-	returnType: 'number',
+	description: 'Returns a random element from an array.',
+	returnType: 'Element',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-randomItem',
 };
 
 sum.doc = {
 	name: 'sum',
-	description: 'Returns the total sum all the values in an array of parsable numbers',
+	description: 'Returns the total sum all the values in an array of parsable numbers.',
 	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-sum',
 };
-
-// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 chunk.doc = {
 	name: 'chunk',
-	returnType: 'array',
+	description: 'Splits arrays into chunks with a length of `size`.',
+	returnType: 'Array',
+	args: [{ name: 'size', type: 'number' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-chunk',
 };
 
 difference.doc = {
 	name: 'difference',
-	returnType: 'array',
+	description:
+		'Compares two arrays. Returns all elements in the base array that aren’t present in `arr`.',
+	returnType: 'Array',
+	args: [{ name: 'arr', type: 'Array' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-difference',
 };
 
 intersection.doc = {
 	name: 'intersection',
-	returnType: 'array',
+	description:
+		'Compares two arrays. Returns all elements in the base array that are present in `arr`.',
+	returnType: 'Array',
+	args: [{ name: 'arr', type: 'Array' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-intersection',
 };
 
 merge.doc = {
 	name: 'merge',
+	description:
+		'Merges two Object-arrays into one array by merging the key-value pairs of each element.',
 	returnType: 'array',
+	args: [{ name: 'arr', type: 'Array' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-merge',
 };
 
 pluck.doc = {
 	name: 'pluck',
-	returnType: 'array',
+	description: 'Returns an array of Objects where the key is equal the given `fieldName`s.',
+	returnType: 'Array',
+	args: [
+		{ name: 'fieldName1', type: 'string' },
+		{ name: 'fieldName1?', type: 'string' },
+		{ name: '...' },
+		{ name: 'fieldNameN?', type: 'string' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-pluck',
 };
 
 renameKeys.doc = {
 	name: 'renameKeys',
-	returnType: 'array',
+	description: 'Renames all matching keys in the array.',
+	returnType: 'Array',
+	args: [
+		{ name: 'from1', type: 'string' },
+		{ name: 'to1', type: 'string' },
+		{ name: 'from2?', type: 'string' },
+		{ name: 'to2?', type: 'string' },
+		{ name: '...' },
+		{ name: 'fromN?', type: 'string' },
+		{ name: 'toN?', type: 'string' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-renameKeys',
 };
 
 smartJoin.doc = {
 	name: 'smartJoin',
-	returnType: 'array',
+	description:
+		'Operates on an array of objects where each object contains key-value pairs. Creates a new object containing key-value pairs, where the key is the value of the first pair, and the value is the value of the second pair. Removes non-matching and empty values and trims any whitespace before joining.',
+	returnType: 'Array',
+	args: [
+		{ name: 'keyField', type: 'string' },
+		{ name: 'nameField', type: 'string' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-smartJoin',
 };
 
 union.doc = {
 	name: 'union',
-	returnType: 'array',
+	description: 'Concatenates two arrays and then removes duplicates.',
+	returnType: 'Array',
+	args: [{ name: 'arr', type: 'Array' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-union',
 };
 
 unique.doc = {
 	name: 'unique',
-	returnType: 'array item',
+	description: 'Remove duplicates from an array. ',
+	returnType: 'Element',
 	aliases: ['removeDuplicates'],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/arrays/#array-unique',
 };
 
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
 		removeDuplicates: unique,
+		unique,
 		first,
 		last,
 		pluck,
-		unique,
 		randomItem,
 		sum,
 		min,

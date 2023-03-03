@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { payPalApiRequest, upperFist } from './GenericFunctions';
@@ -72,10 +73,10 @@ export class PayPalTrigger implements INodeType {
 					const endpoint = '/notifications/webhooks-event-types';
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				for (const event of events.event_types) {
-					const eventName = upperFist(event.name);
+					const eventName = upperFist(event.name as string);
 					const eventId = event.name;
 					const eventDescription = event.description;
 
@@ -90,7 +91,6 @@ export class PayPalTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -108,7 +108,7 @@ export class PayPalTrigger implements INodeType {
 						delete webhookData.webhookId;
 						return false;
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				return true;
 			},
@@ -167,7 +167,7 @@ export class PayPalTrigger implements INodeType {
 		// if sanbox omit verification
 		if (env === 'sanbox') {
 			return {
-				workflowData: [this.helpers.returnJsonArray(req.body)],
+				workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 			};
 		}
 
@@ -199,7 +199,7 @@ export class PayPalTrigger implements INodeType {
 			return {};
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

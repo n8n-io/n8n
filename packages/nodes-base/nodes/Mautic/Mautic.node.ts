@@ -569,10 +569,10 @@ export class Mautic implements INodeType {
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 							if (responseData.errors) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 							responseData = responseData.companies;
-							responseData = Object.values(responseData);
+							responseData = Object.values(responseData as IDataObject[]);
 						}
 						if (simple) {
 							//@ts-ignore
@@ -856,10 +856,10 @@ export class Mautic implements INodeType {
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 							if (responseData.errors) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 							responseData = responseData.contacts;
-							responseData = Object.values(responseData);
+							responseData = Object.values(responseData as IDataObject[]);
 						}
 						if (options.rawData === false) {
 							//@ts-ignore
@@ -1017,7 +1017,7 @@ export class Mautic implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

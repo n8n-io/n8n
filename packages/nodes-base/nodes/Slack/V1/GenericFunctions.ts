@@ -5,7 +5,7 @@ import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions 
 import type { IDataObject, IOAuth2Options, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import _ from 'lodash';
+import get from 'lodash.get';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -98,10 +98,10 @@ export async function slackApiRequestAllItems(
 		query.limit = 100;
 	}
 	do {
-		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
-		query.cursor = _.get(responseData, 'response_metadata.next_cursor');
+		responseData = await slackApiRequest.call(this, method, endpoint, body as IDataObject, query);
+		query.cursor = get(responseData, 'response_metadata.next_cursor');
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (
 		(responseData.response_metadata?.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&

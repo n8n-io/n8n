@@ -1,22 +1,6 @@
 import { ExpressionExtensionError } from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 
-export function merge(value: object, extraArgs: unknown[]): unknown {
-	const [other] = extraArgs;
-	if (typeof other !== 'object' || !other) {
-		throw new ExpressionExtensionError('merge(): expected object arg');
-	}
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const newObject: any = { ...value };
-	for (const [key, val] of Object.entries(other)) {
-		if (!(key in newObject)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-			newObject[key] = val;
-		}
-	}
-	return newObject;
-}
-
 function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;
 }
@@ -43,8 +27,8 @@ function removeField(value: object, extraArgs: string[]): object {
 
 function removeFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
-	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('removeFieldsContaining(): expected string arg');
+	if (typeof match !== 'string' || match === '') {
+		throw new ExpressionExtensionError('removeFieldsContaining(): expected non-empty string arg');
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
@@ -58,12 +42,14 @@ function removeFieldsContaining(value: object, extraArgs: string[]): object {
 
 function keepFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
-	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('argument of keepFieldsContaining must be a string');
+	if (typeof match !== 'string' || match === '') {
+		throw new ExpressionExtensionError(
+			'argument of keepFieldsContaining must be a non-empty string',
+		);
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
-		if (typeof val === 'string' && !val.includes(match)) {
+		if (typeof val !== 'string' || (typeof val === 'string' && !val.includes(match))) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
 			delete (newObject as any)[key];
 		}
@@ -96,53 +82,71 @@ export function urlEncode(value: object) {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Checks if the Object has no key-value pairs',
+	description: 'Checks if the Object has no key-value pairs.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
-	description: 'Checks if the Object has key-value pairs',
+	description: 'Checks if the Object has key-value pairs.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-isNotEmpty',
 };
 
 compact.doc = {
 	name: 'compact',
-	description: 'Removes empty values from an Object',
+	description: 'Removes empty values from an Object.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-compact',
 };
 
 urlEncode.doc = {
 	name: 'urlEncode',
 	description: 'Transforms an Object into a URL parameter list. Only top-level keys are supported.',
 	returnType: 'string',
-};
-
-// @TODO_NEXT_PHASE: Surface extensions below which take args
-
-merge.doc = {
-	name: 'merge',
-	returnType: 'object',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-urlEncode',
 };
 
 hasField.doc = {
 	name: 'hasField',
+	description: 'Checks if the Object has a given field. Only top-level keys are supported.',
 	returnType: 'boolean',
+	args: [{ name: 'fieldName', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-hasField',
 };
 
 removeField.doc = {
 	name: 'removeField',
+	description: 'Removes a given field from the Object. Only top-level fields are supported.',
 	returnType: 'object',
+	args: [{ name: 'key', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-removeField',
 };
 
 removeFieldsContaining.doc = {
 	name: 'removeFieldsContaining',
+	description:
+		'Removes fields with a given value from the Object. Only top-level values are supported.',
 	returnType: 'object',
+	args: [{ name: 'value', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-removeFieldsContaining',
 };
 
 keepFieldsContaining.doc = {
 	name: 'keepFieldsContaining',
+	description: 'Removes fields that do not match the given value from the Object.',
 	returnType: 'object',
+	args: [{ name: 'value', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-keepFieldsContaining',
 };
 
 export const objectExtensions: ExtensionMap = {
@@ -150,7 +154,6 @@ export const objectExtensions: ExtensionMap = {
 	functions: {
 		isEmpty,
 		isNotEmpty,
-		merge,
 		hasField,
 		removeField,
 		removeFieldsContaining,
