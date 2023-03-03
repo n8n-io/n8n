@@ -14,7 +14,9 @@
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
 				@input="onInput"
-			/>
+			>
+				<SSOLogin v-if="withSso" />
+			</n8n-form-box>
 		</div>
 	</div>
 </template>
@@ -22,12 +24,14 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import Logo from '../components/Logo.vue';
+import Logo from '@/components/Logo.vue';
+import SSOLogin from '@/components/SSOLogin.vue';
 
 export default Vue.extend({
 	name: 'AuthView',
 	components: {
 		Logo,
+		SSOLogin,
 	},
 	props: {
 		form: {},
@@ -37,6 +41,10 @@ export default Vue.extend({
 		},
 		subtitle: {
 			type: String,
+		},
+		withSso: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	methods: {
