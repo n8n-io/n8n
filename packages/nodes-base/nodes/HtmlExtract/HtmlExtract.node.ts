@@ -271,13 +271,13 @@ export class HtmlExtract implements INodeType {
 						},
 					};
 
-					// Itterate over all the defined values which should be extracted
+					// Iterate over all the defined values which should be extracted
 					let htmlElement;
 					for (const valueData of extractionValues.values as IValueData[]) {
 						htmlElement = $(valueData.cssSelector);
 
 						if (valueData.returnArray) {
-							// An array should be returned so itterate over one
+							// An array should be returned so iterate over one
 							// value at a time
 							newItem.json[valueData.key] = [];
 							htmlElement.each((i, el) => {
