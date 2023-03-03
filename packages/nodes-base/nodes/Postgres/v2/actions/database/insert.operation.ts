@@ -37,6 +37,19 @@ const properties: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
+		displayName: `
+		In this mode, make sure incoming data fields are named the same as the columns in your table. Use a 'Set' node before this node to change them if required.
+		`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				dataMode: ['autoMapInputData'],
+			},
+		},
+	},
+	{
 		displayName: 'Values to Send',
 		name: 'valuesToSend',
 		placeholder: 'Add Value',

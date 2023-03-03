@@ -39,23 +39,23 @@ export const optionsCollection: INodeProperties = {
 				{
 					name: 'Multiple Queries',
 					value: 'multiple',
-					description: '<b>Default</b>. Sends multiple queries at once to database.',
+					description: 'A single query for all incoming items',
 				},
 				{
 					name: 'Independently',
 					value: 'independently',
-					description: 'Execute each query independently',
+					description: 'Execute one query per incoming item',
 				},
 				{
 					name: 'Transaction',
 					value: 'transaction',
 					description:
-						'Executes all queries in a transaction, in case any of them fails, all changes would be rolled back',
+						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
 				},
 			],
 			default: 'multiple',
 			description:
-				'The way queries should be sent to database.<a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>',
+				'The way queries should be sent to the database. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>.',
 		},
 		{
 			displayName: 'Output Large-Format Numbers As',
@@ -123,7 +123,7 @@ export const tableRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'The table where to insert data to',
+	description: 'The table you want to work on',
 	modes: [
 		{
 			displayName: 'From List',
@@ -142,14 +142,15 @@ export const tableRLC: INodeProperties = {
 };
 
 export const whereFixedCollection: INodeProperties = {
-	displayName: 'Where',
+	displayName: 'Select Rows',
 	name: 'where',
 	type: 'fixedCollection',
 	typeOptions: {
 		multipleValues: true,
 	},
-	placeholder: 'Add Where Clause',
+	placeholder: 'Add Condition',
 	default: {},
+	description: 'If not set, all rows will be selected',
 	options: [
 		{
 			displayName: 'Values',
@@ -163,13 +164,14 @@ export const whereFixedCollection: INodeProperties = {
 					description:
 						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 					default: '',
+					placeholder: 'e.g. ID',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
 						loadOptionsDependsOn: ['schema.value', 'table.value'],
 					},
 				},
 				{
-					displayName: 'Condition',
+					displayName: 'Operator',
 					name: 'condition',
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
@@ -214,6 +216,7 @@ export const whereFixedCollection: INodeProperties = {
 					name: 'value',
 					type: 'string',
 					default: '',
+					placeholder: 'e.g. 1234',
 					displayOptions: {
 						show: {
 							condition: ['equal', '!='],

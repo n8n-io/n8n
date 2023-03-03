@@ -15,30 +15,25 @@ const properties: INodeProperties[] = [
 		name: 'query',
 		type: 'string',
 		default: '',
-		placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
+		placeholder: 'e.g. SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 		required: true,
 		description:
-			"The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with 'Query Values Replacement'.",
+			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+		typeOptions: {
+			rows: 3,
+		},
 	},
 	{
-		displayName: `
-		You can use <strong>Query Values Replacement</strong> to map values in <strong>Query</strong>, to reference first value use $1,to reference second $2 and so on, if value is SQL name or identifier add :name or ~,<br/>
-		e.g. SELECT * FROM $1:name WHERE id = $2;`,
-		name: 'notice',
-		type: 'notice',
-		default: '',
-	},
-	{
-		displayName: 'Query Values Replacement',
+		displayName: 'Query Parameters',
 		name: 'queryReplacement',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
 		default: [],
-		placeholder: 'Add Value',
+		placeholder: 'Add Query Parameter',
 		description:
-			'Value has to be of type number, bigint, string, boolean, Date and null, types Array and Object will be converted to string',
+			'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
 		options: [
 			{
 				displayName: 'Values',
@@ -49,10 +44,19 @@ const properties: INodeProperties[] = [
 						name: 'value',
 						type: 'string',
 						default: '',
+						placeholder: 'e.g. queryParamValue',
 					},
 				],
 			},
 		],
+	},
+	{
+		displayName: `
+		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters">More info</a>.
+		`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
 	},
 	optionsCollection,
 ];

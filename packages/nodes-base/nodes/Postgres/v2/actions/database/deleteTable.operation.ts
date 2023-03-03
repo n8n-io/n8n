@@ -33,20 +33,18 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Truncate',
 				value: 'truncate',
-				description:
-					"Truncate command only removes the table's data and preserves the table's structure",
+				description: "Only removes the table's data and preserves the table's structure",
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description:
-					"Delete rows that satisfy the 'Where' clause from the table. If the 'Where' clause is absent, the effect is to delete all rows in the table.",
+					"Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted.",
 			},
 			{
 				name: 'Drop',
 				value: 'drop',
-				description:
-					"Drop command not only deletes the table's data but also deletes the table's structure permanently",
+				description: "Deletes the table's data and also the table's structure permanently",
 			},
 		],
 	},
@@ -55,8 +53,7 @@ const properties: INodeProperties[] = [
 		name: 'restartSequences',
 		type: 'boolean',
 		default: false,
-		description:
-			'Whether to restart sequences owned by columns of the truncated table, default false',
+		description: 'Whether to reset identity (auto-increment) columns to their initial values',
 		displayOptions: {
 			show: {
 				deleteCommand: ['truncate'],
