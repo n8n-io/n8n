@@ -190,7 +190,17 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		const loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		let loader: PackageDirectoryLoader;
+		try {
+			loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		} catch (error) {
+			// Remove this package since loading it failed
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await executeCommand(removeCommand);
+			} catch (_) {}
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+		}
 
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
@@ -254,7 +264,17 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		const loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		let loader: PackageDirectoryLoader;
+		try {
+			loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		} catch (error) {
+			// Remove this package since loading it failed
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await executeCommand(removeCommand);
+			} catch (_) {}
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+		}
 
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB

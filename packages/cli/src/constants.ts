@@ -45,6 +45,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_NOT_FOUND: 'Package not found in npm',
 	PACKAGE_VERSION_NOT_FOUND: 'The specified package version was not found',
 	PACKAGE_DOES_NOT_CONTAIN_NODES: 'The specified package does not contain any nodes',
+	PACKAGE_LOADING_FAILED: 'The specified package could not be loaded',
 	DISK_IS_FULL: 'There appears to be insufficient disk space',
 };
 

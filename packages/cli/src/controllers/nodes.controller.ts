@@ -125,7 +125,10 @@ export class NodesController {
 				failure_reason: errorMessage,
 			});
 
-			const message = [`Error loading package "${name}"`, errorMessage].join(':');
+			let message = [`Error loading package "${name}" `, errorMessage].join(':');
+			if (error instanceof Error && error.cause instanceof Error) {
+				message += `\nCause: ${error.cause.message}`;
+			}
 
 			const clientError = error instanceof Error ? isClientError(error) : false;
 			throw new (clientError ? BadRequestError : InternalServerError)(message);
