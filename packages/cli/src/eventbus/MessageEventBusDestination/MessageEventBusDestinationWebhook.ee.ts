@@ -173,9 +173,9 @@ export class MessageEventBusDestinationWebhook
 			acc: Promise<{ [key: string]: any }>,
 			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 		) => {
-			const acumulator = await acc;
-			acumulator[cur.name] = cur.value;
-			return acumulator;
+			const accumulator = await acc;
+			accumulator[cur.name] = cur.value;
+			return accumulator;
 		};
 
 		// Get parameters defined in the UI
