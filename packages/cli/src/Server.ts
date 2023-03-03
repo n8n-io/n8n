@@ -59,7 +59,6 @@ import config from '@/config';
 import * as Queue from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
@@ -85,6 +84,7 @@ import {
 	AuthController,
 	LdapController,
 	MeController,
+	NodesController,
 	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
@@ -401,6 +401,12 @@ class Server extends AbstractServer {
 			controllers.push(new LdapController(service, sync, internalHooks));
 		}
 
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			controllers.push(
+				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			);
+		}
+
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
@@ -485,13 +491,6 @@ class Server extends AbstractServer {
 		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Packages and nodes management
-		// ----------------------------------------
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
 
 		// ----------------------------------------
 		// Workflow

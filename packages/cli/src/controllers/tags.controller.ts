@@ -1,10 +1,7 @@
-/* eslint-disable @typescript-eslint/no-shadow */
-import type { RequestHandler } from 'express';
-import { Request } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import type { Repository } from 'typeorm';
 import type { Config } from '@/config';
-import config from '@/config';
-import { Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
 import { TagEntity } from '@db/entities/TagEntity';
 import { getTagsWithCountDb } from '@/TagHelpers';
@@ -12,14 +9,7 @@ import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
 
-// TODO: convert this into a decorator `@IfEnabled('workflowTagsDisabled')`
-const workflowsEnabledMiddleware: RequestHandler = (req, res, next) => {
-	if (config.getEnv('workflowTagsDisabled'))
-		throw new BadRequestError('Workflow tags are disabled');
-	next();
-};
-
-@RestController('/tags', workflowsEnabledMiddleware)
+@RestController('/tags')
 export class TagsController {
 	private config: Config;
 
@@ -39,6 +29,14 @@ export class TagsController {
 		this.config = config;
 		this.externalHooks = externalHooks;
 		this.tagsRepository = repositories.Tag;
+	}
+
+	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
+	@Middleware()
+	workflowsEnabledMiddleware(req: Request, res: Response, next: NextFunction) {
+		if (this.config.getEnv('workflowTagsDisabled'))
+			throw new BadRequestError('Workflow tags are disabled');
+		next();
 	}
 
 	// Retrieves all tags, with or without usage count
