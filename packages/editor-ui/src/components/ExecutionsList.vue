@@ -450,11 +450,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = true;
 
 				const sendData: IExecutionDeleteFilter = {};
-				if (this.checkAll) {
-					sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
-				} else {
-					sendData.ids = Object.keys(this.selectedItems);
-				}
+				sendData.ids = Object.keys(this.selectedItems);
 
 				sendData.filters = this.workflowFilterPast;
 
