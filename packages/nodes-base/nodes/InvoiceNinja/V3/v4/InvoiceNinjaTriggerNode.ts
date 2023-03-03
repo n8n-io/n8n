@@ -102,7 +102,7 @@ export const InvoiceNinjaTriggerV4 = {
 					}
 
 					// Remove from the static workflow data so this it is clear
-					// this no webhooks are registred anymore
+					// this no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
