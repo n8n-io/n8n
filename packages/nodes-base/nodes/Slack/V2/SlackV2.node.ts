@@ -1,5 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
+import type { Readable } from 'stream';
 
 import type {
 	IDataObject,
@@ -1072,18 +1073,21 @@ export class SlackV2 implements INodeType {
 									{ itemIndex: i },
 								);
 							}
-							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-								i,
-								binaryPropertyName,
-							);
+							let uploadData: Buffer | Readable;
+							const itemBinaryData = items[i].binary![binaryPropertyName];
+							if (itemBinaryData.id) {
+								uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+							} else {
+								uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+							}
 							body.file = {
 								//@ts-ignore
-								value: binaryDataBuffer,
+								value: uploadData,
 								options: {
 									//@ts-ignore
-									filename: items[i].binary[binaryPropertyName].fileName,
+									filename: itemBinaryData.fileName,
 									//@ts-ignore
-									contentType: items[i].binary[binaryPropertyName].mimeType,
+									contentType: itemBinaryData.mimeType,
 								},
 							};
 							responseData = await slackApiRequest.call(
