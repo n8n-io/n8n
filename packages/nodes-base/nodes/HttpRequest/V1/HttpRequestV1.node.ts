@@ -611,22 +611,22 @@ export class HttpRequestV1 implements INodeType {
 
 		try {
 			httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			oAuth1Api = await this.getCredentials('oAuth1Api');
-		} catch (_) {}
+		} catch {}
 		try {
 			oAuth2Api = await this.getCredentials('oAuth2Api');
-		} catch (_) {}
+		} catch {}
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
