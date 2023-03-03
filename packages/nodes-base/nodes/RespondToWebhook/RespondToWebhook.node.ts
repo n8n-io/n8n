@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
-
+import { BINARY_ENCODING } from 'n8n-core';
+import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IN8nHttpFullResponse,
@@ -236,10 +237,12 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const binaryData = item.binary[responseBinaryPropertyName];
-			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-				0,
-				responseBinaryPropertyName,
-			);
+			let uploadData: Buffer | Readable;
+			if (binaryData.id) {
+				uploadData = this.helpers.getBinaryStream(binaryData.id);
+			} else {
+				uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
+			}
 
 			if (binaryData === undefined) {
 				throw new NodeOperationError(
@@ -251,7 +254,7 @@ export class RespondToWebhook implements INodeType {
 			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
-			responseBody = binaryDataBuffer;
+			responseBody = uploadData;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(
 				this.getNode(),
