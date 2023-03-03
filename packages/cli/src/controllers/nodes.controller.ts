@@ -109,7 +109,7 @@ export class NodesController {
 
 		let installedPackage: InstalledPackages;
 		try {
-			installedPackage = await this.loadNodesAndCredentials.loadNpmModule(
+			installedPackage = await this.loadNodesAndCredentials.installNpmModule(
 				parsed.packageName,
 				parsed.version,
 			);

@@ -1,4 +1,5 @@
 import uniq from 'lodash.uniq';
+import glob from 'fast-glob';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -18,7 +19,7 @@ import type {
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { createWriteStream } from 'fs';
-import { access as fsAccess, mkdir, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -52,6 +53,8 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 	logger: ILogger;
 
+	private downloadFolder: string;
+
 	async init() {
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
@@ -61,8 +64,10 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		if (!inTest) module.constructor._initPaths();
 
+		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
+
 		await this.loadNodesFromBasePackages();
-		await this.loadNodesFromDownloadedPackages();
+		await this.loadNodesFromInstalledPackages();
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
 		this.injectCustomApiCallOptions();
@@ -113,23 +118,20 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await this.runDirectoryLoader(LazyPackageDirectoryLoader, NODES_BASE_DIR);
 	}
 
-	private async loadNodesFromDownloadedPackages(): Promise<void> {
-		const nodePackages = [];
-		try {
-			// Read downloaded nodes and credentials
-			const downloadedNodesDir = UserSettings.getUserN8nFolderDownloadedNodesPath();
-			const downloadedNodesDirModules = path.join(downloadedNodesDir, 'node_modules');
-			await fsAccess(downloadedNodesDirModules);
-			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesDirModules);
-			nodePackages.push(...downloadedPackages);
-		} catch (error) {
-			// Folder does not exist so ignore and return
-			return;
-		}
+	private async loadNodesFromInstalledPackages(): Promise<void> {
+		const nodeModulesDir = path.join(this.downloadFolder, 'node_modules');
+		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
+		const installedPackagePaths = [
+			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
+			...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
+		];
 
-		for (const packagePath of nodePackages) {
+		for (const packagePath of installedPackagePaths) {
 			try {
-				await this.runDirectoryLoader(PackageDirectoryLoader, packagePath);
+				await this.runDirectoryLoader(
+					PackageDirectoryLoader,
+					path.join(nodeModulesDir, packagePath),
+				);
 			} catch (error) {
 				ErrorReporter.error(error);
 			}
@@ -153,42 +155,25 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		}
 	}
 
-	/**
-	 * Returns all the names of the packages which could contain n8n nodes
-	 */
-	private async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
-		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
-			const results: string[] = [];
-			const nodeModulesPath = `${baseModulesPath}/${relativePath}`;
-			const nodeModules = await fsReaddir(nodeModulesPath);
-			for (const nodeModule of nodeModules) {
-				const isN8nNodesPackage = nodeModule.indexOf('n8n-nodes-') === 0;
-				const isNpmScopedPackage = nodeModule.indexOf('@') === 0;
-				if (!isN8nNodesPackage && !isNpmScopedPackage) {
-					continue;
-				}
-				if (!(await fsStat(nodeModulesPath)).isDirectory()) {
-					continue;
-				}
-				if (isN8nNodesPackage) {
-					results.push(`${baseModulesPath}/${relativePath}${nodeModule}`);
-				}
-				if (isNpmScopedPackage) {
-					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${nodeModule}/`)));
-				}
+	private async installOrUpdateNpmModule(
+		packageName: string,
+		options: { version?: string } | { installedPackage: InstalledPackages },
+	) {
+		const isUpdate = 'installedPackage' in options;
+		const command = isUpdate
+			? `npm update ${packageName}`
+			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
+
+		try {
+			await executeCommand(command);
+		} catch (error) {
+			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
 			}
-			return results;
-		};
-		return getN8nNodePackagesRecursive('');
-	}
+			throw error;
+		}
 
-	async loadNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
-		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
-
-		await executeCommand(command);
-
-		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
+		const finalNodeUnpackedPath = path.join(this.downloadFolder, 'node_modules', packageName);
 
 		let loader: PackageDirectoryLoader;
 		try {
@@ -198,14 +183,17 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			const removeCommand = `npm remove ${packageName}`;
 			try {
 				await executeCommand(removeCommand);
-			} catch (_) {}
+			} catch {}
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
 
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				const { persistInstalledPackageData } = await import('@/CommunityNodes/packageModel');
+				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
+					'@/CommunityNodes/packageModel'
+				);
+				if (isUpdate) await removePackageFromDatabase(options.installedPackage);
 				const installedPackage = await persistInstalledPackageData(loader);
 				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
@@ -226,6 +214,10 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
+	}
+
+	async installNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
+		return this.installOrUpdateNpmModule(packageName, { version });
 	}
 
 	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
@@ -249,59 +241,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		packageName: string,
 		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
-
-		const command = `npm i ${packageName}@latest`;
-
-		try {
-			await executeCommand(command);
-		} catch (error) {
-			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new Error(`The npm package "${packageName}" could not be found.`);
-			}
-			throw error;
-		}
-
-		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
-
-		let loader: PackageDirectoryLoader;
-		try {
-			loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
-		} catch (error) {
-			// Remove this package since loading it failed
-			const removeCommand = `npm remove ${packageName}`;
-			try {
-				await executeCommand(removeCommand);
-			} catch (_) {}
-			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
-		}
-
-		if (loader.loadedNodes.length > 0) {
-			// Save info to DB
-			try {
-				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
-					'@/CommunityNodes/packageModel'
-				);
-				await removePackageFromDatabase(installedPackage);
-				const newlyInstalledPackage = await persistInstalledPackageData(loader);
-				await this.postProcessLoaders();
-				await this.generateTypesForFrontend();
-				return newlyInstalledPackage;
-			} catch (error) {
-				LoggerProxy.error('Failed to save installed packages and nodes', {
-					error: error as Error,
-					packageName,
-				});
-				throw error;
-			}
-		} else {
-			// Remove this package since it contains no loadable nodes
-			const removeCommand = `npm remove ${packageName}`;
-			try {
-				await executeCommand(removeCommand);
-			} catch {}
-			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
-		}
+		return this.installOrUpdateNpmModule(packageName, { installedPackage });
 	}
 
 	/**
