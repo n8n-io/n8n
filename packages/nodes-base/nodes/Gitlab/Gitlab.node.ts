@@ -1100,9 +1100,9 @@ export class Gitlab implements INodeType {
 						name: 'ref',
 						type: 'string',
 						default: '',
-						placeholder: 'master',
+						placeholder: 'main',
 						description:
-							'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
 					},
 					{
 						displayName: 'Recursive',
@@ -1167,9 +1167,9 @@ export class Gitlab implements INodeType {
 						name: 'reference',
 						type: 'string',
 						default: '',
-						placeholder: 'master',
+						placeholder: 'main',
 						description:
-							'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
 					},
 				],
 			},
@@ -1676,7 +1676,7 @@ export class Gitlab implements INodeType {
 						if (additionalParameters.reference) {
 							qs.ref = additionalParameters.reference;
 						} else {
-							qs.ref = 'master';
+							qs.ref = 'main';
 						}
 
 						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
