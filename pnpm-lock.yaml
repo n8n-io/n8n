@@ -35,6 +35,7 @@ importers:
       '@types/supertest': ^2.0.12
       cross-env: ^7.0.3
       cypress: ^12.7.0
+      cypress-otp: ^1.0.3
       cypress-real-events: ^1.7.6
       jest: ^29.4.2
       jest-environment-jsdom: ^29.4.2
@@ -9484,6 +9485,12 @@ packages:
     dependencies:
       first-match: 0.0.1
       nub: 0.0.0
+    dev: false
+
+  /cypress-otp/1.0.3:
+    resolution: {integrity: sha512-o7LssfI0HRHa+TkaOE5/Aukv6M9vsoZAtYESr9m7Ky2i+HRNb2p/IRelE7Z0wJ/UK2f+nXAGZIfXqraf9EPDqw==}
+    dependencies:
+      otplib: 12.0.1
     dev: false
 
   /cypress-real-events/1.7.6_cypress@12.7.0:
