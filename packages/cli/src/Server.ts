@@ -146,7 +146,7 @@ import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
-import { isSamlLicensed } from './sso/saml/samlHelpers';
+import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
@@ -260,9 +260,15 @@ class Server extends AbstractServer {
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
-			ldap: {
-				loginEnabled: false,
-				loginLabel: '',
+			sso: {
+				saml: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+				ldap: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
 			},
 			publicApi: {
 				enabled: !config.getEnv('publicApi.disabled'),
@@ -327,9 +333,16 @@ class Server extends AbstractServer {
 		});
 
 		if (isLdapEnabled()) {
-			Object.assign(this.frontendSettings.ldap, {
+			Object.assign(this.frontendSettings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
 				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
+
+		if (isSamlLicensed()) {
+			Object.assign(this.frontendSettings.sso.saml, {
+				loginLabel: getSamlLoginLabel(),
+				loginEnabled: isSamlLoginEnabled(),
 			});
 		}
 

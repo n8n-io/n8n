@@ -5,15 +5,15 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Schedule Trigger node', async () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+		cy.visit(workflowsPage.url);
 	});
 
 	it('should execute and return the execution timestamp', () => {
-		cy.visit(workflowsPage.url);
-
 		workflowsPage.actions.createWorkflowFromCard();
+		cy.waitForLoad();
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.openNode('Schedule Trigger');
 		ndv.actions.execute();
@@ -22,9 +22,8 @@ describe('Schedule Trigger node', async () => {
 	});
 
 	it('should execute once per second when activated', () => {
-		cy.visit(workflowsPage.url);
-
 		workflowsPage.actions.createWorkflowFromCard();
+		cy.waitForLoad();
 		workflowPage.actions.renameWorkflow('Schedule Trigger Workflow');
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.openNode('Schedule Trigger');

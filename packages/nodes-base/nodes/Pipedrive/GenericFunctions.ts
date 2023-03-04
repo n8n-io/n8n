@@ -230,7 +230,7 @@ export function pipedriveResolveCustomProperties(
 
 	const json = item.json as IDataObject;
 
-	// Itterate over all keys and replace the custom ones
+	// Iterate over all keys and replace the custom ones
 	for (const key of Object.keys(json)) {
 		if (customProperties[key] !== undefined) {
 			// Is a custom property

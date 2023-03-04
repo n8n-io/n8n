@@ -69,7 +69,7 @@ function makeUpdateParams(fetchedWorkflows: PinData.FetchedWorkflow[]) {
 			if (typeof rawPinData === 'string') {
 				try {
 					pinDataPerWorkflow = JSON.parse(rawPinData);
-				} catch (_) {
+				} catch {
 					pinDataPerWorkflow = {};
 				}
 			} else {

@@ -6,8 +6,12 @@ import {
 import { SamlService } from '../saml.service.ee';
 import { SamlUrls } from '../constants';
 import type { SamlConfiguration } from '../types/requests';
-import { AuthError } from '../../../ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { issueCookie } from '../../../auth/jwt';
+import { validate } from 'class-validator';
+import type { PostBindingContext } from 'samlify/types/src/entity';
+import { getInitSSOFormView } from '../views/initSsoPost';
+import { getInitSSOPostView } from '../views/initSsoRedirect';
 
 export const samlControllerProtected = express.Router();
 
@@ -18,25 +22,47 @@ export const samlControllerProtected = express.Router();
 samlControllerProtected.get(
 	SamlUrls.config,
 	samlLicensedOwnerMiddleware,
-	async (req: SamlConfiguration.Read, res: express.Response) => {
-		const prefs = await SamlService.getInstance().getSamlPreferences();
+	(req: SamlConfiguration.Read, res: express.Response) => {
+		const prefs = SamlService.getInstance().getSamlPreferences();
 		return res.send(prefs);
 	},
 );
 
 /**
  * POST /sso/saml/config
- * Return SAML config
+ * Set SAML config
  */
 samlControllerProtected.post(
 	SamlUrls.config,
 	samlLicensedOwnerMiddleware,
 	async (req: SamlConfiguration.Update, res: express.Response) => {
-		const result = await SamlService.getInstance().setSamlPreferences({
-			metadata: req.body.metadata,
-			mapping: req.body.mapping,
-		});
-		return res.send(result);
+		const validationResult = await validate(req.body);
+		if (validationResult.length === 0) {
+			const result = await SamlService.getInstance().setSamlPreferences(req.body);
+			return res.send(result);
+		} else {
+			throw new BadRequestError(
+				'Body is not a valid SamlPreferences object: ' +
+					validationResult.map((e) => e.toString()).join(','),
+			);
+		}
+	},
+);
+
+/**
+ * POST /sso/saml/config/toggle
+ * Set SAML config
+ */
+samlControllerProtected.post(
+	SamlUrls.configToggleEnabled,
+	samlLicensedOwnerMiddleware,
+	async (req: SamlConfiguration.Toggle, res: express.Response) => {
+		if (req.body.loginEnabled !== undefined) {
+			await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.loginEnabled });
+			res.sendStatus(200);
+		} else {
+			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
+		}
 	},
 );
 
@@ -94,12 +120,23 @@ samlControllerProtected.get(
 	SamlUrls.initSSO,
 	samlLicensedAndEnabledMiddleware,
 	async (req: express.Request, res: express.Response) => {
-		const url = SamlService.getInstance().getRedirectLoginRequestUrl();
-		if (url) {
-			// TODO:SAML: redirect to the URL on the client side
-			return res.status(301).send(url);
+		const result = SamlService.getInstance().getLoginRequestUrl();
+		if (result?.binding === 'redirect') {
+			// forced client side redirect
+			return res.send(getInitSSOPostView(result.context));
+			// return res.status(301).send(result.context.context);
+		} else if (result?.binding === 'post') {
+			return res.send(getInitSSOFormView(result.context as PostBindingContext));
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
+	},
+);
+
+samlControllerProtected.get(
+	SamlUrls.configTest,
+	async (req: express.Request, res: express.Response) => {
+		const testResult = await SamlService.getInstance().testSamlConnection();
+		return res.send(testResult);
 	},
 );

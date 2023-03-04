@@ -11,3 +11,9 @@ export function isSsoJustInTimeProvisioningEnabled(): boolean {
 export function doRedirectUsersFromLoginToSsoFlow(): boolean {
 	return config.getEnv('sso.redirectLoginToSso');
 }
+
+export function setCurrentAuthenticationMethod(
+	authenticationMethod: 'email' | 'ldap' | 'saml',
+): void {
+	config.set('userManagement.authenticationMethod', authenticationMethod);
+}
