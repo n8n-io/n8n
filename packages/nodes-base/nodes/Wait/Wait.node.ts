@@ -607,7 +607,7 @@ export class Wait implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		// INFO: Currently (20.06.2021) 100% identical with Webook-Node
+		// INFO: Currently (20.06.2021) 100% identical with Webhook-Node
 		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const req = this.getRequestObject();

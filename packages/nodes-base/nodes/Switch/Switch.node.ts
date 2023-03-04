@@ -618,7 +618,7 @@ export class Switch implements INodeType {
 			}
 		};
 
-		// Itterate over all items to check to which output they should be routed to
+		// Iterate over all items to check to which output they should be routed to
 		itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				item = items[itemIndex];

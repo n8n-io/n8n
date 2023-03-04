@@ -26,7 +26,7 @@ export class TheHiveTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
