@@ -16,7 +16,6 @@ describe('Data mapping', () => {
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 
 		cy.window()
 			// @ts-ignore

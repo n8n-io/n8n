@@ -543,7 +543,6 @@ export interface IPersonalizationSurveyAnswers {
 
 export interface IUserSettings {
 	isOnboarded?: boolean;
-	hasSavedWorkflow?: boolean;
 }
 
 export interface IUserManagementSettings {

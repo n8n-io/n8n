@@ -112,7 +112,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with multiple auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -129,7 +128,6 @@ describe('Credentials', () => {
 
 	it('should show multiple credential types in the same dropdown', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -155,7 +153,6 @@ describe('Credentials', () => {
 
 	it('should correctly render required and optional credentials', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
 		cy.get('body').type('{downArrow}');
 		cy.get('body').type('{enter}');
@@ -180,7 +177,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with no auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -194,7 +190,6 @@ describe('Credentials', () => {
 
 	it('should delete credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -214,7 +209,6 @@ describe('Credentials', () => {
 
 	it('should rename credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -235,7 +229,6 @@ describe('Credentials', () => {
 
 	it('should setup generic authentication for HTTP node', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();

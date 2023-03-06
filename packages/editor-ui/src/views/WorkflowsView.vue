@@ -163,11 +163,9 @@ const WorkflowsView = mixins(showMessage, debounceHelper, newVersions).extend({
 			const componentInstance = vm as unknown as InstanceType<typeof WorkflowsView>;
 			await componentInstance.initialize();
 
-			// If the user has no workflows and has not saved a workflow, redirect to the new workflow view
-			if (
-				!componentInstance.currentUser.settings?.hasSavedWorkflow &&
-				componentInstance.allWorkflows.length === 0
-			) {
+			// If the user has no workflows and is not participating in the demo experiment,
+			// redirect to the new workflow view
+			if (!componentInstance.isDemoTest && componentInstance.allWorkflows.length === 0) {
 				componentInstance.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 			}
 		});
