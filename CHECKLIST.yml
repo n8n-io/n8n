@@ -1,6 +1,7 @@
 paths:
   "packages/**":
     - If fixing bug, added test to cover scenario.
+    - If addressing forum or Github issue, added link to description.
   "packages/**/*.ts":
     - Added unit tests to cover new functionality.
   "**/*.vue":
