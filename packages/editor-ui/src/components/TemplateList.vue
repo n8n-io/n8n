@@ -32,7 +32,6 @@
 </template>
 
 <script lang="ts">
-// test
 import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import TemplateCard from './TemplateCard.vue';
