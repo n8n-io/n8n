@@ -52,11 +52,14 @@ export class ReadPDF implements INodeType {
 					item.binary = {};
 				}
 
-				const binaryData = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+					itemIndex,
+					binaryPropertyName,
+				);
 				returnData.push({
 					binary: item.binary,
 
-					json: (await pdf(binaryData)) as unknown as IDataObject,
+					json: (await pdf(binaryDataBuffer)) as unknown as IDataObject,
 				});
 			} catch (error) {
 				if (this.continueOnFail()) {

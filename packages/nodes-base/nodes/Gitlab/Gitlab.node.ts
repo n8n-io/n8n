@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -1572,28 +1571,12 @@ export class Gitlab implements INodeType {
 						}
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
-
 							// Currently internally n8n uses base64 and also GitLab expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
-							body.content = item.binary[binaryPropertyName].data;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							// TODO: Does this work with filesystem mode
+							body.content = binaryData.data;
 							body.encoding = 'base64';
 						} else {
 							// Is text file

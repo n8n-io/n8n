@@ -1,13 +1,11 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { citrixADCApiRequest } from './GenericFunctions';
 
@@ -74,24 +72,12 @@ export class CitrixAdc implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						const endpoint = '/config/systemfile';
 
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-
-						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`The binary data property "${binaryProperty}" does not exists on item!`,
-							);
-						}
-
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 						const buffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const body = {
 							systemfile: {
-								filename: item.binary[binaryProperty].fileName,
+								filename: binaryData.fileName,
 								filecontent: Buffer.from(buffer).toString('base64'),
 								filelocation: fileLocation,
 								fileencoding: 'BASE64',
