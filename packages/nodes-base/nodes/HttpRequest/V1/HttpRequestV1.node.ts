@@ -318,7 +318,7 @@ export class HttpRequestV1 implements INodeType {
 							name: 'fullResponse',
 							type: 'boolean',
 							default: false,
-							description: 'Whether to return the full reponse data instead of only the body',
+							description: 'Whether to return the full response data instead of only the body',
 						},
 						{
 							displayName: 'Follow All Redirects',
@@ -598,7 +598,7 @@ export class HttpRequestV1 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
+		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
@@ -611,22 +611,22 @@ export class HttpRequestV1 implements INodeType {
 
 		try {
 			httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		} catch (_) {}
+		} catch {}
 		try {
 			oAuth1Api = await this.getCredentials('oAuth1Api');
-		} catch (_) {}
+		} catch {}
 		try {
 			oAuth2Api = await this.getCredentials('oAuth2Api');
-		} catch (_) {}
+		} catch {}
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -1035,7 +1035,7 @@ export class HttpRequestV1 implements INodeType {
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						if (property === 'body') {
 							continue;
 						}
@@ -1063,7 +1063,7 @@ export class HttpRequestV1 implements INodeType {
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						if (property === 'body') {
 							returnItem[dataPropertyName] = response![property];
 							continue;
@@ -1091,7 +1091,7 @@ export class HttpRequestV1 implements INodeType {
 				// responseFormat: 'json'
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						returnItem[property] = response![property];
 					}
 

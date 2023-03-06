@@ -620,7 +620,7 @@ export default mixins(
 	beforeDestroy() {
 		this.resetWorkspace();
 		// Make sure the event listeners get removed again else we
-		// could add up with them registred multiple times
+		// could add up with them registered multiple times
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');

@@ -286,7 +286,7 @@ export class GitlabTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}
