@@ -330,7 +330,7 @@ export class HttpRequestV2 implements INodeType {
 							name: 'fullResponse',
 							type: 'boolean',
 							default: false,
-							description: 'Whether to return the full reponse data instead of only the body',
+							description: 'Whether to return the full response data instead of only the body',
 						},
 						{
 							displayName: 'Follow All Redirects',
@@ -610,7 +610,7 @@ export class HttpRequestV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
+		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
 		let authentication;
 
@@ -621,7 +621,7 @@ export class HttpRequestV2 implements INodeType {
 				| 'predefinedCredentialType'
 				| 'genericCredentialType'
 				| 'none';
-		} catch (_) {}
+		} catch {}
 
 		let httpBasicAuth;
 		let httpDigestAuth;
@@ -637,32 +637,32 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
 					httpDigestAuth = await this.getCredentials('httpDigestAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpHeaderAuth') {
 				try {
 					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.getCredentials('oAuth1Api');
-				} catch (_) {}
+				} catch {}
 			} else if (genericAuthType === 'oAuth2Api') {
 				try {
 					oAuth2Api = await this.getCredentials('oAuth2Api');
-				} catch (_) {}
+				} catch {}
 			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			} catch (_) {}
+			} catch {}
 		}
 
 		let requestOptions: OptionsWithUri;
@@ -1086,7 +1086,7 @@ export class HttpRequestV2 implements INodeType {
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						if (property === 'body') {
 							continue;
 						}
@@ -1114,7 +1114,7 @@ export class HttpRequestV2 implements INodeType {
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						if (property === 'body') {
 							returnItem[dataPropertyName] = response![property];
 							continue;
@@ -1142,7 +1142,7 @@ export class HttpRequestV2 implements INodeType {
 				// responseFormat: 'json'
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
-					for (const property of fullReponseProperties) {
+					for (const property of fullResponseProperties) {
 						returnItem[property] = response![property];
 					}
 
