@@ -135,9 +135,9 @@ function removeEmptyProperties(rest: { [key: string]: any }) {
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
-export function getAttachemnts(attachements: IDataObject[]) {
+export function getAttachments(attachments: IDataObject[]) {
 	const _attachments: IDataObject[] = [];
-	for (const attachment of attachements) {
+	for (const attachment of attachments) {
 		const body: IDataObject[] = [];
 		const actions: IDataObject[] = [];
 		for (const element of ((attachment?.elementsUi as IDataObject)

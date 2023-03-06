@@ -27,6 +27,7 @@ export async function apiRequest(
 		headers: {
 			'content-type': 'application/json; charset=utf-8',
 		},
+		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 	};
 
 	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);

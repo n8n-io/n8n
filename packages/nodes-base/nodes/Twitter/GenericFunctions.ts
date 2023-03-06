@@ -1,13 +1,13 @@
 import type { OptionsWithUrl } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IBinaryKeyData, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 export async function twitterApiRequest(
@@ -80,7 +80,6 @@ export function chunks(buffer: Buffer, chunkSize: number) {
 export async function uploadAttachments(
 	this: IExecuteFunctions,
 	binaryProperties: string[],
-	items: INodeExecutionData[],
 	i: number,
 ) {
 	const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
@@ -88,27 +87,14 @@ export async function uploadAttachments(
 	const media: IDataObject[] = [];
 
 	for (const binaryPropertyName of binaryProperties) {
-		const binaryData = items[i].binary as IBinaryKeyData;
-
-		if (binaryData === undefined) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No binary data set. So file can not be written!',
-				{ itemIndex: i },
-			);
-		}
-
-		if (!binaryData[binaryPropertyName]) {
-			continue;
-		}
-
 		let attachmentBody = {};
 		let response: IDataObject = {};
 
+		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 		const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-		const isAnimatedWebp = dataBuffer.toString().indexOf('ANMF') !== -1;
 
-		const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
+		const isAnimatedWebp = dataBuffer.toString().indexOf('ANMF') !== -1;
+		const isImage = binaryData.mimeType.includes('image');
 
 		if (isImage && isAnimatedWebp) {
 			throw new NodeOperationError(
@@ -120,7 +106,7 @@ export async function uploadAttachments(
 
 		if (isImage) {
 			const form = {
-				media_data: binaryData[binaryPropertyName].data,
+				media_data: binaryData.data,
 			};
 
 			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
@@ -130,13 +116,10 @@ export async function uploadAttachments(
 			media.push(response);
 		} else {
 			// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
-
-			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
 			attachmentBody = {
 				command: 'INIT',
-				total_bytes: binaryDataBuffer.byteLength,
-				media_type: binaryData[binaryPropertyName].mimeType,
+				total_bytes: dataBuffer.byteLength,
+				media_type: binaryData.mimeType,
 			};
 
 			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
@@ -147,7 +130,7 @@ export async function uploadAttachments(
 
 			// break the data on 5mb chunks (max size that can be uploaded at once)
 
-			const binaryParts = chunks(binaryDataBuffer, 5242880);
+			const binaryParts = chunks(dataBuffer, 5242880);
 
 			let index = 0;
 
@@ -155,7 +138,7 @@ export async function uploadAttachments(
 				//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-append
 
 				attachmentBody = {
-					name: binaryData[binaryPropertyName].fileName,
+					name: binaryData.fileName,
 					command: 'APPEND',
 					media_id: mediaId,
 					media_data: Buffer.from(binaryPart).toString('base64'),
