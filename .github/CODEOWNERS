@@ -1,1 +1,1 @@
-packages/cli/src/databases/migrations/ @n8n-io/migrations-review
+packages/cli/src/databases/migrations/ @n8n-io/migrations-review @n8n-io/migrations-second-review
