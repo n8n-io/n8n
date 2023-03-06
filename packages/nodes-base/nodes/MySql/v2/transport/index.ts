@@ -23,3 +23,22 @@ export async function createConnection(
 
 	return mysql2.createConnection(baseCredentials);
 }
+export async function createPool(credentials: ICredentialDataDecryptedObject) {
+	const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
+		credentials;
+
+	if (ssl) {
+		baseCredentials.ssl = {};
+
+		if (caCertificate) {
+			baseCredentials.ssl.ca = caCertificate;
+		}
+
+		if (clientCertificate || clientPrivateKey) {
+			baseCredentials.ssl.cert = clientCertificate;
+			baseCredentials.ssl.key = clientPrivateKey;
+		}
+	}
+
+	return mysql2.createPool({ ...baseCredentials, multipleStatements: true });
+}

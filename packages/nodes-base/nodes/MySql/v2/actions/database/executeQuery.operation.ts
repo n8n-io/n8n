@@ -2,9 +2,9 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import type { Mysql2OkPacket } from '../../helpers/interfaces';
+// import type { Mysql2OkPacket } from '../../helpers/interfaces';
 import { prepareQueryAndReplacements } from '../../helpers/utils';
-import { createConnection } from '../../transport';
+import { createConnection, createPool } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -50,6 +50,40 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Query Batching',
+				name: 'queryBatching',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Multiple Queries',
+						value: 'multiple',
+						description: 'Execute queries for all incoming items, then process the results',
+					},
+					{
+						name: 'Independently',
+						value: 'independently',
+						description: 'Execute one query per incoming item',
+					},
+					{
+						name: 'Transaction',
+						value: 'transaction',
+						description:
+							'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
+					},
+				],
+				default: 'multiple',
+			},
+		],
+	},
 ];
 
 const displayOptions = {
@@ -66,48 +100,135 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 
 	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials);
 
-	try {
-		const queryQueue = items.map(async (_item, index) => {
-			const rawQuery = this.getNodeParameter('query', index) as string;
+	const options = this.getNodeParameter('options', 0);
+	const queryBatching = (options.queryBatching as string) || 'independently';
 
-			const values = (
-				this.getNodeParameter('queryReplacement.values', index, []) as IDataObject[]
-			).map((entry) => entry.value as string);
+	if (queryBatching === 'multiple') {
+		const pool = await createPool(credentials);
+		const connection = await pool.getConnection();
 
-			const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
+		try {
+			const queries = items.map((_item, index) => {
+				//Trim the query and remove the semicolon at the end, overwise the query will fail when joined by the semicolon
+				const rawQuery = (this.getNodeParameter('query', index) as string).trim().replace(/;$/, '');
 
-			const formattedQuery = connection.format(newQuery, newValues);
+				const values = (
+					this.getNodeParameter('queryReplacement.values', index, []) as IDataObject[]
+				).map((entry) => entry.value as string);
 
-			return connection.query(formattedQuery);
-		});
+				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
 
-		returnData = ((await Promise.all(queryQueue)) as Mysql2OkPacket[][]).reduce(
-			(acc, result, index) => {
-				const [rows] = result;
+				const formattedQuery = connection.format(newQuery, newValues);
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
-					{ itemData: { item: index } },
-				);
+				return formattedQuery;
+			});
 
-				acc.push(...executionData);
+			const response = (await pool.query(queries.join(';')))[0] as unknown as IDataObject[][];
 
-				return acc;
-			},
-			[] as INodeExecutionData[],
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData = this.helpers.returnJsonArray({ error: error.message });
-		} else {
-			await connection.end();
-			throw error;
+			if (response) {
+				response.forEach((entry) => {
+					returnData.push(...this.helpers.returnJsonArray(entry));
+				});
+			}
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData = this.helpers.returnJsonArray([{ json: { error: error.message } }]);
+			} else {
+				connection.release();
+				await pool.end();
+				throw error;
+			}
 		}
+
+		connection.release();
+		await pool.end();
 	}
 
-	await connection.end();
+	if (queryBatching === 'independently') {
+		const connection = await createConnection(credentials);
+
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const rawQuery = this.getNodeParameter('query', i) as string;
+
+				const values = (
+					this.getNodeParameter('queryReplacement.values', i, []) as IDataObject[]
+				).map((entry) => entry.value as string);
+
+				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
+
+				const formattedQuery = connection.format(newQuery, newValues);
+
+				const response = (
+					await connection.query(formattedQuery, values)
+				)[0] as unknown as IDataObject;
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(response),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: error.message },
+					});
+				} else {
+					await connection.end();
+					throw error;
+				}
+			}
+		}
+
+		await connection.end();
+	}
+
+	if (queryBatching === 'transaction') {
+		const connection = await createConnection(credentials);
+		await connection.beginTransaction();
+
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const rawQuery = this.getNodeParameter('query', i) as string;
+
+				const values = (
+					this.getNodeParameter('queryReplacement.values', i, []) as IDataObject[]
+				).map((entry) => entry.value as string);
+
+				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
+
+				const formattedQuery = connection.format(newQuery, newValues);
+
+				const response = (
+					await connection.query(formattedQuery, values)
+				)[0] as unknown as IDataObject;
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(response),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
+			} catch (error) {
+				if (connection) {
+					await connection.rollback();
+					await connection.end();
+				}
+
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+					return returnData;
+				} else {
+					throw error;
+				}
+			}
+		}
+
+		await connection.commit();
+		await connection.end();
+	}
 
 	return returnData;
 }

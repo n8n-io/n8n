@@ -23,8 +23,7 @@ const properties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add modifiers',
-		description: 'Modifiers for INSERT statement',
+		placeholder: 'Add Option',
 		options: [
 			{
 				displayName: 'Ignore',
@@ -141,8 +140,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	if (queryBatching === 'independently') {
-		try {
-			for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
+			try {
 				const columns = (this.getNodeParameter('columns', i) as string)
 					.split(',')
 					.map((column) => column.trim());
@@ -163,23 +162,28 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 				const response = (await connection.query(query, values))[0] as unknown as IDataObject;
 
-				returnData.push({ json: response });
-			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-			} else {
-				await connection.end();
-				throw error;
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(response),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+				} else {
+					await connection.end();
+					throw error;
+				}
 			}
 		}
 	}
 
 	if (queryBatching === 'transaction') {
-		try {
-			await connection.beginTransaction();
+		await connection.beginTransaction();
 
-			for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
+			try {
 				const columns = (this.getNodeParameter('columns', i) as string)
 					.split(',')
 					.map((column) => column.trim());
@@ -200,23 +204,28 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 				const response = (await connection.query(query, values))[0] as unknown as IDataObject;
 
-				returnData.push({ json: response });
-			}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(response),
+					{ itemData: { item: i } },
+				);
 
-			await connection.commit();
-		} catch (error) {
-			if (connection) {
-				await connection.rollback();
-				await connection.end();
-			}
+				returnData.push(...executionData);
+			} catch (error) {
+				if (connection) {
+					await connection.rollback();
+					await connection.end();
+				}
 
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-				return returnData;
-			} else {
-				throw error;
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+					return returnData;
+				} else {
+					throw error;
+				}
 			}
 		}
+
+		await connection.commit();
 	}
 
 	await connection.end();
