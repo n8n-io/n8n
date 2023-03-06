@@ -623,10 +623,17 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export enum UserManagementAuthenticationMethod {
+	Email = 'email',
+	Ldap = 'ldap',
+	Saml = 'saml',
+}
+
 export interface IUserManagementConfig {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+	authenticationMethod: UserManagementAuthenticationMethod;
 }
 
 export interface IPermissionGroup {

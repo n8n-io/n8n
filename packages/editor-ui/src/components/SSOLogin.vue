@@ -1,7 +1,11 @@
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+import { useSSOStore } from '@/stores/sso';
+
+const ssoStore = useSSOStore();
+</script>
 
 <template>
-	<div :class="$style.ssoLogin">
+	<div v-if="ssoStore.showSsoLoginButton" :class="$style.ssoLogin">
 		<div :class="$style.divider">
 			<span>{{ $locale.baseText('sso.login.divider') }}</span>
 		</div>
