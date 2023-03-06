@@ -1,4 +1,4 @@
-import type { Readable } from 'form-data';
+import type { Readable } from 'stream';
 import type { IExecuteFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 
