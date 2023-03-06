@@ -46,9 +46,9 @@ export async function getAll(
 
 	//return limited result
 	if (!returnAll && responseData.categories.length > limit) {
-		return this.helpers.returnJsonArray(responseData.categories.slice(0, limit));
+		return this.helpers.returnJsonArray(responseData.categories.slice(0, limit) as IDataObject[]);
 	}
 
 	//return
-	return this.helpers.returnJsonArray(responseData.categories);
+	return this.helpers.returnJsonArray(responseData.categories as IDataObject[]);
 }

@@ -197,7 +197,7 @@ export class LocalFileTrigger implements INodeType {
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString));
+			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
 		}
 
 		async function closeFunction() {

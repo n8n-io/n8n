@@ -76,11 +76,15 @@ export async function redditApiRequestAllItems(
 		}
 
 		if (endpoint === 'api/search_subreddits.json') {
-			responseData.subreddits.forEach((child: any) => returnData.push(child));
+			responseData.subreddits.forEach((child: any) => returnData.push(child as IDataObject));
 		} else if (resource === 'postComment' && operation === 'getAll') {
-			responseData[1].data.children.forEach((child: any) => returnData.push(child.data));
+			responseData[1].data.children.forEach((child: any) =>
+				returnData.push(child.data as IDataObject),
+			);
 		} else {
-			responseData.data.children.forEach((child: any) => returnData.push(child.data));
+			responseData.data.children.forEach((child: any) =>
+				returnData.push(child.data as IDataObject),
+			);
 		}
 		if (qs.limit && returnData.length >= qs.limit && !returnAll) {
 			return returnData;

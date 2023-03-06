@@ -113,13 +113,13 @@ export class JotFormTrigger implements INodeType {
 				try {
 					const responseData = await jotformApiRequest.call(this, 'GET', endpoint);
 
-					const webhookUrls = Object.values(responseData.content);
+					const webhookUrls = Object.values(responseData.content as IDataObject);
 					const webhookUrl = this.getNodeWebhookUrl('default');
 					if (!webhookUrls.includes(webhookUrl)) {
 						return false;
 					}
 
-					const webhookIds = Object.keys(responseData.content);
+					const webhookIds = Object.keys(responseData.content as IDataObject);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
 				} catch (error) {
 					return false;
@@ -136,7 +136,7 @@ export class JotFormTrigger implements INodeType {
 					//webhookURL: 'https://en0xsizp3qyt7f.x.pipedream.net/',
 				};
 				const { content } = await jotformApiRequest.call(this, 'POST', endpoint, body);
-				webhookData.webhookId = Object.keys(content)[0];
+				webhookData.webhookId = Object.keys(content as IDataObject)[0];
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -190,14 +190,16 @@ export class JotFormTrigger implements INodeType {
 
 				// Create a dictionary to resolve the keys
 				const questionNames: IDataObject = {};
-				for (const question of Object.values<IQuestionData>(responseData.content)) {
+				for (const question of Object.values<IQuestionData>(
+					responseData.content as IQuestionData[],
+				)) {
 					questionNames[question.name] = question.text;
 				}
 
 				// Resolve the keys
 				let questionKey: string;
 				const questionsData: IDataObject = {};
-				for (const key of Object.keys(rawRequest)) {
+				for (const key of Object.keys(rawRequest as IDataObject)) {
 					if (!key.includes('_')) {
 						continue;
 					}

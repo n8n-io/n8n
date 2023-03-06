@@ -229,9 +229,9 @@ export class Baserow implements INodeType {
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					const row = await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
 
-					mapper.idsToNames(row);
+					mapper.idsToNames(row as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(row),
+						this.helpers.returnJsonArray(row as Row),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -268,9 +268,9 @@ export class Baserow implements INodeType {
 					const endpoint = `/api/database/rows/table/${tableId}/`;
 					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, jwtToken, body);
 
-					mapper.idsToNames(createdRow);
+					mapper.idsToNames(createdRow as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(createdRow),
+						this.helpers.returnJsonArray(createdRow as Row),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -309,9 +309,9 @@ export class Baserow implements INodeType {
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, jwtToken, body);
 
-					mapper.idsToNames(updatedRow);
+					mapper.idsToNames(updatedRow as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(updatedRow),
+						this.helpers.returnJsonArray(updatedRow as Row),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

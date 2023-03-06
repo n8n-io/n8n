@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import * as customer from './customer';
@@ -51,7 +51,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				);
 				operationResult.push(...executionErrorData);
 			} else {
-				throw new NodeApiError(this.getNode(), err, { itemIndex: i });
+				throw new NodeApiError(this.getNode(), err as JsonObject, { itemIndex: i });
 			}
 		}
 	}

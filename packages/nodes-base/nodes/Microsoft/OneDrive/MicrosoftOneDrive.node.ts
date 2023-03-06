@@ -1,11 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -109,7 +108,7 @@ export class MicrosoftOneDrive implements INodeType {
 						const fileName = responseData.name;
 
 						if (responseData.file === undefined) {
-							throw new NodeApiError(this.getNode(), responseData, {
+							throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 								message: 'The ID you provided does not belong to a file.',
 							});
 						}
@@ -148,11 +147,11 @@ export class MicrosoftOneDrive implements INodeType {
 
 						items[i] = newItem;
 
-						const data = Buffer.from(responseData.body);
+						const data = Buffer.from(responseData.body as Buffer);
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							data as unknown as Buffer,
-							fileName,
+							fileName as string,
 							mimeType,
 						);
 					}
@@ -196,22 +195,7 @@ export class MicrosoftOneDrive implements INodeType {
 
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
-
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-							//@ts-ignore
-							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
-
-							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							let encodedFilename;
 
@@ -234,7 +218,7 @@ export class MicrosoftOneDrive implements INodeType {
 								{},
 							);
 
-							responseData = JSON.parse(responseData);
+							responseData = JSON.parse(responseData as string);
 						} else {
 							const body = this.getNodeParameter('fileContent', i) as string;
 							if (fileName === '') {
@@ -356,7 +340,7 @@ export class MicrosoftOneDrive implements INodeType {
 				throw error;
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 

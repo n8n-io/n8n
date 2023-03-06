@@ -6,7 +6,13 @@ import { ExecutionError } from './ExecutionError';
 import type { CodeNodeMode } from './utils';
 import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 
-import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	IWorkflowDataProxyData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 export class Sandbox extends NodeVM {
 	private jsCode = '';
@@ -59,6 +65,7 @@ export class Sandbox extends NodeVM {
 				error.message = (quoted as string) + '. Did you mean `$input.all()`?';
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			throw new ExecutionError(error);
 		}
 
@@ -82,7 +89,7 @@ export class Sandbox extends NodeVM {
 			 * item keys to be wrapped in `json` when normalizing items below.
 			 */
 			const mustHaveTopLevelN8nKey = executionResult.some((item) =>
-				Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
+				Object.keys(item as IDataObject).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
 			);
 
 			for (const item of executionResult) {
@@ -95,7 +102,7 @@ export class Sandbox extends NodeVM {
 				}
 
 				if (mustHaveTopLevelN8nKey) {
-					Object.keys(item).forEach((key) => {
+					Object.keys(item as IDataObject).forEach((key) => {
 						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 						throw new ValidationError({
 							message: `Unknown top-level item key: ${key}`,
@@ -131,7 +138,7 @@ export class Sandbox extends NodeVM {
 			}
 		}
 
-		return normalizeItems(executionResult);
+		return normalizeItems(executionResult as INodeExecutionData[]);
 	}
 
 	private async runCodeEachItem() {
@@ -170,6 +177,7 @@ export class Sandbox extends NodeVM {
 				error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			throw new ExecutionError(error, this.itemIndex);
 		}
 
@@ -203,7 +211,7 @@ export class Sandbox extends NodeVM {
 		// and another top-level key is unrecognized, then the user mis-added a property
 		// directly on the item, when they intended to add it on the `json` property
 
-		Object.keys(executionResult).forEach((key) => {
+		Object.keys(executionResult as IDataObject).forEach((key) => {
 			if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 
 			throw new ValidationError({

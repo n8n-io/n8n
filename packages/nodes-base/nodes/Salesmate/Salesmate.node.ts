@@ -281,7 +281,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -473,7 +473,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -683,7 +683,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -782,7 +782,7 @@ export class Salesmate implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

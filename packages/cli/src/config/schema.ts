@@ -1023,23 +1023,25 @@ export const schema = {
 			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
 		},
 		saml: {
-			enabled: {
+			loginEnabled: {
 				format: Boolean,
 				default: false,
 				doc: 'Whether to enable SAML SSO.',
 			},
+			loginLabel: {
+				format: String,
+				default: '',
+			},
 		},
-	},
-
-	// TODO: move into sso settings
-	ldap: {
-		loginEnabled: {
-			format: Boolean,
-			default: false,
-		},
-		loginLabel: {
-			format: String,
-			default: '',
+		ldap: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+			},
+			loginLabel: {
+				format: String,
+				default: '',
+			},
 		},
 	},
 
