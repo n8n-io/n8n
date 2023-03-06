@@ -250,6 +250,7 @@ importers:
       validator: 13.7.0
       winston: ^3.3.3
       ws: ^8.12.0
+      xmllint-wasm: ^3.0.1
       yamljs: ^0.3.0
     dependencies:
       '@n8n_io/license-sdk': 1.8.0
@@ -343,6 +344,7 @@ importers:
       validator: 13.7.0
       winston: 3.8.2
       ws: 8.12.0
+      xmllint-wasm: 3.0.1
       yamljs: 0.3.0
     devDependencies:
       '@apidevtools/swagger-cli': 4.0.0
@@ -21642,6 +21644,11 @@ packages:
   /xmlchars/2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
     dev: true
+
+  /xmllint-wasm/3.0.1:
+    resolution: {integrity: sha512-t+aKQXJQNAt9/qLgCjhHUmCnPXAyqBKiyh8oV0ZwBMar/uB+5F40tqOJZ97JwLADcqQr5WB2bjCxLKrm+DHz1g==}
+    engines: {node: '>=10.5.0'}
+    dev: false
 
   /xpath/0.0.32:
     resolution: {integrity: sha512-rxMJhSIoiO8vXcWvSifKqhvV96GjiD5wYb8/QHdoRyQvraTpp4IEv944nhGausZZ3u7dhQXteZuZbaqfpB7uYw==}
