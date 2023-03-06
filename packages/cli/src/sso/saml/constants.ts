@@ -15,6 +15,10 @@ export class SamlUrls {
 
 	static readonly config = '/config';
 
+	static readonly configTest = '/config/test';
+
+	static readonly configToggleEnabled = '/config/toggle';
+
 	static readonly restConfig = this.samlRESTRoot + this.config;
 
 	static readonly defaultRedirect = '/';

@@ -2,7 +2,7 @@ import type express from 'express';
 import * as Db from '@/Db';
 import type { User } from '@/databases/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import { AuthError } from '@/ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
@@ -10,7 +10,7 @@ import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
 import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import type { IdentityProviderInstance } from 'samlify';
-import { IdentityProvider } from 'samlify';
+import { IdentityProvider, setSchemaValidator } from 'samlify';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
@@ -20,6 +20,12 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
+import type { Settings } from '../../databases/entities/Settings';
+import axios from 'axios';
+import https from 'https';
+import type { SamlLoginBinding } from './types';
+import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import { validateMetadata, validateResponse } from './samlValidator';
 
 export class SamlService {
 	private static instance: SamlService;
@@ -42,25 +48,13 @@ export class SamlService {
 		this._attributeMapping = mapping;
 	}
 
-	private _metadata = '';
+	private metadata = '';
 
-	public get metadata(): string {
-		return this._metadata;
-	}
+	private metadataUrl = '';
 
-	public set metadata(metadata: string) {
-		this._metadata = metadata;
-	}
+	private ignoreSSL = false;
 
-	constructor() {
-		this.loadSamlPreferences()
-			.then(() => {
-				LoggerProxy.debug('Initializing SAML service');
-			})
-			.catch(() => {
-				LoggerProxy.error('Error initializing SAML service');
-			});
-	}
+	private loginBinding: SamlLoginBinding = 'post';
 
 	static getInstance(): SamlService {
 		if (!SamlService.instance) {
@@ -70,7 +64,16 @@ export class SamlService {
 	}
 
 	async init(): Promise<void> {
-		await this.loadSamlPreferences();
+		await this.loadFromDbAndApplySamlPreferences();
+		setSchemaValidator({
+			validate: async (response: string) => {
+				const valid = await validateResponse(response);
+				if (!valid) {
+					return Promise.reject(new Error('Invalid SAML response'));
+				}
+				return Promise.resolve();
+			},
+		});
 	}
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
@@ -83,19 +86,47 @@ export class SamlService {
 		return this.identityProviderInstance;
 	}
 
-	getRedirectLoginRequestUrl(): string {
+	getLoginRequestUrl(binding?: SamlLoginBinding): {
+		binding: SamlLoginBinding;
+		context: BindingContext | PostBindingContext;
+	} {
+		if (binding === undefined) binding = this.loginBinding;
+		if (binding === 'post') {
+			return {
+				binding,
+				context: this.getPostLoginRequestUrl(),
+			};
+		} else {
+			return {
+				binding,
+				context: this.getRedirectLoginRequestUrl(),
+			};
+		}
+	}
+
+	private getRedirectLoginRequestUrl(): BindingContext {
 		const loginRequest = getServiceProviderInstance().createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'redirect',
 		);
 		//TODO:SAML: debug logging
 		LoggerProxy.debug(loginRequest.context);
-		return loginRequest.context;
+		return loginRequest;
+	}
+
+	private getPostLoginRequestUrl(): PostBindingContext {
+		const loginRequest = getServiceProviderInstance().createLoginRequest(
+			this.getIdentityProviderInstance(),
+			'post',
+		) as PostBindingContext;
+		//TODO:SAML: debug logging
+		LoggerProxy.debug(loginRequest.context);
+		return loginRequest;
 	}
 
 	async handleSamlLogin(
 		req: express.Request,
-		binding: 'post' | 'redirect',
+		binding: SamlLoginBinding,
 	): Promise<
 		| {
 				authenticatedUser: User | undefined;
@@ -150,21 +181,40 @@ export class SamlService {
 		return {
 			mapping: this.attributeMapping,
 			metadata: this.metadata,
+			metadataUrl: this.metadataUrl,
+			ignoreSSL: this.ignoreSSL,
+			loginBinding: this.loginBinding,
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
 		};
 	}
 
-	async setSamlPreferences(prefs: SamlPreferences): Promise<void> {
-		this.attributeMapping = prefs.mapping;
-		this.metadata = prefs.metadata;
-		setSamlLoginEnabled(prefs.loginEnabled);
-		setSamlLoginLabel(prefs.loginLabel);
+	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
+		this.loginBinding = prefs.loginBinding ?? this.loginBinding;
+		this.metadata = prefs.metadata ?? this.metadata;
+		this.attributeMapping = prefs.mapping ?? this.attributeMapping;
+		this.ignoreSSL = prefs.ignoreSSL ?? this.ignoreSSL;
+		if (prefs.metadataUrl) {
+			this.metadataUrl = prefs.metadataUrl;
+			const fetchedMetadata = await this.fetchMetadataFromUrl();
+			if (fetchedMetadata) {
+				this.metadata = fetchedMetadata;
+			}
+		} else if (prefs.metadata) {
+			const validationResult = await validateMetadata(prefs.metadata);
+			if (!validationResult) {
+				throw new Error('Invalid SAML metadata');
+			}
+			this.metadata = prefs.metadata;
+		}
+		setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 		this.getIdentityProviderInstance(true);
-		await this.saveSamlPreferences();
+		const result = await this.saveSamlPreferencesToDb();
+		return result;
 	}
 
-	async loadSamlPreferences(): Promise<SamlPreferences | undefined> {
+	async loadFromDbAndApplySamlPreferences(): Promise<SamlPreferences | undefined> {
 		const samlPreferences = await Db.collections.Settings.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
@@ -178,26 +228,53 @@ export class SamlService {
 		return;
 	}
 
-	async saveSamlPreferences(): Promise<void> {
+	async saveSamlPreferencesToDb(): Promise<SamlPreferences | undefined> {
 		const samlPreferences = await Db.collections.Settings.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
 		const settingsValue = JSON.stringify(this.getSamlPreferences());
+		let result: Settings;
 		if (samlPreferences) {
 			samlPreferences.value = settingsValue;
-			await Db.collections.Settings.save(samlPreferences);
+			result = await Db.collections.Settings.save(samlPreferences);
 		} else {
-			await Db.collections.Settings.save({
+			result = await Db.collections.Settings.save({
 				key: SAML_PREFERENCES_DB_KEY,
 				value: settingsValue,
 				loadOnStartup: true,
 			});
 		}
+		if (result) return jsonParse<SamlPreferences>(result.value);
+		return;
+	}
+
+	async fetchMetadataFromUrl(): Promise<string | undefined> {
+		try {
+			// TODO:SAML: this will not work once axios is upgraded to > 1.2.0 (see checkServerIdentity)
+			const agent = new https.Agent({
+				rejectUnauthorized: !this.ignoreSSL,
+			});
+			const response = await axios.get(this.metadataUrl, { httpsAgent: agent });
+			if (response.status === 200 && response.data) {
+				const xml = (await response.data) as string;
+				const validationResult = await validateMetadata(xml);
+				if (!validationResult) {
+					throw new BadRequestError(
+						`Data received from ${this.metadataUrl} is not valid SAML metadata.`,
+					);
+				}
+				return xml;
+			}
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+			throw new BadRequestError(`Error fetching SAML Metadata from ${this.metadataUrl}: ${error}`);
+		}
+		return;
 	}
 
 	async getAttributesFromLoginResponse(
 		req: express.Request,
-		binding: 'post' | 'redirect',
+		binding: SamlLoginBinding,
 	): Promise<SamlUserAttributes> {
 		let parsedSamlResponse;
 		try {
@@ -225,5 +302,47 @@ export class SamlService {
 			);
 		}
 		return attributes;
+	}
+
+	async testSamlConnection(): Promise<boolean> {
+		try {
+			// TODO:SAML: this will not work once axios is upgraded to > 1.2.0 (see checkServerIdentity)
+			const agent = new https.Agent({
+				rejectUnauthorized: !this.ignoreSSL,
+			});
+			const requestContext = this.getLoginRequestUrl();
+			if (!requestContext) return false;
+			if (requestContext.binding === 'redirect') {
+				const fetchResult = await axios.get(requestContext.context.context, { httpsAgent: agent });
+				if (fetchResult.status !== 200) {
+					LoggerProxy.debug('SAML: Error while testing SAML connection.');
+					return false;
+				}
+			} else if (requestContext.binding === 'post') {
+				const context = requestContext.context as PostBindingContext;
+				const endpoint = context.entityEndpoint;
+				const params = new URLSearchParams();
+				params.append(context.type, context.context);
+				if (context.relayState) {
+					params.append('RelayState', context.relayState);
+				}
+				const fetchResult = await axios.post(endpoint, params, {
+					headers: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Content-type': 'application/x-www-form-urlencoded',
+					},
+					httpsAgent: agent,
+				});
+				if (fetchResult.status !== 200) {
+					LoggerProxy.debug('SAML: Error while testing SAML connection.');
+					return false;
+				}
+			}
+			return true;
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			LoggerProxy.debug('SAML: Error while testing SAML connection: ', error);
+		}
+		return false;
 	}
 }

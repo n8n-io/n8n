@@ -22,6 +22,7 @@ import type {
 	IInternalHooksClass,
 } from '@/Interfaces';
 import { randomBytes } from 'crypto';
+import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 
 @RestController('/me')
 export class MeController {
@@ -77,6 +78,20 @@ export class MeController {
 
 		await validateEntity(payload);
 
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			if (email !== currentEmail) {
+				this.logger.debug(
+					'Request to update user failed because SAML user may not change their email',
+					{
+						userId,
+						payload,
+					},
+				);
+				throw new BadRequestError('SAML user may not change their email');
+			}
+		}
+
 		await this.userRepository.update(userId, payload);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
@@ -104,6 +119,16 @@ export class MeController {
 	@Patch('/password')
 	async updatePassword(req: MeRequest.Password, res: Response) {
 		const { currentPassword, newPassword } = req.body;
+
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			this.logger.debug('Attempted to change password for user, while SAML is enabled', {
+				userId: req.user?.id,
+			});
+			throw new BadRequestError(
+				'With SAML enabled, users need to use their SAML provider to change passwords',
+			);
+		}
 
 		if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
 			throw new BadRequestError('Invalid payload.');

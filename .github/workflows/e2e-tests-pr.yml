@@ -7,53 +7,28 @@ on:
       - 'master'
 
 jobs:
-  runTests:
-    name: 'Run E2E tests'
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+  # We disable this for now because cancelling runs makes the Cypress Cloud tests to hang.
+  # cancel-previous-runs:
+  #   runs-on: ubuntu-latest
+  #   name: 'Cancel previous e2e test runs'
+  #   strategy:
+  #     matrix:
+  #       node-version: [16.x]
 
-    timeout-minutes: 30
+  #   steps:
+  #     - name: 'Cancel previous runs'
+  #       uses: styfle/cancel-workflow-action@0.9.0
+  #       with:
+  #         access_token: ${{ github.token }}
 
-    strategy:
-      matrix:
-        node-version: [16.x]
-
-    steps:
-      - name: 'Cancel previous runs'
-        uses: styfle/cancel-workflow-action@0.9.0
-        with:
-          access_token: ${{ github.token }}
-
-      - name: 'Cancel if PR is not approved'
-        if: github.event.review.state != 'approved'
-        uses: andymckay/cancel-action@0.2
-
-      - uses: actions/checkout@v3
-
-      - uses: pnpm/action-setup@v2.2.4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test E2E
-        run: |
-          pnpm cypress:install
-          pnpm test:e2e:all
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: cypress-screenshots
-          path: |
-            cypress/screenshots
-          retention-days: 1
+  run-e2e-tests:
+    name: E2E [Electron/Node 16]
+    uses: ./.github/workflows/e2e-reusable.yml
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    with:
+      branch: ${{ github.event.pull_request.head.ref }}
+      user: ${{ github.event.pull_request.user.login || 'PR User' }}
+      spec: 'e2e/*'
+      run-env: base:16.18.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
