@@ -29,6 +29,41 @@ const properties: INodeProperties[] = [
 		description:
 			'Comma-separated list of the properties which should used as columns for rows to update',
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Connection Timeout',
+				name: 'connectionTimeoutMillis',
+				type: 'number',
+				default: 0,
+				description: 'Number of milliseconds reserved for connecting to the database',
+			},
+			{
+				displayName: 'Output Large-Format Numbers As',
+				name: 'largeNumbersOutput',
+				type: 'options',
+				options: [
+					{
+						name: 'Numbers',
+						value: 'numbers',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+						description:
+							'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
+					},
+				],
+				hint: 'Applies to NUMERIC and BIGINT columns only',
+				default: 'text',
+			},
+		],
+	},
 ];
 
 const displayOptions = {

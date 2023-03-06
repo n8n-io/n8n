@@ -17,10 +17,13 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-export const prepareQueryAndReplacements = (query: string, replacements: string[]) => {
+export const prepareQueryAndReplacements = (query: string, replacements?: IDataObject[]) => {
+	if (replacements === undefined) {
+		return { newQuery: query, newValues: [] };
+	}
 	// in UI for replacements we use syntax identical to Postgres Query Replacement, but we need to convert it to mysql2 replacement syntax
 	let newQuery: string = query;
-	const newValues: string[] = [];
+	const newValues: IDataObject[] = [];
 
 	const regex = /\$(\d+)(?::name)?/g;
 	const matches = query.match(regex) || [];

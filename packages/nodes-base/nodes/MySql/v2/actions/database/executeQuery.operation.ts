@@ -18,37 +18,11 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		You can use <strong>Query Values Replacement</strong> to map values in <strong>Query</strong>, to reference first value use $1,to reference second $2 and so on, if value is SQL name or identifier add :name,<br/>
-		e.g. SELECT * FROM $1:name WHERE id = $2;`,
+		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters">More info</a>.
+		`,
 		name: 'notice',
 		type: 'notice',
 		default: '',
-	},
-	{
-		displayName: 'Query Values Replacement',
-		name: 'queryReplacement',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: [],
-		placeholder: 'Add Value',
-		description:
-			'Value has to be of type number, bigint, string, boolean, Date and null, types Array and Object will be converted to string',
-		options: [
-			{
-				displayName: 'Values',
-				name: 'values',
-				values: [
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
 	},
 	{
 		displayName: 'Options',
@@ -57,6 +31,13 @@ const properties: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add Option',
 		options: [
+			{
+				displayName: 'Connection Timeout',
+				name: 'connectionTimeoutMillis',
+				type: 'number',
+				default: 0,
+				description: 'Number of milliseconds reserved for connecting to the database',
+			},
 			{
 				displayName: 'Query Batching',
 				name: 'queryBatching',
@@ -82,6 +63,52 @@ const properties: INodeProperties[] = [
 				],
 				default: 'multiple',
 			},
+			{
+				displayName: 'Query Parameters',
+				name: 'queryReplacement',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: [],
+				placeholder: 'Add Query Parameter',
+				description:
+					'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. queryParamValue',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Output Large-Format Numbers As',
+				name: 'largeNumbersOutput',
+				type: 'options',
+				options: [
+					{
+						name: 'Numbers',
+						value: 'numbers',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+						description:
+							'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
+					},
+				],
+				hint: 'Applies to NUMERIC and BIGINT columns only',
+				default: 'text',
+			},
 		],
 	},
 ];
@@ -101,21 +128,24 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	const credentials = await this.getCredentials('mySql');
 
-	const options = this.getNodeParameter('options', 0);
-	const queryBatching = (options.queryBatching as string) || 'independently';
+	const nodeOptions = this.getNodeParameter('options', 0);
+	const queryBatching = (nodeOptions.queryBatching as string) || 'multiple';
 
 	if (queryBatching === 'multiple') {
-		const pool = await createPool(credentials);
+		const pool = await createPool(credentials, nodeOptions);
 		const connection = await pool.getConnection();
 
 		try {
 			const queries = items.map((_item, index) => {
 				//Trim the query and remove the semicolon at the end, overwise the query will fail when joined by the semicolon
 				const rawQuery = (this.getNodeParameter('query', index) as string).trim().replace(/;$/, '');
+				const options = this.getNodeParameter('options', index, {});
 
-				const values = (
-					this.getNodeParameter('queryReplacement.values', index, []) as IDataObject[]
-				).map((entry) => entry.value as string);
+				let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
+
+				if (values) {
+					values = values.map((entry) => entry.value as IDataObject);
+				}
 
 				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
 
@@ -146,15 +176,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	if (queryBatching === 'independently') {
-		const connection = await createConnection(credentials);
+		const connection = await createConnection(credentials, nodeOptions);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const rawQuery = this.getNodeParameter('query', i) as string;
 
-				const values = (
-					this.getNodeParameter('queryReplacement.values', i, []) as IDataObject[]
-				).map((entry) => entry.value as string);
+				const options = this.getNodeParameter('options', i, {});
+
+				let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
+
+				if (values) {
+					values = values.map((entry) => entry.value as IDataObject);
+				}
 
 				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
 
@@ -186,16 +220,20 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	if (queryBatching === 'transaction') {
-		const connection = await createConnection(credentials);
+		const connection = await createConnection(credentials, nodeOptions);
 		await connection.beginTransaction();
 
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const rawQuery = this.getNodeParameter('query', i) as string;
 
-				const values = (
-					this.getNodeParameter('queryReplacement.values', i, []) as IDataObject[]
-				).map((entry) => entry.value as string);
+				const options = this.getNodeParameter('options', i, {});
+
+				let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
+
+				if (values) {
+					values = values.map((entry) => entry.value as IDataObject);
+				}
 
 				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
 

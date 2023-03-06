@@ -26,12 +26,11 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
-				displayName: 'Ignore',
-				name: 'ignore',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
+				displayName: 'Connection Timeout',
+				name: 'connectionTimeoutMillis',
+				type: 'number',
+				default: 0,
+				description: 'Number of milliseconds reserved for connecting to the database',
 			},
 			{
 				displayName: 'Query Batching',
@@ -79,6 +78,33 @@ const properties: INodeProperties[] = [
 				default: 'LOW_PRIORITY',
 				description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
 			},
+			{
+				displayName: 'Skip on Conflict',
+				name: 'skipOnConflict',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to skip the row and do not throw error if a unique constraint or exclusion constraint is violated',
+			},
+			{
+				displayName: 'Output Large-Format Numbers As',
+				name: 'largeNumbersOutput',
+				type: 'options',
+				options: [
+					{
+						name: 'Numbers',
+						value: 'numbers',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+						description:
+							'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
+					},
+				],
+				hint: 'Applies to NUMERIC and BIGINT columns only',
+				default: 'text',
+			},
 		],
 	},
 ];
@@ -96,14 +122,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
-	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials);
-
 	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 	const options = this.getNodeParameter('options', 0);
 
+	const credentials = await this.getCredentials('mySql');
+	const connection = await createConnection(credentials, options);
+
 	const priority = (options.priority as string) || '';
-	const ignore = (options.ignore as boolean) ? 'IGNORE' : '';
+	const ignore = (options.skipOnConflict as boolean) ? 'IGNORE' : '';
 
 	const queryBatching = (options.queryBatching as string) || 'multiple';
 
