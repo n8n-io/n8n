@@ -2,7 +2,7 @@ import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function driftApiRequest(
@@ -24,7 +24,7 @@ export async function driftApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {
@@ -45,6 +45,6 @@ export async function driftApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'driftOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

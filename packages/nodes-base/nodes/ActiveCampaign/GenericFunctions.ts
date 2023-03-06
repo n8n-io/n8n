@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import type { IDataObject, ILoadOptionsFunctions, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodeProperties, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -49,7 +49,7 @@ export async function activeCampaignApiRequest(
 		);
 
 		if (responseData.success === false) {
-			throw new NodeApiError(this.getNode(), responseData);
+			throw new NodeApiError(this.getNode(), responseData as JsonObject);
 		}
 
 		if (dataKey === undefined) {
@@ -58,7 +58,7 @@ export async function activeCampaignApiRequest(
 			return responseData[dataKey] as IDataObject;
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -91,12 +91,12 @@ export async function activeCampaignApiRequestAllItems(
 		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query);
 
 		if (dataKey === undefined) {
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (returnData !== undefined) {
 				itemsReceived += returnData.length;
 			}
 		} else {
-			returnData.push.apply(returnData, responseData[dataKey]);
+			returnData.push.apply(returnData, responseData[dataKey] as IDataObject[]);
 			if (responseData[dataKey] !== undefined) {
 				itemsReceived += responseData[dataKey].length;
 			}

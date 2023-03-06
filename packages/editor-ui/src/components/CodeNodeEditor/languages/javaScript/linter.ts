@@ -35,7 +35,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					// optional chaining operators currently unsupported by esprima-next
 					if (['?.', ']?'].some((operator) => lineAtError.includes(operator))) return [];
-				} catch (_) {
+				} catch {
 					return [];
 				}
 
@@ -50,7 +50,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							message: this.$locale.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
 						},
 					];
-				} catch (_) {
+				} catch {
 					/**
 					 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
 					 */

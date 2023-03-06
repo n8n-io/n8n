@@ -59,7 +59,7 @@ export async function lemlistApiRequestAllItems(
 
 	do {
 		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-		returnData.push(...responseData);
+		returnData.push(...(responseData as IDataObject[]));
 		qs.offset += qs.limit;
 	} while (responseData.length !== 0);
 	return returnData;

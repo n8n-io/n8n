@@ -7,6 +7,7 @@ import type {
 	IDataObject,
 	INodeProperties,
 	IWebhookFunctions,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -35,7 +36,7 @@ export async function webexApiRequest(
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -46,7 +47,7 @@ export async function webexApiRequest(
 			tokenType: 'Bearer',
 		});
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -73,7 +74,7 @@ export async function webexApiRequestAllItems(
 		if (responseData.headers.link) {
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName]);
+		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
@@ -134,9 +135,9 @@ function removeEmptyProperties(rest: { [key: string]: any }) {
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
-export function getAttachemnts(attachements: IDataObject[]) {
+export function getAttachments(attachments: IDataObject[]) {
 	const _attachments: IDataObject[] = [];
-	for (const attachment of attachements) {
+	for (const attachment of attachments) {
 		const body: IDataObject[] = [];
 		const actions: IDataObject[] = [];
 		for (const element of ((attachment?.elementsUi as IDataObject)

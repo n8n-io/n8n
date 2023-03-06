@@ -201,7 +201,7 @@ export class GoogleSheetsV1 implements INodeType {
 							Object.assign(responseData, responseData.replies[0].addSheet.properties);
 							delete responseData.replies;
 						}
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -366,7 +366,7 @@ export class GoogleSheetsV1 implements INodeType {
 							{ requests },
 						);
 						delete responseData.replies;
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
@@ -479,7 +479,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });

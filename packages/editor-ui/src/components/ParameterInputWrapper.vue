@@ -29,6 +29,7 @@
 			data-test-id="parameter-expression-preview"
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
+			:singleLine="true"
 		/>
 		<input-hint
 			v-else-if="parameterHint"

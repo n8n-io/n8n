@@ -844,6 +844,30 @@ export function getBinaryStream(binaryDataId: string, chunkSize?: number): Reada
 	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
 }
 
+export function assertBinaryData(
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): IBinaryData {
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(node, 'No binary data exists on item!', {
+			itemIndex,
+		});
+	}
+
+	const binaryPropertyData = binaryKeyData[propertyName];
+	if (binaryPropertyData === undefined) {
+		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+			itemIndex,
+		});
+	}
+
+	return binaryPropertyData;
+}
+
 /**
  * Returns binary data buffer for given item index and property name.
  */
@@ -2327,8 +2351,11 @@ export function getExecuteFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				assertBinaryData: (itemIndex, propertyName) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				getBinaryDataBuffer: async (itemIndex, propertyName) =>
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
@@ -2465,6 +2492,8 @@ export function getExecuteSingleFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
+				assertBinaryData: (propertyName, inputIndex = 0) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
