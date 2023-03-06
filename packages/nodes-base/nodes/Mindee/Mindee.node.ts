@@ -1,8 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -160,27 +158,12 @@ export class Mindee implements INodeType {
 			try {
 				if (resource === 'receipt') {
 					if (operation === 'predict') {
+						const rawData = this.getNodeParameter('rawData', i);
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-						const rawData = this.getNodeParameter('rawData', i);
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						const binaryData = item[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-							);
-						}
 						if (version === 1) {
 							responseData = await mindeeApiRequest.call(
 								this,
@@ -233,27 +216,12 @@ export class Mindee implements INodeType {
 
 				if (resource === 'invoice') {
 					if (operation === 'predict') {
+						const rawData = this.getNodeParameter('rawData', i);
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-						const rawData = this.getNodeParameter('rawData', i);
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						const binaryData = item[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-							);
-						}
 						if (version === 1) {
 							endpoint = '/invoices/v1/predict';
 							responseData = await mindeeApiRequest.call(

@@ -1,8 +1,7 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -1067,22 +1066,8 @@ export class HttpRequestV3 implements INodeType {
 			) => {
 				const accumulator = await acc;
 				if (cur.parameterType === 'formBinaryData') {
-					const binaryDataOnInput = items[itemIndex]?.binary;
 					if (!cur.inputDataFieldName) return accumulator;
-
-					if (!binaryDataOnInput?.[cur.inputDataFieldName]) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Input Data Field Name '${cur.inputDataFieldName}' could not be found in input`,
-							{
-								runIndex: itemIndex,
-							},
-						);
-					}
-
-					if (!cur.inputDataFieldName) return accumulator;
-
-					const binaryData = binaryDataOnInput[cur.inputDataFieldName];
+					const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, cur.inputDataFieldName);
 
 					accumulator[cur.name] = {
@@ -1143,6 +1128,7 @@ export class HttpRequestV3 implements INodeType {
 						'inputDataFieldName',
 						itemIndex,
 					) as string;
+					this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
 					requestOptions.body = await this.helpers.getBinaryDataBuffer(
 						itemIndex,
 						inputDataFieldName,
