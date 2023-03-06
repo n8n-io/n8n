@@ -8,7 +8,6 @@ describe('Schedule Trigger node', async () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		// cy.visit(workflowPage.url);
 	});
 
 	it('should execute and return the execution timestamp', () => {

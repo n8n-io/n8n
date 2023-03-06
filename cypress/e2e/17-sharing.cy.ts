@@ -80,7 +80,7 @@ describe('Sharing', () => {
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
 
-		cy.visit(workflowPage.url);
+		workflowPage.actions.visit();
 		workflowPage.actions.setWorkflowName('Workflow W1');
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('Notion', true, true);
