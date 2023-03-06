@@ -35,6 +35,31 @@ const properties: INodeProperties[] = [
 					'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
 			},
 			{
+				displayName: 'Query Batching',
+				name: 'queryBatching',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Multiple Queries',
+						value: 'multiple',
+						description: 'A single query for all incoming items',
+					},
+					{
+						name: 'Independently',
+						value: 'independently',
+						description: 'Execute one query per incoming item',
+					},
+					{
+						name: 'Transaction',
+						value: 'transaction',
+						description:
+							'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
+					},
+				],
+				default: 'multiple',
+			},
+			{
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'options',
@@ -75,39 +100,122 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const credentials = await this.getCredentials('mySql');
 	const connection = await createConnection(credentials);
 
-	try {
-		const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
-		const options = this.getNodeParameter('options', 0);
+	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
+	const options = this.getNodeParameter('options', 0);
 
-		const columns = (this.getNodeParameter('columns', 0) as string)
-			.split(',')
-			.map((column) => column.trim());
+	const priority = (options.priority as string) || '';
+	const ignore = (options.ignore as boolean) ? 'IGNORE' : '';
 
-		const insertItems = copyInputItems(items, columns);
+	const queryBatching = (options.queryBatching as string) || 'multiple';
 
-		const priority = (options.priority as string) || '';
-		const ignore = (options.ignore as boolean) ? 'IGNORE' : '';
+	if (queryBatching === 'multiple') {
+		try {
+			const columns = (this.getNodeParameter('columns', 0) as string)
+				.split(',')
+				.map((column) => column.trim());
 
-		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
-		const placeholder = `(${columns.map(() => '?').join(',')})`;
-		const replacements = items.map(() => placeholder).join(',');
+			const insertItems = copyInputItems(items, columns);
 
-		const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements};`;
+			const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+			const placeholder = `(${columns.map(() => '?').join(',')})`;
+			const replacements = items.map(() => placeholder).join(',');
 
-		const values = insertItems.reduce(
-			(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
-			[],
-		);
+			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements};`;
 
-		const queryResult = await connection.query(query, values);
+			const values = insertItems.reduce(
+				(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
+				[],
+			);
 
-		returnData = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData = this.helpers.returnJsonArray({ error: error.message });
-		} else {
-			await connection.end();
-			throw error;
+			const queryResult = await connection.query(query, values);
+
+			returnData = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData = this.helpers.returnJsonArray({ error: error.message });
+			} else {
+				await connection.end();
+				throw error;
+			}
+		}
+	}
+
+	if (queryBatching === 'independently') {
+		try {
+			for (let i = 0; i < items.length; i++) {
+				const columns = (this.getNodeParameter('columns', i) as string)
+					.split(',')
+					.map((column) => column.trim());
+
+				const insertItem = Object.keys(items[i].json).reduce((acc, key) => {
+					if (columns.includes(key)) {
+						acc[key] = items[i].json[key];
+					}
+					return acc;
+				}, {} as IDataObject);
+
+				const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+				const placeholder = `(${columns.map(() => '?').join(',')})`;
+
+				const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${placeholder};`;
+
+				const values = Object.values(insertItem);
+
+				const response = (await connection.query(query, values))[0] as unknown as IDataObject;
+
+				returnData.push({ json: response });
+			}
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ json: { error: error.message } });
+			} else {
+				await connection.end();
+				throw error;
+			}
+		}
+	}
+
+	if (queryBatching === 'transaction') {
+		try {
+			await connection.beginTransaction();
+
+			for (let i = 0; i < items.length; i++) {
+				const columns = (this.getNodeParameter('columns', i) as string)
+					.split(',')
+					.map((column) => column.trim());
+
+				const insertItem = Object.keys(items[i].json).reduce((acc, key) => {
+					if (columns.includes(key)) {
+						acc[key] = items[i].json[key];
+					}
+					return acc;
+				}, {} as IDataObject);
+
+				const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+				const placeholder = `(${columns.map(() => '?').join(',')})`;
+
+				const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${placeholder};`;
+
+				const values = Object.values(insertItem);
+
+				const response = (await connection.query(query, values))[0] as unknown as IDataObject;
+
+				returnData.push({ json: response });
+			}
+
+			await connection.commit();
+		} catch (error) {
+			if (connection) {
+				await connection.rollback();
+				await connection.end();
+			}
+
+			if (this.continueOnFail()) {
+				returnData.push({ json: { error: error.message } });
+				return returnData;
+			} else {
+				throw error;
+			}
 		}
 	}
 
