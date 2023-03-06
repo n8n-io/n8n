@@ -1,11 +1,30 @@
 paths:
-  "**":
-    - Did you add unit tests?
-  "README.md":
-    - Did you remember to add code examples for newly added methods?
-    - Did you make sure that all the example code still functions as expected?
-    - Did you remember to update screenshots to match new updates?
-  "src/components/**.js":
-    - Did you check that the component visual look still matches design documents?
-  "docs/**":
-    - Did you run changes past the copywrite team?
+  "packages/**":
+    - If fixing bug, added test to cover it.
+  "packages/**/*.ts":
+    - Added unit tests to cover new functionality.
+  "**/*.vue":
+    - Used composition api for all new components.
+    - Added component tests to cover component functionality.
+  
+  # cli
+  "packages/cli/src/databases/migrations/**":
+    - Avoided irreversible data migrations.
+    - Avoided deleting or updating data keys.
+    - Wrote 'down' migration if possible.
+  "n8n/packages/cli/src/api/**":
+    - Added integration tests for new endpoints.
+
+  # editor ui
+  "packages/editor-ui/**/*.vue":
+    - Added E2E if adding new features.
+  "packages/editor-ui/src/mixins/restApi.ts":
+    - Avoided adding new methods. Only deleted from here.
+  "packages/editor-ui/src/mixins/**":
+    - Avoided adding new mixins (use composables instead). Only removed code from here.
+  "packages/editor-ui/src/views/NodeView.vue":
+    - Avoided adding code here. Only refactored to make it smaller. 
+
+  # nodes-base
+  "packages/nodes-base/nodes/**":
+    - Added workflow tests for nodes if possible.
