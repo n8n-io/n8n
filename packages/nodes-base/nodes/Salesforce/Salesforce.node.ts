@@ -1834,7 +1834,6 @@ export class Salesforce implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-						let data;
 						const body: { entity_content: { [key: string]: string } } = {
 							entity_content: {
 								Title: title,
@@ -1848,34 +1847,26 @@ export class Salesforce implements INodeType {
 							body.entity_content.FirstPublishLocationId =
 								additionalFields.linkToObjectId as string;
 						}
-						if (items[i].binary && items[i].binary![binaryPropertyName]) {
-							const binaryData = items[i].binary![binaryPropertyName];
-							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body.entity_content.PathOnClient = `${title}.${
-								additionalFields.fileExtension || binaryData.fileExtension
-							}`;
-							data = {
-								entity_content: {
-									value: JSON.stringify(body.entity_content),
-									options: {
-										contentType: 'application/json',
-									},
+						body.entity_content.PathOnClient = `${title}.${
+							additionalFields.fileExtension || binaryData.fileExtension
+						}`;
+						const data = {
+							entity_content: {
+								value: JSON.stringify(body.entity_content),
+								options: {
+									contentType: 'application/json',
 								},
-								VersionData: {
-									value: dataBuffer,
-									options: {
-										filename: body.entity_content.PathOnClient,
-									},
+							},
+							VersionData: {
+								value: dataBuffer,
+								options: {
+									filename: body.entity_content.PathOnClient,
 								},
-							};
-						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								`The property ${binaryPropertyName} does not exist`,
-								{ itemIndex: i },
-							);
-						}
+							},
+						};
 						responseData = await salesforceApiRequest.call(
 							this,
 							'POST',
