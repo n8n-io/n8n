@@ -29,8 +29,6 @@ export class WorkflowExecutionsTab extends BasePage {
 				cy.intercept('POST', '/rest/workflows/run').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
-				// Give server some time to process the previous execution
-				cy.wait(500 * i);
 			}
 		},
 		switchToExecutionsTab: () => {

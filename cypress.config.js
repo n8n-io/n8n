@@ -3,7 +3,6 @@ const { defineConfig } = require('cypress');
 
 const BASE_URL = 'http://localhost:5678';
 
-const mockedResponses = {}
 module.exports = defineConfig({
 	projectId: "5hbsdn",
 	retries: {
@@ -21,14 +20,6 @@ module.exports = defineConfig({
 
 		setupNodeEvents(on, config) {
 			on('task', {
-				setMockedResponse: ({key, responseBody}) => {
-					mockedResponses[key] = responseBody;
-
-					return true;
-				},
-				getMockedResponse: (key) => {
-					return mockedResponses[key]
-				},
 				reset: () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
 				'setup-owner': (payload) => {
 					try {

@@ -24,18 +24,9 @@ describe('Canvas Actions', () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		// Only fetch settings once, as they are not changing during the tests
-		// and store it to later stub it
-		cy.request('GET', '/rest/settings').then((response) => {
-			cy.task('setMockedResponse', { responseBody: response.body, key: 'settings'});
-		})
 	});
 
 	beforeEach(() => {
-		cy.task('getMockedResponse', 'settings').then((settingsResponse) => {
-			cy.intercept('GET', '/rest/settings', settingsResponse as Record<string, any>).as('settings');
-		})
-		cy.intercept('GET', '/rest/active', {"data":[]}).as('activeStatus');
 		WorkflowPage.actions.visit();
 	});
 

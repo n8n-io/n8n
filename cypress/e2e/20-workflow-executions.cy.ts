@@ -15,6 +15,7 @@ describe('Current Workflow Executions', () => {
 		workflowPage.actions.visit();
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
 		createMockExecutions();
+		cy.reload();
 	});
 
 	it('should render executions tab correctly', () => {
