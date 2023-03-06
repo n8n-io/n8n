@@ -515,10 +515,16 @@ class Server extends AbstractServer {
 		// SAML
 		// ----------------------------------------
 
-		// initialize SamlService
-		await SamlService.getInstance().init();
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		if (isSamlLicensed()) {
+			try {
+				await SamlService.getInstance().init();
+			} catch (error) {
+				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
+			}
+		}
 
-		// public SAML endpoints
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
 

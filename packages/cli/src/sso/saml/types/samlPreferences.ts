@@ -15,6 +15,10 @@ export class SamlPreferences {
 	@IsOptional()
 	metadataUrl?: string;
 
+	@IsBoolean()
+	@IsOptional()
+	ignoreSSL?: boolean = false;
+
 	@IsString()
 	@IsOptional()
 	loginBinding?: SamlLoginBinding = 'redirect';
