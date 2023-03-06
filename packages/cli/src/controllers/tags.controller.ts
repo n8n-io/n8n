@@ -41,9 +41,7 @@ export class TagsController {
 
 	// Retrieves all tags, with or without usage count
 	@Get('/')
-	async getALL(
-		req: Request<{}, {}, {}, { withUsageCount: string }>,
-	): Promise<TagEntity[] | ITagWithCountDb[]> {
+	async getAll(req: TagsRequest.GetAll): Promise<TagEntity[] | ITagWithCountDb[]> {
 		const { withUsageCount } = req.query;
 		if (withUsageCount === 'true') {
 			const tablePrefix = this.config.getEnv('database.tablePrefix');
@@ -55,7 +53,7 @@ export class TagsController {
 
 	// Creates a tag
 	@Post('/')
-	async createTag(req: Request<{}, {}, { name: string }>): Promise<TagEntity> {
+	async createTag(req: TagsRequest.Create): Promise<TagEntity> {
 		const newTag = new TagEntity();
 		newTag.name = req.body.name.trim();
 
@@ -69,7 +67,7 @@ export class TagsController {
 
 	// Updates a tag
 	@Patch('/:id(\\d+)')
-	async updateTag(req: Request<{ id: string }, {}, { name: string }>): Promise<TagEntity> {
+	async updateTag(req: TagsRequest.Update): Promise<TagEntity> {
 		const { name } = req.body;
 		const { id } = req.params;
 
