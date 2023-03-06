@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
@@ -1110,20 +1110,15 @@ export class EditImage implements INodeType {
 							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
-						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`,
-								{ itemIndex },
-							);
-						}
+						const binaryPropertyName = operationData.dataPropertyNameComposite as string;
+						this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							itemIndex,
+							binaryPropertyName,
+						);
 
 						const { fd, path, cleanup } = await file();
 						cleanupFunctions.push(cleanup);
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-							itemIndex,
-							operationData.dataPropertyNameComposite as string,
-						);
 						await fsWriteFileAsync(fd, binaryDataBuffer);
 
 						if (operations[0].operation === 'create') {

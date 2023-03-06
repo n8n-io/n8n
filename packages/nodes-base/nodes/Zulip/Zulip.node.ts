@@ -198,12 +198,9 @@ export class Zulip implements INodeType {
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, dataBinaryProperty);
 						const formData = {
 							file: {
-								//@ts-ignore
 								value: binaryDataBuffer,
 								options: {
-									//@ts-ignore
 									filename: binaryData.fileName,
-									//@ts-ignore
 									contentType: binaryData.mimeType,
 								},
 							},

@@ -1,12 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IBinaryKeyData,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
 

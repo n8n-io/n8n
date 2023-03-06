@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeParameters,
@@ -10,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
@@ -341,25 +340,9 @@ export class AwsSqs implements INodeType {
 					this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]
 				).forEach((attribute) => {
 					attributeCount++;
-					const { binary: binaryKeyData } = items[i];
-
-					if (binaryKeyData === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'No binary data set. So message attribute cannot be added!',
-							{ itemIndex: i },
-						);
-					}
 
 					const dataPropertyName = attribute.dataPropertyName as string;
-					const binaryData = binaryKeyData[dataPropertyName];
-					if (binaryData === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`,
-							{ itemIndex: i },
-						);
-					}
+					const binaryData = this.helpers.assertBinaryData(i, dataPropertyName);
 
 					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
 					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData.data}`);

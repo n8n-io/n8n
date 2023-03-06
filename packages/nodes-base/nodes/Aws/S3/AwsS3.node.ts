@@ -836,7 +836,6 @@ export class AwsS3 implements INodeType {
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
-
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 								i,
 								binaryPropertyName,

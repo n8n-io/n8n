@@ -6,8 +6,6 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	let body: IDataObject = {};
 	const requestMethod = 'POST';
 
-	const items = this.getInputData();
-
 	const category = this.getNodeParameter('categoryId', index) as string;
 	const share = this.getNodeParameter('options.share', index, true) as boolean;
 
