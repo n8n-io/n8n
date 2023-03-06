@@ -41,3 +41,18 @@ export const prepareQueryAndReplacements = (query: string, replacements?: IDataO
 
 	return { newQuery, newValues };
 };
+
+// export function addReturning(
+// 	query: string,
+// 	outputColumns: string[],
+// 	replacements: IDataObject[],
+// ): [string, IDataObject[]] {
+// 	if (outputColumns.includes('*')) return [`${query} RETURNING *`, replacements];
+
+// 	const escapedColumns = outputColumns.map((column) => `\`${column}\``).join(', ');
+
+// 	return [
+// 		`${query} RETURNING ${escapedColumns}`,
+// 		[...replacements, ...(outputColumns as unknown as IDataObject[])],
+// 	];
+// }

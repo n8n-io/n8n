@@ -4,109 +4,86 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { copyInputItems } from '../../helpers/utils';
 import { createConnection } from '../../transport';
-import { tableRLC } from '../common.descriptions';
+import { optionsCollection, tableRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	tableRLC,
 	{
-		displayName: 'Columns',
-		name: 'columns',
-		type: 'string',
-		requiresDataPath: 'multiple',
-		default: '',
-		placeholder: 'id,name,description',
-		description:
-			'Comma-separated list of the properties which should used as columns for the new rows',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		default: {},
-		placeholder: 'Add Option',
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
 		options: [
 			{
-				displayName: 'Connection Timeout',
-				name: 'connectionTimeoutMillis',
-				type: 'number',
-				default: 0,
-				description: 'Number of milliseconds reserved for connecting to the database',
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
 			},
 			{
-				displayName: 'Query Batching',
-				name: 'queryBatching',
-				type: 'options',
-				noDataExpression: true,
-				options: [
+				name: 'Map Each Column Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+		],
+		default: 'autoMapInputData',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	{
+		displayName: `
+		In this mode, make sure incoming data fields are named the same as the columns in your table. Use a 'Set' node before this node to change them if required.
+		`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				dataMode: ['autoMapInputData'],
+			},
+		},
+	},
+	{
+		displayName: 'Values to Send',
+		name: 'valuesToSend',
+		placeholder: 'Add Value',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Value',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				dataMode: ['defineBelow'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
 					{
-						name: 'Multiple Queries',
-						value: 'multiple',
-						description: 'A single query for all incoming items',
-					},
-					{
-						name: 'Independently',
-						value: 'independently',
-						description: 'Execute one query per incoming item',
-					},
-					{
-						name: 'Transaction',
-						value: 'transaction',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
+						type: 'options',
 						description:
-							'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getColumns',
+							loadOptionsDependsOn: ['table.value'],
+						},
+						default: [],
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
 					},
 				],
-				default: 'multiple',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				options: [
-					{
-						name: 'Low Prioirity',
-						value: 'LOW_PRIORITY',
-						description:
-							'Delays execution of the INSERT until no other clients are reading from the table',
-					},
-					{
-						name: 'High Priority',
-						value: 'HIGH_PRIORITY',
-						description:
-							'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
-					},
-				],
-				default: 'LOW_PRIORITY',
-				description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
-			},
-			{
-				displayName: 'Skip on Conflict',
-				name: 'skipOnConflict',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to skip the row and do not throw error if a unique constraint or exclusion constraint is violated',
-			},
-			{
-				displayName: 'Output Large-Format Numbers As',
-				name: 'largeNumbersOutput',
-				type: 'options',
-				options: [
-					{
-						name: 'Numbers',
-						value: 'numbers',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-						description:
-							'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
-					},
-				],
-				hint: 'Applies to NUMERIC and BIGINT columns only',
-				default: 'text',
 			},
 		],
 	},
+	optionsCollection,
 ];
 
 const displayOptions = {
@@ -135,22 +112,66 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	if (queryBatching === 'multiple') {
 		try {
-			const columns = (this.getNodeParameter('columns', 0) as string)
-				.split(',')
-				.map((column) => column.trim());
+			// const columns = (this.getNodeParameter('columns', 0) as string)
+			// 	.split(',')
+			// 	.map((column) => column.trim());
+			let columns: string[] = [];
+			let insertItems: IDataObject[] = [];
 
-			const insertItems = copyInputItems(items, columns);
+			const dataMode = this.getNodeParameter('dataMode', 0) as string;
+
+			if (dataMode === 'autoMapInputData') {
+				insertItems = copyInputItems(items, columns);
+				columns = [
+					...new Set(
+						insertItems.reduce((acc, item) => {
+							const itemColumns = Object.keys(item);
+
+							return acc.concat(itemColumns);
+						}, [] as string[]),
+					),
+				];
+			} else {
+				for (let i = 0; i < items.length; i++) {
+					const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+						.values as IDataObject[];
+
+					const item = valuesToSend.reduce((acc, { column, value }) => {
+						acc[column as string] = value;
+						return acc;
+					}, {} as IDataObject);
+
+					insertItems.push(item);
+				}
+				columns = [
+					...new Set(
+						insertItems.reduce((acc, item) => {
+							const itemColumns = Object.keys(item);
+
+							return acc.concat(itemColumns);
+						}, [] as string[]),
+					),
+				];
+			}
 
 			const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
 			const placeholder = `(${columns.map(() => '?').join(',')})`;
 			const replacements = items.map(() => placeholder).join(',');
 
-			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements};`;
+			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements}`;
 
 			const values = insertItems.reduce(
 				(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
 				[],
 			);
+
+			// let outputColumns: string[] = ['*'];
+			// if (options.returnColumns) {
+			// 	outputColumns = options.returnColumns as string[];
+			// }
+
+			// [query, values] = addReturning(query, outputColumns, values);
+			// console.log(query);
 
 			const queryResult = await connection.query(query, values);
 

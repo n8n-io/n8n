@@ -1,7 +1,7 @@
 import type { AllEntities, Entity } from 'n8n-workflow';
 
 type MySQLMap = {
-	database: 'executeQuery' | 'insert' | 'update';
+	database: 'deleteTable' | 'executeQuery' | 'insert' | 'select' | 'update' | 'upsert';
 };
 
 export type MySQLType = AllEntities<MySQLMap>;

@@ -8,7 +8,7 @@ import type {
 
 import type { IExecuteFunctions } from 'n8n-core';
 
-import { listSearch, credentialTest } from './methods';
+import { listSearch, credentialTest, loadOptions } from './methods';
 
 import { versionDescription } from './actions/versionDescription';
 
@@ -24,7 +24,7 @@ export class MySqlV2 implements INodeType {
 		};
 	}
 
-	methods = { listSearch, credentialTest };
+	methods = { listSearch, loadOptions, credentialTest };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return router.call(this);

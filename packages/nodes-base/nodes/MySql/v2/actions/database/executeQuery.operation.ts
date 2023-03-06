@@ -5,6 +5,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 // import type { Mysql2OkPacket } from '../../helpers/interfaces';
 import { prepareQueryAndReplacements } from '../../helpers/utils';
 import { createConnection, createPool } from '../../transport';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -24,93 +25,7 @@ const properties: INodeProperties[] = [
 		type: 'notice',
 		default: '',
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		default: {},
-		placeholder: 'Add Option',
-		options: [
-			{
-				displayName: 'Connection Timeout',
-				name: 'connectionTimeoutMillis',
-				type: 'number',
-				default: 0,
-				description: 'Number of milliseconds reserved for connecting to the database',
-			},
-			{
-				displayName: 'Query Batching',
-				name: 'queryBatching',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Multiple Queries',
-						value: 'multiple',
-						description: 'Execute queries for all incoming items, then process the results',
-					},
-					{
-						name: 'Independently',
-						value: 'independently',
-						description: 'Execute one query per incoming item',
-					},
-					{
-						name: 'Transaction',
-						value: 'transaction',
-						description:
-							'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
-					},
-				],
-				default: 'multiple',
-			},
-			{
-				displayName: 'Query Parameters',
-				name: 'queryReplacement',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				placeholder: 'Add Query Parameter',
-				description:
-					'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
-				options: [
-					{
-						displayName: 'Values',
-						name: 'values',
-						values: [
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								placeholder: 'e.g. queryParamValue',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Output Large-Format Numbers As',
-				name: 'largeNumbersOutput',
-				type: 'options',
-				options: [
-					{
-						name: 'Numbers',
-						value: 'numbers',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-						description:
-							'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
-					},
-				],
-				hint: 'Applies to NUMERIC and BIGINT columns only',
-				default: 'text',
-			},
-		],
-	},
+	optionsCollection,
 ];
 
 const displayOptions = {
