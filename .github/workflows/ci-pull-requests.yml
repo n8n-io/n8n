@@ -128,4 +128,4 @@ jobs:
         uses: wyozi/contextual-qa-checklist-action@master
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
-          # See options documentation below
+          comment-footer: Make sure to check off this list before asking for review.
