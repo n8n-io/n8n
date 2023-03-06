@@ -1,8 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -643,19 +641,7 @@ export class MicrosoftOutlook implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-								{ itemIndex: i },
-							);
-						}
-
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						const fileName =

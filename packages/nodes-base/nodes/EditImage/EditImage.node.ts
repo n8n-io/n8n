@@ -1,6 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
@@ -1058,20 +1058,7 @@ export class EditImage implements INodeType {
 
 				if (operations[0].operation !== 'create') {
 					// "create" generates a new image so does not require any incoming data.
-					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Item does not contain any binary data.', {
-							itemIndex,
-						});
-					}
-
-					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Item does not contain any binary data with the name "${dataPropertyName}".`,
-							{ itemIndex },
-						);
-					}
-
+					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 						itemIndex,
 						dataPropertyName,

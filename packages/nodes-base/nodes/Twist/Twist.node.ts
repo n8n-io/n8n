@@ -258,6 +258,7 @@ export class Twist implements INodeType {
 
 								const binaryData = item[binaryProperty];
 
+								// TODO: assertBinaryData
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),

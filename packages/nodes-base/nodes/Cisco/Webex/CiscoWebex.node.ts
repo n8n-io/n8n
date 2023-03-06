@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getAttachemnts, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
+import { getAttachments, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
 
 import {
 	meetingFields,
@@ -156,7 +156,7 @@ export class CiscoWebex implements INodeType {
 
 						body.text = this.getNodeParameter('text', i);
 
-						body.attachments = getAttachemnts(
+						body.attachments = getAttachments(
 							this.getNodeParameter(
 								'additionalFields.attachmentsUi.attachmentValues',
 								i,

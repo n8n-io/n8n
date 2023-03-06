@@ -1,9 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 import type { Readable } from 'stream';
 
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchItems,
@@ -1043,7 +1043,6 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
 						const options = this.getNodeParameter('options', i);
-						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -1060,34 +1059,21 @@ export class SlackV2 implements INodeType {
 						if (options.title) {
 							body.title = options.title as string;
 						}
-						if (binaryData) {
+						if (this.getNodeParameter('binaryData', i)) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							if (
-								items[i].binary === undefined ||
-								//@ts-ignore
-								items[i].binary[binaryPropertyName] === undefined
-							) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+
 							let uploadData: Buffer | Readable;
-							const itemBinaryData = items[i].binary![binaryPropertyName];
-							if (itemBinaryData.id) {
-								uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
 							} else {
-								uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
 							body.file = {
-								//@ts-ignore
 								value: uploadData,
 								options: {
-									//@ts-ignore
-									filename: itemBinaryData.fileName,
-									//@ts-ignore
-									contentType: itemBinaryData.mimeType,
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
 								},
 							};
 							responseData = await slackApiRequest.call(

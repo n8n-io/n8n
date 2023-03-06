@@ -284,6 +284,7 @@ export class Signl4 implements INodeType {
 								const propertyName = (attachments.attachmentsBinary as IDataObject)
 									.property as string;
 
+								// TODO: assertBinaryData
 								const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
 
 								if (binaryProperty) {

@@ -90,6 +90,7 @@ export async function uploadAttachments(
 	for (const binaryPropertyName of binaryProperties) {
 		const binaryData = items[i].binary as IBinaryKeyData;
 
+		// TODO: assertBinaryData
 		if (binaryData === undefined) {
 			throw new NodeOperationError(
 				this.getNode(),

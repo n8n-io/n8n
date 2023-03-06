@@ -341,10 +341,9 @@ export class AwsSqs implements INodeType {
 					this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]
 				).forEach((attribute) => {
 					attributeCount++;
-					const dataPropertyName = attribute.dataPropertyName as string;
-					const item = items[i];
+					const { binary: binaryKeyData } = items[i];
 
-					if (item.binary === undefined) {
+					if (binaryKeyData === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'No binary data set. So message attribute cannot be added!',
@@ -352,7 +351,9 @@ export class AwsSqs implements INodeType {
 						);
 					}
 
-					if (item.binary[dataPropertyName] === undefined) {
+					const dataPropertyName = attribute.dataPropertyName as string;
+					const binaryData = binaryKeyData[dataPropertyName];
+					if (binaryData === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`,
@@ -360,10 +361,8 @@ export class AwsSqs implements INodeType {
 						);
 					}
 
-					const binaryData = item.binary[dataPropertyName].data;
-
 					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData.data}`);
 					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
 				});
 

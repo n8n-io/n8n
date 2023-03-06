@@ -607,6 +607,7 @@ export class ServiceNow implements INodeType {
 
 						let binaryData: IBinaryData;
 
+						// TODO: assertBinaryData
 						if (items[i].binary && items[i].binary![inputDataFieldName]) {
 							binaryData = items[i].binary![inputDataFieldName];
 						} else {

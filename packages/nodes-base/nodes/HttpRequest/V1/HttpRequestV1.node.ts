@@ -20,7 +20,7 @@ interface OptionData {
 	displayName: string;
 }
 
-interface OptionDataParamters {
+interface OptionDataParameters {
 	[key: string]: OptionData;
 }
 
@@ -637,7 +637,7 @@ export class HttpRequestV1 implements INodeType {
 			queryParametersUi: 'qs',
 		};
 
-		const jsonParameters: OptionDataParamters = {
+		const jsonParameters: OptionDataParameters = {
 			bodyParametersJson: {
 				name: 'body',
 				displayName: 'Body Parameters',
@@ -648,7 +648,7 @@ export class HttpRequestV1 implements INodeType {
 			},
 			queryParametersJson: {
 				name: 'qs',
-				displayName: 'Query Paramters',
+				displayName: 'Query Parameters',
 			},
 		};
 		let returnItems: INodeExecutionData[] = [];
@@ -730,7 +730,7 @@ export class HttpRequestV1 implements INodeType {
 							const contentTypesAllowed = ['raw', 'multipart-form-data'];
 
 							if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
-								// As n8n-workflow.NodeHelpers.getParamterResolveOrder can not be changed
+								// As n8n-workflow.NodeHelpers.getParameterResolveOrder can not be changed
 								// easily to handle parameters in dot.notation simply error for now.
 								throw new NodeOperationError(
 									this.getNode(),
@@ -739,24 +739,9 @@ export class HttpRequestV1 implements INodeType {
 								);
 							}
 
-							const item = items[itemIndex];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex,
-								});
-							}
-
 							if (options.bodyContentType === 'raw') {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
-								if (item.binary[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex },
-									);
-								}
-
+								this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 									itemIndex,
 									binaryPropertyName,
@@ -787,14 +772,7 @@ export class HttpRequestV1 implements INodeType {
 										);
 									}
 
-									if (item.binary[binaryPropertyName] === undefined) {
-										throw new NodeOperationError(
-											this.getNode(),
-											`Item has no binary property called "${binaryPropertyName}"`,
-										);
-									}
-
-									const binaryProperty = item.binary[binaryPropertyName];
+									const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 										itemIndex,
 										binaryPropertyName,
@@ -803,8 +781,8 @@ export class HttpRequestV1 implements INodeType {
 									requestOptions.body[propertyName] = {
 										value: binaryDataBuffer,
 										options: {
-											filename: binaryProperty.fileName,
-											contentType: binaryProperty.mimeType,
+											filename: binaryData.fileName,
+											contentType: binaryData.mimeType,
 										},
 									};
 								}
@@ -814,7 +792,7 @@ export class HttpRequestV1 implements INodeType {
 					}
 
 					if (tempValue === '') {
-						// Paramter is empty so skip it
+						// Parameter is empty so skip it
 						continue;
 					}
 
@@ -842,7 +820,7 @@ export class HttpRequestV1 implements INodeType {
 					}
 				}
 			} else {
-				// Paramters are defined in UI
+				// Parameters are defined in UI
 				let optionName: string;
 				for (const parameterName of Object.keys(uiParameters)) {
 					setUiParameter = this.getNodeParameter(parameterName, itemIndex, {}) as IDataObject;
