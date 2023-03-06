@@ -1,13 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
@@ -137,27 +136,11 @@ export class LinkedIn implements INodeType {
 							].uploadUrl as string;
 							const asset = registerObject.value.asset as string;
 
-							// Prepare binary file upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${propertyNameUpload}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							// Buffer binary data
-							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							// Upload image
 							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
 
