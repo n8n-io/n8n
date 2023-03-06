@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import type { PostHog } from 'posthog-node';
+import { PostHogClient } from '@/posthog';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
@@ -10,6 +10,7 @@ import { getLogger } from '@/Logger';
 import { getLicense } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
+import { Service } from 'typedi';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -28,16 +29,21 @@ interface IExecutionsBuffer {
 	};
 }
 
+@Service()
 export class Telemetry {
-	private rudderStack?: RudderStack;
+	private instanceId: string;
 
-	private postHog?: PostHog;
+	private rudderStack?: RudderStack;
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string) {}
+	constructor(private postHog: PostHogClient) {}
+
+	setInstanceId(instanceId: string) {
+		this.instanceId = instanceId;
+	}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
@@ -57,10 +63,6 @@ export class Telemetry {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			this.rudderStack = new RudderStack(key, url, { logLevel });
-
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { PostHog } = await import('posthog-node');
-			this.postHog = new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'));
 
 			this.startPulse();
 		}
@@ -135,10 +137,8 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
-		return new Promise<void>((resolve) => {
-			if (this.postHog) {
-				this.postHog.shutdown();
-			}
+		return new Promise<void>(async (resolve) => {
+			await this.postHog.stop();
 
 			if (this.rudderStack) {
 				this.rudderStack.flush(resolve);
@@ -190,11 +190,7 @@ export class Telemetry {
 				};
 
 				if (withPostHog) {
-					this.postHog?.capture({
-						distinctId: payload.userId,
-						sendFeatureFlags: true,
-						...payload,
-					});
+					this.postHog?.track(payload);
 				}
 
 				return this.rudderStack.track(payload, resolve);
@@ -204,19 +200,7 @@ export class Telemetry {
 		});
 	}
 
-	async isFeatureFlagEnabled(
-		featureFlagName: string,
-		{ user_id: userId }: ITelemetryTrackProperties = {},
-	): Promise<boolean | undefined> {
-		if (!this.postHog) return Promise.resolve(false);
-
-		const fullId = [this.instanceId, userId].join('#');
-
-		return this.postHog.isFeatureEnabled(featureFlagName, fullId);
-	}
-
 	// test helpers
-
 	getCountsBuffer(): IExecutionsBuffer {
 		return this.executionCountsBuffer;
 	}

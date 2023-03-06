@@ -1,5 +1,4 @@
 import set from 'lodash.set';
-import { BinaryDataManager } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteSingleFunctions,
@@ -8,9 +7,9 @@ import type {
 	INodeExecutionData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import FormData from 'form-data';
+import { getUploadFormData } from './MediaFunctions';
 
 interface WhatsAppApiError {
 	error: {
@@ -62,29 +61,7 @@ export async function mediaUploadFromItem(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ) {
-	const mediaPropertyName = this.getNodeParameter('mediaPropertyName') as string;
-	if (this.getInputData().binary?.[mediaPropertyName] === undefined) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`The binary property "${mediaPropertyName}" does not exist. So no file can be written!`,
-		);
-	}
-	const binaryFile = this.getInputData().binary![mediaPropertyName]!;
-	const mediaFileName = (this.getNodeParameter('additionalFields') as IDataObject).mediaFilename as
-		| string
-		| undefined;
-	const binaryFileName = binaryFile.fileName;
-	if (!mediaFileName && !binaryFileName) {
-		throw new NodeOperationError(this.getNode(), 'No file name given for media upload.');
-	}
-	const mimeType = binaryFile.mimeType;
-
-	const data = new FormData();
-	data.append('file', await BinaryDataManager.getInstance().retrieveBinaryData(binaryFile), {
-		contentType: mimeType,
-		filename: mediaFileName || binaryFileName,
-	});
-	data.append('messaging_product', 'whatsapp');
+	const uploadData = await getUploadFormData.call(this);
 
 	const phoneNumberId = this.getNodeParameter('phoneNumberId') as string;
 
@@ -92,7 +69,7 @@ export async function mediaUploadFromItem(
 		url: `/${phoneNumberId}/media`,
 		baseURL: requestOptions.baseURL,
 		method: 'POST',
-		body: data,
+		body: uploadData.formData,
 	})) as IDataObject;
 
 	const operation = this.getNodeParameter('messageType') as string;
@@ -101,11 +78,7 @@ export async function mediaUploadFromItem(
 	}
 	set(requestOptions.body as IDataObject, `${operation}.id`, result.id);
 	if (operation === 'document') {
-		set(
-			requestOptions.body as IDataObject,
-			`${operation}.filename`,
-			mediaFileName || binaryFileName,
-		);
+		set(requestOptions.body as IDataObject, `${operation}.filename`, uploadData.fileName);
 	}
 
 	return requestOptions;

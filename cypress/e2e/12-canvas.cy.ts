@@ -21,9 +21,12 @@ const ZOOM_OUT_X2_FACTOR = 0.64;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Actions', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		cy.waitForLoad();
 	});
@@ -46,14 +49,16 @@ describe('Canvas Actions', () => {
 		// Change connection from Set to Set1
 		cy.draganddrop(
 			WorkflowPage.getters.getEndpointSelector('input', SET_NODE_NAME),
-			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`)
-		)
+			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`),
+		);
 
-		WorkflowPage.getters.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`).should('have.class', 'jtk-endpoint-connected');
+		WorkflowPage.getters
+			.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`)
+			.should('have.class', 'jtk-endpoint-connected');
 
 		cy.get('.jtk-connector').should('have.length', 1);
 		// Disconnect Set1
-		cy.drag(WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`), [-200, 100])
+		cy.drag(WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`), [-200, 100]);
 		cy.get('.jtk-connector').should('have.length', 0);
 	});
 
@@ -67,7 +72,10 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME, true);
 
-		cy.drag(WorkflowPage.getters.getEndpointSelector('plus', SCHEDULE_TRIGGER_NODE_NAME), [100, 100])
+		cy.drag(
+			WorkflowPage.getters.getEndpointSelector('plus', SCHEDULE_TRIGGER_NODE_NAME),
+			[100, 100],
+		);
 
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
@@ -79,23 +87,26 @@ describe('Canvas Actions', () => {
 
 		// Switch has 4 output endpoints
 		for (let i = 0; i < 4; i++) {
-			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true })
+			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true });
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
 			WorkflowPage.actions.zoomToFit();
 		}
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		cy.reload()
+		cy.reload();
 		cy.waitForLoad();
 		// Make sure all connections are there after reload
 		for (let i = 0; i < 4; i++) {
 			const setName = `${SET_NODE_NAME}${i > 0 ? i : ''}`;
-			WorkflowPage.getters.canvasNodeInputEndpointByName(setName).should('have.class', 'jtk-endpoint-connected');
+			WorkflowPage.getters
+				.canvasNodeInputEndpointByName(setName)
+				.should('have.class', 'jtk-endpoint-connected');
 		}
 	});
 
 	it('should add merge node and test connections', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 2; i++) {
 			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
 			WorkflowPage.getters.nodeViewBackground().click(600 + i * 100, 200, { force: true });
@@ -108,26 +119,26 @@ describe('Canvas Actions', () => {
 		// Connect manual to Set1
 		cy.draganddrop(
 			WorkflowPage.getters.getEndpointSelector('output', MANUAL_TRIGGER_NODE_DISPLAY_NAME),
-			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`)
-		)
+			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`),
+		);
 
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 2);
 
 		// Connect Set1 and Set2 to merge
 		cy.draganddrop(
 			WorkflowPage.getters.getEndpointSelector('plus', SET_NODE_NAME),
-			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 0)
-		)
+			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 0),
+		);
 		cy.draganddrop(
 			WorkflowPage.getters.getEndpointSelector('plus', `${SET_NODE_NAME}1`),
-			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 1)
-		)
+			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 1),
+		);
 
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 4);
 
 		// Make sure all connections are there after save & reload
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		cy.reload()
+		cy.reload();
 		cy.waitForLoad();
 
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 4);
@@ -138,6 +149,7 @@ describe('Canvas Actions', () => {
 
 	it('should add nodes and check execution success', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 3; i++) {
 			WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
 		}
@@ -154,7 +166,7 @@ describe('Canvas Actions', () => {
 		cy.get('.plus-draggable-endpoint').filter(':visible').should('not.have.class', 'ep-success');
 		cy.get('.jtk-connector.success').should('have.length', 3);
 		cy.get('.jtk-connector').should('have.length', 4);
-	})
+	});
 
 	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
@@ -235,6 +247,7 @@ describe('Canvas Actions', () => {
 
 	it('should move node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
@@ -316,6 +329,7 @@ describe('Canvas Actions', () => {
 
 	it('should select nodes using arrow keys', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		cy.get('body').type('{leftArrow}');
@@ -326,6 +340,7 @@ describe('Canvas Actions', () => {
 
 	it('should select nodes using shift and arrow keys', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		cy.get('body').type('{shift}', { release: false }).type('{leftArrow}');
@@ -334,6 +349,7 @@ describe('Canvas Actions', () => {
 
 	it('should delete connections by pressing the delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().realHover();
 		cy.get('.connection-actions .delete').first().click({ force: true });
@@ -342,6 +358,7 @@ describe('Canvas Actions', () => {
 
 	it('should delete a connection by moving it away from endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.drag(WorkflowPage.getters.getEndpointSelector('input', CODE_NODE_NAME), [0, -100]);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
@@ -349,6 +366,7 @@ describe('Canvas Actions', () => {
 
 	it('should disable node by pressing the disable button', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters
 			.canvasNodes()
@@ -360,6 +378,7 @@ describe('Canvas Actions', () => {
 
 	it('should disable node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
@@ -368,6 +387,7 @@ describe('Canvas Actions', () => {
 
 	it('should disable multiple nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
@@ -389,6 +409,7 @@ describe('Canvas Actions', () => {
 
 	it('should duplicate node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters
 			.canvasNodes()

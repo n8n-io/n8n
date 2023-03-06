@@ -14,20 +14,17 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" :searchItems="searchItems" />
+				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, reactive, toRefs } from 'vue';
-
-import { INodeCreateElement } from '@/Interface';
+import { watch, reactive, toRefs } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
@@ -44,28 +41,6 @@ const nodeCreatorStore = useNodeCreatorStore();
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
-});
-
-const visibleNodeTypes = computed(() => useNodeTypesStore().visibleNodeTypes);
-const searchItems = computed<INodeCreateElement[]>(() => {
-	const sorted = [...visibleNodeTypes.value];
-	sorted.sort((a, b) => {
-		const textA = a.displayName.toLowerCase();
-		const textB = b.displayName.toLowerCase();
-		return textA < textB ? -1 : textA > textB ? 1 : 0;
-	});
-
-	return sorted.map((nodeType) => ({
-		type: 'node',
-		category: '',
-		key: `${nodeType.name}`,
-		properties: {
-			nodeType,
-			subcategory: '',
-		},
-		includedByTrigger: nodeType.group.includes('trigger'),
-		includedByRegular: !nodeType.group.includes('trigger'),
-	}));
 });
 
 function onClickOutside(event: Event) {

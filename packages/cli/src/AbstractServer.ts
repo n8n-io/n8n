@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import type { Url } from 'url';
@@ -12,7 +13,7 @@ import type { WebhookHttpMethod } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -23,7 +24,7 @@ import {
 	ServiceUnavailableError,
 } from '@/ResponseHelper';
 import { corsMiddleware } from '@/middlewares';
-import * as TestWebhooks from '@/TestWebhooks';
+import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 
@@ -36,7 +37,7 @@ export abstract class AbstractServer {
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected protocol: string;
 
@@ -71,8 +72,8 @@ export abstract class AbstractServer {
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
-		this.externalHooks = ExternalHooks();
-		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+		this.externalHooks = Container.get(ExternalHooks);
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	}
 
 	private async setupErrorHandlers() {
@@ -338,7 +339,7 @@ export abstract class AbstractServer {
 	// ----------------------------------------
 	protected setupTestWebhookEndpoint() {
 		const endpoint = this.endpointWebhookTest;
-		const testWebhooks = TestWebhooks.getInstance();
+		const testWebhooks = Container.get(TestWebhooks);
 
 		// Register all test webhook requests (for testing via the UI)
 		this.app.all(`/${endpoint}/*`, async (req, res) => {

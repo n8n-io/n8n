@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -321,12 +322,12 @@ export class Reddit implements INodeType {
 						} else if (details === 'friends') {
 							responseData = responseData.data.children;
 							if (!responseData.length) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 						} else if (details === 'karma') {
 							responseData = responseData.data;
 							if (!responseData.length) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 						} else if (details === 'trophies') {
 							responseData = responseData.data.trophies.map((trophy: IDataObject) => trophy.data);
@@ -422,7 +423,7 @@ export class Reddit implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as JsonObject),
 					{ itemData: { item: i } },
 				);
 

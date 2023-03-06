@@ -89,7 +89,10 @@ export class SplitInBatches implements INodeType {
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
-			returnItems.push.apply(returnItems, nodeContext.items.splice(0, batchSize));
+			returnItems.push.apply(
+				returnItems,
+				(nodeContext.items as INodeExecutionData[]).splice(0, batchSize),
+			);
 
 			const addSourceOverwrite = (pairedItem: IPairedItemData | number): IPairedItemData => {
 				if (typeof pairedItem === 'number') {

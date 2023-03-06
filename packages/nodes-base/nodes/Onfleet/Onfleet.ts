@@ -853,7 +853,7 @@ export class Onfleet {
 						tasks = tasks.tasks;
 						tasks = tasks.splice(0, limit);
 					}
-					responseData.push(...tasks);
+					responseData.push(...(tasks as IDataObject[]));
 				} else if (operation === 'complete') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Force complete a task                           */
@@ -1061,7 +1061,7 @@ export class Onfleet {
 						const limit = this.getNodeParameter('limit', 0);
 						adminUsers = adminUsers.slice(0, limit);
 					}
-					responseData.push(...adminUsers);
+					responseData.push(...(adminUsers as IDataObject[]));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Create a new admin                             */
@@ -1123,7 +1123,7 @@ export class Onfleet {
 						const limit = this.getNodeParameter('limit', 0);
 						hubs = hubs.slice(0, limit);
 					}
-					responseData.push(...hubs);
+					responseData.push(...(hubs as IDataObject[]));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Create a new hub                              */
@@ -1203,7 +1203,7 @@ export class Onfleet {
 						workers = workers.slice(0, limit);
 					}
 
-					responseData.push(...workers);
+					responseData.push(...(workers as IDataObject[]));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get a worker                                */
@@ -1290,7 +1290,9 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get all webhooks                              */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...(await onfleetApiRequest.call(this, 'GET', resource)));
+					responseData.push(
+						...((await onfleetApiRequest.call(this, 'GET', resource)) as IDataObject[]),
+					);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Create a new webhook                            */
@@ -1403,7 +1405,7 @@ export class Onfleet {
 						teams = teams.slice(0, limit);
 					}
 
-					responseData.push(...teams);
+					responseData.push(...(teams as IDataObject[]));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get a single team                             */

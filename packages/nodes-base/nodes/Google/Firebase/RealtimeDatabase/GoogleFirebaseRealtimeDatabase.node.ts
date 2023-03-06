@@ -7,6 +7,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -217,7 +218,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 				if (responseData === null) {
 					if (operation === 'get') {
-						throw new NodeApiError(this.getNode(), responseData, {
+						throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 							message: 'Requested entity was not found.',
 						});
 					} else if (method === 'DELETE') {
@@ -243,7 +244,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

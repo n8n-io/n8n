@@ -33,7 +33,7 @@ export async function awsApiRequest(
 
 	try {
 		return JSON.parse(
-			await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions),
+			(await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions)) as string,
 		);
 	} catch (error) {
 		const errorMessage =
@@ -72,7 +72,7 @@ export async function awsApiRequestAllItems(
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
-		returnData.push(...responseData.Items);
+		returnData.push(...(responseData.Items as IDataObject[]));
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;

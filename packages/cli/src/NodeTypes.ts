@@ -1,6 +1,5 @@
 import { loadClassInIsolation } from 'n8n-core';
 import type {
-	INodesAndCredentials,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypes,
@@ -8,10 +7,13 @@ import type {
 	LoadedClass,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
+import { Service } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 
-export class NodeTypesClass implements INodeTypes {
-	constructor(private nodesAndCredentials: INodesAndCredentials) {
+@Service()
+export class NodeTypes implements INodeTypes {
+	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
 		this.applySpecialNodeParameters();
@@ -74,19 +76,4 @@ export class NodeTypesClass implements INodeTypes {
 	private get knownNodes() {
 		return this.nodesAndCredentials.known.nodes;
 	}
-}
-
-let nodeTypesInstance: NodeTypesClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypesClass {
-	if (!nodeTypesInstance) {
-		if (nodesAndCredentials) {
-			nodeTypesInstance = new NodeTypesClass(nodesAndCredentials);
-		} else {
-			throw new Error('NodeTypes not initialized yet');
-		}
-	}
-
-	return nodeTypesInstance;
 }

@@ -45,7 +45,7 @@ export abstract class DirectoryLoader {
 	types: Types = { nodes: [], credentials: [] };
 
 	constructor(
-		protected readonly directory: string,
+		readonly directory: string,
 		protected readonly excludeNodes: string[] = [],
 		protected readonly includeNodes: string[] = [],
 	) {}
@@ -233,7 +233,7 @@ export abstract class DirectoryLoader {
 			}
 
 			node.description.codex = codex;
-		} catch (_) {
+		} catch {
 			Logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
