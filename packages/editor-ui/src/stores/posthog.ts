@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
-import { FeatureFlags } from 'n8n-workflow';
+import { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, ONBOARDING_EXPERIMENT } from '@/constants';
 import { useTelemetryStore } from './telemetry';
 import { useSegment } from './segment';
@@ -95,6 +95,19 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
+	const track = (event: string, properties?: ITelemetryTrackProperties) => {
+		if (!window.posthog) {
+			return;
+		}
+
+		const config = settingsStore.settings.posthog;
+		if (!config.enabled) {
+			return;
+		}
+
+		window.posthog.capture?.(event, properties);
+	};
+
 	const trackExperiments = debounce((featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
 	}, 2000);
@@ -118,5 +131,7 @@ export const usePostHog = defineStore('posthog', () => {
 		isVariantEnabled,
 		getVariant,
 		reset,
+		track,
+		identify,
 	};
 });

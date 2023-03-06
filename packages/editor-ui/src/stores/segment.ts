@@ -12,6 +12,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { INodeTypeDescription, IRun } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUsersStore } from '@/stores/users';
+import { n8nCloudHooks_ENABLE_LOGS, n8nCloudHooks_ENABLE_TRACKING } from '@/hooks/constants';
 
 const EVENTS = {
 	SHOW_CHECKLIST: 'Show checklist',
@@ -29,10 +31,25 @@ export const useSegment = defineStore('segment', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const track = (eventName: string, properties?: ITelemetryTrackProperties) => {
 		if (settingsStore.telemetry.enabled) {
 			window.analytics?.track(eventName, properties);
+		}
+	};
+
+	const page = (category: string, name: string, properties?: ITelemetryTrackProperties) => {
+		if (settingsStore.telemetry.enabled) {
+			window.analytics?.page(category, name, properties);
+		}
+	};
+
+	const identify = () => {
+		const userId = usersStore.currentUserId;
+
+		if (settingsStore.telemetry.enabled && userId) {
+			window.analytics?.identify(userId);
 		}
 	};
 
@@ -128,6 +145,8 @@ export const useSegment = defineStore('segment', () => {
 		track,
 		trackAddedTrigger,
 		trackSuccessfulWorkflowExecution,
+		identify,
+		page,
 		EVENTS,
 	};
 });

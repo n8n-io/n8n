@@ -8,14 +8,11 @@ import {
 	getOutputModeChangedEventData,
 	getUpdatedWorkflowSettingsEventData,
 	getUserSavedCredentialsEventData,
-	hooksTelemetryIdentify,
-	hooksTelemetryPage,
-	hooksTelemetryTrack,
 	getExecutionFinishedEventData,
 	getNodeRemovedEventData,
 	getNodeEditingFinishedEventData,
 	getExecutionStartedEventData,
-} from '@/hooks/telemetry';
+} from '@/hooks/segment';
 import { useNDVStore } from '@/stores/ndv';
 import { useWorkflowsStore } from '@/stores/workflows';
 import {
@@ -24,6 +21,7 @@ import {
 	nodesPanelSession,
 } from '@/hooks/utils/hooksNodesPanel';
 import { ExternalHooks } from '@/mixins/externalHooks';
+import { useSegment } from '@/stores/segment';
 
 export const n8nCloudHooks: ExternalHooks = {
 	parameterInput: {
@@ -69,7 +67,8 @@ export const n8nCloudHooks: ExternalHooks = {
 	nodeView: {
 		mount: [
 			() => {
-				hooksTelemetryIdentify();
+				const segmentStore = useSegment();
+				segmentStore.identify();
 			},
 			() => {
 				hooksAddAdminIcon();
@@ -77,21 +76,20 @@ export const n8nCloudHooks: ExternalHooks = {
 		],
 		createNodeActiveChanged: [
 			(meta) => {
-				hooksResetNodesPanelSession();
+				const segmentStore = useSegment();
 				const eventData = {
-					eventName: 'User opened nodes panel',
-					properties: {
-						source: meta.source,
-						nodes_panel_session_id: nodesPanelSession.sessionId,
-					},
+					source: meta.source,
+					nodes_panel_session_id: nodesPanelSession.sessionId,
 				};
 
-				hooksTelemetryTrack(eventData);
-				hooksTelemetryPage('Cloud instance', 'Nodes panel', eventData.properties);
+				hooksResetNodesPanelSession();
+				segmentStore.track('User opened nodes panel', eventData);
+				segmentStore.page('Cloud instance', 'Nodes panel', eventData);
 			},
 		],
 		addNodeButton: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User added node to workflow canvas',
 					properties: {
@@ -100,20 +98,21 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	main: {
 		routeChange: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const splitPath = meta.to.path.split('/');
 				if (meta.from.path !== '/' && splitPath[1] === 'workflow') {
 					const eventData = {
 						workflow_id: splitPath[2],
 					};
 
-					hooksTelemetryPage('Cloud instance', 'Workflow editor', eventData);
+					segmentStore.page('Cloud instance', 'Workflow editor', eventData);
 				}
 			},
 		],
@@ -121,13 +120,17 @@ export const n8nCloudHooks: ExternalHooks = {
 	credential: {
 		saved: [
 			(meta) => {
-				hooksTelemetryTrack(getUserSavedCredentialsEventData(meta));
+				const segmentStore = useSegment();
+				const eventData = getUserSavedCredentialsEventData(meta);
+
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	credentialsEdit: {
 		credentialTypeChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				if (meta.newValue) {
 					const eventData = {
 						eventName: 'User opened Credentials modal',
@@ -138,13 +141,14 @@ export const n8nCloudHooks: ExternalHooks = {
 						},
 					};
 
-					hooksTelemetryTrack(eventData);
-					hooksTelemetryPage('Cloud instance', 'Credentials modal', eventData.properties);
+					segmentStore.track(eventData.eventName, eventData.properties);
+					segmentStore.page('Cloud instance', 'Credentials modal', eventData.properties);
 				}
 			},
 		],
 		credentialModalOpened: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User opened Credentials modal',
 					properties: {
@@ -154,31 +158,33 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
-				hooksTelemetryPage('Cloud instance', 'Credentials modal', eventData.properties);
+				segmentStore.track(eventData.eventName, eventData.properties);
+				segmentStore.page('Cloud instance', 'Credentials modal', eventData.properties);
 			},
 		],
 	},
 	credentialsList: {
 		mounted: [
 			() => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User opened global Credentials panel',
 				};
 
-				hooksTelemetryTrack(eventData);
-				hooksTelemetryPage('Cloud instance', 'Credentials panel');
+				segmentStore.track(eventData.eventName);
+				segmentStore.page('Cloud instance', 'Credentials panel');
 			},
 		],
 		dialogVisibleChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				if (meta.dialogVisible) {
 					const eventData = {
 						eventName: 'User opened global Credentials panel',
 					};
 
-					hooksTelemetryTrack(eventData);
-					hooksTelemetryPage('Cloud instance', 'Credentials panel');
+					segmentStore.track(eventData.eventName);
+					segmentStore.page('Cloud instance', 'Credentials panel');
 				}
 			},
 		],
@@ -186,20 +192,25 @@ export const n8nCloudHooks: ExternalHooks = {
 	workflowSettings: {
 		dialogVisibleChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				if (meta.dialogVisible) {
-					hooksTelemetryTrack(getOpenWorkflowSettingsEventData());
+					const eventData = getOpenWorkflowSettingsEventData();
+					segmentStore.track(eventData.eventName, eventData.properties);
 				}
 			},
 		],
 		saveSettings: [
 			(meta) => {
-				hooksTelemetryTrack(getUpdatedWorkflowSettingsEventData(meta));
+				const segmentStore = useSegment();
+				const eventData = getUpdatedWorkflowSettingsEventData(meta);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	dataDisplay: {
 		onDocumentationUrlClick: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User clicked node modal docs link',
 					properties: {
@@ -208,21 +219,24 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		nodeTypeChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const store = useNDVStore();
+				const eventData = getNodeTypeChangedEventData(meta);
 
-				hooksTelemetryTrack(getNodeTypeChangedEventData(meta));
-				hooksTelemetryPage('Cloud instance', 'Node modal', {
+				segmentStore.track(eventData.eventName, eventData.properties);
+				segmentStore.page('Cloud instance', 'Node modal', {
 					node: store.activeNode?.name,
 				});
 			},
 		],
 		nodeEditingFinished: [
 			() => {
+				const segmentStore = useSegment();
 				const ndvStore = useNDVStore();
 				const workflowsStore = useWorkflowsStore();
 
@@ -232,7 +246,7 @@ export const n8nCloudHooks: ExternalHooks = {
 				}
 
 				if (eventData) {
-					hooksTelemetryTrack(eventData);
+					segmentStore.track(eventData.eventName, eventData.properties);
 				}
 			},
 		],
@@ -240,18 +254,20 @@ export const n8nCloudHooks: ExternalHooks = {
 	executionsList: {
 		openDialog: [
 			() => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User opened Executions log',
 				};
 
-				hooksTelemetryTrack(eventData);
-				hooksTelemetryPage('Cloud instance', 'Executions log');
+				segmentStore.track(eventData.eventName);
+				segmentStore.page('Cloud instance', 'Executions log');
 			},
 		],
 	},
 	showMessage: {
 		showError: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'Instance FE emitted error',
 					properties: {
@@ -261,13 +277,14 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	expressionEdit: {
 		itemSelected: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = getInsertedItemFromExpEditorEventData(meta);
 
 				if (meta.selectedItem.variable.startsWith('Object.keys')) {
@@ -278,11 +295,12 @@ export const n8nCloudHooks: ExternalHooks = {
 					eventData.properties!.variable_type = 'Raw value';
 				}
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		dialogVisibleChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const currentValue = meta.value.slice(1);
 				let isValueDefault = false;
 
@@ -302,24 +320,26 @@ export const n8nCloudHooks: ExternalHooks = {
 
 				const eventData = getExpressionEditorEventsData(meta, isValueDefault);
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	nodeSettings: {
 		valueChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				if (meta.parameterPath !== 'authentication') {
 					return;
 				}
 
 				const eventData = getAuthenticationModalEventData(meta);
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		credentialSelected: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const creds = Object.keys(meta.updateInformation.properties.credentials || {});
 				if (creds.length < 1) {
 					return;
@@ -333,20 +353,22 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	workflowRun: {
 		runWorkflow: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = getExecutionStartedEventData(meta);
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		runError: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: meta.nodeName
 						? 'Node execution finished'
@@ -360,40 +382,44 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	runData: {
 		displayModeChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = getOutputModeChangedEventData(meta);
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	pushConnection: {
 		executionFinished: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = getExecutionFinishedEventData(meta);
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	node: {
 		deleteNode: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = getNodeRemovedEventData(meta);
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	workflow: {
 		activeChange: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: (meta.active && 'User activated workflow') || 'User deactivated workflow',
 					properties: {
@@ -402,11 +428,12 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		activeChangeCurrent: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const store = useWorkflowsStore();
 
 				const eventData = {
@@ -419,11 +446,12 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		afterUpdate: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User saved workflow',
 					properties: {
@@ -433,13 +461,14 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	execution: {
 		open: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User opened read-only execution',
 					properties: {
@@ -449,25 +478,27 @@ export const n8nCloudHooks: ExternalHooks = {
 					},
 				};
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
 	nodeCreateList: {
 		destroyed: [
 			() => {
+				const segmentStore = useSegment();
 				if (
 					nodesPanelSession.data.nodeFilter.length > 0 &&
 					nodesPanelSession.data.nodeFilter !== ''
 				) {
 					const eventData = hooksGenerateNodesPanelEvent();
 
-					hooksTelemetryTrack(eventData);
+					segmentStore.track(eventData.eventName, eventData.properties);
 				}
 			},
 		],
 		selectedTypeChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User changed nodes panel filter',
 					properties: {
@@ -478,15 +509,16 @@ export const n8nCloudHooks: ExternalHooks = {
 				};
 				nodesPanelSession.data.filterMode = meta.newValue;
 
-				hooksTelemetryTrack(eventData);
+				segmentStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		nodeFilterChanged: [
 			(meta) => {
+				const segmentStore = useSegment();
 				if (meta.newValue.length === 0 && nodesPanelSession.data.nodeFilter.length > 0) {
 					const eventData = hooksGenerateNodesPanelEvent();
 
-					hooksTelemetryTrack(eventData);
+					segmentStore.track(eventData.eventName, eventData.properties);
 				}
 
 				if (meta.newValue.length > meta.oldValue.length) {

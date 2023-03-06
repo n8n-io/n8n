@@ -1,5 +1,3 @@
-import { hooksPosthogLog } from '@/hooks/posthog/log';
-
 /**
  * Set metadata on a user, or on all events sent by a user.
  *
@@ -14,15 +12,13 @@ export function hooksPosthogSetMetadata(
 		return;
 	}
 
-	hooksPosthogLog('setMetadata', { isMethod: true });
-
 	if (target === 'user') {
-		window.posthog.people.set(metadata);
+		window.posthog.people?.set(metadata);
 		return;
 	}
 
 	if (target === 'events') {
-		window.posthog.register(metadata);
+		window.posthog.register?.(metadata);
 		return;
 	}
 

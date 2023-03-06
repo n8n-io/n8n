@@ -79,13 +79,15 @@ declare global {
 			capture?(name: string, properties?: ITelemetryTrackProperties): void;
 		};
 		featureFlag: {
-			getAll(): Record<string, unknown>;
+			getAll(): Record<string, unknown> | undefined;
 			reload(): void;
-			get(flagName: string): boolean | string;
+			get(flagName: string): boolean | string | undefined;
 			isEnabled(flagName: string): boolean | undefined;
 		};
 		analytics?: {
-			track(event: string, proeprties?: ITelemetryTrackProperties): void;
+			identify(userId: string): void;
+			track(event: string, properties?: ITelemetryTrackProperties): void;
+			page(category: string, name: string, properties?: ITelemetryTrackProperties): void;
 		};
 	}
 }

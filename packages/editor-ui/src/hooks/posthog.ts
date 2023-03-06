@@ -1,12 +1,9 @@
 // version 0.1.0
 
+import { usePostHog } from '@/stores/posthog';
 import {
-	hooksPosthogAppendNoCapture,
-	hooksPosthogIdentify,
-	HooksPosthogIdentifyMetadata,
-	hooksPosthogLog,
+	hoosGetPosthogAppendNoCaptureClasses,
 	hooksPosthogSetMetadata,
-	hooksPosthogTrack,
 } from '@/hooks/posthog/index';
 import { ComponentPublicInstance } from 'vue';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -17,14 +14,14 @@ window.featureFlag = {
 	 * @returns string[]
 	 */
 	getAll() {
-		return window.posthog.feature_flags.getFlags();
+		return window.posthog?.feature_flags?.getFlags();
 	},
 
 	/**
 	 * @returns boolean | undefined
 	 */
 	get(flagName: string) {
-		return window.posthog.getFeatureFlag(flagName);
+		return window.posthog?.getFeatureFlag?.(flagName);
 	},
 
 	/**
@@ -41,11 +38,11 @@ window.featureFlag = {
 		// for non-existent flag, so ensure `undefined`
 		if (this.get(flagName) === undefined) return undefined;
 
-		return window.posthog.isFeatureEnabled(flagName);
+		return window.posthog?.isFeatureEnabled?.(flagName);
 	},
 
 	reload() {
-		window.posthog.reloadFeatureFlags();
+		window.posthog?.reloadFeatureFlags?.();
 	},
 };
 
@@ -71,10 +68,8 @@ export const n8nPosthogHooks = {
 	copyInput: {
 		mounted: [
 			(meta: { copyInputValueRef: HTMLElement }) => {
-				hooksPosthogLog('copyInput.mounted');
-
 				const { value } = meta.copyInputValueRef.classList;
-				meta.copyInputValueRef.classList.value = hooksPosthogAppendNoCapture(value);
+				meta.copyInputValueRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -82,10 +77,8 @@ export const n8nPosthogHooks = {
 	userInfo: {
 		mounted: [
 			(meta: { userInfoRef: HTMLElement }) => {
-				hooksPosthogLog('userInfo.mounted');
-
 				const { value } = meta.userInfoRef.classList;
-				meta.userInfoRef.classList.value = hooksPosthogAppendNoCapture(value);
+				meta.userInfoRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -93,10 +86,8 @@ export const n8nPosthogHooks = {
 	mainSidebar: {
 		mounted: [
 			(meta: { userRef: HTMLElement }) => {
-				hooksPosthogLog('mainSidebar.mounted');
-
 				const { value } = meta.userRef.classList;
-				meta.userRef.classList.value = hooksPosthogAppendNoCapture(value);
+				meta.userRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -104,10 +95,8 @@ export const n8nPosthogHooks = {
 	settingsPersonalView: {
 		mounted: [
 			(meta: { userRef: HTMLElement }) => {
-				hooksPosthogLog('settingsPersonalView.mounted');
-
 				const { value } = meta.userRef.classList;
-				meta.userRef.classList.value = hooksPosthogAppendNoCapture(value);
+				meta.userRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -115,12 +104,10 @@ export const n8nPosthogHooks = {
 	workflowOpen: {
 		mounted: [
 			(meta: { tableRef: ComponentPublicInstance }) => {
-				hooksPosthogLog('workflowOpen.mounted');
-
 				// workflow names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.name')) {
-					item.classList.value = hooksPosthogAppendNoCapture(item.classList.value);
+					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 			},
 		],
@@ -129,13 +116,10 @@ export const n8nPosthogHooks = {
 	credentialsList: {
 		mounted: [
 			(meta: { tableRef: ComponentPublicInstance }) => {
-				alert('yas');
-				hooksPosthogLog('credentialsList.mounted');
-
 				// credential names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.el-table_1_column_1 > .cell')) {
-					item.classList.value = hooksPosthogAppendNoCapture(item.classList.value);
+					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 			},
 		],
@@ -144,9 +128,7 @@ export const n8nPosthogHooks = {
 	sticky: {
 		mounted: [
 			(meta: { stickyRef: HTMLElement }) => {
-				hooksPosthogLog('sticky.mounted');
-
-				meta.stickyRef.classList.value = hooksPosthogAppendNoCapture(
+				meta.stickyRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(
 					meta.stickyRef.classList.value,
 				);
 			},
@@ -156,19 +138,17 @@ export const n8nPosthogHooks = {
 	executionsList: {
 		created: [
 			(meta: { filtersRef: HTMLElement; tableRef: ComponentPublicInstance }) => {
-				hooksPosthogLog('executionsList.created');
-
 				const { filtersRef, tableRef } = meta;
 
 				// workflow names in filters dropdown
 				for (const item of filtersRef.querySelectorAll('li')) {
-					item.classList.value = hooksPosthogAppendNoCapture(item.classList.value);
+					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 
 				// workflow names in table body
 				const tableBody = tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.workflow-name')) {
-					item.classList.value = hooksPosthogAppendNoCapture(item.classList.value);
+					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 			},
 		],
@@ -177,36 +157,34 @@ export const n8nPosthogHooks = {
 	runData: {
 		updated: [
 			(meta: { elements: HTMLElement[] }) => {
-				hooksPosthogLog('runData.updated');
-
 				for (const element of meta.elements) {
-					element.classList.value = hooksPosthogAppendNoCapture(element.classList.value);
+					element.classList.value = hoosGetPosthogAppendNoCaptureClasses(element.classList.value);
 				}
 			},
 		],
 		onTogglePinData: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('runData.onTogglePinData');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User clicked pin data icon',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 
 		onDataPinningSuccess: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('runData.onDataPinningSuccess');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'Ndv data pinning success',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -218,28 +196,26 @@ export const n8nPosthogHooks = {
 		 */
 		createNodeActiveChanged: [
 			() => {
-				hooksPosthogLog('nodeView.createNodeActiveChanged');
-
 				resetNodesPanelSession();
 			},
 		],
 
 		onRunNode: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('nodeView.onRunNode');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User clicked execute node button',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 
 		addNodeButton: [
 			(meta: { nodeTypeName: string }) => {
-				hooksPosthogLog('nodeView.addNodeButton');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User added node to workflow canvas',
@@ -249,20 +225,20 @@ export const n8nPosthogHooks = {
 					},
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 
 		onRunWorkflow: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('nodeView.onRunWorkflow');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User clicked execute workflow button',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -270,14 +246,14 @@ export const n8nPosthogHooks = {
 	credentialsSelectModal: {
 		openCredentialType: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('credentialsSelectModal.openCredentialType');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User opened Credential modal',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -285,14 +261,14 @@ export const n8nPosthogHooks = {
 	nodeExecuteButton: {
 		onClick: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('nodeExecuteButton.onClick');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User clicked execute node button',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -300,14 +276,14 @@ export const n8nPosthogHooks = {
 	credentialEdit: {
 		saveCredential: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('credentialEdit.saveCredential');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User saved credentials',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -315,11 +291,9 @@ export const n8nPosthogHooks = {
 	variableSelectorItem: {
 		mounted: [
 			(meta: { variableSelectorItemRef: HTMLElement }) => {
-				hooksPosthogLog('variableSelectorItem.mounted');
-
 				const { value } = meta.variableSelectorItemRef.classList;
 
-				meta.variableSelectorItemRef.classList.value = hooksPosthogAppendNoCapture(value);
+				meta.variableSelectorItemRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -327,25 +301,23 @@ export const n8nPosthogHooks = {
 	expressionEdit: {
 		closeDialog: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('expressionEdit.closeDialog');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User closed Expression Editor',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 
 		mounted: [
 			(meta: { expressionInputRef: HTMLElement; expressionOutputRef: HTMLElement }) => {
-				hooksPosthogLog('expressionEdit.mounted');
-
-				meta.expressionInputRef.classList.value = hooksPosthogAppendNoCapture(
+				meta.expressionInputRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(
 					meta.expressionInputRef.classList.value,
 				);
-				meta.expressionOutputRef.classList.value = hooksPosthogAppendNoCapture(
+				meta.expressionOutputRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(
 					meta.expressionOutputRef.classList.value,
 				);
 			},
@@ -355,22 +327,20 @@ export const n8nPosthogHooks = {
 	parameterInput: {
 		modeSwitch: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('parameterInput.modeSwitch');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User switched parameter mode',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 		updated: [
 			(meta: { remoteParameterOptions: HTMLElement[] }) => {
-				hooksPosthogLog('parameterInput.updated');
-
 				for (const option of meta.remoteParameterOptions) {
-					option.classList.value = hooksPosthogAppendNoCapture(option.classList.value);
+					option.classList.value = hoosGetPosthogAppendNoCaptureClasses(option.classList.value);
 				}
 			},
 		],
@@ -379,8 +349,6 @@ export const n8nPosthogHooks = {
 	personalizationModal: {
 		onSubmit: [
 			(meta: IPersonalizationLatestVersion) => {
-				hooksPosthogLog('personalizationModal.onSubmit');
-
 				hooksPosthogSetMetadata(meta, 'user');
 			},
 		],
@@ -388,10 +356,10 @@ export const n8nPosthogHooks = {
 
 	telemetry: {
 		currentUserIdChanged: [
-			(meta: HooksPosthogIdentifyMetadata) => {
-				hooksPosthogLog('telemetry.currentUserIdChanged');
+			() => {
+				const posthogStore = usePostHog();
 
-				hooksPosthogIdentify(meta);
+				posthogStore.identify();
 			},
 		],
 	},
@@ -399,14 +367,14 @@ export const n8nPosthogHooks = {
 	workflowActivate: {
 		updateWorkflowActivation: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('workflowActivate.updateWorkflowActivation');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User set workflow active status',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -414,14 +382,14 @@ export const n8nPosthogHooks = {
 	templatesWorkflowView: {
 		openWorkflow: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('templatesWorkflowView.openWorkflow');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User inserted workflow template',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -429,14 +397,14 @@ export const n8nPosthogHooks = {
 	templatesCollectionView: {
 		onUseWorkflow: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('templatesCollectionView.onUseWorkflow');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User inserted workflow template',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
@@ -444,14 +412,14 @@ export const n8nPosthogHooks = {
 	runDataTable: {
 		onDragEnd: [
 			(meta: ITelemetryTrackProperties) => {
-				hooksPosthogLog('runDataTable.onDragEnd');
+				const posthogStore = usePostHog();
 
 				const eventData = {
 					eventName: 'User dragged data for mapping',
 					properties: meta,
 				};
 
-				hooksPosthogTrack(eventData);
+				posthogStore.track(eventData.eventName, eventData.properties);
 			},
 		],
 	},
