@@ -108,8 +108,9 @@ export class QuickChart implements INodeType {
 				name: 'data',
 				type: 'json',
 				default: '',
-				description: 'Data to use for the dataset',
-				placeholder: '[60, 10, 12, 20]',
+				description:
+					'Data to use for the dataset, documentation and examples <a href="https://quickchart.io/documentation/chart-types/" target="_blank">here</a>',
+				placeholder: 'e.g. [60, 10, 12, 20]',
 				required: true,
 			},
 			{
@@ -314,12 +315,12 @@ export class QuickChart implements INodeType {
 		const datasets: IDataset[] = [];
 		let chartType = '';
 
-		// tslint:disable-next-line:no-any
 		const labels: string[] = [];
 		const labelsMode = this.getNodeParameter('labelsMode', 0) as string;
 
 		if (labelsMode === 'manually') {
 			const labelsUi = this.getNodeParameter('labelsUi.labelsValues', 0, []) as IDataObject[];
+
 			if (labelsUi.length) {
 				for (const labelValue of labelsUi as [{ label: string[] | string }]) {
 					if (Array.isArray(labelValue.label)) {
@@ -331,27 +332,31 @@ export class QuickChart implements INodeType {
 			}
 		} else {
 			const labelsArray = this.getNodeParameter('labelsArray', 0, '') as string;
+
+			const errorMessage =
+				'Labels Array is not a valid array, use valid JSON format, or specify it by expressions';
+
 			if (Array.isArray(labelsArray)) {
 				labels.push(...labelsArray);
 			} else {
-				const labelsArrayParsed = jsonParse(labelsArray, {
-					errorMessage: 'Labels Array is not a valid array',
+				const labelsArrayParsed = jsonParse<string[]>(labelsArray, {
+					errorMessage,
 				});
 				if (!Array.isArray(labelsArrayParsed)) {
-					throw new NodeOperationError(this.getNode(), 'Labels Array is not a valid array');
+					throw new NodeOperationError(this.getNode(), errorMessage);
 				}
 				labels.push(...labelsArrayParsed);
 			}
 		}
 
 		for (let i = 0; i < items.length; i++) {
-			// tslint:disable-next-line:no-any
-			const data = this.getNodeParameter('data', i) as any;
+			const data = this.getNodeParameter('data', i) as string;
 			const datasetOptions = this.getNodeParameter('datasetOptions', i) as IDataObject;
+
 			const backgroundColor = datasetOptions.backgroundColor as string;
 			const borderColor = datasetOptions.borderColor as string | undefined;
 			const fill = datasetOptions.fill as boolean | undefined;
-			const label = datasetOptions.label as string | undefined;
+			const label = (datasetOptions.label as string) || 'Chart';
 			const pointStyle = datasetOptions.pointStyle as string | undefined;
 
 			chartType = this.getNodeParameter('chartType', i) as string;
@@ -383,22 +388,23 @@ export class QuickChart implements INodeType {
 		}
 
 		const output = this.getNodeParameter('output', 0) as string;
-		const chartOptions = this.getNodeParameter('chartOptions', 0);
+		const chartOptions = this.getNodeParameter('chartOptions', 0) as IDataObject;
+
+		const chart = {
+			type: chartType,
+			data: {
+				labels,
+				datasets,
+			},
+		};
+
 		const options: IHttpRequestOptions = {
 			method: 'GET',
 			url: 'https://quickchart.io/chart',
-			qs: Object.assign(
-				{
-					chart: JSON.stringify({
-						type: chartType,
-						data: {
-							labels,
-							datasets,
-						},
-					}),
-				},
-				chartOptions,
-			) as IDataObject,
+			qs: {
+				chart: JSON.stringify(chart),
+				...chartOptions,
+			},
 			returnFullResponse: true,
 			encoding: 'arraybuffer',
 			json: false,
@@ -407,6 +413,7 @@ export class QuickChart implements INodeType {
 		const response = (await this.helpers.httpRequest(options)) as IN8nHttpFullResponse;
 		let mimeType = response.headers['content-type'] as string | undefined;
 		mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
+
 		return this.prepareOutputData([
 			{
 				binary: {
@@ -416,7 +423,7 @@ export class QuickChart implements INodeType {
 						mimeType,
 					),
 				},
-				json: {},
+				json: { chart },
 			},
 		]);
 	}

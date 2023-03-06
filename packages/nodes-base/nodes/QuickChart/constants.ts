@@ -6,14 +6,6 @@ export const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 		name: 'Bar Chart',
 		value: 'bar',
 	},
-	// {
-	// 	name: 'Boxplot',
-	// 	value: 'boxplot',
-	// },
-	// {
-	// 	name: 'Bubble Chart',
-	// 	value: 'bubble',
-	// },
 	{
 		name: 'Doughnut Chart',
 		value: 'doughnut',
@@ -30,26 +22,6 @@ export const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 		name: 'Polar Chart',
 		value: 'polarArea',
 	},
-	// {
-	// 	name: 'Radar Chart',
-	// 	value: 'radar',
-	// },
-	// {
-	// 	name: 'Radial Gauge',
-	// 	value: 'radialGauge',
-	// },
-	// {
-	// 	name: 'Scatter Chart',
-	// 	value: 'scatter',
-	// },
-	// {
-	// 	name: 'Sparkline',
-	// 	value: 'sparkline',
-	// },
-	// {
-	// 	name: 'Violin Chart',
-	// 	value: 'violin',
-	// },
 ];
 
 export const HORIZONTAL_CHARTS = ['bar', 'boxplot', 'violin'];
