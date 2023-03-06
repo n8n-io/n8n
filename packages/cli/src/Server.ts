@@ -1293,8 +1293,9 @@ class Server extends AbstractServer {
 				},
 			};
 
-			this.app.use('/icons/:packageName/*/*.(svg|png)', async (req, res) => {
-				const { packageName } = req.params;
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				let { scope, packageName } = req.params;
+				if (scope) packageName = `@${scope}/${packageName}`;
 				const loader = this.loadNodesAndCredentials.loaders[packageName];
 				if (loader) {
 					const pathPrefix = `/icons/${packageName}/`;
@@ -1309,7 +1310,10 @@ class Server extends AbstractServer {
 				}
 
 				res.sendStatus(404);
-			});
+			};
+
+			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
 			this.app.use(
 				'/',
