@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,20 +8,15 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
-import { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
+import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
 import { createHash } from 'crypto';
 
 import { snakeCase } from 'change-case';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export async function woocommerceApiRequest(
 	this:
@@ -32,12 +27,11 @@ export async function woocommerceApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('wooCommerceApi');
 
@@ -49,25 +43,20 @@ export async function woocommerceApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
 }
 
 export async function woocommerceApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -83,11 +72,8 @@ export async function woocommerceApiRequestAllItems(
 		if (nextLink) {
 			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
 		}
-		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+	} while (responseData.headers.link?.includes('rel="next"'));
 
 	return returnData;
 }
@@ -106,7 +92,7 @@ export function setMetadata(
 ) {
 	for (let i = 0; i < data.length; i++) {
 		//@ts-ignore\
-		if (data[i].metadataUi && data[i].metadataUi.metadataValues) {
+		if (data[i].metadataUi?.metadataValues) {
 			//@ts-ignore
 			data[i].meta_data = data[i].metadataUi.metadataValues;
 			//@ts-ignore
@@ -145,7 +131,7 @@ export function toSnakeCase(
 export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
 	for (const fields in fieldsToSet) {
 		if (fields === 'tags') {
-			body['tags'] = (fieldsToSet[fields] as string[]).map((tag) => ({ id: parseInt(tag, 10) }));
+			body.tags = (fieldsToSet[fields] as string[]).map((tag) => ({ id: parseInt(tag, 10) }));
 		} else {
 			body[snakeCase(fields.toString())] = fieldsToSet[fields];
 		}

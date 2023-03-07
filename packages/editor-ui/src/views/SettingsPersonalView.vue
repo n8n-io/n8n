@@ -1,63 +1,75 @@
 <template>
-	<SettingsView>
-		<div :class="$style.container">
-			<div :class="$style.header">
-				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.personal.personalSettings') }}</n8n-heading>
-				<div class="ph-no-capture" :class="$style.user">
-					<span :class="$style.username">
-						<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
-					</span>
-					<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="large" />
-				</div>
-			</div>
-			<div>
-				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{ $locale.baseText('settings.personal.basicInformation') }}</n8n-heading>
-				</div>
-				<div>
-					<n8n-form-inputs
-						v-if="formInputs"
-						:inputs="formInputs"
-						:eventBus="formBus"
-						@input="onInput"
-						@ready="onReadyToSubmit"
-						@submit="onSubmit"
-					/>
-				</div>
-			</div>
-			<div>
-				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
-				</div>
-				<div>
-					<n8n-input-label :label="$locale.baseText('auth.password')">
-						<n8n-link @click="openPasswordModal">{{ $locale.baseText('auth.changePassword') }}</n8n-link>
-					</n8n-input-label>
-				</div>
-			</div>
-			<div>
-				<n8n-button float="right" :label="$locale.baseText('settings.personal.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
+	<div :class="$style.container" data-test-id="personal-settings-container">
+		<div :class="$style.header">
+			<n8n-heading size="2xlarge">{{
+				$locale.baseText('settings.personal.personalSettings')
+			}}</n8n-heading>
+			<div class="ph-no-capture" :class="$style.user">
+				<span :class="$style.username" data-test-id="current-user-name">
+					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
+				</span>
+				<n8n-avatar
+					:firstName="currentUser.firstName"
+					:lastName="currentUser.lastName"
+					size="large"
+				/>
 			</div>
 		</div>
-	</SettingsView>
+		<div>
+			<div :class="$style.sectionHeader">
+				<n8n-heading size="large">{{
+					$locale.baseText('settings.personal.basicInformation')
+				}}</n8n-heading>
+			</div>
+			<div data-test-id="personal-data-form">
+				<n8n-form-inputs
+					v-if="formInputs"
+					:inputs="formInputs"
+					:eventBus="formBus"
+					@input="onInput"
+					@ready="onReadyToSubmit"
+					@submit="onSubmit"
+				/>
+			</div>
+		</div>
+		<div v-if="!signInWithLdap">
+			<div :class="$style.sectionHeader">
+				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
+			</div>
+			<div>
+				<n8n-input-label :label="$locale.baseText('auth.password')">
+					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
+						$locale.baseText('auth.changePassword')
+					}}</n8n-link>
+				</n8n-input-label>
+			</div>
+		</div>
+		<div>
+			<n8n-button
+				float="right"
+				:label="$locale.baseText('settings.personal.save')"
+				size="large"
+				:disabled="!hasAnyChanges || !readyToSubmit"
+				data-test-id="save-settings-button"
+				@click="onSaveClick"
+			/>
+		</div>
+	</div>
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/components/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
+import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
+import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
-import SettingsView from './SettingsView.vue';
-
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'SettingsPersonalView',
-	components: {
-		SettingsView,
-	},
 	data() {
 		return {
 			hasAnyChanges: false,
@@ -70,43 +82,53 @@ export default mixins(
 		this.formInputs = [
 			{
 				name: 'firstName',
-				initialValue: this.currentUser.firstName,
+				initialValue: this.currentUser?.firstName,
 				properties: {
 					label: this.$locale.baseText('auth.firstName'),
 					maxlength: 32,
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 			{
 				name: 'lastName',
-				initialValue: this.currentUser.lastName,
+				initialValue: this.currentUser?.lastName,
 				properties: {
 					label: this.$locale.baseText('auth.lastName'),
 					maxlength: 32,
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 			{
 				name: 'email',
-				initialValue: this.currentUser.email,
+				initialValue: this.currentUser?.email,
 				properties: {
 					label: this.$locale.baseText('auth.email'),
 					type: 'email',
 					required: true,
-					validationRules: [{name: 'VALID_EMAIL'}],
+					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 		];
 	},
 	computed: {
-		currentUser() {
-			return this.$store.getters['users/currentUser'] as IUser;
+		...mapStores(useUIStore, useUsersStore, useSettingsStore),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
+		signInWithLdap(): boolean {
+			return this.currentUser?.signInType === 'ldap';
+		},
+		isLDAPFeatureEnabled(): boolean {
+			return this.settingsStore.settings.enterprise.ldap === true;
 		},
 	},
 	methods: {
@@ -116,13 +138,13 @@ export default mixins(
 		onReadyToSubmit(ready: boolean) {
 			this.readyToSubmit = ready;
 		},
-		async onSubmit(form: {firstName: string, lastName: string, email: string}) {
-			if (!this.hasAnyChanges) {
+		async onSubmit(form: { firstName: string; lastName: string; email: string }) {
+			if (!this.hasAnyChanges || !this.usersStore.currentUserId) {
 				return;
 			}
 			try {
-				await this.$store.dispatch('users/updateUser', {
-					id: this.currentUser.id,
+				await this.usersStore.updateUser({
+					id: this.usersStore.currentUserId,
 					firstName: form.firstName,
 					lastName: form.lastName,
 					email: form.email,
@@ -133,8 +155,7 @@ export default mixins(
 					type: 'success',
 				});
 				this.hasAnyChanges = false;
-			}
-			catch (e) {
+			} catch (e) {
 				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
 			}
 		},
@@ -142,7 +163,7 @@ export default mixins(
 			this.formBus.$emit('submit');
 		},
 		openPasswordModal() {
-			this.$store.dispatch('ui/openModal', CHANGE_PASSWORD_MODAL_KEY);
+			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 		},
 	},
 });
@@ -175,7 +196,6 @@ export default mixins(
 	}
 }
 
-
 .username {
 	margin-right: var(--spacing-s);
 	text-align: right;
@@ -191,4 +211,3 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 }
 </style>
-

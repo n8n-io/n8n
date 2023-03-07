@@ -1,7 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	deepCopy,
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,14 +8,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
 
-import { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
+import type { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
 
 import { createHmac } from 'crypto';
 
@@ -358,7 +355,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -396,7 +392,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					);
 					if (
 						webhookDetails.subscription_url === webhookUrl &&
-						idsExist(webhookDetails.object_ids as string[], ids as string[]) &&
+						idsExist(webhookDetails.object_ids as string[], ids) &&
 						webhookDetails.event_type === event
 					) {
 						// Set webhook-id to be sure that it can be deleted
@@ -463,7 +459,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -496,11 +492,11 @@ export class SurveyMonkeyTrigger implements INodeType {
 			return {};
 		}
 
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, _reject) => {
 			const data: Buffer[] = [];
 
 			req.on('data', (chunk) => {
-				data.push(chunk);
+				data.push(chunk as Buffer);
 			});
 
 			req.on('end', async () => {
@@ -515,7 +511,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 					return {};
 				}
 
-				// tslint:disable-next-line:no-any
 				let responseData = jsonParse<any>(data.join(''));
 				let endpoint = '';
 
@@ -546,7 +541,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						);
 
 						for (const page of pages) {
-							questions.push.apply(questions, page.questions);
+							questions.push.apply(questions, page.questions as IQuestion[]);
 						}
 
 						for (const page of responseData.pages as IDataObject[]) {
@@ -576,7 +571,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 									responseQuestions.set(heading, answers.get(question.id)![0].text as string);
 								} else {
 									const results: IDataObject = {};
-									const keys = (question.answers.rows as IRow[]).map((e) => e.text) as string[];
+									const keys = (question.answers.rows as IRow[]).map((e) => e.text);
 									const values = answers.get(question.id)?.map((e) => e.text) as string[];
 									for (let i = 0; i < keys.length; i++) {
 										// if for some reason there are questions texts repeted add the index to the key
@@ -593,13 +588,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 							if (question.family === 'single_choice') {
 								const other = question.answers.other as IOther;
 								if (
-									other &&
-									other.visible &&
+									other?.visible &&
 									other.is_answer_choice &&
 									answers.get(question.id)![0].other_id
 								) {
 									responseQuestions.set(heading, answers.get(question.id)![0].text as string);
-								} else if (other && other.visible && !other.is_answer_choice) {
+								} else if (other?.visible && !other.is_answer_choice) {
 									const choiceId = answers.get(question.id)![0].choice_id;
 
 									const choice = (question.answers.choices as IChoice[]).filter(
@@ -623,9 +617,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 								const choiceIds = answers.get(question.id)?.map((e) => e.choice_id);
 								const value = (question.answers.choices as IChoice[])
 									.filter((e) => choiceIds?.includes(e.id))
-									.map((e) => e.text) as string[];
+									.map((e) => e.text);
 								// if "Add an "Other" Answer Option for Comments" is active and was selected
-								if (other && other.is_answer_choice && other.visible) {
+								if (other?.is_answer_choice && other.visible) {
 									const text = answers.get(question.id)?.find((e) => e.other_id === other.id)
 										?.text as string;
 									value.push(text);
@@ -643,11 +637,11 @@ export class SurveyMonkeyTrigger implements INodeType {
 									const rowIds = answers.get(question.id)?.map((e) => e.row_id) as string[];
 
 									const rowsValues = (question.answers.rows as IRow[])
-										.filter((e) => rowIds!.includes(e.id as string))
+										.filter((e) => rowIds.includes(e.id))
 										.map((e) => e.text);
 
 									const choicesValues = (question.answers.choices as IChoice[])
-										.filter((e) => choiceIds!.includes(e.id as string))
+										.filter((e) => choiceIds.includes(e.id))
 										.map((e) => e.text);
 
 									for (let i = 0; i < rowsValues.length; i++) {
@@ -662,7 +656,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 									}
 									// the comment then add the comment
 									const other = question.answers.other as IOther;
-									if (other !== undefined && other.visible) {
+									if (other?.visible) {
 										results.comment = answers.get(question.id)?.filter((e) => e.other_id)[0].text;
 									}
 
@@ -670,13 +664,13 @@ export class SurveyMonkeyTrigger implements INodeType {
 								} else {
 									const choiceIds = answers.get(question.id)?.map((e) => e.choice_id);
 									const value = (question.answers.choices as IChoice[])
-										.filter((e) => choiceIds!.includes(e.id as string))
+										.filter((e) => choiceIds!.includes(e.id))
 										.map((e) => (e.text === '' ? e.weight : e.text))[0];
 									responseQuestions.set(heading, value);
 
 									// if "Add an Other Answer Option for Comments" is active then add comment to the answer
 									const other = question.answers.other as IOther;
-									if (other !== undefined && other.visible) {
+									if (other?.visible) {
 										const response: IDataObject = {};
 										//const questionName = (question.answers.other as IOther).text as string;
 										const text = answers.get(question.id)?.filter((e) => e.other_id)[0].text;

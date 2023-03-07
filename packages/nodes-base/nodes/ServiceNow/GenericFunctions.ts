@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function serviceNowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const headers = {} as IDataObject;
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
@@ -34,7 +34,7 @@ export async function serviceNowApiRequest(
 		uri: uri || `https://${credentials.subdomain}.service-now.com/api${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 
@@ -59,10 +59,9 @@ export async function serviceNowRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -74,7 +73,7 @@ export async function serviceNowRequestAllItems(
 	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
 		resolveWithFullResponse: true,
 	});
-	returnData.push.apply(returnData, responseData.body.result);
+	returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
 
 	const quantity = responseData.headers['x-total-count'];
 	const iterations = Math.round(quantity / page) + (quantity % page ? 1 : 0);
@@ -86,7 +85,7 @@ export async function serviceNowRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 
-		returnData.push.apply(returnData, responseData.body.result);
+		returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
 	}
 
 	return returnData;
@@ -112,7 +111,7 @@ export async function serviceNowDownloadAttachment(
 	return binaryData;
 }
 
-export const mapEndpoint = (resource: string, operation: string) => {
+export const mapEndpoint = (resource: string, _operation: string) => {
 	const resourceEndpoint = new Map([
 		['attachment', 'sys_dictionary'],
 		['tableRecord', 'sys_dictionary'],

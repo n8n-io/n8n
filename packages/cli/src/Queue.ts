@@ -1,11 +1,12 @@
-import Bull from 'bull';
-import { IExecuteResponsePromiseData } from 'n8n-workflow';
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import * as ActiveExecutions from './ActiveExecutions';
-// eslint-disable-next-line import/no-cycle
-import * as WebhookHelpers from './WebhookHelpers';
+import type Bull from 'bull';
+import type { RedisOptions } from 'ioredis';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import config from '@/config';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import { Container } from 'typedi';
 
+export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
 export type JobQueue = Bull.Queue<JobData>;
 
@@ -24,15 +25,17 @@ export interface WebhookResponse {
 }
 
 export class Queue {
-	private activeExecutions: ActiveExecutions.ActiveExecutions;
-
 	private jobQueue: JobQueue;
 
-	constructor() {
-		this.activeExecutions = ActiveExecutions.getInstance();
+	constructor(private activeExecutions: ActiveExecutions) {}
 
+	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions = config.getEnv('queue.bull.redis');
+		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Bull } = await import('bull');
+
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
@@ -54,7 +57,7 @@ export class Queue {
 		return this.jobQueue.add(jobData, jobOptions);
 	}
 
-	async getJob(jobId: Bull.JobId): Promise<Job | null> {
+	async getJob(jobId: JobId): Promise<Job | null> {
 		return this.jobQueue.getJob(jobId);
 	}
 
@@ -91,9 +94,10 @@ export class Queue {
 
 let activeQueueInstance: Queue | undefined;
 
-export function getInstance(): Queue {
+export async function getInstance(): Promise<Queue> {
 	if (activeQueueInstance === undefined) {
-		activeQueueInstance = new Queue();
+		activeQueueInstance = new Queue(Container.get(ActiveExecutions));
+		await activeQueueInstance.init();
 	}
 
 	return activeQueueInstance;

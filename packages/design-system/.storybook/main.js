@@ -1,10 +1,14 @@
 const path = require('path');
 
 /**
- * @type {import('@storybook/core-common').StorybookConfig}
+ * @type {import('@storybook/types').StorybookConfig}
  */
 module.exports = {
-	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|ts)'],
+	framework: {
+		name: '@storybook/vue-webpack5',
+		options: {},
+	},
+	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.{ts,js}'],
 	addons: [
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',
@@ -14,7 +18,7 @@ module.exports = {
 				postcssLoaderOptions: {
 					implementation: require('postcss'),
 				},
-			}
+			},
 		},
 		'storybook-addon-designs',
 		'storybook-addon-themes',

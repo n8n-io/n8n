@@ -1,7 +1,7 @@
-@use "sass:math";
+@use 'sass:math';
 
-@use "./common/var.scss";
-@use "./mixins/mixins.scss";
+@use './common/var.scss';
+@use './mixins/mixins.scss';
 
 [class*='el-col-'] {
 	float: left;

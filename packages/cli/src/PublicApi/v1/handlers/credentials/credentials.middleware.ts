@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 
-import express from 'express';
+import type express from 'express';
 import { validate } from 'jsonschema';
 
-import { CredentialsHelper, CredentialTypes } from '../../../..';
-import { CredentialRequest } from '../../../types';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialTypes } from '@/CredentialTypes';
+import type { CredentialRequest } from '../../../types';
 import { toJsonSchema } from './credentials.service';
+import { Container } from 'typedi';
 
 export const validCredentialType = (
 	req: CredentialRequest.Create,
@@ -13,8 +15,8 @@ export const validCredentialType = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	try {
-		CredentialTypes().getByName(req.body.type);
-	} catch (_) {
+		Container.get(CredentialTypes).getByName(req.body.type);
+	} catch {
 		return res.status(400).json({ message: 'req.body.type is not a known type' });
 	}
 

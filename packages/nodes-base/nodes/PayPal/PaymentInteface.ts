@@ -1,5 +1,3 @@
-import { IDataObject } from 'n8n-workflow';
-
 export enum RecipientType {
 	email = 'EMAIL',
 	phone = 'PHONE',

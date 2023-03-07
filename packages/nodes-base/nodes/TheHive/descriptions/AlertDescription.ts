@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { TLP } from '../interfaces/AlertInterface';
 
@@ -767,12 +767,8 @@ export const alertFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'alert',
-				],
+				operation: ['get'],
+				resource: ['alert'],
 			},
 		},
 		type: 'collection',

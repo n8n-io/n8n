@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
@@ -11,13 +12,11 @@ export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('theHiveApi');
 
 	let options: OptionsWithUri = {
@@ -25,7 +24,7 @@ export async function theHiveApiRequest(
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
 		body,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
 
@@ -40,11 +39,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 }
 
 // Helpers functions
@@ -99,7 +94,7 @@ export async function prepareCustomFields(
 	jsonParameters = false,
 ): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
-	if (jsonParameters === true) {
+	if (jsonParameters) {
 		let customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields
@@ -136,7 +131,7 @@ export async function prepareCustomFields(
 		const hiveCustomFields =
 			version === 'v1'
 				? requestResult
-				: Object.keys(requestResult).map((key) => requestResult[key]);
+				: Object.keys(requestResult as IDataObject).map((key) => requestResult[key]);
 		// Build reference to type mapping object
 		const referenceTypeMapping = hiveCustomFields.reduce(
 			(acc: IDataObject, curr: IDataObject) => ((acc[curr.reference as string] = curr.type), acc),
@@ -186,9 +181,9 @@ export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 	}
 }
 
-export function prepareRangeQuery(range: string, body: { query: Array<{}> }) {
+export function prepareRangeQuery(range: string, body: { query: IDataObject[] }) {
 	if (range && range !== 'all') {
-		body['query'].push({
+		body.query.push({
 			_name: 'page',
 			from: parseInt(range.split('-')[0], 10),
 			to: parseInt(range.split('-')[1], 10),

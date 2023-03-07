@@ -1,8 +1,8 @@
-@use "sass:map";
-@use "sass:meta";
-@use "function";
-@use "../common/var";
-@use "config";
+@use 'sass:map';
+@use 'sass:meta';
+@use 'function';
+@use '../common/var';
+@use 'config';
 
 /* Break-points
  -------------------------- */
@@ -83,12 +83,7 @@
 	$selector: &;
 	$currentSelector: '';
 	@each $unit in $element {
-		$currentSelector: #{$currentSelector +
-			'.' +
-			$B +
-			config.$element-separator +
-			$unit +
-			','};
+		$currentSelector: #{$currentSelector + '.' + $B + config.$element-separator + $unit + ','};
 	}
 
 	@if function.hitAllSpecialNestRule($selector) {
@@ -112,11 +107,7 @@
 	$selector: &;
 	$currentSelector: '';
 	@each $unit in $modifier {
-		$currentSelector: #{$currentSelector +
-			& +
-			config.$modifier-separator +
-			$unit +
-			','};
+		$currentSelector: #{$currentSelector + & + config.$modifier-separator + $unit + ','};
 	}
 
 	@at-root {
@@ -143,12 +134,7 @@
 	}
 }
 
-@mixin spec-selector(
-	$specSelector: '',
-	$element: $E,
-	$modifier: false,
-	$block: $B
-) {
+@mixin spec-selector($specSelector: '', $element: $E, $modifier: false, $block: $B) {
 	$modifierCombo: '';
 
 	@if $modifier {
@@ -156,10 +142,7 @@
 	}
 
 	@at-root {
-		#{&}#{$specSelector}.#{$block
-			+ config.$element-separator
-			+ $element
-			+ $modifierCombo} {
+		#{&}#{$specSelector}.#{$block + config.$element-separator + $element + $modifierCombo} {
 			@content;
 		}
 	}

@@ -1,6 +1,7 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
@@ -39,11 +40,11 @@ export async function apiTemplateIoApiRequest(
 			options,
 		);
 		if (response.status === 'error') {
-			throw new NodeApiError(this.getNode(), response.message);
+			throw new NodeApiError(this.getNode(), response.message as JsonObject);
 		}
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -60,7 +61,6 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: 'image
 	}));
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | object | undefined): any {
 	let result;
 	if (typeof json === 'object') {
@@ -74,7 +74,7 @@ export function validateJSON(json: string | object | undefined): any {
 	return result;
 }
 
-export function downloadImage(this: IExecuteFunctions, url: string) {
+export async function downloadImage(this: IExecuteFunctions, url: string) {
 	return this.helpers.request({
 		uri: url,
 		method: 'GET',

@@ -1,25 +1,25 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function strapiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('strapiApi');
 
 	try {
@@ -44,16 +44,14 @@ export async function strapiApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function getToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('strapiApi');
 	let options = {} as OptionsWithUri;
@@ -72,19 +70,17 @@ export async function getToken(
 				: `${credentials.url}/auth/local`,
 		json: true,
 	};
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export async function strapiApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 	const { apiVersion } = await this.getCredentials('strapiApi');
 
@@ -103,7 +99,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			));
 			query['pagination[page]'] += query['pagination[pageSize]'];
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	} else {
 		query._limit = 20;
@@ -119,13 +115,12 @@ export async function strapiApiRequestAllItems(
 				headers,
 			);
 			query._start += query._limit;
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	}
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

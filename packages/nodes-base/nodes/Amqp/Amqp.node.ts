@@ -1,13 +1,14 @@
-import { ContainerOptions, create_container, Dictionary, EventContext } from 'rhea';
+import type { ContainerOptions, Dictionary, EventContext } from 'rhea';
+import { create_container } from 'rhea';
 
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
@@ -102,12 +103,12 @@ export class Amqp implements INodeType {
 			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
 				| string
 				| object;
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {});
 			const containerId = options.containerId as string;
 			const containerReconnect = (options.reconnect as boolean) || true;
 			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
-			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
+			let headerProperties: Dictionary<any>;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 				headerProperties = JSON.parse(applicationProperties);
 			} else {

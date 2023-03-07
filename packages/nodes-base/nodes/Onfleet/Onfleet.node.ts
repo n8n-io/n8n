@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,7 +10,7 @@ import {
 
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
 
@@ -35,7 +35,7 @@ import { containerFields, containerOperations } from './descriptions/ContainerDe
 
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
@@ -175,10 +175,11 @@ export class Onfleet implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const items = this.getInputData();
 
+		// eslint-disable-next-line @typescript-eslint/ban-types
 		const operations: { [key: string]: Function } = {
 			task: OnfleetMethods.executeTaskOperations,
 			destination: OnfleetMethods.executeDestinationOperations,
@@ -195,6 +196,6 @@ export class Onfleet implements INodeType {
 		const responseData = await operations[resource].call(this, `${resource}s`, operation, items);
 
 		// Map data to n8n data
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(responseData as IDataObject)];
 	}
 }

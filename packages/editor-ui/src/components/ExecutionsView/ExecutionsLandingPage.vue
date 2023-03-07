@@ -16,9 +16,6 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<n8n-text size="medium">
-					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
-				</n8n-text>
 				<executions-info-accordion />
 			</div>
 		</div>
@@ -27,7 +24,9 @@
 
 <script lang="ts">
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { IExecutionsSummary } from '@/Interface';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
@@ -37,24 +36,22 @@ export default Vue.extend({
 		ExecutionsInfoAccordion,
 	},
 	computed: {
+		...mapStores(useUIStore, useWorkflowsStore),
 		executionCount(): number {
-			return (this.$store.getters['workflows/currentWorkflowExecutions'] as IExecutionsSummary[]).length;
+			return this.workflowsStore.currentWorkflowExecutions.length;
 		},
 		containsTrigger(): boolean {
-			return this.$store.getters.workflowTriggerNodes.length > 0;
-		},
-		currentWorkflowId(): string {
-			return this.$store.getters.workflowId;
+			return this.workflowsStore.workflowTriggerNodes.length > 0;
 		},
 	},
 	methods: {
 		onSetupFirstStep(event: MouseEvent): void {
-			this.$store.commit('ui/setAddFirstStepOnLoad', true);
+			this.uiStore.addFirstStepOnLoad = true;
 			const workflowRoute = this.getWorkflowRoute();
 			this.$router.push(workflowRoute);
 		},
-		getWorkflowRoute(): { name: string, params: {}} {
-			const workflowId = this.currentWorkflowId || this.$route.params.name;
+		getWorkflowRoute(): { name: string; params: {} } {
+			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;
 			if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				return { name: VIEWS.NEW_WORKFLOW, params: {} };
 			} else {
@@ -66,7 +63,6 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-
 .container {
 	width: 100%;
 	height: 100%;

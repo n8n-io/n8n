@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -186,8 +187,8 @@ export class GoogleTranslate implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			if (resource === 'language') {
@@ -195,7 +196,7 @@ export class GoogleTranslate implements INodeType {
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, {
+					const response = await googleApiRequest.call(this, 'POST', '/language/translate/v2', {
 						q: text,
 						target: translateTo,
 					});
@@ -203,7 +204,7 @@ export class GoogleTranslate implements INodeType {
 					const [translation] = response.data.translations;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(translation),
+						this.helpers.returnJsonArray(translation as IDataObject),
 						{ itemData: { item: i } },
 					);
 

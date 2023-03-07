@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { JsonObject, IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface ICustomInterface {
 	name: string;
@@ -30,7 +31,6 @@ export async function pipedriveApiRequest(
 	query: IDataObject = {},
 	formData?: IDataObject,
 	downloadFile?: boolean,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -77,7 +77,7 @@ export async function pipedriveApiRequest(
 		}
 
 		if (responseData.success === false) {
-			throw new NodeApiError(this.getNode(), responseData);
+			throw new NodeApiError(this.getNode(), responseData as JsonObject);
 		}
 
 		return {
@@ -85,7 +85,7 @@ export async function pipedriveApiRequest(
 			data: responseData.data === null ? [] : responseData.data,
 		};
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -101,7 +101,6 @@ export async function pipedriveApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -117,17 +116,13 @@ export async function pipedriveApiRequestAllItems(
 		responseData = await pipedriveApiRequest.call(this, method, endpoint, body, query);
 		// the search path returns data diferently
 		if (responseData.data.items) {
-			returnData.push.apply(returnData, responseData.data.items);
+			returnData.push.apply(returnData, responseData.data.items as IDataObject[]);
 		} else {
-			returnData.push.apply(returnData, responseData.data);
+			returnData.push.apply(returnData, responseData.data as IDataObject[]);
 		}
 
 		query.start = responseData.additionalData.pagination.next_start;
-	} while (
-		responseData.additionalData !== undefined &&
-		responseData.additionalData.pagination !== undefined &&
-		responseData.additionalData.pagination.more_items_in_collection === true
-	);
+	} while (responseData.additionalData?.pagination?.more_items_in_collection === true);
 
 	return {
 		data: returnData,
@@ -192,7 +187,7 @@ export function pipedriveEncodeCustomProperties(
 
 	for (const key of Object.keys(item)) {
 		customPropertyData = Object.values(customProperties).find(
-			(customPropertyData) => customPropertyData.name === key,
+			(propertyData) => propertyData.name === key,
 		);
 
 		if (customPropertyData !== undefined) {
@@ -211,12 +206,12 @@ export function pipedriveEncodeCustomProperties(
 				);
 
 				if (propertyOption !== undefined) {
-					item[customPropertyData.key as string] = propertyOption.id;
+					item[customPropertyData.key] = propertyOption.id;
 					delete item[key];
 				}
 			} else {
 				// Does already represent the actual value or is null
-				item[customPropertyData.key as string] = item[key];
+				item[customPropertyData.key] = item[key];
 				delete item[key];
 			}
 		}
@@ -233,16 +228,18 @@ export function pipedriveResolveCustomProperties(
 ): void {
 	let customPropertyData;
 
-	// Itterate over all keys and replace the custom ones
-	for (const key of Object.keys(item)) {
+	const json = item.json as IDataObject;
+
+	// Iterate over all keys and replace the custom ones
+	for (const key of Object.keys(json)) {
 		if (customProperties[key] !== undefined) {
 			// Is a custom property
 			customPropertyData = customProperties[key];
 
 			// value is not set, so nothing to resolve
-			if (item[key] === null) {
-				item[customPropertyData.name] = item[key];
-				delete item[key];
+			if (json[key] === null) {
+				json[customPropertyData.name] = json[key];
+				delete json[key];
 				continue;
 			}
 
@@ -265,31 +262,32 @@ export function pipedriveResolveCustomProperties(
 					'timerange',
 				].includes(customPropertyData.field_type)
 			) {
-				item[customPropertyData.name as string] = item[key];
-				delete item[key];
+				json[customPropertyData.name] = json[key];
+				delete json[key];
 				// type options
 			} else if (
 				['enum', 'visible_to'].includes(customPropertyData.field_type) &&
 				customPropertyData.options
 			) {
 				const propertyOption = customPropertyData.options.find(
-					(option) => option.id.toString() === item[key]!.toString(),
+					(option) => option.id.toString() === json[key]!.toString(),
 				);
 				if (propertyOption !== undefined) {
-					item[customPropertyData.name as string] = propertyOption.label;
-					delete item[key];
+					json[customPropertyData.name] = propertyOption.label;
+					delete json[key];
 				}
 				// type multioptions
 			} else if (['set'].includes(customPropertyData.field_type) && customPropertyData.options) {
-				const selectedIds = (item[key] as string).split(',');
+				const selectedIds = (json[key] as string).split(',');
 				const selectedLabels = customPropertyData.options
 					.filter((option) => selectedIds.includes(option.id.toString()))
 					.map((option) => option.label);
-				item[customPropertyData.name] = selectedLabels;
-				delete item[key];
+				json[customPropertyData.name] = selectedLabels;
+				delete json[key];
 			}
 		}
 	}
+	item.json = json;
 }
 
 export function sortOptionParameters(

@@ -1,11 +1,10 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
-import { EntityManager, getConnection } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 
-import { TagEntity } from './databases/entities/TagEntity';
-
-import { ITagToImport, ITagWithCountDb, IWorkflowToImport } from './Interfaces';
+import { getConnection } from '@/Db';
+import { TagEntity } from '@db/entities/TagEntity';
+import type { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfaces';
 
 // ----------------------------------
 //              utils
@@ -19,7 +18,7 @@ export function sortByRequestOrder(
 	{ requestOrder }: { requestOrder: string[] },
 ) {
 	const tagMap = tags.reduce<Record<string, TagEntity>>((acc, tag) => {
-		acc[tag.id.toString()] = tag;
+		acc[tag.id] = tag;
 		return acc;
 	}, {});
 
@@ -51,6 +50,7 @@ export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithC
 		.getRawMany()
 		.then((tagsWithCount) => {
 			tagsWithCount.forEach((tag) => {
+				// NOTE: since this code doesn't use the DB entities, we need to stringify the IDs manually
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 				tag.id = tag.id.toString();
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -103,7 +103,7 @@ const findOrCreateTag = async (
 	// Assume tag is identical if createdAt date is the same to preserve a changed tag name
 	const identicalMatch = tagsEntities.find(
 		(existingTag) =>
-			existingTag.id.toString() === importTag.id.toString() &&
+			existingTag.id === importTag.id &&
 			existingTag.createdAt &&
 			importTag.createdAt &&
 			existingTag.createdAt.getTime() === new Date(importTag.createdAt).getTime(),

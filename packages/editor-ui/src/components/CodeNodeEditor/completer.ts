@@ -43,6 +43,7 @@ export const completerExtension = mixins(
 					localCompletionSource,
 
 					// core
+					this.itemCompletions,
 					this.baseCompletions,
 					this.requireCompletions,
 					this.nodeSelectorCompletions,
@@ -53,7 +54,7 @@ export const completerExtension = mixins(
 					// luxon
 					this.todayCompletions,
 					this.nowCompletions,
-					this.dateTimeCompltions,
+					this.dateTimeCompletions,
 
 					// item index
 					this.inputCompletions,
@@ -83,7 +84,7 @@ export const completerExtension = mixins(
 
 			try {
 				variablesToValues = this.variablesToValues();
-			} catch (_) {
+			} catch {
 				return null;
 			}
 
@@ -173,7 +174,7 @@ export const completerExtension = mixins(
 
 				if (value === '$now') return this.nowCompletions(context, variable);
 				if (value === '$today') return this.todayCompletions(context, variable);
-				if (value === 'DateTime') return this.dateTimeCompltions(context, variable);
+				if (value === 'DateTime') return this.dateTimeCompletions(context, variable);
 
 				// item index
 

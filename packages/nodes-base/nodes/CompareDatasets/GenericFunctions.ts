@@ -1,5 +1,13 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { difference, get, intersection, isEmpty, isEqual, set, union } from 'lodash';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+
+import difference from 'lodash.difference';
+import get from 'lodash.get';
+import intersection from 'lodash.intersection';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
+import set from 'lodash.set';
+import union from 'lodash.union';
+import { fuzzyCompare } from '../../utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -11,11 +19,22 @@ type EntryMatches = {
 	matches: INodeExecutionData[];
 };
 
+type CompareFunction = <T, U>(a: T, b: U) => boolean;
+
+const processNullishValueFunction = (version: number) => {
+	if (version === 2) {
+		return <T>(value: T) => (value === undefined ? null : value);
+	}
+	return <T>(value: T) => value || null;
+};
+
 function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
-	resolve?: string,
+	options: IDataObject,
+	skipFields: string[],
+	isEntriesEqual: CompareFunction,
 ) {
 	const keys = {} as IDataObject;
 	fieldsToMatch.forEach((field) => {
@@ -27,7 +46,7 @@ function compareItems(
 	const intersectionKeys = intersection(keys1, keys2);
 
 	const same = intersectionKeys.reduce((acc, key) => {
-		if (isEqual(item1.json[key], item2.json[key])) {
+		if (isEntriesEqual(item1.json[key], item2.json[key])) {
 			acc[key] = item1.json[key];
 		}
 		return acc;
@@ -38,23 +57,38 @@ function compareItems(
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
+	const skipped: IDataObject = {};
 
 	differentKeys.forEach((key) => {
-		switch (resolve) {
+		const processNullishValue = processNullishValueFunction(options.nodeVersion as number);
+
+		switch (options.resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] || null;
+				different[key] = processNullishValue(item1.json[key]);
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] || null;
+				different[key] = processNullishValue(item2.json[key]);
 				break;
 			default:
-				const input1 = item1.json[key] || null;
-				const input2 = item2.json[key] || null;
-				different[key] = { input1, input2 };
+				const input1 = processNullishValue(item1.json[key]);
+				const input2 = processNullishValue(item2.json[key]);
+
+				let [firstInputName, secondInputName] = ['input1', 'input2'];
+				if (options.nodeVersion === 2) {
+					[firstInputName, secondInputName] = ['inputA', 'inputB'];
+				}
+
+				if (skipFields.includes(key)) {
+					skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+				} else {
+					different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+				}
 		}
 	});
 
-	return { json: { keys, same, different } } as INodeExecutionData;
+	return {
+		json: { keys, same, different, ...(!isEmpty(skipped) && { skipped }) },
+	} as INodeExecutionData;
 }
 
 function combineItems(
@@ -90,6 +124,7 @@ function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	return data.reduce((acc, entry2, i) => {
 		if (entry2 === undefined) return acc;
@@ -104,7 +139,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -120,6 +155,7 @@ function findFirstMatch(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	const index = data.findIndex((entry2) => {
 		if (entry2 === undefined) return false;
@@ -134,7 +170,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}
@@ -155,8 +191,15 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
+	let compareVersion = 1;
+	if (options.nodeVersion === 2) {
+		compareVersion = 2;
+	}
+
+	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean, compareVersion);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
+	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
 
 	const filteredData = {
 		matched: [] as EntryMatches[],
@@ -172,11 +215,11 @@ export function findMatches(
 		fieldsToMatch.forEach((matchCase) => {
 			let valueToCompare;
 			if (disableDotNotation) {
-				valueToCompare = entry.json[matchCase.field1 as string];
+				valueToCompare = entry.json[matchCase.field1];
 			} else {
-				valueToCompare = get(entry.json, matchCase.field1 as string);
+				valueToCompare = get(entry.json, matchCase.field1);
 			}
-			lookup[matchCase.field2 as string] = valueToCompare;
+			lookup[matchCase.field2] = valueToCompare;
 		});
 
 		for (const fieldValue of Object.values(lookup)) {
@@ -188,8 +231,8 @@ export function findMatches(
 
 		const foundedMatches =
 			multipleMatches === 'all'
-				? findAllMatches(data2, lookup, disableDotNotation)
-				: findFirstMatch(data2, lookup, disableDotNotation);
+				? findAllMatches(data2, lookup, disableDotNotation, isEntriesEqual)
+				: findFirstMatch(data2, lookup, disableDotNotation, isEntriesEqual);
 
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
@@ -214,8 +257,34 @@ export function findMatches(
 		let entryCopy: INodeExecutionData | undefined;
 
 		entryMatches.matches.forEach((match) => {
-			if (isEqual(entryMatches.entry.json, match.json)) {
-				if (!entryCopy) entryCopy = match;
+			let entryFromInput1 = entryMatches.entry.json;
+			let entryFromInput2 = match.json;
+
+			if (skipFields.length) {
+				entryFromInput1 = omit(entryFromInput1, skipFields);
+				entryFromInput2 = omit(entryFromInput2, skipFields);
+			}
+
+			let isItemsEqual = true;
+			if (options.fuzzyCompare) {
+				for (const key of Object.keys(entryFromInput1)) {
+					if (!isEntriesEqual(entryFromInput1[key], entryFromInput2[key])) {
+						isItemsEqual = false;
+						break;
+					}
+				}
+			} else {
+				isItemsEqual = isEntriesEqual(entryFromInput1, entryFromInput2);
+			}
+
+			if (isItemsEqual) {
+				if (!entryCopy) {
+					if (options.fuzzyCompare && options.resolve === 'preferInput2') {
+						entryCopy = match;
+					} else {
+						entryCopy = entryMatches.entry;
+					}
+				}
 			} else {
 				switch (options.resolve) {
 					case 'preferInput1':
@@ -237,7 +306,14 @@ export function findMatches(
 						break;
 					default:
 						different.push(
-							compareItems(entryMatches.entry, match, fieldsToMatch, options.resolve as string),
+							compareItems(
+								entryMatches.entry,
+								match,
+								fieldsToMatch,
+								options,
+								skipFields,
+								isEntriesEqual,
+							),
 						);
 				}
 			}
@@ -274,6 +350,12 @@ export function checkInput(
 	disableDotNotation: boolean,
 	inputLabel: string,
 ) {
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	if (input.length === 0) {
+		return input;
+	}
 	for (const field of fields) {
 		const isPresent = (input || []).some((entry) => {
 			if (disableDotNotation) {

@@ -10,7 +10,7 @@ import { VIEWS } from '@/constants';
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'TemplateList',
+	name: 'GoBackButton',
 	data() {
 		return {
 			routeHasHistory: false,
@@ -23,7 +23,7 @@ export default Vue.extend({
 		},
 	},
 	mounted() {
-		window.history.state ? this.routeHasHistory = true : this.routeHasHistory = false;
+		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
 	},
 });
 </script>

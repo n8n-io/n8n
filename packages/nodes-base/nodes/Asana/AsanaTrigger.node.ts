@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
 
@@ -25,7 +25,7 @@ export class AsanaTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Asana events occur.',
 		defaults: {
-			name: 'Asana-Trigger',
+			name: 'Asana Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -152,16 +152,14 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const body = {
 					resource,
 					target: webhookUrl,
 				};
 
-				let responseData;
-
-				responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.data === undefined || responseData.data.gid === undefined) {
 					// Required data is missing so was not successful
@@ -186,7 +184,7 @@ export class AsanaTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 					delete webhookData.hookSecret;
@@ -198,7 +196,7 @@ export class AsanaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 
@@ -242,7 +240,7 @@ export class AsanaTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body.events)],
+			workflowData: [this.helpers.returnJsonArray(req.body.events as IDataObject[])],
 		};
 	}
 }

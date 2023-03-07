@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
-	IDataObject,
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 export class Set implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +52,7 @@ export class Set implements INodeType {
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
+								requiresDataPath: 'single',
 								default: 'propertyName',
 								description:
 									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
@@ -76,6 +76,7 @@ export class Set implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: 'propertyName',
+								requiresDataPath: 'single',
 								description:
 									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
@@ -97,6 +98,7 @@ export class Set implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: 'propertyName',
+								requiresDataPath: 'single',
 								description:
 									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
@@ -133,7 +135,7 @@ export class Set implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		if (items.length === 0) {
@@ -147,14 +149,14 @@ export class Set implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			item = items[itemIndex];
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 
 			const newItem: INodeExecutionData = {
 				json: {},
 				pairedItem: item.pairedItem,
 			};
 
-			if (keepOnlySet !== true) {
+			if (!keepOnlySet) {
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind

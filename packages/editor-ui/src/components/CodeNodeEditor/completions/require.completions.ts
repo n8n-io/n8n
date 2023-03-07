@@ -2,6 +2,7 @@ import Vue from 'vue';
 import { AUTOCOMPLETABLE_BUILT_IN_MODULES } from '../constants';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
+import { useSettingsStore } from '@/stores/settings';
 
 export const requireCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
@@ -14,22 +15,26 @@ export const requireCompletions = (Vue as CodeNodeEditorMixin).extend({
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
 			const options: Completion[] = [];
-
-			const allowedModules = this.$store.getters['settings/allowedModules'];
+			const settingsStore = useSettingsStore();
+			const allowedModules = settingsStore.allowedModules;
 
 			const toOption = (moduleName: string) => ({
 				label: `require('${moduleName}');`,
 				type: 'variable',
 			});
 
-			if (allowedModules?.builtIn?.includes('*')) {
-				options.push(...AUTOCOMPLETABLE_BUILT_IN_MODULES.map(toOption));
-			} else if (allowedModules?.builtIn?.length > 0) {
-				options.push(...allowedModules.builtIn.map(toOption));
+			if (allowedModules.builtIn) {
+				if (allowedModules.builtIn.includes('*')) {
+					options.push(...AUTOCOMPLETABLE_BUILT_IN_MODULES.map(toOption));
+				} else if (allowedModules?.builtIn?.length > 0) {
+					options.push(...allowedModules.builtIn.map(toOption));
+				}
 			}
 
-			if (allowedModules?.external?.length > 0) {
-				options.push(...allowedModules.external.map(toOption));
+			if (allowedModules.external) {
+				if (allowedModules?.external?.length > 0) {
+					options.push(...allowedModules.external.map(toOption));
+				}
 			}
 
 			return {

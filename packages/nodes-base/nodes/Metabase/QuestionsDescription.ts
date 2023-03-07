@@ -1,11 +1,11 @@
-import {
+import type {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
 	{
@@ -79,10 +79,10 @@ export const questionsOperations: INodeProperties[] = [
 										console.log(items[i].json);
 										delete items[i].binary;
 									} else {
-										items[i].binary!['data'] = await this.helpers.prepareBinaryData(
+										items[i].binary!.data = await this.helpers.prepareBinaryData(
 											response.body as Buffer,
 											'data',
-											response.headers['content-type'],
+											response.headers['content-type'] as string,
 										);
 									}
 									result.push(items[i]);

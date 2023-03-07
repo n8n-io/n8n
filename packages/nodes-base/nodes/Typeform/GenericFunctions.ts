@@ -1,10 +1,9 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -39,7 +38,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -58,10 +56,10 @@ export async function apiRequest(
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.requestWithAuthentication.call(this, 'typeformApi', options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -77,8 +75,7 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	dataKey?: string,
-	// tslint:disable-next-line:no-any
+	_dataKey?: string,
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -98,7 +95,7 @@ export async function apiRequestAllItems(
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 
-		returnData.items.push.apply(returnData.items, responseData.items);
+		returnData.items.push.apply(returnData.items, responseData.items as IDataObject[]);
 	} while (responseData.page_count !== undefined && responseData.page_count > query.page);
 
 	return returnData;

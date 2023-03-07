@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Sms77
@@ -16,7 +17,6 @@ export async function sms77ApiRequest(
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -36,7 +36,7 @@ export async function sms77ApiRequest(
 	const response = await this.helpers.requestWithAuthentication.call(this, 'sms77Api', options);
 
 	if (response.success !== '100') {
-		throw new NodeApiError(this.getNode(), response, {
+		throw new NodeApiError(this.getNode(), response as JsonObject, {
 			message: 'Invalid sms77 credentials or API error!',
 		});
 	}

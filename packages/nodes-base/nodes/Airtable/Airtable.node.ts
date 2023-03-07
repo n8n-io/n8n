@@ -1,27 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-interface AirtableBase {
-	id: string;
-	name: string;
-}
-
-interface AirtableTable {
-	id: string;
-	name: string;
-	description: string;
-}
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
@@ -199,6 +187,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						addAllFields: [false],
@@ -277,6 +266,7 @@ export class Airtable implements INodeType {
 				name: 'downloadFieldNames',
 				type: 'string',
 				required: true,
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['list'],
@@ -304,6 +294,7 @@ export class Airtable implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'single',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Field',
@@ -432,6 +423,7 @@ export class Airtable implements INodeType {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Field',
 				},
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						updateAllFields: [false],
@@ -474,6 +466,7 @@ export class Airtable implements INodeType {
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						displayOptions: {
 							show: {
 								'/operation': ['update'],
@@ -506,7 +499,7 @@ export class Airtable implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		const application = this.getNodeParameter('application', 0, undefined, {
 			extractValue: true,
@@ -543,16 +536,15 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				try {
 					addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
-					options = this.getNodeParameter('options', i, {}) as IDataObject;
+					options = this.getNodeParameter('options', i, {});
 					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
 
-					if (addAllFields === true) {
+					if (addAllFields) {
 						// Add all the fields the item has
 						row.fields = { ...items[i].json };
-						// tslint:disable-next-line: no-any
-						delete (row.fields! as any).id;
+						delete (row.fields as any).id;
 					} else {
 						// Add only the specified fields
 						row.fields = {} as IDataObject;
@@ -569,14 +561,14 @@ export class Airtable implements INodeType {
 
 					if (rows.length === bulkSize || i === items.length - 1) {
 						if (options.typecast === true) {
-							body['typecast'] = true;
+							body.typecast = true;
 						}
 
-						body['records'] = rows;
+						body.records = rows;
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -595,14 +587,12 @@ export class Airtable implements INodeType {
 			requestMethod = 'DELETE';
 
 			const rows: string[] = [];
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {});
 			const bulkSize = (options.bulkSize as number) || 10;
 
 			for (let i = 0; i < items.length; i++) {
 				try {
-					let id: string;
-
-					id = this.getNodeParameter('id', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
 
 					rows.push(id);
 
@@ -620,7 +610,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -644,9 +634,9 @@ export class Airtable implements INodeType {
 				requestMethod = 'GET';
 				endpoint = `${application}/${table}`;
 
-				returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				returnAll = this.getNodeParameter('returnAll', 0);
 
-				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0);
 
 				const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 
@@ -658,14 +648,14 @@ export class Airtable implements INodeType {
 					}
 				}
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
-					qs.maxRecords = this.getNodeParameter('limit', 0) as number;
+					qs.maxRecords = this.getNodeParameter('limit', 0);
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				returnData.push.apply(returnData, responseData.records);
+				returnData.push.apply(returnData, responseData.records as INodeExecutionData[]);
 
 				if (downloadAttachments === true) {
 					const downloadFieldNames = (
@@ -673,7 +663,7 @@ export class Airtable implements INodeType {
 					).split(',');
 					const data = await downloadRecordAttachments.call(
 						this,
-						responseData.records,
+						responseData.records as IRecord[],
 						downloadFieldNames,
 					);
 					return [data];
@@ -715,7 +705,7 @@ export class Airtable implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -745,18 +735,17 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				try {
 					updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
-					options = this.getNodeParameter('options', i, {}) as IDataObject;
+					options = this.getNodeParameter('options', i, {});
 					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
 					row.fields = {} as IDataObject;
 
-					if (updateAllFields === true) {
+					if (updateAllFields) {
 						// Update all the fields the item has
 						row.fields = { ...items[i].json };
 						// remove id field
-						// tslint:disable-next-line: no-any
-						delete (row.fields! as any).id;
+						delete (row.fields as any).id;
 
 						if (options.ignoreFields && options.ignoreFields !== '') {
 							const ignoreFields = (options.ignoreFields as string)
@@ -798,7 +787,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 

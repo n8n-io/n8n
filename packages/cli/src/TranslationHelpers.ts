@@ -1,6 +1,6 @@
 import { join, dirname } from 'path';
 import { readdir } from 'fs/promises';
-import { Dirent } from 'fs';
+import type { Dirent } from 'fs';
 
 const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // e.g. v1, v10
 
@@ -45,20 +45,4 @@ export async function getNodeTranslationPath({
 	return maxVersion
 		? join(nodeDir, `v${maxVersion}`, 'translations', locale, `${nodeType}.json`)
 		: join(nodeDir, 'translations', locale, `${nodeType}.json`);
-}
-
-/**
- * Get the full path to a credential translation file in `/dist`.
- */
-export function getCredentialTranslationPath({
-	locale,
-	credentialType,
-}: {
-	locale: string;
-	credentialType: string;
-}): string {
-	const packagesPath = join(__dirname, '..', '..', '..');
-	const credsPath = join(packagesPath, 'nodes-base', 'dist', 'credentials');
-
-	return join(credsPath, 'translations', locale, `${credentialType}.json`);
 }

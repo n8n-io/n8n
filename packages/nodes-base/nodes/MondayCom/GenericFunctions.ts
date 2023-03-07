@@ -1,23 +1,17 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export async function mondayComApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
@@ -39,21 +33,20 @@ export async function mondayComApiRequest(
 
 			options.headers = { Authorization: `Bearer ${credentials.apiToken}` };
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'mondayComOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function mondayComApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -63,7 +56,7 @@ export async function mondayComApiRequestAllItems(
 
 	do {
 		responseData = await mondayComApiRequest.call(this, body);
-		returnData.push.apply(returnData, get(responseData, propertyName));
+		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 		body.variables.page++;
 	} while (get(responseData, propertyName).length > 0);
 	return returnData;

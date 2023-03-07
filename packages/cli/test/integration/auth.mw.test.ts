@@ -1,7 +1,7 @@
 import express from 'express';
 
 import request from 'supertest';
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import {
 	REST_PATH_SEGMENT,
 	ROUTES_REQUIRING_AUTHENTICATION,
@@ -11,31 +11,20 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.mock('../../src/telemetry');
-
 let app: express.Application;
-let testDbName = '';
 let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		applyAuth: true,
-		endpointGroups: ['me', 'auth', 'owner', 'users'],
-	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['me', 'auth', 'owner', 'users'] });
 
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach((route) => {

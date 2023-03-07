@@ -1,5 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { hunterApiRequest, hunterApiRequestAllItems } from './GenericFunctions';
 
 export class Hunter implements INodeType {
@@ -274,11 +279,11 @@ export class Hunter implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				//https://hunter.io/api-documentation/v2#domain-search
 				if (operation === 'domainSearch') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					const domain = this.getNodeParameter('domain', i) as string;
 					const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;
 
@@ -304,35 +309,35 @@ export class Hunter implements INodeType {
 
 						// Make sure that the company information is there only once and
 						// the emails are combined underneath it.
-						if (onlyEmails === false) {
+						if (!onlyEmails) {
 							let tempReturnData: IDataObject = {};
 
-							for (let i = 0; i < responseData.length; i++) {
-								if (i === 0) {
-									tempReturnData = responseData[i];
+							for (let index = 0; index < responseData.length; index++) {
+								if (index === 0) {
+									tempReturnData = responseData[index];
 									continue;
 								}
-								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(
+								(tempReturnData.emails as IDataObject[]).push.apply(
 									tempReturnData.emails,
-									responseData[i].emails,
+									responseData[index].emails as IDataObject[],
 								);
 							}
 
 							responseData = tempReturnData;
 						}
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.limit = limit;
 						responseData = await hunterApiRequest.call(this, 'GET', '/domain-search', {}, qs);
 						responseData = responseData.data;
 					}
 
-					if (onlyEmails === true) {
+					if (onlyEmails) {
 						let tempReturnData: IDataObject[] = [];
 
 						if (Array.isArray(responseData)) {
 							for (const data of responseData) {
-								tempReturnData.push.apply(tempReturnData, data.emails);
+								tempReturnData.push.apply(tempReturnData, data.emails as IDataObject[]);
 							}
 						} else {
 							tempReturnData = responseData.emails;
@@ -361,7 +366,7 @@ export class Hunter implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const senderOperations: INodeProperties[] = [
 	{

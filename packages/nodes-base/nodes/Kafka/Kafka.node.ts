@@ -1,16 +1,11 @@
-import {
-	CompressionTypes,
-	Kafka as apacheKafka,
-	KafkaConfig,
-	SASLOptions,
-	TopicMessages,
-} from 'kafkajs';
+import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
+import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -19,8 +14,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -221,7 +216,7 @@ export class Kafka implements INodeType {
 				try {
 					const brokers = ((credentials.brokers as string) || '')
 						.split(',')
-						.map((item) => item.trim()) as string[];
+						.map((item) => item.trim());
 
 					const clientId = credentials.clientId as string;
 
@@ -271,7 +266,7 @@ export class Kafka implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const options = this.getNodeParameter('options', 0);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
@@ -288,9 +283,7 @@ export class Kafka implements INodeType {
 
 			const credentials = await this.getCredentials('kafka');
 
-			const brokers = ((credentials.brokers as string) || '')
-				.split(',')
-				.map((item) => item.trim()) as string[];
+			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 			const clientId = credentials.clientId as string;
 
@@ -325,7 +318,7 @@ export class Kafka implements INodeType {
 			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
-				if (sendInputData === true) {
+				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
@@ -350,7 +343,7 @@ export class Kafka implements INodeType {
 
 				const topic = this.getNodeParameter('topic', i) as string;
 
-				const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+				const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 				const useKey = this.getNodeParameter('useKey', i) as boolean;
 
@@ -358,7 +351,7 @@ export class Kafka implements INodeType {
 
 				let headers;
 
-				if (jsonParameters === true) {
+				if (jsonParameters) {
 					headers = this.getNodeParameter('headerParametersJson', i) as string;
 					try {
 						headers = JSON.parse(headers);

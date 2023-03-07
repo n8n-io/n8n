@@ -1,6 +1,5 @@
-import {
+import type {
 	IAuthenticateGeneric,
-	ICredentialTestFunctions,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -8,8 +7,11 @@ import {
 
 export class MailchimpApi implements ICredentialType {
 	name = 'mailchimpApi';
+
 	displayName = 'Mailchimp API';
+
 	documentationUrl = 'mailchimp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -19,6 +21,7 @@ export class MailchimpApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -27,6 +30,7 @@ export class MailchimpApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.apiKey.split("-").pop()}}.api.mailchimp.com/3.0',

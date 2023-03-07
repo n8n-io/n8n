@@ -20,9 +20,20 @@ import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData'
 import { AddNodeIds1658932910559 } from './1658932910559-AddNodeIds';
 import { AddJsonKeyPinData1659895550980 } from './1659895550980-AddJsonKeyPinData';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
+import { WorkflowStatistics1664196174002 } from './1664196174002-WorkflowStatistics';
 import { CreateWorkflowsEditorRole1663755770894 } from './1663755770894-CreateWorkflowsEditorRole';
 import { CreateCredentialUsageTable1665484192213 } from './1665484192213-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637026 } from './1665754637026-RemoveCredentialUsageTable';
+import { AddWorkflowVersionIdColumn1669739707125 } from './1669739707125-AddWorkflowVersionIdColumn';
+import { AddTriggerCountColumn1669823906994 } from './1669823906994-AddTriggerCountColumn';
+import { RemoveWorkflowDataLoadedFlag1671726148420 } from './1671726148420-RemoveWorkflowDataLoadedFlag';
+import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
+import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
+import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
+import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
+import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
+import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
+import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -50,4 +61,15 @@ export const mysqlMigrations = [
 	CreateWorkflowsEditorRole1663755770894,
 	CreateCredentialUsageTable1665484192213,
 	RemoveCredentialUsageTable1665754637026,
+	AddWorkflowVersionIdColumn1669739707125,
+	WorkflowStatistics1664196174002,
+	AddTriggerCountColumn1669823906994,
+	RemoveWorkflowDataLoadedFlag1671726148420,
+	MessageEventBusDestinations1671535397530,
+	DeleteExecutionsWithWorkflows1673268682475,
+	CreateLdapEntities1674509946020,
+	PurgeInvalidWorkflowConnections1675940580449,
+	AddStatusToExecutions1674138566000,
+	MigrateExecutionStatus1676996103000,
+	UpdateRunningExecutionStatus1677236788851,
 ];

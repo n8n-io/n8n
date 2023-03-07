@@ -2,8 +2,9 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { readFileSync, mkdtempSync } from 'fs';
 
-import { BinaryDataManager, NodeExecuteFunctions } from '../src';
 import { IBinaryData, ITaskDataConnections } from 'n8n-workflow';
+import { BinaryDataManager } from '@/BinaryDataManager';
+import * as NodeExecuteFunctions from '@/NodeExecuteFunctions';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 

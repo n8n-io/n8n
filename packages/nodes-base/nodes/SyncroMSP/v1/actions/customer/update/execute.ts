@@ -1,6 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -22,7 +23,7 @@ export async function updateCustomer(
 		notificationEmail,
 		phone,
 		referredBy,
-	} = this.getNodeParameter('updateFields', index) as IDataObject;
+	} = this.getNodeParameter('updateFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -31,7 +32,7 @@ export async function updateCustomer(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address_2 = addressData.address2;
 	}
 
@@ -50,13 +51,12 @@ export async function updateCustomer(
 		referred_by: referredBy,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (!responseData.customer) {
-		throw new NodeApiError(this.getNode(), responseData, {
+		throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 			httpCode: '404',
 			message: 'Customer ID not found',
 		});
 	}
-	return this.helpers.returnJsonArray(responseData.customer);
+	return this.helpers.returnJsonArray(responseData.customer as IDataObject[]);
 }

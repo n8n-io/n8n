@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
 
 export class Rundeck implements INodeType {
@@ -147,8 +147,8 @@ export class Rundeck implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const rundeckApi = new RundeckApi(this);
 		await rundeckApi.init();
 

@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -141,7 +141,7 @@ export class KeapTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -153,7 +153,7 @@ export class KeapTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const rawData = this.getNodeParameter('rawData') as boolean;
 		const headers = this.getHeaderData() as IDataObject;
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 
 		if (headers['x-hook-secret']) {
 			// Is a create webhook confirmation request

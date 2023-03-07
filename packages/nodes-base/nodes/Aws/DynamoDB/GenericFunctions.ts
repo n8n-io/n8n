@@ -1,19 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	deepCopy,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { IRequestBody } from './types';
+import type { IRequestBody } from './types';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -22,7 +17,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: object | IRequestBody,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 	const requestOptions = {
@@ -39,13 +33,11 @@ export async function awsApiRequest(
 
 	try {
 		return JSON.parse(
-			await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions),
+			(await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions)) as string,
 		);
 	} catch (error) {
 		const errorMessage =
-			(error.response && error.response.body && error.response.body.message) ||
-			(error.response && error.response.body && error.response.body.Message) ||
-			error.message;
+			error.response?.body?.message || error.response?.body?.Message || error.message;
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');
@@ -69,18 +61,18 @@ export async function awsApiRequestAllItems(
 	path: string,
 	body?: IRequestBody,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
-		responseData = await awsApiRequest.call(this, service, method, path, body, headers);
+		const originalHeaders = Object.assign({}, headers); //The awsapirequest function adds the hmac signature to the headers, if we pass the modified headers back in on the next call it will fail with invalid signature
+		responseData = await awsApiRequest.call(this, service, method, path, body, originalHeaders);
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
-		returnData.push(...responseData.Items);
+		returnData.push(...(responseData.Items as IDataObject[]));
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;
@@ -88,8 +80,7 @@ export async function awsApiRequestAllItems(
 
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	newItem = {};
+	const newItem: IDataObject = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;

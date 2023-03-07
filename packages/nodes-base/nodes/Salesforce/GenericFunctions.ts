@@ -1,25 +1,92 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import { LoggerProxy as Logger, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
 
-import { LoggerProxy as Logger } from 'n8n-workflow';
+function getOptions(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+
+	body: any,
+	qs: IDataObject,
+	instanceUrl: string,
+): OptionsWithUri {
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		method,
+		body,
+		qs,
+		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
+		json: true,
+	};
+
+	if (!Object.keys(options.body as IDataObject).length) {
+		delete options.body;
+	}
+
+	return options;
+}
+
+async function getAccessToken(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	credentials: IDataObject,
+): Promise<IDataObject> {
+	const now = moment().unix();
+	const authUrl =
+		credentials.environment === 'sandbox'
+			? 'https://test.salesforce.com'
+			: 'https://login.salesforce.com';
+
+	const signature = jwt.sign(
+		{
+			iss: credentials.clientId as string,
+			sub: credentials.username as string,
+			aud: authUrl,
+			exp: now + 3 * 60,
+		},
+		credentials.privateKey as string,
+		{
+			algorithm: 'RS256',
+			header: {
+				alg: 'RS256',
+			},
+		},
+	);
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+			assertion: signature,
+		},
+		uri: `${authUrl}/services/oauth2/token`,
+		json: true,
+	};
+
+	return this.helpers.request(options);
+}
 
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	try {
@@ -62,11 +129,11 @@ export async function salesforceApiRequest(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
 			Object.assign(options, option);
-			//@ts-ignore
+
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -75,10 +142,9 @@ export async function salesforceApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -88,7 +154,7 @@ export async function salesforceApiRequestAllItems(
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
@@ -110,80 +176,18 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 	});
 }
 
-function getOptions(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
-	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any,
-	qs: IDataObject,
-	instanceUrl: string,
-): OptionsWithUri {
-	// tslint:disable-line:no-any
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		method,
-		body,
-		qs,
-		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
-		json: true,
-	};
-
-	if (!Object.keys(options.body).length) {
-		delete options.body;
+export function getValue(value: any) {
+	if (moment(value as string).isValid()) {
+		return value;
+	} else if (typeof value === 'string') {
+		return `'${value}'`;
+	} else {
+		return value;
 	}
-
-	//@ts-ignore
-	return options;
-}
-
-function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IDataObject,
-): Promise<IDataObject> {
-	const now = moment().unix();
-	const authUrl =
-		credentials.environment === 'sandbox'
-			? 'https://test.salesforce.com'
-			: 'https://login.salesforce.com';
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.clientId as string,
-			sub: credentials.username as string,
-			aud: authUrl,
-			exp: now + 3 * 60,
-		},
-		credentials.privateKey as string,
-		{
-			algorithm: 'RS256',
-			header: {
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: `${authUrl}/services/oauth2/token`,
-		json: true,
-	};
-
-	//@ts-ignore
-	return this.helpers.request(options);
 }
 
 export function getConditions(options: IDataObject) {
-	const conditions = ((options.conditionsUi as IDataObject) || {}).conditionValues as IDataObject[];
+	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
 	let data = undefined;
 	if (Array.isArray(conditions) && conditions.length !== 0) {
 		data = conditions.map(
@@ -228,22 +232,11 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 
 	let query = `SELECT ${fields.join(',')} FROM ${sobject} ${conditions ? conditions : ''}`;
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		query = `SELECT ${fields.join(',')} FROM ${sobject} ${
 			conditions ? conditions : ''
 		} LIMIT ${limit}`;
 	}
 
 	return query;
-}
-
-// tslint:disable-next-line:no-any
-export function getValue(value: any) {
-	if (moment(value).isValid()) {
-		return value;
-	} else if (typeof value === 'string') {
-		return `'${value}'`;
-	} else {
-		return value;
-	}
 }

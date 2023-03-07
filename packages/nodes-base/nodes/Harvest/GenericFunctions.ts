@@ -1,23 +1,23 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function harvestApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	path: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -33,7 +33,7 @@ export async function harvestApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -43,14 +43,14 @@ export async function harvestApiRequest(
 			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers.Authorization = `Bearer ${credentials.accessToken}`;
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'harvestOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'harvestOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -61,12 +61,11 @@ export async function harvestApiRequest(
 export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	uri: string,
 	resource: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -75,7 +74,7 @@ export async function harvestApiRequestAllItems(
 	do {
 		responseData = await harvestApiRequest.call(this, method, qs, uri, body, option);
 		qs.page = responseData.next_page;
-		returnData.push.apply(returnData, responseData[resource]);
+		returnData.push.apply(returnData, responseData[resource] as IDataObject[]);
 	} while (responseData.next_page);
 
 	return returnData;
@@ -95,8 +94,8 @@ export async function getAllResource(
 
 	qs.per_page = 100;
 
-	const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const additionalFields = this.getNodeParameter('filters', i);
+	const returnAll = this.getNodeParameter('returnAll', i);
 
 	Object.assign(qs, additionalFields);
 
@@ -110,7 +109,7 @@ export async function getAllResource(
 			resource,
 		);
 	} else {
-		const limit = this.getNodeParameter('limit', i) as string;
+		const limit = this.getNodeParameter('limit', i);
 		qs.per_page = limit;
 		responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 	}

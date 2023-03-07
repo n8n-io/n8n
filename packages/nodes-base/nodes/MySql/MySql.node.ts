@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -7,13 +7,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 // @ts-ignore
-import mysql2 from 'mysql2/promise';
+import type mysql2 from 'mysql2/promise';
 
 import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,9 +71,6 @@ export class MySql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -129,6 +126,7 @@ export class MySql implements INodeType {
 						operation: ['insert'],
 					},
 				},
+				requiresDataPath: 'multiple',
 				default: '',
 				placeholder: 'id,name,description',
 				description:
@@ -234,6 +232,7 @@ export class MySql implements INodeType {
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['update'],
@@ -256,7 +255,7 @@ export class MySql implements INodeType {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
 					const connection = await createConnection(credentials);
-					connection.end();
+					await connection.end();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -278,7 +277,7 @@ export class MySql implements INodeType {
 		const credentials = await this.getCredentials('mySql');
 		const connection = await createConnection(credentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
@@ -287,25 +286,27 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryQueue = items.map((item, index) => {
+				const queryQueue = items.map(async (item, index) => {
 					const rawQuery = this.getNodeParameter('query', index) as string;
 
 					return connection.query(rawQuery);
 				});
 
-				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
-					const [rows] = result;
+				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
+					(collection, result, index) => {
+						const [rows] = result;
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
-						{ itemData: { item: index } },
-					);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+							{ itemData: { item: index } },
+						);
 
-					collection.push(...executionData);
+						collection.push(...executionData);
 
-					return collection;
-				}, [] as INodeExecutionData[]);
-
+						return collection;
+					},
+					[] as INodeExecutionData[],
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
@@ -324,17 +325,19 @@ export class MySql implements INodeType {
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
 				const insertItems = copyInputItems(items, columns);
-				const insertPlaceholder = `(${columns.map((column) => '?').join(',')})`;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
+				const options = this.getNodeParameter('options', 0);
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 
-				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''
-					} INTO ${table}(${columnString}) VALUES ${items
-						.map((item) => insertPlaceholder)
-						.join(',')};`;
+				const insertSQL = `INSERT ${insertPriority || ''} ${
+					insertIgnore ? 'IGNORE' : ''
+				} INTO ${table}(${columnString}) VALUES ${items
+					.map((_item) => insertPlaceholder)
+					.join(',')};`;
 				const queryItems = insertItems.reduce(
-					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
+					(collection: IDataObject[], item) =>
+						collection.concat(Object.values(item) as IDataObject[]),
 					[],
 				);
 
@@ -368,7 +371,7 @@ export class MySql implements INodeType {
 				const updateSQL = `UPDATE ${table} SET ${columns
 					.map((column) => `${column} = ?`)
 					.join(',')} WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map((item) =>
+				const queryQueue = updateItems.map(async (item) =>
 					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
 				);
 				const queryResult = await Promise.all(queryQueue);

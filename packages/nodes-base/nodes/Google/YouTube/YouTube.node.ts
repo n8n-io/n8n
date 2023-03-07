@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import { BINARY_ENCODING } from 'n8n-core';
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -23,6 +24,8 @@ import { videoFields, videoOperations } from './VideoDescription';
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
 import { countriesCodes } from './CountryCodes';
+
+const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
@@ -189,8 +192,8 @@ export class YouTube implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -217,16 +220,16 @@ export class YouTube implements INodeType {
 
 						qs.id = channelId;
 
-						responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/channels`, {}, qs);
+						responseData = await googleApiRequest.call(this, 'GET', '/youtube/v3/channels', {}, qs);
 
 						responseData = responseData.items;
 					}
 					//https://developers.google.com/youtube/v3/docs/channels/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
+						const filters = this.getNodeParameter('filters', i);
 
 						if (part.includes('*')) {
 							part = [
@@ -257,16 +260,16 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/youtube/v3/channels`,
+								'/youtube/v3/channels',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/youtube/v3/channels`,
+								'/youtube/v3/channels',
 								{},
 								qs,
 							);
@@ -276,7 +279,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/channels/update
 					if (operation === 'update') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {
 							id: channelId,
@@ -383,36 +386,13 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/channelBanners/insert
 					if (operation === 'uploadBanner') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-
-						let mimeType;
-
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						if (item.binary[binaryProperty].mimeType) {
-							mimeType = item.binary[binaryProperty].mimeType;
-						}
-
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {
-								'Content-Type': mimeType,
+								...(binaryData.mimeType ? { 'Content-Type': binaryData.mimeType } : {}),
 							},
 							json: false,
 						};
@@ -427,14 +407,14 @@ export class YouTube implements INodeType {
 							requestOptions,
 						);
 
-						const { url } = JSON.parse(response);
+						const { url } = JSON.parse(response as string);
 
 						qs.part = 'brandingSettings';
 
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/youtube/v3/channels`,
+							'/youtube/v3/channels',
 							{
 								id: channelId,
 								brandingSettings: {
@@ -452,7 +432,7 @@ export class YouTube implements INodeType {
 					if (operation === 'get') {
 						let part = this.getNodeParameter('part', i) as string[];
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (part.includes('*')) {
 							part = ['contentDetails', 'id', 'localizations', 'player', 'snippet', 'status'];
@@ -467,7 +447,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/youtube/v3/playlists`,
+							'/youtube/v3/playlists',
 							{},
 							qs,
 						);
@@ -476,10 +456,10 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
+						const filters = this.getNodeParameter('filters', i);
 
 						if (part.includes('*')) {
 							part = ['contentDetails', 'id', 'localizations', 'player', 'snippet', 'status'];
@@ -500,16 +480,16 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/youtube/v3/playlists`,
+								'/youtube/v3/playlists',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/youtube/v3/playlists`,
+								'/youtube/v3/playlists',
 								{},
 								qs,
 							);
@@ -519,7 +499,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/playlists/insert
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						qs.part = 'snippet';
 
@@ -531,7 +511,7 @@ export class YouTube implements INodeType {
 
 						if (options.tags) {
 							//@ts-ignore
-							body.snippet.tags = (options.tags as string).split(',') as string[];
+							body.snippet.tags = (options.tags as string).split(',');
 						}
 
 						if (options.description) {
@@ -564,7 +544,7 @@ export class YouTube implements INodeType {
 					if (operation === 'update') {
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						qs.part = 'snippet, status';
 
@@ -578,7 +558,7 @@ export class YouTube implements INodeType {
 
 						if (updateFields.tags) {
 							//@ts-ignore
-							body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+							body.snippet.tags = (updateFields.tags as string).split(',');
 						}
 
 						if (updateFields.privacyStatus) {
@@ -611,7 +591,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/playlists/delete
 					if (operation === 'delete') {
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							id: playlistId,
@@ -636,7 +616,7 @@ export class YouTube implements INodeType {
 					if (operation === 'get') {
 						let part = this.getNodeParameter('part', i) as string[];
 						const playlistItemId = this.getNodeParameter('playlistItemId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (part.includes('*')) {
 							part = ['contentDetails', 'id', 'snippet', 'status'];
@@ -651,7 +631,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/youtube/v3/playlistItems`,
+							'/youtube/v3/playlistItems',
 							{},
 							qs,
 						);
@@ -660,11 +640,11 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlistItems/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
-						//const filters = this.getNodeParameter('filters', i) as IDataObject;
+						//const filters = this.getNodeParameter('filters', i);
 
 						if (part.includes('*')) {
 							part = ['contentDetails', 'id', 'snippet', 'status'];
@@ -681,16 +661,16 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/youtube/v3/playlistItems`,
+								'/youtube/v3/playlistItems',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/youtube/v3/playlistItems`,
+								'/youtube/v3/playlistItems',
 								{},
 								qs,
 							);
@@ -701,7 +681,7 @@ export class YouTube implements INodeType {
 					if (operation === 'add') {
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
 						const videoId = this.getNodeParameter('videoId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						qs.part = 'snippet, contentDetails';
 
@@ -751,7 +731,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/playlistItems/delete
 					if (operation === 'delete') {
 						const playlistItemId = this.getNodeParameter('playlistItemId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							id: playlistItemId,
@@ -774,9 +754,9 @@ export class YouTube implements INodeType {
 				if (resource === 'video') {
 					//https://developers.google.com/youtube/v3/docs/search/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
+						const filters = this.getNodeParameter('filters', i);
 
 						qs.part = 'snippet';
 
@@ -793,7 +773,7 @@ export class YouTube implements INodeType {
 						if (qs.relatedToVideoId && qs.forDeveloper !== undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`When using the parameter 'related to video' the parameter 'for developer' cannot be set`,
+								"When using the parameter 'related to video' the parameter 'for developer' cannot be set",
 								{ itemIndex: i },
 							);
 						}
@@ -803,13 +783,13 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/youtube/v3/search`,
+								'/youtube/v3/search',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
-							responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/search`, {}, qs);
+							qs.maxResults = this.getNodeParameter('limit', i);
+							responseData = await googleApiRequest.call(this, 'GET', '/youtube/v3/search', {}, qs);
 							responseData = responseData.items;
 						}
 					}
@@ -817,7 +797,7 @@ export class YouTube implements INodeType {
 					if (operation === 'get') {
 						let part = this.getNodeParameter('part', i) as string[];
 						const videoId = this.getNodeParameter('videoId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (part.includes('*')) {
 							part = [
@@ -840,7 +820,7 @@ export class YouTube implements INodeType {
 
 						Object.assign(qs, options);
 
-						responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/videos`, {}, qs);
+						responseData = await googleApiRequest.call(this, 'GET', '/youtube/v3/videos', {}, qs);
 
 						responseData = responseData.items;
 					}
@@ -848,128 +828,100 @@ export class YouTube implements INodeType {
 					if (operation === 'upload') {
 						const title = this.getNodeParameter('title', i) as string;
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const options = this.getNodeParameter('options', i);
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
-						let mimeType;
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 
-						// Is binary file to upload
-						const item = items[i];
+						let mimeType: string;
+						let contentLength: number;
+						let fileContent: Buffer | Readable;
 
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
+						if (binaryData.id) {
+							// Stream data in 256KB chunks, and upload the via the resumable upload api
+							fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+							contentLength = metadata.fileSize;
+							mimeType = metadata.mimeType ?? binaryData.mimeType;
+						} else {
+							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
+							contentLength = fileContent.length;
+							mimeType = binaryData.mimeType;
 						}
 
-						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						if (item.binary[binaryProperty].mimeType) {
-							mimeType = item.binary[binaryProperty].mimeType;
-						}
-
-						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-
-						const requestOptions = {
-							headers: {
-								'Content-Type': mimeType,
-							},
-							json: false,
-						};
-
-						const response = await googleApiRequest.call(
-							this,
-							'POST',
-							'/upload/youtube/v3/videos',
-							body,
-							qs,
-							undefined,
-							requestOptions,
-						);
-
-						const { id } = JSON.parse(response);
-
-						qs.part = 'snippet, status, recordingDetails';
-
-						const data = {
-							id,
+						const payload = {
 							snippet: {
 								title,
 								categoryId,
+								description: options.description,
+								tags: (options.tags as string)?.split(','),
+								defaultLanguage: options.defaultLanguage,
 							},
-							status: {},
-							recordingDetails: {},
+							status: {
+								privacyStatus: options.privacyStatus,
+								embeddable: options.embeddable,
+								publicStatsViewable: options.publicStatsViewable,
+								publishAt: options.publishAt,
+								selfDeclaredMadeForKids: options.selfDeclaredMadeForKids,
+								license: options.license,
+							},
+							recordingDetails: {
+								recordingDate: options.recordingDate,
+							},
 						};
 
-						if (options.description) {
-							//@ts-ignore
-							data.snippet.description = options.description as string;
+						const resumableUpload = await googleApiRequest.call(
+							this,
+							'POST',
+							'/upload/youtube/v3/videos',
+							payload,
+							{
+								uploadType: 'resumable',
+								part: 'snippet,status,recordingDetails',
+								notifySubscribers: options.notifySubscribers ?? false,
+							},
+							undefined,
+							{
+								headers: {
+									'X-Upload-Content-Length': contentLength,
+									'X-Upload-Content-Type': mimeType,
+								},
+								json: true,
+								resolveWithFullResponse: true,
+							},
+						);
+
+						const uploadUrl = resumableUpload.headers.location;
+
+						let uploadId;
+						let offset = 0;
+						for await (const chunk of fileContent) {
+							const nextOffset = offset + Number(chunk.length);
+							try {
+								const response = await this.helpers.httpRequest({
+									method: 'PUT',
+									url: uploadUrl,
+									headers: {
+										'Content-Length': chunk.length,
+										'Content-Range': `bytes ${offset}-${nextOffset - 1}/${contentLength}`,
+									},
+									body: chunk,
+								});
+								uploadId = response.id;
+							} catch (error) {
+								if (error.response?.status !== 308) throw error;
+							}
+							offset = nextOffset;
 						}
 
-						if (options.privacyStatus) {
-							//@ts-ignore
-							data.status.privacyStatus = options.privacyStatus as string;
-						}
-
-						if (options.tags) {
-							//@ts-ignore
-							data.snippet.tags = (options.tags as string).split(',') as string[];
-						}
-
-						if (options.embeddable) {
-							//@ts-ignore
-							data.status.embeddable = options.embeddable as boolean;
-						}
-
-						if (options.publicStatsViewable) {
-							//@ts-ignore
-							data.status.publicStatsViewable = options.publicStatsViewable as boolean;
-						}
-
-						if (options.publishAt) {
-							//@ts-ignore
-							data.status.publishAt = options.publishAt as string;
-						}
-
-						if (options.recordingDate) {
-							//@ts-ignore
-							data.recordingDetails.recordingDate = options.recordingDate as string;
-						}
-
-						if (options.selfDeclaredMadeForKids) {
-							//@ts-ignore
-							data.status.selfDeclaredMadeForKids = options.selfDeclaredMadeForKids as boolean;
-						}
-
-						if (options.license) {
-							//@ts-ignore
-							data.status.license = options.license as string;
-						}
-
-						if (options.defaultLanguage) {
-							//@ts-ignore
-							data.snippet.defaultLanguage = options.defaultLanguage as string;
-						}
-
-						if (options.notifySubscribers) {
-							qs.notifySubscribers = options.notifySubscribers;
-							delete options.notifySubscribers;
-						}
-
-						responseData = await googleApiRequest.call(this, 'PUT', `/youtube/v3/videos`, data, qs);
+						responseData = { uploadId, ...resumableUpload.body };
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/update
 					if (operation === 'update') {
 						const id = this.getNodeParameter('videoId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						qs.part = 'snippet, status, recordingDetails';
 
@@ -995,7 +947,7 @@ export class YouTube implements INodeType {
 
 						if (updateFields.tags) {
 							//@ts-ignore
-							body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+							body.snippet.tags = (updateFields.tags as string).split(',');
 						}
 
 						if (updateFields.embeddable) {
@@ -1038,7 +990,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/videos/delete?hl=en
 					if (operation === 'delete') {
 						const videoId = this.getNodeParameter('videoId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							id: videoId,
@@ -1075,7 +1027,7 @@ export class YouTube implements INodeType {
 				if (resource === 'videoCategory') {
 					//https://developers.google.com/youtube/v3/docs/videoCategories/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const regionCode = this.getNodeParameter('regionCode', i) as string;
 
 						qs.regionCode = regionCode;
@@ -1085,14 +1037,14 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/youtube/v3/videoCategories`,
+							'/youtube/v3/videoCategories',
 							{},
 							qs,
 						);
 						responseData = responseData.items;
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -1110,7 +1062,7 @@ export class YouTube implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

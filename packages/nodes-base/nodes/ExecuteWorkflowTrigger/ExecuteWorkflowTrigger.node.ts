@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -8,10 +8,12 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		icon: 'fa:sign-out-alt',
 		group: ['trigger'],
 		version: 1,
-		description: 'Runs the flow when called by the Execute Workflow node from a different workflow',
+		description:
+			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
+		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'When Called By Another Workflow',
+			name: 'Execute Workflow Trigger',
 			color: '#ff6d5a',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -20,15 +22,30 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the \'execute workflow\' node will be output by this node.',
+					"When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the 'execute workflow' node will be output by this node.",
 				name: 'notice',
 				type: 'notice',
 				default: '',
 			},
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'hidden',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Workflow Call',
+						value: 'worklfow_call',
+						description: 'When called by another workflow using Execute Workflow Trigger',
+						action: 'When Called by Another Workflow',
+					},
+				],
+				default: 'worklfow_call',
+			},
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		return this.prepareOutputData(items);

@@ -1,14 +1,22 @@
 import vue from '@vitejs/plugin-vue2';
-import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from "vite-plugin-monaco-editor";
+import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
-import {defineConfig, mergeConfig, PluginOption} from "vite";
+import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+
 import packageJSON from './package.json';
 
-const vendorChunks = ['vue', 'vue-router', 'vuex'];
-const ignoreChunks = ['vue2-boring-avatars', 'vue-template-compiler', 'jquery', '@fontsource/open-sans'];
+const vendorChunks = ['vue', 'vue-router'];
+const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
+const ignoreChunks = [
+	'vue2-boring-avatars',
+	'vue-template-compiler',
+	'jquery',
+	'@fontsource/open-sans',
+	'normalize-wheel',
+	'stream-browserify',
+];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
 
@@ -17,7 +25,7 @@ function renderChunks() {
 	const chunks: Record<string, string[]> = {};
 
 	Object.keys(dependencies).forEach((key) => {
-		if ([...vendorChunks, ...ignoreChunks].includes(key)) {
+		if ([...vendorChunks, ...n8nChunks, ...ignoreChunks].includes(key)) {
 			return;
 		}
 
@@ -31,41 +39,41 @@ function renderChunks() {
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name => ({
-	find: new RegExp(`^lodash.${name}$`, 'i'),
-	replacement: require.resolve(`lodash-es/${name}`),
-}))
+const { NODE_ENV } = process.env;
 
 export default mergeConfig(
 	defineConfig({
+		define: {
+			// This causes test to fail but is required for actually running it
+			...(NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
+			BASE_PATH: `'${publicPath}'`,
+		},
 		plugins: [
+			vue(),
 			legacy({
 				targets: ['defaults', 'not IE 11'],
 			}),
-			vue(),
-			...createHtmlPlugin({
-				inject: {
-					data: {
-						BASE_PATH: publicPath,
-					},
-				},
-			}) as PluginOption[],
 			monacoEditorPlugin({
 				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) => `${root}/${buildOutDir}/assets/monaco-editor`,
-			}) as PluginOption,
+				customDistPath: (root: string, buildOutDir: string, base: string) =>
+					`${root}/${buildOutDir}/assets/monaco-editor`,
+			}),
 		],
 		resolve: {
 			alias: [
 				{ find: '@', replacement: resolve(__dirname, 'src') },
-				{ find: 'stream', replacement: '' },
+				{ find: 'stream', replacement: 'stream-browserify' },
 				{
 					find: /^n8n-design-system\//,
 					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 				},
-				...lodashAliases,
+				...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
+					find: new RegExp(`^lodash.${name}$`, 'i'),
+					replacement: require.resolve(`lodash-es/${name}`),
+				})),
 				{
-					find: /^lodash.(.+)$/,
+					find: /^lodash\.(.+)$/,
 					replacement: 'lodash-es/$1',
 				},
 				{
@@ -74,7 +82,11 @@ export default mergeConfig(
 				},
 				{
 					find: /element-ui\/(packages|lib)\/button$/,
-					replacement: path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.ts'),
+					replacement: path.resolve(
+						__dirname,
+						'..',
+						'design-system/src/components/N8nButton/overrides/ElButton.ts',
+					),
 				},
 			],
 		},
@@ -94,6 +106,7 @@ export default mergeConfig(
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
+						n8n: n8nChunks,
 						...renderChunks(),
 					},
 				},
@@ -105,6 +118,11 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			css: {
+				modules: {
+					classNameStrategy: 'non-scoped',
+				},
+			},
 		},
 	}),
 );

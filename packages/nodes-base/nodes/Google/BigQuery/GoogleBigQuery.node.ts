@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
 
@@ -142,8 +143,8 @@ export class GoogleBigQuery implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'record') {
 			// *********************************************************************
@@ -164,7 +165,7 @@ export class GoogleBigQuery implements INodeType {
 				const body: IDataObject = {};
 
 				for (let i = 0; i < length; i++) {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					Object.assign(body, options);
 					if (body.traceId === undefined) {
 						body.traceId = uuid();
@@ -192,7 +193,7 @@ export class GoogleBigQuery implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: 0 } },
 					);
 					returnData.push(...executionData);
@@ -204,7 +205,7 @@ export class GoogleBigQuery implements INodeType {
 						);
 						returnData.push(...executionErrorData);
 					}
-					throw new NodeApiError(this.getNode(), error, { itemIndex: 0 });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: 0 });
 				}
 			} else if (operation === 'getAll') {
 				// ----------------------------------
@@ -213,14 +214,14 @@ export class GoogleBigQuery implements INodeType {
 
 				// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/get
 
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const datasetId = this.getNodeParameter('datasetId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				let fields;
 
-				if (simple === true) {
+				if (simple) {
 					const { schema } = await googleApiRequest.call(
 						this,
 						'GET',
@@ -232,7 +233,7 @@ export class GoogleBigQuery implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					try {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 
 						if (qs.selectedFields) {
@@ -249,7 +250,7 @@ export class GoogleBigQuery implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -262,10 +263,12 @@ export class GoogleBigQuery implements INodeType {
 						if (!returnAll) {
 							responseData = responseData.rows;
 						}
-						responseData = simple ? simplify(responseData, fields) : responseData;
+						responseData = simple
+							? simplify(responseData as IDataObject[], fields as string[])
+							: responseData;
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -278,7 +281,7 @@ export class GoogleBigQuery implements INodeType {
 							returnData.push(...executionErrorData);
 							continue;
 						}
-						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
 			}

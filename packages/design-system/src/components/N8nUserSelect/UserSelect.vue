@@ -30,22 +30,20 @@
 </template>
 
 <script lang="ts">
-/* tslint:disable: @typescript-eslint/no-unsafe-assignment */
-import Vue from 'vue';
+import 'vue';
+import mixins from 'vue-typed-mixins';
+import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
-import ElSelect from 'element-ui/lib/select';
-import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
 
 export default mixins(Locale).extend({
 	name: 'n8n-user-select',
 	components: {
 		N8nUserInfo,
-		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElOption, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSelect,
+		ElOption,
 	},
 	props: {
 		users: {
@@ -74,8 +72,7 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
-			validator: (value: string): boolean =>
-				['mini', 'small', 'large'].includes(value),
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
 	data() {
@@ -84,34 +81,33 @@ export default mixins(Locale).extend({
 		};
 	},
 	computed: {
-		fitleredUsers(): IUser[] {
-			return (this.users as IUser[])
-				.filter((user) => {
-					if (user.isPendingUser || !user.email) {
-						return false;
-					}
+		filteredUsers(): IUser[] {
+			return (this.users as IUser[]).filter((user) => {
+				if (user.isPendingUser || !user.email) {
+					return false;
+				}
 
-					if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
-						return false;
-					}
+				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+					return false;
+				}
 
-					if (user.fullName) {
-						const match = user.fullName.toLowerCase().includes(this.filter.toLowerCase());
-						if (match) {
-							return true;
-						}
+				if (user.fullName) {
+					const match = user.fullName.toLowerCase().includes(this.filter.toLowerCase());
+					if (match) {
+						return true;
 					}
+				}
 
-					return user.email.includes(this.filter);
-				});
+				return user.email.includes(this.filter);
+			});
 		},
 		sortedUsers(): IUser[] {
-			return [...(this.fitleredUsers )].sort((a: IUser, b: IUser) => {
+			return [...this.filteredUsers].sort((a: IUser, b: IUser) => {
 				if (a.lastName && b.lastName && a.lastName !== b.lastName) {
 					return a.lastName > b.lastName ? 1 : -1;
 				}
 				if (a.firstName && b.firstName && a.firstName !== b.firstName) {
-					return a.firstName > b.firstName? 1 : -1;
+					return a.firstName > b.firstName ? 1 : -1;
 				}
 
 				if (!a.email || !b.email) {
@@ -121,7 +117,6 @@ export default mixins(Locale).extend({
 				return a.email > b.email ? 1 : -1;
 			});
 		},
-
 	},
 	methods: {
 		setFilter(value: string) {
@@ -141,12 +136,12 @@ export default mixins(Locale).extend({
 				return user.email;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .itemContainer {

@@ -1,14 +1,15 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
 
@@ -224,6 +225,7 @@ export class EventbriteTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -247,7 +249,7 @@ export class EventbriteTrigger implements INodeType {
 				};
 
 				for (const webhook of webhooks) {
-					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions)) {
+					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions as string[])) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -296,17 +298,17 @@ export class EventbriteTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		if (req.body.api_url === undefined) {
-			throw new NodeApiError(this.getNode(), req.body, {
+			throw new NodeApiError(this.getNode(), req.body as JsonObject, {
 				message: 'The received data does not contain required "api_url" property!',
 			});
 		}
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 
-		if (resolveData === false) {
+		if (!resolveData) {
 			// Return the data as it got received
 			return {
-				workflowData: [this.helpers.returnJsonArray(req.body)],
+				workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 			};
 		}
 
@@ -327,11 +329,11 @@ export class EventbriteTrigger implements INodeType {
 			'',
 			{},
 			undefined,
-			req.body.api_url,
+			req.body.api_url as string,
 		);
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(responseData)],
+			workflowData: [this.helpers.returnJsonArray(responseData as IDataObject)],
 		};
 	}
 }

@@ -1,14 +1,13 @@
 <template>
 	<div :class="classes" role="alert">
-
 		<div :class="$style['message-section']">
 			<div :class="$style.icon">
-				<n8n-icon
-					:icon="getIcon"
-					:size="theme === 'secondary' ? 'medium' : 'large'"
-				/>
+				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
 			</div>
-			<slot />&nbsp;
+			<n8n-text size="small">
+				<slot />
+			</n8n-text>
+			&nbsp;
 			<slot name="actions" />
 		</div>
 
@@ -18,6 +17,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 
 const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
@@ -30,6 +30,7 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 export default Vue.extend({
 	name: 'n8n-callout',
 	components: {
+		N8nText,
 		N8nIcon,
 	},
 	props: {
@@ -46,11 +47,7 @@ export default Vue.extend({
 	},
 	computed: {
 		classes(): string[] {
-			return [
-				'n8n-callout',
-				this.$style.callout,
-				this.$style[this.theme],
-			];
+			return ['n8n-callout', this.$style.callout, this.$style[this.theme]];
 		},
 		getIcon(): string {
 			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
@@ -77,9 +74,11 @@ export default Vue.extend({
 
 .message-section {
 	display: flex;
+	align-items: center;
 }
 
-.info, .custom {
+.info,
+.custom {
 	border-color: var(--color-foreground-base);
 	background-color: var(--color-background-light);
 	color: var(--color-info);
@@ -111,7 +110,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-secondary);
-	background-color: var(--color-secondary-tint-2);
+	background-color: var(--color-secondary-tint-3);
 	border-color: var(--color-secondary-tint-1);
 }
 </style>

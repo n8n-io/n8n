@@ -1,9 +1,12 @@
-import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AdaloApi implements ICredentialType {
 	name = 'adaloApi';
+
 	displayName = 'Adalo API';
+
 	documentationUrl = 'adalo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

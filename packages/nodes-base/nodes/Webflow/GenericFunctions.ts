@@ -1,13 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export async function webflowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -41,18 +41,14 @@ export async function webflowApiRequest(
 	};
 	options = Object.assign({}, options, option);
 
-	if (Object.keys(options.qs).length === 0) {
+	if (Object.keys(options.qs as IDataObject).length === 0) {
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function webflowApiRequestAllItems(
@@ -74,7 +70,7 @@ export async function webflowApiRequestAllItems(
 		if (responseData.offset !== undefined) {
 			query.offset += query.limit;
 		}
-		returnData.push.apply(returnData, responseData.items);
+		returnData.push.apply(returnData, responseData.items as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
 	return returnData;

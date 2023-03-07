@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
-import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class AddWaitColumn1621707690587 implements MigrationInterface {
 	name = 'AddWaitColumn1621707690587';
@@ -28,7 +28,6 @@ export class AddWaitColumn1621707690587 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query(`VACUUM;`);
 
 		logMigrationEnd(this.name);
 	}
@@ -50,6 +49,5 @@ export class AddWaitColumn1621707690587 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c1" ON "${tablePrefix}execution_entity" ("stoppedAt")`,
 		);
-		await queryRunner.query(`VACUUM;`);
 	}
 }

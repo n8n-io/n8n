@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { sendyApiRequest } from './GenericFunctions';
 
@@ -65,10 +65,9 @@ export class Sendy implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'campaign') {
 				if (operation === 'create') {
@@ -86,7 +85,7 @@ export class Sendy implements INodeType {
 
 					const sendCampaign = this.getNodeParameter('sendCampaign', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						from_name: fromName,
@@ -143,10 +142,10 @@ export class Sendy implements INodeType {
 
 					const success = ['Campaign created', 'Campaign created and now sending'];
 
-					if (success.includes(responseData)) {
+					if (success.includes(responseData as string)) {
 						responseData = { message: responseData };
 					} else {
-						throw new NodeApiError(this.getNode(), responseData, { httpCode: '400' });
+						throw new NodeApiError(this.getNode(), responseData as JsonObject, { httpCode: '400' });
 					}
 				}
 			}
@@ -157,7 +156,7 @@ export class Sendy implements INodeType {
 
 					const listId = this.getNodeParameter('listId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						email,
@@ -201,7 +200,7 @@ export class Sendy implements INodeType {
 						'List does not exist',
 					];
 
-					if (!errors.includes(responseData)) {
+					if (!errors.includes(responseData as string)) {
 						responseData = { count: responseData };
 					} else {
 						throw new NodeOperationError(
@@ -289,7 +288,7 @@ export class Sendy implements INodeType {
 						'Complained',
 					];
 
-					if (status.includes(responseData)) {
+					if (status.includes(responseData as string)) {
 						responseData = { status: responseData };
 					} else {
 						throw new NodeOperationError(

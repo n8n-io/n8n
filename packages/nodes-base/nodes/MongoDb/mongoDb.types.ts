@@ -1,5 +1,3 @@
-import { CredentialInformation } from 'n8n-workflow';
-
 /**
  * Credentials object for Mongo, if using individual parameters
  */

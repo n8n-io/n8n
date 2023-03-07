@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -10,11 +11,10 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri: string | null = null,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -30,7 +30,7 @@ export async function googleApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -41,7 +41,7 @@ export async function googleApiRequest(
 			options,
 		);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -50,11 +50,10 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri: string | null = null,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -63,9 +62,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
-		query.pageToken = responseData['nextPageToken'];
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+		query.pageToken = responseData.nextPageToken;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
@@ -98,26 +97,12 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		const obj = {};
 		for (const o of Object.keys(value)) {
 			//@ts-ignore
-			obj[o] = jsonToDocument(value[o]);
+			obj[o] = jsonToDocument(value[o] as IDataObject);
 		}
 		return { mapValue: { fields: obj } };
 	}
 
 	return {};
-}
-
-export function fullDocumentToJson(data: IDataObject): IDataObject {
-	if (data === undefined) {
-		return data;
-	}
-
-	return {
-		_name: data.name,
-		_id: data.id,
-		_createTime: data.createTime,
-		_updateTime: data.updateTime,
-		...documentToJson(data.fields as IDataObject),
-	};
 }
 
 export function documentToJson(fields: IDataObject): IDataObject {
@@ -151,7 +136,7 @@ export function documentToJson(fields: IDataObject): IDataObject {
 				return value as IDataObject;
 			} else if ('mapValue' === key) {
 				//@ts-ignore
-				return documentToJson(value!.fields || {});
+				return documentToJson((value!.fields as IDataObject) || {});
 			} else if ('arrayValue' === key) {
 				// @ts-ignore
 				const list = value.values as IDataObject[];
@@ -164,4 +149,18 @@ export function documentToJson(fields: IDataObject): IDataObject {
 		}
 	}
 	return result;
+}
+
+export function fullDocumentToJson(data: IDataObject): IDataObject {
+	if (data === undefined) {
+		return data;
+	}
+
+	return {
+		_name: data.name,
+		_id: data.id,
+		_createTime: data.createTime,
+		_updateTime: data.updateTime,
+		...documentToJson(data.fields as IDataObject),
+	};
 }

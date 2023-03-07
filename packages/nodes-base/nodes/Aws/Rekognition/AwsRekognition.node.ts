@@ -1,12 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestREST, keysTPascalCase } from './GenericFunctions';
@@ -104,7 +101,7 @@ export class AwsRekognition implements INodeType {
 						resource: ['image'],
 					},
 				},
-				description: 'Whether the image to analize should be taken from binary field',
+				description: 'Whether the image to analyze should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',
@@ -334,16 +331,15 @@ export class AwsRekognition implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'image') {
 					//https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectModerationLabels.html#API_DetectModerationLabels_RequestSyntax
 					if (operation === 'analyze') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let action = undefined;
 
@@ -357,7 +353,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'ModerationLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 						}
 
@@ -365,13 +361,13 @@ export class AwsRekognition implements INodeType {
 							action = 'RekognitionService.DetectFaces';
 
 							// TODO: Add a later point make it possible to activate via option.
-							//       If activated add an index to each of the found faces/tages/...
+							//       If activated add an index to each of the found faces/tags/...
 							//       to not loose the reference to the image it got found on if
-							//       multilpe ones got supplied.
+							//       multiple ones got supplied.
 							// property = 'FaceDetails';
 
 							if (additionalFields.attributes) {
-								body['Attributes'] = additionalFields.attributes as string;
+								body.Attributes = additionalFields.attributes as string;
 							}
 						}
 
@@ -379,11 +375,11 @@ export class AwsRekognition implements INodeType {
 							action = 'RekognitionService.DetectLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 
 							if (additionalFields.maxLabels) {
-								body['MaxLabels'] = additionalFields.maxLabels as number;
+								body.MaxLabels = additionalFields.maxLabels as number;
 							}
 						}
 
@@ -397,13 +393,13 @@ export class AwsRekognition implements INodeType {
 							body.Filters = {};
 
 							const box =
-								(((additionalFields.regionsOfInterestUi as IDataObject) || {})
-									.regionsOfInterestValues as IDataObject[]) || [];
+								((additionalFields.regionsOfInterestUi as IDataObject)
+									?.regionsOfInterestValues as IDataObject[]) || [];
 
 							if (box.length !== 0) {
 								//@ts-ignore
-								body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
-									return { BoundingBox: keysTPascalCase(box) };
+								body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
+									return { BoundingBox: keysTPascalCase(entry) };
 								});
 							}
 
@@ -413,27 +409,10 @@ export class AwsRekognition implements INodeType {
 								body.Filters.WordFilter = keysTPascalCase(wordFilter);
 							}
 
-							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
-
-							if (binaryData) {
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-
-								if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
+							const isBinaryData = this.getNodeParameter('binaryData', i);
+							if (isBinaryData) {
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+								const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								Object.assign(body, {
 									Image: {
 										Bytes: binaryPropertyData.data,
@@ -441,7 +420,6 @@ export class AwsRekognition implements INodeType {
 								});
 							} else {
 								const bucket = this.getNodeParameter('bucket', i) as string;
-
 								const name = this.getNodeParameter('name', i) as string;
 
 								Object.assign(body, {
@@ -473,7 +451,7 @@ export class AwsRekognition implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

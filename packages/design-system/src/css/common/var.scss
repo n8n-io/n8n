@@ -1,5 +1,5 @@
-@use "sass:math";
-@use "../mixins/function.scss";
+@use 'sass:math';
+@use '../mixins/function.scss';
 
 // Special comment for theme configurator
 // type|skipAutoTranslation|Category|Order
@@ -11,7 +11,7 @@ $all-transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 $fade-transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
 $fade-linear-transition: opacity 200ms linear;
 $md-fade-transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1),
-opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
 $border-transition-base: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 $color-transition-base: color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
@@ -21,191 +21,161 @@ $color-white: var(--color-foreground-xlight);
 $color-black: var(--color-foreground-dark);
 
 $color-primary-light-1: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				4%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	4%
 );
 $color-primary-light-2: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				8%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	8%
 );
 $color-primary-light-3: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				12%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	12%
 );
 $color-primary-light-4: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				16%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	16%
 );
 $color-primary-light-5: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				20%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	20%
 );
 $color-primary-light-6: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				24%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	24%
 );
 $color-primary-light-7: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				28%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	28%
 );
 $color-primary-light-8: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				32%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	32%
 );
 $color-primary-light-9: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				36%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	36%
 );
 $color-primary-light: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				30%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	30%
 );
 $color-primary-lighter: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				34%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	34%
 );
 
 $color-primary-shade-1: function.lightness(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				-(10)
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	-(10)
 );
 
 $color-success-light-1: function.lightness(
-				--color-success-h,
-				--color-success-s,
-				--color-success-l,
-				4%
+	--color-success-h,
+	--color-success-s,
+	--color-success-l,
+	4%
 );
 $color-success-light-3: function.lightness(
-				--color-success-h,
-				--color-success-s,
-				--color-success-l,
-				12%
+	--color-success-h,
+	--color-success-s,
+	--color-success-l,
+	12%
 );
 $color-success-light-5: function.lightness(
-				--color-success-h,
-				--color-success-s,
-				--color-success-l,
-				20%
+	--color-success-h,
+	--color-success-s,
+	--color-success-l,
+	20%
 );
 $color-success-light: function.lightness(
-				--color-success-h,
-				--color-success-s,
-				--color-success-l,
-				41%
+	--color-success-h,
+	--color-success-s,
+	--color-success-l,
+	41%
 );
 $color-success-lighter: function.lightness(
-				--color-success-h,
-				--color-success-s,
-				--color-success-l,
-				48%
+	--color-success-h,
+	--color-success-s,
+	--color-success-l,
+	48%
 );
 
 $color-warning-light-1: function.lightness(
-				--color-warning-h,
-				--color-warning-s,
-				--color-warning-l,
-				4%
+	--color-warning-h,
+	--color-warning-s,
+	--color-warning-l,
+	4%
 );
 $color-warning-light-3: function.lightness(
-				--color-warning-h,
-				--color-warning-s,
-				--color-warning-l,
-				12%
+	--color-warning-h,
+	--color-warning-s,
+	--color-warning-l,
+	12%
 );
 $color-warning-light-5: function.lightness(
-				--color-warning-h,
-				--color-warning-s,
-				--color-warning-l,
-				20%
+	--color-warning-h,
+	--color-warning-s,
+	--color-warning-l,
+	20%
 );
 $color-warning-light: function.lightness(
-				--color-warning-h,
-				--color-warning-s,
-				--color-warning-l,
-				34%
+	--color-warning-h,
+	--color-warning-s,
+	--color-warning-l,
+	34%
 );
 $color-warning-lighter: function.lightness(
-				--color-warning-h,
-				--color-warning-s,
-				--color-warning-l,
-				40%
+	--color-warning-h,
+	--color-warning-s,
+	--color-warning-l,
+	40%
 );
 
-$color-danger-light-1: function.lightness(
-				--color-danger-h,
-				--color-danger-s,
-				--color-danger-l,
-				4%
-);
+$color-danger-light-1: function.lightness(--color-danger-h, --color-danger-s, --color-danger-l, 4%);
 $color-danger-light-3: function.lightness(
-				--color-danger-h,
-				--color-danger-s,
-				--color-danger-l,
-				12%
+	--color-danger-h,
+	--color-danger-s,
+	--color-danger-l,
+	12%
 );
 $color-danger-light-5: function.lightness(
-				--color-danger-h,
-				--color-danger-s,
-				--color-danger-l,
-				20%
+	--color-danger-h,
+	--color-danger-s,
+	--color-danger-l,
+	20%
 );
-$color-danger-light: function.lightness(
-				--color-danger-h,
-				--color-danger-s,
-				--color-danger-l,
-				24%
-);
+$color-danger-light: function.lightness(--color-danger-h, --color-danger-s, --color-danger-l, 24%);
 $color-danger-lighter: var(--color-danger-tint-2);
 
-$color-info-light-1: function.lightness(
-				--color-info-h,
-				--color-info-s,
-				--color-info-l,
-				4%
-);
-$color-info-light-3: function.lightness(
-				--color-info-h,
-				--color-info-s,
-				--color-info-l,
-				12%
-);
-$color-info-light-5: function.lightness(
-				--color-info-h,
-				--color-info-s,
-				--color-info-l,
-				20%
-);
-$color-info-lighter: function.lightness(
-				--color-info-h,
-				--color-info-s,
-				--color-info-l,
-				39%
-);
+$color-info-light-1: function.lightness(--color-info-h, --color-info-s, --color-info-l, 4%);
+$color-info-light-3: function.lightness(--color-info-h, --color-info-s, --color-info-l, 12%);
+$color-info-light-5: function.lightness(--color-info-h, --color-info-s, --color-info-l, 20%);
+$color-info-lighter: function.lightness(--color-info-h, --color-info-s, --color-info-l, 39%);
 
 // Background
 /// color|1|Background Color|4
@@ -673,29 +643,17 @@ $button-font-color: var(--button-color, var(--color-text-xlight));
 $button-background-color: var(--button-background-color, var(--color-primary));
 
 $button-active-color: var(--button-active-color, var(--color-text-xlight));
-$button-active-border-color: var(
-				--button-active-border-color,
-				var(--color-primary-shade-1)
-);
+$button-active-border-color: var(--button-active-border-color, var(--color-primary-shade-1));
 $button-active-background-color: var(
-				--button-active-background-color,
-				var(--color-primary-shade-1)
+	--button-active-background-color,
+	var(--color-primary-shade-1)
 );
 
-$button-focus-outline-color: var(
-				--button-focus-outline-color,
-				var(--color-primary-tint-1)
-);
+$button-focus-outline-color: var(--button-focus-outline-color, var(--color-primary-tint-1));
 
 $button-hover-color: var(--button-hover-color, var(--color-text-xlight));
-$button-hover-border-color: var(
-				--button-hover-border-color,
-				var(--color-primary-shade-1)
-);
-$button-hover-background-color: var(
-				--button-hover-background-color,
-				var(--color-primary-shade-1)
-);
+$button-hover-border-color: var(--button-hover-border-color, var(--color-primary-shade-1));
+$button-hover-background-color: var(--button-hover-background-color, var(--color-primary-shade-1));
 
 /// color||Color|0
 $button-default-font-color: var(--color-text-dark);
@@ -705,15 +663,9 @@ $button-default-background-color: $color-white;
 $button-default-border-color: var(--border-color-base);
 
 /// color||Color|0
-$button-disabled-font-color: var(
-				--button-disabled-color,
-				var(--color-text-dark)
-);
+$button-disabled-font-color: var(--button-disabled-color, var(--color-text-dark));
 /// color||Color|0
-$button-disabled-background-color: var(
-				--button-disabled-background-color,
-				var(--color-light-grey)
-);
+$button-disabled-background-color: var(--button-disabled-background-color, var(--color-light-grey));
 /// color||Color|0
 $button-disabled-border-color: var(--button-disabled-border-color, var(--color-light-grey));
 
@@ -917,10 +869,10 @@ $slider-main-background-color: var(--color-primary);
 /// color||Color|0
 $slider-runway-background-color: var(--border-color-base);
 $slider-button-hover-color: function.saturation(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				8%
+	--color-primary-h,
+	--color-primary-s,
+	--color-primary-l,
+	8%
 );
 $slider-stop-background-color: $color-white;
 $slider-disable-color: var(--color-text-lighter);
@@ -998,16 +950,16 @@ $loading-fullscreen-spinner-size: 50px;
 /* Scrollbar
 --------------------------*/
 $scrollbar-background-color: hsla(
-				var(#{--color-text-light-h}),
-				var(#{--color-text-light-s}),
-				var(#{--color-text-light-l}),
-				0.3
+	var(#{--color-text-light-h}),
+	var(#{--color-text-light-s}),
+	var(#{--color-text-light-l}),
+	0.3
 );
 $scrollbar-hover-background-color: hsla(
-				var(#{--color-text-light-h}),
-				var(#{--color-text-light-s}),
-				var(#{--color-text-light-l}),
-				0.5
+	var(#{--color-text-light-h}),
+	var(#{--color-text-light-s}),
+	var(#{--color-text-light-l}),
+	0.5
 );
 
 /* Carousel
@@ -1152,67 +1104,67 @@ $lg: 1200px;
 $xl: 1920px;
 
 $breakpoints: (
-		'xs': (
-				max-width: $sm - 1,
-		),
-		'sm': (
-				min-width: $sm,
-		),
-		'md': (
-				min-width: $md,
-		),
-		'lg': (
-				min-width: $lg,
-		),
-		'xl': (
-				min-width: $xl,
-		),
+	'xs': (
+		max-width: $sm - 1,
+	),
+	'sm': (
+		min-width: $sm,
+	),
+	'md': (
+		min-width: $md,
+	),
+	'lg': (
+		min-width: $lg,
+	),
+	'xl': (
+		min-width: $xl,
+	),
 );
 
 $breakpoints-spec: (
-		'xs-only': (
-				max-width: $sm - 1,
-		),
-		'sm-and-up': (
-				min-width: $sm,
-		),
-		'sm-only': (
+	'xs-only': (
+		max-width: $sm - 1,
+	),
+	'sm-and-up': (
+		min-width: $sm,
+	),
+	'sm-only': (
 		min-width: #{$sm},
 	)
 	and
 	(
 		max-width: #{$md - 1},
 	),
-		'sm-and-down': (
-				max-width: $md - 1,
-		),
-		'md-and-up': (
-				min-width: $md,
-		),
-		'md-only': (
+	'sm-and-down': (
+		max-width: $md - 1,
+	),
+	'md-and-up': (
+		min-width: $md,
+	),
+	'md-only': (
 		min-width: #{$md},
 	)
 	and
 	(
 		max-width: #{$lg - 1},
 	),
-		'md-and-down': (
-				max-width: $lg - 1,
-		),
-		'lg-and-up': (
-				min-width: $lg,
-		),
-		'lg-only': (
+	'md-and-down': (
+		max-width: $lg - 1,
+	),
+	'lg-and-up': (
+		min-width: $lg,
+	),
+	'lg-only': (
 		min-width: #{$lg},
 	)
 	and
 	(
 		max-width: #{$xl - 1},
 	),
-		'lg-and-down': (
-				max-width: $xl - 1,
-		),
-		'xl-only': (
-				min-width: $xl,
-		),
+	'lg-and-down': (
+		max-width: $xl - 1,
+	),
+	'xl-only': (
+		min-width: $xl,
+	),
 );

@@ -1,6 +1,7 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
@@ -9,6 +10,7 @@ export interface RundeckCredentials {
 
 export class RundeckApi {
 	private credentials?: RundeckCredentials;
+
 	private executeFunctions: IExecuteFunctions;
 
 	constructor(executeFunctions: IExecuteFunctions) {
@@ -22,7 +24,7 @@ export class RundeckApi {
 			rejectUnauthorized: false,
 			method,
 			qs: query,
-			uri: this.credentials?.url + endpoint,
+			uri: (this.credentials?.url as string) + endpoint,
 			body,
 			json: true,
 		};
@@ -34,7 +36,7 @@ export class RundeckApi {
 				options,
 			);
 		} catch (error) {
-			throw new NodeApiError(this.executeFunctions.getNode(), error);
+			throw new NodeApiError(this.executeFunctions.getNode(), error as JsonObject);
 		}
 	}
 
@@ -48,12 +50,12 @@ export class RundeckApi {
 		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
-	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
+	async executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
 		let params = '';
 
 		if (args) {
 			for (const arg of args) {
-				params += '-' + arg.name + ' ' + arg.value + ' ';
+				params += '-' + (arg.name as string) + ' ' + (arg.value as string) + ' ';
 			}
 		}
 
@@ -64,7 +66,7 @@ export class RundeckApi {
 		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
 	}
 
-	getJobMetadata(jobId: string): Promise<IDataObject> {
+	async getJobMetadata(jobId: string): Promise<IDataObject> {
 		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
 }

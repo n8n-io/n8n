@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DisqusApi implements ICredentialType {
 	name = 'disqusApi';
+
 	displayName = 'Disqus API';
+
 	documentationUrl = 'disqus';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',

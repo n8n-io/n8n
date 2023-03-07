@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -70,12 +69,12 @@ export class LinkedIn implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
-		let body: any = {}; // tslint:disable-line:no-any
+		let body: any = {};
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -84,7 +83,7 @@ export class LinkedIn implements INodeType {
 						const text = this.getNodeParameter('text', i) as string;
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let authorUrn = '';
 						let visibility = 'PUBLIC';
@@ -137,27 +136,11 @@ export class LinkedIn implements INodeType {
 							].uploadUrl as string;
 							const asset = registerObject.value.asset as string;
 
-							// Prepare binary file upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							// Buffer binary data
-							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							// Upload image
 							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
 
@@ -189,8 +172,6 @@ export class LinkedIn implements INodeType {
 								},
 							};
 						} else if (shareMediaCategory === 'ARTICLE') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
 							}
@@ -258,21 +239,24 @@ export class LinkedIn implements INodeType {
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

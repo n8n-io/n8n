@@ -6,13 +6,14 @@
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:item-size="77"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
-		<template v-slot="{ data }">
-			<credential-card :data="data"/>
+		<template #default="{ data }">
+			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
-		<template v-slot:filters="{ setKeyValue }">
+		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('credentials.filters.type')"
@@ -23,7 +24,7 @@
 				/>
 				<n8n-select
 					:value="filters.type"
-					size="small"
+					size="medium"
 					multiple
 					filterable
 					ref="typeInput"
@@ -43,29 +44,31 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
-import {ICredentialsResponse, IUser} from '@/Interface';
+import { showMessage } from '@/mixins/showMessage';
+import { ICredentialsResponse, ICredentialTypeMap, IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
-import ResourcesListLayout from "@/components/layouts/ResourcesListLayout.vue";
-import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
-import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import CredentialCard from "@/components/CredentialCard.vue";
-import {ICredentialType} from "n8n-workflow";
-import TemplateCard from "@/components/TemplateCard.vue";
-import { debounceHelper } from '@/components/mixins/debounce';
-import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
-import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
-import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
-import Vue from "vue";
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
+import CredentialCard from '@/components/CredentialCard.vue';
+import { ICredentialType } from 'n8n-workflow';
+import TemplateCard from '@/components/TemplateCard.vue';
+import { debounceHelper } from '@/mixins/debounce';
+import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
+import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
+import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
-export default mixins(
-	showMessage,
-	debounceHelper,
-).extend({
+export default mixins(showMessage, debounceHelper).extend({
 	name: 'SettingsPersonalView',
 	components: {
 		ResourcesListLayout,
@@ -88,25 +91,20 @@ export default mixins(
 		};
 	},
 	computed: {
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
+		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
 		allCredentials(): ICredentialsResponse[] {
-			return this.$store.getters['credentials/allCredentials'];
+			return this.credentialsStore.allCredentials;
 		},
 		allCredentialTypes(): ICredentialType[] {
-			return this.$store.getters['credentials/allCredentialTypes'];
+			return this.credentialsStore.allCredentialTypes;
 		},
-		credentialTypesById(): Record<ICredentialType['name'], ICredentialType> {
-			return this.$store.getters['credentials/credentialTypesById'];
+		credentialTypesById(): ICredentialTypeMap {
+			return this.credentialsStore.credentialTypesById;
 		},
 	},
 	methods: {
 		addCredential() {
-			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
 
 			this.$telemetry.track('User clicked add cred button', {
 				source: 'Creds list',
@@ -114,19 +112,23 @@ export default mixins(
 		},
 		async initialize() {
 			const loadPromises = [
-				this.$store.dispatch('credentials/fetchAllCredentials'),
-				this.$store.dispatch('credentials/fetchCredentialTypes'),
+				this.credentialsStore.fetchAllCredentials(),
+				this.credentialsStore.fetchCredentialTypes(false),
 			];
 
-			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
-				loadPromises.push(this.$store.dispatch('nodeTypes/getNodeTypes'));
+			if (this.nodeTypesStore.allNodeTypes.length === 0) {
+				loadPromises.push(this.nodeTypesStore.getNodeTypes());
 			}
 
 			await Promise.all(loadPromises);
 
-			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
+			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
-		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
+		onFilter(
+			resource: ICredentialsResponse,
+			filters: { type: string[]; search: string },
+			matches: boolean,
+		): boolean {
 			if (filters.type.length > 0) {
 				matches = matches && filters.type.includes(resource.type);
 			}
@@ -134,9 +136,12 @@ export default mixins(
 			if (filters.search) {
 				const searchString = filters.search.toLowerCase();
 
-				matches = matches || (
-					this.credentialTypesById[resource.type] && this.credentialTypesById[resource.type].displayName.toLowerCase().includes(searchString)
-				);
+				matches =
+					matches ||
+					(this.credentialTypesById[resource.type] &&
+						this.credentialTypesById[resource.type].displayName
+							.toLowerCase()
+							.includes(searchString));
 			}
 
 			return matches;
@@ -162,4 +167,3 @@ export default mixins(
 	padding: 0 !important;
 }
 </style>
-

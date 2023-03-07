@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,9 +16,9 @@ import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IInvoice, ILineItem } from './InvoiceInterface';
+import type { IInvoice, ILineItem } from './InvoiceInterface';
 
-import { IAddress, IContact, IPhone } from './IContactInterface';
+import type { IAddress, IContact, IPhone } from './IContactInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -216,14 +216,14 @@ export class Xero implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developer.xero.com/documentation/api/invoices
 				if (resource === 'invoice') {
 					if (operation === 'create') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const type = this.getNodeParameter('type', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const lineItemsValues = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
 							.lineItemsValues as IDataObject[];
@@ -315,7 +315,7 @@ export class Xero implements INodeType {
 					if (operation === 'update') {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IInvoice = {
 							organizationId,
@@ -419,8 +419,8 @@ export class Xero implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						if (options.statuses) {
 							qs.statuses = (options.statuses as string[]).join(',');
 						}
@@ -445,11 +445,11 @@ export class Xero implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Invoices`,
+								'/Invoices',
 								{ organizationId },
 								qs,
 							);
@@ -462,7 +462,7 @@ export class Xero implements INodeType {
 					if (operation === 'create') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const addressesUi = additionalFields.addressesUi as IDataObject;
 						const phonesUi = additionalFields.phonesUi as IDataObject;
 
@@ -575,8 +575,8 @@ export class Xero implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						if (options.includeArchived) {
 							qs.includeArchived = options.includeArchived as boolean;
 						}
@@ -598,11 +598,11 @@ export class Xero implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Contacts`,
+								'/Contacts',
 								{ organizationId },
 								qs,
 							);
@@ -613,7 +613,7 @@ export class Xero implements INodeType {
 					if (operation === 'update') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const addressesUi = updateFields.addressesUi as IDataObject;
 						const phonesUi = updateFields.phonesUi as IDataObject;
 
@@ -719,7 +719,7 @@ export class Xero implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function mindeeApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	body: any = {}, // tslint:disable-line:no-any
+	body: any = {},
 	qs: IDataObject = {},
 	option = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource', 0);
 
 	let service;
 
@@ -39,7 +39,7 @@ export async function mindeeApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -51,7 +51,7 @@ export async function mindeeApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(this, service, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -68,9 +68,9 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 			};
 		} else if (key === 'locale') {
 			//@ts-ignore
-			newData['currency'] = data.currency;
+			newData.currency = data.currency;
 			//@ts-ignore
-			newData['locale'] = data.value;
+			newData.locale = data.value;
 		} else {
 			newData[key] =
 				//@ts-ignore
@@ -85,9 +85,9 @@ export function cleanData(document: IDataObject) {
 	// @ts-ignore
 	const prediction = document.inference.prediction as IDataObject;
 	const newData: IDataObject = {};
-	newData['id'] = document.id;
-	newData['name'] = document.name;
-	newData['number_of_pages'] = document.n_pages;
+	newData.id = document.id;
+	newData.name = document.name;
+	newData.number_of_pages = document.n_pages;
 	for (const key of Object.keys(prediction)) {
 		const data = prediction[key] as IDataObject | IDataObject[];
 
@@ -98,9 +98,9 @@ export function cleanData(document: IDataObject) {
 			};
 		} else if (key === 'locale') {
 			//@ts-ignore
-			newData['currency'] = data.currency;
+			newData.currency = data.currency;
 			//@ts-ignore
-			newData['locale'] = data.value;
+			newData.locale = data.value;
 		} else {
 			newData[key] =
 				//@ts-ignore

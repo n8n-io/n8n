@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class FacebookGraphApi implements ICredentialType {
 	name = 'facebookGraphApi';
+
 	displayName = 'Facebook Graph API';
-	documentationUrl = 'facebookGraph';
+
+	documentationUrl = 'facebookgraph';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
@@ -18,6 +21,7 @@ export class FacebookGraphApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -26,6 +30,7 @@ export class FacebookGraphApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://graph.facebook.com/v8.0',

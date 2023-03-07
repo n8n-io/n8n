@@ -1,13 +1,13 @@
 import moment from 'moment';
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class If implements INodeType {
 	description: INodeTypeDescription = {
@@ -315,6 +315,10 @@ export class If implements INodeType {
 		let item: INodeExecutionData;
 		let combineOperation: string;
 
+		const isDateObject = (value: NodeParameterValue) =>
+			Object.prototype.toString.call(value) === '[object Date]';
+		const isDateInvalid = (value: NodeParameterValue) => value?.toString() === 'Invalid Date';
+
 		// The compare operations
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
@@ -347,15 +351,17 @@ export class If implements INodeType {
 				!(value1 as string).startsWith(value2 as string),
 			isEmpty: (value1: NodeParameterValue) =>
 				[undefined, null, '', NaN].includes(value1 as string) ||
-				(typeof value1 === 'object' && value1 !== null
+				(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 					? Object.entries(value1 as string).length === 0
-					: false),
+					: false) ||
+				(isDateObject(value1) && isDateInvalid(value1)),
 			isNotEmpty: (value1: NodeParameterValue) =>
 				!(
 					[undefined, null, '', NaN].includes(value1 as string) ||
-					(typeof value1 === 'object' && value1 !== null
+					(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 						? Object.entries(value1 as string).length === 0
-						: false)
+						: false) ||
+					(isDateObject(value1) && isDateInvalid(value1))
 				),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
@@ -415,7 +421,7 @@ export class If implements INodeType {
 		// The different dataTypes to check the values in
 		const dataTypes = ['boolean', 'dateTime', 'number', 'string'];
 
-		// Itterate over all items to check which ones should be output as via output "true" and
+		// Iterate over all items to check which ones should be output as via output "true" and
 		// which ones via output "false"
 		let dataType: string;
 		let compareOperationResult: boolean;
@@ -450,12 +456,12 @@ export class If implements INodeType {
 						value2,
 					);
 
-					if (compareOperationResult === true && combineOperation === 'any') {
+					if (compareOperationResult && combineOperation === 'any') {
 						// If it passes and the operation is "any" we do not have to check any
 						// other ones as it should pass anyway. So go on with the next item.
 						returnDataTrue.push(item);
 						continue itemLoop;
-					} else if (compareOperationResult === false && combineOperation === 'all') {
+					} else if (!compareOperationResult && combineOperation === 'all') {
 						// If it fails and the operation is "all" we do not have to check any
 						// other ones as it should be not pass anyway. So go on with the next item.
 						returnDataFalse.push(item);

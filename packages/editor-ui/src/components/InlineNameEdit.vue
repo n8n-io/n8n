@@ -1,9 +1,6 @@
 <template>
-	<div class='ph-no-capture' :class="$style.container">
-		<span
-			v-if="readonly"
-			:class="$style.headline"
-		>
+	<div class="ph-no-capture" :class="$style.container">
+		<span v-if="readonly" :class="$style.headline">
 			{{ name }}
 		</span>
 		<div
@@ -36,7 +33,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 export default mixins(showMessage).extend({
 	name: 'InlineNameEdit',
@@ -90,7 +87,6 @@ export default mixins(showMessage).extend({
 	},
 });
 </script>
-
 
 <style module lang="scss">
 .container {
@@ -146,5 +142,4 @@ export default mixins(showMessage).extend({
 	margin-left: 4px;
 	font-weight: 400;
 }
-
 </style>

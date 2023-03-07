@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const leadOperations: INodeProperties[] = [
 	{
@@ -217,9 +217,6 @@ export const leadFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Description of the lead',
 			},
@@ -237,6 +234,14 @@ export const leadFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'First name of the lead. Limited to 40 characters.',
+			},
+			{
+				displayName: 'Has Opted Out of Email',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
 			},
 			{
 				displayName: 'Industry',
@@ -481,9 +486,6 @@ export const leadFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Description of the lead',
 			},
@@ -501,6 +503,14 @@ export const leadFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'First name of the lead. Limited to 40 characters.',
+			},
+			{
+				displayName: 'Has Opted Out of Email',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
 			},
 			{
 				displayName: 'Industry',
@@ -914,9 +924,6 @@ export const leadFields: INodeProperties[] = [
 				name: 'body',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{

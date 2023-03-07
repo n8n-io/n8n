@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -10,11 +10,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { flow, omit } from 'lodash';
+import flow from 'lodash.flow';
+import omit from 'lodash.omit';
 
-import {
+import type {
 	AddressFixedCollection,
 	EmailFixedCollection,
 	EmailsFixedCollection,
@@ -60,14 +62,14 @@ export async function copperApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -146,32 +148,6 @@ export const adjustPersonFields = flow(adjustCompanyFields, adjustEmails);
 export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
 
 /**
- * Handle a Copper listing by returning all items or up to a limit.
- */
-export async function handleListing(
-	this: IExecuteFunctions,
-	method: string,
-	endpoint: string,
-	qs: IDataObject = {},
-	body: IDataObject = {},
-	uri = '',
-) {
-	let responseData;
-
-	const returnAll = this.getNodeParameter('returnAll', 0);
-
-	const option = { resolveWithFullResponse: true };
-
-	if (returnAll) {
-		return await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
-	}
-
-	const limit = this.getNodeParameter('limit', 0) as number;
-	responseData = await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
-	return responseData.slice(0, limit);
-}
-
-/**
  * Make an authenticated API request to Copper and return all items.
  */
 export async function copperApiRequestAllItems(
@@ -191,8 +167,40 @@ export async function copperApiRequestAllItems(
 	do {
 		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
 		totalItems = responseData.headers['x-pw-total'];
-		returnData.push(...responseData.body);
+		returnData.push(...(responseData.body as IDataObject[]));
 	} while (totalItems > returnData.length);
 
 	return returnData;
+}
+
+/**
+ * Handle a Copper listing by returning all items or up to a limit.
+ */
+export async function handleListing(
+	this: IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	qs: IDataObject = {},
+	body: IDataObject = {},
+	uri = '',
+) {
+	const returnAll = this.getNodeParameter('returnAll', 0);
+
+	const option = { resolveWithFullResponse: true };
+
+	if (returnAll) {
+		return copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
+	}
+
+	const limit = this.getNodeParameter('limit', 0);
+	const responseData = await copperApiRequestAllItems.call(
+		this,
+		method,
+		endpoint,
+		body,
+		qs,
+		uri,
+		option,
+	);
+	return responseData.slice(0, limit);
 }

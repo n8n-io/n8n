@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,7 +8,8 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IOAuth2Options, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function clickupApiRequest(
 	this:
@@ -19,12 +20,11 @@ export async function clickupApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
+	_option: IDataObject = {},
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -48,7 +48,7 @@ export async function clickupApiRequest(
 				tokenType: 'Bearer',
 			};
 			// @ts-ignore
-			return await this.helpers.requestOAuth2!.call(
+			return await this.helpers.requestOAuth2.call(
 				this,
 				'clickUpOAuth2Api',
 				options,
@@ -56,7 +56,7 @@ export async function clickupApiRequest(
 			);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -65,10 +65,9 @@ export async function clickupApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -77,7 +76,7 @@ export async function clickupApiRequestAllItems(
 
 	do {
 		responseData = await clickupApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.page++;
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
@@ -86,7 +85,6 @@ export async function clickupApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

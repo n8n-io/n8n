@@ -1,12 +1,12 @@
-import { IPollFunctions } from 'n8n-core';
-import {
+import type { IPollFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { togglApiRequest } from './GenericFunctions';
@@ -21,7 +21,7 @@ export class TogglTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Toggl events occur',
 		defaults: {
-			name: 'Toggl',
+			name: 'Toggl Trigger',
 		},
 		credentials: [
 			{
@@ -69,7 +69,7 @@ export class TogglTrigger implements INodeType {
 			timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
 			webhookData.lastTimeChecked = qs.end_date;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 		if (Array.isArray(timeEntries) && timeEntries.length !== 0) {
 			return [this.helpers.returnJsonArray(timeEntries)];

@@ -6,7 +6,30 @@
 		@focus="onFocus"
 		ref="inputRef"
 	/>
-	<n8n-input-label v-else :inputName="name" :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk">
+	<n8n-input-label
+		v-else-if="type === 'toggle'"
+		:inputName="name"
+		:label="label"
+		:tooltipText="tooltipText"
+		:required="required && showRequiredAsterisk"
+	>
+		<template #content>
+			{{ tooltipText }}
+		</template>
+		<el-switch
+			:value="value"
+			@change="onInput"
+			:active-color="activeColor"
+			:inactive-color="inactiveColor"
+		></el-switch>
+	</n8n-input-label>
+	<n8n-input-label
+		v-else
+		:inputName="name"
+		:label="label"
+		:tooltipText="tooltipText"
+		:required="required && showRequiredAsterisk"
+	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot" />
 			<n8n-select
@@ -14,6 +37,7 @@
 				:value="value"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
+				:disabled="disabled"
 				@change="onInput"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -21,7 +45,7 @@
 				ref="inputRef"
 			>
 				<n8n-option
-					v-for="option in (options || [])"
+					v-for="option in options || []"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
@@ -35,6 +59,7 @@
 				:value="value"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
+				:disabled="disabled"
 				@input="onInput"
 				@blur="onBlur"
 				@focus="onFocus"
@@ -67,14 +92,15 @@ import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
+import ElSwitch from 'element-ui/lib/switch';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator } from "../../types";
+import { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
 
 import { t } from '../../locale';
 
 export interface Props {
-  value: any;
+	value: Validatable;
 	label: string;
 	infoText?: string;
 	required?: boolean;
@@ -87,13 +113,18 @@ export interface Props {
 	documentationUrl?: string;
 	documentationText?: string;
 	validationRules?: Array<Rule | RuleGroup>;
-	validators?: {[key: string]: IValidator | RuleGroup};
+	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
-	options?: Array<{value: string | number, label: string}>;
+	options?: Array<{ value: string | number; label: string }>;
 	autocomplete?: string;
 	name?: string;
 	focusInitially?: boolean;
 	labelSize?: 'small' | 'medium';
+	disabled?: boolean;
+	activeLabel?: string;
+	activeColor?: string;
+	inactiveLabel?: string;
+	inactiveColor?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -105,11 +136,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'validate', shouldValidate: boolean): void,
-	(event: 'input', value: any): void,
-	(event: 'focus'): void,
-	(event: 'blur'): void,
-	(event: 'enter'): void,
+	(event: 'validate', shouldValidate: boolean): void;
+	(event: 'input', value: unknown): void;
+	(event: 'focus'): void;
+	(event: 'blur'): void;
+	(event: 'enter'): void;
 }>();
 
 const state = reactive({
@@ -121,7 +152,7 @@ const slots = useSlots();
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
-function getInputValidationError(): ReturnType<IValidator['validate']>  {
+function getInputValidationError(): ReturnType<IValidator['validate']> {
 	const rules = props.validationRules || [];
 	const validators = {
 		...VALIDATORS,
@@ -149,11 +180,7 @@ function getInputValidationError(): ReturnType<IValidator['validate']>  {
 
 		if (rules[i].hasOwnProperty('rules')) {
 			const rule = rules[i] as RuleGroup;
-			const error = getValidationError(
-				props.value,
-				validators,
-				rule,
-			);
+			const error = getValidationError(props.value, validators, rule);
 			if (error) return error;
 		}
 	}
@@ -167,7 +194,7 @@ function onBlur() {
 	emit('blur');
 }
 
-function onInput(value: any) {
+function onInput(value: FormState) {
 	state.isTyping = true;
 	emit('input', value);
 }
@@ -190,10 +217,11 @@ const validationError = computed<string | null>(() => {
 
 const hasDefaultSlot = computed(() => !!slots.default);
 
-const showErrors = computed(() => (
-	!!validationError.value &&
-		((props.validateOnBlur && state.hasBlurred && !state.isTyping) || props.showValidationWarnings)
-));
+const showErrors = computed(
+	() =>
+		!!validationError.value &&
+		((props.validateOnBlur && state.hasBlurred && !state.isTyping) || props.showValidationWarnings),
+);
 
 onMounted(() => {
 	emit('validate', !validationError.value);
@@ -201,7 +229,10 @@ onMounted(() => {
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
-watch(() => validationError.value, (error) => emit('validate', !error));
+watch(
+	() => validationError.value,
+	(error) => emit('validate', !error),
+);
 
 defineExpose({ inputRef });
 </script>

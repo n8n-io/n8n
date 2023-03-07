@@ -1,15 +1,15 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
@@ -166,8 +166,8 @@ export class GetResponseTrigger implements INodeType {
 					const data = await getresponseApiRequest.call(this, 'GET', '/accounts/callbacks', {});
 
 					if (data.url !== webhookUrl) {
-						if (deleteCurrentSubscription === false) {
-							throw new NodeApiError(this.getNode(), data, {
+						if (!deleteCurrentSubscription) {
+							throw new NodeApiError(this.getNode(), data as JsonObject, {
 								message: `The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.`,
 							});
 						}
@@ -217,7 +217,7 @@ export class GetResponseTrigger implements INodeType {
 		const query = this.getQueryData() as IDataObject;
 		const listIds = this.getNodeParameter('listIds') as string[];
 
-		if (!listIds.includes('*') && !listIds.includes(query['CAMPAIGN_ID'] as string)) {
+		if (!listIds.includes('*') && !listIds.includes(query.CAMPAIGN_ID as string)) {
 			return {};
 		}
 
