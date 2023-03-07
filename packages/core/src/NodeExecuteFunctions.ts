@@ -151,7 +151,7 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	return formData;
 };
 
-const bodyToString = async (body: Buffer | Readable) =>
+const binaryToString = async (body: Buffer | Readable) =>
 	new Promise<Buffer>((resolve) => {
 		if (Buffer.isBuffer(body)) resolve(body);
 		else body.pipe(concatStream(resolve));
@@ -2063,7 +2063,7 @@ const getBinaryHelperFunctions = ({
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
 	getBinaryStream,
 	getBinaryMetadata,
-	bodyToString,
+	binaryToString,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
