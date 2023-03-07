@@ -146,7 +146,7 @@ import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
-	isAdvancedFiltersEnabled,
+	isAdvancedExecutionFiltersEnabled,
 } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
@@ -303,7 +303,7 @@ class Server extends AbstractServer {
 				ldap: false,
 				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
-				advancedFilters: config.getEnv('enterprise.features.advancedFilters'),
+				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -332,7 +332,7 @@ class Server extends AbstractServer {
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
-			advancedFilters: isAdvancedFiltersEnabled(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 		});
 
 		if (isLdapEnabled()) {
