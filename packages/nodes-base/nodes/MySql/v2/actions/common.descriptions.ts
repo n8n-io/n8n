@@ -159,6 +159,18 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'Select Distinct',
+			name: 'selectDistinct',
+			type: 'boolean',
+			default: false,
+			description: 'Whether toremove these duplicate rows',
+			displayOptions: {
+				show: {
+					'/operation': ['select'],
+				},
+			},
+		},
+		{
 			displayName: 'Skip on Conflict',
 			name: 'skipOnConflict',
 			type: 'boolean',

@@ -1,15 +1,52 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import type { QueryMode, QueryWithValues } from '../../helpers/interfaces';
+import type { QueryValues, QueryWithValues, WhereClause } from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import { runQueries } from '../../helpers/utils';
+import { addWhereClauses, runQueries } from '../../helpers/utils';
 
-import { optionsCollection, tableRLC } from '../common.descriptions';
+import { optionsCollection, tableRLC, whereFixedCollection } from '../common.descriptions';
 
-const properties: INodeProperties[] = [tableRLC, optionsCollection];
+const properties: INodeProperties[] = [
+	tableRLC,
+	{
+		displayName: 'Command',
+		name: 'deleteCommand',
+		type: 'options',
+		default: 'truncate',
+		options: [
+			{
+				name: 'Truncate',
+				value: 'truncate',
+				description: "Only removes the table's data and preserves the table's structure",
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description:
+					"Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted.",
+			},
+			{
+				name: 'Drop',
+				value: 'drop',
+				description: "Deletes the table's data and also the table's structure permanently",
+			},
+		],
+	},
+	{
+		...whereFixedCollection,
+		displayOptions: {
+			show: {
+				deleteCommand: ['delete'],
+			},
+		},
+	},
+	optionsCollection,
+	optionsCollection,
+];
 
 const displayOptions = {
 	show: {
@@ -24,16 +61,47 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let returnData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();
-	const _table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 
 	const nodeOptions = this.getNodeParameter('options', 0);
-	const queryBatching = (nodeOptions.queryBatching as QueryMode) || 'multiple';
 
 	const queries: QueryWithValues[] = [];
 
-	if (queryBatching === 'multiple') {
-	} else {
-		for (let i = 0; i < items.length; i++) {}
+	for (let i = 0; i < items.length; i++) {
+		const table = this.getNodeParameter('table', i, undefined, {
+			extractValue: true,
+		}) as string;
+
+		const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
+
+		let query = '';
+		let values: QueryValues = [];
+
+		if (deleteCommand === 'drop') {
+			query = `DROP TABLE IF EXISTS \`${table}\``;
+		}
+
+		if (deleteCommand === 'truncate') {
+			query = `TRUNCATE TABLE \`${table}\``;
+		}
+
+		if (deleteCommand === 'delete') {
+			const whereClauses =
+				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
+
+			[query, values] = addWhereClauses(`DELETE FROM \`${table}\``, whereClauses, values);
+		}
+
+		if (query === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Invalid delete command, only drop, delete and truncate are supported ',
+				{ itemIndex: i },
+			);
+		}
+
+		const queryWithValues = { query, values };
+
+		queries.push(queryWithValues);
 	}
 
 	returnData = await runQueries.call(this, queries, nodeOptions);

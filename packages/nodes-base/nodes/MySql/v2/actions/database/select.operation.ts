@@ -73,14 +73,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}) as string;
 
 		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
+		const selectDistinct = this.getNodeParameter('options.selectDistinct', i, false) as boolean;
 
 		let query = '';
+		const SELECT = selectDistinct ? 'SELECT DISTINCT' : 'SELECT';
 
 		if (outputColumns.includes('*')) {
-			query = `SELECT * FROM \`${table}\``;
+			query = `${SELECT} * FROM \`${table}\``;
 		} else {
 			const escapedColumns = outputColumns.map((column) => `\`${column}\``).join(', ');
-			query = `SELECT ${escapedColumns} FROM \`${table}\``;
+			query = `${SELECT} ${escapedColumns} FROM \`${table}\``;
 		}
 
 		let values: QueryValues = [];

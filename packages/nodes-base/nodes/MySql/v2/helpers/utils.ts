@@ -95,14 +95,25 @@ export async function runQueries(
 				singleQuery = formatedQueries[0];
 			}
 
-			const response = (await pool.query(singleQuery))[0] as unknown as IDataObject;
+			const response = (await pool.query(singleQuery))[0] as unknown as IDataObject[][];
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(response),
-				{ itemData: { item: 0 } },
-			);
+			if (response && Array.isArray(response)) {
+				response.forEach((entry, index) => {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(entry),
+						{ itemData: { item: index } },
+					);
 
-			returnData.push(...executionData);
+					returnData.push(...executionData);
+				});
+			} else {
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(response),
+					{ itemData: { item: 0 } },
+				);
+
+				returnData.push(...executionData);
+			}
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message } });
