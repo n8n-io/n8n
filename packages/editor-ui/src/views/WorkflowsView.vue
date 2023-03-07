@@ -7,6 +7,7 @@
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
+		:initialize="initialize"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -158,18 +159,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper, newVersions).extend({
 		WorkflowCard,
 		TagsDropdown,
 	},
-	beforeRouteEnter(to, from, next) {
-		next(async (vm) => {
-			const componentInstance = vm as unknown as InstanceType<typeof WorkflowsView>;
-			await componentInstance.initialize();
-
-			// If the user has no workflows and is not participating in the demo experiment,
-			// redirect to the new workflow view
-			if (!componentInstance.isDemoTest && componentInstance.allWorkflows.length === 0) {
-				componentInstance.$router.replace({ name: VIEWS.NEW_WORKFLOW });
-			}
-		});
-	},
 	data() {
 		return {
 			filters: {
@@ -235,11 +224,20 @@ const WorkflowsView = mixins(showMessage, debounceHelper, newVersions).extend({
 			}
 		},
 		async initialize() {
-			return await Promise.all([
+			await Promise.all([
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+
+			// If the user has no workflows and is not participating in the demo experiment,
+			// redirect to the new workflow view
+			if (!this.isDemoTest && this.allWorkflows.length === 0) {
+				this.uiStore.nodeViewInitialized = false;
+				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
+
+			return Promise.resolve();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
