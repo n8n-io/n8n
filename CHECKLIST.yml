@@ -10,6 +10,7 @@ paths:
   
   # cli
   "packages/cli/src/databases/migrations/**":
+    - Requested review from at least two engineers on migration. 
     - Avoided irreversible data migrations.
     - Avoided deleting or updating data keys.
     - Wrote 'down' migration if possible.
