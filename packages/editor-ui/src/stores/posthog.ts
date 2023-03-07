@@ -4,7 +4,11 @@ import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { FeatureFlags } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, ONBOARDING_EXPERIMENT } from '@/constants';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	ONBOARDING_EXPERIMENT,
+} from '@/constants';
 import { useTelemetryStore } from './telemetry';
 import { useSegment } from './segment';
 import { debounce } from 'lodash-es';
@@ -12,6 +16,14 @@ import { debounce } from 'lodash-es';
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
+
+let overrides: Record<string, string | boolean> = {};
+const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
+if (cachedOverrdies) {
+	try {
+		overrides = JSON.parse(cachedOverrdies);
+	} catch (e) {}
+}
 
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
@@ -22,6 +34,19 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+
+	window.featureFlags = window.featureFlags || {};
+	// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
+	window.featureFlags.override = (name: string, value: string | boolean) => {
+		overrides[name] = value;
+		featureFlags.value = {
+			...featureFlags.value,
+			[name]: value,
+		};
+		try {
+			localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides));
+		} catch (e) {}
+	};
 
 	const reset = () => {
 		window.posthog?.reset?.();
@@ -49,6 +74,13 @@ export const usePostHog = defineStore('posthog', () => {
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 		const id = user ? `${instanceId}#${user.id}` : instanceId;
 		window.posthog?.identify?.(id, traits);
+	};
+
+	const addExperimentOverrides = () => {
+		featureFlags.value = {
+			...featureFlags.value,
+			...overrides,
+		};
 	};
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
@@ -86,10 +118,12 @@ export const usePostHog = defineStore('posthog', () => {
 				featureFlags: evaluatedFeatureFlags,
 			};
 			trackExperiments(evaluatedFeatureFlags);
+			addExperimentOverrides();
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
+				addExperimentOverrides();
 				trackExperiments(map);
 			});
 		}

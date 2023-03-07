@@ -71,6 +71,9 @@ declare global {
 		analytics?: {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
 		};
+		featureFlags?: {
+			override?: (name: string, value: string) => void;
+		};
 	}
 }
 
