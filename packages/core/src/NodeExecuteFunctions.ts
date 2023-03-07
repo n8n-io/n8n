@@ -108,6 +108,7 @@ import type { IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import concatStream from 'concat-stream';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -149,6 +150,12 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
+
+const bodyToString = async (body: Buffer | Readable) =>
+	new Promise<Buffer>((resolve) => {
+		if (Buffer.isBuffer(body)) resolve(body);
+		else body.pipe(concatStream(resolve));
+	}).then((buffer) => buffer.toString());
 
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
@@ -2056,6 +2063,7 @@ const getBinaryHelperFunctions = ({
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
 	getBinaryStream,
 	getBinaryMetadata,
+	bodyToString,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
