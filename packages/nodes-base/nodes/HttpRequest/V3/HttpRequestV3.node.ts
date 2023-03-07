@@ -1064,11 +1064,10 @@ export class HttpRequestV3 implements INodeType {
 				});
 			}
 
-			const parametersToKeyValue = async (
-				acc: Promise<{ [key: string]: any }>,
+			const parametersToKeyValue = (
+				accumulator: { [key: string]: any },
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
-				const accumulator = await acc;
 				if (cur.parameterType === 'formBinaryData') {
 					if (!cur.inputDataFieldName) return accumulator;
 					const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
@@ -1096,10 +1095,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.headers = await bodyParameters.reduce(
-						parametersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.headers = bodyParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
@@ -1155,10 +1151,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = await queryParameters.reduce(
-						parametersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1180,10 +1173,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
 				if (specifyHeaders === 'keypair') {
-					requestOptions.headers = await headerParameters.reduce(
-						parametersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.headers = headerParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
