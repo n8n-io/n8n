@@ -524,6 +524,7 @@ export interface IN8nUISettings {
 		ldap: boolean;
 		saml: boolean;
 		logStreaming: boolean;
+		advancedFilters: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
