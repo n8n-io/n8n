@@ -49,8 +49,8 @@ describe('Telemetry', () => {
 		telemetry.setInstanceId(instanceId);
 		(telemetry as any).rudderStack = {
 			flush: () => {},
-			hooksPosthogIdentify: () => {},
-			hooksPosthogTrack: () => {},
+			identify: () => {},
+			track: () => {},
 		};
 	});
 
