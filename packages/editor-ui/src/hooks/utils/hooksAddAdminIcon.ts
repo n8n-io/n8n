@@ -12,7 +12,7 @@ export const hooksAddAdminIcon = () => {
 	const uiStore = useUIStore();
 	const usersStore = useUsersStore();
 
-	if (usersStore.globalRoleName && usersStore.globalRoleName !== 'owner') {
+	if (usersStore?.globalRoleName !== 'owner') {
 		return;
 	}
 
