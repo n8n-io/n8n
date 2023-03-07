@@ -1,33 +1,103 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+import type { QueryValues, QueryWithValues } from '../../helpers/interfaces';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { copyInputItems } from '../../helpers/utils';
-import { createConnection } from '../../transport';
+
+import { runQueries } from '../../helpers/utils';
 
 import { optionsCollection, tableRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	tableRLC,
 	{
-		displayName: 'Update Key',
-		name: 'updateKey',
-		type: 'string',
-		default: 'id',
-		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-		description:
-			'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Map Each Column Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+		],
+		default: 'autoMapInputData',
+		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Columns',
-		name: 'columns',
-		type: 'string',
-		requiresDataPath: 'multiple',
-		default: '',
-		placeholder: 'name,description',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column to match on',
+		name: 'columnToMatchOn',
+		type: 'options',
+		required: true,
 		description:
-			'Comma-separated list of the properties which should used as columns for rows to update',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getColumns',
+			loadOptionsDependsOn: ['schema.value', 'table.value'],
+		},
+		default: '',
+		hint: "Used to find the correct row to update. Doesn't get changed.",
+	},
+	{
+		displayName: 'Value of Column to Match On',
+		name: 'valueToMatchOn',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				dataMode: ['defineBelow'],
+			},
+		},
+	},
+	{
+		displayName: 'Values to Send',
+		name: 'valuesToSend',
+		placeholder: 'Add Value',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Value',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				dataMode: ['defineBelow'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
+							loadOptionsDependsOn: ['schema.value', 'table.value'],
+						},
+						default: [],
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	optionsCollection,
 ];
@@ -45,40 +115,59 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
-	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials);
+	const nodeOptions = this.getNodeParameter('options', 0);
 
-	try {
-		const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
-		const updateKey = this.getNodeParameter('updateKey', 0) as string;
-		const columnString = this.getNodeParameter('columns', 0) as string;
-		const columns = columnString.split(',').map((column) => column.trim());
+	const queries: QueryWithValues[] = [];
 
-		if (!columns.includes(updateKey)) {
-			columns.unshift(updateKey);
+	for (let i = 0; i < items.length; i++) {
+		const table = this.getNodeParameter('table', i, undefined, {
+			extractValue: true,
+		}) as string;
+
+		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
+
+		const dataMode = this.getNodeParameter('dataMode', i) as string;
+
+		let item: IDataObject = {};
+		let valueToMatchOn: string | IDataObject = '';
+
+		if (dataMode === 'autoMapInputData') {
+			item = items[i].json;
+			valueToMatchOn = item[columnToMatchOn] as string;
 		}
 
-		const updateItems = copyInputItems(items, columns);
-		const updateSQL = `UPDATE ${table} SET ${columns
-			.map((column) => `${column} = ?`)
-			.join(',')} WHERE ${updateKey} = ?;`;
-		const queryQueue = updateItems.map(async (item) =>
-			connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
-		);
-		const queryResult = await Promise.all(queryQueue);
-		returnData = this.helpers.returnJsonArray(
-			queryResult.map((result) => result[0]) as unknown as IDataObject[],
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData = this.helpers.returnJsonArray({ error: error.message });
-		} else {
-			await connection.end();
-			throw error;
+		if (dataMode === 'defineBelow') {
+			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+				.values as IDataObject[];
+
+			item = valuesToSend.reduce((acc, { column, value }) => {
+				acc[column as string] = value;
+				return acc;
+			}, {} as IDataObject);
+
+			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 		}
+
+		const values: QueryValues = [];
+
+		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
+
+		const updates: string[] = [];
+
+		for (const column of updateColumns) {
+			updates.push(`\`${column}\` = ?`);
+			values.push(item[column] as string);
+		}
+
+		const condition = `\`${columnToMatchOn}\` = ?`;
+		values.push(valueToMatchOn);
+
+		const query = `UPDATE \`${table}\` SET ${updates.join(', ')} WHERE ${condition}`;
+
+		queries.push({ query, values });
 	}
 
-	await connection.end();
+	returnData = await runQueries.call(this, queries, nodeOptions);
 
 	return returnData;
 }
