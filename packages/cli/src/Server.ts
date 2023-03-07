@@ -146,7 +146,7 @@ import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
-import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
+import { SamlController, samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 
@@ -391,6 +391,7 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
+			new SamlController(),
 		];
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
@@ -525,7 +526,7 @@ class Server extends AbstractServer {
 			}
 		}
 
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
+		// this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
 		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
 
 		// ----------------------------------------
