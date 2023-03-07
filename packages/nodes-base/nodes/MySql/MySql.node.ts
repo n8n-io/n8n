@@ -1,4 +1,5 @@
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -13,7 +14,6 @@ import { NodeOperationError } from 'n8n-workflow';
 import type mysql2 from 'mysql2/promise';
 
 import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
-import type { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {

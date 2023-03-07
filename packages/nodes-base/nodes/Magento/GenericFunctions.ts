@@ -1,13 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, INodeProperties, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+	INodeProperties,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
