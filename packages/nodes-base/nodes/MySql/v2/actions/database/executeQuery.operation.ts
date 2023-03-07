@@ -1,11 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+import type { QueryWithValues } from '../../helpers/interfaces';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import { prepareQueryAndReplacements } from '../../helpers/utils';
-
-import { createConnection, createPool } from '../../transport';
+import { prepareQueryAndReplacements, runQueries } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 
@@ -43,147 +43,27 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
-	const credentials = await this.getCredentials('mySql');
-
 	const nodeOptions = this.getNodeParameter('options', 0);
-	const queryBatching = (nodeOptions.queryBatching as string) || 'multiple';
 
-	if (queryBatching === 'multiple') {
-		const pool = await createPool(credentials, nodeOptions);
-		const connection = await pool.getConnection();
+	const queries: QueryWithValues[] = [];
 
-		try {
-			const queries = items.map((_item, index) => {
-				//Trim the query and remove the semicolon at the end, overwise the query will fail when joined by the semicolon
-				const rawQuery = (this.getNodeParameter('query', index) as string).trim().replace(/;$/, '');
-				const options = this.getNodeParameter('options', index, {});
+	for (let i = 0; i < items.length; i++) {
+		const rawQuery = this.getNodeParameter('query', i) as string;
 
-				let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
+		const options = this.getNodeParameter('options', i, {});
 
-				if (values) {
-					values = values.map((entry) => entry.value as IDataObject);
-				}
+		let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
 
-				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
-
-				const formattedQuery = connection.format(newQuery, newValues);
-
-				return formattedQuery;
-			});
-
-			const response = (await pool.query(queries.join(';')))[0] as unknown as IDataObject[][];
-
-			if (response) {
-				response.forEach((entry) => {
-					returnData.push(...this.helpers.returnJsonArray(entry));
-				});
-			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData = this.helpers.returnJsonArray([{ json: { error: error.message } }]);
-			} else {
-				connection.release();
-				await pool.end();
-				throw error;
-			}
+		if (values) {
+			values = values.map((entry) => entry.value as IDataObject);
 		}
 
-		connection.release();
-		await pool.end();
+		const preparedQuery = prepareQueryAndReplacements(rawQuery, values);
+
+		queries.push(preparedQuery);
 	}
 
-	if (queryBatching === 'independently') {
-		const connection = await createConnection(credentials, nodeOptions);
-
-		for (let i = 0; i < items.length; i++) {
-			try {
-				const rawQuery = this.getNodeParameter('query', i) as string;
-
-				const options = this.getNodeParameter('options', i, {});
-
-				let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
-
-				if (values) {
-					values = values.map((entry) => entry.value as IDataObject);
-				}
-
-				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
-
-				const formattedQuery = connection.format(newQuery, newValues);
-
-				const response = (
-					await connection.query(formattedQuery, values)
-				)[0] as unknown as IDataObject;
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(response),
-					{ itemData: { item: i } },
-				);
-
-				returnData.push(...executionData);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({
-						json: { error: error.message },
-					});
-				} else {
-					await connection.end();
-					throw error;
-				}
-			}
-		}
-
-		await connection.end();
-	}
-
-	if (queryBatching === 'transaction') {
-		const connection = await createConnection(credentials, nodeOptions);
-		await connection.beginTransaction();
-
-		for (let i = 0; i < items.length; i++) {
-			try {
-				const rawQuery = this.getNodeParameter('query', i) as string;
-
-				const options = this.getNodeParameter('options', i, {});
-
-				let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
-
-				if (values) {
-					values = values.map((entry) => entry.value as IDataObject);
-				}
-
-				const { newQuery, newValues } = prepareQueryAndReplacements(rawQuery, values);
-
-				const formattedQuery = connection.format(newQuery, newValues);
-
-				const response = (
-					await connection.query(formattedQuery, values)
-				)[0] as unknown as IDataObject;
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(response),
-					{ itemData: { item: i } },
-				);
-
-				returnData.push(...executionData);
-			} catch (error) {
-				if (connection) {
-					await connection.rollback();
-					await connection.end();
-				}
-
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
-					return returnData;
-				} else {
-					throw error;
-				}
-			}
-		}
-
-		await connection.commit();
-		await connection.end();
-	}
+	returnData = await runQueries.call(this, queries, nodeOptions);
 
 	return returnData;
 }

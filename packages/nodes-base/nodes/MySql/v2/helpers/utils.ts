@@ -19,29 +19,29 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-export const prepareQueryAndReplacements = (query: string, replacements?: IDataObject[]) => {
+export const prepareQueryAndReplacements = (rawQuery: string, replacements?: IDataObject[]) => {
 	if (replacements === undefined) {
-		return { newQuery: query, newValues: [] };
+		return { query: rawQuery, values: [] };
 	}
 	// in UI for replacements we use syntax identical to Postgres Query Replacement, but we need to convert it to mysql2 replacement syntax
-	let newQuery: string = query;
-	const newValues: IDataObject[] = [];
+	let query: string = rawQuery;
+	const values: IDataObject[] = [];
 
 	const regex = /\$(\d+)(?::name)?/g;
-	const matches = query.match(regex) || [];
+	const matches = rawQuery.match(regex) || [];
 
 	for (const match of matches) {
 		if (match.includes(':name')) {
 			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
-			newQuery = newQuery.replace(match, `\`${replacements[matchIndex]}\``);
+			query = query.replace(match, `\`${replacements[matchIndex]}\``);
 		} else {
 			const matchIndex = Number(match.replace('$', '')) - 1;
-			newQuery = newQuery.replace(match, '?');
-			newValues.push(replacements[matchIndex]);
+			query = query.replace(match, '?');
+			values.push(replacements[matchIndex]);
 		}
 	}
 
-	return { newQuery, newValues };
+	return { query, values };
 };
 
 // export function addReturning(
@@ -86,9 +86,9 @@ export async function runQueries(
 
 			if (formatedQueries.length > 1) {
 				singleQuery = formatedQueries
-					.map((query) => query.trim())
 					.join(';')
 					.split(';')
+					.map((query) => query.trim())
 					.filter((q) => q !== '')
 					.join(';');
 			} else {
