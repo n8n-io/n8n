@@ -158,7 +158,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal',
+				description: 'Average number of days to convert the lead into a deal',
 			},
 			{
 				displayName: 'Next Step',
@@ -172,7 +172,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal and to win the deal',
+				description: 'Average number of days to convert the lead into a deal and to win the deal',
 			},
 			{
 				displayName: 'Probability',
@@ -190,7 +190,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
-				description: 'Averge number of days for the deal to be won',
+				description: 'Average number of days for the deal to be won',
 			},
 		],
 	},
@@ -304,7 +304,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal',
+				description: 'Average number of days to convert the lead into a deal',
 			},
 			{
 				displayName: 'Next Step',
@@ -318,7 +318,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal and to win the deal',
+				description: 'Average number of days to convert the lead into a deal and to win the deal',
 			},
 			{
 				displayName: 'Probability',
@@ -336,7 +336,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
-				description: 'Averge number of days to win the deal',
+				description: 'Average number of days to win the deal',
 			},
 			{
 				displayName: 'Stage Name or ID',

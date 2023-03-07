@@ -1,6 +1,12 @@
 // Vitest Snapshot v1
 
-exports[`components > N8nButton > overrides > should render correctly 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button secondary medium icon\\" icon=\\"plus-circle\\" type=\\"secondary\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+exports[`components > N8nButton > overrides > should render as \`secondary\` when \`text\` is given as type 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button secondary medium icon\\" icon=\\"plus-circle\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+
+exports[`components > N8nButton > overrides > should render as \`tertiary\` when \`info\` is given as type 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button tertiary medium icon\\" icon=\\"plus-circle\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+
+exports[`components > N8nButton > overrides > should use default (\`primary\`) type when no type is given 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium icon\\" icon=\\"plus-circle\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+
+exports[`components > N8nButton > overrides > should use given (\`secondary\`) type 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button secondary medium icon\\" icon=\\"plus-circle\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 
 exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium icon\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 

@@ -262,9 +262,9 @@ function transformCreateElements(
 	});
 
 	return sorted.map((nodeType) => {
-		// N8n node is a special case since it's the only core node that is both trigger and regular
-		// if we have more cases like this we should add more robust logic
-		const isN8nNode = nodeType.name.includes(N8N_NODE_TYPE);
+		const hasTriggerActions = nodeType.actions?.find((action) => action.name.includes('trigger'));
+		const hasRgeularActions = nodeType.actions?.find((action) => !action.name.includes('trigger'));
+
 		return {
 			type,
 			category: nodeType.codex?.categories,
@@ -273,8 +273,8 @@ function transformCreateElements(
 				nodeType,
 				subcategory: state.activeNodeActions?.displayName ?? '',
 			},
-			includedByTrigger: isN8nNode || nodeType.group.includes('trigger'),
-			includedByRegular: isN8nNode || !nodeType.group.includes('trigger'),
+			includedByTrigger: hasTriggerActions || nodeType.group.includes('trigger'),
+			includedByRegular: hasRgeularActions || !nodeType.group.includes('trigger'),
 		} as INodeCreateElement;
 	});
 }
