@@ -36,11 +36,28 @@
 				</el-checkbox>
 			</div>
 
+			<el-checkbox
+				v-if="finishedExecutionsCount > 0"
+				:class="$style.selectAll"
+				:label="
+					$locale.baseText('executionsList.selectAll', {
+						adjustToNumber: finishedExecutionsCount,
+						interpolate: { executionNum: finishedExecutionsCount },
+					})
+				"
+				:value="allExistingSelected"
+				@change="handleCheckAllExistingChange"
+			/>
+
 			<table :class="$style.execTable">
 				<thead>
 					<tr>
 						<th>
-							<el-checkbox :value="checkAll" @change="handleCheckAllChange" label="" />
+							<el-checkbox
+								:value="allVisibleSelected"
+								@change="handleCheckAllVisibleChange"
+								label=""
+							/>
 						</th>
 						<th>{{ $locale.baseText('executionsList.name') }}</th>
 						<th>{{ $locale.baseText('executionsList.startedAt') }}</th>
@@ -61,7 +78,7 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:value="selectedItems[execution.id.toString()] || checkAll"
+								:value="selectedItems[execution.id] || allVisibleSelected || allExistingSelected"
 								@change="handleCheckboxChanged(execution.id)"
 								label=""
 							/>
@@ -226,7 +243,12 @@
 		</div>
 		<div v-if="numSelected > 0" :class="$style.selectionOptions">
 			<span>
-				{{ $locale.baseText('executionsList.selected', { interpolate: { numSelected } }) }}
+				{{
+					$locale.baseText('executionsList.selected', {
+						adjustToNumber: numSelected,
+						interpolate: { numSelected },
+					})
+				}}
 			</span>
 			<n8n-button
 				:label="$locale.baseText('generic.delete')"
@@ -279,7 +301,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				finishedExecutionsCount: 0,
 				finishedExecutionsCountEstimated: false,
 
-				checkAll: false,
+				allVisibleSelected: false,
+				allExistingSelected: false,
 				autoRefresh: true,
 				autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
@@ -358,6 +381,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return returnData;
 			},
 			numSelected(): number {
+				if (this.allExistingSelected) {
+					return this.finishedExecutionsCount;
+				}
+
 				return Object.keys(this.selectedItems).length;
 			},
 			workflowFilterCurrent(): IDataObject {
@@ -414,14 +441,18 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 				}
 			},
-			handleCheckAllChange() {
-				this.checkAll = !this.checkAll;
-				if (!this.checkAll) {
+			handleCheckAllExistingChange() {
+				this.allExistingSelected = !this.allExistingSelected;
+				this.allVisibleSelected = !this.allExistingSelected;
+				this.handleCheckAllVisibleChange();
+			},
+			handleCheckAllVisibleChange() {
+				this.allVisibleSelected = !this.allVisibleSelected;
+				if (!this.allVisibleSelected) {
+					this.allExistingSelected = false;
 					Vue.set(this, 'selectedItems', {});
 				} else {
-					this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
-						Vue.set(this.selectedItems, execution.id, true);
-					});
+					this.selectCombinedExecutions();
 				}
 			},
 			handleCheckboxChanged(executionId: string) {
@@ -430,7 +461,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else {
 					Vue.set(this.selectedItems, executionId, true);
 				}
-				this.checkAll = Object.keys(this.selectedItems).length === this.combinedExecutions.length;
+				this.allVisibleSelected =
+					Object.keys(this.selectedItems).length === this.combinedExecutions.length;
+				this.allExistingSelected =
+					Object.keys(this.selectedItems).length === this.finishedExecutionsCount;
 			},
 			async handleDeleteSelected() {
 				const deleteExecutions = await this.confirmMessage(
@@ -450,7 +484,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = true;
 
 				const sendData: IExecutionDeleteFilter = {};
-				sendData.ids = Object.keys(this.selectedItems);
+				if (this.allExistingSelected) {
+					sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
+				} else {
+					sendData.ids = Object.keys(this.selectedItems);
+				}
 
 				sendData.filters = this.workflowFilterPast;
 
@@ -512,12 +550,13 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				});
 
 				Vue.set(this, 'selectedItems', {});
-				this.checkAll = false;
+				this.allVisibleSelected = false;
 
 				this.refreshData();
 			},
 			handleClearSelection() {
-				this.checkAll = false;
+				this.allVisibleSelected = false;
+				this.allExistingSelected = false;
 				Vue.set(this, 'selectedItems', {});
 			},
 			handleFilterChanged() {
@@ -704,6 +743,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.finishedExecutions.push(...data.results);
 				this.finishedExecutionsCount = data.count;
 				this.finishedExecutionsCountEstimated = data.estimated;
+
+				if (this.allVisibleSelected) {
+					this.selectCombinedExecutions();
+				}
 
 				this.isDataLoading = false;
 
@@ -918,6 +961,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			isRunning(execution: IExecutionsSummary): boolean {
 				return this.getStatus(execution) === 'running';
 			},
+			selectCombinedExecutions() {
+				this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+					Vue.set(this.selectedItems, execution.id, true);
+				});
+			},
 		},
 	},
 );
@@ -951,7 +999,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	z-index: 2;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-xl);
+	bottom: var(--spacing-3xl);
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-xlight);
@@ -1123,7 +1171,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 }
 
 .loadMore {
-	margin: var(--spacing-l) 0;
+	margin: var(--spacing-m) 0;
 	width: 100%;
 	text-align: center;
 }
@@ -1140,5 +1188,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 .retryAction + .deleteAction {
 	border-top: 1px solid var(--color-foreground-light);
+}
+
+.selectAll {
+	display: inline-block;
+	margin: 0 0 var(--spacing-s) var(--spacing-s);
+	color: var(--color-danger);
 }
 </style>
