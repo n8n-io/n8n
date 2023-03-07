@@ -119,6 +119,21 @@ export class Rundeck implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['execute'],
+						resource: ['job'],
+					},
+				},
+				default: '',
+				placeholder: 'Add Filters',
+				required: false,
+				description: 'Filter Rundeck nodes by name',
+			},
 
 			// ----------------------------------
 			//         job:getMetadata
@@ -161,7 +176,8 @@ export class Rundeck implements INodeType {
 					const jobid = this.getNodeParameter('jobid', i) as string;
 					const rundeckArguments = (this.getNodeParameter('arguments', i) as IDataObject)
 						.arguments as IDataObject[];
-					const response = await rundeckApi.executeJob(jobid, rundeckArguments);
+					const filter = this.getNodeParameter('filter', i) as string;
+					const response = await rundeckApi.executeJob(jobid, rundeckArguments, filter);
 
 					returnData.push(response);
 				} else if (operation === 'getMetadata') {

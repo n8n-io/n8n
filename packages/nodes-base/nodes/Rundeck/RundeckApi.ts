@@ -50,7 +50,7 @@ export class RundeckApi {
 		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
-	async executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
+	async executeJob(jobId: string, args: IDataObject[], filter?: string): Promise<IDataObject> {
 		let params = '';
 
 		if (args) {
@@ -63,7 +63,12 @@ export class RundeckApi {
 			argString: params,
 		};
 
-		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
+		const query: IDataObject = {};
+		if (filter) {
+			query.filter = filter;
+		}
+
+		return this.request('POST', `/api/14/job/${jobId}/run`, body, query);
 	}
 
 	async getJobMetadata(jobId: string): Promise<IDataObject> {
