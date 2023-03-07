@@ -78,7 +78,7 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:value="selectedItems[execution.id] || allVisibleSelected || allExistingSelected"
+								:value="selectedItems[execution.id]"
 								@change="handleCheckboxChanged(execution.id)"
 								label=""
 							/>
@@ -452,7 +452,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					this.allExistingSelected = false;
 					Vue.set(this, 'selectedItems', {});
 				} else {
-					this.selectCombinedExecutions();
+					this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+						Vue.set(this.selectedItems, execution.id, true);
+					});
 				}
 			},
 			handleCheckboxChanged(executionId: string) {
@@ -744,10 +746,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.finishedExecutionsCount = data.count;
 				this.finishedExecutionsCountEstimated = data.estimated;
 
-				if (this.allVisibleSelected) {
-					this.selectCombinedExecutions();
-				}
-
 				this.isDataLoading = false;
 
 				this.workflowsStore.addToCurrentExecutions(data.results);
@@ -960,11 +958,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			},
 			isRunning(execution: IExecutionsSummary): boolean {
 				return this.getStatus(execution) === 'running';
-			},
-			selectCombinedExecutions() {
-				this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
-					Vue.set(this.selectedItems, execution.id, true);
-				});
 			},
 		},
 	},
