@@ -45,6 +45,23 @@ const properties: INodeProperties[] = [
 		},
 	},
 	whereFixedCollection,
+	{
+		displayName: 'Combine Conditions',
+		name: 'combineConditions',
+		type: 'options',
+		description: 'How to combine conditions',
+		options: [
+			{
+				name: 'AND',
+				value: 'AND',
+			},
+			{
+				name: 'OR',
+				value: 'OR',
+			},
+		],
+		default: 'AND',
+	},
 	sortFixedCollection,
 	optionsCollection,
 ];
@@ -90,7 +107,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-		[query, values] = addWhereClauses(query, whereClauses, values);
+		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+
+		[query, values] = addWhereClauses(query, whereClauses, values, combineConditions);
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];

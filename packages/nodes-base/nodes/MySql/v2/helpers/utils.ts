@@ -195,6 +195,7 @@ export function addWhereClauses(
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
+	combineConditions = 'AND',
 ): [string, QueryValues] {
 	if (clauses.length === 0) return [query, replacements];
 
@@ -212,7 +213,7 @@ export function addWhereClauses(
 			values.push(clause.value);
 		}
 
-		const operator = index === clauses.length - 1 ? '' : ' AND';
+		const operator = index === clauses.length - 1 ? '' : ` ${combineConditions}`;
 
 		whereQuery += ` \`${clause.column}\` ${clause.condition}${valueReplacement}${operator}`;
 	});
