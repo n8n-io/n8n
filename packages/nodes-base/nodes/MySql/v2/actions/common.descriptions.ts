@@ -110,7 +110,7 @@ export const optionsCollection: INodeProperties = {
 			},
 			default: [],
 			displayOptions: {
-				hide: { '/operation': ['select'] },
+				show: { '/operation': ['select'] },
 			},
 		},
 		{

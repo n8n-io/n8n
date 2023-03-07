@@ -1,9 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+import type { QueryMode, QueryValues, QueryWithValues } from '../../helpers/interfaces';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { copyInputItems } from '../../helpers/utils';
-import { createConnection } from '../../transport';
+
+import { copyInputItems, runQueries } from '../../helpers/utils';
+
 import { optionsCollection, tableRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -100,86 +103,76 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 
 	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
-	const options = this.getNodeParameter('options', 0);
+
+	const nodeOptions = this.getNodeParameter('options', 0);
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const queryBatching = (nodeOptions.queryBatching as QueryMode) || 'multiple';
 
-	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials, options);
-
-	const priority = (options.priority as string) || '';
-	const ignore = (options.skipOnConflict as boolean) ? 'IGNORE' : '';
-
-	const queryBatching = (options.queryBatching as string) || 'multiple';
+	const queries: QueryWithValues[] = [];
 
 	if (queryBatching === 'multiple') {
-		try {
-			let columns: string[] = [];
-			let insertItems: IDataObject[] = [];
+		let columns: string[] = [];
+		let insertItems: IDataObject[] = [];
 
-			if (dataMode === 'autoMapInputData') {
-				columns = [
-					...new Set(
-						items.reduce((acc, item) => {
-							const itemColumns = Object.keys(item.json);
+		const priority = (nodeOptions.priority as string) || '';
+		const ignore = (nodeOptions.skipOnConflict as boolean) ? 'IGNORE' : '';
 
-							return acc.concat(itemColumns);
-						}, [] as string[]),
-					),
-				];
-				insertItems = copyInputItems(items, columns);
-			}
+		if (dataMode === 'autoMapInputData') {
+			columns = [
+				...new Set(
+					items.reduce((acc, item) => {
+						const itemColumns = Object.keys(item.json);
 
-			if (dataMode === 'defineBelow') {
-				for (let i = 0; i < items.length; i++) {
-					const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-						.values as IDataObject[];
-
-					const item = valuesToSend.reduce((acc, { column, value }) => {
-						acc[column as string] = value;
-						return acc;
-					}, {} as IDataObject);
-
-					insertItems.push(item);
-				}
-				columns = [
-					...new Set(
-						insertItems.reduce((acc, item) => {
-							const itemColumns = Object.keys(item);
-
-							return acc.concat(itemColumns);
-						}, [] as string[]),
-					),
-				];
-			}
-
-			const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
-			const placeholder = `(${columns.map(() => '?').join(',')})`;
-			const replacements = items.map(() => placeholder).join(',');
-
-			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements}`;
-
-			const values = insertItems.reduce(
-				(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
-				[],
-			);
-
-			const queryResult = await connection.query(query, values);
-
-			returnData = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData = this.helpers.returnJsonArray({ error: error.message });
-			} else {
-				await connection.end();
-				throw error;
-			}
+						return acc.concat(itemColumns);
+					}, [] as string[]),
+				),
+			];
+			insertItems = copyInputItems(items, columns);
 		}
-	} else {
-		const queries: string[] = [];
 
+		if (dataMode === 'defineBelow') {
+			for (let i = 0; i < items.length; i++) {
+				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+					.values as IDataObject[];
+
+				const item = valuesToSend.reduce((acc, { column, value }) => {
+					acc[column as string] = value;
+					return acc;
+				}, {} as IDataObject);
+
+				insertItems.push(item);
+			}
+			columns = [
+				...new Set(
+					insertItems.reduce((acc, item) => {
+						const itemColumns = Object.keys(item);
+
+						return acc.concat(itemColumns);
+					}, [] as string[]),
+				),
+			];
+		}
+
+		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+		const placeholder = `(${columns.map(() => '?').join(',')})`;
+		const replacements = items.map(() => placeholder).join(',');
+
+		const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements}`;
+
+		const values = insertItems.reduce(
+			(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
+			[],
+		);
+
+		queries.push({ query, values });
+	} else {
 		for (let i = 0; i < items.length; i++) {
 			let columns: string[] = [];
 			let insertItem: IDataObject = {};
+
+			const options = this.getNodeParameter('options', i);
+			const priority = (options.priority as string) || '';
+			const ignore = (options.skipOnConflict as boolean) ? 'IGNORE' : '';
 
 			if (dataMode === 'autoMapInputData') {
 				columns = Object.keys(items[i].json);
@@ -208,66 +201,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${placeholder};`;
 
-			const values = Object.values(insertItem);
+			const values = Object.values(insertItem) as QueryValues;
 
-			queries.push(connection.format(query, values));
-		}
-		if (queryBatching === 'independently') {
-			for (const [index, query] of queries.entries()) {
-				try {
-					const response = (await connection.query(query))[0] as unknown as IDataObject;
-
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
-						{ itemData: { item: index } },
-					);
-
-					returnData.push(...executionData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
-						continue;
-					} else {
-						await connection.end();
-						throw error;
-					}
-				}
-			}
-		}
-
-		if (queryBatching === 'transaction') {
-			await connection.beginTransaction();
-
-			for (const [index, query] of queries.entries()) {
-				try {
-					const response = (await connection.query(query))[0] as unknown as IDataObject;
-
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
-						{ itemData: { item: index } },
-					);
-
-					returnData.push(...executionData);
-				} catch (error) {
-					if (connection) {
-						await connection.rollback();
-						await connection.end();
-					}
-
-					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
-						return returnData;
-					} else {
-						throw error;
-					}
-				}
-			}
-
-			await connection.commit();
+			queries.push({ query, values });
 		}
 	}
 
-	await connection.end();
+	returnData = await runQueries.call(this, queries, nodeOptions);
 
 	return returnData;
 }
