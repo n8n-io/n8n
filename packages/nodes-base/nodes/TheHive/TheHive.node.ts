@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/dot-notation */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeParameters,
@@ -10,7 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { alertFields, alertOperations } from './descriptions/AlertDescription';
 
@@ -427,28 +425,8 @@ export class TheHive implements INodeType {
 									element.data = artifactvalue.data as string;
 
 									if (artifactvalue.dataType === 'file') {
-										const item = items[i];
-
-										if (item.binary === undefined) {
-											throw new NodeOperationError(
-												this.getNode(),
-												'No binary data exists on item!',
-												{ itemIndex: i },
-											);
-										}
-
 										const binaryPropertyName = artifactvalue.binaryProperty as string;
-
-										if (item.binary[binaryPropertyName] === undefined) {
-											throw new NodeOperationError(
-												this.getNode(),
-												`Item has no binary property called "${binaryPropertyName}"`,
-												{ itemIndex: i },
-											);
-										}
-
-										const binaryData = item.binary[binaryPropertyName];
-
+										const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 										element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 									}
 
@@ -704,28 +682,8 @@ export class TheHive implements INodeType {
 									element.data = artifactvalue.data as string;
 
 									if (artifactvalue.dataType === 'file') {
-										const item = items[i];
-
-										if (item.binary === undefined) {
-											throw new NodeOperationError(
-												this.getNode(),
-												'No binary data exists on item!',
-												{ itemIndex: i },
-											);
-										}
-
 										const binaryPropertyName = artifactvalue.binaryProperty as string;
-
-										if (item.binary[binaryPropertyName] === undefined) {
-											throw new NodeOperationError(
-												this.getNode(),
-												`Item has no binary property called "${binaryPropertyName}"`,
-												{ itemIndex: i },
-											);
-										}
-
-										const binaryData = item.binary[binaryPropertyName];
-
+										const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 										element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 									}
 
@@ -905,25 +863,8 @@ export class TheHive implements INodeType {
 						let options: IDataObject = {};
 
 						if (body.dataType === 'file') {
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
 							const binaryPropertyName = this.getNodeParameter('binaryProperty', i);
-
-							if (item.binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
-
-							const binaryData = item.binary[binaryPropertyName];
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							options = {
@@ -1765,25 +1706,8 @@ export class TheHive implements INodeType {
 								.attachmentValues as IDataObject;
 
 							if (attachmentValues) {
-								const item = items[i];
-
-								if (item.binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-
 								const binaryPropertyName = attachmentValues.binaryProperty as string;
-
-								if (item.binary[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryData = item.binary[binaryPropertyName];
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								options = {
