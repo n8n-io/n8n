@@ -1136,14 +1136,25 @@ export class HttpRequestV3 implements INodeType {
 						itemIndex,
 					) as string;
 					this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
+
 					let uploadData: Buffer | Readable;
+					let contentLength: number;
+
 					const itemBinaryData = items[itemIndex].binary![inputDataFieldName];
 					if (itemBinaryData.id) {
 						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
+						contentLength = metadata.fileSize;
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+						contentLength = uploadData.length;
 					}
 					requestOptions.body = uploadData;
+					requestOptions.headers = {
+						...requestOptions.headers,
+						'Content-Length': contentLength,
+						'Content-Type': itemBinaryData.mimeType ?? 'application/octet-stream',
+					};
 				} else if (bodyContentType === 'raw') {
 					requestOptions.body = body;
 				}
