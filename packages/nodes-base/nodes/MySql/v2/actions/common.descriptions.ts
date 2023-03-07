@@ -100,7 +100,7 @@ export const optionsCollection: INodeProperties = {
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 			displayName: 'Output Columns',
-			name: 'returnColumns',
+			name: 'outputColumns',
 			type: 'multiOptions',
 			description:
 				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -170,6 +170,182 @@ export const optionsCollection: INodeProperties = {
 					'/operation': ['insert'],
 				},
 			},
+		},
+	],
+};
+
+export const whereFixedCollection: INodeProperties = {
+	displayName: 'Select Rows',
+	name: 'where',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	placeholder: 'Add Condition',
+	default: {},
+	description: 'If not set, all rows will be selected',
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					default: '',
+					placeholder: 'e.g. ID',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['schema.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Operator',
+					name: 'condition',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+					options: [
+						{
+							name: 'Equal',
+							value: 'equal',
+						},
+						{
+							name: 'Not Equal',
+							value: '!=',
+						},
+						{
+							name: 'Like',
+							value: 'LIKE',
+						},
+						{
+							name: 'Greater Than',
+							value: '>',
+						},
+						{
+							name: 'Less Than',
+							value: '<',
+						},
+						{
+							name: 'Greater Than Or Equal',
+							value: '>=',
+						},
+						{
+							name: 'Less Than Or Equal',
+							value: '<=',
+						},
+						{
+							name: 'Is Null',
+							value: 'IS NULL',
+						},
+					],
+					default: 'equal',
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. 1234',
+					displayOptions: {
+						show: {
+							condition: ['equal', '!='],
+						},
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. Jen%',
+					hint: 'Percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character',
+					displayOptions: {
+						show: {
+							condition: ['LIKE'],
+						},
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'number',
+					default: 0,
+					displayOptions: {
+						show: {
+							condition: ['>', '<', '>=', '<='],
+						},
+					},
+				},
+				// {
+				// 	displayName: 'Operator',
+				// 	name: 'operator',
+				// 	type: 'options',
+				// 	hint: 'How to combine with next clause, operator from last clause will be ignored',
+				// 	options: [
+				// 		{
+				// 			name: 'AND',
+				// 			value: 'AND',
+				// 		},
+				// 		{
+				// 			name: 'OR',
+				// 			value: 'OR',
+				// 		},
+				// 	],
+				// 	default: 'AND',
+				// },
+			],
+		},
+	],
+};
+
+export const sortFixedCollection: INodeProperties = {
+	displayName: 'Sort',
+	name: 'sort',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	placeholder: 'Add Sort Rule',
+	default: {},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					default: '',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['schema.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Direction',
+					name: 'direction',
+					type: 'options',
+					options: [
+						{
+							name: 'ASC',
+							value: 'ASC',
+						},
+						{
+							name: 'DESC',
+							value: 'DESC',
+						},
+					],
+					default: 'ASC',
+				},
+			],
 		},
 	],
 };

@@ -9,3 +9,6 @@ export type QueryValues = Array<string | IDataObject | string[]>;
 export type QueryWithValues = { query: string; values: QueryValues };
 
 export type QueryMode = 'multiple' | 'transaction' | 'independently';
+
+export type WhereClause = { column: string; condition: string; value: string };
+export type SortRule = { column: string; direction: string };

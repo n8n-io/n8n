@@ -1,8 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+import type { QueryMode, QueryWithValues } from '../../helpers/interfaces';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { createConnection } from '../../transport';
+
+import { runQueries } from '../../helpers/utils';
 
 import { optionsCollection, tableRLC } from '../common.descriptions';
 
@@ -18,26 +21,22 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
-	const _items = this.getInputData();
+	let returnData: INodeExecutionData[] = [];
 
-	const options = this.getNodeParameter('options', 0);
+	const items = this.getInputData();
+	const _table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 
-	const queryBatching = (options.queryBatching as string) || 'multiple';
+	const nodeOptions = this.getNodeParameter('options', 0);
+	const queryBatching = (nodeOptions.queryBatching as QueryMode) || 'multiple';
+
+	const queries: QueryWithValues[] = [];
 
 	if (queryBatching === 'multiple') {
+	} else {
+		for (let i = 0; i < items.length; i++) {}
 	}
 
-	if (queryBatching === 'independently') {
-	}
-
-	if (queryBatching === 'transaction') {
-	}
-
-	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials, options);
-
-	await connection.end();
+	returnData = await runQueries.call(this, queries, nodeOptions);
 
 	return returnData;
 }

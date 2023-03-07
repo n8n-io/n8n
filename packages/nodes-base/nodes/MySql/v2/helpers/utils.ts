@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { createConnection } from '../transport';
-import type { QueryMode, QueryWithValues } from './interfaces';
+import { createConnection, createPool } from '../transport';
+import type { QueryMode, QueryValues, QueryWithValues, SortRule, WhereClause } from './interfaces';
 
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
@@ -64,17 +64,38 @@ export async function runQueries(
 	queries: QueryWithValues[],
 	options: IDataObject,
 ) {
+	if (queries.length === 0) {
+		return [];
+	}
+
 	const returnData: INodeExecutionData[] = [];
-	const mode = options.queryBatching as QueryMode;
+	const mode = (options.queryBatching as QueryMode) || 'multiple';
 
 	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials, options);
 
 	if (mode === 'multiple') {
+		const pool = await createPool(credentials, options);
+		const poolConnection = await pool.getConnection();
+
 		try {
-			const { query, values } = queries[0];
-			const formatedQuery = connection.format(query, values);
-			const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
+			const formatedQueries = queries.map(({ query, values }) =>
+				poolConnection.format(query, values),
+			);
+
+			let singleQuery = '';
+
+			if (formatedQueries.length > 1) {
+				singleQuery = formatedQueries
+					.map((query) => query.trim())
+					.join(';')
+					.split(';')
+					.filter((q) => q !== '')
+					.join(';');
+			} else {
+				singleQuery = formatedQueries[0];
+			}
+
+			const response = (await pool.query(singleQuery))[0] as unknown as IDataObject;
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(response),
@@ -86,69 +107,123 @@ export async function runQueries(
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message } });
 			} else {
-				await connection.end();
 				throw error;
 			}
+		} finally {
+			poolConnection.release();
+			await pool.end();
 		}
-	}
+	} else {
+		const connection = await createConnection(credentials, options);
 
-	if (mode === 'independently') {
-		for (const [index, queryWithValues] of queries.entries()) {
-			try {
-				const { query, values } = queryWithValues;
-				const formatedQuery = connection.format(query, values);
-				const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
+		if (mode === 'independently') {
+			for (const [index, queryWithValues] of queries.entries()) {
+				try {
+					const { query, values } = queryWithValues;
+					const formatedQuery = connection.format(query, values);
+					const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(response),
-					{ itemData: { item: index } },
-				);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: index } },
+					);
 
-				returnData.push(...executionData);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
-					continue;
-				} else {
-					await connection.end();
-					throw error;
-				}
-			}
-		}
-	}
-
-	if (mode === 'transaction') {
-		await connection.beginTransaction();
-
-		for (const [index, queryWithValues] of queries.entries()) {
-			try {
-				const { query, values } = queryWithValues;
-				const formatedQuery = connection.format(query, values);
-				const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(response),
-					{ itemData: { item: index } },
-				);
-
-				returnData.push(...executionData);
-			} catch (error) {
-				if (connection) {
-					await connection.rollback();
-					await connection.end();
-				}
-
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
-					return returnData;
-				} else {
-					throw error;
+					returnData.push(...executionData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ json: { error: error.message } });
+						continue;
+					} else {
+						await connection.end();
+						throw error;
+					}
 				}
 			}
 		}
 
-		await connection.commit();
+		if (mode === 'transaction') {
+			await connection.beginTransaction();
+
+			for (const [index, queryWithValues] of queries.entries()) {
+				try {
+					const { query, values } = queryWithValues;
+					const formatedQuery = connection.format(query, values);
+					const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(response),
+						{ itemData: { item: index } },
+					);
+
+					returnData.push(...executionData);
+				} catch (error) {
+					if (connection) {
+						await connection.rollback();
+						await connection.end();
+					}
+
+					if (this.continueOnFail()) {
+						returnData.push({ json: { error: error.message } });
+						return returnData;
+					} else {
+						throw error;
+					}
+				}
+			}
+
+			await connection.commit();
+		}
+
+		await connection.end();
 	}
 
 	return returnData;
+}
+
+export function addWhereClauses(
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+): [string, QueryValues] {
+	if (clauses.length === 0) return [query, replacements];
+
+	let whereQuery = ' WHERE';
+	const values: string[] = [];
+
+	clauses.forEach((clause, index) => {
+		if (clause.condition === 'equal') {
+			clause.condition = '=';
+		}
+
+		let valueReplacement = ' ';
+		if (clause.condition !== 'IS NULL') {
+			valueReplacement = ' ?';
+			values.push(clause.value);
+		}
+
+		const operator = index === clauses.length - 1 ? '' : ' AND';
+
+		whereQuery += ` \`${clause.column}\` ${clause.condition}${valueReplacement}${operator}`;
+	});
+
+	return [`${query}${whereQuery}`, replacements.concat(...values)];
+}
+
+export function addSortRules(
+	query: string,
+	rules: SortRule[],
+	replacements: QueryValues,
+): [string, QueryValues] {
+	if (rules.length === 0) return [query, replacements];
+
+	let orderByQuery = ' ORDER BY';
+	const values: string[] = [];
+
+	rules.forEach((rule, index) => {
+		const endWith = index === rules.length - 1 ? '' : ', ';
+
+		orderByQuery += ` \`${rule.column}\` ${rule.direction}${endWith}`;
+	});
+
+	return [`${query}${orderByQuery}`, replacements.concat(...values)];
 }

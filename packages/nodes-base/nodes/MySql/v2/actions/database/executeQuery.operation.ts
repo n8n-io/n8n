@@ -2,9 +2,11 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-// import type { Mysql2OkPacket } from '../../helpers/interfaces';
+
 import { prepareQueryAndReplacements } from '../../helpers/utils';
+
 import { createConnection, createPool } from '../../transport';
+
 import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
