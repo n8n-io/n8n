@@ -19,7 +19,10 @@ export function getStatusUsingPreviousExecutionStatusMethod(
 	}
 }
 
-export function isAdvancedFiltersEnabled(): boolean {
+export function isAdvancedExecutionFiltersEnabled(): boolean {
 	const license = getLicense();
-	return config.getEnv('enterprise.features.advancedFilters') || license.isAdvancedFiltersEnabled();
+	return (
+		config.getEnv('enterprise.features.advancedExecutionFilters') ||
+		license.isAdvancedExecutionFiltersEnabled()
+	);
 }
