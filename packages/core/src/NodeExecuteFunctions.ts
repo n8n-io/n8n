@@ -151,11 +151,11 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	return formData;
 };
 
-const binaryToString = async (body: Buffer | Readable) =>
+export const binaryToBuffer = async (body: Buffer | Readable) =>
 	new Promise<Buffer>((resolve) => {
 		if (Buffer.isBuffer(body)) resolve(body);
 		else body.pipe(concatStream(resolve));
-	}).then((buffer) => buffer.toString());
+	});
 
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
@@ -2063,7 +2063,7 @@ const getBinaryHelperFunctions = ({
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToString,
+	binaryToBuffer,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>

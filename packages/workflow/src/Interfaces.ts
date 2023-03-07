@@ -666,7 +666,7 @@ export interface FileSystemHelperFunctions {
 }
 
 export interface BinaryHelperFunctions {
-	binaryToString(body: Buffer | Readable): Promise<string>;
+	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	prepareBinaryData(
 		binaryData: Buffer | Readable,
 		filePath?: string,
