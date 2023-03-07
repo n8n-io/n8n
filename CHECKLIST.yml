@@ -27,6 +27,8 @@ paths:
     - Avoided adding new mixins (use composables instead). Only removed code from here.
   "packages/editor-ui/src/views/NodeView.vue":
     - Avoided adding code here. Only refactored to make it smaller. 
+  "packages/editor-ui/src/hooks/**":
+    - Avoided adding new hooks. Only refactored to move hooks to relevant store instead.
 
   # nodes-base
   "packages/nodes-base/nodes/**":
