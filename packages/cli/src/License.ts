@@ -106,8 +106,8 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
 	}
 
-	isAdvancedFiltersEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_FILTERS);
+	isAdvancedExecutionFiltersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
 	getCurrentEntitlements() {
