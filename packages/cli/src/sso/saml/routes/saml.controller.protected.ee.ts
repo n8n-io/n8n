@@ -57,12 +57,11 @@ samlControllerProtected.post(
 	SamlUrls.configToggleEnabled,
 	samlLicensedOwnerMiddleware,
 	async (req: SamlConfiguration.Toggle, res: express.Response) => {
-		if (req.body.loginEnabled !== undefined) {
-			await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.loginEnabled });
-			res.sendStatus(200);
-		} else {
+		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
 		}
+		await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.loginEnabled });
+		res.sendStatus(200);
 	},
 );
 
@@ -122,8 +121,9 @@ samlControllerProtected.get(
 	async (req: express.Request, res: express.Response) => {
 		const result = SamlService.getInstance().getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
-			// forced client side redirect
+			// forced client side redirect through the use of a javascript redirect
 			return res.send(getInitSSOPostView(result.context));
+			// TODO:SAML: If we want the frontend to handle the redirect, we will send the redirect URL instead:
 			// return res.status(301).send(result.context.context);
 		} else if (result?.binding === 'post') {
 			return res.send(getInitSSOFormView(result.context as PostBindingContext));
@@ -133,8 +133,13 @@ samlControllerProtected.get(
 	},
 );
 
+/**
+ * GET /sso/saml/config/test
+ * Test SAML config
+ */
 samlControllerProtected.get(
 	SamlUrls.configTest,
+	samlLicensedOwnerMiddleware,
 	async (req: express.Request, res: express.Response) => {
 		const testResult = await SamlService.getInstance().testSamlConnection();
 		return res.send(testResult);

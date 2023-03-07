@@ -1,16 +1,14 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import { getAttachemnts, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
+import { getAttachments, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
 
 import {
 	meetingFields,
@@ -156,7 +154,7 @@ export class CiscoWebex implements INodeType {
 
 						body.text = this.getNodeParameter('text', i);
 
-						body.attachments = getAttachemnts(
+						body.attachments = getAttachments(
 							this.getNodeParameter(
 								'additionalFields.attachmentsUi.attachmentValues',
 								i,
@@ -168,15 +166,8 @@ export class CiscoWebex implements INodeType {
 							const isBinaryData = file.fileLocation === 'binaryData' ? true : false;
 
 							if (isBinaryData) {
-								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-
 								const binaryPropertyName = file.binaryPropertyName as string;
-
-								const binaryData = items[i].binary![binaryPropertyName];
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 									i,
 									binaryPropertyName,

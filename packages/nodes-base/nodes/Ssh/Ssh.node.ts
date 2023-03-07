@@ -1,13 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { rm, writeFile } from 'fs/promises';
 
@@ -341,25 +340,8 @@ export class Ssh implements INodeType {
 							const parameterPath = this.getNodeParameter('path', i) as string;
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							const binaryData = item.binary[propertyNameUpload];
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${propertyNameUpload}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {

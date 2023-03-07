@@ -10,6 +10,11 @@ on:
         description: 'GitHub branch to test.'
         required: false
         default: 'master'
+      spec:
+        description: 'Specify specs.'
+        required: false
+        default: 'e2e/*'
+        type: string
       user:
         description: 'User who kicked this off.'
         required: false

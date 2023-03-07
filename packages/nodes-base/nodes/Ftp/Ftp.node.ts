@@ -1,17 +1,17 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
@@ -624,30 +624,14 @@ export class Ftp implements INodeType {
 						await recursivelyCreateSftpDirs(sftp!, remotePath);
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-							const itemBinaryData = item.binary[propertyNameUpload];
-							if (itemBinaryData === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${propertyNameUpload}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							let uploadData: Buffer | Readable;
-							if (itemBinaryData.id) {
-								uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
 							} else {
-								uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
 							await sftp!.put(uploadData, remotePath);
 						} else {
@@ -750,30 +734,14 @@ export class Ftp implements INodeType {
 						const dirPath = remotePath.replace(fileName, '');
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-							const itemBinaryData = item.binary[propertyNameUpload];
-							if (itemBinaryData === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${propertyNameUpload}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							let uploadData: Buffer | Readable;
-							if (itemBinaryData.id) {
-								uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
 							} else {
-								uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
 
 							try {
