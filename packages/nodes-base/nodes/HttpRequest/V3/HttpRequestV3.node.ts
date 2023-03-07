@@ -1,3 +1,4 @@
+import concatStream from 'concat-stream';
 import type { Readable } from 'stream';
 import { BINARY_ENCODING } from 'n8n-core';
 
@@ -1293,6 +1294,12 @@ export class HttpRequestV3 implements INodeType {
 
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
+		const bodyToString = async (body: Buffer | Readable) =>
+			new Promise<Buffer>((resolve) => {
+				if (Buffer.isBuffer(body)) resolve(body);
+				else body.pipe(concatStream(resolve));
+			}).then((buffer) => buffer.toString());
+
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			response = promisesResponses.shift();
@@ -1342,7 +1349,8 @@ export class HttpRequestV3 implements INodeType {
 						0,
 						false,
 					) as boolean;
-					const data = Buffer.from(response.body as Buffer).toString();
+
+					const data = await bodyToString(response.body as Buffer | Readable);
 					response.body = jsonParse(data, {
 						...(neverError
 							? { fallbackValue: {} }
@@ -1352,7 +1360,7 @@ export class HttpRequestV3 implements INodeType {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					const data = Buffer.from(response.body as Buffer).toString();
+					const data = await bodyToString(response.body as Buffer | Readable);
 					response.body = !data ? undefined : data;
 				}
 			}
