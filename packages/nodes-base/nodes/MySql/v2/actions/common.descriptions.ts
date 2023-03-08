@@ -41,6 +41,17 @@ export const optionsCollection: INodeProperties = {
 			description: 'Number of milliseconds reserved for connecting to the database',
 		},
 		{
+			displayName: 'Connections Limit',
+			name: 'connectionLimit',
+			type: 'number',
+			default: 10,
+			typeOptions: {
+				minValue: 1,
+			},
+			description:
+				'Maximum amount of connections to the database, setting high value can lead to performance issues and potential database crashes',
+		},
+		{
 			displayName: 'Combine Conditions',
 			name: 'combineConditions',
 			type: 'options',

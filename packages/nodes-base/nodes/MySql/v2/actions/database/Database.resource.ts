@@ -23,7 +23,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete table or rows',
 			},
 			{
-				name: 'Execute Query',
+				name: 'Execute SQL',
 				value: 'executeQuery',
 				description: 'Execute an SQL query',
 				action: 'Execute a SQL query',

@@ -64,6 +64,10 @@ export async function createPool(
 		supportBigNumbers: true,
 	};
 
+	if (options?.connectionLimit) {
+		connectionOptions.connectionLimit = options.connectionLimit as number;
+	}
+
 	if (options?.connectTimeout) {
 		connectionOptions.connectTimeout = options.connectTimeout as number;
 	}
