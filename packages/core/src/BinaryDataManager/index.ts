@@ -5,6 +5,7 @@ import type { Readable } from 'stream';
 import { BINARY_ENCODING } from '../Constants';
 import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
+// eslint-disable-next-line import/no-cycle
 import { binaryToBuffer } from '../NodeExecuteFunctions';
 
 export class BinaryDataManager {
