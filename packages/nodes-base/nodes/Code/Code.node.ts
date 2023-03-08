@@ -95,10 +95,44 @@ export class Code implements INodeType {
 				displayOptions: {
 					show: {
 						'@version': [1],
+						mode: ['runOnceForAllItems'],
 					},
 				},
 				type: 'string',
-				default: '', // set by component
+				default: `
+// Loop over input items and add a new field
+// called 'myNewField' to the JSON of each one
+for (const item of $input.all()) {
+  item.json.myNewField = 1;
+}
+
+return $input.all();
+				`.trim(),
+				description:
+					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'JavaScript',
+				name: 'jsCode',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
+				},
+				displayOptions: {
+					show: {
+						'@version': [1],
+						mode: ['runOnceForEachItem'],
+					},
+				},
+				type: 'string',
+				default: `
+// Add a new field called 'myNewField' to the
+// JSON of the item
+$input.item.json.myNewField = 1;
+
+return $input.item;
+				`.trim(),
 				description:
 					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
@@ -114,10 +148,44 @@ export class Code implements INodeType {
 					show: {
 						'@version': [2],
 						language: ['javaScript'],
+						mode: ['runOnceForAllItems'],
 					},
 				},
 				type: 'string',
-				default: '', // set by component
+				default: `
+// Loop over input items and add a new field
+// called 'myNewField' to the JSON of each one
+for (const item of $input.all()) {
+  item.json.myNewField = 1;
+}
+
+return $input.all();
+				`.trim(),
+				description:
+					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'JavaScript',
+				name: 'jsCode',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
+				},
+				displayOptions: {
+					show: {
+						language: ['javaScript'],
+						mode: ['runOnceForEachItem'],
+					},
+				},
+				type: 'string',
+				default: `
+// Add a new field called 'myNewField' to the
+// JSON of the item
+$input.item.json.myNewField = 1;
+
+return $input.item;
+				`.trim(),
 				description:
 					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
@@ -146,10 +214,43 @@ export class Code implements INodeType {
 				displayOptions: {
 					show: {
 						language: ['python'],
+						mode: ['runOnceForAllItems'],
 					},
 				},
 				type: 'string',
-				default: '', // set by component
+				default: `
+# Loop over input items and add a new field
+# called 'myNewField' to the JSON of each one
+for item in _input.all():
+  item.json.myNewField = 1;
+
+return _input.all();
+				`.trim(),
+				description:
+					'Python code to execute.<br><br>Tip: You can use luxon vars like <code>_today</code> for dates and <code>$_mespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'Python',
+				name: 'pythonCode',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'python',
+				},
+				displayOptions: {
+					show: {
+						language: ['python'],
+						mode: ['runOnceForEachItem'],
+					},
+				},
+				type: 'string',
+				default: `
+# Add a new field called 'myNewField' to the
+# JSON of the item
+_input.item.json.myNewField = 1;
+
+return _input.item;
+				`.trim(),
 				description:
 					'Python code to execute.<br><br>Tip: You can use luxon vars like <code>_today</code> for dates and <code>$_mespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,

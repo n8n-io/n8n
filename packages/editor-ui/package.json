@@ -30,6 +30,7 @@
     "@codemirror/autocomplete": "^6.4.0",
     "@codemirror/commands": "^6.1.0",
     "@codemirror/lang-javascript": "^6.1.2",
+    "@codemirror/lang-json": "^6.0.1",
     "@codemirror/lang-python": "^6.1.1",
     "@codemirror/language": "^6.2.1",
     "@codemirror/lint": "^6.0.0",
@@ -58,7 +59,6 @@
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.21",
     "luxon": "^3.1.0",
-    "monaco-editor": "^0.33.0",
     "n8n-design-system": "workspace:*",
     "n8n-workflow": "workspace:*",
     "normalize-wheel": "^1.0.1",
@@ -107,7 +107,6 @@
     "sass-loader": "^10.1.1",
     "string-template-parser": "^1.2.6",
     "vite": "4.0.4",
-    "vite-plugin-monaco-editor": "^1.0.10",
     "vitest": "^0.28.4",
     "vue-tsc": "^1.0.24"
   }
