@@ -58,7 +58,7 @@ export class GithubTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Only members with owner privileges for an organization or admin privileges for a repository can manage webhooks for an organization.',
+					'Only members with owner privileges for an organization or admin privileges for a repository can set up the webhooks this node requires.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -541,7 +541,7 @@ export class GithubTrigger implements INodeType {
 					if (error.cause.httpCode === '404') {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Check that the repository exists and that you have permission to create webhooks for it',
+							'Check that the repository exists and that you have permission to create the webhooks this node requires',
 						);
 					}
 
