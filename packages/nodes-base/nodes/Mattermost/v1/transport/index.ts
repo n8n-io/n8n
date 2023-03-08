@@ -27,6 +27,7 @@ export async function apiRequest(
 		headers: {
 			'content-type': 'application/json; charset=utf-8',
 		},
+		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 	};
 
 	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
@@ -48,7 +49,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

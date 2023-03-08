@@ -295,7 +295,6 @@
 				:inputData="inputData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
-				:showMappingHint="showMappingHint"
 				:runIndex="runIndex"
 				:pageOffset="currentPageOffset"
 				:totalRuns="maxRunIndex"
@@ -315,7 +314,6 @@
 				:inputData="inputData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
-				:showMappingHint="showMappingHint"
 				:runIndex="runIndex"
 				:totalRuns="maxRunIndex"
 			/>
@@ -564,9 +562,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		},
 		distanceFromActive: {
 			type: Number,
-		},
-		showMappingHint: {
-			type: Boolean,
 		},
 		blockUI: {
 			type: Boolean,

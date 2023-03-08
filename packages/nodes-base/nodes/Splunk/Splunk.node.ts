@@ -464,7 +464,7 @@ export class Splunk implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
+				? returnData.push(...(responseData as IDataObject[]))
 				: returnData.push(responseData as IDataObject);
 		}
 

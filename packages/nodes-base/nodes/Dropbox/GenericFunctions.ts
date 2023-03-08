@@ -2,7 +2,7 @@ import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import type { OptionsWithUri } from 'request';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 /**
@@ -42,7 +42,7 @@ export async function dropboxApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -67,13 +67,20 @@ export async function dropboxpiRequestAllItems(
 
 	let responseData;
 	do {
-		responseData = await dropboxApiRequest.call(this, method, endpoint, body, query, headers);
+		responseData = await dropboxApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body as IDataObject,
+			query,
+			headers,
+		);
 		const cursor = responseData.cursor;
 		if (cursor !== undefined) {
 			endpoint = paginationEndpoint[resource] as string;
 			body = { cursor };
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.has_more !== false);
 
 	return returnData;

@@ -304,7 +304,7 @@ export const getWorkflowFilenames = (dirname: string) => {
 	const filenames = readdirSync(dirname);
 	const testFolder = dirname.split(`${path.sep}nodes-base${path.sep}`)[1];
 	filenames.forEach((file) => {
-		if (file.includes('.json')) {
+		if (file.endsWith('.json')) {
 			workflows.push(path.join(testFolder, file));
 		}
 	});

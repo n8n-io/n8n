@@ -2,21 +2,25 @@ import { ref, Ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from './settings';
+import { useSettingsStore } from '@/stores/settings';
 import { FeatureFlags } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK } from '@/constants';
+import { EXPERIMENTS_TO_TRACK, ONBOARDING_EXPERIMENT } from '@/constants';
 import { useTelemetryStore } from './telemetry';
-import { runExternalHook } from '@/mixins/externalHooks';
-import { useWebhooksStore } from './webhooks';
+import { useSegment } from './segment';
+import { debounce } from 'lodash-es';
 
-export const usePostHogStore = defineStore('posthog', () => {
+const EVENTS = {
+	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
+};
+
+export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
+	const segmentStore = useSegment();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
-	const initialized: Ref<boolean> = ref(false);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
 	const reset = () => {
@@ -72,54 +76,42 @@ export const usePostHogStore = defineStore('posthog', () => {
 			debug: config.debug,
 		};
 
-		if (evaluatedFeatureFlags) {
+		window.posthog?.init(config.apiKey, options);
+		identify();
+
+		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
 			options.bootstrap = {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
+			trackExperiments(evaluatedFeatureFlags);
+		} else {
+			// depend on client side evaluation if serverside evaluation fails
+			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
+				featureFlags.value = map;
+				trackExperiments(map);
+			});
 		}
-
-		window.posthog?.init(config.apiKey, options);
-
-		identify();
-
-		initialized.value = true;
 	};
 
-	const trackExperiment = (name: string) => {
-		const curr = featureFlags.value;
-		const prev = trackedDemoExp.value;
+	const trackExperiments = debounce((featureFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
+	}, 2000);
 
-		if (!curr || curr[name] === undefined) {
-			return;
-		}
-
-		if (curr[name] === prev[name]) {
-			return;
-		}
-
-		const variant = curr[name];
-		telemetryStore.track('User is part of experiment', {
+	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
+		const variant = featureFlags[name];
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
 
 		trackedDemoExp.value[name] = variant;
-		runExternalHook('posthog.featureFlagsUpdated', useWebhooksStore(), {
-			name,
-			variant,
-		});
-	};
 
-	watch(
-		() => featureFlags.value,
-		() => {
-			setTimeout(() => {
-				EXPERIMENTS_TO_TRACK.forEach(trackExperiment);
-			}, 0);
-		},
-	);
+		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
+			segmentStore.showAppCuesChecklist();
+		}
+	};
 
 	return {
 		init,

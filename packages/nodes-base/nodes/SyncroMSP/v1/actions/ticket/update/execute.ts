@@ -37,5 +37,5 @@ export async function updateTicket(
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.ticket);
+	return this.helpers.returnJsonArray(responseData.ticket as IDataObject[]);
 }

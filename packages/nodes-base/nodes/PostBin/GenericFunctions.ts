@@ -94,7 +94,7 @@ export async function buildRequestURL(
  * Converts the bin response data and adds additional properties
  *
  */
-export async function transformBinReponse(
+export async function transformBinResponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	_response: IN8nHttpFullResponse,

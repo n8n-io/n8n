@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -52,7 +52,7 @@ export async function monicaCrmApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -76,7 +76,7 @@ export async function monicaCrmApiRequestAllItems(
 
 	do {
 		responseData = await monicaCrmApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 
 		if (!forLoader && !returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

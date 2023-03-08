@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -42,7 +42,7 @@ export async function freshworksCrmApiRequest(
 		const credentialsType = 'freshworksCrmApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -90,8 +90,8 @@ export async function freshworksCrmApiRequestAllItems(
 
 	do {
 		response = await freshworksCrmApiRequest.call(this, method, endpoint, body, qs);
-		const key = Object.keys(response)[0];
-		returnData.push(...response[key]);
+		const key = Object.keys(response as IDataObject)[0];
+		returnData.push(...(response[key] as IDataObject[]));
 		qs.page++;
 	} while (response.meta.total_pages && qs.page <= response.meta.total_pages);
 

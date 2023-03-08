@@ -206,7 +206,7 @@ return item;`,
 								.split(':');
 							if (lineParts.length > 2) {
 								const lineNumber = lineParts.splice(-2, 1);
-								if (!isNaN(lineNumber)) {
+								if (!isNaN(lineNumber as number)) {
 									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
 									return Promise.reject(error);
 								}

@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function bitlyApiRequest(
@@ -30,7 +30,7 @@ export async function bitlyApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -46,7 +46,7 @@ export async function bitlyApiRequest(
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -71,7 +71,7 @@ export async function bitlyApiRequestAllItems(
 
 	do {
 		responseData = await bitlyApiRequest.call(this, method, resource, body, query, uri);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		if (responseData.pagination?.next) {
 			uri = responseData.pagination.next;
 		}
