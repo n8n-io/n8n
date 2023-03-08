@@ -5,12 +5,13 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('NDV', () => {
-
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		cy.visit(workflowPage.url)
-		cy.waitForLoad();
+
+	});
+	beforeEach(() => {
+		workflowPage.actions.visit();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});

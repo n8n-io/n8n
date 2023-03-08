@@ -98,7 +98,6 @@ describe('Webhook Trigger node', async () => {
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 
 		cy.window()
 			// @ts-ignore
