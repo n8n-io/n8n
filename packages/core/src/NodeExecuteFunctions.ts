@@ -149,7 +149,6 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
 		return undefined;
