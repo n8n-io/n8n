@@ -523,16 +523,6 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const DISTRIBUTION_EXPERIMENT = {
-	name: '001_distribution_test',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const EXPERIMENTS_TO_TRACK = [
-	DISTRIBUTION_EXPERIMENT.name,
-	ASSUMPTION_EXPERIMENT.name,
-	ONBOARDING_EXPERIMENT.name,
-];
+export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
