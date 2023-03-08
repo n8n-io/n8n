@@ -110,7 +110,7 @@ export class MauticTrigger implements INodeType {
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { triggers } = await mauticApiRequest.call(this, 'GET', '/hooks/triggers');
-				for (const [key, value] of Object.entries(triggers)) {
+				for (const [key, value] of Object.entries(triggers as IDataObject)) {
 					const eventId = key;
 					const eventName = (value as IDataObject).label as string;
 					const eventDecription = (value as IDataObject).description as string;
@@ -175,7 +175,7 @@ export class MauticTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

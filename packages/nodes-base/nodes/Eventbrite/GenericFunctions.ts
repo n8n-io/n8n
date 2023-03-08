@@ -35,7 +35,7 @@ export async function eventbriteApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -75,7 +75,7 @@ export async function eventbriteApiRequestAllItems(
 	do {
 		responseData = await eventbriteApiRequest.call(this, method, resource, body, query);
 		query.continuation = responseData.pagination.continuation;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (
 		responseData.pagination?.has_more_items !== undefined &&
 		responseData.pagination.has_more_items !== false

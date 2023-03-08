@@ -1,6 +1,7 @@
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -121,7 +122,6 @@ export class CalTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -183,7 +183,7 @@ export class CalTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -196,9 +196,9 @@ export class CalTrigger implements INodeType {
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray({
-					triggerEvent: req.body.triggerEvent,
-					createdAt: req.body.createdAt,
-					...req.body.payload,
+					triggerEvent: req.body.triggerEvent as string,
+					createdAt: req.body.createdAt as string,
+					...(req.body.payload as IDataObject),
 				}),
 			],
 		};

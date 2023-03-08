@@ -2,7 +2,7 @@ import type { OptionsWithUri } from 'request';
 
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function mindeeApiRequest(
@@ -39,7 +39,7 @@ export async function mindeeApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -51,7 +51,7 @@ export async function mindeeApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(this, service, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

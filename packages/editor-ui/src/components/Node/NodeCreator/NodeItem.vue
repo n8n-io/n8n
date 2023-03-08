@@ -105,7 +105,10 @@ const displayName = computed<any>(() => {
 
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType}.displayName`,
-		fallback: props.allowActions ? displayName.replace('Trigger', '') : displayName,
+		fallback:
+			props.allowActions && props.nodeType.actions?.length
+				? displayName.replace('Trigger', '')
+				: displayName,
 	});
 });
 

@@ -27,13 +27,12 @@ describe('Workflows', () => {
 		});
 
 		cy.signin({ email, password });
-		cy.visit(WorkflowsPage.url);
+		cy.visit('/');
+		cy.waitForLoad();
 	});
 
-	it('should create a new workflow using empty state card', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowButtonCard().click();
-
+	it('should land on empty canvas after registration', () => {
+		cy.url().should('include', WorkflowPage.url);
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Empty State Card Workflow ${uuid()}`);
 
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-1');
@@ -41,8 +40,6 @@ describe('Workflows', () => {
 	});
 
 	it('should create multiple new workflows using add workflow button', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('not.exist');
-
 		[...Array(multipleWorkflowsCount).keys()].forEach(() => {
 			cy.visit(WorkflowsPage.url);
 			WorkflowsPage.getters.createWorkflowButton().click();
@@ -95,8 +92,10 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
 	});
 
-	it('should contain empty state cards', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
+	it('should redirect to new canvas if no workflows', () => {
+		cy.wait(1000);
+		cy.visit(WorkflowsPage.url);
+		cy.wait(1000);
+		cy.url().should('include', WorkflowPage.url);
 	});
 });

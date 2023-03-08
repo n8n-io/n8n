@@ -164,7 +164,6 @@ export class TelegramTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -281,7 +280,7 @@ export class TelegramTrigger implements INodeType {
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					data as unknown as Buffer,
-					fileName,
+					fileName as string,
 				);
 
 				return {

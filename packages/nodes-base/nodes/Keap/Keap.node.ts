@@ -1,15 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
@@ -181,7 +178,7 @@ export class Keap implements INodeType {
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { countries } = await keapApiRequest.call(this, 'GET', '/locales/countries');
-				for (const key of Object.keys(countries)) {
+				for (const key of Object.keys(countries as IDataObject)) {
 					const countryName = countries[key];
 					const countryId = key;
 					returnData.push({
@@ -201,7 +198,7 @@ export class Keap implements INodeType {
 					'GET',
 					`/locales/countries/${countryCode}/provinces`,
 				);
-				for (const key of Object.keys(provinces)) {
+				for (const key of Object.keys(provinces as IDataObject)) {
 					const provinceName = provinces[key];
 					const provinceId = key;
 					returnData.push({
@@ -742,30 +739,15 @@ export class Keap implements INodeType {
 							keysToSnakeCase(attachmentsUi.attachmentsValues as IDataObject);
 							attachments = attachmentsUi.attachmentsValues as IAttachment[];
 						}
-						if (
-							attachmentsUi.attachmentsBinary &&
-							(attachmentsUi.attachmentsBinary as IDataObject).length
-						) {
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								if (item[property as string] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${property}"`,
-										{ itemIndex: i },
-									);
-								}
-
+						const attachmentsBinary = attachmentsUi.attachmentsBinary as Array<{
+							property: string;
+						}>;
+						if (attachmentsBinary?.length) {
+							for (const { property } of attachmentsBinary) {
+								const binaryData = this.helpers.assertBinaryData(i, property);
 								attachments.push({
-									file_data: item[property as string].data,
-									file_name: item[property as string].fileName,
+									file_data: binaryData.data,
+									file_name: binaryData.fileName,
 								});
 							}
 						}
@@ -815,7 +797,6 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/createFileUsingPOST
 				if (operation === 'upload') {
-					const binaryData = this.getNodeParameter('binaryData', i);
 					const fileAssociation = this.getNodeParameter('fileAssociation', i) as string;
 					const isPublic = this.getNodeParameter('isPublic', i) as boolean;
 					const body: IFile = {
@@ -826,27 +807,11 @@ export class Keap implements INodeType {
 						const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
 						body.contact_id = contactId;
 					}
-					if (binaryData) {
+					if (this.getNodeParameter('binaryData', i)) {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						if (item[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-								{ itemIndex: i },
-							);
-						}
-
-						body.file_data = item[binaryPropertyName].data;
-						body.file_name = item[binaryPropertyName].fileName;
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						body.file_data = binaryData.data;
+						body.file_name = binaryData.fileName;
 					} else {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileData = this.getNodeParameter('fileData', i) as string;
@@ -858,7 +823,7 @@ export class Keap implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

@@ -32,6 +32,14 @@ describe('Credentials', () => {
 	before(() => {
 		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
+
+		// Always intercept the request to test credentials and return a success
+		cy.intercept('POST', '/rest/credentials/test', {
+			statusCode: 200,
+			body: {
+				data: { status: 'success', message: 'Tested successfully' },
+			}
+		});
 	});
 
 	beforeEach(() => {
@@ -53,7 +61,6 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
@@ -71,7 +78,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
+		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('Airtable Account');
@@ -105,7 +112,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with multiple auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -122,7 +128,6 @@ describe('Credentials', () => {
 
 	it('should show multiple credential types in the same dropdown', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -148,7 +153,6 @@ describe('Credentials', () => {
 
 	it('should correctly render required and optional credentials', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
 		cy.get('body').type('{downArrow}');
 		cy.get('body').type('{enter}');
@@ -173,7 +177,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with no auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -187,7 +190,6 @@ describe('Credentials', () => {
 
 	it('should delete credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -207,7 +209,6 @@ describe('Credentials', () => {
 
 	it('should rename credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -228,7 +229,6 @@ describe('Credentials', () => {
 
 	it('should setup generic authentication for HTTP node', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -259,7 +259,7 @@ describe('Credentials', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
-	})
+	});
 
 	it('should render custom node with custom credential', () => {
 		workflowPage.actions.visit();
@@ -269,5 +269,5 @@ describe('Credentials', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
-	})
+	});
 });

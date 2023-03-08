@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.214.1",
+  "version": "0.216.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -15,7 +15,8 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
-    "build": "tsc && gulp build:icons && gulp build:translations && pnpm build:metadata",
+    "typecheck": "tsc",
+    "build": "tsc -p tsconfig.build.json && gulp build:icons && gulp build:translations && pnpm build:metadata",
     "build:translations": "gulp build:translations",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier --write . --ignore-path ../../.prettierignore",

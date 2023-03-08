@@ -39,12 +39,13 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           context: ./docker/images/n8n${{ matrix.docker-context }}
           build-args: |
             N8N_VERSION=${{ steps.vars.outputs.tag }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
+          provenance: false
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
