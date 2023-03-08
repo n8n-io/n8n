@@ -1095,7 +1095,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.headers = bodyParameters.reduce(parametersToKeyValue, {});
+					requestOptions.body = bodyParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
@@ -1281,6 +1281,7 @@ export class HttpRequestV3 implements INodeType {
 					requestOAuth2.catch(() => {});
 					requestPromises.push(requestOAuth2);
 				} else {
+					console.log(requestOptions);
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
 					const request = this.helpers.request(requestOptions);
 					request.catch(() => {});
@@ -1301,13 +1302,11 @@ export class HttpRequestV3 implements INodeType {
 				requestPromises.push(requestWithAuthentication);
 			}
 		}
-
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			response = promisesResponses.shift();
-
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {

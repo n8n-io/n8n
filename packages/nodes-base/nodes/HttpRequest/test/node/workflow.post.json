@@ -41,7 +41,7 @@
 		{
 			"parameters": {
 				"method": "POST",
-				"url": "https://dummyjson.com/todos/add2",
+				"url": "https://dummyjson.com/todos/add",
 				"sendBody": true,
 				"specifyBody": "json",
 				"jsonBody": "{\"todo\":\"Use DummyJSON in the project\",\"completed\":false,\"userId\":15}",
