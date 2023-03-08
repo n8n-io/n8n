@@ -1,18 +1,17 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"outDir": "dist",
 		"lib": ["dom", "es2020", "es2022.error"],
 		"types": ["node", "jest"],
+		"noEmit": true,
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
 		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"credentials/**/*.ts",
-		"nodes/**/*.ts",
-		"nodes/**/*.json",
-		"credentials/translations/**/*.json"
+	"include": ["credentials/**/*.ts", "nodes/**/*.ts"],
+	"references": [
+		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../core/tsconfig.build.json" }
 	]
 }
