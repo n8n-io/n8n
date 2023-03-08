@@ -18,8 +18,18 @@ jobs:
       - name: Check out branch
         uses: actions/checkout@v3
 
+      - uses: pnpm/action-setup@v2.2.4
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Validate PR title
         id: validate_pr_title
-        uses: ivov/validate-n8n-pull-request-title@v1
+        uses: n8n-io/validate-n8n-pull-request-title@v1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -142,10 +142,16 @@ import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
-import { isSamlEnabled } from './Saml/helpers';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executions/executionHelpers';
+import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
+import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
+import { SamlService } from './sso/saml/saml.service.ee';
+import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 
 const exec = promisify(callbackExec);
 
@@ -255,9 +261,15 @@ class Server extends AbstractServer {
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
-			ldap: {
-				loginEnabled: false,
-				loginLabel: '',
+			sso: {
+				saml: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+				ldap: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
 			},
 			publicApi: {
 				enabled: !config.getEnv('publicApi.disabled'),
@@ -291,6 +303,7 @@ class Server extends AbstractServer {
 				ldap: false,
 				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
+				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -318,13 +331,21 @@ class Server extends AbstractServer {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
-			saml: isSamlEnabled(),
+			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 		});
 
 		if (isLdapEnabled()) {
-			Object.assign(this.frontendSettings.ldap, {
+			Object.assign(this.frontendSettings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
 				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
+
+		if (isSamlLicensed()) {
+			Object.assign(this.frontendSettings.sso.saml, {
+				loginLabel: getSamlLoginLabel(),
+				loginEnabled: isSamlLoginEnabled(),
 			});
 		}
 
@@ -494,6 +515,25 @@ class Server extends AbstractServer {
 		if (isLdapEnabled()) {
 			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
 		}
+
+		// ----------------------------------------
+		// SAML
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		if (isSamlLicensed()) {
+			try {
+				await SamlService.getInstance().init();
+			} catch (error) {
+				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
+			}
+		}
+
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
+		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
+
+		// ----------------------------------------
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -1258,8 +1298,9 @@ class Server extends AbstractServer {
 				},
 			};
 
-			this.app.use('/icons/:packageName/*/*.(svg|png)', async (req, res) => {
-				const { packageName } = req.params;
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				let { scope, packageName } = req.params;
+				if (scope) packageName = `@${scope}/${packageName}`;
 				const loader = this.loadNodesAndCredentials.loaders[packageName];
 				if (loader) {
 					const pathPrefix = `/icons/${packageName}/`;
@@ -1274,7 +1315,10 @@ class Server extends AbstractServer {
 				}
 
 				res.sendStatus(404);
-			});
+			};
+
+			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
 			this.app.use(
 				'/',

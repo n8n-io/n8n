@@ -237,7 +237,7 @@ export class Start extends BaseCommand {
 		// Load settings from database and set them to config.
 		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
 		databaseSettings.forEach((setting) => {
-			config.set(setting.key, jsonParse(setting.value));
+			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
 		config.set('nodes.packagesMissing', '');

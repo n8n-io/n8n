@@ -3,7 +3,7 @@
  * defined on the component which uses this mixin
  */
 import Vue from 'vue';
-import { debounce } from 'lodash';
+import { debounce } from 'lodash-es';
 
 export const copyPaste = Vue.extend({
 	data() {

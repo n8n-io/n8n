@@ -9,7 +9,7 @@ import type {
 
 import type { IDataObject } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -73,7 +73,7 @@ export async function venafiApiRequestAllItems(
 	do {
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
 		endpoint = get(responseData, '_links[0].Next');
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData._links?.[0].Next);
 
 	return returnData;

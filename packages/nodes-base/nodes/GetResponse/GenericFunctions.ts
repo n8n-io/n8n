@@ -7,7 +7,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function getresponseApiRequest(
@@ -34,7 +34,7 @@ export async function getresponseApiRequest(
 	};
 	try {
 		options = Object.assign({}, options, option);
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -45,7 +45,7 @@ export async function getresponseApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'getResponseOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -73,7 +73,7 @@ export async function getResponseApiRequestAllItems(
 			{ resolveWithFullResponse: true },
 		);
 		query.page++;
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.TotalPages !== responseData.headers.CurrentPage);
 
 	return returnData;

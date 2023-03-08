@@ -86,7 +86,7 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.records);
+		returnData.push.apply(returnData, responseData.records as IDataObject[]);
 
 		query.offset = responseData.offset;
 	} while (responseData.offset !== undefined);
@@ -113,7 +113,7 @@ export async function downloadRecordAttachments(
 						encoding: null,
 					});
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
-						Buffer.from(file),
+						Buffer.from(file as string),
 						attachment.filename,
 						attachment.type,
 					);

@@ -330,7 +330,7 @@ export class Dropcontact implements INodeType {
 					}
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{
 							itemData: mapPairedItemsFrom(entryData),
 						},
@@ -363,7 +363,7 @@ export class Dropcontact implements INodeType {
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData.data),
+						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

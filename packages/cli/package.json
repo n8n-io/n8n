@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.216.1",
+  "version": "0.218.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -76,8 +76,8 @@
     "@types/json-diff": "^0.5.1",
     "@types/jsonwebtoken": "^9.0.1",
     "@types/localtunnel": "^1.9.0",
-    "@types/lodash.get": "^4.4.6",
     "@types/lodash.debounce": "^4.0.7",
+    "@types/lodash.get": "^4.4.6",
     "@types/lodash.intersection": "^4.4.7",
     "@types/lodash.iteratee": "^4.7.7",
     "@types/lodash.merge": "^4.6.6",
@@ -129,8 +129,8 @@
     "bull": "^4.10.2",
     "callsites": "^3.1.0",
     "change-case": "^4.1.1",
-    "class-validator": "^0.14.0",
     "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
     "client-oauth2": "^4.2.5",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^1.6.0",
@@ -191,6 +191,7 @@
     "psl": "^1.8.0",
     "reflect-metadata": "^0.1.13",
     "replacestream": "^4.0.3",
+    "samlify": "^2.8.9",
     "semver": "^7.3.8",
     "shelljs": "^0.8.5",
     "source-map-support": "^0.5.21",
@@ -204,6 +205,7 @@
     "validator": "13.7.0",
     "winston": "^3.3.3",
     "ws": "^8.12.0",
+    "xmllint-wasm": "^3.0.1",
     "yamljs": "^0.3.0"
   }
 }

@@ -22,7 +22,7 @@ export async function beeminderApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 
@@ -48,7 +48,7 @@ export async function beeminderApiRequestAllItems(
 	do {
 		responseData = await beeminderApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

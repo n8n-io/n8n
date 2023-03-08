@@ -188,7 +188,7 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import { get, set, unset } from 'lodash';
+import { get, set, unset } from 'lodash-es';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -484,7 +484,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					});
 
 					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
-				} catch (_) {}
+				} catch {}
 			}
 		},
 	},

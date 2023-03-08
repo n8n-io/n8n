@@ -14,14 +14,14 @@
 
 <script setup lang="ts">
 import { ISubcategoryItemProps } from '@/Interface';
-import camelcase from 'lodash.camelcase';
+import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
 export interface Props {
 	item: ISubcategoryItemProps;
 }
 
 const props = defineProps<Props>();
-const subcategoryName = computed(() => camelcase(props.item.subcategory));
+const subcategoryName = computed(() => camelCase(props.item.subcategory));
 </script>
 
 <style lang="scss" module>

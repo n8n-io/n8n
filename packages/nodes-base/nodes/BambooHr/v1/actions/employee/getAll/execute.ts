@@ -21,9 +21,9 @@ export async function getAll(
 
 	//return limited result
 	if (!returnAll && responseData.employees.length > limit) {
-		return this.helpers.returnJsonArray(responseData.employees.slice(0, limit));
+		return this.helpers.returnJsonArray(responseData.employees.slice(0, limit) as IDataObject[]);
 	}
 
 	//return all result
-	return this.helpers.returnJsonArray(responseData.employees);
+	return this.helpers.returnJsonArray(responseData.employees as IDataObject[]);
 }
