@@ -160,6 +160,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	TAB: 'tab',
 	NODE_CONNECTION_ACTION: 'node_connection_action',
 	NODE_CONNECTION_DROP: 'node_connection_drop',
+	'': '',
 };
 
 export const CORE_NODES_CATEGORY = 'Core Nodes';

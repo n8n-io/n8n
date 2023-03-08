@@ -145,4 +145,48 @@ describe('Node Creator', () => {
 			.click();
 		secondParameter().find('input.el-input__inner').should('have.value', 'option4');
 	});
+
+	describe('should correctly append manual trigger for regular actions', () => {
+		// For these sources, manual node should be added
+		const sourcesWithAppend = [
+			{
+				name: 'canvas add button',
+				handler: () => nodeCreatorFeature.getters.canvasAddButton().click(),
+			}, {
+				name: 'plus button',
+				handler: () => nodeCreatorFeature.getters.plusButton().click(),
+			}, {
+				name: 'tab key',
+				handler: () => cy.realPress("Tab"),
+			},
+		]
+		sourcesWithAppend.forEach((source) => {
+			it(`should append manual trigger when source is ${source.name}`, () => {
+				source.handler()
+				nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
+				nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+				nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
+				NDVModal.actions.close();
+				WorkflowPage.getters.canvasNodes().should('have.length', 2);
+			});
+		});
+
+		it('should not append manual trigger when source is canvas related', () => {
+			cy.realPress("Tab")
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
+			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
+			NDVModal.actions.close();
+			WorkflowPage.actions.deleteNode('When clicking "Execute Workflow"')
+			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click()
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
+			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
+			NDVModal.actions.close();
+			WorkflowPage.getters.canvasNodes().should('have.length', 2);
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Item Lists')
+			WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		})
+	});
 });
