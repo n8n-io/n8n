@@ -1,8 +1,8 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 import type { Readable } from 'stream';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,

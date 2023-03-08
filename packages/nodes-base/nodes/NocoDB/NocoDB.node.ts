@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -265,20 +264,8 @@ export class NocoDB implements INodeType {
 							if (!field.binaryData) {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
-								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
 								const binaryPropertyName = field.binaryProperty;
-								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex: i },
-									);
-								}
-								const binaryData = items[i].binary![binaryPropertyName];
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -581,20 +568,8 @@ export class NocoDB implements INodeType {
 							if (!field.binaryData) {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
-								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
 								const binaryPropertyName = field.binaryProperty;
-								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex: i },
-									);
-								}
-								const binaryData = items[i].binary![binaryPropertyName];
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {

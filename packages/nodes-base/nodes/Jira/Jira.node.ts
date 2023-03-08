@@ -1057,23 +1057,9 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-							itemIndex: i,
-						});
-					}
 					let uploadData: Buffer | Readable;
-					const item = items[i].binary as IBinaryKeyData;
-					const binaryData = item[binaryPropertyName];
-					if (binaryData === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Item has no binary property called "${binaryPropertyName}"`,
-							{ itemIndex: i },
-						);
-					}
-
 					if (binaryData.id) {
 						uploadData = this.helpers.getBinaryStream(binaryData.id);
 					} else {

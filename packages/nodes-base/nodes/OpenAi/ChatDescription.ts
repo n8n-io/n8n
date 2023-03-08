@@ -114,7 +114,7 @@ const completeOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'messages',
-				value: '={{ $parameter.prompt.messages }}',
+				value: '={{ $value.messages }}',
 			},
 		},
 	},
