@@ -1,4 +1,3 @@
-import concatStream from 'concat-stream';
 import type { Readable } from 'stream';
 import { BINARY_ENCODING } from 'n8n-core';
 
@@ -23,7 +22,6 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
-import { binaryToBuffer } from 'n8n-core/src/BinaryDataManager/utils';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1356,9 +1354,9 @@ export class HttpRequestV3 implements INodeType {
 						false,
 					) as boolean;
 
-					const data = await binaryToBuffer(response.body as Buffer | Readable).then((body) =>
-						body.toString(),
-					);
+					const data = await this.helpers
+						.binaryToBuffer(response.body as Buffer | Readable)
+						.then((body) => body.toString());
 					response.body = jsonParse(data, {
 						...(neverError
 							? { fallbackValue: {} }
@@ -1368,9 +1366,9 @@ export class HttpRequestV3 implements INodeType {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					const data = await binaryToBuffer(response.body as Buffer | Readable).then((body) =>
-						body.toString(),
-					);
+					const data = await this.helpers
+						.binaryToBuffer(response.body as Buffer | Readable)
+						.then((body) => body.toString());
 					response.body = !data ? undefined : data;
 				}
 			}
