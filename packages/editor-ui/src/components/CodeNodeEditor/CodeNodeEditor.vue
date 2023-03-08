@@ -162,12 +162,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 		this.isDefault = this.value === this.defaultValue;
 
-		const value = this.value === '' ? this.defaultValue : this.value;
+		const resolvedValue = this.value === '' ? this.defaultValue : this.value;
 
 		let editorSettings: EditorStateConfig;
 		if (this.language === 'python') {
 			editorSettings = {
-				doc: value,
+				doc: resolvedValue,
 				extensions: [
 					...baseExtensions,
 					...stateBasedExtensions,
@@ -177,7 +177,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			};
 		} else if (this.language === 'json') {
 			editorSettings = {
-				doc: value,
+				doc: resolvedValue,
 				extensions: [
 					...baseExtensions,
 					...stateBasedExtensions,
@@ -187,7 +187,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			};
 		} else {
 			editorSettings = {
-				doc: value,
+				doc: resolvedValue,
 				extensions: [
 					this.linterCompartment.of(this.linterExtension()),
 					...baseExtensions,
