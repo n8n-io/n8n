@@ -220,7 +220,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					return input.main[0][0].node;
 				}
-			} catch (_) {
+			} catch {
 				return null;
 			}
 		},
@@ -291,7 +291,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 					}
 
 					return nodePinData[itemIndex].json;
-				} catch (_) {}
+				} catch {}
 			}
 
 			const runData: IRunData | null = this.workflowsStore.getWorkflowRunData;
@@ -309,7 +309,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				return nodeRunData[0].data!.main[0]![itemIndex].json;
-			} catch (_) {
+			} catch {
 				return null;
 			}
 		},

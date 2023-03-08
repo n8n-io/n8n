@@ -490,9 +490,15 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
@@ -520,6 +526,7 @@ export interface IN8nUISettings {
 		ldap: boolean;
 		saml: boolean;
 		logStreaming: boolean;
+		advancedExecutionFilters: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

@@ -4,11 +4,9 @@ import { createHash } from 'crypto';
 
 import { Builder } from 'xml2js';
 
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -221,8 +219,8 @@ export class AwsS3 implements INodeType {
 							qs['encoding-type'] = additionalFields.encodingType as string;
 						}
 
-						if (additionalFields.delmiter) {
-							qs.delimiter = additionalFields.delmiter as string;
+						if (additionalFields.delimiter) {
+							qs.delimiter = additionalFields.delimiter as string;
 						}
 
 						if (additionalFields.fetchOwner) {
@@ -593,7 +591,7 @@ export class AwsS3 implements INodeType {
 						if (fileKey.substring(fileKey.length - 1) === '/') {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Downloding a whole directory is not yet supported, please provide a file key',
+								'Downloading a whole directory is not yet supported, please provide a file key',
 							);
 						}
 
@@ -836,23 +834,8 @@ export class AwsS3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
-
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
-
-							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 								i,
 								binaryPropertyName,
@@ -860,7 +843,7 @@ export class AwsS3 implements INodeType {
 
 							body = binaryDataBuffer;
 
-							headers['Content-Type'] = binaryData.mimeType;
+							headers['Content-Type'] = binaryPropertyData.mimeType;
 
 							headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
 
@@ -868,7 +851,7 @@ export class AwsS3 implements INodeType {
 								this,
 								`${bucketName}.s3`,
 								'PUT',
-								`${path}${fileName || binaryData.fileName}`,
+								`${path}${fileName || binaryPropertyData.fileName}`,
 								body,
 								qs,
 								headers,
