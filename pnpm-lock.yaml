@@ -35,6 +35,7 @@ importers:
       '@types/supertest': ^2.0.12
       cross-env: ^7.0.3
       cypress: ^12.7.0
+      cypress-plugin-tab: ^1.0.5
       cypress-real-events: ^1.7.6
       jest: ^29.4.2
       jest-environment-jsdom: ^29.4.2
@@ -61,6 +62,7 @@ importers:
       '@types/supertest': 2.0.12
       cross-env: 7.0.3
       cypress: 12.7.0
+      cypress-plugin-tab: 1.0.5
       cypress-real-events: 1.7.6_cypress@12.7.0
       jest: 29.4.2
       jest-environment-jsdom: 29.4.2
@@ -7094,6 +7096,13 @@ packages:
       uri-js: 4.4.1
     dev: true
 
+  /ally.js/1.4.1:
+    resolution: {integrity: sha512-ZewdfuwP6VewtMN36QY0gmiyvBfMnmEaNwbVu2nTS6zRt069viTgkYgaDiqu6vRJ1VJCriNqV0jGMu44R8zNbA==}
+    dependencies:
+      css.escape: 1.5.1
+      platform: 1.3.3
+    dev: true
+
   /amqplib/0.10.3:
     resolution: {integrity: sha512-UHmuSa7n8vVW/a5HGh2nFPqAEr8+cD4dEZ6u9GjP91nHfr1a54RyAKyra7Sb5NH7NBKOUlyQSMXIp0qAixKexw==}
     engines: {node: '>=10'}
@@ -9437,6 +9446,12 @@ packages:
       first-match: 0.0.1
       nub: 0.0.0
     dev: false
+
+  /cypress-plugin-tab/1.0.5:
+    resolution: {integrity: sha512-QtTJcifOVwwbeMP3hsOzQOKf3EqKsLyjtg9ZAGlYDntrCRXrsQhe4ZQGIthRMRLKpnP6/tTk6G0gJ2sZUfRliQ==}
+    dependencies:
+      ally.js: 1.4.1
+    dev: true
 
   /cypress-real-events/1.7.6_cypress@12.7.0:
     resolution: {integrity: sha512-yP6GnRrbm6HK5q4DH6Nnupz37nOfZu/xn1xFYqsE2o4G73giPWQOdu6375QYpwfU1cvHNCgyD2bQ2hPH9D7NMw==}
@@ -16572,6 +16587,10 @@ packages:
       jsonc-parser: 3.2.0
       mlly: 1.1.0
       pathe: 1.1.0
+    dev: true
+
+  /platform/1.3.3:
+    resolution: {integrity: sha512-VJK1SRmXBpjwsB4YOHYSturx48rLKMzHgCqDH2ZDa6ZbMS/N5huoNqyQdK5Fj/xayu3fqbXckn5SeCS1EbMDZg==}
     dev: true
 
   /plimit-lit/1.4.1:

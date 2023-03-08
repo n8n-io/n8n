@@ -24,7 +24,8 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import 'cypress-real-events';
-import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
+import 'cypress-plugin-tab';
+import { SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';

@@ -176,7 +176,7 @@ export class WorkflowPage extends BasePage {
 		},
 		deleteNode: (name: string) => {
 			this.getters.canvasNodeByName(name).first().click();
-			cy.realPress('Delete');
+			cy.get('body').type('{del}');
 		},
 		setWorkflowName: (name: string) => {
 			this.getters.workflowNameInput().should('be.disabled');

@@ -156,7 +156,7 @@ describe('Node Creator', () => {
 				handler: () => nodeCreatorFeature.getters.plusButton().click(),
 			}, {
 				name: 'tab key',
-				handler: () => cy.realPress("Tab"),
+				handler: () => cy.get('body').tab(),
 			},
 		]
 		sourcesWithAppend.forEach((source) => {
@@ -171,7 +171,7 @@ describe('Node Creator', () => {
 		});
 
 		it('should not append manual trigger when source is canvas related', () => {
-			cy.realPress("Tab")
+			nodeCreatorFeature.getters.canvasAddButton().click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
