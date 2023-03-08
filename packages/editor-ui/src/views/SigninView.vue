@@ -86,7 +86,11 @@ export default mixins(showMessage, genericHelpers).extend({
 					mfaEnabled: false,
 				});
 
-				this.protectFromPhishing();
+				if (this.phishingAttempt()) {
+					const redirect = this.getRedirectQueryParameter();
+					this.$router.push(redirect);
+					return;
+				}
 
 				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {

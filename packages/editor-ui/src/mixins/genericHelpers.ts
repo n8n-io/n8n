@@ -81,16 +81,16 @@ export const genericHelpers = mixins(showMessage).extend({
 				this.loadingService = null;
 			}
 		},
-		protectFromPhishing() {
+		phishingAttempt() {
+			const redirect = this.getRedirectQueryParameter();
+			return redirect.startsWith('/');
+		},
+		getRedirectQueryParameter() {
+			let redirect = '';
 			if (typeof this.$route.query.redirect === 'string') {
-				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) {
-					// protect against phishing
-					this.$router.push(redirect);
-
-					return;
-				}
+				redirect = decodeURIComponent(this.$route.query.redirect);
 			}
+			return redirect;
 		},
 	},
 });
