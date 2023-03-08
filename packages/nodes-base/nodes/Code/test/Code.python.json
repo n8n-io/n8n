@@ -1,0 +1,209 @@
+{
+	"name": "Python Test Workflow",
+	"nodes": [
+		{
+			"parameters": {
+				"source": "parameter",
+				"workflowJson": "{\n  \"meta\": {\n    \"instanceId\": \"021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff\"\n  },\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"id\": \"d7a2fa7c-92f6-4122-aabf-55c41e6df302\",\n      \"name\": \"When Called By Another Workflow\",\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        40,\n        480\n      ]\n    },\n    {\n      \"parameters\": {\n        \"values\": {\n          \"string\": [\n            {\n              \"name\": \"python\",\n              \"value\": \"_input.first()\"\n            },\n            {\n              \"name\": \"javaScript\",\n              \"value\": \"$input.first()\"\n            }\n          ]\n        },\n        \"options\": {}\n      },\n      \"id\": \"1edc7b48-2cec-48fc-875e-542a22f8dd8a\",\n      \"name\": \"Mock\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 1,\n      \"position\": [\n        260,\n        480\n      ],\n      \"disabled\": true\n    },\n    {\n      \"parameters\": {},\n      \"id\": \"f1a1ada0-28b0-48a6-8638-7d21cd023b10\",\n      \"name\": \"Start\",\n      \"type\": \"n8n-nodes-base.noOp\",\n      \"typeVersion\": 1,\n      \"position\": [\n        480,\n        480\n      ]\n    },\n    {\n      \"parameters\": {\n        \"source\": \"parameter\",\n        \"workflowJson\": \"={\\n  \\\"meta\\\": {\\n    \\\"instanceId\\\": \\\"021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff\\\"\\n  },\\n  \\\"nodes\\\": [\\n    {\\n      \\\"parameters\\\": {\\n        \\\"language\\\": \\\"python\\\",\\n        \\\"pythonCode\\\": \\\"return { \\\\\\\"data\\\\\\\": {{ $(\\\"Start\\\").first().json.python }} }\\\"\\n      },\\n      \\\"id\\\": \\\"a76e5d34-acc3-46e7-8cae-c42d8d4c6364\\\",\\n      \\\"name\\\": \\\"Python\\\",\\n      \\\"type\\\": \\\"n8n-nodes-base.code\\\",\\n      \\\"typeVersion\\\": 2,\\n      \\\"position\\\": [\\n        1240,\\n        140\\n      ]\\n    },\\n    {\\n      \\\"parameters\\\": {},\\n      \\\"id\\\": \\\"c1d284b7-77e4-41b8-b41b-82e897639943\\\",\\n      \\\"name\\\": \\\"Start\\\",\\n      \\\"type\\\": \\\"n8n-nodes-base.start\\\",\\n      \\\"typeVersion\\\": 1,\\n      \\\"position\\\": [\\n        1020,\\n        140\\n      ]\\n    }\\n  ],\\n  \\\"connections\\\": {\\n    \\\"Start\\\": {\\n      \\\"main\\\": [\\n        [\\n          {\\n            \\\"node\\\": \\\"Python\\\",\\n            \\\"type\\\": \\\"main\\\",\\n            \\\"index\\\": 0\\n          }\\n        ]\\n      ]\\n    }\\n  }\\n}\"\n      },\n      \"id\": \"e3a4029d-b39a-4783-9f5c-2dd7cc15433a\",\n      \"name\": \"Execute Python\",\n      \"type\": \"n8n-nodes-base.executeWorkflow\",\n      \"typeVersion\": 1,\n      \"position\": [\n        940,\n        380\n      ]\n    },\n    {\n      \"parameters\": {\n        \"operation\": \"getAllPeople\"\n      },\n      \"id\": \"6940ade2-f8b1-442b-a676-1eb147d991b2\",\n      \"name\": \"Customer Datastore\",\n      \"type\": \"n8n-nodes-base.n8nTrainingCustomerDatastore\",\n      \"typeVersion\": 1,\n      \"position\": [\n        480,\n        680\n      ]\n    },\n    {\n      \"parameters\": {\n        \"mode\": \"chooseBranch\",\n        \"output\": \"input2\"\n      },\n      \"id\": \"556166a8-6387-46dd-8327-b99d14d49176\",\n      \"name\": \"Merge1\",\n      \"type\": \"n8n-nodes-base.merge\",\n      \"typeVersion\": 2,\n      \"position\": [\n        720,\n        580\n      ]\n    },\n    {\n      \"parameters\": {\n        \"mode\": \"chooseBranch\",\n        \"output\": \"input2\"\n      },\n      \"id\": \"f5d82736-f972-4007-802b-7b0b978717a4\",\n      \"name\": \"Merge2\",\n      \"type\": \"n8n-nodes-base.merge\",\n      \"typeVersion\": 2,\n      \"position\": [\n        720,\n        380\n      ]\n    },\n    {\n      \"parameters\": {\n        \"source\": \"parameter\",\n        \"workflowJson\": \"={\\n  \\\"meta\\\": {\\n    \\\"instanceId\\\": \\\"021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff\\\"\\n  },\\n  \\\"nodes\\\": [\\n    {\\n      \\\"parameters\\\": {\\n        \\\"jsCode\\\": \\\"return { data: {{ $(\\\"Start\\\").first().json.javaScript }} }\\\"\\n      },\\n      \\\"id\\\": \\\"a76e5d34-acc3-46e7-8cae-c42d8d4c6364\\\",\\n      \\\"name\\\": \\\"Python\\\",\\n      \\\"type\\\": \\\"n8n-nodes-base.code\\\",\\n      \\\"typeVersion\\\": 1,\\n      \\\"position\\\": [\\n        1240,\\n        140\\n      ]\\n    },\\n    {\\n      \\\"parameters\\\": {},\\n      \\\"id\\\": \\\"c1d284b7-77e4-41b8-b41b-82e897639943\\\",\\n      \\\"name\\\": \\\"Start\\\",\\n      \\\"type\\\": \\\"n8n-nodes-base.start\\\",\\n      \\\"typeVersion\\\": 1,\\n      \\\"position\\\": [\\n        1020,\\n        140\\n      ]\\n    }\\n  ],\\n  \\\"connections\\\": {\\n    \\\"Start\\\": {\\n      \\\"main\\\": [\\n        [\\n          {\\n            \\\"node\\\": \\\"Python\\\",\\n            \\\"type\\\": \\\"main\\\",\\n            \\\"index\\\": 0\\n          }\\n        ]\\n      ]\\n    }\\n  }\\n}\"\n      },\n      \"id\": \"153bed1c-0c9d-4c92-90b9-bebce88ee43f\",\n      \"name\": \"Execute JavaScript\",\n      \"type\": \"n8n-nodes-base.executeWorkflow\",\n      \"typeVersion\": 1,\n      \"position\": [\n        940,\n        580\n      ]\n    },\n    {\n      \"parameters\": {\n        \"conditions\": {\n          \"number\": [\n            {\n              \"value1\": \"={{ JSON.stringify($('Execute Python').all()) }}\",\n              \"operation\": \"equal\",\n              \"value2\": \"={{ JSON.stringify($('Execute JavaScript').all()) }}\"\n            }\n          ]\n        }\n      },\n      \"id\": \"c3d23ae4-254f-49a3-8ae0-72f81b3b7c2d\",\n      \"name\": \"IF\",\n      \"type\": \"n8n-nodes-base.if\",\n      \"typeVersion\": 1,\n      \"position\": [\n        1400,\n        480\n      ]\n    },\n    {\n      \"parameters\": {\n        \"errorMessage\": \"=Data is not identical for: \\\"{{ $(\\\"Start\\\").first().json.python }}\\\" <> \\\"{{ $(\\\"Start\\\").first().json.javaScript }}\\\"\"\n      },\n      \"id\": \"3f4d757b-6960-463f-91ac-897e97124e73\",\n      \"name\": \"Stop And Error\",\n      \"type\": \"n8n-nodes-base.stopAndError\",\n      \"typeVersion\": 1,\n      \"position\": [\n        1620,\n        580\n      ]\n    },\n    {\n      \"parameters\": {\n        \"mode\": \"chooseBranch\",\n        \"output\": \"empty\"\n      },\n      \"id\": \"81ac2862-5a03-4e8b-b12b-2018df516db4\",\n      \"name\": \"Merge\",\n      \"type\": \"n8n-nodes-base.merge\",\n      \"typeVersion\": 2,\n      \"position\": [\n        1200,\n        480\n      ]\n    },\n    {\n      \"parameters\": {\n        \"values\": {\n          \"string\": [\n            {\n              \"name\": \"success\",\n              \"value\": \"={{ $node.Start.json.python }}\"\n            }\n          ]\n        },\n        \"options\": {}\n      },\n      \"id\": \"5d688a5f-e7c5-46fc-8e1b-cd4f4f152de4\",\n      \"name\": \"All passed\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 1,\n      \"position\": [\n        1620,\n        380\n      ]\n    }\n  ],\n  \"connections\": {\n    \"When Called By Another Workflow\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Mock\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Mock\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Start\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Start\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Merge1\",\n            \"type\": \"main\",\n            \"index\": 0\n          },\n          {\n            \"node\": \"Merge2\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Execute Python\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Merge\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Customer Datastore\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Merge2\",\n            \"type\": \"main\",\n            \"index\": 1\n          },\n          {\n            \"node\": \"Merge1\",\n            \"type\": \"main\",\n            \"index\": 1\n          }\n        ]\n      ]\n    },\n    \"Merge1\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Execute JavaScript\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Merge2\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Execute Python\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Execute JavaScript\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Merge\",\n            \"type\": \"main\",\n            \"index\": 1\n          }\n        ]\n      ]\n    },\n    \"IF\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"All passed\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ],\n        [\n          {\n            \"node\": \"Stop And Error\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Merge\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"IF\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}"
+			},
+			"id": "8d4f30d3-c1ac-4414-9243-32e4509148ac",
+			"name": "Check Python Code",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1,
+			"position": [820, 680]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			},
+			"id": "8c8cd88f-bd1e-463d-9bed-68782383af3e",
+			"name": "SplitInBatches",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 1,
+			"position": [600, 680]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    python: `_input.first()`,\n    javaScript: `$input.first()`,\n  },\n  {\n    python: `_input.first().json.name`,\n    javaScript: `$input.first().json.name`,\n  },\n  {\n    python: `_input.item`,\n    javaScript: `$input['item']`,\n  },\n  {\n    python: `_input.last()`,\n    javaScript: `$input.last()`,\n  },\n  {\n    python: `_input.all()`,\n    javaScript: `$input.all()`,\n  },\n// Not the best test as it will be an empty object but at least shows that it does not error\n  {\n    python: `_('Start').params`,\n    javaScript: `$('Start').params`,\n  },\n// This can not be tested as they run in two different executions\n//  {\n//     python: `_execution`,\n//     javaScript: `$execution`,\n//   },\n// Not the best test as it will be an empty object but at least shows that it does not error\n  {\n    python: `_('Start').context`,\n    javaScript: `$('Start').context`,\n  },\n  {\n    python: `_('Start').item`,\n    javaScript: `$('Start')['item']`,\n  },\n  {\n    python: `_('Start').first()`,\n    javaScript: `$('Start').first()`,\n  },\n  {\n    python: `_('Start').pairedItem()`,\n    javaScript: `$('Start').pairedItem()`,\n  },\n  {\n    python: `_('Start').itemMatching(0)`,\n    javaScript: `$('Start').itemMatching(0)`,\n  },\n  {\n    python: `_('Start').itemMatching(2)`,\n    javaScript: `$('Start').itemMatching(2)`,\n  },\n  {\n    python: `_('Start').first().json.name`,\n    javaScript: `$('Start').first().json.name`,\n  },\n  {\n    python: `_('Start').last()`,\n    javaScript: `$('Start').last()`,\n  },\n  {\n    python: `_('Start').all()`,\n    javaScript: `$('Start').all()`,\n  },\n  {\n    python: `_mode`,\n    javaScript: `$mode`,\n  },\n// This can not be tested as time will be slightly different\n//   {\n//     python: `_now`,\n//     javaScript: `$now`,\n//   },\n  {\n    python: `_runIndex`,\n    javaScript: `$runIndex`,\n  },\n// This can not be tested as it runs in a subworkflow started via \"parameter\" so is not actually a workflow\n// {\n//   python: `_workflow`,\n//   javaScript: `$workflow`,\n// },\n  {\n    python: `_today`,\n    javaScript: `$today`,\n  },\n];"
+			},
+			"id": "9f2a3219-e6b5-4bd5-8235-7b7566c57024",
+			"name": "Examples",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [380, 680]
+		},
+		{
+			"parameters": {},
+			"id": "37df4fc4-54bb-4ec7-98db-461bf94d9652",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [140, 680]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $('Examples').all().length }}",
+							"operation": "equal",
+							"value2": "={{ $runIndex + 1 }}"
+						}
+					]
+				}
+			},
+			"id": "9266df01-d23a-4597-b978-f5c95ad4e1c2",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1000, 680]
+		},
+		{
+			"parameters": {
+				"jsCode": "const allData = []\n\nlet counter = 0;\ndo {\n  try {\n    const items = $items(\"Check Python Code\", 0, counter).map(item => item.json);\n    allData.push.apply(allData, items);\n  } catch (error) {\n    return [{json: {allData}}];  \n  }\n\n  counter++;\n} while(true);"
+			},
+			"id": "3fd9608e-7d33-4c2b-9069-446e101333c0",
+			"name": "Done",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1220, 660]
+		}
+	],
+	"pinData": {
+		"Done": [
+			{
+				"json": {
+					"allData": [
+						{
+							"success": "_input.first()"
+						},
+						{
+							"success": "_input.first().json.name"
+						},
+						{
+							"success": "_input.item"
+						},
+						{
+							"success": "_input.last()"
+						},
+						{
+							"success": "_input.all()"
+						},
+						{
+							"success": "_('Start').params"
+						},
+						{
+							"success": "_('Start').context"
+						},
+						{
+							"success": "_('Start').item"
+						},
+						{
+							"success": "_('Start').first()"
+						},
+						{
+							"success": "_('Start').pairedItem()"
+						},
+						{
+							"success": "_('Start').itemMatching(0)"
+						},
+						{
+							"success": "_('Start').itemMatching(2)"
+						},
+						{
+							"success": "_('Start').first().json.name"
+						},
+						{
+							"success": "_('Start').last()"
+						},
+						{
+							"success": "_('Start').all()"
+						},
+						{
+							"success": "_mode"
+						},
+						{
+							"success": "_runIndex"
+						},
+						{
+							"success": "_today"
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"Check Python Code": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"SplitInBatches": {
+			"main": [
+				[
+					{
+						"node": "Check Python Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Examples": {
+			"main": [
+				[
+					{
+						"node": "SplitInBatches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Examples",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "SplitInBatches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "efed58f4-25d6-4f2b-877d-a3148e091412",
+	"id": "1087",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}
