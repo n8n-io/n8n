@@ -151,11 +151,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				if (!viewUpdate.docChanged) return;
 				this.trackCompletion(viewUpdate);
 				this.$emit('valueChanged', this.content);
-				if (this.content === this.defaultValue) {
-					this.isDefault = true;
-				} else {
-					this.isDefault = false;
-				}
+				this.isDefault = this.content === this.defaultValue;
 			}),
 		];
 
