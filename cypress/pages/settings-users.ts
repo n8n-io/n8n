@@ -1,9 +1,9 @@
 import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { MainSidebar } from './sidebar/main-sidebar';
-import { WorkflowsPage } from './workflows';
+import { WorkflowPage } from './workflow';
 import { BasePage } from './base';
 
-const workflowsPage =  new WorkflowsPage();
+const workflowPage =  new WorkflowPage();
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
 
@@ -30,7 +30,7 @@ export class SettingsUsersPage extends BasePage {
 		goToOwnerSetup: () => this.getters.setUpOwnerButton().click(),
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
 			cy.signin({ email, password });
-			cy.visit(workflowsPage.url);
+			workflowPage.actions.visit();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
 				settingsSidebar.getters.menuItem('Users').click();
@@ -39,7 +39,7 @@ export class SettingsUsersPage extends BasePage {
 				settingsSidebar.getters.menuItem('Users').should('not.exist');
 				// Should be redirected to workflows page if trying to access UM url
 				cy.visit('/settings/users');
-				cy.url().should('match', new RegExp(workflowsPage.url));
+				cy.url().should('match', new RegExp(workflowPage.url));
 			}
 		},
 		opedDeleteDialog: (email: string) => {

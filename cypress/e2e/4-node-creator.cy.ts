@@ -13,8 +13,7 @@ describe('Node Creator', () => {
 	});
 
 	beforeEach(() => {
-		cy.visit(nodeCreatorFeature.url);
-		cy.waitForLoad();
+		WorkflowPage.actions.visit();
 	});
 
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {

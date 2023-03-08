@@ -11,7 +11,6 @@ describe('Code node', () => {
 	});
 
 	it('should execute the placeholder in all-items mode successfully', () => {
-		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Code');
 		WorkflowPage.actions.openNode('Code');
