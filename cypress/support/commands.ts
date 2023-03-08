@@ -190,7 +190,6 @@ Cypress.Commands.add('resetAll', () => {
 });
 
 Cypress.Commands.add('setupOwner', (payload) => {
-	console.log(payload);
 	cy.task('setup-owner', payload);
 });
 
