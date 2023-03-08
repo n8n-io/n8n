@@ -144,8 +144,6 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		updatedAt,
 		apiKey,
 		authIdentities,
-		mfaSecret,
-		mfaRecoveryCodes,
 		...rest
 	} = user;
 	if (withoutKeys) {

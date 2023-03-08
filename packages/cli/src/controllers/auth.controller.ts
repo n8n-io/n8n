@@ -100,6 +100,14 @@ export class AuthController {
 			if (user.mfaEnabled) {
 				const encryptionKey = await UserSettings.getEncryptionKey();
 
+				const { mfaSecret = '', mfaRecoveryCodes = [] } = await this.userRepository.findOneOrFail({
+					where: { id: user.id },
+					select: ['mfaSecret', 'mfaRecoveryCodes'],
+				});
+
+				user.mfaSecret = mfaSecret;
+				user.mfaRecoveryCodes = mfaRecoveryCodes;
+
 				const isMFATokenValid =
 					(await this.validateMfaToken(user, mfaToken, encryptionKey)) ||
 					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode, encryptionKey));

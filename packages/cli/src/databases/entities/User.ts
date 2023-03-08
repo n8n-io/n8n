@@ -103,13 +103,13 @@ export class User extends AbstractEntity implements IUser {
 	@Index({ unique: true })
 	apiKey?: string | null;
 
-	@Column({ type: String, nullable: true })
-	mfaSecret?: string | null;
-
 	@Column({ type: Boolean, default: false })
 	mfaEnabled?: boolean;
 
-	@Column({ type: 'simple-array', default: '' })
+	@Column({ type: String, nullable: true, select: false })
+	mfaSecret?: string | null;
+
+	@Column({ type: 'simple-array', default: '', select: false })
 	mfaRecoveryCodes: string[];
 
 	/**

@@ -158,7 +158,7 @@ describe('Enable MFA setup', () => {
 
 			expect(statusCode).toBe(200);
 
-			const user = await Db.collections.User.findOneOrFail({ where: {} });
+			const user = await Db.collections.User.findOneOrFail({ where: {}, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
 
 			expect(user.mfaEnabled).toBe(true);
 			expect(user.mfaRecoveryCodes).toBeDefined();
@@ -177,7 +177,7 @@ describe('Disable MFA setup', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+		const dbUser = await Db.collections.User.findOneOrFail({ where: { id: user.id }, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
 
 		expect(dbUser.mfaEnabled).toBe(false);
 		expect(dbUser.mfaSecret).toBe(null);
@@ -293,7 +293,7 @@ describe('Login', () => {
 			expect(data.mfaEnabled).toBe(true);
 			expect(data.hasRecoveryCodesLeft).toBe(true);
 
-			const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+			const dbUser = await Db.collections.User.findOneOrFail({ where: { id: user.id }, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
 
 			// Make sure the recovery code used was removed
 			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
@@ -348,7 +348,7 @@ describe('Login', () => {
 			expect(data.mfaEnabled).toBe(true);
 			expect(data.hasRecoveryCodesLeft).toBe(true);
 
-			const dbUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+			const dbUser = await Db.collections.User.findOneOrFail({ where: { id: user.id }, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
 
 			// Make sure the recovery code used was removed
 			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);

@@ -19,7 +19,9 @@ export class MFAController {
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
-		const { email, id, mfaSecret, mfaRecoveryCodes, mfaEnabled } = req.user;
+		const { email, id, mfaEnabled } = req.user;
+
+		const { mfaSecret, mfaRecoveryCodes } = await this.getSecretAndRecoveryCodes(id);
 
 		if (mfaEnabled)
 			throw new BadRequestError(
@@ -75,7 +77,9 @@ export class MFAController {
 	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
-		const { id, mfaRecoveryCodes, mfaSecret, mfaEnabled } = req.user;
+		const { id, mfaEnabled } = req.user;
+
+		const { mfaSecret, mfaRecoveryCodes } = await this.getSecretAndRecoveryCodes(id);
 
 		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
@@ -108,8 +112,10 @@ export class MFAController {
 
 	@Post('/verify')
 	async verifyMFA(req: MFA.Verify) {
-		const { mfaSecret: secret } = req.user;
+		const { id } = req.user;
 		const { token } = req.body;
+
+		const { mfaSecret: secret } = await this.getSecretAndRecoveryCodes(id);
 
 		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
@@ -122,5 +128,12 @@ export class MFAController {
 		const verified = this.mfaService.verifySecret({ secret: decryptedSecret, token });
 
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
+	}
+
+	private async getSecretAndRecoveryCodes(userId: string) {
+		return this.userRepository.findOneOrFail({
+			where: { id: userId },
+			select: ['mfaSecret', 'mfaRecoveryCodes'],
+		});
 	}
 }
