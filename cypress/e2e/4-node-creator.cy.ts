@@ -154,10 +154,13 @@ describe('Node Creator', () => {
 			}, {
 				name: 'plus button',
 				handler: () => nodeCreatorFeature.getters.plusButton().click(),
-			}, {
-				name: 'tab key',
-				handler: () => cy.get('body').tab(),
 			},
+			// We can't test this one because it's not possible to trigger tab key in Cypress
+			// only way is to use `realPress` which is hanging the tests in Electron for some reason
+			// {
+			// 	name: 'tab key',
+			// 	handler: () => cy.realPress('Tab'),
+			// },
 		]
 		sourcesWithAppend.forEach((source) => {
 			it(`should append manual trigger when source is ${source.name}`, () => {
