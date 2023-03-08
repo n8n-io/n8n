@@ -256,12 +256,20 @@ export class WorkflowPage extends BasePage {
 		turnOnManualExecutionSaving: () => {
 			this.getters.workflowMenu().click();
 			this.getters.workflowMenuItemSettings().click();
+			cy.get('.el-loading-mask').should('not.be.visible');
 			this.getters
 				.workflowSettingsSaveManualExecutionsSelect()
 				.find('li:contains("Yes")')
 				.click({ force: true });
+
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
 			this.getters.workflowSettingsSaveButton().click();
 			this.getters.successToast().should('exist');
+
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
+			this.getters.workflowSettingsSaveButton().click();
 		},
 	};
 }

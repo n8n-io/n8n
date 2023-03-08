@@ -28,7 +28,6 @@ describe('Canvas Actions', () => {
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should render canvas', () => {
