@@ -3,7 +3,7 @@ import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 import type { QueryMode, QueryValues, QueryWithValues, SortRule, WhereClause } from './interfaces';
 
-import { createConnection, createPool } from '../transport';
+import { createPool } from '../transport';
 
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
@@ -95,14 +95,12 @@ export async function runQueries(
 
 	const credentials = await this.getCredentials('mySql');
 
-	if (mode === 'multiple') {
-		const pool = await createPool(credentials, options);
-		const poolConnection = await pool.getConnection();
+	const pool = await createPool(credentials, options);
+	const connection = await pool.getConnection();
 
+	if (mode === 'multiple') {
 		try {
-			const formatedQueries = queries.map(({ query, values }) =>
-				poolConnection.format(query, values),
-			);
+			const formatedQueries = queries.map(({ query, values }) => connection.format(query, values));
 
 			let singleQuery = '';
 
@@ -135,12 +133,10 @@ export async function runQueries(
 			if (!this.continueOnFail()) throw error;
 			returnData.push({ json: { message: error.message, error: { ...error } } });
 		} finally {
-			poolConnection.release();
+			connection.release();
 			await pool.end();
 		}
 	} else {
-		const connection = await createConnection(credentials, options);
-
 		if (mode === 'independently') {
 			for (const [index, queryWithValues] of queries.entries()) {
 				try {
@@ -162,7 +158,8 @@ export async function runQueries(
 					const error = parseMySqlError.call(this, err, index);
 
 					if (!this.continueOnFail()) {
-						await connection.end();
+						connection.release();
+						await pool.end();
 						throw error;
 					}
 					returnData.push(prepareErrorItem(queries[index], error as Error, index));
@@ -194,7 +191,8 @@ export async function runQueries(
 
 					if (connection) {
 						await connection.rollback();
-						await connection.end();
+						connection.release();
+						await pool.end();
 					}
 
 					if (!this.continueOnFail()) throw error;
@@ -208,7 +206,8 @@ export async function runQueries(
 			await connection.commit();
 		}
 
-		await connection.end();
+		connection.release();
+		await pool.end();
 	}
 
 	return returnData;

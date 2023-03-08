@@ -37,6 +37,7 @@ export async function createConnection(
 
 	return mysql2.createConnection(baseCredentials);
 }
+
 export async function createPool(
 	credentials: ICredentialDataDecryptedObject,
 	options?: IDataObject,
