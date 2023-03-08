@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -10,11 +10,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { flow, omit } from 'lodash';
+import flow from 'lodash.flow';
+import omit from 'lodash.omit';
 
-import {
+import type {
 	AddressFixedCollection,
 	EmailFixedCollection,
 	EmailsFixedCollection,
@@ -60,14 +62,14 @@ export async function copperApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -165,7 +167,7 @@ export async function copperApiRequestAllItems(
 	do {
 		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
 		totalItems = responseData.headers['x-pw-total'];
-		returnData.push(...responseData.body);
+		returnData.push(...(responseData.body as IDataObject[]));
 	} while (totalItems > returnData.length);
 
 	return returnData;

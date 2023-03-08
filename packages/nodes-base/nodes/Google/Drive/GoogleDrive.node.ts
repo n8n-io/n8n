@@ -1,33 +1,20 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
-	ILoadOptionsFunctions,
+	IExecuteFunctions,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
 import type { Readable } from 'stream';
+import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
 
 const UPLOAD_CHUNK_SIZE = 256 * 1024;
-
-interface GoogleDriveFilesItem {
-	id: string;
-	name: string;
-	mimeType: string;
-	webViewLink: string;
-}
-
-interface GoogleDriveDriveItem {
-	id: string;
-	name: string;
-}
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -248,7 +235,7 @@ export class GoogleDrive implements INodeType {
 						name: 'url',
 						type: 'string',
 						placeholder:
-							'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
+							'https://drive.google.com/file/d/1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A/edit',
 						extractValue: {
 							type: 'regex',
 							regex:
@@ -2035,73 +2022,9 @@ export class GoogleDrive implements INodeType {
 
 	methods = {
 		listSearch: {
-			async fileSearch(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const query: string[] = [];
-				if (filter) {
-					query.push(`name contains '${filter.replace("'", "\\'")}'`);
-				}
-				query.push("mimeType != 'application/vnd.google-apps.folder'");
-				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
-					q: query.join(' and '),
-					pageToken: paginationToken,
-					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
-					orderBy: 'name_natural',
-				});
-				return {
-					results: res.files.map((i: GoogleDriveFilesItem) => ({
-						name: i.name,
-						value: i.id,
-						url: i.webViewLink,
-					})),
-					paginationToken: res.nextPageToken,
-				};
-			},
-			async folderSearch(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const query: string[] = [];
-				if (filter) {
-					query.push(`name contains '${filter.replace("'", "\\'")}'`);
-				}
-				query.push("mimeType = 'application/vnd.google-apps.folder'");
-				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
-					q: query.join(' and '),
-					pageToken: paginationToken,
-					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
-					orderBy: 'name_natural',
-				});
-				return {
-					results: res.files.map((i: GoogleDriveFilesItem) => ({
-						name: i.name,
-						value: i.id,
-						url: i.webViewLink,
-					})),
-					paginationToken: res.nextPageToken,
-				};
-			},
-			async driveSearch(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
-					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
-					pageToken: paginationToken,
-				});
-				return {
-					results: res.drives.map((i: GoogleDriveDriveItem) => ({
-						name: i.name,
-						value: i.id,
-					})),
-					paginationToken: res.nextPageToken,
-				};
-			},
+			fileSearch,
+			folderSearch,
+			driveSearch,
 		},
 	};
 
@@ -2145,7 +2068,7 @@ export class GoogleDrive implements INodeType {
 						});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2191,7 +2114,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2252,7 +2175,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2293,7 +2216,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2374,7 +2297,7 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						const mimeType = file.mimeType ?? response.headers['content-type'] ?? undefined;
+						const mimeType = response.headers['content-type'] ?? file.mimeType ?? undefined;
 						const fileName = downloadOptions.fileName ?? file.name ?? undefined;
 
 						const newItem: INodeExecutionData = {
@@ -2396,8 +2319,8 @@ export class GoogleDrive implements INodeType {
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							response.body as unknown as Readable,
-							fileName,
-							mimeType,
+							fileName as string,
+							mimeType as string,
 						);
 					} else if (operation === 'list') {
 						// ----------------------------------
@@ -2488,7 +2411,7 @@ export class GoogleDrive implements INodeType {
 						const version = this.getNode().typeVersion;
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(files),
+							this.helpers.returnJsonArray(files as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -2509,38 +2432,20 @@ export class GoogleDrive implements INodeType {
 						let mimeType = 'text/plain';
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							const binary = item.binary[propertyNameUpload];
-							if (binary === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							if (binary.id) {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							if (binaryData.id) {
 								// Stream data in 256KB chunks, and upload the via the resumable upload api
-								fileContent = this.helpers.getBinaryStream(binary.id, UPLOAD_CHUNK_SIZE);
-								const metadata = await this.helpers.getBinaryMetadata(binary.id);
+								fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+								const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 								contentLength = metadata.fileSize;
 								originalFilename = metadata.fileName;
-								if (metadata.mimeType) mimeType = binary.mimeType;
+								if (metadata.mimeType) mimeType = binaryData.mimeType;
 							} else {
-								fileContent = Buffer.from(binary.data, BINARY_ENCODING);
+								fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 								contentLength = fileContent.length;
-								originalFilename = binary.fileName;
-								mimeType = binary.mimeType;
+								originalFilename = binaryData.fileName;
+								mimeType = binaryData.mimeType;
 							}
 						} else {
 							// Is text file
@@ -2572,7 +2477,7 @@ export class GoogleDrive implements INodeType {
 									json: false,
 								},
 							);
-							uploadId = JSON.parse(response).id;
+							uploadId = JSON.parse(response as string).id;
 						} else {
 							const resumableUpload = await googleApiRequest.call(
 								this,
@@ -2667,7 +2572,7 @@ export class GoogleDrive implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -2712,7 +2617,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -2729,7 +2634,7 @@ export class GoogleDrive implements INodeType {
 						const body = {
 							name,
 							mimeType: 'application/vnd.google-apps.folder',
-							parents: options.parents ?? [],
+							parents: options.parents || [],
 						};
 
 						const qs = {
@@ -2740,7 +2645,7 @@ export class GoogleDrive implements INodeType {
 						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -2805,7 +2710,7 @@ export class GoogleDrive implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response),
+							this.helpers.returnJsonArray(response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

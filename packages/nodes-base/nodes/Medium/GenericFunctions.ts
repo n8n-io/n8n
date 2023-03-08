@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function mediumApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -28,7 +29,7 @@ export async function mediumApiRequest(
 			'Accept-Charset': 'utf-8',
 		},
 		qs: query,
-		uri: uri ?? `https://api.medium.com/v1${endpoint}`,
+		uri: uri || `https://api.medium.com/v1${endpoint}`,
 		body,
 		json: true,
 	};
@@ -44,6 +45,6 @@ export async function mediumApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'mediumOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

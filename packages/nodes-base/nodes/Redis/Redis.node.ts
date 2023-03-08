@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -9,10 +9,10 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 import redis from 'redis';
 
 import util from 'util';
@@ -702,7 +702,7 @@ export class Redis implements INodeType {
 								const keyGet = this.getNodeParameter('key', itemIndex) as string;
 								const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 
-								const value = (await getValue(client, keyGet, keyType)) ?? null;
+								const value = (await getValue(client, keyGet, keyType)) || null;
 
 								const options = this.getNodeParameter('options', itemIndex, {});
 

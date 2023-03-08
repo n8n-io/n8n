@@ -1,9 +1,10 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IDataObject, IPollFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
-import { get } from 'lodash';
-import {
+import get from 'lodash.get';
+import type {
 	ILookupValues,
 	ISheetUpdateData,
 	SheetCellDecoded,
@@ -17,9 +18,12 @@ import { removeEmptyColumns } from './GoogleSheets.utils';
 export class GoogleSheet {
 	id: string;
 
-	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
+	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
-	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
+	constructor(
+		spreadsheetId: string,
+		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
 	}
@@ -252,7 +256,7 @@ export class GoogleSheet {
 		// );
 
 		const lastRowWithData =
-			lastRow ??
+			lastRow ||
 			(((await this.getData(range, 'UNFORMATTED_VALUE')) as string[][]) || []).length + 1;
 
 		const response = await this.updateRows(
@@ -400,10 +404,10 @@ export class GoogleSheet {
 			columnValuesList = sheetData.slice(dataStartRowIndex - 1).map((row) => row[keyIndex]);
 		} else {
 			const decodedRange = this.getDecodedSheetRange(range);
-			const startRowIndex = decodedRange.start?.row ?? dataStartRowIndex;
-			const endRowIndex = decodedRange.end?.row ?? '';
+			const startRowIndex = decodedRange.start?.row || dataStartRowIndex;
+			const endRowIndex = decodedRange.end?.row || '';
 
-			const keyColumn = this.getColumnWithOffset(decodedRange.start?.column ?? 'A', keyIndex);
+			const keyColumn = this.getColumnWithOffset(decodedRange.start?.column || 'A', keyIndex);
 			const keyColumnRange = `${decodedRange.name}!${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 			columnValuesList = await this.getData(keyColumnRange, valueRenderMode);
 		}
@@ -443,9 +447,9 @@ export class GoogleSheet {
 	) {
 		const decodedRange = this.getDecodedSheetRange(range);
 		// prettier-ignore
-		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column ?? ''}${keyRowIndex + 1}:${decodedRange.end?.column ?? ''}${keyRowIndex + 1}`;
+		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
 
-		const sheetDatakeyRow = columnNamesList ?? (await this.getData(keyRowRange, valueRenderMode));
+		const sheetDatakeyRow = columnNamesList || (await this.getData(keyRowRange, valueRenderMode));
 
 		if (sheetDatakeyRow === undefined) {
 			throw new NodeOperationError(
@@ -466,7 +470,7 @@ export class GoogleSheet {
 		}
 
 		const columnValues: Array<string | number> =
-			columnValuesList ??
+			columnValuesList ||
 			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
 
 		const updateData: ISheetUpdateData[] = [];
@@ -524,7 +528,7 @@ export class GoogleSheet {
 				// Property exists so add it to the data to update
 				// Get the column name in which the property data can be found
 				const columnToUpdate = this.getColumnWithOffset(
-					decodedRange.start?.column ?? 'A',
+					decodedRange.start?.column || 'A',
 					columnNames.indexOf(name),
 				);
 
@@ -637,7 +641,7 @@ export class GoogleSheet {
 		const decodedRange = this.getDecodedSheetRange(range);
 
 		const columnNamesRow =
-			columnNamesList ??
+			columnNamesList ||
 			(await this.getData(
 				`${decodedRange.name}!${keyRowIndex}:${keyRowIndex}`,
 				'UNFORMATTED_VALUE',
@@ -701,7 +705,7 @@ export class GoogleSheet {
 	}
 
 	private splitCellRange(cell: string, range: string): SheetCellDecoded {
-		const cellData = cell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) ?? [];
+		const cellData = cell.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 
 		if (cellData === null || cellData.length !== 3) {
 			throw new NodeOperationError(

@@ -1,10 +1,12 @@
 type Range = { from: number; to: number };
 
-export type RawSegment = { text: string; type: string } & Range;
+export type RawSegment = { text: string; token: string } & Range;
 
 export type Segment = Plaintext | Resolvable;
 
 export type Plaintext = { kind: 'plaintext'; plaintext: string } & Range;
+
+export type Html = Plaintext; // for n8n parser, functionally identical to plaintext
 
 export type Resolvable = {
 	kind: 'resolvable';

@@ -1,16 +1,6 @@
+import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
-import {
-	jsPlumbInstance,
-	DragOptions,
-	DropOptions,
-	ElementGroupRef,
-	Endpoint,
-	EndpointOptions,
-	EndpointRectangle,
-	EndpointRectangleOptions,
-	EndpointSpec,
-} from 'jsplumb';
 import {
 	GenericValue,
 	IConnections,
@@ -37,104 +27,52 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IDisplayOptions,
+	IExecutionsSummary,
 	IAbstractEventMessage,
+	FeatureFlags,
+	ExecutionStatus,
+	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
+import { SignInType } from './constants';
+import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
 
-declare module 'jsplumb' {
-	interface PaintStyle {
-		stroke?: string;
-		fill?: string;
-		strokeWidth?: number;
-		outlineStroke?: string;
-		outlineWidth?: number;
-	}
-
-	// Extend jsPlumb Anchor interface
-	interface Anchor {
-		lastReturnValue: number[];
-	}
-
-	interface Connection {
-		__meta?: {
-			sourceNodeName: string;
-			sourceOutputIndex: number;
-			targetNodeName: string;
-			targetOutputIndex: number;
+declare global {
+	interface Window {
+		posthog?: {
+			init(
+				key: string,
+				options?: {
+					api_host?: string;
+					autocapture?: boolean;
+					disable_session_recording?: boolean;
+					debug?: boolean;
+					bootstrap?: {
+						distinctId?: string;
+						isIdentifiedID?: boolean;
+						featureFlags: FeatureFlags;
+					};
+				},
+			): void;
+			isFeatureEnabled?(flagName: string): boolean;
+			getFeatureFlag?(flagName: string): boolean | string;
+			identify?(
+				id: string,
+				userProperties?: Record<string, string | number>,
+				userPropertiesOnce?: Record<string, string>,
+			): void;
+			reset?(resetDeviceId?: boolean): void;
+			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
+			reloadFeatureFlags?(): void;
 		};
-		canvas?: HTMLElement;
-		connector?: {
-			setTargetEndpoint: (endpoint: Endpoint) => void;
-			resetTargetEndpoint: () => void;
-			bounds: {
-				minX: number;
-				maxX: number;
-				minY: number;
-				maxY: number;
-			};
+		analytics?: {
+			track(event: string, proeprties?: ITelemetryTrackProperties): void;
 		};
-
-		// bind(event: string, (connection: Connection): void;): void;
-		bind(event: string, callback: Function): void;
-		removeOverlay(name: string): void;
-		removeOverlays(): void;
-		setParameter(name: string, value: any): void;
-		setPaintStyle(arg0: PaintStyle): void;
-		addOverlay(arg0: any[]): void;
-		setConnector(arg0: any[]): void;
-		getUuids(): [string, string];
-	}
-
-	interface Endpoint {
-		endpoint: any;
-		elementId: string;
-		__meta?: {
-			nodeName: string;
-			nodeId: string;
-			index: number;
-			totalEndpoints: number;
-		};
-		getUuid(): string;
-		getOverlay(name: string): any;
-		repaint(params?: object): void;
-	}
-
-	interface N8nPlusEndpoint extends Endpoint {
-		setSuccessOutput(message: string): void;
-		clearSuccessOutput(): void;
-	}
-
-	interface Overlay {
-		setVisible(visible: boolean): void;
-		setLocation(location: number): void;
-		canvas?: HTMLElement;
-	}
-
-	interface OnConnectionBindInfo {
-		originalSourceEndpoint: Endpoint;
-		originalTargetEndpoint: Endpoint;
-		getParameters(): { index: number };
 	}
 }
-
-// EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
-export type IEndpointOptions = Omit<EndpointOptions, 'endpoint' | 'dragProxy'> & {
-	endpointStyle: EndpointStyle;
-	endpointHoverStyle: EndpointStyle;
-	endpoint?: EndpointSpec | string;
-	dragAllowedWhenFull?: boolean;
-	dropOptions?: DropOptions & {
-		tolerance: string;
-	};
-	dragProxy?:
-		| string
-		| string[]
-		| EndpointSpec
-		| [EndpointRectangle, EndpointRectangleOptions & { strokeWidth: number }];
-};
 
 export type EndpointStyle = {
 	width?: number;
@@ -147,21 +85,6 @@ export type EndpointStyle = {
 	showOutputLabel?: boolean;
 	size?: string;
 	hoverMessage?: string;
-};
-
-export type IDragOptions = DragOptions & {
-	grid: [number, number];
-	filter: string;
-};
-
-export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'> & {
-	clearDragSelection: () => void;
-	addEndpoint(
-		el: ElementGroupRef,
-		params?: IEndpointOptions,
-		referenceParams?: IEndpointOptions,
-	): Endpoint | Endpoint[];
-	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance;
 };
 
 export interface IUpdateInformation {
@@ -214,9 +137,9 @@ export interface IExternalHooks {
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
+	getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
-		filter: object,
+		filter: IDataObject,
 		limit: number,
 		lastId?: string,
 		firstId?: string,
@@ -236,7 +159,12 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
+	getBinaryUrl(
+		dataPath: string,
+		mode: 'view' | 'download',
+		fileName?: string,
+		mimeType?: string,
+	): string;
 	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
@@ -460,19 +388,7 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
-}
-
-export interface IExecutionsSummary {
-	id: string;
-	mode: WorkflowExecuteMode;
-	finished?: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
@@ -489,7 +405,13 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -538,6 +460,9 @@ export interface IPushDataExecutionStarted {
 	retryOf?: string;
 	workflowId: string;
 	workflowName?: string;
+}
+export interface IPushDataExecutionRecovered {
+	executionId: string;
 }
 
 export interface IPushDataExecutionFinished {
@@ -619,9 +544,28 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSm?: string[] | null;
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
+	email?: string | null;
 };
 
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+export type IPersonalizationSurveyAnswersV4 = {
+	version: 'v4';
+	automationGoalDevops?: string[] | null;
+	automationGoalDevopsOther?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+	email?: string | null;
+	role?: string | null;
+	roleOther?: string | null;
+	reportedSource?: string | null;
+	reportedSourceOther?: string | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
@@ -642,6 +586,11 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
+	signInType?: SignInType;
+}
+
+export interface CurrentUserResponse extends IUserResponse {
+	featureFlags?: FeatureFlags;
 }
 
 export interface IUser extends IUserResponse {
@@ -650,7 +599,7 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: Date;
+	createdAt?: string;
 }
 
 export interface IVersionNotificationSettings {
@@ -797,7 +746,16 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
+	};
 	executionMode: string;
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	isNpmAvailable: boolean;
 	publicApi: {
@@ -806,6 +764,16 @@ export interface IN8nUISettings {
 		path: string;
 		swaggerUi: {
 			enabled: boolean;
+		};
+	};
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
 		};
 	};
 	onboardingCallPromptEnabled: boolean;
@@ -846,13 +814,15 @@ export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
 	key?: string;
+	iconType: string;
 	icon?: string;
 	defaults?: INodeParameters;
-	iconData?: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
+}
+export interface ViewItemProps {
+	withTopBorder: boolean;
+	title: string;
+	description: string;
+	icon: string;
 }
 
 export interface INodeItemProps {
@@ -867,10 +837,11 @@ export interface IActionItemProps {
 
 export interface ICategoryItemProps {
 	expanded: boolean;
+	category: string;
+	name: string;
 }
 
 export interface CreateElementBase {
-	category: string;
 	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
@@ -878,6 +849,7 @@ export interface CreateElementBase {
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
+	category?: string[];
 	properties: INodeItemProps;
 }
 
@@ -890,9 +862,14 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
 	properties: ISubcategoryItemProps;
 }
+export interface ViewCreateElement extends CreateElementBase {
+	type: 'view';
+	properties: ViewItemProps;
+}
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
+	category: string;
 	properties: IActionItemProps;
 }
 
@@ -900,6 +877,7 @@ export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| ViewCreateElement
 	| ActionCreateElement;
 
 export interface ICategoriesWithNodes {
@@ -962,6 +940,7 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
+	pristine: boolean;
 }
 
 export interface IUsedCredential {
@@ -1081,16 +1060,28 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export interface IModalState {
+export type Modals =
+	| {
+			[key: string]: ModalState;
+	  }
+	| {
+			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	  };
+
+export type ModalState = {
 	open: boolean;
 	mode?: string | null;
 	data?: Record<string, unknown>;
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
-}
+};
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type NewCredentialsModal = ModalState & {
+	showAuthSelector?: boolean;
+};
+
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1134,20 +1125,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
-}
-
-export interface IUiState {
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
-	isPageLoading: boolean;
-	currentView: string;
-	fakeDoorFeatures: IFakeDoor[];
-	nodeViewInitialized: boolean;
-	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
@@ -1155,9 +1133,7 @@ export interface UIState {
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
+	modals: Modals;
 	isPageLoading: boolean;
 	currentView: string;
 	mainPanelPosition: number;
@@ -1201,13 +1177,13 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
+export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showTabs: boolean;
 	showScrim: boolean;
-	selectedType: INodeFilterType;
+	rootViewHistory: INodeFilterType[];
+	selectedView: INodeFilterType;
 }
 
 export interface ISettingsState {
@@ -1222,6 +1198,14 @@ export interface ISettingsState {
 		swaggerUi: {
 			enabled: boolean;
 		};
+	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+	saml: {
+		loginLabel: string;
+		loginEnabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1384,6 +1368,50 @@ export type SchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
+
+export interface ILdapSyncData {
+	id: number;
+	startedAt: string;
+	endedAt: string;
+	created: number;
+	updated: number;
+	disabled: number;
+	scanned: number;
+	status: string;
+	error: string;
+	runMode: string;
+}
+
+export interface ILdapSyncTable {
+	status: string;
+	endedAt: string;
+	runTime: string;
+	runMode: string;
+	details: string;
+}
+
+export interface ILdapConfig {
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: string;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
+}
+
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {
@@ -1402,4 +1430,10 @@ export type UsageState = {
 		};
 		managementToken?: string;
 	};
+};
+
+export type NodeAuthenticationOption = {
+	name: string;
+	value: string;
+	displayOptions?: IDisplayOptions;
 };

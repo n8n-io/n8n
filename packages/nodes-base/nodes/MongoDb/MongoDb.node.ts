@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,8 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { nodeDescription } from './MongoDbDescription';
 
@@ -21,15 +21,15 @@ import {
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
 
-import {
+import type {
 	FindOneAndReplaceOptions,
 	FindOneAndUpdateOptions,
-	MongoClient,
-	ObjectId,
 	UpdateOptions,
+	Sort,
 } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
-import { IMongoParametricCredentials } from './mongoDb.types';
+import type { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
@@ -102,12 +102,12 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id as string);
 				}
 
 				const query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.aggregate(queryParameter);
+					.aggregate(queryParameter as Document[]);
 
 				responseData = await query.toArray();
 			} catch (error) {
@@ -125,7 +125,7 @@ export class MongoDb implements INodeType {
 			try {
 				const { deletedCount } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
+					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string) as Document);
 
 				responseData = [{ deletedCount }];
 			} catch (error) {
@@ -144,17 +144,17 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id as string);
 				}
 
 				let query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(queryParameter);
+					.find(queryParameter as Document);
 
 				const options = this.getNodeParameter('options', 0);
 				const limit = options.limit as number;
 				const skip = options.skip as number;
-				const sort = options.sort && JSON.parse(options.sort as string);
+				const sort: Sort = options.sort && JSON.parse(options.sort as string);
 				if (skip > 0) {
 					query = query.skip(skip);
 				}

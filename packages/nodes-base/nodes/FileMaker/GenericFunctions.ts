@@ -1,8 +1,9 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 interface ScriptsOptions {
 	script?: any;
@@ -70,7 +71,7 @@ export async function getToken(
 
 		return response.response.token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -114,11 +115,11 @@ export async function layoutsApiRequest(
 
 	try {
 		const responseData = await this.helpers.request(options);
-		const items = parseLayouts(responseData.response.layouts);
+		const items = parseLayouts(responseData.response.layouts as LayoutObject[]);
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -222,7 +223,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 
 	try {
 		const responseData = await this.helpers.request(options);
-		const items = parseScriptsList(responseData.response.scripts);
+		const items = parseScriptsList(responseData.response.scripts as ScriptObject[]);
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
 	} catch (error) {

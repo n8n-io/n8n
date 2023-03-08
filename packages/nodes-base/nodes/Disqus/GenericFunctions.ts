@@ -1,11 +1,12 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function disqusApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -38,13 +39,13 @@ export async function disqusApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -68,7 +69,7 @@ export async function disqusApiRequestAllItems(
 		do {
 			responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
 			qs.cursor = responseData.cursor.id;
-			returnData.push.apply(returnData, responseData.response);
+			returnData.push.apply(returnData, responseData.response as IDataObject[]);
 		} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
 		return returnData;
 	} catch (error) {

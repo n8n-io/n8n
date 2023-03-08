@@ -23,8 +23,8 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-
-import { WorkflowsPage, SigninPage, SignupPage } from '../pages';
+import 'cypress-real-events';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
@@ -40,10 +40,7 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	WorkflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-	WorkflowPage.getters.workflowNameInput().should('be.disabled');
-	WorkflowPage.getters.workflowNameInput().parent().click();
-	WorkflowPage.getters.workflowNameInput().should('be.enabled');
-	WorkflowPage.getters.workflowNameInput().clear().type(workflowName).type('{enter}');
+	WorkflowPage.actions.setWorkflowName(workflowName);
 
 	WorkflowPage.getters.saveButton().should('contain', 'Saved');
 });
@@ -57,13 +54,13 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add('waitForLoad', () => {
-	cy.getByTestId('node-view-loader').should('not.exist', { timeout: 10000 });
-	cy.get('.el-loading-mask').should('not.exist', { timeout: 10000 });
+	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
+	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	const signinPage = new SigninPage();
-	const workflowsPage = new WorkflowsPage();
+	const workflowPage = new WorkflowPage();
 
 	cy.session(
 		[email, password],
@@ -77,7 +74,10 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			});
 
 			// we should be redirected to /workflows
-			cy.url().should('include', workflowsPage.url);
+			cy.visit(workflowPage.url);
+			cy.url().should('include', workflowPage.url);
+			cy.intercept('GET', '/rest/workflows/new').as('loading');
+			cy.wait('@loading');
 		},
 		{
 			validate() {
@@ -87,6 +87,28 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 	);
 });
 
+Cypress.Commands.add('signout', () => {
+	cy.visit('/signout');
+	cy.waitForLoad();
+	cy.url().should('include', '/signin');
+	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
+});
+
+Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
+	const signupPage = new SignupPage();
+
+	cy.visit(url);
+
+	signupPage.getters.form().within(() => {
+		cy.url().then((url) => {
+			signupPage.getters.firstName().type(firstName);
+			signupPage.getters.lastName().type(lastName);
+			signupPage.getters.password().type(password);
+			signupPage.getters.submit().click();
+		});
+	});
+});
+
 Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	const signupPage = new SignupPage();
 
@@ -94,7 +116,7 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
-			if (url.endsWith(signupPage.url)) {
+			if (url.includes(signupPage.url)) {
 				signupPage.getters.email().type(email);
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
@@ -107,9 +129,39 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	});
 });
 
+Cypress.Commands.add('interceptREST', (method, url) => {
+	cy.intercept(method, `http://localhost:5678/rest${url}`);
+});
+
+Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
+	const settingsUsersPage = new SettingsUsersPage();
+
+	cy.signin(instanceOwner);
+
+	users.forEach((user) => {
+		cy.signin(instanceOwner);
+		cy.visit(settingsUsersPage.url);
+
+		cy.interceptREST('POST', '/users').as('inviteUser');
+
+		settingsUsersPage.getters.inviteButton().click();
+		settingsUsersPage.getters.inviteUsersModal().within((modal) => {
+			settingsUsersPage.getters.inviteUsersModalEmailsInput().type(user.email).type('{enter}');
+		});
+
+		cy.wait('@inviteUser').then((interception) => {
+			const inviteLink = interception.response!.body.data[0].user.inviteAcceptUrl;
+			cy.log(JSON.stringify(interception.response!.body.data[0].user));
+			cy.log(inviteLink);
+			cy.signout();
+			cy.signup({ ...user, url: inviteLink });
+		});
+	});
+});
+
 Cypress.Commands.add('skipSetup', () => {
 	const signupPage = new SignupPage();
-	const workflowsPage = new WorkflowsPage();
+	const workflowPage = new WorkflowPage();
 	const Confirmation = new MessageBox();
 
 	cy.visit(signupPage.url);
@@ -122,8 +174,10 @@ Cypress.Commands.add('skipSetup', () => {
 				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
 				Confirmation.actions.confirm();
 
-				// we should be redirected to /workflows
-				cy.url().should('include', workflowsPage.url);
+				// we should be redirected to empty canvas
+				cy.intercept('GET', '/rest/workflows/new').as('loading');
+				cy.url().should('include', workflowPage.url);
+				cy.wait('@loading');
 			} else {
 				cy.log('User already signed up');
 			}
@@ -157,9 +211,8 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 		);
 	}
 });
-Cypress.Commands.add('readClipboard', () =>
-	cy.window().its('navigator.clipboard').invoke('readText'),
-);
+
+Cypress.Commands.add('readClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()))
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
@@ -173,7 +226,8 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
+Cypress.Commands.add('drag', (selector, pos) => {
+	const [xDiff, yDiff] = pos;
 	const element = cy.get(selector);
 	element.should('exist');
 
@@ -186,5 +240,33 @@ Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
 		pageY: originalLocation.top + yDiff,
 		force: true,
 	});
-	element.trigger('mouseup');
+	element.trigger('mouseup', { force: true });
+});
+
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+	if (draggableSelector) {
+		cy.get(draggableSelector).should('exist');
+	}
+	cy.get(droppableSelector).should('exist');
+
+	cy.get(droppableSelector)
+		.first()
+		.then(([$el]) => {
+			const coords = $el.getBoundingClientRect();
+
+			const pageX = coords.left + coords.width / 2;
+			const pageY = coords.top + coords.height / 2;
+
+			if (draggableSelector) {
+				// We can't use realMouseDown here because it hangs headless run
+				cy.get(draggableSelector).trigger('mousedown');
+			}
+			// We don't chain these commands to make sure cy.get is re-trying correctly
+			cy.get(droppableSelector).realMouseMove(pageX, pageY);
+			cy.get(droppableSelector).realHover();
+			cy.get(droppableSelector).realMouseUp();
+			if (draggableSelector) {
+				cy.get(draggableSelector).realMouseUp();
+			}
+		});
 });

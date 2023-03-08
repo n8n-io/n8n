@@ -1,5 +1,7 @@
-import { Expression, INodeExecutionData, Workflow } from '../../src';
+import { Expression, IDataObject, Workflow } from '../../src';
 import * as Helpers from '../Helpers';
+
+export const TEST_TIMEZONE = 'America/New_York';
 
 export const nodeTypes = Helpers.NodeTypes();
 export const workflow = new Workflow({
@@ -16,19 +18,22 @@ export const workflow = new Workflow({
 	connections: {},
 	active: false,
 	nodeTypes,
+	settings: {
+		timezone: TEST_TIMEZONE,
+	}
 });
 export const expression = new Expression(workflow);
 
-export const evaluate = (value: string, values?: INodeExecutionData[]) =>
+export const evaluate = (value: string, values?: IDataObject[]) =>
 	expression.getParameterValue(
 		value,
 		null,
 		0,
 		0,
 		'node',
-		values ?? [],
+		values?.map((v) => ({ json: v })) ?? [],
 		'manual',
-		'America/New_York',
+		TEST_TIMEZONE,
 		{},
 	);
 

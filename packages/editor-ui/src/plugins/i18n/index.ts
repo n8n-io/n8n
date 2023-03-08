@@ -330,10 +330,11 @@ export class I18nClass {
 		$binary: this.baseText('codeNodeEditor.completer.binary'),
 		$execution: this.baseText('codeNodeEditor.completer.$execution'),
 		$input: this.baseText('codeNodeEditor.completer.$input'),
-		'$jmespath()': this.baseText('codeNodeEditor.completer.$jmespath'),
+		$jmespath: this.baseText('codeNodeEditor.completer.$jmespath'),
 		$json: this.baseText('codeNodeEditor.completer.json'),
 		$itemIndex: this.baseText('codeNodeEditor.completer.$itemIndex'),
 		$now: this.baseText('codeNodeEditor.completer.$now'),
+		$parameter: this.baseText('codeNodeEditor.completer.$parameter'),
 		$prevNode: this.baseText('codeNodeEditor.completer.$prevNode'),
 		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
 		$today: this.baseText('codeNodeEditor.completer.$today'),
@@ -365,6 +366,13 @@ export class I18nClass {
 		'$workflow.active': this.baseText('codeNodeEditor.completer.$workflow.active'),
 		'$workflow.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
 		'$workflow.name': this.baseText('codeNodeEditor.completer.$workflow.name'),
+	};
+
+	globalObject: Record<string, string | undefined> = {
+		assign: this.baseText('codeNodeEditor.completer.globalObject.assign'),
+		entries: this.baseText('codeNodeEditor.completer.globalObject.entries'),
+		keys: this.baseText('codeNodeEditor.completer.globalObject.keys'),
+		values: this.baseText('codeNodeEditor.completer.globalObject.values'),
 	};
 
 	luxonInstance: Record<string, string | undefined> = {
@@ -442,7 +450,7 @@ export class I18nClass {
 		toJSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJSON'),
 		toBSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toBSON'),
 		toObject: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toObject'),
-		toJsDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
+		toJSDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
 		diff: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diff'),
 		diffNow: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diffNow'),
 		until: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.until'),
@@ -454,6 +462,10 @@ export class I18nClass {
 		),
 		min: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.min'),
 		max: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.max'),
+		reconfigure: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.reconfigure'),
+		resolvedLocaleOptions: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.resolvedLocaleOptions',
+		),
 	};
 
 	luxonStatic: Record<string, string | undefined> = {
@@ -471,6 +483,25 @@ export class I18nClass {
 		fromSQL: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSQL'),
 		invalid: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid'),
 		isDateTime: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime'),
+		expandFormat: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.expandFormat',
+		),
+		fromFormatExplain: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormatExplain',
+		),
+		fromString: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromString'),
+		fromStringExplain: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromStringExplain',
+		),
+		max: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.max'),
+		min: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.min'),
+		parseFormatForOpts: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.parseFormatForOpts',
+		),
+	};
+
+	autocompleteUIValues: Record<string, string | undefined> = {
+		docLinkLabel: this.baseText('expressionEdit.learnMore'),
 	};
 }
 

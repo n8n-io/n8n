@@ -70,15 +70,16 @@
 import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { convertPath, executionDataToJson, isString, shorten } from '@/utils';
+import { executionDataToJson, isString, shorten } from '@/utils';
 import { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -112,9 +113,6 @@ export default mixins(externalHooks).extend({
 		distanceFromActive: {
 			type: Number,
 		},
-		showMappingHint: {
-			type: Boolean,
-		},
 		runIndex: {
 			type: Number,
 		},
@@ -125,39 +123,14 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			selectedJsonPath: null as null | string,
-			mappingHintVisible: false,
-			showHintWithDelay: false,
 			draggingPath: null as null | string,
 			displayMode: 'json',
 		};
 	},
-	mounted() {
-		if (this.showMappingHint) {
-			this.mappingHintVisible = true;
-
-			setTimeout(() => {
-				this.mappingHintVisible = false;
-			}, 6000);
-		}
-
-		if (this.showMappingHint && this.showHint) {
-			setTimeout(() => {
-				this.showHintWithDelay = this.showHint;
-				this.$telemetry.track('User viewed JSON mapping tooltip', { type: 'param focus' });
-			}, 500);
-		}
-	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
-		},
-		showHint(): boolean {
-			return (
-				!this.draggingPath &&
-				((this.showMappingHint && this.mappingHintVisible) ||
-					window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true')
-			);
 		},
 	},
 	methods: {
@@ -169,11 +142,13 @@ export default mixins(externalHooks).extend({
 			return shorten(el.dataset.name || '', 16, 2);
 		},
 		getJsonParameterPath(path: string): string {
-			const convertedPath = convertPath(path);
-			return `{{ ${convertedPath.replace(
-				/^(\["?\d"?])/,
-				this.distanceFromActive === 1 ? '$json' : `$node["${this.node!.name}"].json`,
-			)} }}`;
+			const subPath = path.replace(/^(\["?\d"?])/, ''); // remove item position
+
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: subPath,
+			});
 		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.path) {

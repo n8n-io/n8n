@@ -1,19 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment';
 
@@ -36,7 +36,7 @@ export async function hubspotApiRequest(
 		method,
 		qs: query,
 		headers: {},
-		uri: uri ?? `https://api.hubapi.com${endpoint}`,
+		uri: uri || `https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
 		useQuerystring: true,
@@ -85,7 +85,7 @@ export async function hubspotApiRequestAllItems(
 
 	let responseData;
 
-	query.limit = query.limit ?? 250;
+	query.limit = query.limit || 250;
 	query.count = 100;
 	body.limit = body.limit || 100;
 
@@ -97,7 +97,7 @@ export async function hubspotApiRequestAllItems(
 		if (responseData.paging) {
 			body.after = responseData.paging.next.after;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
 		if (query.limit && query.limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;

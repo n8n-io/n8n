@@ -1,15 +1,16 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { JsonObject, IDataObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IRelation } from './Interfaces';
+import type { IRelation } from './Interfaces';
 
 export async function orbitApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -30,7 +31,7 @@ export async function orbitApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri ?? `https://app.orbit.love/api/v1${resource}`,
+			uri: uri || `https://app.orbit.love/api/v1${resource}`,
 			json: true,
 		};
 
@@ -38,7 +39,7 @@ export async function orbitApiRequest(
 
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -99,14 +100,14 @@ export async function orbitApiRequestAllItems(
 
 	do {
 		responseData = await orbitApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 
 		if (query.resolveIdentities === true) {
-			resolveIdentities(responseData);
+			resolveIdentities(responseData as IRelation);
 		}
 
 		if (query.resolveMember === true) {
-			resolveMember(responseData);
+			resolveMember(responseData as IRelation);
 		}
 
 		query.page++;

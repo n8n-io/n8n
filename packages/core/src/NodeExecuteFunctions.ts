@@ -12,7 +12,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
-import {
+import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -39,22 +39,14 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	LoggerProxy as Logger,
 	IExecuteData,
-	OAuth2GrantType,
 	IGetNodeParameterOptions,
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
-	deepCopy,
-	fileTypeFromMimeType,
 	ICredentialTestFunctions,
 	BinaryHelperFunctions,
 	RequestHelperFunctions,
@@ -69,22 +61,35 @@ import {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeHelpers,
+	NodeOperationError,
+	WorkflowDataProxy,
+	LoggerProxy as Logger,
+	OAuth2GrantType,
+	deepCopy,
+	fileTypeFromMimeType,
+	ExpressionError,
+} from 'n8n-workflow';
 
 import { Agent } from 'https';
 import { stringify } from 'qs';
-import clientOAuth1, { Token } from 'oauth-1.0a';
+import type { Token } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
-import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
-import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
+import type { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import requestPromise from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
-import { IncomingHttpHeaders } from 'http';
-import axios, {
+import type { IncomingHttpHeaders } from 'http';
+import type {
 	AxiosError,
 	AxiosPromise,
 	AxiosProxyConfig,
@@ -92,6 +97,7 @@ import axios, {
 	AxiosResponse,
 	Method,
 } from 'axios';
+import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import type { Readable } from 'stream';
 import { access as fsAccess } from 'fs/promises';
@@ -143,7 +149,6 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
 		return undefined;
@@ -838,6 +843,30 @@ export function getBinaryStream(binaryDataId: string, chunkSize?: number): Reada
 	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
 }
 
+export function assertBinaryData(
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): IBinaryData {
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(node, 'No binary data exists on item!', {
+			itemIndex,
+		});
+	}
+
+	const binaryPropertyData = binaryKeyData[propertyName];
+	if (binaryPropertyData === undefined) {
+		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+			itemIndex,
+		});
+	}
+
+	return binaryPropertyData;
+}
+
 /**
  * Returns binary data buffer for given item index and property name.
  */
@@ -1023,7 +1052,10 @@ export async function requestOAuth2(
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
 	// if it's the first time using the credentials, get the access token and save it into the DB.
-	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
+	if (
+		credentials.grantType === OAuth2GrantType.clientCredentials &&
+		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+	) {
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
 
 		// Find the credentials
@@ -1801,12 +1833,15 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
-
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+			returnData = [{ name: undefined, value: undefined }];
+		} else {
+			if (e.context) e.context.parameter = parameterName;
+			e.cause = value;
+			throw e;
+		}
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages
@@ -2280,6 +2315,9 @@ export function getExecuteFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
+				if (additionalData.setExecutionStatus) {
+					additionalData.setExecutionStatus('waiting');
+				}
 			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
@@ -2312,8 +2350,11 @@ export function getExecuteFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				assertBinaryData: (itemIndex, propertyName) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				getBinaryDataBuffer: async (itemIndex, propertyName) =>
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
@@ -2450,6 +2491,8 @@ export function getExecuteSingleFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
+				assertBinaryData: (propertyName, inputIndex = 0) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},

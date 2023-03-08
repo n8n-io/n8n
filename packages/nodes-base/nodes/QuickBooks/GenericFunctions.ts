@@ -1,22 +1,24 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
+import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
 import { capitalCase } from 'change-case';
 
-import { omit, pickBy } from 'lodash';
+import omit from 'lodash.omit';
+import pickBy from 'lodash.pickby';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
+import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -86,7 +88,7 @@ export async function quickBooksApiRequest(
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -131,9 +133,9 @@ export async function quickBooksApiRequestAllItems(
 		try {
 			const nonResource = originalQuery.split(' ')?.pop();
 			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
-				returnData.push(...responseData.QueryResponse[nonResource]);
+				returnData.push(...(responseData.QueryResponse[nonResource] as IDataObject[]));
 			} else {
-				returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
+				returnData.push(...(responseData.QueryResponse[capitalCase(resource)] as IDataObject[]));
 			}
 		} catch (error) {
 			return [];
@@ -234,7 +236,7 @@ export async function handleBinaryData(
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
 	items[i].binary = items[i].binary ?? {};
-	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
 	items[i].binary![binaryProperty].fileName = fileName;
 	items[i].binary![binaryProperty].fileExtension = 'pdf';
 

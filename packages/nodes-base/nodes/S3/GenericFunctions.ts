@@ -1,19 +1,21 @@
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
@@ -57,8 +59,8 @@ export async function s3ApiRequest(
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
-		headers: headers ?? {},
-		region: region ?? credentials.region,
+		headers: headers || {},
+		region: region || credentials.region,
 		host: endpoint.host,
 		method,
 		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
@@ -90,7 +92,7 @@ export async function s3ApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -117,7 +119,7 @@ export async function s3ApiRequestREST(
 		region,
 	);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (error) {
 		return response;
 	}
@@ -147,7 +149,7 @@ export async function s3ApiRequestSOAP(
 	);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseString(response as string, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
@@ -197,9 +199,9 @@ export async function s3ApiRequestSOAPAllItems(
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName));
+				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 			} else {
-				returnData.push(get(responseData, propertyName));
+				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
 		if (query.limit && query.limit <= returnData.length) {

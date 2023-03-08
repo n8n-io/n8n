@@ -1,20 +1,26 @@
-import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME, META_KEY, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import {
+	CODE_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	META_KEY,
+	SCHEDULE_TRIGGER_NODE_NAME,
+} from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
-const TEST_WF_TAGS = ['Tag 1', 'Tag 2', 'Tag 3'];
 const IMPORT_WORKFLOW_URL = 'https://www.jsonkeeper.com/b/FNB0#.json';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
-const DUPLICATE_WORKFLOW_TAG = 'Duplicate'
+const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should be able to save on button click', () => {
@@ -61,40 +67,6 @@ describe('Workflow Actions', () => {
 			.should('eq', NEW_WORKFLOW_NAME);
 	});
 
-	it('should add tags', () => {
-		WorkflowPage.getters.newTagLink().click();
-		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.isWorkflowSaved();
-		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length);
-	});
-
-	it('should add more tags', () => {
-		WorkflowPage.getters.newTagLink().click();
-		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.isWorkflowSaved();
-		WorkflowPage.getters.firstWorkflowTagElement().click();
-		WorkflowPage.actions.addTags(['Another one']);
-		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length + 1);
-	});
-
-	it('should remove tags by clicking X in tag', () => {
-		WorkflowPage.getters.newTagLink().click();
-		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.firstWorkflowTagElement().click();
-		WorkflowPage.getters.workflowTagsContainer().find('.el-tag__close').first().click();
-		cy.get('body').type('{enter}');
-		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 1);
-	});
-
-	it('should remove tags from dropdown', () => {
-		WorkflowPage.getters.newTagLink().click();
-		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.firstWorkflowTagElement().click();
-		WorkflowPage.getters.workflowTagsDropdown().find('li.selected').first().click();
-		cy.get('body').type('{enter}');
-		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 1);
-	});
-
 	it('should copy nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -139,6 +111,9 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should update workflow settings', () => {
+		cy.resetAll();
+		cy.skipSetup();
+		WorkflowPage.actions.visit();
 		// Open settings dialog
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.getters.workflowMenu().should('be.visible');
@@ -201,8 +176,7 @@ describe('Workflow Actions', () => {
 	it('should not be able to delete unsaved workflow', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
-		WorkflowPage.getters.workflowMenuItemDelete().closest('li')
-			.should('have.class', 'is-disabled');
+		WorkflowPage.getters.workflowMenuItemDelete().closest('li').should('have.class', 'is-disabled');
 	});
 
 	it('should delete workflow', () => {
@@ -218,9 +192,9 @@ describe('Workflow Actions', () => {
 
 	it('should duplicate workflow', () => {
 		// Stub window.open so new tab is not getting opened
-		cy.window().then(win => {
-			cy.stub(win, 'open').as('open')
-		})
+		cy.window().then((win) => {
+			cy.stub(win, 'open').as('open');
+		});
 
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
@@ -230,13 +204,23 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.duplicateWorkflowModal().should('be.visible');
 		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().should('be.visible');
 		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().type('{selectall}');
-		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().type(DUPLICATE_WORKFLOW_NAME);
-		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type(DUPLICATE_WORKFLOW_TAG);
+		WorkflowPage.getters
+			.duplicateWorkflowModal()
+			.find('input')
+			.first()
+			.type(DUPLICATE_WORKFLOW_NAME);
+		WorkflowPage.getters
+			.duplicateWorkflowModal()
+			.find('.el-select__tags input')
+			.type(DUPLICATE_WORKFLOW_TAG);
 		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
 		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
-		WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').should('be.visible');
+		WorkflowPage.getters
+			.duplicateWorkflowModal()
+			.find('button')
+			.contains('Duplicate')
+			.should('be.visible');
 		WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').click();
 		WorkflowPage.getters.errorToast().should('not.exist');
 	});
-
 });

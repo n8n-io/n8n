@@ -1,18 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { simpleParser } from 'mailparser';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -20,7 +20,7 @@ import jwt from 'jsonwebtoken';
 
 import { DateTime } from 'luxon';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 export interface IEmail {
 	from?: string;
@@ -116,7 +116,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://www.googleapis.com${endpoint}`,
+		uri: uri || `https://www.googleapis.com${endpoint}`,
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
@@ -162,7 +162,7 @@ export async function googleApiRequest(
 						resource.charAt(0).toUpperCase() + resource.slice(1)
 					} IDs should look something like this: 182b676d244938bd`,
 				};
-				throw new NodeApiError(this.getNode(), error, errorOptions);
+				throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 			}
 		}
 
@@ -175,7 +175,7 @@ export async function googleApiRequest(
 				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
 				description: '',
 			};
-			throw new NodeApiError(this.getNode(), error, errorOptions);
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 
 		if (error.httpCode === '409') {
@@ -185,7 +185,7 @@ export async function googleApiRequest(
 					message: 'Label name exists already',
 					description: '',
 				};
-				throw new NodeApiError(this.getNode(), error, errorOptions);
+				throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 			}
 		}
 
@@ -194,7 +194,7 @@ export async function googleApiRequest(
 				message: error?.body?.error_description || 'Authorization error',
 				description: (error as Error).message,
 			};
-			throw new NodeApiError(this.getNode(), error, errorOptions);
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 
 		if (
@@ -205,10 +205,10 @@ export async function googleApiRequest(
 				message: error.description,
 				description: '',
 			};
-			throw new NodeApiError(this.getNode(), error, errorOptions);
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 
-		throw new NodeApiError(this.getNode(), error, {
+		throw new NodeApiError(this.getNode(), error as JsonObject, {
 			message: error.message,
 			description: error.description,
 		});
@@ -221,7 +221,7 @@ export async function parseRawEmail(
 	messageData: any,
 	dataPropertyNameDownload: string,
 ): Promise<INodeExecutionData> {
-	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
+	const messageEncoded = Buffer.from(messageData.raw as string, 'base64').toString('utf8');
 	const responseData = await simpleParser(messageEncoded);
 
 	const headers: IDataObject = {};
@@ -334,9 +334,9 @@ export async function googleApiRequestAllItems(
 	query.maxResults = 100;
 
 	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+		responseData = await googleApiRequest.call(this, method, endpoint, body as IDataObject, query);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
@@ -508,18 +508,10 @@ export async function prepareEmailAttachments(
 	if (attachments && !isEmpty(attachments)) {
 		for (const { property } of attachments) {
 			for (const name of (property as string).split(',')) {
-				if (!items[itemIndex].binary || items[itemIndex].binary![name] === undefined) {
-					const description = `This node has no input field called '${name}' `;
-					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
-						description,
-						itemIndex,
-					});
-				}
-
-				const binaryData = items[itemIndex].binary![name];
+				const binaryData = this.helpers.assertBinaryData(itemIndex, name);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
 
-				if (!items[itemIndex].binary![name] || !Buffer.isBuffer(binaryDataBuffer)) {
+				if (!Buffer.isBuffer(binaryDataBuffer)) {
 					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
 					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,
@@ -528,7 +520,7 @@ export async function prepareEmailAttachments(
 				}
 
 				attachmentsList.push({
-					name: binaryData.fileName ?? 'unknown',
+					name: binaryData.fileName || 'unknown',
 					content: binaryDataBuffer,
 					type: binaryData.mimeType,
 				});
@@ -622,7 +614,7 @@ export async function replayToEmail(
 		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
 
 	const prepareEmailString = (email: string) => {
-		if (email.includes(emailAddress)) return;
+		if (email.includes(emailAddress as string)) return;
 		if (email.includes('<') && email.includes('>')) {
 			to += `${email}, `;
 		} else {

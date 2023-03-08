@@ -1,6 +1,6 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Twake
@@ -19,7 +19,7 @@ export async function twakeApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `https://plugins.twake.app/plugins/n8n${resource}`,
+		uri: uri || `https://plugins.twake.app/plugins/n8n${resource}`,
 		json: true,
 	};
 

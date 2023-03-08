@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { acuitySchedulingApiRequest } from './GenericFunctions';
 
@@ -163,7 +168,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 		if (!resolveData) {
 			// Return the data as it got received
 			return {
-				workflowData: [this.helpers.returnJsonArray(req.body)],
+				workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 			};
 		}
 
@@ -174,7 +179,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 		const responseData = await acuitySchedulingApiRequest.call(this, 'GET', endpoint, {});
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(responseData)],
+			workflowData: [this.helpers.returnJsonArray(responseData as IDataObject)],
 		};
 	}
 }

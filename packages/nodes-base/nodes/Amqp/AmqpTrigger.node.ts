@@ -1,15 +1,9 @@
-import { ContainerOptions, create_container, EventContext, Message, ReceiverOptions } from 'rhea';
+import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { create_container } from 'rhea';
 
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	deepCopy,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	jsonParse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -174,23 +168,23 @@ export class AmqpTrigger implements INodeType {
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
 				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data);
+				data.body = String.fromCharCode.apply(null, cont.data as number[]);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
 				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data);
+				data.body = String.fromCharCode.apply(null, cont.data as number[]);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
 				const content = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, content.data);
+				data.body = String.fromCharCode.apply(null, content.data as number[]);
 			}
 
 			if (options.jsonParseBody === true) {
-				data.body = jsonParse(data.body);
+				data.body = jsonParse(data.body as string);
 			}
 			if (options.onlyBody === true) {
 				data = data.body;

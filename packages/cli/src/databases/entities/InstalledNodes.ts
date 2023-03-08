@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
-import type { InstalledPackages } from './InstalledPackages';
+import { InstalledPackages } from './InstalledPackages';
 
 @Entity()
 export class InstalledNodes {

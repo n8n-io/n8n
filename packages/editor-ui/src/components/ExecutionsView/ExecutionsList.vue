@@ -24,21 +24,17 @@
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import {
+	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRMED,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { IExecutionsListResponse, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import {
-	IExecutionsListResponse,
+	ExecutionStatus,
 	IExecutionsSummary,
-	INodeUi,
-	ITag,
-	IWorkflowDb,
-} from '@/Interface';
-import {
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -52,9 +48,9 @@ import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range as _range } from 'lodash';
+import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab } from '@/utils';
+import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -70,7 +66,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-view',
+	name: 'executions-list',
 	components: {
 		ExecutionsSidebar,
 	},
@@ -84,13 +80,10 @@ export default mixins(
 	computed: {
 		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		hidePreview(): boolean {
-			const nothingToShow = this.executions.length === 0 && this.filterApplied;
 			const activeNotPresent =
 				this.filterApplied &&
-				(this.executions as IExecutionsSummary[]).find(
-					(ex) => ex.id === this.activeExecution.id,
-				) === undefined;
-			return this.loading || nothingToShow || activeNotPresent;
+				!(this.executions as IExecutionsSummary[]).find((ex) => ex.id === this.activeExecution?.id);
+			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
 			return this.filter.status !== '';
@@ -107,6 +100,31 @@ export default mixins(
 		totalFinishedExecutionsCount(): number {
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
 		},
+		requestFilter(): IDataObject {
+			const rFilter: IDataObject = { workflowId: this.currentWorkflow };
+			if (this.filter.status === 'waiting') {
+				rFilter.waitTill = true;
+			} else if (this.filter.status !== '') {
+				rFilter.finished = this.filter.status === 'success';
+			}
+
+			switch (this.filter.status as ExecutionStatus) {
+				case 'waiting':
+					rFilter.status = ['waiting'];
+					break;
+				case 'error':
+					rFilter.status = ['failed', 'crashed'];
+					break;
+				case 'success':
+					rFilter.status = ['success'];
+					break;
+				case 'running':
+					rFilter.status = ['running'];
+					break;
+			}
+
+			return rFilter;
+		},
 	},
 	watch: {
 		$route(to: Route, from: Route) {
@@ -122,36 +140,34 @@ export default mixins(
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		const nextTab = getNodeViewTab(to);
-		// When leaving for a page that's not a workflow view tab, ask to save changes
-		if (!nextTab) {
-			const result = this.uiStore.stateIsDirty;
-			if (result) {
-				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					true,
-				);
+		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
+			next();
+			return;
+		}
+		if (this.uiStore.stateIsDirty) {
+			const confirmModal = await this.confirmModal(
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				true,
+			);
 
-				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.settingsStore.fetchPromptsData();
-					this.uiStore.stateIsDirty = false;
-					next();
-				} else if (confirmModal === MODAL_CANCEL) {
-					this.uiStore.stateIsDirty = false;
-					next();
-				} else if (confirmModal === MODAL_CLOSE) {
-					next(false);
+			if (confirmModal === MODAL_CONFIRMED) {
+				const saved = await this.saveCurrentWorkflow({}, false);
+				if (saved) {
+					await this.settingsStore.fetchPromptsData();
 				}
-			} else {
+				this.uiStore.stateIsDirty = false;
+				next();
+			} else if (confirmModal === MODAL_CANCEL) {
+				this.uiStore.stateIsDirty = false;
 				next();
 			}
+		} else {
+			next();
 		}
-		next();
 	},
 	async mounted() {
 		this.loading = true;
@@ -181,7 +197,7 @@ export default mixins(
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
 				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
-					this.setExecutions();
+					await this.setExecutions();
 				}
 				if (this.activeExecution) {
 					this.$router
@@ -195,7 +211,7 @@ export default mixins(
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced('loadMore', { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {
@@ -213,15 +229,9 @@ export default mixins(
 				lastId = lastItem.id;
 			}
 
-			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
-			if (this.filter.status === 'waiting') {
-				requestFilter.waitTill = true;
-			} else if (this.filter.status !== '') {
-				requestFilter.finished = this.filter.status === 'success';
-			}
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(requestFilter, limit, lastId);
+				data = await this.restApi().getPastExecutions(this.requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
 				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
@@ -327,7 +337,7 @@ export default mixins(
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
 				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
+				if (lastId !== 0 && !isNaN(currentId)) {
 					if (currentId - lastId > 1) {
 						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
@@ -346,7 +356,7 @@ export default mixins(
 
 					if (existingStillRunning && currentFinished) {
 						existingExecutions[executionIndex] = currentItem;
-						if (currentItem.id === this.activeExecution.id) {
+						if (currentItem.id === this.activeExecution?.id) {
 							updatedActiveExecution = currentItem;
 						}
 					}
@@ -373,9 +383,8 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeNotInTheList =
-					existingExecutions.find((ex) => ex.id === this.activeExecution.id) === undefined;
-				if (activeNotInTheList && this.executions.length > 0) {
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
+				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -393,11 +402,24 @@ export default mixins(
 				return [];
 			}
 			try {
-				const executions: IExecutionsSummary[] =
-					await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
-				return executions;
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
+					this.$showMessage(
+						{
+							title: this.$locale.baseText('executionsList.showError.refreshData.title'),
+							message: error.message,
+							type: 'error',
+							duration: 3500,
+						},
+						false,
+					);
+				} else {
+					this.$showError(
+						error,
+						this.$locale.baseText('executionsList.showError.refreshData.title'),
+					);
+				}
 				return [];
 			}
 		},
@@ -442,7 +464,10 @@ export default mixins(
 			}
 
 			// stop if the execution wasn't found in the first 1000 lookups
-			if (attemptCount >= 10) return;
+			if (attemptCount >= 10) {
+				this.workflowsStore.activeWorkflowExecution = null;
+				return;
+			}
 
 			// Fetch next batch of executions
 			await this.loadMore(100);
@@ -609,8 +634,7 @@ export default mixins(
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			this.workflowsStore.activeWorkflows = await this.restApi().getActiveWorkflows();
 		},
 		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
@@ -659,6 +683,7 @@ export default mixins(
 .container {
 	display: flex;
 	height: 100%;
+	width: 100%;
 }
 
 .content {

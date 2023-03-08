@@ -1,6 +1,7 @@
-import { deepCopy, IDataObject, INodeExecutionData, assert } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, assert } from 'n8n-workflow';
 
-import {
+import type {
 	AdjustedPutItem,
 	AttributeValueType,
 	EAttributeValueType,
@@ -95,7 +96,7 @@ function decodeAttribute(type: AttributeValueType, attribute: string | IAttribut
 
 export function validateJSON(input: any): object {
 	try {
-		return JSON.parse(input);
+		return JSON.parse(input as string);
 	} catch (error) {
 		throw new Error('Items must be a valid JSON');
 	}

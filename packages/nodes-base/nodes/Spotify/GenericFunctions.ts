@@ -1,10 +1,11 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 /**
  * Make an API request to Spotify
@@ -26,7 +27,7 @@ export async function spotifyApiRequest(
 			Accept: ' application/json',
 		},
 		qs: query,
-		uri: uri ?? `https://api.spotify.com/v1${endpoint}`,
+		uri: uri || `https://api.spotify.com/v1${endpoint}`,
 		json: true,
 	};
 
@@ -36,7 +37,7 @@ export async function spotifyApiRequest(
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -56,6 +57,7 @@ export async function spotifyApiRequestAllItems(
 
 	do {
 		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query, uri);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		returnData.push.apply(returnData, get(responseData, propertyName));
 		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
 		//remove the query as the query parameters are already included in the next, else api throws error.

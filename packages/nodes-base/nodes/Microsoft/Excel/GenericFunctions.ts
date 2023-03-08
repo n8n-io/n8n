@@ -1,6 +1,7 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -19,7 +20,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
 		json: true,
 	};
 	try {
@@ -29,7 +30,7 @@ export async function microsoftApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftExcelOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -54,7 +55,7 @@ export async function microsoftApiRequestAllItems(
 		if (uri?.includes('$top')) {
 			delete query.$top;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
@@ -78,7 +79,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
 		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
 
 	return returnData;

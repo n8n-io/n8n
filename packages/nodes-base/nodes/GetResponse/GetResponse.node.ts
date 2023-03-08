@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -244,7 +244,7 @@ export class GetResponse implements INodeType {
 						}
 
 						if (qs.sortBy) {
-							qs[`sort[${qs.sortBy}]`] = qs.sortOrder ?? 'ASC';
+							qs[`sort[${qs.sortBy}]`] = qs.sortOrder || 'ASC';
 						}
 
 						if (qs.exactMatch === true) {
@@ -293,7 +293,7 @@ export class GetResponse implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

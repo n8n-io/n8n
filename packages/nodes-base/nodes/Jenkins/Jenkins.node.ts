@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,8 +10,9 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { jenkinsApiRequest, tolerateTrailingSlash } from './GenericFunctions';
 
@@ -538,7 +539,7 @@ export class Jenkins implements INodeType {
 							if (error.httpCode === '302') {
 								responseData = { success: true };
 							} else {
-								throw new NodeApiError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
 					}
@@ -590,7 +591,7 @@ export class Jenkins implements INodeType {
 							if (error.httpCode === '503') {
 								responseData = { success: true };
 							} else {
-								throw new NodeApiError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
 					}
@@ -602,7 +603,7 @@ export class Jenkins implements INodeType {
 							if (error.httpCode === '503') {
 								responseData = { success: true };
 							} else {
-								throw new NodeApiError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
 					}

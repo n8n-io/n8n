@@ -1,10 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
-import { IAttachment } from '../../Interfaces';
+import type { IAttachment } from '../../Interfaces';
 
 export async function post(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body = {} as IDataObject;
@@ -84,5 +84,5 @@ export async function post(this: IExecuteFunctions, index: number): Promise<INod
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { ITables } from './TableInterface';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { ITables } from './TableInterface';
 
 /**
  * Returns a copy of the item which only contains the json data and
@@ -87,7 +88,7 @@ export async function executeQueryQueue(
  * @param {IDataObject} item The item to extract
  */
 export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item as any)
+	return `(${Object.values(item)
 		.map((val) => {
 			//the column cannot be found in the input
 			//so, set it to null in the sql query

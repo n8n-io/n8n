@@ -1,7 +1,7 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -19,7 +19,7 @@ import {
 	uploadAttachments,
 } from './GenericFunctions';
 
-import { ITweet } from './TweetInterface';
+import type { ITweet, ITweetCreate } from './TweetInterface';
 
 import ISO6391 from 'iso-639-1';
 
@@ -105,7 +105,7 @@ export class Twitter implements INodeType {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const body: IDataObject = {
+						const body: ITweetCreate = {
 							type: 'message_create',
 							message_create: {
 								target: {
@@ -125,15 +125,13 @@ export class Twitter implements INodeType {
 								return propertyName.trim();
 							});
 
-							const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
-							//@ts-ignore
+							const medias = await uploadAttachments.call(this, attachmentProperties, i);
 							body.message_create.message_data.attachment = {
 								type: 'media',
 								//@ts-ignore
 								media: { id: medias[0].media_id_string },
 							};
 						} else {
-							//@ts-ignore
 							delete body.message_create.message_data.attachment;
 						}
 
@@ -168,7 +166,7 @@ export class Twitter implements INodeType {
 								return propertyName.trim();
 							});
 
-							const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
+							const medias = await uploadAttachments.call(this, attachmentProperties, i);
 
 							body.media_ids = (medias as IDataObject[])
 								.map((media: IDataObject) => media.media_id_string)
@@ -247,7 +245,7 @@ export class Twitter implements INodeType {
 							}
 						}
 
-						qs.tweet_mode = additionalFields.tweetMode ?? 'compat';
+						qs.tweet_mode = additionalFields.tweetMode || 'compat';
 
 						if (returnAll) {
 							responseData = await twitterApiRequestAllItems.call(
@@ -314,7 +312,7 @@ export class Twitter implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

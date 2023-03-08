@@ -1,7 +1,7 @@
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import {
+import type {
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -19,13 +19,9 @@ import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { extend, hasExpressionExtension, hasNativeMethod } from './Extensions';
-import {
-	ExpressionChunk,
-	ExpressionCode,
-	joinExpression,
-	splitExpression,
-} from './Extensions/ExpressionParser';
+import { extend, extendOptional, hasExpressionExtension, hasNativeMethod } from './Extensions';
+import type { ExpressionChunk, ExpressionCode } from './Extensions/ExpressionParser';
+import { joinExpression, splitExpression } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 
@@ -38,6 +34,10 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 		if (error.context.failExecution) {
 			throw error;
 		}
+
+		if (typeof process === 'undefined' && error.clientOnly) {
+			throw error;
+		}
 	}
 };
 
@@ -48,6 +48,10 @@ export class Expression {
 		this.workflow = workflow;
 	}
 
+	static resolveWithoutWorkflow(expression: string) {
+		return tmpl.tmpl(expression, {});
+	}
+
 	/**
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
@@ -55,7 +59,26 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-		return `[${typeName}: ${JSON.stringify(value)}]`;
+
+		if (value instanceof DateTime && value.invalidReason !== null) {
+			throw new Error('invalid DateTime');
+		}
+
+		let result = '';
+		if (value instanceof Date) {
+			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
+			result = DateTime.fromJSDate(value, {
+				zone: this.workflow.settings.timezone?.toString() ?? 'default',
+			}).toISO();
+		} else {
+			result = JSON.stringify(value);
+		}
+
+		result = result
+			.replace(/,"/g, ', "') // spacing for
+			.replace(/":/g, '": '); // readability
+
+		return `[${typeName}: ${result}]`;
 	}
 
 	/**
@@ -255,6 +278,7 @@ export class Expression {
 
 		// expression extensions
 		data.extend = extend;
+		data.extendOptional = extendOptional;
 
 		Object.assign(data, extendedFunctions);
 
@@ -272,7 +296,11 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
-			throw new Error('This is a function. Please add ()');
+
+			if (returnValue.name === 'DateTime')
+				throw new Error('this is a DateTime, please access its methods');
+
+			throw new Error('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -297,6 +325,10 @@ export class Expression {
 				if (error.context.failExecution) {
 					throw error;
 				}
+
+				if (typeof process === 'undefined' && error.clientOnly) {
+					throw error;
+				}
 			}
 
 			// Syntax errors resolve to `Error` on the frontend and `null` on the backend.
@@ -309,15 +341,32 @@ export class Expression {
 			) {
 				throw new Error('invalid syntax');
 			}
+
+			if (
+				typeof process === 'undefined' &&
+				error instanceof Error &&
+				error.name === 'TypeError' &&
+				error.message.endsWith('is not a function')
+			) {
+				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
+
+				if (!match?.groups?.msg) return null;
+
+				throw new Error(match.groups.msg);
+			}
 		}
 		return null;
 	}
 
 	extendSyntax(bracketedExpression: string): string {
-		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
-			return bracketedExpression;
-
 		const chunks = splitExpression(bracketedExpression);
+
+		const codeChunks = chunks
+			.filter((c) => c.type === 'code')
+			.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
+
+		if (!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression))
+			return bracketedExpression;
 
 		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
 			if (chunk.type === 'code') {
@@ -325,10 +374,11 @@ export class Expression {
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (!output?.code) {
-					throw new ExpressionExtensionError('Failed to extend syntax');
+					throw new ExpressionExtensionError('invalid syntax');
 				}
 
 				let text = output.code;
+
 				// We need to cut off any trailing semicolons. These cause issues
 				// with certain types of expression and cause the whole expression
 				// to fail.

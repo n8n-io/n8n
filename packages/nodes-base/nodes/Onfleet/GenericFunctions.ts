@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -6,10 +6,10 @@ import {
 	INodePropertyOptions,
 	IWebhookFunctions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment-timezone';
 
@@ -37,11 +37,10 @@ export async function onfleetApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://onfleet.com/api/v2/${resource}`,
+		uri: uri || `https://onfleet.com/api/v2/${resource}`,
 		json: true,
 	};
 	try {
-		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -64,7 +63,7 @@ export async function onfleetApiRequestAllItems(
 	do {
 		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
 		query.lastId = responseData.lastId;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.lastId !== undefined);
 
 	return returnData;

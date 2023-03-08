@@ -1,4 +1,4 @@
-import {
+import type {
 	DeclarativeRestApiSettings,
 	IDataObject,
 	IExecuteFunctions,
@@ -9,11 +9,10 @@ import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 	PreSendAction,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 /**
  * A custom API request function to be used with the resourceLocator lookup queries.
@@ -25,7 +24,7 @@ export async function apiRequest(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	query = query ?? {};
+	query = query || {};
 
 	type N8nApiCredentials = {
 		apiKey: string;
@@ -60,7 +59,7 @@ export async function apiRequestAllItems(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	query = query ?? {};
+	query = query || {};
 	const returnData: IDataObject[] = [];
 
 	let nextCursor: string | undefined = undefined;
@@ -70,7 +69,7 @@ export async function apiRequestAllItems(
 		query.cursor = nextCursor;
 		query.limit = 100;
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.data);
+		returnData.push.apply(returnData, responseData.data as IDataObject[]);
 		nextCursor = responseData.nextCursor as string | undefined;
 	} while (nextCursor);
 	return returnData;
@@ -190,11 +189,11 @@ export const prepareWorkflowCreateBody: PreSendAction = async function (
 	const body = requestOptions.body as IDataObject;
 	const newBody: IDataObject = {};
 
-	newBody.name = body.name ?? 'My workflow';
-	newBody.nodes = body.nodes ?? [];
-	newBody.settings = body.settings ?? {};
-	newBody.connections = body.connections ?? {};
-	newBody.staticData = body.staticData ?? null;
+	newBody.name = body.name || 'My workflow';
+	newBody.nodes = body.nodes || [];
+	newBody.settings = body.settings || {};
+	newBody.connections = body.connections || {};
+	newBody.staticData = body.staticData || null;
 
 	requestOptions.body = newBody;
 

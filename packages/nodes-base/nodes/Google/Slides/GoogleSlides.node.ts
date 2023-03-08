@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -413,7 +413,7 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}/pages/${pageObjectId}`,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -443,7 +443,10 @@ export class GoogleSlides implements INodeType {
 							});
 
 							const fileName = pageObjectId + '.png';
-							const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
+							const binaryData = await this.helpers.prepareBinaryData(
+								data as Buffer,
+								fileName || fileName,
+							);
 							const executionData = this.helpers.constructExecutionMetaData(
 								[
 									{
@@ -459,7 +462,7 @@ export class GoogleSlides implements INodeType {
 							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 
@@ -483,7 +486,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -501,7 +504,7 @@ export class GoogleSlides implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -526,7 +529,7 @@ export class GoogleSlides implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -542,7 +545,7 @@ export class GoogleSlides implements INodeType {
 							return {
 								replaceAllText: {
 									replaceText: text.replaceText,
-									pageObjectIds: text.pageObjectIds ?? [],
+									pageObjectIds: text.pageObjectIds || [],
 									containsText: {
 										text: text.text,
 										matchCase: text.matchCase,
@@ -569,7 +572,7 @@ export class GoogleSlides implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 

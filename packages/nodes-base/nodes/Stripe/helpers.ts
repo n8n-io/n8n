@@ -1,8 +1,10 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { flow, isEmpty, omit } from 'lodash';
+import flow from 'lodash.flow';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
-import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 /**
  * Make an API request to Stripe
@@ -123,7 +125,7 @@ export async function handleListing(
 
 	do {
 		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);

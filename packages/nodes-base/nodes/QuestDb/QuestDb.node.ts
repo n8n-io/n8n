@@ -1,10 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
@@ -219,7 +215,7 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 
 			const additionalFields = this.getNodeParameter('additionalFields', 0);
-			const mode = (additionalFields.mode ?? 'independently') as string;
+			const mode = (additionalFields.mode || 'independently') as string;
 
 			const queryResult = await pgQuery(
 				this.getNodeParameter,

@@ -1,6 +1,12 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { ICredentialTestFunctions, IDataObject, NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	ICredentialTestFunctions,
+	IDataObject,
+	IPollFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
 
@@ -16,7 +22,8 @@ export async function getAccessToken(
 		| IExecuteFunctions
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
-		| ICredentialTestFunctions,
+		| ICredentialTestFunctions
+		| IPollFunctions,
 	credentials: IGoogleAuthCredentials,
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
@@ -35,7 +42,7 @@ export async function getAccessToken(
 	const signature = jwt.sign(
 		{
 			iss: credentials.email,
-			sub: credentials.delegatedEmail ?? credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
@@ -69,13 +76,14 @@ export async function getAccessToken(
 }
 
 export async function apiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	option: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -89,8 +97,9 @@ export async function apiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://sheets.googleapis.com${resource}`,
+		uri: uri || `https://sheets.googleapis.com${resource}`,
 		json: true,
+		...option,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -111,6 +120,8 @@ export async function apiRequest(
 			options.headers!.Authorization = `Bearer ${access_token}`;
 
 			return await this.helpers.request(options);
+		} else if (authenticationMethod === 'triggerOAuth2') {
+			return await this.helpers.requestOAuth2.call(this, 'googleSheetsTriggerOAuth2Api', options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}
@@ -123,10 +134,10 @@ export async function apiRequest(
 			const message = 'Missing permissions for Google Sheet';
 			const description =
 				"Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)";
-			throw new NodeApiError(this.getNode(), error, { message, description });
+			throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -147,7 +158,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

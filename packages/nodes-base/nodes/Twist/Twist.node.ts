@@ -1,14 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { twistApiRequest } from './GenericFunctions';
@@ -254,22 +251,11 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -286,7 +272,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -363,22 +349,11 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -395,7 +370,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -442,22 +417,11 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -474,7 +438,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -567,22 +531,11 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -599,7 +552,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -651,22 +604,11 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -683,7 +625,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -759,22 +701,11 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -791,7 +722,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 

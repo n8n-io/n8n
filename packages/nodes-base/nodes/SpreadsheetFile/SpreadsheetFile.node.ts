@@ -1,22 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	JSON2SheetOpts,
-	read as xlsxRead,
-	Sheet2JSONOpts,
-	utils as xlsxUtils,
-	WorkBook,
-	write as xlsxWrite,
-	WritingOptions,
-} from 'xlsx';
+import type { JSON2SheetOpts, Sheet2JSONOpts, WorkBook, WritingOptions } from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
 /**
  * Flattens an object with deep data
@@ -52,7 +44,7 @@ export class SpreadsheetFile implements INodeType {
 		icon: 'fa:table',
 		group: ['transform'],
 		version: 1,
-		description: 'Reads and writes data from a spreadsheet file',
+		description: 'Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc',
 		defaults: {
 			name: 'Spreadsheet File',
 			color: '#2244FF',
@@ -76,7 +68,7 @@ export class SpreadsheetFile implements INodeType {
 						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
-						action: 'Write the workflow data to a spreadsheet file',
+						action: 'Write data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
@@ -302,30 +294,22 @@ export class SpreadsheetFile implements INodeType {
 
 		if (operation === 'fromFile') {
 			// Read data from spreadsheet file to workflow
-
-			let item: INodeExecutionData;
 			for (let i = 0; i < items.length; i++) {
 				try {
-					item = items[i];
-
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const options = this.getNodeParameter('options', i, {});
 
-					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
-						// Property did not get found on item
-						continue;
-					}
-
+					this.helpers.assertBinaryData(i, binaryPropertyName);
 					// Read the binary spreadsheet data
-					const binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					let workbook;
 					if (options.readAsString === true) {
-						workbook = xlsxRead(binaryData.toString(), {
+						workbook = xlsxRead(binaryDataBuffer.toString(), {
 							type: 'string',
 							raw: options.rawData as boolean,
 						});
 					} else {
-						workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
+						workbook = xlsxRead(binaryDataBuffer, { raw: options.rawData as boolean });
 					}
 
 					if (workbook.SheetNames.length === 0) {
@@ -463,7 +447,7 @@ export class SpreadsheetFile implements INodeType {
 						[sheetName]: ws,
 					},
 				};
-				const wbout = xlsxWrite(wb, wopts);
+				const wbout: Buffer = xlsxWrite(wb, wopts);
 
 				// Create a new item with only the binary spreadsheet data
 				const newItem: INodeExecutionData = {

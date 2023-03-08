@@ -9,6 +9,8 @@ module.exports = {
 	...sharedOptions(__dirname),
 
 	rules: {
+		'@typescript-eslint/consistent-type-imports': 'error',
+
 		// TODO: remove all the following rules
 		eqeqeq: 'off',
 		'id-denylist': 'off',
@@ -20,7 +22,7 @@ module.exports = {
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
 		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		'@typescript-eslint/no-unsafe-argument': 'off', //1538 errors, better to fix in separate PR
+		// '@typescript-eslint/no-unsafe-argument': 'off', //1538 errors, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-assignment': 'off', //7084 problems, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-call': 'off', //541 errors, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
@@ -29,6 +31,7 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off', //1152 errors, better to fix in separate PR
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'@typescript-eslint/prefer-nullish-coalescing': 'off',
 	},
 
 	overrides: [

@@ -1,5 +1,5 @@
 import countryCodes from 'currency-codes';
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import {
 	cleanPhoneNumber,
 	componentsRequest,
@@ -1100,7 +1100,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	//{
-	//	// Search for ISO6391.getCode(language) in the Twitter node. Pehaps, we can use the same library?
+	//	// Search for ISO6391.getCode(language) in the Twitter node. Perhaps, we can use the same library?
 	//	//TODO: would be nice to change this to a searchable dropdown with all the possible language codes
 	//	displayName: 'Language Code',
 	//	name: 'templateLanguageCode',

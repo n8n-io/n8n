@@ -1,13 +1,7 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">
-				{{
-					`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${
-						finishedExecutionsCountEstimated === true ? '~' : ''
-					}${combinedExecutionsCount}`
-				}}
-			</n8n-heading>
+			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 			<div :class="$style.filters">
 				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
 				<n8n-select
@@ -270,14 +264,13 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
-import { range as _range } from 'lodash';
+import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
+import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-
-type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
+import { setPageTitle } from '@/utils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -310,6 +303,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				stoppingExecutions: [] as string[],
 				workflows: [] as IWorkflowShortResponse[],
 			};
+		},
+		mounted() {
+			setPageTitle(`n8n - ${this.pageTitle}`);
 		},
 		async created() {
 			await this.loadWorkflows();
@@ -365,7 +361,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
-
 				return returnData;
 			},
 			combinedExecutionsCount(): number {
@@ -393,16 +388,28 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return filter;
 			},
 			workflowFilterPast(): IDataObject {
-				const filter: IDataObject = {};
+				const queryFilter: IDataObject = {};
 				if (this.filter.workflowId !== 'ALL') {
-					filter.workflowId = this.filter.workflowId;
+					queryFilter.workflowId = this.filter.workflowId;
 				}
-				if (this.filter.status === 'waiting') {
-					filter.waitTill = true;
-				} else if (['error', 'success'].includes(this.filter.status)) {
-					filter.finished = this.filter.status === 'success';
+				switch (this.filter.status as ExecutionStatus) {
+					case 'waiting':
+						queryFilter.status = ['waiting'];
+						break;
+					case 'error':
+						queryFilter.status = ['failed', 'crashed'];
+						break;
+					case 'success':
+						queryFilter.status = ['success'];
+						break;
+					case 'running':
+						queryFilter.status = ['running'];
+						break;
 				}
-				return filter;
+				return queryFilter;
+			},
+			pageTitle() {
+				return this.$locale.baseText('executionsList.workflowExecutions');
 			},
 		},
 		methods: {
@@ -554,12 +561,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 			},
 			getWorkflowName(workflowId: string): string | undefined {
-				const workflow = this.workflows.find((data) => data.id === workflowId);
-				if (workflow === undefined) {
-					return undefined;
-				}
-
-				return workflow.name;
+				return this.workflows.find((data) => data.id === workflowId)?.name;
 			},
 			async loadActiveExecutions(): Promise<void> {
 				const activeExecutions = await this.restApi().getCurrentExecutions(
@@ -585,7 +587,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				// iF you use firstId, filtering id >= 504 you won't
 				// ever get ids 500, 501, 502 and 503 when they finish
 				const pastExecutionsPromise: Promise<IExecutionsListResponse> =
-					this.restApi().getPastExecutions(filter, 30);
+					this.restApi().getPastExecutions(filter, this.requestItemsPerRequest);
 				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> =
 					this.restApi().getCurrentExecutions({});
 
@@ -603,7 +605,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.workflowsStore.activeExecutions = results[1];
 
 				// execution IDs are typed as string, int conversion is necessary so we can order.
-				const alreadyPresentExecutionIds = this.finishedExecutions.map((exec) =>
+				const alreadyPresentExecutions = [...this.finishedExecutions];
+				const alreadyPresentExecutionIds = alreadyPresentExecutions.map((exec) =>
 					parseInt(exec.id, 10),
 				);
 				let lastId = 0;
@@ -611,7 +614,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				for (let i = results[0].results.length - 1; i >= 0; i--) {
 					const currentItem = results[0].results[i];
 					const currentId = parseInt(currentItem.id, 10);
-					if (lastId !== 0 && isNaN(currentId) === false) {
+					if (lastId !== 0 && !isNaN(currentId)) {
 						// We are doing this iteration to detect possible gaps.
 						// The gaps are used to remove executions that finished
 						// and were deleted from database but were displaying
@@ -631,14 +634,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						// Execution that we received is already present.
 
 						if (
-							this.finishedExecutions[executionIndex].finished === false &&
+							alreadyPresentExecutions[executionIndex].finished === false &&
 							currentItem.finished === true
 						) {
 							// Concurrency stuff. This might happen if the execution finishes
 							// prior to saving all information to database. Somewhat rare but
 							// With auto refresh and several executions, it happens sometimes.
 							// So we replace the execution data so it displays correctly.
-							this.finishedExecutions[executionIndex] = currentItem;
+							alreadyPresentExecutions[executionIndex] = currentItem;
 						}
 
 						continue;
@@ -646,23 +649,25 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 					// Find the correct position to place this newcomer
 					let j;
-					for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-						if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
-							this.finishedExecutions.splice(j + 1, 0, currentItem);
+					for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
+						if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
+							alreadyPresentExecutions.splice(j + 1, 0, currentItem);
 							break;
 						}
 					}
 					if (j === -1) {
-						this.finishedExecutions.unshift(currentItem);
+						alreadyPresentExecutions.unshift(currentItem);
 					}
 				}
-				this.finishedExecutions = this.finishedExecutions.filter(
+				const alreadyPresentExecutionsFiltered = alreadyPresentExecutions.filter(
 					(execution) =>
 						!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
 				);
 				this.finishedExecutionsCount = results[0].count;
 				this.finishedExecutionsCountEstimated = results[0].estimated;
-				this.workflowsStore.addToCurrentExecutions(this.finishedExecutions);
+
+				Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
+				this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 			},
 			async loadFinishedExecutions(): Promise<void> {
 				if (this.filter.status === 'running') {
@@ -794,19 +799,24 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 			},
 			getStatus(execution: IExecutionsSummary): ExecutionStatus {
-				let status: ExecutionStatus = 'unknown';
-				if (execution.waitTill) {
-					status = 'waiting';
-				} else if (execution.stoppedAt === undefined) {
-					status = 'running';
-				} else if (execution.finished) {
-					status = 'success';
-				} else if (execution.stoppedAt !== null) {
-					status = 'failed';
+				if (execution.status) {
+					return execution.status;
 				} else {
-					status = 'unknown';
+					// this should not happen but just in case
+					let status: ExecutionStatus = 'unknown';
+					if (execution.waitTill) {
+						status = 'waiting';
+					} else if (execution.stoppedAt === undefined) {
+						status = 'running';
+					} else if (execution.finished) {
+						status = 'success';
+					} else if (execution.stoppedAt !== null) {
+						status = 'failed';
+					} else {
+						status = 'unknown';
+					}
+					return status;
 				}
-				return status;
 			},
 			getRowClass(execution: IExecutionsSummary): string {
 				return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
@@ -817,6 +827,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
+				} else if (status === 'crashed') {
+					text = this.$locale.baseText('executionsList.error');
+				} else if (status === 'new') {
+					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'success') {
@@ -835,6 +849,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
+				} else if (status === 'crashed') {
+					path = 'executionsList.statusText';
+				} else if (status === 'new') {
+					path = 'executionsList.statusRunning';
 				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
 				} else if (status === 'success') {
@@ -929,13 +947,18 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	grid-template-rows: 1fr 0;
 	position: relative;
 	height: 100%;
+	width: 100%;
+	max-width: 1280px;
 }
 
 .execList {
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-3xl) var(--spacing-xl);
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .selectionOptions {
@@ -982,6 +1005,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 
+	.crashed &,
 	.failed & {
 		color: var(--color-danger);
 	}
@@ -994,6 +1018,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		font-weight: var(--font-weight-normal);
 	}
 
+	.new &,
 	.running & {
 		color: var(--color-warning);
 	}
@@ -1091,24 +1116,26 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			background: var(--color-primary-tint-3);
 		}
 
+		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: var(--color-danger);
+			background: hsl(var(--color-danger-h), 94%, 80%);
 		}
 
 		&.success td:first-child::before {
-			background: var(--color-success);
+			background: hsl(var(--color-success-h), 60%, 70%);
 		}
 
+		&.new td:first-child::before,
 		&.running td:first-child::before {
-			background: var(--color-warning);
+			background: hsl(var(--color-warning-h), 94%, 80%);
 		}
 
 		&.waiting td:first-child::before {
-			background: var(--color-secondary);
+			background: hsl(var(--color-secondary-h), 94%, 80%);
 		}
 
 		&.unknown td:first-child::before {
-			background: var(--color-background-dark);
+			background: var(--color-text-light);
 		}
 	}
 }

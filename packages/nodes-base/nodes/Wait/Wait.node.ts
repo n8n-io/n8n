@@ -1,6 +1,7 @@
-import { BINARY_ENCODING, IExecuteFunctions, WAIT_TIME_UNLIMITED } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
@@ -8,8 +9,8 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
@@ -606,7 +607,7 @@ export class Wait implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		// INFO: Currently (20.06.2021) 100% identical with Webook-Node
+		// INFO: Currently (20.06.2021) 100% identical with Webhook-Node
 		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const req = this.getRequestObject();
@@ -717,7 +718,7 @@ export class Wait implements INodeType {
 							const fileJson = file.toJSON();
 							returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
 								file.path,
-								fileJson.name ?? fileJson.filename,
+								fileJson.name || fileJson.filename,
 								fileJson.type as string,
 							);
 
@@ -747,7 +748,7 @@ export class Wait implements INodeType {
 					},
 				};
 
-				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
 				returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
 					binaryFile.path,
 					mimeType,
@@ -757,7 +758,7 @@ export class Wait implements INodeType {
 					workflowData: [[returnItem]],
 				};
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			} finally {
 				await binaryFile.cleanup();
 			}

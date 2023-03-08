@@ -1,12 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import { BINARY_ENCODING } from 'n8n-core';
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { writeFile as fsWriteFile } from 'fs/promises';
+import type { Readable } from 'stream';
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,22 +79,6 @@ export class WriteBinaryFile implements INodeType {
 
 				item = items[itemIndex];
 
-				if (item.binary === undefined) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'No binary data set. So file can not be written!',
-						{ itemIndex },
-					);
-				}
-
-				if (item.binary[dataPropertyName] === undefined) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`The binary property "${dataPropertyName}" does not exist. So no file can be written!`,
-						{ itemIndex },
-					);
-				}
-
 				const newItem: INodeExecutionData = {
 					json: {},
 					pairedItem: {
@@ -102,13 +87,17 @@ export class WriteBinaryFile implements INodeType {
 				};
 				Object.assign(newItem.json, item.json);
 
-				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-					itemIndex,
-					dataPropertyName,
-				);
+				const binaryData = this.helpers.assertBinaryData(itemIndex, dataPropertyName);
+
+				let fileContent: Buffer | Readable;
+				if (binaryData.id) {
+					fileContent = this.helpers.getBinaryStream(binaryData.id);
+				} else {
+					fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
+				}
 
 				// Write the file to disk
-				await fsWriteFile(fileName, binaryDataBuffer, { encoding: 'binary', flag });
+				await fsWriteFile(fileName, fileContent, { encoding: 'binary', flag });
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old

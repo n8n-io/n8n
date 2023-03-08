@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,11 +9,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { IField } from './GenericFunctions';
 import {
 	adjustAddresses,
 	getEntityFields,
 	getPicklistOptions,
-	IField,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	sort,
@@ -276,7 +276,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

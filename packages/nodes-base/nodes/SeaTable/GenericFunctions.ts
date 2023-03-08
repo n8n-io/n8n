@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, IPollFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 import { schema } from './Schema';
 
-import {
+import type {
 	ICredential,
 	ICtx,
 	IDtableMetadataColumn,
@@ -17,8 +18,6 @@ import {
 	IRow,
 	IRowObject,
 } from './Interfaces';
-
-import _ from 'lodash';
 
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) {
@@ -65,7 +64,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	return endpoint.replace(
 		/({{ *(access_token|dtable_uuid|server) *}})/g,
 		(match: string, expr: string, name: TEndpointVariableName) => {
-			return endpointVariables[name] ?? match;
+			return endpointVariables[name] || match;
 		},
 	);
 }
@@ -94,11 +93,11 @@ export async function seaTableApiRequest(
 		method,
 		qs,
 		body,
-		uri: url ?? `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -109,7 +108,7 @@ export async function seaTableApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -143,7 +142,7 @@ export async function setableApiRequestAllItems(
 			query,
 		)) as unknown as IRow[];
 		//@ts-ignore
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.start = +query.start + segment;
 	} while (responseData && responseData.length > segment - 1);
 
@@ -281,7 +280,7 @@ function rowFormatColumn(input: unknown): boolean | number | string | string[] |
 		return input;
 	} else if (Array.isArray(input) && input.every((i) => typeof i === 'object')) {
 		const returnItems = [] as string[];
-		input.every((i) => returnItems.push(i.display_value));
+		input.every((i) => returnItems.push(i.display_value as string));
 		return returnItems;
 	}
 

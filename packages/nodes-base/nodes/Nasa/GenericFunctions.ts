@@ -1,8 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function nasaApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -19,7 +20,7 @@ export async function nasaApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs,
-		uri: uri ?? `https://api.nasa.gov${endpoint}`,
+		uri: uri || `https://api.nasa.gov${endpoint}`,
 		json: true,
 	};
 
@@ -30,7 +31,7 @@ export async function nasaApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -52,7 +53,7 @@ export async function nasaApiRequestAllItems(
 	do {
 		responseData = await nasaApiRequest.call(this, method, resource, query, {}, uri);
 		uri = responseData.links.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.links.next !== undefined);
 
 	return returnData;

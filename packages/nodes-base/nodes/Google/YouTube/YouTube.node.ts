@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import { BINARY_ENCODING } from 'n8n-core';
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -23,6 +24,8 @@ import { videoFields, videoOperations } from './VideoDescription';
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
 import { countriesCodes } from './CountryCodes';
+
+const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
@@ -384,35 +387,12 @@ export class YouTube implements INodeType {
 					if (operation === 'uploadBanner') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
-
-						let mimeType;
-
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						if (item.binary[binaryProperty].mimeType) {
-							mimeType = item.binary[binaryProperty].mimeType;
-						}
-
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {
-								'Content-Type': mimeType,
+								...(binaryData.mimeType ? { 'Content-Type': binaryData.mimeType } : {}),
 							},
 							json: false,
 						};
@@ -427,7 +407,7 @@ export class YouTube implements INodeType {
 							requestOptions,
 						);
 
-						const { url } = JSON.parse(response);
+						const { url } = JSON.parse(response as string);
 
 						qs.part = 'brandingSettings';
 
@@ -851,118 +831,90 @@ export class YouTube implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
-						let mimeType;
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 
-						// Is binary file to upload
-						const item = items[i];
+						let mimeType: string;
+						let contentLength: number;
+						let fileContent: Buffer | Readable;
 
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
+						if (binaryData.id) {
+							// Stream data in 256KB chunks, and upload the via the resumable upload api
+							fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+							contentLength = metadata.fileSize;
+							mimeType = metadata.mimeType ?? binaryData.mimeType;
+						} else {
+							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
+							contentLength = fileContent.length;
+							mimeType = binaryData.mimeType;
 						}
 
-						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						if (item.binary[binaryProperty].mimeType) {
-							mimeType = item.binary[binaryProperty].mimeType;
-						}
-
-						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-
-						const requestOptions = {
-							headers: {
-								'Content-Type': mimeType,
-							},
-							json: false,
-						};
-
-						const response = await googleApiRequest.call(
-							this,
-							'POST',
-							'/upload/youtube/v3/videos',
-							body,
-							qs,
-							undefined,
-							requestOptions,
-						);
-
-						const { id } = JSON.parse(response);
-
-						qs.part = 'snippet, status, recordingDetails';
-
-						const data = {
-							id,
+						const payload = {
 							snippet: {
 								title,
 								categoryId,
+								description: options.description,
+								tags: (options.tags as string)?.split(','),
+								defaultLanguage: options.defaultLanguage,
 							},
-							status: {},
-							recordingDetails: {},
+							status: {
+								privacyStatus: options.privacyStatus,
+								embeddable: options.embeddable,
+								publicStatsViewable: options.publicStatsViewable,
+								publishAt: options.publishAt,
+								selfDeclaredMadeForKids: options.selfDeclaredMadeForKids,
+								license: options.license,
+							},
+							recordingDetails: {
+								recordingDate: options.recordingDate,
+							},
 						};
 
-						if (options.description) {
-							//@ts-ignore
-							data.snippet.description = options.description as string;
+						const resumableUpload = await googleApiRequest.call(
+							this,
+							'POST',
+							'/upload/youtube/v3/videos',
+							payload,
+							{
+								uploadType: 'resumable',
+								part: 'snippet,status,recordingDetails',
+								notifySubscribers: options.notifySubscribers ?? false,
+							},
+							undefined,
+							{
+								headers: {
+									'X-Upload-Content-Length': contentLength,
+									'X-Upload-Content-Type': mimeType,
+								},
+								json: true,
+								resolveWithFullResponse: true,
+							},
+						);
+
+						const uploadUrl = resumableUpload.headers.location;
+
+						let uploadId;
+						let offset = 0;
+						for await (const chunk of fileContent) {
+							const nextOffset = offset + Number(chunk.length);
+							try {
+								const response = await this.helpers.httpRequest({
+									method: 'PUT',
+									url: uploadUrl,
+									headers: {
+										'Content-Length': chunk.length,
+										'Content-Range': `bytes ${offset}-${nextOffset - 1}/${contentLength}`,
+									},
+									body: chunk,
+								});
+								uploadId = response.id;
+							} catch (error) {
+								if (error.response?.status !== 308) throw error;
+							}
+							offset = nextOffset;
 						}
 
-						if (options.privacyStatus) {
-							//@ts-ignore
-							data.status.privacyStatus = options.privacyStatus as string;
-						}
-
-						if (options.tags) {
-							//@ts-ignore
-							data.snippet.tags = (options.tags as string).split(',');
-						}
-
-						if (options.embeddable) {
-							//@ts-ignore
-							data.status.embeddable = options.embeddable as boolean;
-						}
-
-						if (options.publicStatsViewable) {
-							//@ts-ignore
-							data.status.publicStatsViewable = options.publicStatsViewable as boolean;
-						}
-
-						if (options.publishAt) {
-							//@ts-ignore
-							data.status.publishAt = options.publishAt as string;
-						}
-
-						if (options.recordingDate) {
-							//@ts-ignore
-							data.recordingDetails.recordingDate = options.recordingDate as string;
-						}
-
-						if (options.selfDeclaredMadeForKids) {
-							//@ts-ignore
-							data.status.selfDeclaredMadeForKids = options.selfDeclaredMadeForKids as boolean;
-						}
-
-						if (options.license) {
-							//@ts-ignore
-							data.status.license = options.license as string;
-						}
-
-						if (options.defaultLanguage) {
-							//@ts-ignore
-							data.snippet.defaultLanguage = options.defaultLanguage as string;
-						}
-
-						if (options.notifySubscribers) {
-							qs.notifySubscribers = options.notifySubscribers;
-							delete options.notifySubscribers;
-						}
-
-						responseData = await googleApiRequest.call(this, 'PUT', '/youtube/v3/videos', data, qs);
+						responseData = { uploadId, ...resumableUpload.body };
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/update
 					if (operation === 'update') {
@@ -1110,7 +1062,7 @@ export class YouTube implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

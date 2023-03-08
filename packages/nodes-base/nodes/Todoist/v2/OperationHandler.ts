@@ -1,10 +1,7 @@
-import { IDataObject, jsonParse } from 'n8n-workflow';
-import {
-	Context,
-	FormatDueDatetime,
-	todoistApiRequest,
-	todoistSyncRequest,
-} from '../GenericFunctions';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { Context } from '../GenericFunctions';
+import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
 import type { Section, TodoistResponse } from './Service';
 import { v4 as uuid } from 'uuid';
 
@@ -98,7 +95,7 @@ export class CreateHandler implements OperationHandler {
 			body.parent_id = options.parentId as string;
 		}
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body as IDataObject);
 
 		return {
 			data,
@@ -241,7 +238,7 @@ export class UpdateHandler implements OperationHandler {
 			body.due_lang = updateFields.dueLang as string;
 		}
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body);
+		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body as IDataObject);
 
 		return { success: true };
 	}

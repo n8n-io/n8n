@@ -1,10 +1,11 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { ElasticsearchApiCredentials } from './types';
+import type { ElasticsearchApiCredentials } from './types';
 
 export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,
@@ -37,7 +38,7 @@ export async function elasticsearchApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'elasticsearchApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -70,7 +71,7 @@ export async function elasticsearchApiRequestAllItems(
 
 		responseData = await elasticsearchApiRequest.call(this, 'GET', '/_search', requestBody, qs);
 		if (responseData?.hits?.hits) {
-			returnData = returnData.concat(responseData.hits.hits);
+			returnData = returnData.concat(responseData.hits.hits as IDataObject[]);
 			const lastHitIndex = responseData.hits.hits.length - 1;
 			//Sort values for the last returned hit with the tiebreaker value
 			searchAfter = responseData.hits.hits[lastHitIndex].sort;
@@ -87,7 +88,7 @@ export async function elasticsearchApiRequestAllItems(
 			responseData = await elasticsearchApiRequest.call(this, 'GET', '/_search', requestBody, qs);
 
 			if (responseData?.hits?.hits?.length) {
-				returnData = returnData.concat(responseData.hits.hits);
+				returnData = returnData.concat(responseData.hits.hits as IDataObject[]);
 				const lastHitIndex = responseData.hits.hits.length - 1;
 				searchAfter = responseData.hits.hits[lastHitIndex].sort;
 				pit = responseData.pit_id;

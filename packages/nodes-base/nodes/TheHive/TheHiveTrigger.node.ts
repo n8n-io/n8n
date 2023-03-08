@@ -1,6 +1,6 @@
-import { IWebhookFunctions } from 'n8n-core';
+import type { IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	IHookFunctions,
 	INodeType,
@@ -26,7 +26,7 @@ export class TheHiveTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],

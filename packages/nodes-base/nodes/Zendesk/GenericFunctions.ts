@@ -1,13 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 function getUri(resource: string, subdomain: string) {
 	if (resource.includes('webhooks')) {
@@ -26,7 +26,7 @@ export async function zendeskApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let credentials;
@@ -41,7 +41,7 @@ export async function zendeskApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? getUri(resource, credentials.subdomain),
+		uri: uri || getUri(resource, credentials.subdomain),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -49,7 +49,7 @@ export async function zendeskApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -80,7 +80,7 @@ export async function zendeskApiRequestAllItems(
 	do {
 		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next_page;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}

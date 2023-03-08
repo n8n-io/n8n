@@ -19,15 +19,11 @@ let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['owner'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
@@ -42,7 +38,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
+test('POST /owner/setup should create owner and enable isInstanceOwnerSetUp', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	const newOwnerData = {
@@ -52,7 +48,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 		password: randomValidPassword(),
 	};
 
-	const response = await authAgent(ownerShell).post('/owner').send(newOwnerData);
+	const response = await authAgent(ownerShell).post('/owner/setup').send(newOwnerData);
 
 	expect(response.statusCode).toBe(200);
 
@@ -94,7 +90,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(isInstanceOwnerSetUpSetting).toBe(true);
 });
 
-test('POST /owner should create owner with lowercased email', async () => {
+test('POST /owner/setup should create owner with lowercased email', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	const newOwnerData = {
@@ -104,7 +100,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 		password: randomValidPassword(),
 	};
 
-	const response = await authAgent(ownerShell).post('/owner').send(newOwnerData);
+	const response = await authAgent(ownerShell).post('/owner/setup').send(newOwnerData);
 
 	expect(response.statusCode).toBe(200);
 
@@ -117,13 +113,13 @@ test('POST /owner should create owner with lowercased email', async () => {
 	expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 });
 
-test('POST /owner should fail with invalid inputs', async () => {
+test('POST /owner/setup should fail with invalid inputs', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = authAgent(ownerShell);
 
 	await Promise.all(
 		INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
-			const response = await authOwnerAgent.post('/owner').send(invalidPayload);
+			const response = await authOwnerAgent.post('/owner/setup').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 		}),
 	);

@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import type { Url } from 'url';
@@ -8,14 +9,11 @@ import compression from 'compression';
 import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
-import {
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
-	WebhookHttpMethod,
-} from 'n8n-workflow';
+import type { WebhookHttpMethod } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -25,19 +23,21 @@ import {
 	sendSuccessResponse,
 	ServiceUnavailableError,
 } from '@/ResponseHelper';
-import { corsMiddleware } from '@/middlewares/cors';
-import * as TestWebhooks from '@/TestWebhooks';
+import { corsMiddleware } from '@/middlewares';
+import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 
 const emptyBuffer = Buffer.alloc(0);
 
 export abstract class AbstractServer {
+	protected server: Server;
+
 	protected app: express.Application;
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected protocol: string;
 
@@ -72,11 +72,11 @@ export abstract class AbstractServer {
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
-		this.externalHooks = ExternalHooks();
-		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+		this.externalHooks = Container.get(ExternalHooks);
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	}
 
-	private async setupCommonMiddlewares() {
+	private async setupErrorHandlers() {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
@@ -85,6 +85,10 @@ export abstract class AbstractServer {
 		} = await import('@sentry/node');
 		app.use(requestHandler());
 		app.use(errorHandler());
+	}
+
+	private async setupCommonMiddlewares() {
+		const { app } = this;
 
 		// Compress the response data
 		app.use(compression());
@@ -149,6 +153,8 @@ export abstract class AbstractServer {
 	private setupDevMiddlewares() {
 		this.app.use(corsMiddleware);
 	}
+
+	protected setupPushServer() {}
 
 	private async setupHealthCheck() {
 		this.app.use((req, res, next) => {
@@ -333,7 +339,7 @@ export abstract class AbstractServer {
 	// ----------------------------------------
 	protected setupTestWebhookEndpoint() {
 		const endpoint = this.endpointWebhookTest;
-		const testWebhooks = TestWebhooks.getInstance();
+		const testWebhooks = Container.get(TestWebhooks);
 
 		// Register all test webhook requests (for testing via the UI)
 		this.app.all(`/${endpoint}/*`, async (req, res) => {
@@ -395,10 +401,9 @@ export abstract class AbstractServer {
 	async start(): Promise<void> {
 		const { app, externalHooks, protocol, sslKey, sslCert } = this;
 
-		let server: Server;
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
-			server = https.createServer(
+			this.server = https.createServer(
 				{
 					key: await readFile(this.sslKey, 'utf8'),
 					cert: await readFile(this.sslCert, 'utf8'),
@@ -407,13 +412,13 @@ export abstract class AbstractServer {
 			);
 		} else {
 			const http = await import('http');
-			server = http.createServer(app);
+			this.server = http.createServer(app);
 		}
 
 		const PORT = config.getEnv('port');
 		const ADDRESS = config.getEnv('listen_address');
 
-		server.on('error', (error: Error & { code: string }) => {
+		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				console.log(
 					`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
@@ -422,8 +427,10 @@ export abstract class AbstractServer {
 			}
 		});
 
-		await new Promise<void>((resolve) => server.listen(PORT, ADDRESS, () => resolve()));
+		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
 
+		await this.setupErrorHandlers();
+		this.setupPushServer();
 		await this.setupCommonMiddlewares();
 		if (inDevelopment) {
 			this.setupDevMiddlewares();

@@ -1,16 +1,10 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
-import { EventMessageTypeNames, IWorkflowBase, JsonObject } from 'n8n-workflow';
+import type { IWorkflowBase, JsonObject } from 'n8n-workflow';
+import { EventMessageTypeNames } from 'n8n-workflow';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import type { AbstractEventPayload } from './AbstractEventPayload';
-import { IExecutionBase } from '@/Interfaces';
-
-export const eventNamesWorkflow = [
-	'n8n.workflow.started',
-	'n8n.workflow.success',
-	'n8n.workflow.failed',
-] as const;
-
-export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
+import type { IExecutionBase } from '@/Interfaces';
+import type { EventNamesWorkflowType } from '.';
 
 // --------------------------------------
 // EventMessage class for Workflow events

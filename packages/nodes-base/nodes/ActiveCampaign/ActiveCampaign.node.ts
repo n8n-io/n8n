@@ -1,20 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	activeCampaignApiRequest,
-	activeCampaignApiRequestAllItems,
-	IProduct,
-} from './GenericFunctions';
+import type { IProduct } from './GenericFunctions';
+import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
@@ -509,7 +506,7 @@ export class ActiveCampaign implements INodeType {
 				} else if (resource === 'accountContact') {
 					if (operation === 'create') {
 						// ----------------------------------
-						//         account:create
+						//         accountContact:create
 						// ----------------------------------
 
 						requestMethod = 'POST';
@@ -524,7 +521,7 @@ export class ActiveCampaign implements INodeType {
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						addAdditionalFields(body.account as IDataObject, additionalFields);
+						addAdditionalFields(body.accountContact as IDataObject, additionalFields);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         accountContact:update
@@ -1185,7 +1182,7 @@ export class ActiveCampaign implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

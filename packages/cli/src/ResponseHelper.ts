@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
 import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
@@ -66,6 +66,12 @@ export class NotFoundError extends ResponseError {
 export class ConflictError extends ResponseError {
 	constructor(message: string, hint: string | undefined = undefined) {
 		super(message, 409, 409, hint);
+	}
+}
+
+export class UnprocessableRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, 422);
 	}
 }
 
@@ -184,7 +190,7 @@ export function send<T, R extends Request, S extends Response>(
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data, raw);
+			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
 				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
@@ -222,6 +228,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		workflowId: fullExecutionData.workflowId,
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		workflowData: fullExecutionData.workflowData!,
+		status: fullExecutionData.status,
 	};
 
 	if (fullExecutionData.id !== undefined) {
@@ -255,6 +262,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
+		status: fullExecutionData.status,
 	};
 
 	return returnData;

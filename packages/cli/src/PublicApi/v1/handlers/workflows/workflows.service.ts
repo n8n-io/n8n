@@ -1,15 +1,17 @@
-import { FindManyOptions, In, UpdateResult } from 'typeorm';
+import type { FindManyOptions, UpdateResult } from 'typeorm';
+import { In } from 'typeorm';
 import intersection from 'lodash.intersection';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import * as Db from '@/Db';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { isInstanceOwner } from '../users/users.service';
-import { Role } from '@db/entities/Role';
+import type { Role } from '@db/entities/Role';
 import config from '@/config';
+import { START_NODES } from '@/constants';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
@@ -127,7 +129,7 @@ export async function updateWorkflow(
 export function hasStartNode(workflow: WorkflowEntity): boolean {
 	if (!workflow.nodes.length) return false;
 
-	const found = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start');
+	const found = workflow.nodes.find((node) => START_NODES.includes(node.type));
 
 	return Boolean(found);
 }

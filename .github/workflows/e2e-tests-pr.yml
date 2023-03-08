@@ -1,0 +1,34 @@
+name: PR E2E (skip with label skip-e2e)
+
+on:
+  pull_request_review:
+    types: [submitted]
+    branch:
+      - 'master'
+
+jobs:
+  # We disable this for now because cancelling runs makes the Cypress Cloud tests to hang.
+  # cancel-previous-runs:
+  #   runs-on: ubuntu-latest
+  #   name: 'Cancel previous e2e test runs'
+  #   strategy:
+  #     matrix:
+  #       node-version: [16.x]
+
+  #   steps:
+  #     - name: 'Cancel previous runs'
+  #       uses: styfle/cancel-workflow-action@0.9.0
+  #       with:
+  #         access_token: ${{ github.token }}
+
+  run-e2e-tests:
+    name: E2E [Electron/Node 16]
+    uses: ./.github/workflows/e2e-reusable.yml
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    with:
+      branch: ${{ github.event.pull_request.head.ref }}
+      user: ${{ github.event.pull_request.user.login || 'PR User' }}
+      spec: 'e2e/*'
+      run-env: base:16.18.1
+    secrets:
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}

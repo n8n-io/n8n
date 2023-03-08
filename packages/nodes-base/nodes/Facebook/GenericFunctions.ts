@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -8,7 +8,8 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
 
@@ -45,14 +46,14 @@ export async function facebookApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: uri ?? `https://graph.facebook.com/v8.0${resource}`,
+		uri: uri || `https://graph.facebook.com/v8.0${resource}`,
 		json: true,
 	};
 
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -553,6 +554,7 @@ export function getFields(object: string) {
 		],
 	} as { [key: string]: any };
 
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	return [{ name: '*', value: '*' }].concat(data[object] || []).map((fieldObject: IDataObject) => ({
 		...fieldObject,
 		name: fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,

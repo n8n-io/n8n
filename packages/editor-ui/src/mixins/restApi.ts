@@ -27,6 +27,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 import { mapStores } from 'pinia';
@@ -76,7 +77,9 @@ export const restApi = Vue.extend({
 				getActivationError: (id: string): Promise<IActivationError | undefined> => {
 					return self.restApi().makeRestApiRequest('GET', `/active/error/${id}`);
 				},
-				getCurrentExecutions: (filter: object): Promise<IExecutionsCurrentSummaryExtended[]> => {
+				getCurrentExecutions: (
+					filter: IDataObject,
+				): Promise<IExecutionsCurrentSummaryExtended[]> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
@@ -178,7 +181,7 @@ export const restApi = Vue.extend({
 				// Returns all saved executions
 				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 				getPastExecutions: (
-					filter: object,
+					filter: IDataObject,
 					limit: number,
 					lastId?: string,
 					firstId?: string,
@@ -202,8 +205,15 @@ export const restApi = Vue.extend({
 				},
 
 				// Binary data
-				getBinaryUrl: (dataPath, mode): string =>
-					self.rootStore.getRestApiContext.baseUrl + `/data/${dataPath}?mode=${mode}`,
+				getBinaryUrl: (dataPath, mode, fileName, mimeType): string => {
+					let restUrl = self.rootStore.getRestUrl;
+					if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
+					const url = new URL(`${restUrl}/data/${dataPath}`);
+					url.searchParams.append('mode', mode);
+					if (fileName) url.searchParams.append('fileName', fileName);
+					if (mimeType) url.searchParams.append('mimeType', mimeType);
+					return url.toString();
+				},
 
 				// Returns all the available timezones
 				getExecutionEvents: (id: string): Promise<IAbstractEventMessage[]> => {
