@@ -190,7 +190,10 @@ export class Code implements INodeType {
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
-		const language = this.getNodeParameter('language', 0) as string;
+		let language = 'javaScript';
+		if (this.getNode().typeVersion === 2) {
+			language = this.getNodeParameter('language', 0) as string;
+		}
 
 		if (language === 'python') {
 			// ----------------------------------
