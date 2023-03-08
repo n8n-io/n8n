@@ -690,7 +690,9 @@ async function proxyRequestToAxios(
 			if (Buffer.isBuffer(responseData)) {
 				responseData = responseData.toString('utf-8');
 			}
-			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+			error.message = `${response.status as number} - ${JSON.stringify(
+				binaryToBuffer(responseData),
+			)}`;
 		}
 
 		error.cause = errorData;

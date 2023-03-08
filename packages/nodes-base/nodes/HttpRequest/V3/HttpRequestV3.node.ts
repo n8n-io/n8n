@@ -1357,7 +1357,7 @@ export class HttpRequestV3 implements INodeType {
 					const data = await this.helpers
 						.binaryToBuffer(response.body as Buffer | Readable)
 						.then((body) => body.toString());
-					response.body = jsonParse(data, {
+					response.body = jsonParse(data as string, {
 						...(neverError
 							? { fallbackValue: {} }
 							: { errorMessage: 'Invalid JSON in response body' }),
