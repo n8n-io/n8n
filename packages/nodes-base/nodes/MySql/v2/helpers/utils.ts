@@ -1,7 +1,9 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import { createConnection, createPool } from '../transport';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
+
 import type { QueryMode, QueryValues, QueryWithValues, SortRule, WhereClause } from './interfaces';
+
+import { createConnection, createPool } from '../transport';
 
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
@@ -44,6 +46,41 @@ export const prepareQueryAndReplacements = (rawQuery: string, replacements?: IDa
 	return { query, values };
 };
 
+export function prepareErrorItem(
+	item: IDataObject,
+	error: IDataObject | NodeOperationError | Error,
+	index: number,
+) {
+	return {
+		json: { message: error.message, item: { ...item }, itemIndex: index, error: { ...error } },
+		pairedItem: { item: index },
+	} as INodeExecutionData;
+}
+
+export function parseMySqlError(this: IExecuteFunctions, error: any, itemIndex?: number) {
+	let message = error.message;
+	const description = `sql: ${error.sql}, code: ${error.code}`;
+
+	if ((error?.message as string).includes('ECONNREFUSED')) {
+		message = 'Connection refused';
+	}
+
+	return new NodeOperationError(this.getNode(), error as Error, {
+		message,
+		description,
+		itemIndex,
+	});
+}
+
+function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
+}
+
 export async function runQueries(
 	this: IExecuteFunctions,
 	queries: QueryWithValues[],
@@ -70,12 +107,7 @@ export async function runQueries(
 			let singleQuery = '';
 
 			if (formatedQueries.length > 1) {
-				singleQuery = formatedQueries
-					.join(';')
-					.split(';')
-					.map((query) => query.trim())
-					.filter((q) => q !== '')
-					.join(';');
+				singleQuery = formatedQueries.map((query) => query.trim().replace(/;$/, '')).join(';');
 			} else {
 				singleQuery = formatedQueries[0];
 			}
@@ -84,27 +116,24 @@ export async function runQueries(
 
 			if (response && Array.isArray(response)) {
 				response.forEach((entry, index) => {
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(entry),
-						{ itemData: { item: index } },
-					);
+					const executionData = this.helpers.constructExecutionMetaData(wrapData(entry), {
+						itemData: { item: index },
+					});
 
 					returnData.push(...executionData);
 				});
 			} else {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(response),
-					{ itemData: { item: 0 } },
-				);
+				const executionData = this.helpers.constructExecutionMetaData(wrapData(response), {
+					itemData: { item: 0 },
+				});
 
 				returnData.push(...executionData);
 			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-			} else {
-				throw error;
-			}
+		} catch (err) {
+			const error = parseMySqlError.call(this, err);
+
+			if (!this.continueOnFail()) throw error;
+			returnData.push({ json: { message: error.message, error: { ...error } } });
 		} finally {
 			poolConnection.release();
 			await pool.end();
@@ -117,22 +146,26 @@ export async function runQueries(
 				try {
 					const { query, values } = queryWithValues;
 					const formatedQuery = connection.format(query, values);
-					const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
+					const statements = formatedQuery.split(';').map((q) => q.trim());
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
-						{ itemData: { item: index } },
-					);
+					for (const statement of statements) {
+						if (statement === '') continue;
+						const response = (await connection.query(statement))[0] as unknown as IDataObject;
 
-					returnData.push(...executionData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
-						continue;
-					} else {
+						const executionData = this.helpers.constructExecutionMetaData(wrapData(response), {
+							itemData: { item: index },
+						});
+
+						returnData.push(...executionData);
+					}
+				} catch (err) {
+					const error = parseMySqlError.call(this, err, index);
+
+					if (!this.continueOnFail()) {
 						await connection.end();
 						throw error;
 					}
+					returnData.push(prepareErrorItem(queries[index], error as Error, index));
 				}
 			}
 		}
@@ -144,26 +177,31 @@ export async function runQueries(
 				try {
 					const { query, values } = queryWithValues;
 					const formatedQuery = connection.format(query, values);
-					const response = (await connection.query(formatedQuery))[0] as unknown as IDataObject;
+					const statements = formatedQuery.split(';').map((q) => q.trim());
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
-						{ itemData: { item: index } },
-					);
+					for (const statement of statements) {
+						if (statement === '') continue;
+						const response = (await connection.query(statement))[0] as unknown as IDataObject;
 
-					returnData.push(...executionData);
-				} catch (error) {
+						const executionData = this.helpers.constructExecutionMetaData(wrapData(response), {
+							itemData: { item: index },
+						});
+
+						returnData.push(...executionData);
+					}
+				} catch (err) {
+					const error = parseMySqlError.call(this, err, index);
+
 					if (connection) {
 						await connection.rollback();
 						await connection.end();
 					}
 
-					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message } });
-						return returnData;
-					} else {
-						throw error;
-					}
+					if (!this.continueOnFail()) throw error;
+					returnData.push(prepareErrorItem(queries[index], error as Error, index));
+
+					// Return here because we already rolled back the transaction
+					return returnData;
 				}
 			}
 
