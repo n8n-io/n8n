@@ -1,4 +1,3 @@
-import concatStream from 'concat-stream';
 import { readFile, stat } from 'fs/promises';
 import type { BinaryMetadata, IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import prettyBytes from 'pretty-bytes';
