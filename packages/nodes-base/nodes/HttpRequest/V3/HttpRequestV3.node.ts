@@ -1281,7 +1281,6 @@ export class HttpRequestV3 implements INodeType {
 					requestOAuth2.catch(() => {});
 					requestPromises.push(requestOAuth2);
 				} else {
-					console.log(requestOptions);
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
 					const request = this.helpers.request(requestOptions);
 					request.catch(() => {});
