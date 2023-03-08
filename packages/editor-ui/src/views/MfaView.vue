@@ -212,7 +212,6 @@ export default mixins(showMessage, genericHelpers).extend({
 
 				this.$telemetry.track('User attempted to login', {
 					result: 'mfa_token_rejected',
-					mfaEnabled: true,
 				});
 
 				return;
@@ -225,8 +224,7 @@ export default mixins(showMessage, genericHelpers).extend({
 			}
 
 			this.$telemetry.track('User attempted to login', {
-				result: 'success',
-				mfaEnabled: true,
+				result: 'mfa_success',
 			});
 
 			this.$router.push({ name: VIEWS.HOMEPAGE });

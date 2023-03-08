@@ -83,7 +83,6 @@ export default mixins(showMessage, genericHelpers).extend({
 
 				this.$telemetry.track('User attempted to login', {
 					result: 'success',
-					mfaEnabled: false,
 				});
 
 				if (this.phishingAttempt()) {
@@ -104,7 +103,6 @@ export default mixins(showMessage, genericHelpers).extend({
 
 				this.$telemetry.track('User attempted to login', {
 					result: 'credentials_error',
-					mfaEnabled: false,
 				});
 
 				this.$showError(error, this.$locale.baseText('auth.signin.error'));
