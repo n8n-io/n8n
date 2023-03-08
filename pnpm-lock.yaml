@@ -1088,7 +1088,6 @@ importers:
 
   packages/workflow:
     specifiers:
-      '@n8n_io/riot-tmpl': ^2.0.0
       '@types/crypto-js': ^4.1.1
       '@types/deep-equal': ^1.0.1
       '@types/express': ^4.17.6
@@ -1111,11 +1110,11 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^3.1.0
       recast: ^0.21.5
+      ricardo-testing: ^2.0.0
       title-case: ^3.0.3
       transliteration: ^2.3.5
       xml2js: ^0.4.23
     dependencies:
-      '@n8n_io/riot-tmpl': 2.0.0
       ast-types: 0.15.2
       crypto-js: 4.1.1
       deep-equal: 2.2.0
@@ -1128,6 +1127,7 @@ importers:
       lodash.set: 4.3.2
       luxon: 3.1.1
       recast: 0.21.5
+      ricardo-testing: 2.0.0
       title-case: 3.0.3
       transliteration: 2.3.5
       xml2js: 0.4.23
@@ -3683,12 +3683,6 @@ packages:
       node-rsa: 1.1.1
     transitivePeerDependencies:
       - debug
-    dev: false
-
-  /@n8n_io/riot-tmpl/2.0.0:
-    resolution: {integrity: sha512-gQNJYlek30YIWLru2CdyFgU/0uvPAbbQwt2G5EN0PDxXD1rGAYWZsd2c94bW3YlvXT6V2GEd7Bt/gT6QUwhzfQ==}
-    dependencies:
-      eslint-config-riot: 1.0.0
     dev: false
 
   /@ngneat/falso/6.1.0:
@@ -17861,6 +17855,12 @@ packages:
       debug: 3.2.7
     transitivePeerDependencies:
       - supports-color
+    dev: false
+
+  /ricardo-testing/2.0.0:
+    resolution: {integrity: sha512-HNQvpVtZKq+Ph+7EZe3vV46/qRZFiHIB8ytiq12WdhaYcdIYfdzVHfYueewvMTr+o4Fo7vtTIussMnOX/aoBXA==}
+    dependencies:
+      eslint-config-riot: 1.0.0
     dev: false
 
   /rimraf/2.6.3:
