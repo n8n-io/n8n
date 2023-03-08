@@ -216,7 +216,7 @@ export class RespondToWebhook implements INodeType {
 		} else if (respondWith === 'text') {
 			responseBody = this.getNodeParameter('responseBody', 0) as string;
 		} else if (respondWith === 'binary') {
-			const item = this.getInputData()[0];
+			const item = items[0];
 
 			if (item.binary === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No binary data exists on the first item!');
@@ -235,20 +235,12 @@ export class RespondToWebhook implements INodeType {
 				}
 				responseBinaryPropertyName = binaryKeys[0];
 			}
-
-			const binaryData = item.binary[responseBinaryPropertyName];
+			const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
 			let uploadData: Buffer | Readable;
 			if (binaryData.id) {
 				uploadData = this.helpers.getBinaryStream(binaryData.id);
 			} else {
 				uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
-			}
-
-			if (binaryData === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Item has no binary property called "${responseBinaryPropertyName}"`,
-				);
 			}
 
 			if (!headers['content-type']) {
