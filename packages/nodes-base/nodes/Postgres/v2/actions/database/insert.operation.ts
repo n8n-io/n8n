@@ -25,20 +25,21 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
-				description: 'Use when node input properties match destination column names',
+				description: 'Use when node input properties names exactly match the table column names',
 			},
 			{
-				name: 'Map Each Column Below',
+				name: 'Map Each Column Manually',
 				value: 'defineBelow',
-				description: 'Set the value for each destination column',
+				description: 'Set the value for each destination column manually',
 			},
 		],
 		default: 'autoMapInputData',
-		description: 'Whether to insert the input data this node receives in the new row',
+		description:
+			'Whether to map node input properties and the table data automatically or manually',
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. Use a 'Set' node before this node to change them if required.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
