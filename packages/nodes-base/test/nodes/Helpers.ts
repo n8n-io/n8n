@@ -215,6 +215,12 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 
 export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	return Object.keys(testData.output.nodeData).map((nodeName) => {
+		if (result.data.resultData.error) {
+			// If there was an error running the workflow throw it for easier debugging
+			// and to surface all issues
+			throw new Error(result.data.resultData.error.message);
+		}
+
 		if (result.data.resultData.runData[nodeName] === undefined) {
 			throw new Error(`Data for node "${nodeName}" is missing!`);
 		}
