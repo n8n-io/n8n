@@ -144,7 +144,10 @@ import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
@@ -300,6 +303,7 @@ class Server extends AbstractServer {
 				ldap: false,
 				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
+				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -328,6 +332,7 @@ class Server extends AbstractServer {
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 		});
 
 		if (isLdapEnabled()) {
