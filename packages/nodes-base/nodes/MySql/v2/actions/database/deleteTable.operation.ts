@@ -44,29 +44,6 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Combine Conditions',
-		name: 'combineConditions',
-		type: 'options',
-		description: 'How to combine conditions',
-		options: [
-			{
-				name: 'AND',
-				value: 'AND',
-			},
-			{
-				name: 'OR',
-				value: 'OR',
-			},
-		],
-		default: 'AND',
-		displayOptions: {
-			show: {
-				deleteCommand: ['delete'],
-			},
-		},
-	},
-	optionsCollection,
 	optionsCollection,
 ];
 
@@ -110,7 +87,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const whereClauses =
 				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+			const combineConditions = this.getNodeParameter(
+				'options.combineConditions',
+				i,
+				'AND',
+			) as string;
 
 			[query, values] = addWhereClauses(
 				`DELETE FROM \`${table}\``,

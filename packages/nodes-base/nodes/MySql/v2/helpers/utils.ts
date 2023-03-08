@@ -44,21 +44,6 @@ export const prepareQueryAndReplacements = (rawQuery: string, replacements?: IDa
 	return { query, values };
 };
 
-// export function addReturning(
-// 	query: string,
-// 	outputColumns: string[],
-// 	replacements: IDataObject[],
-// ): [string, IDataObject[]] {
-// 	if (outputColumns.includes('*')) return [`${query} RETURNING *`, replacements];
-
-// 	const escapedColumns = outputColumns.map((column) => `\`${column}\``).join(', ');
-
-// 	return [
-// 		`${query} RETURNING ${escapedColumns}`,
-// 		[...replacements, ...(outputColumns as unknown as IDataObject[])],
-// 	];
-// }
-
 export async function runQueries(
 	this: IExecuteFunctions,
 	queries: QueryWithValues[],
@@ -195,9 +180,15 @@ export function addWhereClauses(
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
-	combineConditions = 'AND',
+	combineConditions?: string,
 ): [string, QueryValues] {
 	if (clauses.length === 0) return [query, replacements];
+
+	let combineWith = 'AND';
+
+	if (combineConditions === 'OR') {
+		combineWith = 'OR';
+	}
 
 	let whereQuery = ' WHERE';
 	const values: string[] = [];
@@ -213,7 +204,7 @@ export function addWhereClauses(
 			values.push(clause.value);
 		}
 
-		const operator = index === clauses.length - 1 ? '' : ` ${combineConditions}`;
+		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
 
 		whereQuery += ` \`${clause.column}\` ${clause.condition}${valueReplacement}${operator}`;
 	});

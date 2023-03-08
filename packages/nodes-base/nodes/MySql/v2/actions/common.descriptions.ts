@@ -41,6 +41,51 @@ export const optionsCollection: INodeProperties = {
 			description: 'Number of milliseconds reserved for connecting to the database',
 		},
 		{
+			displayName: 'Combine Conditions',
+			name: 'combineConditions',
+			type: 'options',
+			description: 'How to combine conditions',
+			options: [
+				{
+					name: 'AND',
+					value: 'AND',
+				},
+				{
+					name: 'OR',
+					value: 'OR',
+				},
+			],
+			default: 'AND',
+			displayOptions: {
+				show: {
+					'/operation': ['select'],
+				},
+			},
+		},
+		{
+			displayName: 'Combine Conditions',
+			name: 'combineConditions',
+			type: 'options',
+			description: 'How to combine conditions',
+			options: [
+				{
+					name: 'AND',
+					value: 'AND',
+				},
+				{
+					name: 'OR',
+					value: 'OR',
+				},
+			],
+			default: 'AND',
+			displayOptions: {
+				show: {
+					'/operation': ['deleteTable'],
+					'/deleteCommand': ['delete'],
+				},
+			},
+		},
+		{
 			displayName: 'Query Batching',
 			name: 'queryBatching',
 			type: 'options',
@@ -131,6 +176,9 @@ export const optionsCollection: INodeProperties = {
 			],
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
+			displayOptions: {
+				show: { '/operation': ['select', 'executeQuery'] },
+			},
 		},
 		{
 			displayName: 'Priority',
@@ -292,23 +340,6 @@ export const whereFixedCollection: INodeProperties = {
 						},
 					},
 				},
-				// {
-				// 	displayName: 'Operator',
-				// 	name: 'operator',
-				// 	type: 'options',
-				// 	hint: 'How to combine with next clause, operator from last clause will be ignored',
-				// 	options: [
-				// 		{
-				// 			name: 'AND',
-				// 			value: 'AND',
-				// 		},
-				// 		{
-				// 			name: 'OR',
-				// 			value: 'OR',
-				// 		},
-				// 	],
-				// 	default: 'AND',
-				// },
 			],
 		},
 	],

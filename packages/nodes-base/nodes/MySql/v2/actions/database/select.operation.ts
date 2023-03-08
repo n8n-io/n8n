@@ -45,23 +45,6 @@ const properties: INodeProperties[] = [
 		},
 	},
 	whereFixedCollection,
-	{
-		displayName: 'Combine Conditions',
-		name: 'combineConditions',
-		type: 'options',
-		description: 'How to combine conditions',
-		options: [
-			{
-				name: 'AND',
-				value: 'AND',
-			},
-			{
-				name: 'OR',
-				value: 'OR',
-			},
-		],
-		default: 'AND',
-	},
 	sortFixedCollection,
 	optionsCollection,
 ];
@@ -107,7 +90,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+		const combineConditions = this.getNodeParameter(
+			'options.combineConditions',
+			i,
+			'AND',
+		) as string;
 
 		[query, values] = addWhereClauses(query, whereClauses, values, combineConditions);
 
@@ -119,7 +106,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
 			const limit = this.getNodeParameter('limit', i, 50);
-			query += ` LIMIT ${limit}`;
+			query += ' LIMIT ?';
+			values.push(limit);
 		}
 
 		queries.push({ query, values });

@@ -5,7 +5,7 @@ export type Mysql2Connection = mysql2.Connection;
 
 export type Mysql2OkPacket = mysql2.OkPacket;
 
-export type QueryValues = Array<string | IDataObject | string[]>;
+export type QueryValues = Array<string | number | IDataObject>;
 export type QueryWithValues = { query: string; values: QueryValues };
 
 export type QueryMode = 'multiple' | 'transaction' | 'independently';

@@ -12,7 +12,6 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	try {
 		const columns = (
 			await connection.query(
-				// `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = \`${table}\``,
 				`SHOW COLUMNS FROM \`${table}\` FROM \`${credentials.database as string}\``,
 			)
 		)[0] as IDataObject[];
