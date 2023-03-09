@@ -1,6 +1,10 @@
 import type { Request, Response } from 'express';
 
-export type Method = 'get' | 'post' | 'patch' | 'delete';
+export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+
+export interface MiddlewareMetadata {
+	handlerName: string;
+}
 
 export interface RouteMetadata {
 	method: Method;
