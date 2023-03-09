@@ -20,17 +20,18 @@ export const registerController = (app: Application, config: Config, controller:
 		const restBasePath = config.getEnv('endpoints.rest');
 		const prefix = `/${[restBasePath, controllerBasePath].join('/')}`.replace(/\/+/g, '/');
 
-		const middlewares = (
+		const controllerMiddlewares = (
 			(Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ?? []) as MiddlewareMetadata[]
 		).map(
 			({ handlerName }) =>
 				(controller as Controller)[handlerName].bind(controller) as RequestHandler,
 		);
 
-		routes.forEach(({ method, path, handlerName }) => {
+		routes.forEach(({ method, path, middlewares: routeMiddlewares, handlerName }) => {
 			router[method](
 				path,
-				...middlewares,
+				...controllerMiddlewares,
+				...routeMiddlewares,
 				send(async (req: Request, res: Response) =>
 					(controller as Controller)[handlerName](req, res),
 				),
