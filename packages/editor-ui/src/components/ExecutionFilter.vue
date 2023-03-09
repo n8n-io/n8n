@@ -8,20 +8,31 @@ import type {
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { isEmpty } from '@/utils';
+import { EnterpriseEditionFeature } from '@/constants';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsageStore } from '@/stores/usage';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
 	filter: ExecutionFilterType;
 };
 
-const dateTimeMask = 'yyyy-MM-dd HH:mm';
-const showTags = computed(() => false);
+const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
+const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
 
+const settingsStore = useSettingsStore();
+const usageStore = useUsageStore();
 const props = defineProps<ExecutionFilterProps>();
-
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
 }>();
+
+const isAdvancedExecutionFilterEnabled = computed(() =>
+	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
+);
+const isCloudDeployment = computed(() => settingsStore.isCloudDeployment);
+
+const showTags = computed(() => false);
 
 const statusFilterApplied = computed(() => {
 	return (
@@ -66,9 +77,11 @@ const endDate = computed({
 	},
 });
 
-const viewPlansLink = computed(() => {
-	return 'https://app.n8n.cloud/manage?edition=cloud';
-});
+const viewPlansLink = computed(() =>
+	isCloudDeployment.value
+		? CLOUD_UPGRADE_LINK
+		: `${usageStore.viewPlansUrl}&source=custom-data-filter`,
+);
 
 const countSelectedFilterProps = computed(() => {
 	let count = 0;
@@ -210,7 +223,7 @@ const onFilterReset = () => {
 							id="execution-filter-start-date"
 							type="datetime"
 							v-model="startDate"
-							:format="dateTimeMask"
+							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.startDate')"
 						/>
 						<span :class="$style.divider">to</span>
@@ -218,7 +231,7 @@ const onFilterReset = () => {
 							id="execution-filter-end-date"
 							type="datetime"
 							v-model="endDate"
-							:format="dateTimeMask"
+							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.endDate')"
 						/>
 					</div>
@@ -247,7 +260,7 @@ const onFilterReset = () => {
 							<label for="execution-filter-saved-data-key">{{
 								$locale.baseText('executionsFilter.savedDataKey')
 							}}</label>
-							<n8n-tooltip disabled placement="top">
+							<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 								<template #content>
 									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 										<template #link>
@@ -262,6 +275,7 @@ const onFilterReset = () => {
 									name="execution-filter-saved-data-key"
 									type="text"
 									size="medium"
+									:disabled="!isAdvancedExecutionFilterEnabled"
 									:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 									:value="filter.metadata[0]?.key"
 									@input="onFilterMetaChange(0, 'key', $event)"
@@ -272,7 +286,7 @@ const onFilterReset = () => {
 							<label for="execution-filter-saved-data-value">{{
 								$locale.baseText('executionsFilter.savedDataValue')
 							}}</label>
-							<n8n-tooltip disabled placement="top">
+							<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 								<template #content>
 									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 										<template #link>
@@ -287,6 +301,7 @@ const onFilterReset = () => {
 									name="execution-filter-saved-data-value"
 									type="text"
 									size="medium"
+									:disabled="!isAdvancedExecutionFilterEnabled"
 									:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 									:value="filter.metadata[0]?.value"
 									@input="onFilterMetaChange(0, 'value', $event)"
