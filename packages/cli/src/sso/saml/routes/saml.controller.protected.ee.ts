@@ -23,7 +23,7 @@ samlControllerProtected.get(
 	SamlUrls.config,
 	samlLicensedOwnerMiddleware,
 	(req: SamlConfiguration.Read, res: express.Response) => {
-		const prefs = SamlService.getInstance().getSamlPreferences();
+		const prefs = SamlService.getInstance().samlPreferences;
 		return res.send(prefs);
 	},
 );
