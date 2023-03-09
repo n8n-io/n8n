@@ -1,7 +1,6 @@
 import express from 'express';
 import { Get, Post, RestController } from '../../../decorators';
 import { SamlUrls } from '../constants';
-import { Middleware } from '../../../decorators/Middleware';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedOwnerMiddleware,
@@ -34,8 +33,7 @@ export class SamlController {
 	 * GET /sso/saml/config
 	 * Return SAML config
 	 */
-	@Get(SamlUrls.config)
-	@Middleware(samlLicensedOwnerMiddleware)
+	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configGet(req: SamlConfiguration.Read, res: express.Response) {
 		const prefs = SamlService.getInstance().samlPreferences;
 		return res.send(prefs);
@@ -45,8 +43,7 @@ export class SamlController {
 	 * POST /sso/saml/config
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.config)
-	@Middleware(samlLicensedOwnerMiddleware)
+	@Post(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configPost(req: SamlConfiguration.Update, res: express.Response) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
@@ -64,8 +61,7 @@ export class SamlController {
 	 * POST /sso/saml/config/toggle
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.configToggleEnabled)
-	@Middleware(samlLicensedOwnerMiddleware)
+	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedOwnerMiddleware] })
 	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
@@ -78,8 +74,7 @@ export class SamlController {
 	 * GET /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
-	@Get(SamlUrls.acs)
-	@Middleware(samlLicensedAndEnabledMiddleware)
+	@Get(SamlUrls.acs, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async acsGet(req: express.Request, res: express.Response) {
 		const loginResult = await SamlService.getInstance().handleSamlLogin(req, 'redirect');
 		if (loginResult) {
@@ -99,8 +94,7 @@ export class SamlController {
 	 * POST /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
-	@Post(SamlUrls.acs)
-	@Middleware(samlLicensedAndEnabledMiddleware)
+	@Post(SamlUrls.acs, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async acsPost(req: express.Request, res: express.Response) {
 		const loginResult = await SamlService.getInstance().handleSamlLogin(req, 'post');
 		if (loginResult) {
@@ -120,8 +114,7 @@ export class SamlController {
 	 * GET /sso/saml/initsso
 	 * Access URL for implementing SP-init SSO
 	 */
-	@Get(SamlUrls.initSSO)
-	@Middleware(samlLicensedAndEnabledMiddleware)
+	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
 		const result = SamlService.getInstance().getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
@@ -140,8 +133,7 @@ export class SamlController {
 	 * GET /sso/saml/config/test
 	 * Test SAML config
 	 */
-	@Get(SamlUrls.configTest)
-	@Middleware(samlLicensedOwnerMiddleware)
+	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configTestGet(req: express.Request, res: express.Response) {
 		const testResult = await SamlService.getInstance().testSamlConnection();
 		return res.send(testResult);

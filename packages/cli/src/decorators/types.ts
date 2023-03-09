@@ -6,11 +6,9 @@ export interface MiddlewareMetadata {
 	handlerName: string;
 }
 
-export type MiddlewareFunction = (req: Request, res: Response, next: NextFunction) => void;
-
 export interface RouteMetadata {
-	method?: Method;
-	path?: string;
+	method: Method;
+	path: string;
 	handlerName: string;
 	middlewares: RequestHandler[];
 }

@@ -48,6 +48,13 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
+		signatureConfig: {
+			prefix: 'ds',
+			location: {
+				reference: '/samlp:Response/saml:Issuer',
+				action: 'after',
+			},
+		},
 	};
 
 	public get samlPreferences(): SamlPreferences {
@@ -189,6 +196,8 @@ export class SamlService {
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
+		this._samlPreferences.signatureConfig =
+			prefs.signatureConfig ?? this._samlPreferences.signatureConfig;
 		this._samlPreferences.authnRequestsSigned =
 			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
 		this._samlPreferences.wantAssertionsSigned =
