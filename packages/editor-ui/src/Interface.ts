@@ -72,7 +72,9 @@ declare global {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
 		};
 		featureFlags?: {
-			override?: (name: string, value: string) => void;
+			getAll: () => FeatureFlags;
+			getVariant: (name: string) => string | boolean | undefined;
+			override: (name: string, value: string) => void;
 		};
 	}
 }

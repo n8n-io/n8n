@@ -35,19 +35,6 @@ export const usePostHog = defineStore('posthog', () => {
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 
-	window.featureFlags = window.featureFlags || {};
-	// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
-	window.featureFlags.override = (name: string, value: string | boolean) => {
-		overrides[name] = value;
-		featureFlags.value = {
-			...featureFlags.value,
-			[name]: value,
-		};
-		try {
-			localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides));
-		} catch (e) {}
-	};
-
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
@@ -60,6 +47,24 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
 		return getVariant(experiment) === variant;
+	};
+
+	// for testing
+	window.featureFlags = {
+		// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
+		override: (name: string, value: string | boolean) => {
+			overrides[name] = value;
+			featureFlags.value = {
+				...featureFlags.value,
+				[name]: value,
+			};
+			try {
+				localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides));
+			} catch (e) {}
+		},
+
+		getVariant,
+		getAll: () => featureFlags.value || {},
 	};
 
 	const identify = () => {
