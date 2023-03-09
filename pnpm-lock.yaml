@@ -921,7 +921,6 @@ importers:
       xml2js: ^0.4.23
     dependencies:
       '@kafkajs/confluent-schema-registry': 1.0.6
-      '@types/js-nacl': 1.3.0
       amqplib: 0.10.3
       aws4: 1.11.0
       basic-auth: 2.0.1
@@ -993,7 +992,7 @@ importers:
       mqtt: 4.2.6
       mssql: 8.1.4
       mysql2: 2.3.3
-      n8n-core: link:../core
+      n8n-workflow: link:../workflow
       node-html-markdown: 1.2.0
       node-ssh: 12.0.5
       nodemailer: 6.8.0
@@ -1026,6 +1025,7 @@ importers:
       '@types/formidable': 1.2.5
       '@types/gm': 1.25.0
       '@types/imap-simple': 4.2.5
+      '@types/js-nacl': 1.3.0
       '@types/jsonwebtoken': 9.0.1
       '@types/lodash': 4.14.191
       '@types/lodash.assign': 4.2.7
@@ -1086,7 +1086,7 @@ importers:
       '@types/xml2js': 0.4.11
       eslint-plugin-n8n-nodes-base: 1.12.0_pku7h6lsbnh7tcsfjudlqd5qce
       gulp: 4.0.2
-      n8n-workflow: link:../workflow
+      n8n-core: link:../core
 
   packages/workflow:
     specifiers:
@@ -5644,7 +5644,7 @@ packages:
 
   /@types/js-nacl/1.3.0:
     resolution: {integrity: sha512-juUvxo444ZfwDSwWyhssMxSN+snqTdiUoOVXZF+/ffVrGHq3rAf1fmczWn3z9TCEAuRbaTmgAcYlZ9MutyyOkQ==}
-    dev: false
+    dev: true
 
   /@types/jsdom/20.0.1:
     resolution: {integrity: sha512-d0r18sZPmMQr1eG35u12FZfhIXNrnsPU/g5wvRKCUf/tOGilKKwYMYGqh33BNR6ba+2gkHw1EUiHoN3mn7E5IQ==}
