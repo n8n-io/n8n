@@ -8,7 +8,6 @@ describe('Workflow tags', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		wf.actions.visit();
 	});
 
 	it('should create and attach tags inline', () => {
