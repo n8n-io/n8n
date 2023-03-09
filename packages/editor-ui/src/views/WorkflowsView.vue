@@ -49,7 +49,7 @@
 			</div>
 			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
-					:class="[$style.emptyStateCard, 'mr-s']"
+					:class="$style.emptyStateCard"
 					hoverable
 					@click="addWorkflow"
 					data-test-id="new-workflow-card"
@@ -288,6 +288,10 @@ export default WorkflowsView;
 	text-align: center;
 	display: inline-flex;
 	height: 230px;
+
+	& + & {
+		margin-left: var(--spacing-s);
+	}
 
 	&:hover {
 		svg {
