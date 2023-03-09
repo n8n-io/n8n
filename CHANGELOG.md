@@ -1,3 +1,12 @@
+## [0.216.3](https://github.com/n8n-io/n8n/compare/n8n@0.216.2...n8n@0.216.3) (2023-03-09)
+
+
+### Bug Fixes
+
+* **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([5282fd2](https://github.com/n8n-io/n8n/commit/5282fd266c26e7053ceb887addceed26b741f995))
+
+
+
 ## [0.216.2](https://github.com/n8n-io/n8n/compare/n8n@0.216.1...n8n@0.216.2) (2023-02-23)
 
 
