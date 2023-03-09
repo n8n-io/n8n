@@ -20,13 +20,25 @@ export const registerController = (app: Application, config: Config, controller:
 		const restBasePath = config.getEnv('endpoints.rest');
 		const prefix = `/${[restBasePath, controllerBasePath].join('/')}`.replace(/\/+/g, '/');
 
-		routes.forEach(({ method, path, handlerName }) => {
-			router[method](
-				path,
-				send(async (req: Request, res: Response) =>
-					(controller as Controller)[handlerName](req, res),
-				),
-			);
+		routes.forEach(({ method, path, handlerName, middlewares }) => {
+			if (method && path) {
+				if (middlewares) {
+					router[method](
+						path,
+						...middlewares,
+						send(async (req: Request, res: Response) =>
+							(controller as Controller)[handlerName](req, res),
+						),
+					);
+				} else {
+					router[method](
+						path,
+						send(async (req: Request, res: Response) =>
+							(controller as Controller)[handlerName](req, res),
+						),
+					);
+				}
+			}
 		});
 
 		app.use(prefix, router);

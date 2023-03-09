@@ -1,41 +1,53 @@
 import express from 'express';
+import { Get, Post, RestController } from '../../../decorators';
+import { SamlUrls } from '../constants';
+import { Middleware } from '../../../decorators/Middleware';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedOwnerMiddleware,
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
-import { SamlUrls } from '../constants';
-import type { SamlConfiguration } from '../types/requests';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
+import { SamlConfiguration } from '../types/requests';
+import { AuthError, BadRequestError } from '../../../ResponseHelper';
+import { getInitSSOFormView } from '../views/initSsoPost';
+import { getInitSSOPostView } from '../views/initSsoRedirect';
 import { issueCookie } from '../../../auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
-import { getInitSSOFormView } from '../views/initSsoPost';
-import { getInitSSOPostView } from '../views/initSsoRedirect';
 
-export const samlControllerProtected = express.Router();
+@RestController('/sso/saml')
+export class SamlController {
+	private samlService: SamlService;
 
-/**
- * GET /sso/saml/config
- * Return SAML config
- */
-samlControllerProtected.get(
-	SamlUrls.config,
-	samlLicensedOwnerMiddleware,
-	(req: SamlConfiguration.Read, res: express.Response) => {
+	constructor() {
+		this.samlService = SamlService.getInstance();
+	}
+
+	@Get(SamlUrls.metadata)
+	async getServiceProviderMetadata(req: express.Request, res: express.Response) {
+		return res
+			.header('Content-Type', 'text/xml')
+			.send(this.samlService.getServiceProviderInstance().getMetadata());
+	}
+
+	/**
+	 * GET /sso/saml/config
+	 * Return SAML config
+	 */
+	@Get(SamlUrls.config)
+	@Middleware(samlLicensedOwnerMiddleware)
+	async configGet(req: SamlConfiguration.Read, res: express.Response) {
 		const prefs = SamlService.getInstance().samlPreferences;
 		return res.send(prefs);
-	},
-);
+	}
 
-/**
- * POST /sso/saml/config
- * Set SAML config
- */
-samlControllerProtected.post(
-	SamlUrls.config,
-	samlLicensedOwnerMiddleware,
-	async (req: SamlConfiguration.Update, res: express.Response) => {
+	/**
+	 * POST /sso/saml/config
+	 * Set SAML config
+	 */
+	@Post(SamlUrls.config)
+	@Middleware(samlLicensedOwnerMiddleware)
+	async configPost(req: SamlConfiguration.Update, res: express.Response) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
 			const result = await SamlService.getInstance().setSamlPreferences(req.body);
@@ -46,33 +58,29 @@ samlControllerProtected.post(
 					validationResult.map((e) => e.toString()).join(','),
 			);
 		}
-	},
-);
+	}
 
-/**
- * POST /sso/saml/config/toggle
- * Set SAML config
- */
-samlControllerProtected.post(
-	SamlUrls.configToggleEnabled,
-	samlLicensedOwnerMiddleware,
-	async (req: SamlConfiguration.Toggle, res: express.Response) => {
+	/**
+	 * POST /sso/saml/config/toggle
+	 * Set SAML config
+	 */
+	@Post(SamlUrls.configToggleEnabled)
+	@Middleware(samlLicensedOwnerMiddleware)
+	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
 		}
 		await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.loginEnabled });
 		res.sendStatus(200);
-	},
-);
+	}
 
-/**
- * GET /sso/saml/acs
- * Assertion Consumer Service endpoint
- */
-samlControllerProtected.get(
-	SamlUrls.acs,
-	samlLicensedAndEnabledMiddleware,
-	async (req: express.Request, res: express.Response) => {
+	/**
+	 * GET /sso/saml/acs
+	 * Assertion Consumer Service endpoint
+	 */
+	@Get(SamlUrls.acs)
+	@Middleware(samlLicensedAndEnabledMiddleware)
+	async acsGet(req: express.Request, res: express.Response) {
 		const loginResult = await SamlService.getInstance().handleSamlLogin(req, 'redirect');
 		if (loginResult) {
 			if (loginResult.authenticatedUser) {
@@ -85,17 +93,15 @@ samlControllerProtected.get(
 			}
 		}
 		throw new AuthError('SAML Authentication failed');
-	},
-);
+	}
 
-/**
- * POST /sso/saml/acs
- * Assertion Consumer Service endpoint
- */
-samlControllerProtected.post(
-	SamlUrls.acs,
-	samlLicensedAndEnabledMiddleware,
-	async (req: express.Request, res: express.Response) => {
+	/**
+	 * POST /sso/saml/acs
+	 * Assertion Consumer Service endpoint
+	 */
+	@Post(SamlUrls.acs)
+	@Middleware(samlLicensedAndEnabledMiddleware)
+	async acsPost(req: express.Request, res: express.Response) {
 		const loginResult = await SamlService.getInstance().handleSamlLogin(req, 'post');
 		if (loginResult) {
 			if (loginResult.authenticatedUser) {
@@ -108,17 +114,15 @@ samlControllerProtected.post(
 			}
 		}
 		throw new AuthError('SAML Authentication failed');
-	},
-);
+	}
 
-/**
- * GET /sso/saml/initsso
- * Access URL for implementing SP-init SSO
- */
-samlControllerProtected.get(
-	SamlUrls.initSSO,
-	samlLicensedAndEnabledMiddleware,
-	async (req: express.Request, res: express.Response) => {
+	/**
+	 * GET /sso/saml/initsso
+	 * Access URL for implementing SP-init SSO
+	 */
+	@Get(SamlUrls.initSSO)
+	@Middleware(samlLicensedAndEnabledMiddleware)
+	async initSsoGet(req: express.Request, res: express.Response) {
 		const result = SamlService.getInstance().getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
 			// forced client side redirect through the use of a javascript redirect
@@ -130,18 +134,16 @@ samlControllerProtected.get(
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
-	},
-);
+	}
 
-/**
- * GET /sso/saml/config/test
- * Test SAML config
- */
-samlControllerProtected.get(
-	SamlUrls.configTest,
-	samlLicensedOwnerMiddleware,
-	async (req: express.Request, res: express.Response) => {
+	/**
+	 * GET /sso/saml/config/test
+	 * Test SAML config
+	 */
+	@Get(SamlUrls.configTest)
+	@Middleware(samlLicensedOwnerMiddleware)
+	async configTestGet(req: express.Request, res: express.Response) {
 		const testResult = await SamlService.getInstance().testSamlConnection();
 		return res.send(testResult);
-	},
-);
+	}
+}
