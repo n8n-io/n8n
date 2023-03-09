@@ -179,7 +179,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper, newVersions).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
-			return false; //usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
+			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
