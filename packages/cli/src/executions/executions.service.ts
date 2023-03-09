@@ -35,7 +35,7 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
 import { Container } from 'typedi';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
+import { getStatusUsingPreviousExecutionStatusMethod, isAdvancedExecutionFiltersEnabled } from './executionHelpers';
 import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
@@ -322,7 +322,7 @@ export class ExecutionsService {
 			.where(findWhere);
 
 		const countFilter = deepCopy(filter ?? {});
-		const metadata = filter?.metadata;
+		const metadata = isAdvancedExecutionFiltersEnabled() ? filter?.metadata : undefined;
 
 		if (metadata?.length) {
 			query = query.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
