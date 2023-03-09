@@ -1,7 +1,11 @@
 import EventSource from 'eventsource';
-
-import type { ITriggerFunctions } from 'n8n-core';
-import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ITriggerFunctions,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 export class SseTrigger implements INodeType {

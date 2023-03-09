@@ -1,8 +1,8 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
