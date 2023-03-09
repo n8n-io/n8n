@@ -1,22 +1,33 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { createConnection } from '../transport';
+import { createPool } from '../transport';
+
+import { Client } from 'ssh2';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials);
+	const nodeOptions = this.getNodeParameter('options', 0) as IDataObject;
 
-	const table = this.getNodeParameter('table', 0, {
-		extractValue: true,
-	}) as string;
+	let sshClient: Client | undefined = undefined;
+
+	if (credentials.sshTunnel) {
+		sshClient = new Client();
+	}
+	const pool = await createPool(credentials, nodeOptions, sshClient);
 
 	try {
+		const connection = await pool.getConnection();
+
+		const table = this.getNodeParameter('table', 0, {
+			extractValue: true,
+		}) as string;
+
 		const columns = (
 			await connection.query(
 				`SHOW COLUMNS FROM \`${table}\` FROM \`${credentials.database as string}\``,
 			)
 		)[0] as IDataObject[];
 
-		await connection.end();
+		connection.release();
 
 		return (columns || []).map((column: IDataObject) => ({
 			name: column.Field as string,
@@ -27,8 +38,12 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 			}`,
 		}));
 	} catch (error) {
-		await connection.end();
 		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		await pool.end();
 	}
 }
 

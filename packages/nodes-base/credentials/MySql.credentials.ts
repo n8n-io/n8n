@@ -97,5 +97,58 @@ export class MySql implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'SSH Tunnel',
+			name: 'sshTunnel',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'SSH Host',
+			name: 'sshHost',
+			type: 'string',
+			default: 'localhost',
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
+		},
+		{
+			displayName: 'SSH User',
+			name: 'sshUser',
+			type: 'string',
+			default: 'root',
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
+		},
+		{
+			displayName: 'SSH Password',
+			name: 'sshPassword',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
+		},
+		{
+			displayName: 'SSH Port',
+			name: 'sshPort',
+			type: 'number',
+			default: 22,
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
+		},
 	];
 }

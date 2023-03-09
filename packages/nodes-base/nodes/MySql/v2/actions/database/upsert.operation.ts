@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-import type { QueryValues, QueryWithValues } from '../../helpers/interfaces';
+import type { Mysql2Pool, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Column to match on',
+		displayName: 'Unique Column',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
@@ -43,10 +43,10 @@ const properties: INodeProperties[] = [
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
 		},
 		default: '',
-		hint: "Used to find the correct row to update. Doesn't get changed.",
+		hint: "Used to find the correct row to update. Doesn't get changed. Has to be unique.",
 	},
 	{
-		displayName: 'Value of Column to Match On',
+		displayName: 'Value of Unique Column',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
@@ -111,12 +111,14 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	pool: Mysql2Pool,
+	nodeOptions: IDataObject,
+): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();
-
-	const nodeOptions = this.getNodeParameter('options', 0);
 
 	const queries: QueryWithValues[] = [];
 
@@ -171,7 +173,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		queries.push({ query, values });
 	}
 
-	returnData = await runQueries.call(this, queries, nodeOptions);
+	returnData = await runQueries.call(this, queries, nodeOptions, pool);
 
 	return returnData;
 }

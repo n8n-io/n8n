@@ -1,9 +1,14 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
-import type { QueryMode, QueryValues, QueryWithValues, SortRule, WhereClause } from './interfaces';
-
-import { createPool } from '../transport';
+import type {
+	Mysql2Pool,
+	QueryMode,
+	QueryValues,
+	QueryWithValues,
+	SortRule,
+	WhereClause,
+} from './interfaces';
 
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
@@ -21,13 +26,13 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-export const prepareQueryAndReplacements = (rawQuery: string, replacements?: IDataObject[]) => {
+export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
 	if (replacements === undefined) {
 		return { query: rawQuery, values: [] };
 	}
 	// in UI for replacements we use syntax identical to Postgres Query Replacement, but we need to convert it to mysql2 replacement syntax
 	let query: string = rawQuery;
-	const values: IDataObject[] = [];
+	const values: QueryValues = [];
 
 	const regex = /\$(\d+)(?::name)?/g;
 	const matches = rawQuery.match(regex) || [];
@@ -72,7 +77,7 @@ export function parseMySqlError(this: IExecuteFunctions, error: any, itemIndex?:
 	});
 }
 
-function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
+export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
 		return [{ json: data }];
 	}
@@ -85,6 +90,7 @@ export async function runQueries(
 	this: IExecuteFunctions,
 	queries: QueryWithValues[],
 	options: IDataObject,
+	pool: Mysql2Pool,
 ) {
 	if (queries.length === 0) {
 		return [];
@@ -93,9 +99,6 @@ export async function runQueries(
 	const returnData: INodeExecutionData[] = [];
 	const mode = (options.queryBatching as QueryMode) || 'multiple';
 
-	const credentials = await this.getCredentials('mySql');
-
-	const pool = await createPool(credentials, options);
 	const connection = await pool.getConnection();
 
 	if (mode === 'multiple') {
@@ -134,7 +137,6 @@ export async function runQueries(
 			returnData.push({ json: { message: error.message, error: { ...error } } });
 		} finally {
 			connection.release();
-			await pool.end();
 		}
 	} else {
 		if (mode === 'independently') {
@@ -159,7 +161,6 @@ export async function runQueries(
 
 					if (!this.continueOnFail()) {
 						connection.release();
-						await pool.end();
 						throw error;
 					}
 					returnData.push(prepareErrorItem(queries[index], error as Error, index));
@@ -192,7 +193,6 @@ export async function runQueries(
 					if (connection) {
 						await connection.rollback();
 						connection.release();
-						await pool.end();
 					}
 
 					if (!this.continueOnFail()) throw error;
@@ -207,7 +207,6 @@ export async function runQueries(
 		}
 
 		connection.release();
-		await pool.end();
 	}
 
 	return returnData;
@@ -260,7 +259,7 @@ export function addSortRules(
 	const values: string[] = [];
 
 	rules.forEach((rule, index) => {
-		const endWith = index === rules.length - 1 ? '' : ', ';
+		const endWith = index === rules.length - 1 ? '' : ',';
 
 		orderByQuery += ` \`${rule.column}\` ${rule.direction}${endWith}`;
 	});

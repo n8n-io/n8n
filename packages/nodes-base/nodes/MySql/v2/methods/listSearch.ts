@@ -1,23 +1,44 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { createConnection } from '../transport';
+import { createPool } from '../transport';
+
+import { Client } from 'ssh2';
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('mySql');
-	const connection = await createConnection(credentials);
 
-	const query = 'SELECT table_name FROM information_schema.tables WHERE table_schema = ?';
-	const values = [credentials.database as string];
+	const nodeOptions = this.getNodeParameter('options', 0) as IDataObject;
 
-	const formatedQuery = connection.format(query, values);
+	let sshClient: Client | undefined = undefined;
 
-	const response = (await connection.query(formatedQuery))[0];
+	if (credentials.sshTunnel) {
+		sshClient = new Client();
+	}
+	const pool = await createPool(credentials, nodeOptions, sshClient);
 
-	const results = (response as IDataObject[]).map((table) => ({
-		name: table.table_name as string,
-		value: table.table_name as string,
-	}));
+	try {
+		const connection = await pool.getConnection();
 
-	await connection.end();
+		const query = 'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ?';
+		const values = [credentials.database as string];
 
-	return { results };
+		const formatedQuery = connection.format(query, values);
+
+		const response = (await connection.query(formatedQuery))[0];
+
+		connection.release();
+
+		const results = (response as IDataObject[]).map((table) => ({
+			name: (table.table_name as string) || (table.TABLE_NAME as string),
+			value: (table.table_name as string) || (table.TABLE_NAME as string),
+		}));
+
+		return { results };
+	} catch (error) {
+		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		await pool.end();
+	}
 }
