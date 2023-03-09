@@ -159,7 +159,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.HOMEPAGE });
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
@@ -183,7 +183,7 @@ export default mixins(showMessage, restApi).extend({
 		onSkip() {
 			this.usersStore.skipOwnerSetup();
 			this.$router.push({
-				name: VIEWS.HOMEPAGE,
+				name: VIEWS.NEW_WORKFLOW,
 			});
 		},
 	},

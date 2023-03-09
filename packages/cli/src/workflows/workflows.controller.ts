@@ -107,15 +107,6 @@ workflowsController.post(
 			});
 		}
 
-		// If the user has not saved a workflow before, update the user settings
-		// `hasSavedWorkflow` flag to true
-		const userSettings = req.user.settings;
-		if (!userSettings?.hasSavedWorkflow) {
-			void Db.collections.User.update(req.user.id, {
-				settings: { ...req.user.settings, hasSavedWorkflow: true },
-			});
-		}
-
 		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
 		void Container.get(InternalHooks).onWorkflowCreated(req.user, newWorkflow, false);
 

@@ -223,15 +223,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper, newVersions).extend({
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
-
-			// If the user has no workflows and has not saved a workflow, redirect to the new workflow view
-			if (
-				!this.isDemoTest &&
-				!this.currentUser.settings?.hasSavedWorkflow &&
-				this.allWorkflows.length === 0
-			) {
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
-			}
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
