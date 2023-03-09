@@ -137,6 +137,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useCredentialsStore } from '@/stores/credentials';
 import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
@@ -170,7 +171,13 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+			useCredentialsStore,
+		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -228,6 +235,8 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+
+			this.credentialsStore.fetchAllCredentials();
 
 			// If the user has no workflows and is not participating in the demo experiment,
 			// redirect to the new workflow view
