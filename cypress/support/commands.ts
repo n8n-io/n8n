@@ -60,7 +60,7 @@ Cypress.Commands.add('waitForLoad', () => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	const signinPage = new SigninPage();
-	const workflowPage = new WorkflowPage();
+	const workflowsPage = new WorkflowsPage();
 
 	cy.session(
 		[email, password],
@@ -74,10 +74,7 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			});
 
 			// we should be redirected to /workflows
-			cy.visit(workflowPage.url);
-			cy.url().should('include', workflowPage.url);
-			cy.intercept('GET', '/rest/workflows/new').as('loading');
-			cy.wait('@loading');
+			cy.url().should('include', workflowsPage.url);
 		},
 		{
 			validate() {

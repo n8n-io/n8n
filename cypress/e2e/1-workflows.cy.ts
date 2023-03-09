@@ -27,12 +27,13 @@ describe('Workflows', () => {
 		});
 
 		cy.signin({ email, password });
-		cy.visit('/');
-		cy.waitForLoad();
+		cy.visit(WorkflowsPage.url);
 	});
 
-	it('should land on empty canvas after registration', () => {
-		cy.url().should('include', WorkflowPage.url);
+	it('should create a new workflow using empty state card', () => {
+		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
+		WorkflowsPage.getters.newWorkflowButtonCard().click();
+
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Empty State Card Workflow ${uuid()}`);
 
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-1');
