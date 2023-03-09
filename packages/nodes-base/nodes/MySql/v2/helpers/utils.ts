@@ -105,6 +105,9 @@ export async function runQueries(
 		try {
 			const formatedQueries = queries.map(({ query, values }) => connection.format(query, values));
 
+			//releasing connection after formating queries, otherwise pool.query() will fail with timeout
+			connection.release();
+
 			let singleQuery = '';
 
 			if (formatedQueries.length > 1) {
@@ -135,8 +138,6 @@ export async function runQueries(
 
 			if (!this.continueOnFail()) throw error;
 			returnData.push({ json: { message: error.message, error: { ...error } } });
-		} finally {
-			connection.release();
 		}
 	} else {
 		if (mode === 'independently') {
