@@ -6,10 +6,18 @@ import {
 	DatatableRowDataType,
 } from '@/components/N8nDatatable/mixins';
 import { getValueByPath } from '../../utils';
-import { useI18n } from '@/composables';
+import { useI18n } from '../../composables';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
+import N8nPagination from '../N8nPagination';
 
 export default defineComponent({
 	name: 'n8n-datatable',
+	components: {
+		N8nSelect,
+		N8nOption,
+		N8nPagination,
+	},
 	props: {
 		columns: {
 			type: Array as PropType<DatatableColumn[]>,
@@ -114,7 +122,7 @@ export default defineComponent({
 		</table>
 
 		<div :class="$style.pagination">
-			<el-pagination
+			<n8n-pagination
 				v-if="totalPages > 1"
 				background
 				:current-page.sync="currentPage"
@@ -122,8 +130,7 @@ export default defineComponent({
 				:page-size="currentRowsPerPage"
 				layout="prev, pager, next"
 				:total="totalRows"
-			>
-			</el-pagination>
+			/>
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select
