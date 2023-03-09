@@ -1134,12 +1134,12 @@ export class HttpRequestV3 implements INodeType {
 						'inputDataFieldName',
 						itemIndex,
 					) as string;
-					this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
 
 					let uploadData: Buffer | Readable;
 					let contentLength: number;
 
-					const itemBinaryData = items[itemIndex].binary![inputDataFieldName];
+					const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
+
 					if (itemBinaryData.id) {
 						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
 						const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
