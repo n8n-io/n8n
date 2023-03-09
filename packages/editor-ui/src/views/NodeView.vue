@@ -208,7 +208,6 @@ import { restApi } from '@/mixins/restApi';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { showMessage } from '@/mixins/showMessage';
 import { titleChange } from '@/mixins/titleChange';
-import { newVersions } from '@/mixins/newVersions';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
@@ -327,7 +326,6 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
-	newVersions,
 	debounceHelper,
 ).extend({
 	name: 'NodeView',
@@ -3885,7 +3883,6 @@ export default mixins(
 
 			setTimeout(() => {
 				this.usersStore.showPersonalizationSurvey();
-				this.checkForNewVersions();
 				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
 			}, 0);
 		});
