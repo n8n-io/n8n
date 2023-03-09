@@ -1,6 +1,10 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { Request, Response, RequestHandler } from 'express';
 
-export type Method = 'get' | 'post' | 'patch' | 'delete';
+export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+
+export interface MiddlewareMetadata {
+	handlerName: string;
+}
 
 export type MiddlewareFunction = (req: Request, res: Response, next: NextFunction) => void;
 
@@ -8,8 +12,10 @@ export interface RouteMetadata {
 	method?: Method;
 	path?: string;
 	handlerName: string;
-	middlewares?: MiddlewareFunction[];
+	middlewares: RequestHandler[];
 }
 
-type RequestHandler = (req?: Request, res?: Response) => Promise<unknown>;
-export type Controller = Record<RouteMetadata['handlerName'], RequestHandler>;
+export type Controller = Record<
+	RouteMetadata['handlerName'],
+	(req?: Request, res?: Response) => Promise<unknown>
+>;

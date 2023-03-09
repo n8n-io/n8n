@@ -1,24 +1,11 @@
-import { CONTROLLER_ROUTES } from './constants';
-import type { MiddlewareFunction, RouteMetadata } from './types';
+import { CONTROLLER_MIDDLEWARES } from './constants';
+import type { MiddlewareMetadata } from './types';
 
-/* eslint-disable @typescript-eslint/naming-convention */
-export const Middleware =
-	(middleware: MiddlewareFunction | MiddlewareFunction[]): MethodDecorator =>
-	(target, handlerName) => {
-		const controllerClass = target.constructor;
-		const routes = (Reflect.getMetadata(CONTROLLER_ROUTES, controllerClass) ??
-			[]) as RouteMetadata[];
-		if (middleware) {
-			if (!Array.isArray(middleware)) middleware = [middleware];
-		}
-		const matchingRouteIndex = routes.findIndex((e) => e.handlerName === String(handlerName));
-		if (matchingRouteIndex > -1) {
-			routes[matchingRouteIndex].middlewares = middleware;
-		} else {
-			routes.push({
-				handlerName: String(handlerName),
-				middlewares: middleware,
-			});
-		}
-		Reflect.defineMetadata(CONTROLLER_ROUTES, routes, controllerClass);
-	};
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const Middleware = (): MethodDecorator => (target, handlerName) => {
+	const controllerClass = target.constructor;
+	const middlewares = (Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ??
+		[]) as MiddlewareMetadata[];
+	middlewares.push({ handlerName: String(handlerName) });
+	Reflect.defineMetadata(CONTROLLER_MIDDLEWARES, middlewares, controllerClass);
+};
