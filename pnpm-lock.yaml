@@ -1090,7 +1090,7 @@ importers:
 
   packages/workflow:
     specifiers:
-      '@n8n_io/riot-tmpl': ^2.0.0
+      '@n8n_io/riot-tmpl': ^3.0.0
       '@types/crypto-js': ^4.1.1
       '@types/deep-equal': ^1.0.1
       '@types/express': ^4.17.6
@@ -1117,7 +1117,7 @@ importers:
       transliteration: ^2.3.5
       xml2js: ^0.4.23
     dependencies:
-      '@n8n_io/riot-tmpl': 2.0.0
+      '@n8n_io/riot-tmpl': 3.0.0
       ast-types: 0.15.2
       crypto-js: 4.1.1
       deep-equal: 2.2.0
@@ -3687,8 +3687,8 @@ packages:
       - debug
     dev: false
 
-  /@n8n_io/riot-tmpl/2.0.0:
-    resolution: {integrity: sha512-gQNJYlek30YIWLru2CdyFgU/0uvPAbbQwt2G5EN0PDxXD1rGAYWZsd2c94bW3YlvXT6V2GEd7Bt/gT6QUwhzfQ==}
+  /@n8n_io/riot-tmpl/3.0.0:
+    resolution: {integrity: sha512-bExAbGAp+LE4EXUcXl/kcZofKefrLIVZl8Kg36fim6KZATrWF8Nh7cdp/dOWzgZT6h8/ScqKxjv23W3KoeR40Q==}
     dependencies:
       eslint-config-riot: 1.0.0
     dev: false
