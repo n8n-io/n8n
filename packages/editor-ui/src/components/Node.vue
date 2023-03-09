@@ -189,7 +189,7 @@ import TitledList from '@/components/TitledList.vue';
 
 import mixins from 'vue-typed-mixins';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
 import {
 	IExecutionsSummary,

@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -55,6 +56,13 @@ export class GithubTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'Only members with owner privileges for an organization or admin privileges for a repository can set up the webhooks this node requires.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -530,12 +538,19 @@ export class GithubTrigger implements INodeType {
 						);
 					}
 
+					if (error.cause.httpCode === '404') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Check that the repository exists and that you have permission to create the webhooks this node requires',
+						);
+					}
+
 					throw error;
 				}
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
-					throw new NodeApiError(this.getNode(), responseData, {
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 						message: 'Github webhook creation response did not contain the expected data.',
 					});
 				}
@@ -563,7 +578,7 @@ export class GithubTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}

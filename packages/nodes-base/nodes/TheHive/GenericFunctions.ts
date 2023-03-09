@@ -12,12 +12,11 @@ export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('theHiveApi');
 
 	let options: OptionsWithUri = {
@@ -132,7 +131,7 @@ export async function prepareCustomFields(
 		const hiveCustomFields =
 			version === 'v1'
 				? requestResult
-				: Object.keys(requestResult).map((key) => requestResult[key]);
+				: Object.keys(requestResult as IDataObject).map((key) => requestResult[key]);
 		// Build reference to type mapping object
 		const referenceTypeMapping = hiveCustomFields.reduce(
 			(acc: IDataObject, curr: IDataObject) => ((acc[curr.reference as string] = curr.type), acc),

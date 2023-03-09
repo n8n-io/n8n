@@ -51,5 +51,5 @@ export async function addCustomer(
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.customer);
+	return this.helpers.returnJsonArray(responseData.customer as IDataObject);
 }

@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -760,26 +759,9 @@ export class Dropbox implements INodeType {
 						options = { json: false };
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
@@ -932,9 +914,9 @@ export class Dropbox implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'upload') {
-					const data = JSON.parse(responseData);
+					const data = JSON.parse(responseData as string);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(data),
+						this.helpers.returnJsonArray(data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -958,7 +940,7 @@ export class Dropbox implements INodeType {
 
 					const filePathDownload = this.getNodeParameter('path', i) as string;
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-						Buffer.from(responseData),
+						Buffer.from(responseData as string),
 						filePathDownload,
 					);
 				} else if (resource === 'folder' && operation === 'list') {
@@ -1000,20 +982,22 @@ export class Dropbox implements INodeType {
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
 					if (returnAll) {
-						data = simple ? simplify(responseData) : responseData;
+						data = simple ? simplify(responseData as IDataObject[]) : responseData;
 					} else {
-						data = simple ? simplify(responseData[property]) : responseData[property];
+						data = simple
+							? simplify(responseData[property] as IDataObject[])
+							: responseData[property];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(data),
+						this.helpers.returnJsonArray(data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

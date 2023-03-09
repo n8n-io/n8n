@@ -31,13 +31,11 @@ import {
 	CUSTOM_API_CALL_NAME,
 	inTest,
 } from '@/constants';
-import {
-	persistInstalledPackageData,
-	removePackageFromDatabase,
-} from '@/CommunityNodes/packageModel';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { Service } from 'typedi';
 
-export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
+@Service()
+export class LoadNodesAndCredentials implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -202,6 +200,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
+				const { persistInstalledPackageData } = await import('@/CommunityNodes/packageModel');
 				const installedPackage = await persistInstalledPackageData(loader);
 				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
@@ -218,7 +217,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 			const removeCommand = `npm remove ${packageName}`;
 			try {
 				await executeCommand(removeCommand);
-			} catch (_) {}
+			} catch {}
 
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
@@ -229,6 +228,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 		await executeCommand(command);
 
+		const { removePackageFromDatabase } = await import('@/CommunityNodes/packageModel');
 		await removePackageFromDatabase(installedPackage);
 
 		if (packageName in this.loaders) {
@@ -264,6 +264,9 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
+				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
+					'@/CommunityNodes/packageModel'
+				);
 				await removePackageFromDatabase(installedPackage);
 				const newlyInstalledPackage = await persistInstalledPackageData(loader);
 				await this.postProcessLoaders();
@@ -281,7 +284,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 			const removeCommand = `npm remove ${packageName}`;
 			try {
 				await executeCommand(removeCommand);
-			} catch (_) {}
+			} catch {}
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
@@ -415,19 +418,8 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				await fsAccess(checkPath);
 				// Folder exists, so use it.
 				return path.dirname(checkPath);
-			} catch (_) {} // Folder does not exist so get next one
+			} catch {} // Folder does not exist so get next one
 		}
 		throw new Error('Could not find "node_modules" folder!');
 	}
-}
-
-let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function LoadNodesAndCredentials(): LoadNodesAndCredentialsClass {
-	if (packagesInformationInstance === undefined) {
-		packagesInformationInstance = new LoadNodesAndCredentialsClass();
-	}
-
-	return packagesInformationInstance;
 }

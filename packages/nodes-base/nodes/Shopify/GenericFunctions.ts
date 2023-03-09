@@ -58,7 +58,7 @@ export async function shopifyApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	if (Object.keys(query).length === 0) {
@@ -104,7 +104,7 @@ export async function shopifyApiRequestAllItems(
 		if (responseData.headers.link) {
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName]);
+		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }

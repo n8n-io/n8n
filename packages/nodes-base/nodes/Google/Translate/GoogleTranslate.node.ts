@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -203,7 +204,7 @@ export class GoogleTranslate implements INodeType {
 					const [translation] = response.data.translations;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(translation),
+						this.helpers.returnJsonArray(translation as IDataObject),
 						{ itemData: { item: i } },
 					);
 
