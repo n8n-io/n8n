@@ -992,7 +992,7 @@ importers:
       mqtt: 4.2.6
       mssql: 8.1.4
       mysql2: 2.3.3
-      n8n-core: link:../core
+      n8n-workflow: link:../workflow
       node-html-markdown: 1.2.0
       node-ssh: 12.0.5
       nodemailer: 6.8.0
@@ -1086,7 +1086,7 @@ importers:
       '@types/xml2js': 0.4.11
       eslint-plugin-n8n-nodes-base: 1.12.0_pku7h6lsbnh7tcsfjudlqd5qce
       gulp: 4.0.2
-      n8n-workflow: link:../workflow
+      n8n-core: link:../core
 
   packages/workflow:
     specifiers:
