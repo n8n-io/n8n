@@ -71,6 +71,7 @@
 				</thead>
 				<tbody>
 					<tr
+						data-testid="execution-data-row"
 						v-for="execution in combinedExecutions"
 						:key="execution.id"
 						:class="getRowClass(execution)"
