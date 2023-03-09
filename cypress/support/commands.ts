@@ -24,9 +24,8 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import 'cypress-real-events';
-import { SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
@@ -34,15 +33,15 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 });
 
 Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
-	const WorkflowPage = new WorkflowPageClass();
+	const workflowPage = new WorkflowPage();
 
 	// We need to force the click because the input is hidden
-	WorkflowPage.getters
+	workflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-	WorkflowPage.actions.setWorkflowName(workflowName);
+	workflowPage.actions.setWorkflowName(workflowName);
 
-	WorkflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.getters.saveButton().should('contain', 'Saved');
 });
 
 Cypress.Commands.add(
@@ -209,7 +208,9 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	}
 });
 
-Cypress.Commands.add('readClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()))
+Cypress.Commands.add('readClipboard', () =>
+	cy.window().then((win) => win.navigator.clipboard.readText()),
+);
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
