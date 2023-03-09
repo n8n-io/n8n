@@ -65,7 +65,7 @@ export default defineComponent({
 				[style.datatableWrapper]: true,
 			};
 		});
-		function getTrClass(row: DatatableRow) {
+		function getTrClass() {
 			return {
 				[style.datatableRow]: true,
 			};
