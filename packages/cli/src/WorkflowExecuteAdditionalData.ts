@@ -264,6 +264,19 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 	}
 }
 
+async function saveExecutionMetadata(
+	executionId: string,
+	executionMetadata: Record<string, string>,
+): Promise<void> {
+	for (const [key, value] of Object.entries(executionMetadata)) {
+		await Db.collections.ExecutionMetadata.save({
+			execution: { id: executionId },
+			key,
+			value,
+		});
+	}
+}
+
 /**
  * Returns hook functions to push data to Editor-UI
  *
@@ -663,14 +676,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					try {
 						if (fullRunData.data.resultData.metadata) {
-							for (const [key, value] of Object.entries(fullRunData.data.resultData.metadata)) {
-								await Db.collections.ExecutionMetadata.save({
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									execution: this.executionId as any,
-									key,
-									value,
-								});
-							}
+							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
 						}
 					} catch (e) {
 						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
@@ -807,6 +813,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					await Db.collections.Execution.update(this.executionId, {
 						status: executionData.status,
 					});
+
+					try {
+						if (fullRunData.data.resultData.metadata) {
+							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+						}
+					} catch (e) {
+						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
+					}
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
