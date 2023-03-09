@@ -37,7 +37,7 @@
 			</div>
 
 			<el-checkbox
-				v-if="finishedExecutionsCount > 0"
+				v-if="allVisibleSelected"
 				:class="$style.selectAll"
 				:label="
 					$locale.baseText('executionsList.selectAll', {
@@ -79,7 +79,7 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:value="selectedItems[execution.id]"
+								:value="selectedItems[execution.id] || allExistingSelected"
 								@change="handleCheckboxChanged(execution.id)"
 								label=""
 							/>
@@ -453,9 +453,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					this.allExistingSelected = false;
 					Vue.set(this, 'selectedItems', {});
 				} else {
-					this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
-						Vue.set(this.selectedItems, execution.id, true);
-					});
+					this.selectAllVisibleExecutions();
 				}
 			},
 			handleCheckboxChanged(executionId: string) {
@@ -692,6 +690,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
 				this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
+
+				this.adjustSelectionAfterMoreItemsLoaded();
 			},
 			async loadFinishedExecutions(): Promise<void> {
 				if (this.filter.status === 'running') {
@@ -750,6 +750,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 
 				this.workflowsStore.addToCurrentExecutions(data.results);
+
+				this.adjustSelectionAfterMoreItemsLoaded();
 			},
 			async loadWorkflows() {
 				try {
@@ -959,6 +961,17 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			},
 			isRunning(execution: IExecutionsSummary): boolean {
 				return this.getStatus(execution) === 'running';
+			},
+			selectAllVisibleExecutions() {
+				this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+					Vue.set(this.selectedItems, execution.id, true);
+				});
+			},
+			adjustSelectionAfterMoreItemsLoaded() {
+				if (this.allExistingSelected) {
+					this.allVisibleSelected = true;
+					this.selectAllVisibleExecutions();
+				}
 			},
 		},
 	},
