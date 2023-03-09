@@ -7,6 +7,7 @@ describe('HTTP Request node', () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+		workflowPage.actions.visit();
 	});
 
 	it('should make a request with a URL and receive a response', () => {

@@ -1,7 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowPage as WorkflowPageClass, WorkflowsPage } from '../pages';
 
-const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
@@ -9,6 +8,7 @@ describe('Execution', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
+		workflowPage.actions.visit();
 	});
 
 	it('should test manual workflow', () => {
