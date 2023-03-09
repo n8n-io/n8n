@@ -24,7 +24,7 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import 'cypress-real-events';
-import { SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { MessageBox } from '../pages/modals/message-box';
 
@@ -59,7 +59,7 @@ Cypress.Commands.add('waitForLoad', () => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	const signinPage = new SigninPage();
-	const workflowPage = new WorkflowPage();
+	const workflowsPage = new WorkflowsPage();
 
 	cy.session(
 		[email, password],
@@ -73,7 +73,7 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			});
 
 			// we should be redirected to /workflows
-			cy.url().should('include', workflowPage.url);
+			cy.url().should('include', workflowsPage.url);
 		},
 		{
 			validate() {
