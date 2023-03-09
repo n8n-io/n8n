@@ -688,9 +688,7 @@ async function proxyRequestToAxios(
 			Logger.debug('Request proxied to Axios failed', { status: response.status });
 			let responseData = response.data;
 
-			if (Buffer.isBuffer(responseData)) {
-				responseData = responseData.toString('utf-8');
-			} else if (responseData instanceof Readable) {
+			if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
 				responseData = await binaryToBuffer(responseData).then((buffer) =>
 					buffer.toString('utf-8'),
 				);
