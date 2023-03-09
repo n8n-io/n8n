@@ -11,7 +11,6 @@ import type {
 	WorkflowExecuteMode,
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
-	IDataObject,
 } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
@@ -174,6 +173,9 @@ oauth2CredentialController.get(
 	}),
 );
 
+const renderCallbackError = (res: express.Response, errorMessage: string) =>
+	res.render('oauth-error-callback', { error: { message: errorMessage } });
+
 /**
  * GET /oauth2-credential/callback
  *
@@ -188,10 +190,12 @@ oauth2CredentialController.get(
 			const { code, state: stateEncoded } = req.query;
 
 			if (!code || !stateEncoded) {
-				const errorResponse = `Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
-					req.query,
-				)}`;
-				return res.render('oauth-error-callback', { errorResponse });
+				return renderCallbackError(
+					res,
+					`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
+						req.query,
+					)}`,
+				);
 			}
 
 			let state;
@@ -201,27 +205,21 @@ oauth2CredentialController.get(
 					token: string;
 				};
 			} catch (error) {
-				const errorResponse = 'Invalid state format returned';
-				return res.render('oauth-error-callback', { errorResponse });
+				return renderCallbackError(res, 'Invalid state format returned');
 			}
 
 			const credential = await getCredentialWithoutUser(state.cid);
 
 			if (!credential) {
-				LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
+				const errorMessage = 'OAuth2 callback failed because of insufficient permissions';
+				LoggerProxy.error(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = 'OAuth2 callback failed because of insufficient permissions';
-				return res.render('oauth-error-callback', { errorResponse });
+				return renderCallbackError(res, errorMessage);
 			}
 
-			let encryptionKey: string;
-			try {
-				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch (error) {
-				throw new ResponseHelper.InternalServerError((error as IDataObject).message as string);
-			}
+			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			const mode: WorkflowExecuteMode = 'internal';
 			const timezone = config.getEnv('generic.timezone');
@@ -245,12 +243,12 @@ oauth2CredentialController.get(
 				decryptedDataOriginal.csrfSecret === undefined ||
 				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
 			) {
-				LoggerProxy.debug('OAuth2 callback state is invalid', {
+				const errorMessage = 'The OAuth2 callback state is invalid!';
+				LoggerProxy.debug(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = 'The OAuth2 callback state is invalid!';
-				return res.render('oauth-error-callback', { errorResponse });
+				return renderCallbackError(res, errorMessage);
 			}
 
 			let options = {};
@@ -290,12 +288,12 @@ oauth2CredentialController.get(
 			}
 
 			if (oauthToken === undefined) {
-				LoggerProxy.error('OAuth2 callback failed: unable to get access tokens', {
+				const errorMessage = 'Unable to get OAuth2 access tokens!';
+				LoggerProxy.error(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = 'Unable to get access tokens!';
-				return res.render('oauth-error-callback', { errorResponse });
+				return renderCallbackError(res, errorMessage);
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
@@ -326,9 +324,9 @@ oauth2CredentialController.get(
 				credentialId: state.cid,
 			});
 
-			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback'));
+			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 		} catch (error) {
-			return res.render('oauth-error-callback', { errorResponse: (error as Error).message });
+			return renderCallbackError(res, (error as Error).message);
 		}
 	},
 );

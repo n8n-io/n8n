@@ -1,11 +1,19 @@
 <html>
-	<script>
-		(function messageParent() {
-			window.opener.postMessage('error', '*');
-		})();
-	</script>
-
-	Failed to connect. The window can be closed now.
-
-	<p>{{ errorMessage }}</p>
+	<head>
+		<title>n8n - OAuth Callback</title>
+		<style>
+			body { font-family: 'Open Sans', sans-serif; padding: 10px;}
+			pre.error { background: #f7f7f7; border: 1px solid #ddd; border-radius: 3px; padding: 10px; overflow: auto; overflow-wrap: break-word; white-space: pre-wrap; }
+		</style>
+	</head>
+	<body>
+		Failed to connect. The window can be closed now.
+		{{#if error}}
+			<h4>Error:</h4>
+			<pre class='error'>{{error.message}}</pre>
+		{{/if}}
+		<script>
+			(function messageParent() { window.opener.postMessage('error', '*'); })();
+		</script>
+	</body>
 </html>
