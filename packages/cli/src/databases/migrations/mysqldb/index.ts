@@ -73,6 +73,5 @@ export const mysqlMigrations = [
 	AddStatusToExecutions1674138566000,
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677236788851,
-	PurgeInvalidWorkflowConnections1675940580449,
 	CreateExecutionMetadataTable1674133106779,
 ];
