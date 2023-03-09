@@ -47,6 +47,7 @@
 				"
 				:value="allExistingSelected"
 				@change="handleCheckAllExistingChange"
+				data-testid="select-all-executions-checkbox"
 			/>
 
 			<table :class="$style.execTable">
@@ -57,6 +58,7 @@
 								:value="allVisibleSelected"
 								@change="handleCheckAllVisibleChange"
 								label=""
+								data-testid="select-visible-executions-checkbox"
 							/>
 						</th>
 						<th>{{ $locale.baseText('executionsList.name') }}</th>
@@ -71,7 +73,6 @@
 				</thead>
 				<tbody>
 					<tr
-						data-testid="execution-data-row"
 						v-for="execution in combinedExecutions"
 						:key="execution.id"
 						:class="getRowClass(execution)"
@@ -82,6 +83,7 @@
 								:value="selectedItems[execution.id] || allExistingSelected"
 								@change="handleCheckboxChanged(execution.id)"
 								label=""
+								data-testid="select-execution-checkbox"
 							/>
 						</td>
 						<td>
@@ -238,11 +240,16 @@
 					:label="$locale.baseText('executionsList.loadMore')"
 					@click="loadMore()"
 					:loading="isDataLoading"
+					data-testid="load-more-button"
 				/>
 			</div>
 			<div v-else :class="$style.loadedAll">{{ $locale.baseText('executionsList.loadedAll') }}</div>
 		</div>
-		<div v-if="numSelected > 0" :class="$style.selectionOptions">
+		<div
+			v-if="numSelected > 0"
+			:class="$style.selectionOptions"
+			data-testid="selected-executions-info"
+		>
 			<span>
 				{{
 					$locale.baseText('executionsList.selected', {
@@ -255,11 +262,13 @@
 				:label="$locale.baseText('generic.delete')"
 				type="tertiary"
 				@click="handleDeleteSelected"
+				data-testid="delete-selected-button"
 			/>
 			<n8n-button
 				:label="$locale.baseText('executionsList.clearSelection')"
 				type="tertiary"
 				@click="handleClearSelection"
+				data-testid="clear-selection-button"
 			/>
 		</div>
 	</div>

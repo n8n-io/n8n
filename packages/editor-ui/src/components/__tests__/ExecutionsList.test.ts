@@ -1,7 +1,8 @@
+import { vi, describe, it, expect, afterEach } from 'vitest';
 import Vue from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { render, cleanup } from '@testing-library/vue';
+import { render, cleanup, fireEvent } from '@testing-library/vue';
 import { STORES } from '@/constants';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -375,19 +376,145 @@ const executionsData = {
 	estimated: false,
 };
 
+const executionsData2 = {
+	data: {
+		count: 239,
+		results: [
+			{
+				id: '28791',
+				finished: false,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T10:58:51.615Z',
+				stoppedAt: '2023-02-14T10:58:52.853Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'failed',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28790',
+				finished: false,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T10:58:48.134Z',
+				stoppedAt: '2023-02-14T10:58:48.740Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'failed',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28789',
+				finished: false,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T10:46:57.863Z',
+				stoppedAt: '2023-02-14T10:46:58.786Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'failed',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28788',
+				finished: true,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T10:46:28.168Z',
+				stoppedAt: '2023-02-14T10:46:30.193Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'success',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28787',
+				finished: false,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T10:46:00.194Z',
+				stoppedAt: '2023-02-14T10:46:01.016Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'failed',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28786',
+				finished: false,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T10:45:48.263Z',
+				stoppedAt: '2023-02-14T10:45:49.129Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'failed',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28785',
+				finished: false,
+				mode: 'own',
+				waitTill: null,
+				startedAt: '2023-02-14T10:45:35.390Z',
+				stoppedAt: '2023-02-14T10:45:35.391Z',
+				workflowId: '1037',
+				workflowName: 'Manual wait set',
+				status: 'failed',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28782',
+				finished: true,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-14T09:55:03.561Z',
+				stoppedAt: '2023-02-14T09:55:05.591Z',
+				workflowId: '1037',
+				workflowName: 'Manual long running',
+				status: 'success',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28781',
+				finished: true,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-10T11:18:56.590Z',
+				stoppedAt: '2023-02-10T11:18:59.181Z',
+				workflowId: '1037',
+				workflowName: 'Manual long running',
+				status: 'success',
+				nodeExecutionStatus: {},
+			},
+			{
+				id: '28780',
+				finished: true,
+				mode: 'manual',
+				waitTill: null,
+				startedAt: '2023-02-10T11:17:25.837Z',
+				stoppedAt: '2023-02-10T11:17:28.428Z',
+				workflowId: '1037',
+				workflowName: 'Manual long running',
+				status: 'success',
+				nodeExecutionStatus: {},
+			},
+		],
+		estimated: false,
+	},
+};
+
 const mockRestApiMixin = Vue.extend({
 	methods: {
 		restApi() {
 			return {
-				getWorkflows() {
-					return Promise.resolve(workflowsData);
-				},
-				getCurrentExecutions() {
-					return Promise.resolve([]);
-				},
-				getPastExecutions() {
-					return Promise.resolve(executionsData);
-				},
+				getWorkflows: vi.fn().mockResolvedValue(workflowsData),
+				getCurrentExecutions: vi.fn().mockResolvedValue([]),
+				getPastExecutions: vi
+					.fn()
+					.mockResolvedValueOnce(executionsData)
+					.mockResolvedValueOnce(executionsData2),
 			};
 		},
 	},
@@ -436,9 +563,33 @@ const renderComponent = () =>
 	});
 
 describe('ExecutionsList.vue', () => {
-	it('renders list', async () => {
-		const { getAllByTestId } = renderComponent();
+	afterEach(cleanup);
+
+	it('should handle visible executions selection properly', async () => {
+		const { getAllByTestId, getByTestId } = renderComponent();
+		// wait for all previous promises to make sure the component is fully rendered
 		await new Promise((resolve) => setTimeout(resolve));
-		expect(getAllByTestId('execution-data-row').length).toBe(executionsData.results.length);
+
+		const itemCheckboxes = getAllByTestId('select-execution-checkbox');
+		expect(itemCheckboxes.length).toBe(executionsData.results.length);
+
+		await fireEvent.click(getByTestId('select-visible-executions-checkbox'));
+
+		expect(itemCheckboxes.filter((el) => el.contains(el.querySelector(':checked'))).length).toBe(
+			executionsData.results.length,
+		);
+		expect(getByTestId('selected-executions-info').textContent).toContain(
+			executionsData.results.length,
+		);
+
+		const firstCheckbox = itemCheckboxes[0];
+		await fireEvent.click(firstCheckbox);
+
+		expect(itemCheckboxes.filter((el) => el.contains(el.querySelector(':checked'))).length).toBe(
+			executionsData.results.length - 1,
+		);
+		expect(getByTestId('selected-executions-info').textContent).toContain(
+			executionsData.results.length - 1,
+		);
 	});
 });
