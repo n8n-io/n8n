@@ -108,6 +108,7 @@ import type { IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import { binaryToBuffer } from './BinaryDataManager/utils';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -155,7 +156,6 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
 		return undefined;
@@ -693,9 +693,7 @@ async function proxyRequestToAxios(
 		if (response) {
 			Logger.debug('Request proxied to Axios failed', { status: response.status });
 			let responseData = response.data;
-			if (Buffer.isBuffer(responseData)) {
-				responseData = responseData.toString('utf-8');
-			}
+			responseData = await binaryToBuffer(responseData);
 			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 		}
 
@@ -848,6 +846,30 @@ export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMet
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
 	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+}
+
+export function assertBinaryData(
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): IBinaryData {
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(node, 'No binary data exists on item!', {
+			itemIndex,
+		});
+	}
+
+	const binaryPropertyData = binaryKeyData[propertyName];
+	if (binaryPropertyData === undefined) {
+		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+			itemIndex,
+		});
+	}
+
+	return binaryPropertyData;
 }
 
 /**
@@ -2055,6 +2077,7 @@ const getBinaryHelperFunctions = ({
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
 	getBinaryStream,
 	getBinaryMetadata,
+	binaryToBuffer,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -2313,6 +2336,7 @@ export function getExecuteFunctions(
 				return dataProxy.getDataProxy();
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
+			binaryToBuffer,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
@@ -2350,8 +2374,11 @@ export function getExecuteFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				assertBinaryData: (itemIndex, propertyName) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				getBinaryDataBuffer: async (itemIndex, propertyName) =>
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
@@ -2488,6 +2515,8 @@ export function getExecuteSingleFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
+				assertBinaryData: (propertyName, inputIndex = 0) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},

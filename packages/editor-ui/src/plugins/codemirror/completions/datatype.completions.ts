@@ -44,7 +44,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		try {
 			resolved = resolveParameter(`={{ ${base} }}`);
-		} catch (_) {
+		} catch {
 			return null;
 		}
 
@@ -52,7 +52,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		try {
 			options = datatypeOptions(resolved, base).map(stripExcessParens(context));
-		} catch (_) {
+		} catch {
 			return null;
 		}
 	}

@@ -1,13 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import { BINARY_ENCODING } from 'n8n-core';
 
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -2433,38 +2432,20 @@ export class GoogleDrive implements INodeType {
 						let mimeType = 'text/plain';
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							const binary = item.binary[propertyNameUpload];
-							if (binary === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${propertyNameUpload}"`,
-									{ itemIndex: i },
-								);
-							}
-
-							if (binary.id) {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							if (binaryData.id) {
 								// Stream data in 256KB chunks, and upload the via the resumable upload api
-								fileContent = this.helpers.getBinaryStream(binary.id, UPLOAD_CHUNK_SIZE);
-								const metadata = await this.helpers.getBinaryMetadata(binary.id);
+								fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+								const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 								contentLength = metadata.fileSize;
 								originalFilename = metadata.fileName;
-								if (metadata.mimeType) mimeType = binary.mimeType;
+								if (metadata.mimeType) mimeType = binaryData.mimeType;
 							} else {
-								fileContent = Buffer.from(binary.data, BINARY_ENCODING);
+								fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 								contentLength = fileContent.length;
-								originalFilename = binary.fileName;
-								mimeType = binary.mimeType;
+								originalFilename = binaryData.fileName;
+								mimeType = binaryData.mimeType;
 							}
 						} else {
 							// Is text file

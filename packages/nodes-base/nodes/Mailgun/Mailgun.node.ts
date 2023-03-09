@@ -148,9 +148,7 @@ export class Mailgun implements INodeType {
 						});
 
 					for (const propertyName of attachmentProperties) {
-						if (!item.binary.hasOwnProperty(propertyName)) {
-							continue;
-						}
+						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 							itemIndex,
 							propertyName,
@@ -158,7 +156,7 @@ export class Mailgun implements INodeType {
 						attachments.push({
 							value: binaryDataBuffer,
 							options: {
-								filename: item.binary[propertyName].fileName || 'unknown',
+								filename: binaryData.fileName || 'unknown',
 							},
 						});
 					}
