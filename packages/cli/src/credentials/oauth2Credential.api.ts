@@ -33,8 +33,6 @@ import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 
 export const oauth2CredentialController = express.Router();
-var app = express();
-app.set('view engine', 'ejs');
 
 /**
  * Initialize Logger if needed
@@ -114,7 +112,7 @@ oauth2CredentialController.get(
 		);
 
 		const token = new Csrf();
-		// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
+		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const csrfSecret = token.secretSync();
 		const state = {
 			token: token.create(csrfSecret),
@@ -192,8 +190,8 @@ oauth2CredentialController.get(
 			if (!code || !stateEncoded) {
 				const errorResponse = `Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
 					req.query,
-				)}`
-				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
+				)}`;
+				return res.render('oauth-error-callback', { errorResponse });
 			}
 
 			let state;
@@ -203,8 +201,8 @@ oauth2CredentialController.get(
 					token: string;
 				};
 			} catch (error) {
-				const errorResponse = "'Invalid state format returned'"
-				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
+				const errorResponse = 'Invalid state format returned';
+				return res.render('oauth-error-callback', { errorResponse });
 			}
 
 			const credential = await getCredentialWithoutUser(state.cid);
@@ -214,8 +212,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = "OAuth2 callback failed because of insufficient permissions"
-				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
+				const errorResponse = 'OAuth2 callback failed because of insufficient permissions';
+				return res.render('oauth-error-callback', { errorResponse });
 			}
 
 			let encryptionKey: string;
@@ -251,8 +249,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = "The OAuth2 callback state is invalid!"
-				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
+				const errorResponse = 'The OAuth2 callback state is invalid!';
+				return res.render('oauth-error-callback', { errorResponse });
 			}
 
 			let options = {};
@@ -296,8 +294,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = "Unable to get access tokens!"
-				return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
+				const errorResponse = 'Unable to get access tokens!';
+				return res.render('oauth-error-callback', { errorResponse });
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
@@ -328,12 +326,9 @@ oauth2CredentialController.get(
 				credentialId: state.cid,
 			});
 
-			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
+			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback'));
 		} catch (error) {
-			// Error response
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			const errorResponse = "error"
-			return res.render(pathResolve(TEMPLATES_DIR, 'oauth-error-callback.ejs'), {errorResponse: errorResponse});
+			return res.render('oauth-error-callback', { errorResponse: (error as Error).message });
 		}
 	},
 );
