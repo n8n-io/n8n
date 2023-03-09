@@ -24,7 +24,7 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import 'cypress-real-events';
-import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage } from '../pages';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
@@ -54,13 +54,13 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add('waitForLoad', () => {
-	cy.getByTestId('node-view-loader', { timeout: 10000 }).should('not.exist');
-	cy.get('.el-loading-mask', { timeout: 10000 }).should('not.exist');
+	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
+	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	const signinPage = new SigninPage();
-	const workflowsPage = new WorkflowsPage();
+	const workflowPage = new WorkflowPage();
 
 	cy.session(
 		[email, password],
@@ -74,7 +74,10 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			});
 
 			// we should be redirected to /workflows
-			cy.url().should('include', workflowsPage.url);
+			cy.visit(workflowPage.url);
+			cy.url().should('include', workflowPage.url);
+			cy.intercept('GET', '/rest/workflows/new').as('loading');
+			cy.wait('@loading');
 		},
 		{
 			validate() {
@@ -158,7 +161,7 @@ Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
 
 Cypress.Commands.add('skipSetup', () => {
 	const signupPage = new SignupPage();
-	const workflowsPage = new WorkflowsPage();
+	const workflowPage = new WorkflowPage();
 	const Confirmation = new MessageBox();
 
 	cy.visit(signupPage.url);
@@ -171,8 +174,10 @@ Cypress.Commands.add('skipSetup', () => {
 				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
 				Confirmation.actions.confirm();
 
-				// we should be redirected to /workflows
-				cy.url().should('include', workflowsPage.url);
+				// we should be redirected to empty canvas
+				cy.intercept('GET', '/rest/workflows/new').as('loading');
+				cy.url().should('include', workflowPage.url);
+				cy.wait('@loading');
 			} else {
 				cy.log('User already signed up');
 			}

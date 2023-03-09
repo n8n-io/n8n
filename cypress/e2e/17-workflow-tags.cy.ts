@@ -8,8 +8,6 @@ describe('Workflow tags', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		wf.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should create and attach tags inline', () => {

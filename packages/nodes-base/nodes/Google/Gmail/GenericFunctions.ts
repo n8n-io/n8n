@@ -508,18 +508,10 @@ export async function prepareEmailAttachments(
 	if (attachments && !isEmpty(attachments)) {
 		for (const { property } of attachments) {
 			for (const name of (property as string).split(',')) {
-				if (!items[itemIndex].binary || items[itemIndex].binary![name] === undefined) {
-					const description = `This node has no input field called '${name}' `;
-					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
-						description,
-						itemIndex,
-					});
-				}
-
-				const binaryData = items[itemIndex].binary![name];
+				const binaryData = this.helpers.assertBinaryData(itemIndex, name);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
 
-				if (!items[itemIndex].binary![name] || !Buffer.isBuffer(binaryDataBuffer)) {
+				if (!Buffer.isBuffer(binaryDataBuffer)) {
 					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
 					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,

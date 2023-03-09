@@ -17,7 +17,6 @@ describe('Undo/Redo', () => {
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should undo/redo adding nodes', () => {
