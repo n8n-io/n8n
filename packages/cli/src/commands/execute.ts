@@ -10,7 +10,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
-import { findCliWorkflowStart } from '@/utils';
+import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
@@ -101,7 +101,7 @@ export class Execute extends BaseCommand {
 			throw new Error('Failed to retrieve workflow data for requested workflow');
 		}
 
-		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+		if (!isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;
 		}
 

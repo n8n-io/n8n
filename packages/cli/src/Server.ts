@@ -56,7 +56,7 @@ import timezones from 'google-timezones-json';
 import history from 'connect-history-api-fallback';
 
 import config from '@/config';
-import * as Queue from '@/Queue';
+import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -479,6 +479,10 @@ class Server extends AbstractServer {
 				],
 			}),
 		);
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(Queue).init();
+		}
 
 		await handleLdapInit();
 
@@ -953,7 +957,7 @@ class Server extends AbstractServer {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const queue = await Queue.getInstance();
+						const queue = Container.get(Queue);
 						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
@@ -1096,7 +1100,7 @@ class Server extends AbstractServer {
 						} as IExecutionsStopData;
 					}
 
-					const queue = await Queue.getInstance();
+					const queue = Container.get(Queue);
 					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
