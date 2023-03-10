@@ -4,7 +4,6 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
-			:filter="filter"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@loadMore="loadMore"
@@ -77,22 +76,11 @@ export default mixins(
 	components: {
 		ExecutionsSidebar,
 	},
-	data(): {
-		loading: boolean;
-		loadingMore: boolean;
-		filter: ExecutionFilterType;
-	} {
+	data() {
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: {
-				status: 'all',
-				workflowId: 'all',
-				startDate: '',
-				endDate: '',
-				tags: [],
-				metadata: [],
-			},
+			filter: {} as ExecutionFilterType,
 		};
 	},
 	computed: {

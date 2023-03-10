@@ -7,11 +7,7 @@
 					<el-checkbox v-model="autoRefresh" class="mr-l" @change="handleAutoRefreshToggle">
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
-					<execution-filter
-						:workflows="workflows"
-						:filter="filter"
-						@filterChanged="onFilterChanged"
-					/>
+					<execution-filter :workflows="workflows" @filterChanged="onFilterChanged" />
 				</div>
 			</div>
 			<table :class="$style.execTable">
@@ -249,7 +245,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { isEmpty, setPageTitle } from '@/utils';
+import { setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
@@ -270,14 +266,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				autoRefresh: true,
 				autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
-				filter: {
-					status: 'all',
-					workflowId: 'all',
-					startDate: '',
-					endDate: '',
-					tags: [],
-					metadata: [],
-				} as ExecutionFilterType,
+				filter: {} as ExecutionFilterType,
 
 				isDataLoading: false,
 
@@ -488,7 +477,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				endDate: string;
 				tags: string[];
 			}) {
-				console.log('onFilterChanged', filter);
 				this.filter = filter;
 				this.refreshData();
 			},

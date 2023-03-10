@@ -17,7 +17,7 @@
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<execution-filter :filter="filter" @filterChanged="onFilterChanged" />
+			<execution-filter @filterChanged="onFilterChanged" />
 		</div>
 		<div
 			:class="$style.executionList"
@@ -89,16 +89,13 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
-		filter: {
-			type: Object as PropType<ExecutionFilterType>,
-			required: true,
-		},
 	},
 	data() {
 		return {
 			VIEWS,
 			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			filter: {} as ExecutionFilterType,
 		};
 	},
 	computed: {

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, reactive, ref, onBeforeMount } from 'vue';
+import debounce from 'lodash/debounce';
 import type {
 	ExecutionFilterType,
 	ExecutionFilterMetadata,
@@ -7,14 +8,13 @@ import type {
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-import { isEmpty } from '@/utils';
+import { getObjectKeys, isEmpty } from '@/utils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsageStore } from '@/stores/usage';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
-	filter: ExecutionFilterType;
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
@@ -26,24 +26,46 @@ const props = defineProps<ExecutionFilterProps>();
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
 }>();
+const debouncedEmit = debounce(emit, 500);
 
+const viewPlansLink = computed(() =>
+	settingsStore.isCloudDeployment
+		? CLOUD_UPGRADE_LINK
+		: `${usageStore.viewPlansUrl}&source=custom-data-filter`,
+);
 const isAdvancedExecutionFilterEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
 );
-const isCloudDeployment = computed(() => settingsStore.isCloudDeployment);
-
 const showTags = computed(() => false);
 
-const statusFilterApplied = computed(() => {
-	return (
-		props.filter.status !== 'all' ||
-		(!!props.workflows?.length && props.filter.workflowId !== 'all') ||
-		!!props.filter.tags.length ||
-		!!props.filter.startDate ||
-		!!props.filter.endDate ||
-		!!props.filter.metadata.length
-	);
+const getDefaultFilter = (): ExecutionFilterType => ({
+	status: 'all',
+	workflowId: 'all',
+	tags: [],
+	startDate: '',
+	endDate: '',
+	metadata: [{ key: '', value: '' }],
 });
+const filter = reactive(getDefaultFilter());
+
+// Automatically set up v-models based on filter properties
+const vModel = reactive(
+	getObjectKeys(filter).reduce((acc, key) => {
+		acc[key] = computed({
+			get() {
+				return filter[key];
+			},
+			set(value) {
+				// TODO: find out what exactly is typechecker complaining about
+				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+				// @ts-ignore
+				filter[key] = value;
+				emit('filterChanged', filter);
+			},
+		});
+		return acc;
+	}, {} as Record<keyof ExecutionFilterType, ReturnType<typeof computed>>),
+);
 
 const statuses = computed(() => [
 	{ id: 'all', name: locale.baseText('executionsList.anyStatus') },
@@ -53,94 +75,60 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
-const startDate = computed({
-	get() {
-		return props.filter.startDate ? new Date(props.filter.startDate) : '';
-	},
-	set(value) {
-		emit('filterChanged', {
-			...props.filter,
-			startDate: value,
-		});
-	},
-});
-
-const endDate = computed({
-	get() {
-		return props.filter.endDate ? new Date(props.filter.endDate) : '';
-	},
-	set(value) {
-		emit('filterChanged', {
-			...props.filter,
-			endDate: value,
-		});
-	},
-});
-
-const viewPlansLink = computed(() =>
-	isCloudDeployment.value
-		? CLOUD_UPGRADE_LINK
-		: `${usageStore.viewPlansUrl}&source=custom-data-filter`,
-);
-
 const countSelectedFilterProps = computed(() => {
 	let count = 0;
-	if (props.filter.status !== 'all') {
+	if (filter.status !== 'all') {
 		count++;
 	}
-	if (props.filter.workflowId !== 'all') {
+	if (filter.workflowId !== 'all') {
 		count++;
 	}
-	if (!isEmpty(props.filter.tags)) {
+	if (!isEmpty(filter.tags)) {
 		count++;
 	}
-	if (!isEmpty(props.filter.metadata)) {
+	if (!isEmpty(filter.metadata)) {
 		count++;
 	}
-	if (!!props.filter.startDate) {
+	if (!!filter.startDate) {
 		count++;
 	}
-	if (!!props.filter.endDate) {
+	if (!!filter.endDate) {
 		count++;
 	}
 	return count;
 });
 
-const onFilterPropChange = (prop: keyof ExecutionFilterProps['filter'], value: string) => {
-	emit('filterChanged', {
-		...props.filter,
-		[prop]: value,
-	});
-};
-
+// vModel.metadata is a text input and needs a debounced emit to avoid too many requests
+// We use the :value and @input combo instead of v-model
 const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, value: string) => {
-	const metadata = [...props.filter.metadata];
-
-	if (!metadata[index]) {
-		metadata[index] = {
+	if (!filter.metadata[index]) {
+		filter.metadata[index] = {
 			key: '',
 			value: '',
 		};
 	}
 
-	metadata[index][prop] = value;
+	filter.metadata[index][prop] = value;
+	(vModel.metadata as ExecutionFilterMetadata[])[index][prop] = value;
 
-	emit('filterChanged', {
-		...props.filter,
-		metadata,
-	});
+	debouncedEmit('filterChanged', filter);
+};
+
+// Can't use v-model on TagsDropdown component and thus vModel.tags is useless
+// We just emit the updated filter
+const onTagsChange = (tags: string[]) => {
+	filter.tags = tags;
+	emit('filterChanged', filter);
 };
 
 const onFilterReset = () => {
-	emit('filterChanged', {
-		status: 'all',
-		workflowId: 'all',
-		startDate: '',
-		endDate: '',
-		tags: [],
-		metadata: [],
-	});
+	Object.assign(filter, getDefaultFilter());
+	emit('filterChanged', filter);
 };
+
+onBeforeMount(() => {
+	emit('filterChanged', filter);
+});
 </script>
 <template>
 	<div :class="$style.filter">
@@ -150,10 +138,10 @@ const onFilterReset = () => {
 					icon="filter"
 					type="tertiary"
 					size="medium"
-					:active="statusFilterApplied"
+					:active="!!countSelectedFilterProps"
 					data-test-id="executions-filter-button"
 				>
-					<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">{{
+					<n8n-badge v-if="!!countSelectedFilterProps" theme="primary" class="mr-4xs">{{
 						countSelectedFilterProps
 					}}</n8n-badge>
 					{{ $locale.baseText('executionsList.filters') }}
@@ -166,11 +154,10 @@ const onFilterReset = () => {
 					}}</label>
 					<n8n-select
 						id="execution-filter-workflows"
-						:value="filter.workflowId"
+						v-model="vModel.workflowId"
 						:placeholder="$locale.baseText('executionsFilter.selectWorkflow')"
 						size="medium"
 						filterable
-						@change="onFilterPropChange('workflowId', $event)"
 					>
 						<div class="ph-no-capture">
 							<n8n-option
@@ -191,7 +178,7 @@ const onFilterReset = () => {
 						:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 						:currentTagIds="filter.tags"
 						:createEnabled="false"
-						@update="onFilterPropChange('tags', $event)"
+						@update="onTagsChange"
 					/>
 				</div>
 				<div :class="$style.group">
@@ -200,11 +187,10 @@ const onFilterReset = () => {
 					}}</label>
 					<n8n-select
 						id="execution-filter-status"
-						:value="filter.status"
+						v-model="vModel.status"
 						:placeholder="$locale.baseText('executionsFilter.selectStatus')"
 						size="medium"
 						filterable
-						@change="onFilterPropChange('status', $event)"
 					>
 						<n8n-option
 							v-for="item in statuses"
@@ -222,7 +208,7 @@ const onFilterReset = () => {
 						<el-date-picker
 							id="execution-filter-start-date"
 							type="datetime"
-							v-model="startDate"
+							v-model="vModel.startDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.startDate')"
 						/>
@@ -230,7 +216,7 @@ const onFilterReset = () => {
 						<el-date-picker
 							id="execution-filter-end-date"
 							type="datetime"
-							v-model="endDate"
+							v-model="vModel.endDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.endDate')"
 						/>
@@ -277,7 +263,7 @@ const onFilterReset = () => {
 									size="medium"
 									:disabled="!isAdvancedExecutionFilterEnabled"
 									:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-									:value="filter.metadata[0]?.key"
+									:value="vModel.metadata[0]?.key"
 									@input="onFilterMetaChange(0, 'key', $event)"
 								/>
 							</n8n-tooltip>
@@ -303,7 +289,7 @@ const onFilterReset = () => {
 									size="medium"
 									:disabled="!isAdvancedExecutionFilterEnabled"
 									:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-									:value="filter.metadata[0]?.value"
+									:value="vModel.metadata[0]?.value"
 									@input="onFilterMetaChange(0, 'value', $event)"
 								/>
 							</n8n-tooltip>
@@ -311,7 +297,7 @@ const onFilterReset = () => {
 					</div>
 				</div>
 				<n8n-button
-					v-if="statusFilterApplied"
+					v-if="!!countSelectedFilterProps"
 					:class="$style.resetBtn"
 					@click="onFilterReset"
 					size="large"
