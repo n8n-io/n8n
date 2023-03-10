@@ -3,13 +3,13 @@ import get from 'lodash.get';
 import { parseString } from 'xml2js';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,

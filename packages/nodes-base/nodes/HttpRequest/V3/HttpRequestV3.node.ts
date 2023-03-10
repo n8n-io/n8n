@@ -1,5 +1,4 @@
 import type { Readable } from 'stream';
-import { BINARY_ENCODING } from 'n8n-core';
 
 import type {
 	IBinaryKeyData,
@@ -11,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request-promise-native';
 
@@ -1206,10 +1205,8 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || responseFormat === 'file') {
 				requestOptions.encoding = null;
 				requestOptions.json = false;
-				requestOptions.useStream = true;
 			} else if (bodyContentType === 'raw') {
 				requestOptions.json = false;
-				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
