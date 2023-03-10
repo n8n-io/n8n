@@ -35,7 +35,7 @@ export class SamlController {
 	 */
 	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configGet(req: SamlConfiguration.Read, res: express.Response) {
-		const prefs = SamlService.getInstance().samlPreferences;
+		const prefs = this.samlService.samlPreferences;
 		return res.send(prefs);
 	}
 
@@ -47,7 +47,7 @@ export class SamlController {
 	async configPost(req: SamlConfiguration.Update, res: express.Response) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
-			const result = await SamlService.getInstance().setSamlPreferences(req.body);
+			const result = await this.samlService.setSamlPreferences(req.body);
 			return res.send(result);
 		} else {
 			throw new BadRequestError(
@@ -66,8 +66,8 @@ export class SamlController {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
 		}
-		await SamlService.getInstance().setSamlPreferences({ loginEnabled: req.body.loginEnabled });
-		res.sendStatus(200);
+		await this.samlService.setSamlPreferences({ loginEnabled: req.body.loginEnabled });
+		return res.sendStatus(200);
 	}
 
 	/**
@@ -76,7 +76,7 @@ export class SamlController {
 	 */
 	@Get(SamlUrls.acs, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async acsGet(req: express.Request, res: express.Response) {
-		const loginResult = await SamlService.getInstance().handleSamlLogin(req, 'redirect');
+		const loginResult = await this.samlService.handleSamlLogin(req, 'redirect');
 		if (loginResult) {
 			if (loginResult.authenticatedUser) {
 				await issueCookie(res, loginResult.authenticatedUser);
@@ -96,7 +96,7 @@ export class SamlController {
 	 */
 	@Post(SamlUrls.acs, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async acsPost(req: express.Request, res: express.Response) {
-		const loginResult = await SamlService.getInstance().handleSamlLogin(req, 'post');
+		const loginResult = await this.samlService.handleSamlLogin(req, 'post');
 		if (loginResult) {
 			if (loginResult.authenticatedUser) {
 				await issueCookie(res, loginResult.authenticatedUser);
@@ -116,7 +116,7 @@ export class SamlController {
 	 */
 	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
-		const result = SamlService.getInstance().getLoginRequestUrl();
+		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
 			// forced client side redirect through the use of a javascript redirect
 			return res.send(getInitSSOPostView(result.context));
@@ -135,7 +135,7 @@ export class SamlController {
 	 */
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configTestGet(req: express.Request, res: express.Response) {
-		const testResult = await SamlService.getInstance().testSamlConnection();
+		const testResult = await this.samlService.testSamlConnection();
 		return res.send(testResult);
 	}
 }
