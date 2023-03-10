@@ -20,5 +20,6 @@
 		"sourceMap": true,
 		"skipLibCheck": true
 	},
-	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
+	"files": ["node_modules/jest-expect-message/types/index.d.ts"]
 }

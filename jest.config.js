@@ -22,6 +22,7 @@ const config = {
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
+	setupFilesAfterEnv: ['jest-expect-message'],
 };
 
 if (process.env.CI === 'true') {
