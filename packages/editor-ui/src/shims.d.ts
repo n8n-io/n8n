@@ -1,5 +1,4 @@
 import Vue, { VNode } from 'vue';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';

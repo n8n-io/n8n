@@ -1,4 +1,12 @@
-import { deepCopy, GenericValue, INodeParameters, ITelemetryTrackProperties } from 'n8n-workflow';
+import {
+	deepCopy,
+	ExecutionError,
+	GenericValue,
+	INodeParameters,
+	INodeProperties,
+	ITelemetryTrackProperties,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import type { TelemetryEventData } from '@/hooks/types';
 import { IStartRunData } from '@/Interface';
@@ -66,7 +74,7 @@ export const getUpdatedWorkflowSettingsEventData = (
 };
 
 export interface NodeTypeChangedEventData {
-	nodeSubtitle: string;
+	nodeSubtitle?: string;
 }
 
 export const getNodeTypeChangedEventData = (meta: NodeTypeChangedEventData): TelemetryEventData => {
@@ -85,6 +93,7 @@ export interface InsertedItemFromExpEditorEventData {
 	parameter: {
 		displayName: string;
 	};
+	value: string;
 	selectedItem: {
 		variable: string;
 	};
@@ -146,8 +155,8 @@ export const getExpressionEditorEventsData = (
 export interface AuthenticationModalEventData {
 	parameterPath: string;
 	oldNodeParameters: Record<string, GenericValue>;
-	parameters: INodeParameters[];
-	newValue: string;
+	parameters: INodeProperties[];
+	newValue: NodeParameterValue;
 }
 export const getAuthenticationModalEventData = (
 	meta: AuthenticationModalEventData,
@@ -193,18 +202,12 @@ export const getOutputModeChangedEventData = (
 };
 
 export interface ExecutionFinishedEventData {
-	runDataExecutedStartData: IStartRunData;
-	nodeName: string;
+	runDataExecutedStartData:
+		| { destinationNode?: string | undefined; runNodeFilter?: string[] | undefined }
+		| undefined;
+	nodeName?: string;
 	errorMessage: string;
-	resultDataError: {
-		node:
-			| string
-			| {
-					name: string;
-			  };
-		message: string;
-		stack: string;
-	};
+	resultDataError: ExecutionError | undefined;
 	itemsCount: number;
 }
 

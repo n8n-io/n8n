@@ -22,8 +22,9 @@ import {
 } from '@/hooks/utils/hooksNodesPanel';
 import { ExternalHooks } from '@/mixins/externalHooks';
 import { useSegment } from '@/stores/segment';
+import { PartialDeep } from 'type-fest';
 
-export const n8nCloudHooks: ExternalHooks = {
+export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	parameterInput: {
 		mount: [
 			(meta) => {

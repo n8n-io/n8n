@@ -13,7 +13,6 @@ import { INodeTypeDescription, IRun } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUsersStore } from '@/stores/users';
-import { n8nCloudHooks_ENABLE_LOGS, n8nCloudHooks_ENABLE_TRACKING } from '@/hooks/constants';
 
 const EVENTS = {
 	SHOW_CHECKLIST: 'Show checklist',

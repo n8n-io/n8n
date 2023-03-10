@@ -78,7 +78,7 @@ declare global {
 			register?(metadata: Record<string, unknown>): void;
 			capture?(name: string, properties?: ITelemetryTrackProperties): void;
 		};
-		featureFlag: {
+		featureFlag?: {
 			getAll(): Record<string, unknown> | undefined;
 			reload(): void;
 			get(flagName: string): boolean | string | undefined;

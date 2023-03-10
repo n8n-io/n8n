@@ -358,7 +358,7 @@ import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
-import { PropType } from 'vue';
+import Vue, { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -1186,7 +1186,7 @@ export default mixins(
 
 		this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
-			inputFieldRef: this.$refs['inputField'],
+			inputFieldRef: this.$refs['inputField'] as InstanceType<typeof Vue>,
 		});
 	},
 });

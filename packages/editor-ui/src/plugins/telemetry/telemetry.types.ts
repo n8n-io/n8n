@@ -1,5 +1,4 @@
 import type { Telemetry } from '.';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 declare module 'vue/types/vue' {
 	interface Vue {

@@ -105,6 +105,7 @@
     "sass": "^1.55.0",
     "sass-loader": "^10.1.1",
     "string-template-parser": "^1.2.6",
+    "type-fest": "^3.6.1",
     "vite": "4.0.4",
     "vite-plugin-monaco-editor": "^1.0.10",
     "vitest": "^0.28.4",

@@ -47,8 +47,9 @@ import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
 import { historyHelper } from '@/mixins/history';
 import { extendExternalHooks } from '@/mixins/externalHooks';
+import { newVersions } from '@/mixins/newVersions';
 
-export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
+export default mixins(newVersions, showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -97,13 +98,13 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		},
 		async initHooks(): Promise<void> {
 			if (this.settingsStore.isCloudDeployment) {
-				import('./hooks/cloud').then(({ n8nCloudHooks }) => {
+				await import('./hooks/cloud').then(({ n8nCloudHooks }) => {
 					extendExternalHooks(n8nCloudHooks);
 				});
 			}
 
 			if (this.settingsStore.isTelemetryEnabled) {
-				import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
+				await import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
 					extendExternalHooks(n8nPosthogHooks);
 				});
 			}
@@ -201,6 +202,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
+		this.checkForNewVersions();
 
 		this.loading = false;
 

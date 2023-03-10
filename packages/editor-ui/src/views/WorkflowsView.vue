@@ -3,11 +3,11 @@
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
-		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
+		:initialize="initialize"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -119,7 +119,6 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { newVersions } from '@/mixins/newVersions';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -148,7 +147,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper, newVersions).extend({
+const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -224,12 +223,20 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 			}
 		},
 		async initialize() {
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
-
-			return await Promise.all([
+			await Promise.all([
+				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+
+			// If the user has no workflows and is not participating in the demo experiment,
+			// redirect to the new workflow view
+			if (!this.isDemoTest && this.allWorkflows.length === 0) {
+				this.uiStore.nodeViewInitialized = false;
+				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
+
+			return Promise.resolve();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -269,10 +276,11 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 		},
 	},
 	mounted() {
-		this.checkForNewVersions();
 		this.usersStore.showPersonalizationSurvey();
 	},
 });
+
+export default WorkflowsView;
 </script>
 
 <style lang="scss" module>

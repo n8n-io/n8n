@@ -1,6 +1,13 @@
-import { IExternalHooks } from '@/Interface';
-import { IDataObject, INode, INodeTypeDescription } from 'n8n-workflow';
-import Vue from 'vue';
+import {
+	IExternalHooks,
+	INodeCreateElement,
+	INodeFilterType,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IPersonalizationLatestVersion,
+} from '@/Interface';
+import { IDataObject, INode, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import Vue, { ComponentPublicInstance, VueConstructor } from 'vue';
 import { Route } from 'vue-router/types/router';
 import {
 	AuthenticationModalEventData,
@@ -13,16 +20,19 @@ import {
 	OutputModeChangedEventData,
 	UpdatedWorkflowSettingsEventData,
 	UserSavedCredentialsEventData,
-} from '@/hooks/telemetry';
+} from '@/hooks/segment';
+import { PartialDeep } from 'type-fest';
 
 export interface ExternalHooks {
 	parameterInput: {
 		mount: Array<
-			(meta: { inputFieldRef: { $el: HTMLElement }; parameter: { name: string } }) => void
+			(meta: { inputFieldRef?: InstanceType<typeof Vue>; parameter: { name: string } }) => void
 		>;
+		modeSwitch: Array<(meta: ITelemetryTrackProperties) => void>;
+		updated: Array<(meta: { remoteParameterOptions: NodeListOf<Element> }) => void>;
 	};
 	nodeCreatorSearchBar: {
-		mount: Array<(meta: { inputRef: HTMLElement }) => void>;
+		mount: Array<(meta: { inputRef: HTMLElement | null }) => void>;
 	};
 	app: {
 		mount: Array<(meta: {}) => void>;
@@ -31,12 +41,17 @@ export interface ExternalHooks {
 		mount: Array<(meta: {}) => void>;
 		createNodeActiveChanged: Array<(meta: { source: string }) => void>;
 		addNodeButton: Array<(meta: { nodeTypeName: string }) => void>;
+		onRunNode: Array<(meta: ITelemetryTrackProperties) => void>;
+		onRunWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
 	main: {
 		routeChange: Array<(meta: { to: Route; from: Route }) => void>;
 	};
 	credential: {
 		saved: Array<(meta: UserSavedCredentialsEventData) => void>;
+	};
+	copyInput: {
+		mounted: Array<(meta: { copyInputValueRef: HTMLElement }) => void>;
 	};
 	credentialsEdit: {
 		credentialTypeChanged: Array<
@@ -48,12 +63,22 @@ export interface ExternalHooks {
 			}) => void
 		>;
 		credentialModalOpened: Array<
-			(meta: { activeNode: INode; isEditingCredential: boolean; credentialType: string }) => void
+			(meta: {
+				activeNode: INodeUi | null;
+				isEditingCredential: boolean;
+				credentialType: string | null;
+			}) => void
 		>;
 	};
 	credentialsList: {
-		mounted: Array<(meta: {}) => void>;
+		mounted: Array<(meta: { tableRef: ComponentPublicInstance }) => void>;
 		dialogVisibleChanged: Array<(meta: { dialogVisible: boolean }) => void>;
+	};
+	credentialsSelectModal: {
+		openCredentialType: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
+	credentialEdit: {
+		saveCredential: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
 	workflowSettings: {
 		dialogVisibleChanged: Array<(meta: { dialogVisible: boolean }) => void>;
@@ -67,19 +92,24 @@ export interface ExternalHooks {
 		nodeEditingFinished: Array<(meta: {}) => void>;
 	};
 	executionsList: {
+		created: Array<(meta: { filtersRef: HTMLElement; tableRef: ComponentPublicInstance }) => void>;
 		openDialog: Array<(meta: {}) => void>;
 	};
 	showMessage: {
-		showError: Array<(meta: { title: string; message: string; errorMessage: string }) => void>;
+		showError: Array<(meta: { title: string; message?: string; errorMessage: string }) => void>;
 	};
 	expressionEdit: {
 		itemSelected: Array<(meta: InsertedItemFromExpEditorEventData) => void>;
 		dialogVisibleChanged: Array<(meta: ExpressionEditorEventsData) => void>;
+		closeDialog: Array<(meta: ITelemetryTrackProperties) => void>;
+		mounted: Array<
+			(meta: { expressionInputRef: HTMLElement; expressionOutputRef: HTMLElement }) => void
+		>;
 	};
 	nodeSettings: {
 		valueChanged: Array<(meta: AuthenticationModalEventData) => void>;
 		credentialSelected: Array<
-			(meta: { updateInformation: { properties: { credentials: Record<string, string> } } }) => void
+			(meta: { updateInformation: INodeUpdatePropertiesInformation }) => void
 		>;
 	};
 	workflowRun: {
@@ -87,6 +117,9 @@ export interface ExternalHooks {
 		runError: Array<(meta: { errorMessages: string[]; nodeName: string }) => void>;
 	};
 	runData: {
+		updated: Array<(meta: { elements: HTMLElement[] }) => void>;
+		onTogglePinData: Array<(meta: ITelemetryTrackProperties) => void>;
+		onDataPinningSuccess: Array<(meta: ITelemetryTrackProperties) => void>;
 		displayModeChanged: Array<(meta: OutputModeChangedEventData) => void>;
 	};
 	pushConnection: {
@@ -94,6 +127,9 @@ export interface ExternalHooks {
 	};
 	node: {
 		deleteNode: Array<(meta: NodeRemovedEventData) => void>;
+	};
+	nodeExecuteButton: {
+		onClick: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
 	workflow: {
 		activeChange: Array<(meta: { active: boolean; workflowId: string }) => void>;
@@ -105,28 +141,74 @@ export interface ExternalHooks {
 	execution: {
 		open: Array<(meta: { workflowId: string; workflowName: string; executionId: string }) => void>;
 	};
+	userInfo: {
+		mounted: Array<(meta: { userInfoRef: HTMLElement }) => void>;
+	};
+	variableSelectorItem: {
+		mounted: Array<(meta: { variableSelectorItemRef: HTMLElement }) => void>;
+	};
+	mainSidebar: {
+		mounted: Array<(meta: { userRef: Element }) => void>;
+	};
 	nodeCreateList: {
 		destroyed: Array<(meta: {}) => void>;
 		selectedTypeChanged: Array<(meta: { oldValue: string; newValue: string }) => void>;
-		nodeFilterChanged: Array<
+		filteredNodeTypesComputed: Array<
 			(meta: {
-				newValue: string;
-				oldValue: string;
-				filteredNodes: Array<{ name: string; key: string }>;
+				nodeFilter: string;
+				result: INodeCreateElement[];
+				selectedType: INodeFilterType;
 			}) => void
 		>;
+		nodeFilterChanged: Array<
+			(meta: {
+				oldValue: string;
+				newValue: string;
+				selectedType: INodeFilterType;
+				filteredNodes: INodeCreateElement[];
+			}) => void
+		>;
+		onActionsCustmAPIClicked: Array<(meta: { app_identifier?: string }) => void>;
+		onViewActions: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
+	personalizationModal: {
+		onSubmit: Array<(meta: IPersonalizationLatestVersion) => void>;
+	};
+	settingsPersonalView: {
+		mounted: Array<(meta: { userRef: HTMLElement }) => void>;
+	};
+	workflowOpen: {
+		mounted: Array<(meta: { tableRef: ComponentPublicInstance }) => void>;
+	};
+	workflowActivate: {
+		updateWorkflowActivation: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
+	runDataTable: {
+		onDragEnd: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
+	sticky: {
+		mounted: Array<(meta: { stickyRef: HTMLElement }) => void>;
+	};
+	telemetry: {
+		currentUserIdChanged: Array<() => void>;
+	};
+	templatesWorkflowView: {
+		openWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
+	templatesCollectionView: {
+		onUseWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
 }
 
 declare global {
 	interface Window {
-		n8nExternalHooks?: Partial<ExternalHooks>;
+		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 	}
 }
 
 type GenericHooksType = Record<string, Record<string, Function[]>>;
 
-export function extendExternalHooks(hooks: Partial<ExternalHooks>) {
+export function extendExternalHooks(hooks: PartialDeep<ExternalHooks>) {
 	if (window.n8nExternalHooks === undefined) {
 		window.n8nExternalHooks = {};
 	}

@@ -2,12 +2,14 @@
 
 import { usePostHog } from '@/stores/posthog';
 import {
-	hoosGetPosthogAppendNoCaptureClasses,
+	hooksGetPosthogAppendNoCaptureClasses,
 	hooksPosthogSetMetadata,
 } from '@/hooks/posthog/index';
 import { ComponentPublicInstance } from 'vue';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { IPersonalizationLatestVersion } from '@/Interface';
+import { ExternalHooks } from '@/mixins/externalHooks';
+import { PartialDeep } from 'type-fest';
 
 window.featureFlag = {
 	/**
@@ -64,12 +66,12 @@ function resetNodesPanelSession() {
 	};
 }
 
-export const n8nPosthogHooks = {
+export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	copyInput: {
 		mounted: [
 			(meta: { copyInputValueRef: HTMLElement }) => {
 				const { value } = meta.copyInputValueRef.classList;
-				meta.copyInputValueRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
+				meta.copyInputValueRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -78,7 +80,7 @@ export const n8nPosthogHooks = {
 		mounted: [
 			(meta: { userInfoRef: HTMLElement }) => {
 				const { value } = meta.userInfoRef.classList;
-				meta.userInfoRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
+				meta.userInfoRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -87,7 +89,7 @@ export const n8nPosthogHooks = {
 		mounted: [
 			(meta: { userRef: HTMLElement }) => {
 				const { value } = meta.userRef.classList;
-				meta.userRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
+				meta.userRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -96,7 +98,7 @@ export const n8nPosthogHooks = {
 		mounted: [
 			(meta: { userRef: HTMLElement }) => {
 				const { value } = meta.userRef.classList;
-				meta.userRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
+				meta.userRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -107,7 +109,7 @@ export const n8nPosthogHooks = {
 				// workflow names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.name')) {
-					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
+					item.classList.value = hooksGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 			},
 		],
@@ -119,7 +121,7 @@ export const n8nPosthogHooks = {
 				// credential names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.el-table_1_column_1 > .cell')) {
-					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
+					item.classList.value = hooksGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 			},
 		],
@@ -128,7 +130,7 @@ export const n8nPosthogHooks = {
 	sticky: {
 		mounted: [
 			(meta: { stickyRef: HTMLElement }) => {
-				meta.stickyRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(
+				meta.stickyRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(
 					meta.stickyRef.classList.value,
 				);
 			},
@@ -142,13 +144,13 @@ export const n8nPosthogHooks = {
 
 				// workflow names in filters dropdown
 				for (const item of filtersRef.querySelectorAll('li')) {
-					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
+					item.classList.value = hooksGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 
 				// workflow names in table body
 				const tableBody = tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.workflow-name')) {
-					item.classList.value = hoosGetPosthogAppendNoCaptureClasses(item.classList.value);
+					item.classList.value = hooksGetPosthogAppendNoCaptureClasses(item.classList.value);
 				}
 			},
 		],
@@ -158,7 +160,7 @@ export const n8nPosthogHooks = {
 		updated: [
 			(meta: { elements: HTMLElement[] }) => {
 				for (const element of meta.elements) {
-					element.classList.value = hoosGetPosthogAppendNoCaptureClasses(element.classList.value);
+					element.classList.value = hooksGetPosthogAppendNoCaptureClasses(element.classList.value);
 				}
 			},
 		],
@@ -293,7 +295,7 @@ export const n8nPosthogHooks = {
 			(meta: { variableSelectorItemRef: HTMLElement }) => {
 				const { value } = meta.variableSelectorItemRef.classList;
 
-				meta.variableSelectorItemRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(value);
+				meta.variableSelectorItemRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
 		],
 	},
@@ -314,10 +316,10 @@ export const n8nPosthogHooks = {
 
 		mounted: [
 			(meta: { expressionInputRef: HTMLElement; expressionOutputRef: HTMLElement }) => {
-				meta.expressionInputRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(
+				meta.expressionInputRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(
 					meta.expressionInputRef.classList.value,
 				);
-				meta.expressionOutputRef.classList.value = hoosGetPosthogAppendNoCaptureClasses(
+				meta.expressionOutputRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(
 					meta.expressionOutputRef.classList.value,
 				);
 			},
@@ -340,7 +342,7 @@ export const n8nPosthogHooks = {
 		updated: [
 			(meta: { remoteParameterOptions: HTMLElement[] }) => {
 				for (const option of meta.remoteParameterOptions) {
-					option.classList.value = hoosGetPosthogAppendNoCaptureClasses(option.classList.value);
+					option.classList.value = hooksGetPosthogAppendNoCaptureClasses(option.classList.value);
 				}
 			},
 		],

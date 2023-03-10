@@ -300,7 +300,7 @@ export default mixins(
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user as Element });
 		}
 		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
 			this.uiStore.sidebarMenuCollapsed = true;
