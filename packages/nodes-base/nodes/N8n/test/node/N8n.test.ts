@@ -8,7 +8,7 @@ describe('Test n8nTEST Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);
 	const tests = workflowToTests(workflows);
 
-	const baseUrl = 'https://fake.n8n.cloud/api/v1';
+	const baseUrl = 'https://test.n8n.cloud/api/v1';
 
 	beforeAll(() => {
 		nock.disableNetConnect();
@@ -33,7 +33,7 @@ describe('Test n8nTEST Node', () => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
 
 			// const resultNodeData = getResultNodeData(result, testData);
-			console.log(JSON.stringify(await executeWorkflow(testData, nodeTypes), null, 2));
+			// console.log(JSON.stringify(await executeWorkflow(testData, nodeTypes), null, 2));
 			// resultNodeData.forEach(({ nodeName, resultData }) => {
 			// 	expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 			// });
