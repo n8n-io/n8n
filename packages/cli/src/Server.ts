@@ -103,7 +103,7 @@ import {
 	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
-import { getInstance as getMailerInstance } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
 	ICredentialsDb,
@@ -367,7 +367,7 @@ class Server extends AbstractServer {
 
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = getMailerInstance();
+		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
 		const samlService = SamlService.getInstance();
 

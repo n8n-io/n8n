@@ -1,5 +1,6 @@
 import type { Repository } from 'typeorm';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
+import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
@@ -14,7 +15,7 @@ import {
 	hashPassword,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
-import * as UserManagementMailer from '@/UserManagement/email';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
@@ -126,7 +127,7 @@ export class PasswordResetController {
 		url.searchParams.append('token', resetPasswordToken);
 
 		try {
-			const mailer = UserManagementMailer.getInstance();
+			const mailer = Container.get(UserManagementMailer);
 			await mailer.passwordReset({
 				email,
 				firstName,
