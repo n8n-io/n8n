@@ -31,7 +31,11 @@
 				>
 					<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id" />
 				</n8n-select>
-				<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
+				<el-checkbox
+					v-model="autoRefresh"
+					@change="handleAutoRefreshToggle"
+					data-testid="execution-auto-refresh-checkbox"
+				>
 					{{ $locale.baseText('executionsList.autoRefresh') }}
 				</el-checkbox>
 			</div>

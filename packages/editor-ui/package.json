@@ -84,8 +84,10 @@
     "xss": "^1.0.10"
   },
   "devDependencies": {
+    "@faker-js/faker": "7.6.0",
     "@pinia/testing": "^0.0.14",
     "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "14.4.3",
     "@testing-library/vue": "^5.8.3",
     "@types/dateformat": "^3.0.0",
     "@types/express": "^4.17.6",
@@ -101,7 +103,6 @@
     "@vitejs/plugin-legacy": "^3.0.1",
     "@vitejs/plugin-vue2": "^2.2.0",
     "c8": "^7.12.0",
-    "@faker-js/faker": "7.6.0",
     "jshint": "^2.9.7",
     "sass": "^1.55.0",
     "sass-loader": "^10.1.1",
