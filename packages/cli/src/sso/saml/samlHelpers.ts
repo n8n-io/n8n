@@ -10,7 +10,11 @@ import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
-import { isSamlCurrentAuthenticationMethod } from '../ssoHelpers';
+import {
+	isEmailCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '../ssoHelpers';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -22,8 +26,17 @@ export function getSamlLoginLabel(): string {
 	return config.getEnv(SAML_LOGIN_LABEL);
 }
 
+// can only toggle between email and saml, not directly to e.g. ldap
 export function setSamlLoginEnabled(enabled: boolean): void {
-	config.set(SAML_LOGIN_ENABLED, enabled);
+	if (enabled) {
+		if (isEmailCurrentAuthenticationMethod()) {
+			config.set(SAML_LOGIN_ENABLED, true);
+			setCurrentAuthenticationMethod('saml');
+		}
+	} else {
+		config.set(SAML_LOGIN_ENABLED, false);
+		setCurrentAuthenticationMethod('email');
+	}
 }
 
 export function setSamlLoginLabel(label: string): void {

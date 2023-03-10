@@ -5,6 +5,10 @@ export function isSamlCurrentAuthenticationMethod(): boolean {
 	return config.getEnv('userManagement.authenticationMethod') === 'saml';
 }
 
+export function isEmailCurrentAuthenticationMethod(): boolean {
+	return config.getEnv('userManagement.authenticationMethod') === 'email';
+}
+
 export function isSsoJustInTimeProvisioningEnabled(): boolean {
 	return config.getEnv('sso.justInTimeProvisioning');
 }
