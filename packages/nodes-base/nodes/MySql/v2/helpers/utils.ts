@@ -267,3 +267,25 @@ export function addSortRules(
 
 	return [`${query}${orderByQuery}`, replacements.concat(...values)];
 }
+
+export function replaceEmptyStringsByNulls(
+	items: INodeExecutionData[],
+	replace?: boolean,
+): INodeExecutionData[] {
+	if (!replace) return [...items];
+
+	const returnData: INodeExecutionData[] = items.map((item) => {
+		const newItem = { ...item };
+		const keys = Object.keys(newItem.json);
+
+		for (const key of keys) {
+			if (newItem.json[key] === '') {
+				newItem.json[key] = null;
+			}
+		}
+
+		return newItem;
+	});
+
+	return returnData;
+}

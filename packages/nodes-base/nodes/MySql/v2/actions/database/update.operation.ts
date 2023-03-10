@@ -5,7 +5,7 @@ import type { Mysql2Pool, QueryValues, QueryWithValues } from '../../helpers/int
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import { runQueries } from '../../helpers/utils';
+import { replaceEmptyStringsByNulls, runQueries } from '../../helpers/utils';
 
 import { optionsCollection, tableRLC } from '../common.descriptions';
 
@@ -117,7 +117,10 @@ export async function execute(
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
-	const items = this.getInputData();
+	const items = replaceEmptyStringsByNulls(
+		this.getInputData(),
+		nodeOptions.replaceEmptyStrings as boolean,
+	);
 
 	const queries: QueryWithValues[] = [];
 

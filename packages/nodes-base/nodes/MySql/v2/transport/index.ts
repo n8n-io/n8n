@@ -39,6 +39,9 @@ export async function createPool(
 	options?: IDataObject,
 	sshClient?: Client,
 ): Promise<Mysql2Pool> {
+	if (credentials === undefined) {
+		throw new Error('Credentials not selected, select or add new credentials');
+	}
 	const {
 		ssl,
 		caCertificate,

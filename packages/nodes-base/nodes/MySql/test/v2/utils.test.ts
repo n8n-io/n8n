@@ -4,6 +4,7 @@ import {
 	wrapData,
 	addWhereClauses,
 	addSortRules,
+	replaceEmptyStringsByNulls,
 } from '../../v2/helpers/utils';
 
 describe('Test MySql V2, prepareQueryAndReplacements', () => {
@@ -96,5 +97,28 @@ describe('Test MySql V2, addSortRules', () => {
 
 		expect(query).toEqual('SELECT * FROM `pet` ORDER BY `name` ASC, `age` DESC');
 		expect(values.length).toEqual(0);
+	});
+});
+
+describe('Test MySql V2, replaceEmptyStringsByNulls', () => {
+	it('should replace empty strings', () => {
+		const data = [
+			{ json: { id: 1, name: '' } },
+			{ json: { id: '', name: '' } },
+			{ json: { id: null, data: '' } },
+		];
+		const replacedData = replaceEmptyStringsByNulls(data, true);
+		expect(replacedData).toBeDefined();
+		expect(replacedData).toEqual([
+			{ json: { id: 1, name: null } },
+			{ json: { id: null, name: null } },
+			{ json: { id: null, data: null } },
+		]);
+	});
+	it('should not replace empty strings', () => {
+		const data = [{ json: { id: 1, name: '' } }];
+		const replacedData = replaceEmptyStringsByNulls(data);
+		expect(replacedData).toBeDefined();
+		expect(replacedData).toEqual([{ json: { id: 1, name: '' } }]);
 	});
 });
