@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, ref, onBeforeMount } from 'vue';
+import { computed, reactive, onBeforeMount } from 'vue';
 import debounce from 'lodash/debounce';
 import type {
 	ExecutionFilterType,
@@ -99,7 +99,7 @@ const countSelectedFilterProps = computed(() => {
 });
 
 // vModel.metadata is a text input and needs a debounced emit to avoid too many requests
-// We use the :value and @input combo instead of v-model
+// We use the :value and @input combo instead of v-model with this event listener
 const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, value: string) => {
 	if (!filter.metadata[index]) {
 		filter.metadata[index] = {
