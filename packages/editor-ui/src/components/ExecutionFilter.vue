@@ -107,10 +107,7 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 			value: '',
 		};
 	}
-
 	filter.metadata[index][prop] = value;
-	(vModel.metadata as ExecutionFilterMetadata[])[index][prop] = value;
-
 	debouncedEmit('filterChanged', filter);
 };
 
@@ -263,7 +260,7 @@ onBeforeMount(() => {
 									size="medium"
 									:disabled="!isAdvancedExecutionFilterEnabled"
 									:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-									:value="vModel.metadata[0]?.key"
+									:value="filter.metadata[0]?.key"
 									@input="onFilterMetaChange(0, 'key', $event)"
 								/>
 							</n8n-tooltip>
@@ -289,7 +286,7 @@ onBeforeMount(() => {
 									size="medium"
 									:disabled="!isAdvancedExecutionFilterEnabled"
 									:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-									:value="vModel.metadata[0]?.value"
+									:value="filter.metadata[0]?.value"
 									@input="onFilterMetaChange(0, 'value', $event)"
 								/>
 							</n8n-tooltip>
