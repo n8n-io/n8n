@@ -513,45 +513,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				try {
 					await this.restApi().deleteExecutions(sendData);
-					let removedCurrentlyLoadedExecution = false;
-					let removedActiveExecution = false;
-					const currentWorkflow: string = this.workflowsStore.workflowId;
-					const activeExecution: IExecutionsSummary | null =
-						this.workflowsStore.activeWorkflowExecution;
-					// Also update current workflow executions view if needed
-					for (const selectedId of Object.keys(this.selectedItems)) {
-						const execution: IExecutionsSummary | undefined =
-							this.workflowsStore.getExecutionDataById(selectedId);
-						if (execution && execution.workflowId === currentWorkflow) {
-							this.workflowsStore.deleteExecution(execution);
-							removedCurrentlyLoadedExecution = true;
-						}
-						if (
-							execution !== undefined &&
-							activeExecution !== null &&
-							execution.id === activeExecution.id
-						) {
-							removedActiveExecution = true;
-						}
-					}
-					// Also update route if needed
-					if (removedCurrentlyLoadedExecution) {
-						const currentWorkflowExecutions: IExecutionsSummary[] =
-							this.workflowsStore.currentWorkflowExecutions;
-						if (currentWorkflowExecutions.length === 0) {
-							this.workflowsStore.activeWorkflowExecution = null;
-
-							this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
-						} else if (removedActiveExecution) {
-							this.workflowsStore.activeWorkflowExecution = currentWorkflowExecutions[0];
-							this.$router
-								.push({
-									name: VIEWS.EXECUTION_PREVIEW,
-									params: { name: currentWorkflow, executionId: currentWorkflowExecutions[0].id },
-								})
-								.catch(() => {});
-						}
-					}
 				} catch (error) {
 					this.isDataLoading = false;
 					this.$showError(
