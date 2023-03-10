@@ -153,9 +153,8 @@ import {
 	isAdvancedExecutionFiltersEnabled,
 } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
-import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
+import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 
 const exec = promisify(callbackExec);
@@ -370,6 +369,7 @@ class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
+		const samlService = SamlService.getInstance();
 
 		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
@@ -389,6 +389,7 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
+			new SamlController(samlService),
 		];
 
 		if (isLdapEnabled()) {
@@ -513,9 +514,6 @@ class Server extends AbstractServer {
 				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
 			}
 		}
-
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
 
 		// ----------------------------------------
 		// Returns parameter values which normally get loaded from an external API or
