@@ -1,7 +1,6 @@
-import type { IWebhookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IWebhookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,

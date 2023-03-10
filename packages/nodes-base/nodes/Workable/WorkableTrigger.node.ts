@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -179,7 +179,7 @@ export class WorkableTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;

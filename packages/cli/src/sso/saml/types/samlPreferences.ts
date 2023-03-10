@@ -1,7 +1,49 @@
-import type { SamlAttributeMapping } from './samlAttributeMapping';
+import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import { SamlLoginBinding } from '.';
+import { SamlAttributeMapping } from './samlAttributeMapping';
 
-export interface SamlPreferences {
-	mapping: SamlAttributeMapping;
-	metadata: string;
-	//TODO:SAML: add fields for separate SAML settins to generate metadata from
+export class SamlPreferences {
+	@IsObject()
+	@IsOptional()
+	mapping?: SamlAttributeMapping;
+
+	@IsString()
+	@IsOptional()
+	metadata?: string;
+
+	@IsString()
+	@IsOptional()
+	metadataUrl?: string;
+
+	@IsBoolean()
+	@IsOptional()
+	ignoreSSL?: boolean = false;
+
+	@IsString()
+	@IsOptional()
+	loginBinding?: SamlLoginBinding = 'redirect';
+
+	@IsBoolean()
+	@IsOptional()
+	loginEnabled?: boolean;
+
+	@IsString()
+	@IsOptional()
+	loginLabel?: string;
+
+	@IsBoolean()
+	@IsOptional()
+	authnRequestsSigned?: boolean = false;
+
+	@IsBoolean()
+	@IsOptional()
+	wantAssertionsSigned?: boolean = true;
+
+	@IsBoolean()
+	@IsOptional()
+	wantMessageSigned?: boolean = true;
+
+	@IsString()
+	@IsOptional()
+	acsBinding?: SamlLoginBinding = 'post';
 }

@@ -77,7 +77,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -91,6 +90,7 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useSegment } from '@/stores/segment';
 import { externalHooks } from '@/mixins/externalHooks';
+import { getMappedResult } from '../utils/mappingUtils';
 
 export default mixins(showMessage, externalHooks).extend({
 	name: 'parameter-input-full',
@@ -106,7 +106,6 @@ export default mixins(showMessage, externalHooks).extend({
 			forceShowExpression: false,
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
-			localStorageMappingFlag: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true',
 		};
 	},
 	props: {
@@ -148,6 +147,7 @@ export default mixins(showMessage, externalHooks).extend({
 			{
 				attrs: {
 					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
 					click: mappingTooltipDismissHandler,
@@ -187,10 +187,10 @@ export default mixins(showMessage, externalHooks).extend({
 		showMappingTooltip(): boolean {
 			return (
 				this.mappingTooltipEnabled &&
+				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
-				!this.isInputDataEmpty &&
-				!this.localStorageMappingFlag
+				!this.isInputDataEmpty
 			);
 		},
 	},
@@ -230,39 +230,15 @@ export default mixins(showMessage, externalHooks).extend({
 				param?.$emit('optionSelected', 'addExpression');
 			}
 		},
-		onDrop(data: string) {
-			const useDataPath = !!this.parameter.requiresDataPath && data.startsWith('{{ $json');
-			if (!useDataPath) {
+		onDrop(newParamValue: string) {
+			const updatedValue = getMappedResult(this.parameter, newParamValue, this.value);
+			const prevValue = this.isResourceLocator ? this.value.value : this.value;
+
+			if (updatedValue.startsWith('=')) {
 				this.forceShowExpression = true;
 			}
 			setTimeout(() => {
 				if (this.node) {
-					const prevValue = this.isResourceLocator ? this.value.value : this.value;
-					let updatedValue: string;
-					if (useDataPath) {
-						const newValue = data
-							.replace('{{ $json', '')
-							.replace(new RegExp('^\\.'), '')
-							.replace(new RegExp('}}$'), '')
-							.trim();
-
-						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
-							updatedValue = `${prevValue}, ${newValue}`;
-						} else {
-							updatedValue = newValue;
-						}
-					} else if (
-						typeof prevValue === 'string' &&
-						prevValue.startsWith('=') &&
-						prevValue.length > 1
-					) {
-						updatedValue = `${prevValue} ${data}`;
-					} else if (prevValue && ['string', 'json'].includes(this.parameter.type)) {
-						updatedValue = prevValue === '=' ? `=${data}` : `=${prevValue} ${data}`;
-					} else {
-						updatedValue = `=${data}`;
-					}
-
 					let parameterData;
 					if (this.isResourceLocator) {
 						if (!isResourceLocatorValue(this.value)) {
@@ -306,14 +282,14 @@ export default mixins(showMessage, externalHooks).extend({
 
 					this.$emit('valueChanged', parameterData);
 
-					if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
+					if (!this.ndvStore.isMappingOnboarded) {
 						this.$showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
 						});
 
-						window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						this.ndvStore.disableMappingHint();
 					}
 
 					this.ndvStore.setMappingTelemetry({
@@ -336,7 +312,7 @@ export default mixins(showMessage, externalHooks).extend({
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			this.localStorageMappingFlag = true;
+			this.ndvStore.disableMappingHint(false);
 		},
 	},
 	watch: {

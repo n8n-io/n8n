@@ -16,6 +16,7 @@ import {
 	CORE_NODES_CATEGORY,
 	TRIGGER_NODE_FILTER,
 	STICKY_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
@@ -245,6 +246,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		showScrim: false,
 		selectedView: TRIGGER_NODE_FILTER,
 		rootViewHistory: [],
+		openSource: '',
 	}),
 	actions: {
 		setShowScrim(isVisible: boolean) {
@@ -308,31 +310,32 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
-			const mergedNodes = [...this.visibleNodesWithActions]
-				// Sort triggers so they are always on top and when later get merged
-				// they won't be discarded if they have the same name as a core node which doesn't contain actions
-				.sort((a, b) => {
-					if (a.group.includes('trigger')) return -1;
-					if (b.group.includes('trigger')) return 1;
+			const triggers = this.visibleNodesWithActions.filter((node) =>
+				node.group.includes('trigger'),
+			);
+			const apps = this.visibleNodesWithActions
+				.filter((node) => !node.group.includes('trigger'))
+				.map((node) => {
+					const newNode = deepCopy(node);
+					newNode.actions = newNode.actions || [];
+					return newNode;
+				});
 
-					return 0;
-				})
-				.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
-					const clonedNode = deepCopy(node);
-					const actions = node.actions || [];
-					// Do not merge core nodes
-					const normalizedName = node.name.toLowerCase().replace('trigger', '');
-					const existingNode = acc[normalizedName];
+			triggers.forEach((node) => {
+				const normalizedName = node.name.toLowerCase().replace('trigger', '');
+				const app = apps.find((node) => node.name.toLowerCase() === normalizedName);
+				const newNode = deepCopy(node);
+				if (app && app.actions?.length) {
+					// merge triggers into regular nodes that match
+					app?.actions?.push(...(newNode.actions || []));
+					app.description = newNode.description; // default to trigger description
+				} else {
+					newNode.actions = newNode.actions || [];
+					apps.push(newNode);
+				}
+			});
 
-					if (existingNode) existingNode.actions?.push(...actions);
-					else acc[normalizedName] = clonedNode;
-
-					acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
-
-					return acc;
-				}, {});
-
-			const filteredNodes = Object.values(mergedNodes).map((node) => ({
+			const filteredNodes = apps.map((node) => ({
 				...node,
 				actions: filterActions(node.actions || []),
 			}));
@@ -349,11 +352,28 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 				const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
 				const isStickyNode = nodeType === STICKY_NODE_TYPE;
+				const singleNodeOpenSources = [
+					NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+					NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+					NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+				];
 
-				const nodeTypes =
-					!isTrigger && !workflowContainsTrigger && isTriggerPanel && !isStickyNode
-						? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
-						: [nodeType];
+				// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
+				// then we do not want to append the manual trigger
+				const isSingleNodeOpenSource = singleNodeOpenSources.includes(
+					useNodeCreatorStore().openSource,
+				);
+
+				const shouldAppendManualTrigger =
+					!isSingleNodeOpenSource &&
+					!isTrigger &&
+					!workflowContainsTrigger &&
+					isTriggerPanel &&
+					!isStickyNode;
+
+				const nodeTypes = shouldAppendManualTrigger
+					? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
+					: [nodeType];
 
 				return nodeTypes;
 			},

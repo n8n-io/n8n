@@ -766,9 +766,15 @@ export interface IN8nUISettings {
 			enabled: boolean;
 		};
 	};
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1119,6 +1125,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
@@ -1172,11 +1179,22 @@ export type IFakeDoorLocation =
 
 export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
 
+export type NodeCreatorOpenSource =
+	| ''
+	| 'no_trigger_execution_tooltip'
+	| 'plus_endpoint'
+	| 'trigger_placeholder_button'
+	| 'tab'
+	| 'node_connection_action'
+	| 'node_connection_drop'
+	| 'add_node_button';
+
 export interface INodeCreatorState {
 	itemsFilter: string;
 	showScrim: boolean;
 	rootViewHistory: INodeFilterType[];
 	selectedView: INodeFilterType;
+	openSource: NodeCreatorOpenSource;
 }
 
 export interface ISettingsState {
@@ -1193,6 +1211,10 @@ export interface ISettingsState {
 		};
 	};
 	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
 	};

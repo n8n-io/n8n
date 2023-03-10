@@ -21,7 +21,6 @@ describe('Workflow Actions', () => {
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should be able to save on button click', () => {
@@ -112,6 +111,9 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should update workflow settings', () => {
+		cy.resetAll();
+		cy.skipSetup();
+		WorkflowPage.actions.visit();
 		// Open settings dialog
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.getters.workflowMenu().should('be.visible');

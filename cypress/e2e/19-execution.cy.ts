@@ -6,18 +6,12 @@ const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Execution', () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
 
-	beforeEach(() => {
-		cy.visit('/');
-	});
-
 	it('should test manual workflow', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -40,14 +34,14 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Manual')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
@@ -58,15 +52,15 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Manual')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
@@ -78,8 +72,6 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow stop', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -102,14 +94,14 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Manual')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
@@ -121,11 +113,11 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Manual')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
@@ -143,8 +135,6 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -184,14 +174,14 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
@@ -202,15 +192,15 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
@@ -222,8 +212,6 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow stop', () => {
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
 		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
 
 		// Check workflow buttons
@@ -259,34 +247,33 @@ describe('Execution', () => {
 			});
 		});
 
+		workflowPage.getters.stopExecutionButton().click();
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
-		cy.wait(1000);
-		workflowPage.getters.stopExecutionWaitingForWebhookButton().click();
 
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-check'))
-			.should('be.visible');
+			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
 			.within(() => cy.get('.fa-sync-alt').should('not.visible'));

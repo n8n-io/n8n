@@ -98,12 +98,11 @@ describe('Webhook Trigger node', async () => {
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 
 		cy.window()
 			// @ts-ignore
 			.then(
-				(win) => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload),
+				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
 			);
 	});
 
