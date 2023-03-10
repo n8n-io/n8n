@@ -600,6 +600,16 @@ export class NotionV2 implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { type: 'external', external: { url: options.icon } };
+						} else {
+							body.icon = { type: 'emoji', emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple) {
 						responseData = simplifyObjects(responseData, false);
