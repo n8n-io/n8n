@@ -24,7 +24,6 @@ import * as GenericHelpers from '@/GenericHelpers';
 import * as Server from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
-import { handleLdapInit } from '@/Ldap/helpers';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
@@ -325,8 +324,6 @@ export class Start extends BaseCommand {
 				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
 			);
 		}
-
-		await handleLdapInit();
 
 		await Server.start();
 
