@@ -16,11 +16,7 @@ import type { PostBindingContext } from 'samlify/types/src/entity';
 
 @RestController('/sso/saml')
 export class SamlController {
-	private samlService: SamlService;
-
-	constructor() {
-		this.samlService = SamlService.getInstance();
-	}
+	constructor(private samlService: SamlService) {}
 
 	@Get(SamlUrls.metadata)
 	async getServiceProviderMetadata(req: express.Request, res: express.Response) {

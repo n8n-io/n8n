@@ -379,6 +379,7 @@ class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
+		const samlService = SamlService.getInstance();
 
 		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
@@ -398,7 +399,7 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new SamlController(),
+			new SamlController(samlService),
 		];
 
 		if (isLdapEnabled()) {
