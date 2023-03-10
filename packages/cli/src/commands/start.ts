@@ -28,6 +28,7 @@ import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
+import { getLicense } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -181,11 +182,26 @@ export class Start extends BaseCommand {
 		await Promise.all(files.map(compileFile));
 	}
 
+	async initLicense(): Promise<void> {
+		const license = getLicense();
+		await license.init(this.instanceId);
+
+		const activationKey = config.getEnv('license.activationKey');
+		if (activationKey) {
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
+			}
+		}
+	}
+
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 
