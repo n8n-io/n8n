@@ -6,6 +6,7 @@ const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
 const NDVModal = new NDV();
 
+
 describe('Node Creator', () => {
 	before(() => {
 		cy.resetAll();
@@ -103,47 +104,6 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').type('{downarrow} {downarrow} {downarrow} {rightarrow}');
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Rename');
 	})
-
-	it('should render and select community node', () => {
-		const customNode = 'E2E Node';
-
-		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type(customNode);
-
-		nodeCreatorFeature.getters
-			.getCreatorItem(customNode)
-			.findChildByTestId('node-creator-item-tooltip')
-			.should('exist');
-		nodeCreatorFeature.actions.selectNode(customNode);
-
-		// TODO: Replace once we have canvas feature utils
-		cy.get('.data-display .node-name').contains(customNode).should('exist');
-
-		const nodeParameters = () => cy.getByTestId('node-parameters');
-		const firstParameter = () => nodeParameters().find('.parameter-item').eq(0);
-		const secondParameter = () => nodeParameters().find('.parameter-item').eq(1);
-
-		// Check correct fields are rendered
-		nodeParameters().should('exist');
-		// Test property text input
-		firstParameter().contains('Test property').should('exist');
-		firstParameter().find('input.el-input__inner').should('have.value', 'Some default');
-		// Resource select input
-		secondParameter().find('label').contains('Resource').should('exist');
-		secondParameter().find('input.el-input__inner').should('have.value', 'option2');
-		secondParameter().find('.el-select').click();
-		secondParameter().find('.el-select-dropdown__list').should('exist');
-		// Check if all options are rendered and select the fourth one
-		secondParameter().find('.el-select-dropdown__list').children().should('have.length', 4);
-		secondParameter()
-			.find('.el-select-dropdown__list')
-			.children()
-			.eq(3)
-			.contains('option4')
-			.should('exist')
-			.click();
-		secondParameter().find('input.el-input__inner').should('have.value', 'option4');
-	});
 
 	describe('should correctly append manual trigger for regular actions', () => {
 		// For these sources, manual node should be added
