@@ -142,7 +142,7 @@ export default mixins(showMessage).extend({
 					} catch {}
 				}
 
-				await this.$router.push({ name: VIEWS.HOMEPAGE });
+				await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
 			}

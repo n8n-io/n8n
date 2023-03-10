@@ -1,6 +1,7 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	GenericValue,
 	IDataObject,
 	IHttpRequestMethods,
@@ -27,6 +28,7 @@ export async function apiRequest(
 		headers: {
 			'content-type': 'application/json; charset=utf-8',
 		},
+		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 	};
 
 	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);

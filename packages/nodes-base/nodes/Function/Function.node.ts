@@ -1,7 +1,7 @@
 import type { NodeVMOptions } from 'vm2';
 import { NodeVM } from 'vm2';
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,

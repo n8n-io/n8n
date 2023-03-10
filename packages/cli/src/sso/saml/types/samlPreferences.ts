@@ -30,4 +30,20 @@ export class SamlPreferences {
 	@IsString()
 	@IsOptional()
 	loginLabel?: string;
+
+	@IsBoolean()
+	@IsOptional()
+	authnRequestsSigned?: boolean = false;
+
+	@IsBoolean()
+	@IsOptional()
+	wantAssertionsSigned?: boolean = true;
+
+	@IsBoolean()
+	@IsOptional()
+	wantMessageSigned?: boolean = true;
+
+	@IsString()
+	@IsOptional()
+	acsBinding?: SamlLoginBinding = 'post';
 }
