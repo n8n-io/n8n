@@ -369,7 +369,7 @@ class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const samlService = SamlService.getInstance();
+		const samlService = Container.get(SamlService);
 
 		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
@@ -509,7 +509,7 @@ class Server extends AbstractServer {
 		// set up the initial environment
 		if (isSamlLicensed()) {
 			try {
-				await SamlService.getInstance().init();
+				await Container.get(SamlService).init();
 			} catch (error) {
 				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
 			}

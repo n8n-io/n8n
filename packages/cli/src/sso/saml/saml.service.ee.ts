@@ -1,4 +1,5 @@
 import type express from 'express';
+import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type { User } from '@/databases/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
@@ -26,9 +27,8 @@ import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
 
+@Service()
 export class SamlService {
-	private static instance: SamlService;
-
 	private identityProviderInstance: IdentityProviderInstance | undefined;
 
 	private _samlPreferences: SamlPreferences = {
@@ -63,13 +63,6 @@ export class SamlService {
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
 		};
-	}
-
-	static getInstance(): SamlService {
-		if (!SamlService.instance) {
-			SamlService.instance = new SamlService();
-		}
-		return SamlService.instance;
 	}
 
 	async init(): Promise<void> {
