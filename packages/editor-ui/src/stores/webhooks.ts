@@ -37,7 +37,7 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 			return useWorkflowsStore().workflowId;
 		},
 		workflowName(): string {
-			return useWorkflowsStore().workflowName;
+			return useWorkflowsStore().workflow.name;
 		},
 		activeNode(): INodeUi | null {
 			return useNDVStore().activeNode;

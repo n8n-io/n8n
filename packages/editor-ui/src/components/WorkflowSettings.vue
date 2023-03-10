@@ -421,7 +421,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			useWorkflowsEEStore,
 		),
 		workflowName(): string {
-			return this.workflowsStore.workflowName;
+			return this.workflowsStore.workflow.name;
 		},
 		workflowId(): string {
 			return this.workflowsStore.workflowId;

@@ -243,7 +243,7 @@ function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boo
 		workflowId = undefined;
 	}
 
-	const workflowName = useWorkflowsStore().workflowName;
+	const workflowName = useWorkflowsStore().workflow.name;
 
 	cachedWorkflow = new Workflow({
 		id: workflowId,

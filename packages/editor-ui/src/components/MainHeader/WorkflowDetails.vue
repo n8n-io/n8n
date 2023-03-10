@@ -213,7 +213,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			return this.workflowsStore.isWorkflowActive;
 		},
 		workflowName(): string {
-			return this.workflowsStore.workflowName;
+			return this.workflowsStore.workflow.name;
 		},
 		isDirty(): boolean {
 			return this.uiStore.stateIsDirty;

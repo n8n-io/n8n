@@ -91,7 +91,7 @@ export default mixins(
 		workflowDataNotLoaded(): boolean {
 			return (
 				this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				this.workflowsStore.workflowName === ''
+				this.workflowsStore.workflow.name === ''
 			);
 		},
 		loadedFinishedExecutionsCount(): number {

@@ -19,7 +19,7 @@ export const executionHelpers = mixins(genericHelpers).extend({
 			return this.$route.params.executionId;
 		},
 		workflowName(): string {
-			return this.workflowsStore.workflowName;
+			return this.workflowsStore.workflow.name;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name || this.workflowsStore.workflowId;

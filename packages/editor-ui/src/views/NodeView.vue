@@ -560,7 +560,7 @@ export default mixins(
 			return this.$route.params.name || this.workflowsStore.workflowId;
 		},
 		workflowName(): string {
-			return this.workflowsStore.workflowName;
+			return this.workflowsStore.workflow.name;
 		},
 		allTriggersDisabled(): boolean {
 			const disabledTriggerNodes = this.triggerNodes.filter((node) => node.disabled);
