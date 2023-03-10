@@ -22,22 +22,20 @@ import CustomCredential from '../fixtures/Custom_credential.json';
 // Load custom nodes and credentials fixtures
 beforeEach(() => {
 	cy.intercept('GET', '/types/nodes.json', (req) => {
-		req.continue((res) => {
-			const nodes = res.body;
+		req.on('response', (res) => {
+			const nodes = res.body || [];
 
 			res.headers['cache-control'] = 'no-cache, no-store';
 			nodes.push(CustomNodeFixture, CustomNodeWithN8nCredentialFixture, CustomNodeWithCustomCredentialFixture);
-			res.send(nodes);
 		});
 	}).as('nodesIntercept');
 
 	cy.intercept('GET', '/types/credentials.json', (req) => {
-		req.continue((res) => {
-			const credentials = res.body;
+		req.on('response', (res) => {
+			const credentials = res.body || [];
 
 			res.headers['cache-control'] = 'no-cache, no-store';
 			credentials.push(CustomCredential);
-			res.send(credentials);
-		});
+		})
 	}).as('credentialsIntercept');
 })

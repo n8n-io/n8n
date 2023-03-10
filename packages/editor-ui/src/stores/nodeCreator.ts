@@ -16,6 +16,7 @@ import {
 	CORE_NODES_CATEGORY,
 	TRIGGER_NODE_FILTER,
 	STICKY_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
@@ -245,6 +246,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		showScrim: false,
 		selectedView: TRIGGER_NODE_FILTER,
 		rootViewHistory: [],
+		openSource: '',
 	}),
 	actions: {
 		setShowScrim(isVisible: boolean) {
@@ -350,11 +352,28 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 				const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
 				const isStickyNode = nodeType === STICKY_NODE_TYPE;
+				const singleNodeOpenSources = [
+					NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+					NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+					NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+				];
 
-				const nodeTypes =
-					!isTrigger && !workflowContainsTrigger && isTriggerPanel && !isStickyNode
-						? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
-						: [nodeType];
+				// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
+				// then we do not want to append the manual trigger
+				const isSingleNodeOpenSource = singleNodeOpenSources.includes(
+					useNodeCreatorStore().openSource,
+				);
+
+				const shouldAppendManualTrigger =
+					!isSingleNodeOpenSource &&
+					!isTrigger &&
+					!workflowContainsTrigger &&
+					isTriggerPanel &&
+					!isStickyNode;
+
+				const nodeTypes = shouldAppendManualTrigger
+					? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
+					: [nodeType];
 
 				return nodeTypes;
 			},

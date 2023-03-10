@@ -31,11 +31,8 @@ import { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { NodeTypes } from '@/NodeTypes';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
@@ -65,8 +62,10 @@ import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	LdapController,
 	MeController,
 	MFAController,
+	NodesController,
 	OwnerController,
 	PasswordResetController,
 	UsersController,
@@ -75,12 +74,14 @@ import { setupAuthMiddlewares } from '@/middlewares';
 import * as testDb from '../shared/testDb';
 
 import { v4 as uuid } from 'uuid';
-import { handleLdapInit } from '@/Ldap/helpers';
-import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
 import { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
+import { LDAP_ENABLED } from '@/Ldap/constants';
+import { handleLdapInit } from '@/Ldap/helpers';
+import { Push } from '@/push';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -157,10 +158,8 @@ export async function initTestServer({
 		const map: Record<string, express.Router | express.Router[] | any> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
-			nodes: { controller: nodesController, path: 'nodes' },
 			license: { controller: licenseController, path: 'license' },
 			eventBus: { controller: eventBusRouter, path: 'eventbus' },
-			ldap: { controller: ldapController, path: 'ldap' },
 		};
 
 		if (enablePublicAPI) {
@@ -198,6 +197,27 @@ export async function initTestServer({
 						}),
 					);
 					break;
+				case 'ldap':
+					config.set(LDAP_ENABLED, true);
+					await handleLdapInit();
+					const { service, sync } = LdapManager.getInstance();
+					registerController(
+						testServer.app,
+						config,
+						new LdapController(service, sync, internalHooks),
+					);
+					break;
+				case 'nodes':
+					registerController(
+						testServer.app,
+						config,
+						new NodesController(
+							config,
+							Container.get(LoadNodesAndCredentials),
+							Container.get(Push),
+							internalHooks,
+						),
+					);
 				case 'me':
 					registerController(
 						testServer.app,
@@ -260,15 +280,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = [
-		'credentials',
-		'nodes',
-		'workflows',
-		'publicApi',
-		'ldap',
-		'eventBus',
-		'license',
-	];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'eventBus', 'license'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -332,13 +344,6 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	};
-}
-
-/**
- * Initialize LDAP manager.
- */
-export async function initLdapManager(): Promise<void> {
-	await handleLdapInit();
 }
 
 /**
