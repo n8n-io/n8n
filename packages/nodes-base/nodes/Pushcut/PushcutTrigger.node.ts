@@ -1,6 +1,10 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import type { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { pushcutApiRequest } from './GenericFunctions';
 

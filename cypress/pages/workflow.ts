@@ -174,6 +174,10 @@ export class WorkflowPage extends BasePage {
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
 		},
+		deleteNode: (name: string) => {
+			this.getters.canvasNodeByName(name).first().click();
+			cy.get('body').type('{del}');
+		},
 		setWorkflowName: (name: string) => {
 			this.getters.workflowNameInput().should('be.disabled');
 			this.getters.workflowNameInput().parent().click();
@@ -256,12 +260,20 @@ export class WorkflowPage extends BasePage {
 		turnOnManualExecutionSaving: () => {
 			this.getters.workflowMenu().click();
 			this.getters.workflowMenuItemSettings().click();
+			cy.get('.el-loading-mask').should('not.be.visible');
 			this.getters
 				.workflowSettingsSaveManualExecutionsSelect()
 				.find('li:contains("Yes")')
 				.click({ force: true });
+
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
 			this.getters.workflowSettingsSaveButton().click();
 			this.getters.successToast().should('exist');
+
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
+			this.getters.workflowSettingsSaveButton().click();
 		},
 	};
 }

@@ -3,11 +3,11 @@
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
-		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
+		:initialize="initialize"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -49,7 +49,7 @@
 			</div>
 			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
-					:class="[$style.emptyStateCard, 'mr-s']"
+					:class="$style.emptyStateCard"
 					hoverable
 					@click="addWorkflow"
 					data-test-id="new-workflow-card"
@@ -60,21 +60,15 @@
 					</n8n-text>
 				</n8n-card>
 				<n8n-card
+					v-if="isDemoTest"
 					:class="$style.emptyStateCard"
 					hoverable
 					@click="goToTemplates"
 					data-test-id="new-workflow-template-card"
 				>
-					<n8n-icon
-						:class="$style.emptyStateCardIcon"
-						:icon="isDemoTest ? 'graduation-cap' : 'box-open'"
-					/>
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{
-							$locale.baseText(
-								isDemoTest ? 'workflows.empty.viewDemo' : 'workflows.empty.browseTemplates',
-							)
-						}}
+						{{ $locale.baseText('workflows.empty.viewDemo') }}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -119,7 +113,6 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { newVersions } from '@/mixins/newVersions';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -138,6 +131,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useCredentialsStore } from '@/stores/credentials';
 import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
@@ -148,7 +142,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper, newVersions).extend({
+const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -171,7 +165,13 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+			useCredentialsStore,
+		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -224,12 +224,13 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 			}
 		},
 		async initialize() {
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
-
-			return await Promise.all([
+			await Promise.all([
+				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+
+			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -269,10 +270,11 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 		},
 	},
 	mounted() {
-		this.checkForNewVersions();
 		this.usersStore.showPersonalizationSurvey();
 	},
 });
+
+export default WorkflowsView;
 </script>
 
 <style lang="scss" module>
@@ -286,6 +288,10 @@ export default mixins(showMessage, debounceHelper, newVersions).extend({
 	text-align: center;
 	display: inline-flex;
 	height: 230px;
+
+	& + & {
+		margin-left: var(--spacing-s);
+	}
 
 	&:hover {
 		svg {

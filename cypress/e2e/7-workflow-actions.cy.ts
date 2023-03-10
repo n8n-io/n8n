@@ -21,7 +21,6 @@ describe('Workflow Actions', () => {
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should be able to save on button click', () => {

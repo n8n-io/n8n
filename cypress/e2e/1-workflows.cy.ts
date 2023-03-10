@@ -41,8 +41,6 @@ describe('Workflows', () => {
 	});
 
 	it('should create multiple new workflows using add workflow button', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('not.exist');
-
 		[...Array(multipleWorkflowsCount).keys()].forEach(() => {
 			cy.visit(WorkflowsPage.url);
 			WorkflowsPage.getters.createWorkflowButton().click();
@@ -92,11 +90,5 @@ describe('Workflows', () => {
 		});
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
-	});
-
-	it('should contain empty state cards', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
 	});
 });
