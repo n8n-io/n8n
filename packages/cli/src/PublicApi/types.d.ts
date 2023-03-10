@@ -29,7 +29,7 @@ export type AuthenticatedRequest<
 	mailer?: UserManagementMailer;
 };
 
-export type PaginatatedRequest = AuthenticatedRequest<
+export type PaginatedRequest = AuthenticatedRequest<
 	{},
 	{},
 	{},
