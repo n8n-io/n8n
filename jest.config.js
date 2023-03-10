@@ -23,7 +23,7 @@ const config = {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
 	collectCoverage: true,
-	coverageReporters: ['text'],
+	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],
 };
 
