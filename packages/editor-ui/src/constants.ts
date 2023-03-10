@@ -1,3 +1,5 @@
+import { NodeCreatorOpenSource } from './Interface';
+
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
@@ -147,6 +149,20 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
 // Node creator
+export const NODE_CREATOR_OPEN_SOURCES: Record<
+	Uppercase<NodeCreatorOpenSource>,
+	NodeCreatorOpenSource
+> = {
+	NO_TRIGGER_EXECUTION_TOOLTIP: 'no_trigger_execution_tooltip',
+	PLUS_ENDPOINT: 'plus_endpoint',
+	TRIGGER_PLACEHOLDER_BUTTON: 'trigger_placeholder_button',
+	ADD_NODE_BUTTON: 'add_node_button',
+	TAB: 'tab',
+	NODE_CONNECTION_ACTION: 'node_connection_action',
+	NODE_CONNECTION_DROP: 'node_connection_drop',
+	'': '',
+};
+
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';

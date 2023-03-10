@@ -8,13 +8,13 @@ import type { OptionsWithUri } from 'request';
 import { parseString } from 'xml2js';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';

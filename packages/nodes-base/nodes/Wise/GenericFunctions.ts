@@ -1,9 +1,9 @@
 import { createSign } from 'crypto';
 
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,

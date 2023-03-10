@@ -1,12 +1,9 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type {
-	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	JsonObject,

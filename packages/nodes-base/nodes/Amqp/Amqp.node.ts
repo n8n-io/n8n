@@ -1,8 +1,8 @@
 import type { ContainerOptions, Dictionary, EventContext } from 'rhea';
 import { create_container } from 'rhea';
 
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
