@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -464,7 +463,7 @@ export class Splunk implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
+				? returnData.push(...(responseData as IDataObject[]))
 				: returnData.push(responseData as IDataObject);
 		}
 

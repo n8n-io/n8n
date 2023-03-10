@@ -1,7 +1,8 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -209,7 +210,6 @@ export class PipedriveTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -304,7 +304,7 @@ export class PipedriveTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}
@@ -353,7 +353,7 @@ export class PipedriveTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

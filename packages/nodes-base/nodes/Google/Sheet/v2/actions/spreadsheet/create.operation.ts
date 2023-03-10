@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 
@@ -146,7 +145,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
 		const response = await apiRequest.call(this, 'POST', '/v4/spreadsheets', body);
-		returnData.push(response);
+		returnData.push(response as IDataObject);
 	}
 
 	return this.helpers.returnJsonArray(returnData);

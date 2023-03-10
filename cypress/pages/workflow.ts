@@ -24,9 +24,9 @@ export class WorkflowPage extends BasePage {
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
-			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
+			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
-			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`
+			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
 		canvasNodeInputEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('input', nodeName, index));
@@ -44,7 +44,7 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
-		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
+		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
@@ -79,17 +79,20 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
-		shareButton: () => cy.getByTestId('workflow-share-button').find('button'),
+		shareButton: () => cy.getByTestId('workflow-share-button'),
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
 		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
+		clearExecutionDataButton: () => cy.getByTestId('clear-execution-data-button'),
+		stopExecutionButton: () => cy.getByTestId('stop-execution-button'),
+		stopExecutionWaitingForWebhookButton: () => cy.getByTestId('stop-execution-waiting-for-webhook-button'),
 		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
 		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
@@ -103,6 +106,7 @@ export class WorkflowPage extends BasePage {
 			cy.get(
 				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
 			),
+		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 	};
 	actions = {
 		visit: () => {
@@ -120,6 +124,7 @@ export class WorkflowPage extends BasePage {
 			nodeDisplayName: string,
 			plusButtonClick = true,
 			preventNdvClose?: boolean,
+			action?: string,
 		) => {
 			if (plusButtonClick) {
 				this.getters.nodeCreatorPlusButton().click();
@@ -127,11 +132,21 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
+			cy.wait(500)
+			cy.get('body').then((body) => {
+				if(body.find('[data-test-id=node-creator]').length > 0) {
+					if(action) {
+						cy.contains(action).click()
+					} else {
+						cy.getByTestId('item-iterator-item').eq(1).click()
+					}
+				}
+			})
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
 		openNode: (nodeTypeName: string) => {
-			this.getters.canvasNodeByName(nodeTypeName).dblclick();
+			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -154,14 +169,26 @@ export class WorkflowPage extends BasePage {
 		saveWorkflowOnButtonClick: () => {
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
-			this.getters.saveButton().should('contain', 'Saved')
+			this.getters.saveButton().should('contain', 'Saved');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
 		},
+		deleteNode: (name: string) => {
+			this.getters.canvasNodeByName(name).first().click();
+			cy.get('body').type('{del}');
+		},
+		setWorkflowName: (name: string) => {
+			this.getters.workflowNameInput().should('be.disabled');
+			this.getters.workflowNameInput().parent().click();
+			this.getters.workflowNameInput().should('be.enabled');
+			this.getters.workflowNameInput().clear().type(name).type('{enter}');
+		},
 		activateWorkflow: () => {
+			cy.intercept('PATCH', '/rest/workflows/*').as('activateWorkflow');
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
 			this.getters.activatorSwitch().click();
+			cy.wait('@activateWorkflow');
 			cy.get('body').type('{esc}');
 		},
 		renameWorkflow: (newName: string) => {
@@ -229,6 +256,24 @@ export class WorkflowPage extends BasePage {
 				.find('.delete')
 				.first()
 				.click({ force: true });
+		},
+		turnOnManualExecutionSaving: () => {
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			cy.get('.el-loading-mask').should('not.be.visible');
+			this.getters
+				.workflowSettingsSaveManualExecutionsSelect()
+				.find('li:contains("Yes")')
+				.click({ force: true });
+
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
+			this.getters.workflowSettingsSaveButton().click();
+			this.getters.successToast().should('exist');
+
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
+			this.getters.workflowSettingsSaveButton().click();
 		},
 	};
 }

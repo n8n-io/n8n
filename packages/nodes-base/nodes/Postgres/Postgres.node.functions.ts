@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
@@ -69,6 +68,15 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
 			.map((returnedField) => pgp.as.name(returnedField.trim()))
 			.join(', ')
 	);
+}
+
+export function wrapData(data: IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
 }
 
 /**
@@ -185,7 +193,7 @@ export async function pgQueryV2(
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
+				return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 					itemData: { item: i },
 				});
 			})
@@ -197,7 +205,7 @@ export async function pgQueryV2(
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(transactionResult),
+						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
@@ -221,7 +229,7 @@ export async function pgQueryV2(
 				try {
 					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(transactionResult),
+						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					result.push(...executionData);
@@ -310,7 +318,7 @@ export async function pgInsert(
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
-						result.push(insertResult);
+						result.push(insertResult as IDataObject);
 					}
 				} catch (err) {
 					if (!continueOnFail) {
@@ -373,7 +381,7 @@ export async function pgInsertV2(
 		const queryResult = await db.any(query);
 		return queryResult
 			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
+				return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 					itemData: { item: i },
 				});
 			})
@@ -386,7 +394,7 @@ export async function pgInsertV2(
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
 					result.push(
-						...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(insertResult), {
+						...this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
 							itemData: { item: i },
 						}),
 					);
@@ -412,8 +420,10 @@ export async function pgInsertV2(
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(insertResult),
-							{ itemData: { item: i } },
+							wrapData(insertResult as IDataObject[]),
+							{
+								itemData: { item: i },
+							},
 						);
 						result.push(...executionData);
 					}
@@ -644,7 +654,7 @@ export async function pgUpdateV2(
 								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(transactionResult),
+							wrapData(transactionResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						result.push(...executionData);
@@ -672,7 +682,7 @@ export async function pgUpdateV2(
 								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(independentResult),
+							wrapData(independentResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						result.push(...executionData);

@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
@@ -12,7 +12,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {

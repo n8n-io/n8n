@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -130,7 +129,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -150,7 +149,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							// @ts-ignore
 							if (item.json[column]) {
 								// @ts-ignore
-								document.fields[column] = jsonToDocument(item.json[column]);
+								document.fields[column] = jsonToDocument(item.json[column] as IDataObject);
 							} else {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(null);
@@ -166,11 +165,11 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						responseData.id = (responseData.name as string).split('/').pop();
 
 						if (simple) {
-							responseData = fullDocumentToJson(responseData);
+							responseData = fullDocumentToJson(responseData as IDataObject);
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -213,7 +212,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -256,7 +255,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						// @ts-ignore
 						if (item.json.hasOwnProperty(column)) {
 							// @ts-ignore
-							document[column] = jsonToDocument(item.json[column]);
+							document[column] = jsonToDocument(item.json[column] as IDataObject);
 						} else {
 							// @ts-ignore
 							document[column] = jsonToDocument(null);
@@ -288,7 +287,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					Object.assign(writeResults[i], items[i].json);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(writeResults[i]),
+						this.helpers.returnJsonArray(writeResults[i] as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -358,7 +357,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -395,7 +394,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 

@@ -102,6 +102,14 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
 	}
 
+	isSamlEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+	}
+
+	isAdvancedExecutionFiltersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}

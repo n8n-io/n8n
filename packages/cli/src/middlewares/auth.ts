@@ -3,11 +3,12 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
+import { sync as globSync } from 'fast-glob';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { JwtPayload } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, EDITOR_UI_DIST_DIR } from '@/constants';
 import { issueCookie, resolveJwtContent } from '@/auth/jwt';
 import {
 	isAuthenticatedRequest,
@@ -17,6 +18,7 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import type { Repository } from 'typeorm';
 import type { User } from '@db/entities/User';
+import { SamlUrls } from '@/sso/saml/constants';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -61,6 +63,10 @@ const refreshExpiringCookie: RequestHandler = async (req: AuthenticatedRequest, 
 
 const passportMiddleware = passport.authenticate('jwt', { session: false }) as RequestHandler;
 
+const staticAssets = globSync(['**/*.html', '**/*.svg', '**/*.png', '**/*.ico'], {
+	cwd: EDITOR_UI_DIST_DIR,
+});
+
 /**
  * This sets up the auth middlewares in the correct order
  */
@@ -79,12 +85,7 @@ export const setupAuthMiddlewares = (
 			// TODO: refactor me!!!
 			// skip authentication for preflight requests
 			req.method === 'OPTIONS' ||
-			req.url === '/index.html' ||
-			req.url === '/favicon.ico' ||
-			req.url.startsWith('/css/') ||
-			req.url.startsWith('/js/') ||
-			req.url.startsWith('/fonts/') ||
-			req.url.includes('.svg') ||
+			staticAssets.includes(req.url.slice(1)) ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
 			req.url.startsWith(`/${restEndpoint}/login`) ||
 			req.url.startsWith(`/${restEndpoint}/logout`) ||
@@ -95,6 +96,9 @@ export const setupAuthMiddlewares = (
 			req.url.startsWith(`/${restEndpoint}/change-password`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml${SamlUrls.metadata}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml${SamlUrls.initSSO}`) ||
+			req.url.startsWith(`/${restEndpoint}/sso/saml${SamlUrls.acs}`) ||
 			isAuthExcluded(req.url, ignoredEndpoints)
 		) {
 			return next();

@@ -33,7 +33,7 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -44,27 +44,30 @@ import type {
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import * as Push from '@/Push';
 import * as Queue from '@/Queue';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { Push } from '@/push';
+import { eventBus } from './eventbus';
+import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
+import { Container } from 'typedi';
+import { InternalHooks } from './InternalHooks';
 
 export class WorkflowRunner {
-	activeExecutions: ActiveExecutions.ActiveExecutions;
+	activeExecutions: ActiveExecutions;
 
-	push: Push.Push;
+	push: Push;
 
 	jobQueue: Queue.JobQueue;
 
 	constructor() {
-		this.push = Push.getInstance();
-		this.activeExecutions = ActiveExecutions.getInstance();
+		this.push = Container.get(Push);
+		this.activeExecutions = Container.get(ActiveExecutions);
 	}
 
 	/**
@@ -102,7 +105,39 @@ export class WorkflowRunner {
 			mode: executionMode,
 			startedAt,
 			stoppedAt: new Date(),
+			status: 'error',
 		};
+
+		// The following will attempt to recover runData from event logs
+		// Note that this will only work as long as the event logs actually contain the events from this workflow execution
+		// Since processError is run almost immediately after the workflow execution has failed, it is likely that the event logs
+		// does contain those messages.
+		try {
+			// Search for messages for this executionId in event logs
+			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
+			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
+			if (eventLogMessages.length > 0) {
+				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
+					executionId,
+					eventLogMessages,
+					false,
+				);
+				if (eventLogExecutionData) {
+					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
+					fullRunData.status = 'crashed';
+				}
+			}
+
+			const executionFlattedData = await Db.collections.Execution.findOneBy({ id: executionId });
+
+			void Container.get(InternalHooks).onWorkflowCrashed(
+				executionId,
+				executionMode,
+				executionFlattedData?.workflowData,
+			);
+		} catch {
+			// Ignore errors
+		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
@@ -152,14 +187,14 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
-		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
+		void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		postExecutePromise
 			.then(async (executionData) => {
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId!,
 					data.workflowData,
 					executionData,
@@ -206,7 +241,7 @@ export class WorkflowRunner {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
@@ -286,6 +321,10 @@ export class WorkflowRunner {
 				},
 			];
 
+			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+				executionId,
+			});
+
 			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({
 				sessionId: data.sessionId,
 			});
@@ -353,6 +392,7 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
+					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.remove(executionId, fullRunData);
 				})
 				.catch((error) => {
@@ -707,7 +747,7 @@ export class WorkflowRunner {
 				}
 
 				// eslint-disable-next-line @typescript-eslint/await-thenable
-				await this.activeExecutions.remove(message.data.executionId, message.data.result);
+				this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
@@ -732,7 +772,7 @@ export class WorkflowRunner {
 				);
 				// Process did exit with error code, so something went wrong.
 				const executionError = new WorkflowOperationError(
-					'Workflow execution process did crash for an unknown reason!',
+					'Workflow execution process crashed for an unknown reason!',
 				);
 
 				await this.processError(
@@ -751,7 +791,7 @@ export class WorkflowRunner {
 				// Instead of pending forever as executing when it
 				// actually isn't anymore.
 				// eslint-disable-next-line @typescript-eslint/await-thenable, no-await-in-loop
-				await this.activeExecutions.remove(executionId);
+				this.activeExecutions.remove(executionId);
 			}
 
 			clearTimeout(executionTimeout);

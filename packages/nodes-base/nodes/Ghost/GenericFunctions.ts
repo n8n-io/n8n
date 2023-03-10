@@ -1,13 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function ghostApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -64,7 +63,7 @@ export async function ghostApiRequestAllItems(
 	do {
 		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
 		query.page = responseData.meta.pagination.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (query.page !== null);
 	return returnData;
 }

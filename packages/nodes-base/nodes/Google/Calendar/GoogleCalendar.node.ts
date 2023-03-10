@@ -1,12 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -109,7 +109,7 @@ export class GoogleCalendar implements INodeType {
 			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { event } = await googleApiRequest.call(this, 'GET', '/calendar/v3/colors');
-				for (const key of Object.keys(event)) {
+				for (const key of Object.keys(event as IDataObject)) {
 					const colorName = `Background: ${event[key].background} - Foreground: ${event[key].foreground}`;
 					const colorId = key;
 					returnData.push({
@@ -168,9 +168,13 @@ export class GoogleCalendar implements INodeType {
 						);
 
 						if (responseData.calendars[calendarId].errors) {
-							throw new NodeApiError(this.getNode(), responseData.calendars[calendarId], {
-								itemIndex: i,
-							});
+							throw new NodeApiError(
+								this.getNode(),
+								responseData.calendars[calendarId] as JsonObject,
+								{
+									itemIndex: i,
+								},
+							);
 						}
 
 						if (outputFormat === 'availability') {
@@ -579,7 +583,7 @@ export class GoogleCalendar implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

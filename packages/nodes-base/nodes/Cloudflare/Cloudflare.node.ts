@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -160,9 +159,12 @@ export class Cloudflare implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-						itemData: { item: i },
-					}),
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: { item: i },
+						},
+					),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

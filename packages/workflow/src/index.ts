@@ -4,13 +4,17 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
+export * from './Authentication';
+export * from './Constants';
 export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './MessageEventBus';
+export * from './ExecutionStatus';
 export * from './Expression';
 export * from './ExpressionError';
 export * from './NodeErrors';
+export * from './NodeHelpers';
 export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowActivationError';
@@ -33,3 +37,9 @@ export { ExpressionExtensions } from './Extensions';
 export { NativeMethods } from './NativeMethods';
 
 export type { DocMetadata } from './Extensions';
+
+declare module 'http' {
+	export interface IncomingMessage {
+		rawBody: Buffer;
+	}
+}

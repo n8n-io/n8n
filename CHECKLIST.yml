@@ -1,0 +1,40 @@
+paths:
+  "packages/**":
+    - If fixing bug, added test to cover scenario.
+    - If addressing forum or Github issue, added link to description.
+  "packages/**/*.ts":
+    - Added unit tests to cover new or updated functionality.
+  "**/*.vue":
+    - Used composition API for all new components.
+    - Added component or unit tests to cover functionality.
+  
+  # cli
+  "packages/cli/src/databases/migrations/**":
+    - Requested review from at least two engineers on migration. 
+    - Avoided irreversible data migrations.
+    - Avoided deleting or updating data keys.
+    - Wrote 'down' migration if possible.
+  "n8n/packages/cli/src/api/**":
+    - Added integration tests for new endpoints.
+
+  # editor ui
+  "packages/editor-ui/**/*.vue":
+    - Added E2E if adding new features.
+    - Used design system tokens (colors, spacings...) where possible.
+  "packages/editor-ui/src/mixins/restApi.ts":
+    - Avoided adding new methods. Only deleted from here.
+  "packages/editor-ui/src/mixins/**":
+    - Avoided adding new mixins (use composables instead). Only removed code from here.
+  "packages/editor-ui/src/views/NodeView.vue":
+    - Avoided adding code here. Only refactored to make it smaller. 
+  "packages/editor-ui/src/hooks/**":
+    - Avoided adding new hooks. Only refactored to move hooks to relevant store instead.
+
+  # nodes-base
+  "packages/nodes-base/nodes/**":
+    - Added workflow tests for nodes if possible.
+
+  # design-system
+  "packages/design-system/**/*.vue":
+    - Used design system tokens (colors, spacings...) where possible.
+    - Updated Storybook with new component or updated functionality.

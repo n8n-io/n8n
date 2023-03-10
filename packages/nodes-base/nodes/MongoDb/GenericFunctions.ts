@@ -1,6 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { ICredentialDataDecryptedObject, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -9,7 +12,8 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
-import { get, set } from 'lodash';
+import get from 'lodash.get';
+import set from 'lodash.set';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string

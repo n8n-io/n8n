@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -220,7 +219,7 @@ export class MicrosoftTeams implements INodeType {
 					'GET',
 					`/v1.0/planner/plans/${planId}/details`,
 				);
-				for (const key of Object.keys(categoryDescriptions)) {
+				for (const key of Object.keys(categoryDescriptions as IDataObject)) {
 					if (categoryDescriptions[key] !== null) {
 						returnData.push({
 							name: categoryDescriptions[key],
@@ -629,7 +628,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

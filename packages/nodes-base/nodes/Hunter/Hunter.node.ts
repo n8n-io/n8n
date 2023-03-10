@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -319,7 +319,7 @@ export class Hunter implements INodeType {
 								}
 								(tempReturnData.emails as IDataObject[]).push.apply(
 									tempReturnData.emails,
-									responseData[index].emails,
+									responseData[index].emails as IDataObject[],
 								);
 							}
 
@@ -337,7 +337,7 @@ export class Hunter implements INodeType {
 
 						if (Array.isArray(responseData)) {
 							for (const data of responseData) {
-								tempReturnData.push.apply(tempReturnData, data.emails);
+								tempReturnData.push.apply(tempReturnData, data.emails as IDataObject[]);
 							}
 						} else {
 							tempReturnData = responseData.emails;
@@ -366,7 +366,7 @@ export class Hunter implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

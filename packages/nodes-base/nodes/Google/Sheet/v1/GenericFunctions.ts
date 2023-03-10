@@ -1,8 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { ICredentialTestFunctions, IDataObject } from 'n8n-workflow';
+import type {
+	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -102,7 +107,7 @@ export async function googleApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -124,7 +129,7 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -145,7 +150,7 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

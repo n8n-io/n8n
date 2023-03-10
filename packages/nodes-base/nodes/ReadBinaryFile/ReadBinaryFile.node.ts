@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -8,6 +12,7 @@ export class ReadBinaryFile implements INodeType {
 		icon: 'fa:file-import',
 		group: ['input'],
 		version: 1,
+		hidden: true,
 		description: 'Reads a binary file from disk',
 		defaults: {
 			name: 'Read Binary File',

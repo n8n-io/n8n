@@ -1,8 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
@@ -10,7 +14,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
  *
  */
 export async function githubApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: object,
@@ -56,7 +60,7 @@ export async function githubApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -101,11 +105,11 @@ export async function githubApiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await githubApiRequest.call(this, method, endpoint, body, query, {
+		responseData = await githubApiRequest.call(this, method, endpoint, body as IDataObject, query, {
 			resolveWithFullResponse: true,
 		});
 		query.page++;
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }

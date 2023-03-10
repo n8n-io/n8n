@@ -1,6 +1,6 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -479,7 +479,7 @@ export class ConvertKit implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

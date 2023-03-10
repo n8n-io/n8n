@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -353,7 +352,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -387,7 +386,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -456,7 +455,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -492,7 +491,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					if (simple) {
-						responseData = simplify(responseData);
+						responseData = simplify(responseData as IDataObject[]);
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);

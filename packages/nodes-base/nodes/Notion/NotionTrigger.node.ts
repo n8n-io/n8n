@@ -1,6 +1,5 @@
-import type { IPollFunctions } from 'n8n-core';
-
 import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -216,7 +215,7 @@ export class NotionTrigger implements INodeType {
 		}
 
 		// if something changed after the last check
-		if (Array.isArray(data) && data.length && Object.keys(data[0]).length !== 0) {
+		if (Array.isArray(data) && data.length && Object.keys(data[0] as IDataObject).length !== 0) {
 			do {
 				body.page_size = 10;
 				const { results, has_more, next_cursor } = await notionApiRequest.call(
@@ -228,7 +227,7 @@ export class NotionTrigger implements INodeType {
 					'',
 					option,
 				);
-				records.push(...results);
+				records.push(...(results as IDataObject[]));
 				hasMore = has_more;
 				if (next_cursor !== null) {
 					body.start_cursor = next_cursor;

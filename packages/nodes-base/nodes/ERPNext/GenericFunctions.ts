@@ -1,8 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 /**
@@ -38,11 +42,11 @@ export async function erpNextApiRequest(
 
 	options = Object.assign({}, options, option);
 
-	if (!Object.keys(options.body).length) {
+	if (!Object.keys(options.body as IDataObject).length) {
 		delete options.body;
 	}
 
-	if (!Object.keys(options.qs).length) {
+	if (!Object.keys(options.qs as IDataObject).length) {
 		delete options.qs;
 	}
 	try {
@@ -77,7 +81,7 @@ export async function erpNextApiRequestAllItems(
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.limit_start += query.limit_page_length - 1;
 	} while (responseData.data && responseData.data.length > 0);
 

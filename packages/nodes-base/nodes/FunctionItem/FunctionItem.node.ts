@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import type { NodeVMOptions, VMRequire } from 'vm2';
 import { NodeVM } from 'vm2';
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -206,7 +206,7 @@ return item;`,
 								.split(':');
 							if (lineParts.length > 2) {
 								const lineNumber = lineParts.splice(-2, 1);
-								if (!isNaN(lineNumber)) {
+								if (!isNaN(lineNumber as number)) {
 									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
 									return Promise.reject(error);
 								}
