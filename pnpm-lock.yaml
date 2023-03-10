@@ -558,6 +558,7 @@ importers:
       '@codemirror/lint': ^6.0.0
       '@codemirror/state': ^6.1.4
       '@codemirror/view': ^6.5.1
+      '@faker-js/faker': 7.6.0
       '@fontsource/open-sans': ^4.5.0
       '@fortawesome/fontawesome-svg-core': ^1.2.35
       '@fortawesome/free-regular-svg-icons': ^6.1.1
@@ -688,6 +689,7 @@ importers:
       vue2-touch-events: 3.2.2
       xss: 1.0.14
     devDependencies:
+      '@faker-js/faker': 7.6.0
       '@pinia/testing': 0.0.14_pinia@2.0.23+vue@2.7.14
       '@testing-library/jest-dom': 5.16.5
       '@testing-library/vue': 5.8.3_rhqkolmkwunxzlyyxxsuwaiuri
@@ -3075,6 +3077,11 @@ packages:
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /@faker-js/faker/7.6.0:
+    resolution: {integrity: sha512-XK6BTq1NDMo9Xqw/YkYyGjSsg44fbNwYRx7QK2CuoQgyy+f1rrTDHoExVM5PsyXCtfl2vs2vVJ0MN0yN6LppRw==}
+    engines: {node: '>=14.0.0', npm: '>=6.0.0'}
     dev: true
 
   /@fal-works/esbuild-plugin-global-externals/2.1.2:
