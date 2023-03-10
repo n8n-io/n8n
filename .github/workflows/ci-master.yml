@@ -35,6 +35,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: packages/cli/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
+
       - name: Lint
         env:
           CI_LINT_MASTER: true

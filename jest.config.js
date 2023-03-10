@@ -22,11 +22,15 @@ const config = {
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
+	collectCoverage: true,
+	coverageReporters: ['text'],
+	collectCoverageFrom: ['src/**/*.ts'],
 };
 
 if (process.env.CI === 'true') {
 	config.maxWorkers = 2;
 	config.workerIdleMemoryLimit = 2048;
+	config.coverageReporters = ['cobertura'];
 }
 
 module.exports = config;
