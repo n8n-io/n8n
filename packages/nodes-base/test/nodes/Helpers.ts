@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
-import { BinaryDataManager, Credentials, loadClassInIsolation } from 'n8n-core';
+import { BinaryDataManager, Credentials } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -194,10 +194,9 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 		if (!loadInfo) {
 			throw new Error(`Unknown node type: ${nodeName}`);
 		}
-		const node = loadClassInIsolation(
-			path.join(process.cwd(), loadInfo.sourcePath),
-			loadInfo.className,
-		) as INodeType;
+		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+		const nodeSourcePath = path.join(process.cwd(), sourcePath);
+		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
 		nodeTypes.addNode(nodeName, node);
 	}
 
