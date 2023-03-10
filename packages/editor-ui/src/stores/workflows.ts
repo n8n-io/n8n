@@ -107,7 +107,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return this.workflowsById[this.currentWorkflowId] || createEmptyWorkflow();
 		},
 		workflowId(): string {
-			return this.workflow.id;
+			return this.workflow.id || PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 		workflowVersionId(): string | undefined {
 			return this.workflow.versionId;
@@ -281,9 +281,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflow;
 		},
 
-		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
-			const workflowsEEStore = useWorkflowsEEStore();
-
+		async createNewWorkflow(name?: string): Promise<INewWorkflowData> {
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
@@ -296,7 +294,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
-			this.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			this.currentWorkflowId = 'new';
+			this.workflowsById['new'] = {
+				...createEmptyWorkflow(),
+				name: workflowData.name,
+			};
 
 			return workflowData;
 		},

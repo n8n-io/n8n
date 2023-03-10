@@ -951,11 +951,8 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 					return true;
 				}
 
-				this.workflowsStore.setActive(workflowData.active || false);
-				this.workflowsStore.setWorkflowId(workflowData.id);
-				this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
-				this.workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-				this.workflowsStore.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
+				this.workflowsStore.currentWorkflowId = workflowData.id;
+				delete this.workflowsStore.workflowsById['new'];
 				this.uiStore.stateIsDirty = false;
 				Object.keys(changedNodes).forEach((nodeName) => {
 					const changes = {

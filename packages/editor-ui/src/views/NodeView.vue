@@ -557,7 +557,7 @@ export default mixins(
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		currentWorkflow(): string {
-			return this.$route.params.name || this.workflowsStore.workflowId;
+			return this.workflowsStore.currentWorkflowId;
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflow.name;
@@ -894,7 +894,7 @@ export default mixins(
 			this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
-			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
+			this.workflowData = (await this.workflowsStore.createNewWorkflow(data.name)) || {};
 			this.$nextTick(() => {
 				this.canvasStore.zoomToFit();
 				this.uiStore.stateIsDirty = true;
@@ -2490,7 +2490,7 @@ export default mixins(
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
 			await this.resetWorkspace();
-			this.workflowData = await this.workflowsStore.getNewWorkflowData();
+			this.workflowData = await this.workflowsStore.createNewWorkflow();
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
 
