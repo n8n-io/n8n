@@ -1,5 +1,9 @@
-import type { ITriggerFunctions } from 'n8n-core';
-import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 export class Interval implements INodeType {

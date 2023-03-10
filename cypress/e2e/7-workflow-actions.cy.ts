@@ -94,7 +94,6 @@ describe('Workflow Actions', () => {
 		cy.get('.el-message-box').should('be.visible');
 		cy.get('.el-message-box').find('input').type(IMPORT_WORKFLOW_URL);
 		cy.get('body').type('{enter}');
-		cy.waitForLoad();
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -104,7 +103,6 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters
 			.workflowImportInput()
 			.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
-		cy.waitForLoad();
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);

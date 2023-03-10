@@ -1,6 +1,6 @@
 import moment from 'moment';
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,

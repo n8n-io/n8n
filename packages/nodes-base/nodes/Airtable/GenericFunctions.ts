@@ -1,10 +1,10 @@
-import type { IExecuteFunctions, IPollFunctions } from 'n8n-core';
-
 import type { OptionsWithUri } from 'request';
 
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
+	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';

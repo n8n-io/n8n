@@ -67,6 +67,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: packages/cli/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
+
   lint:
     name: Lint changes
     runs-on: ubuntu-latest
@@ -108,7 +113,7 @@ jobs:
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
-      branch: ${{ github.event.pull_request.base.ref }}
+      branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
       run-env: base:16.18.1
