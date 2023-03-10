@@ -2,12 +2,13 @@ import type { OptionsWithUri } from 'request';
 
 import { simpleParser } from 'mailparser';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPollFunctions,
 	JsonObject,

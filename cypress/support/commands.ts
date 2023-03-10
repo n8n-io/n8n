@@ -26,7 +26,6 @@
 import 'cypress-real-events';
 import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
@@ -34,15 +33,15 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 });
 
 Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
-	const WorkflowPage = new WorkflowPageClass();
+	const workflowPage = new WorkflowPage();
 
 	// We need to force the click because the input is hidden
-	WorkflowPage.getters
+	workflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-	WorkflowPage.actions.setWorkflowName(workflowName);
+	workflowPage.actions.setWorkflowName(workflowName);
 
-	WorkflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.getters.saveButton().should('contain', 'Saved');
 });
 
 Cypress.Commands.add(
@@ -60,7 +59,7 @@ Cypress.Commands.add('waitForLoad', () => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	const signinPage = new SigninPage();
-	const workflowPage = new WorkflowPage();
+	const workflowsPage = new WorkflowsPage();
 
 	cy.session(
 		[email, password],
@@ -74,10 +73,7 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			});
 
 			// we should be redirected to /workflows
-			cy.visit(workflowPage.url);
-			cy.url().should('include', workflowPage.url);
-			cy.intercept('GET', '/rest/workflows/new').as('loading');
-			cy.wait('@loading');
+			cy.url().should('include', workflowsPage.url);
 		},
 		{
 			validate() {
@@ -212,7 +208,9 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	}
 });
 
-Cypress.Commands.add('readClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()))
+Cypress.Commands.add('readClipboard', () =>
+	cy.window().then((win) => win.navigator.clipboard.readText()),
+);
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event

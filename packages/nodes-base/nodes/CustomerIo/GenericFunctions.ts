@@ -1,6 +1,11 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 import get from 'lodash.get';
 
