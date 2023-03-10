@@ -454,6 +454,7 @@
 	"executionsList.error": "Failed",
 	"executionsList.filters": "Filters",
 	"executionsList.loadMore": "Load More",
+	"executionsList.empty": "No executions",
 	"executionsList.loadedAll": "No more executions to fetch",
 	"executionsList.modes.error": "error",
 	"executionsList.modes.integrated": "integrated",

@@ -229,8 +229,15 @@
 			</table>
 
 			<div
+				v-if="!combinedExecutions.length"
+				:class="$style.loadedAll"
+				data-testid="execution-list-empty"
+			>
+				{{ $locale.baseText('executionsList.empty') }}
+			</div>
+			<div
 				:class="$style.loadMore"
-				v-if="
+				v-else-if="
 					finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated
 				"
 			>
@@ -243,7 +250,9 @@
 					data-testid="load-more-button"
 				/>
 			</div>
-			<div v-else :class="$style.loadedAll">{{ $locale.baseText('executionsList.loadedAll') }}</div>
+			<div v-else :class="$style.loadedAll" data-testid="execution-all-loaded">
+				{{ $locale.baseText('executionsList.loadedAll') }}
+			</div>
 		</div>
 		<div
 			v-if="numSelected > 0"
@@ -559,9 +568,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					type: 'success',
 				});
 
-				Vue.set(this, 'selectedItems', {});
-				this.allVisibleSelected = false;
-
+				this.handleClearSelection();
 				this.refreshData();
 			},
 			handleClearSelection() {
