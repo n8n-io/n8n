@@ -130,12 +130,16 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
-import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
-import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
+import {
+	getLdapLoginLabel,
+	handleLdapInit,
+	isLdapEnabled,
+	isLdapLoginEnabled,
+} from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
@@ -149,9 +153,8 @@ import {
 	isAdvancedExecutionFiltersEnabled,
 } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
-import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
+import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 
 const exec = promisify(callbackExec);
@@ -357,20 +360,6 @@ class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId);
-
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			try {
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e);
-			}
-		}
-	}
-
 	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
@@ -380,6 +369,7 @@ class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
+		const samlService = SamlService.getInstance();
 
 		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
@@ -399,6 +389,7 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
+			new SamlController(samlService),
 		];
 
 		if (isLdapEnabled()) {
@@ -428,7 +419,6 @@ class Server extends AbstractServer {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		await this.initLicense();
 		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
@@ -490,9 +480,8 @@ class Server extends AbstractServer {
 			}),
 		);
 
-		// ----------------------------------------
-		// User Management
-		// ----------------------------------------
+		await handleLdapInit();
+
 		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
@@ -525,9 +514,6 @@ class Server extends AbstractServer {
 				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
 			}
 		}
-
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
 
 		// ----------------------------------------
 		// Returns parameter values which normally get loaded from an external API or
