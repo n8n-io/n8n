@@ -1,15 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { twistApiRequest } from './GenericFunctions';
 
@@ -254,18 +251,7 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryProperty}"`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
@@ -363,18 +349,7 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryProperty}"`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
@@ -442,18 +417,7 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryProperty}"`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
@@ -567,18 +531,7 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryProperty}"`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
@@ -651,18 +604,7 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryProperty}"`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
@@ -759,18 +701,7 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryProperty];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryProperty}"`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(

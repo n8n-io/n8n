@@ -34,6 +34,8 @@ export abstract class BaseCommand extends Command {
 
 	protected userSettings: IUserSettings;
 
+	protected instanceId: string;
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 
@@ -49,9 +51,9 @@ export abstract class BaseCommand extends Command {
 		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
-		const instanceId = this.userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(instanceId);
-		await Container.get(InternalHooks).init(instanceId);
+		this.instanceId = this.userSettings.instanceId ?? '';
+		await Container.get(PostHogClient).init(this.instanceId);
+		await Container.get(InternalHooks).init(this.instanceId);
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),

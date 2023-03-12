@@ -1,5 +1,4 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
-import { VersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType, INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 
 import { InvoiceNinjaTriggerV1u2 } from './V1u2/InvoiceNinjaTriggerV1u2.node';
 import { InvoiceNinjaTriggerV3 } from './V3/InvoiceNinjaTriggerV3.node';
