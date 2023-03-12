@@ -1,6 +1,4 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import type { INodeProperties, IWebhookResponseData } from 'n8n-workflow';
+import type { IHookFunctions, IWebhookFunctions, INodeProperties, IWebhookResponseData } from 'n8n-workflow';
 
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
 
