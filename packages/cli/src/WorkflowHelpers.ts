@@ -576,6 +576,9 @@ export function validateWorkflowCredentialUsage(
 }
 
 export async function getVariables(): Promise<IDataObject> {
+	if (!Db.collections.Variables) {
+		return {};
+	}
 	return Object.freeze(
 		(await Db.collections.Variables.find()).reduce((prev, curr) => {
 			prev[curr.key] = curr.value;
