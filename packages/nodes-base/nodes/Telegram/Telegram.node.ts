@@ -1022,8 +1022,12 @@ export class Telegram implements INodeType {
 										type: 'options',
 										options: [
 											{
-												name: 'Markdown',
+												name: 'Markdown (Legacy)',
 												value: 'Markdown',
+											},
+											{
+												name: 'MarkdownV2',
+												value: 'MarkdownV2',
 											},
 											{
 												name: 'HTML',
@@ -1561,8 +1565,12 @@ export class Telegram implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Markdown',
+								name: 'Markdown (Legacy)',
 								value: 'Markdown',
+							},
+							{
+								name: 'MarkdownV2',
+								value: 'MarkdownV2',
 							},
 							{
 								name: 'HTML',
