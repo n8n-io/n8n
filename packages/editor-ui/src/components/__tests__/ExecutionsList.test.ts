@@ -11,7 +11,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
+import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowShortResponse } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 
@@ -78,7 +78,7 @@ const renderOptions = {
 	mixins: [externalHooks, genericHelpers, executionHelpers, showMessage, mockRestApiMixin],
 };
 
-export function TelemetryPlugin(vue: typeof Vue): void {
+function TelemetryPlugin(vue: typeof Vue): void {
 	Object.defineProperty(vue, '$telemetry', {
 		get() {
 			return {
@@ -96,14 +96,13 @@ export function TelemetryPlugin(vue: typeof Vue): void {
 }
 
 const renderComponent = async () => {
-	const renderResult = render(ExecutionsList, renderOptions, (vue) => {
-		vue.use(TelemetryPlugin);
-		vue.use(PiniaVuePlugin);
-		vue.use((vue) => I18nPlugin(vue));
-	});
+	const renderResult = render(ExecutionsList, renderOptions);
 	await waitAllPromises();
 	return renderResult;
 };
+
+Vue.use(TelemetryPlugin);
+Vue.use(PiniaVuePlugin);
 
 describe('ExecutionsList.vue', () => {
 	it('should render empty list', async () => {
