@@ -156,7 +156,6 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 import { MultiFactorAuthService } from './MultiFactorAuthService';
 import { LdapManager } from './Ldap/LdapManager.ee';
 
