@@ -571,6 +571,7 @@ importers:
       '@jsplumb/util': ^5.13.2
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
+      '@testing-library/user-event': 14.4.3
       '@testing-library/vue': ^5.8.3
       '@types/dateformat': ^3.0.0
       '@types/express': ^4.17.6
@@ -693,6 +694,7 @@ importers:
       '@faker-js/faker': 7.6.0
       '@pinia/testing': 0.0.14_pinia@2.0.23+vue@2.7.14
       '@testing-library/jest-dom': 5.16.5
+      '@testing-library/user-event': 14.4.3_7izb363m7fjrh7ob6q4a2yqaqe
       '@testing-library/vue': 5.8.3_rhqkolmkwunxzlyyxxsuwaiuri
       '@types/dateformat': 3.0.1
       '@types/express': 4.17.14
@@ -5300,6 +5302,15 @@ packages:
       redent: 3.0.0
     dev: true
 
+  /@testing-library/user-event/14.4.3_7izb363m7fjrh7ob6q4a2yqaqe:
+    resolution: {integrity: sha512-kCUc5MEwaEMakkO5x7aoD+DLi02ehmEM2QCGWvNqAS1dV/fAvORWEjnjsEIvml59M7Y5kCkWN6fCCyPOe8OL6Q==}
+    engines: {node: '>=12', npm: '>=6'}
+    peerDependencies:
+      '@testing-library/dom': '>=7.21.4'
+    dependencies:
+      '@testing-library/dom': 7.31.2
+    dev: true
+
   /@testing-library/vue/5.8.3_rhqkolmkwunxzlyyxxsuwaiuri:
     resolution: {integrity: sha512-M6+QqP1xuFHixKOeXF9pCLbtiyJZRKfJRP+unBf6Ljm7aS1V2CSS95oTetFoblaj0W1+AC9XJgwmUDtlLoaakQ==}
     engines: {node: '>10.18'}
@@ -6558,7 +6569,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.55.0+terser@5.16.1
+      vite: 4.0.4_sass@1.58.0
       vue: 2.7.14
     dev: true
 
