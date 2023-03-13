@@ -375,11 +375,11 @@ class Server extends AbstractServer {
 		const samlService = SamlService.getInstance();
 
 		const controllers: object[] = [
-			new AuthController({ config, internalHooks, repositories, logger, postHog }),
+			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new MFAController(repositories.User, mfaService),
-      new NodeTypesController({ config, nodeTypes }),
+			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
 			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
