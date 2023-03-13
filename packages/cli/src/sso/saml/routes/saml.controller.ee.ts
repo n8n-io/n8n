@@ -92,7 +92,7 @@ export class SamlController {
 	 * Available if SAML is licensed, even if not enabled to run connection tests
 	 * For test connections, returns status 202 if SAML is not enabled
 	 */
-	async acsHandler(req: express.Request, res: express.Response, binding: SamlLoginBinding) {
+	private async acsHandler(req: express.Request, res: express.Response, binding: SamlLoginBinding) {
 		const loginResult = await this.samlService.handleSamlLogin(req, binding);
 		if (loginResult) {
 			if (loginResult.authenticatedUser) {
@@ -119,7 +119,7 @@ export class SamlController {
 	 */
 	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
-		return this.handleInitSSO(req, res);
+		return this.handleInitSSO(res);
 	}
 
 	/**
@@ -129,10 +129,10 @@ export class SamlController {
 	 */
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configTestGet(req: SamlConfiguration.Test, res: express.Response) {
-		return this.handleInitSSO(req, res);
+		return this.handleInitSSO(res);
 	}
 
-	async handleInitSSO(req: express.Request, res: express.Response) {
+	private async handleInitSSO(res: express.Response) {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
 			// forced client side redirect through the use of a javascript redirect
