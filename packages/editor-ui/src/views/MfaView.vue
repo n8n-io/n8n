@@ -217,10 +217,10 @@ export default mixins(showMessage, genericHelpers).extend({
 				return;
 			}
 
-			if (this.phishingAttempt()) {
-					const redirect = this.getRedirectQueryParameter();
-					this.$router.push(redirect);
-					return;
+			if (this.isRedirectSafe()) {
+				const redirect = this.getRedirectQueryParameter();
+				this.$router.push(redirect);
+				return;
 			}
 
 			this.$telemetry.track('User attempted to login', {

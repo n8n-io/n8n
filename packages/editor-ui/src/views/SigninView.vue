@@ -85,7 +85,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					result: 'success',
 				});
 
-				if (this.phishingAttempt()) {
+				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
 					this.$router.push(redirect);
 					return;

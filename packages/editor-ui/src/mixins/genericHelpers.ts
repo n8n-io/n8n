@@ -81,7 +81,7 @@ export const genericHelpers = mixins(showMessage).extend({
 				this.loadingService = null;
 			}
 		},
-		phishingAttempt() {
+		isRedirectSafe() {
 			const redirect = this.getRedirectQueryParameter();
 			return redirect.startsWith('/');
 		},
