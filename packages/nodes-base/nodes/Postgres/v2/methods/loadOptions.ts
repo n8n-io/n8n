@@ -1,5 +1,5 @@
-import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { configurePostgres } from '../helpers/utils';
+import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { configurePostgres, getTableSchema } from '../helpers/utils';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const { db, pgp } = await configurePostgres.call(this);
@@ -13,25 +13,17 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	}) as string;
 
 	try {
-		const columns = await db.any(
-			'SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
-			[schema, table],
-		);
+		const columns = await getTableSchema(db, schema, table);
 
-		pgp.end();
-
-		return columns.map((column: IDataObject) => ({
-			name: column.column_name as string,
-			value: column.column_name as string,
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
-			description: `type: ${(column.data_type as string).toUpperCase()}, nullable: ${
-				column.is_nullable as string
-			}`,
+		return columns.map((column) => ({
+			name: column.column_name,
+			value: column.column_name,
+			description: `Type: ${column.data_type.toUpperCase()}, Nullable: ${column.is_nullable}`,
 		}));
 	} catch (error) {
-		pgp.end();
-
 		throw error;
+	} finally {
+		pgp.end();
 	}
 }
 

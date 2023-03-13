@@ -10,13 +10,18 @@ import type {
 	QueryWithValues,
 } from '../../helpers/interfaces';
 
-import { addReturning, runQueries } from '../../helpers/utils';
+import {
+	addReturning,
+	checkItemAgainstSchema,
+	getTableSchema,
+	prepareItem,
+	replaceEmptyStringsByNulls,
+	runQueries,
+} from '../../helpers/utils';
 
-import { optionsCollection, outpurSelector, schemaRLC, tableRLC } from '../common.descriptions';
+import { optionsCollection, outpurSelector } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	schemaRLC,
-	tableRLC,
 	{
 		displayName: 'Data Mode',
 		name: 'dataMode',
@@ -128,6 +133,9 @@ const displayOptions = {
 		resource: ['database'],
 		operation: ['update'],
 	},
+	hide: {
+		table: [''],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
@@ -139,6 +147,8 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const options = this.getNodeParameter('options', 0);
+
+	items = replaceEmptyStringsByNulls(items, options.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
 
@@ -167,13 +177,14 @@ export async function execute(
 			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
 				.values as IDataObject[];
 
-			item = valuesToSend.reduce((acc, { column, value }) => {
-				acc[column as string] = value;
-				return acc;
-			}, {} as IDataObject);
+			item = prepareItem(valuesToSend);
 
 			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 		}
+
+		const tableSchema = await getTableSchema(db, schema, table);
+
+		item = checkItemAgainstSchema.call(this, item, tableSchema, i);
 
 		let values: QueryValues = [schema, table];
 

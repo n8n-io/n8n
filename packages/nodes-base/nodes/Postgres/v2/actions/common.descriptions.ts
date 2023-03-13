@@ -89,6 +89,19 @@ export const optionsCollection: INodeProperties = {
 				},
 			},
 		},
+		{
+			displayName: 'Replace Empty Strings with NULL',
+			name: 'replaceEmptyStrings',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to replace empty strings with NULL in input, could be useful when data come from spreadsheet',
+			displayOptions: {
+				show: {
+					'/operation': ['insert', 'update', 'upsert', 'executeQuery'],
+				},
+			},
+		},
 	],
 };
 

@@ -5,7 +5,7 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 import type { PgpClient, PgpDatabase, QueryWithValues } from '../../helpers/interfaces';
 
-import { runQueries } from '../../helpers/utils';
+import { replaceEmptyStringsByNulls, runQueries } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 
@@ -77,6 +77,8 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const options = this.getNodeParameter('options', 0);
+
+	items = replaceEmptyStringsByNulls(items, options.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
 

@@ -7,8 +7,6 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 	try {
 		const response = await db.any('SELECT schema_name FROM information_schema.schemata');
 
-		pgp.end();
-
 		return {
 			results: response.map((schema) => ({
 				name: schema.schema_name as string,
@@ -16,9 +14,9 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 			})),
 		};
 	} catch (error) {
-		pgp.end();
-
 		throw error;
+	} finally {
+		pgp.end();
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -34,8 +32,6 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 			[schema],
 		);
 
-		pgp.end();
-
 		return {
 			results: response.map((table) => ({
 				name: table.table_name as string,
@@ -43,8 +39,8 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 			})),
 		};
 	} catch (error) {
-		pgp.end();
-
 		throw error;
+	} finally {
+		pgp.end();
 	}
 }

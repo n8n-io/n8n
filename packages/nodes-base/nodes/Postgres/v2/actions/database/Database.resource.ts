@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { schemaRLC, tableRLC } from '../common.descriptions';
 
 import * as deleteTable from './deleteTable.operation';
 import * as executeQuery from './executeQuery.operation';
@@ -62,6 +63,8 @@ export const description: INodeProperties[] = [
 		},
 		default: 'insert',
 	},
+	schemaRLC,
+	tableRLC,
 	...deleteTable.description,
 	...executeQuery.description,
 	...insert.description,

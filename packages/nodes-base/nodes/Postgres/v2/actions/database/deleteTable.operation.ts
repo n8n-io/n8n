@@ -14,16 +14,9 @@ import type {
 
 import { addWhereClauses, runQueries } from '../../helpers/utils';
 
-import {
-	optionsCollection,
-	schemaRLC,
-	tableRLC,
-	whereFixedCollection,
-} from '../common.descriptions';
+import { optionsCollection, whereFixedCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	schemaRLC,
-	tableRLC,
 	{
 		displayName: 'Command',
 		name: 'deleteCommand',
@@ -75,6 +68,9 @@ const displayOptions = {
 	show: {
 		resource: ['database'],
 		operation: ['deleteTable'],
+	},
+	hide: {
+		table: [''],
 	},
 };
 

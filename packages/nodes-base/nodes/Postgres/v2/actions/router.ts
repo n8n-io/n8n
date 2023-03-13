@@ -20,19 +20,22 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as PostgresType;
 
-	switch (postgresNodeData.resource) {
-		case 'database':
-			returnData = await database[postgresNodeData.operation].execute.call(this, pgp, db, items);
-			break;
-		default:
-			pgp.end();
-			throw new NodeOperationError(
-				this.getNode(),
-				`The operation "${operation}" is not supported!`,
-			);
+	try {
+		switch (postgresNodeData.resource) {
+			case 'database':
+				returnData = await database[postgresNodeData.operation].execute.call(this, pgp, db, items);
+				break;
+			default:
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
+		}
+	} catch (error) {
+		throw error;
+	} finally {
+		pgp.end();
 	}
-
-	pgp.end();
 
 	return this.prepareOutputData(returnData);
 }

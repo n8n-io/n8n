@@ -4,6 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 import type {
+	ColumnInfo,
 	PgpClient,
 	PgpDatabase,
 	QueryMode,
@@ -297,4 +298,78 @@ export async function runQueries(
 	}
 
 	return returnData;
+}
+
+export function replaceEmptyStringsByNulls(
+	items: INodeExecutionData[],
+	replace?: boolean,
+): INodeExecutionData[] {
+	if (!replace) return items;
+
+	const returnData: INodeExecutionData[] = items.map((item) => {
+		const newItem = { ...item };
+		const keys = Object.keys(newItem.json);
+
+		for (const key of keys) {
+			if (newItem.json[key] === '') {
+				newItem.json[key] = null;
+			}
+		}
+
+		return newItem;
+	});
+
+	return returnData;
+}
+
+export function prepareItem(values: IDataObject[]) {
+	const item = values.reduce((acc, { column, value }) => {
+		acc[column as string] = value === '' ? null : value;
+		return acc;
+	}, {} as IDataObject);
+
+	return item;
+}
+
+export async function getTableSchema(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+): Promise<ColumnInfo[]> {
+	const columns = await db.any(
+		'SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+		[schema, table],
+	);
+
+	return columns;
+}
+
+export function checkItemAgainstSchema(
+	this: IExecuteFunctions,
+	item: IDataObject,
+	columnsInfo: ColumnInfo[],
+	index: number,
+) {
+	if (columnsInfo.length === 0) return item;
+	const schema = columnsInfo.reduce((acc, { column_name, data_type, is_nullable }) => {
+		acc[column_name] = { type: data_type.toUpperCase(), nullable: is_nullable === 'YES' };
+		return acc;
+	}, {} as IDataObject);
+
+	for (const key of Object.keys(item)) {
+		if (schema[key] === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Column '${key}' does not exist in selected table`,
+				{ itemIndex: index },
+			);
+		}
+		if (item[key] === null && !(schema[key] as IDataObject)?.nullable) {
+			throw new NodeOperationError(this.getNode(), `Column '${key}' is not nullable`, {
+				itemIndex: index,
+			});
+		}
+	}
+
+	return item;
 }

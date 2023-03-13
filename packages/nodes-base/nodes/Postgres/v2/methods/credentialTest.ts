@@ -35,10 +35,7 @@ export async function postgresConnectionTest(
 
 		const db = pgp(config);
 		await db.connect();
-		pgp.end();
 	} catch (error) {
-		pgp.end();
-
 		let message = error.message as string;
 
 		if (error.code === 'ECONNREFUSED') {
@@ -53,6 +50,8 @@ export async function postgresConnectionTest(
 			status: 'Error',
 			message,
 		};
+	} finally {
+		pgp.end();
 	}
 	return {
 		status: 'OK',

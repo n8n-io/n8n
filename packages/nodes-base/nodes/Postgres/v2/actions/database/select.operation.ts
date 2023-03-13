@@ -12,20 +12,21 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { addSortRules, addWhereClauses, runQueries } from '../../helpers/utils';
+import {
+	addSortRules,
+	addWhereClauses,
+	replaceEmptyStringsByNulls,
+	runQueries,
+} from '../../helpers/utils';
 
 import {
 	optionsCollection,
 	outpurSelector,
-	schemaRLC,
 	sortFixedCollection,
-	tableRLC,
 	whereFixedCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	schemaRLC,
-	tableRLC,
 	...outpurSelector,
 	{
 		displayName: 'Return All',
@@ -65,6 +66,9 @@ const displayOptions = {
 		resource: ['database'],
 		operation: ['select'],
 	},
+	hide: {
+		table: [''],
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
@@ -76,6 +80,8 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const options = this.getNodeParameter('options', 0);
+
+	items = replaceEmptyStringsByNulls(items, options.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
 
