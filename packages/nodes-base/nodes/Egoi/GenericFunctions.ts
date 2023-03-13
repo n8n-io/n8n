@@ -1,13 +1,13 @@
 import type { OptionsWithUrl } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 interface IContact {
@@ -100,9 +100,9 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 
 	for (const contact of contacts) {
 		const extras = contact.extra.reduce(
-			(acumulator: IDataObject, currentValue: IDataObject): any => {
+			(accumulator: IDataObject, currentValue: IDataObject): any => {
 				const key = fieldsKeyValue[currentValue.field_id as string] as string;
-				return { [key]: currentValue.value, ...acumulator };
+				return { [key]: currentValue.value, ...accumulator };
 			},
 			{},
 		);

@@ -1,6 +1,10 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import type { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
 
@@ -324,7 +328,7 @@ export class BoxTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;

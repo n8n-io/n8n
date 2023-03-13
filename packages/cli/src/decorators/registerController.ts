@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Router } from 'express';
 import type { Config } from '@/config';
-import { CONTROLLER_BASE_PATH, CONTROLLER_ROUTES } from './constants';
+import { CONTROLLER_BASE_PATH, CONTROLLER_MIDDLEWARES, CONTROLLER_ROUTES } from './constants';
 import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
-import type { Application, Request, Response } from 'express';
-import type { Controller, RouteMetadata } from './types';
+import type { Application, Request, Response, RequestHandler } from 'express';
+import type { Controller, MiddlewareMetadata, RouteMetadata } from './types';
 
 export const registerController = (app: Application, config: Config, controller: object) => {
 	const controllerClass = controller.constructor;
@@ -20,9 +20,18 @@ export const registerController = (app: Application, config: Config, controller:
 		const restBasePath = config.getEnv('endpoints.rest');
 		const prefix = `/${[restBasePath, controllerBasePath].join('/')}`.replace(/\/+/g, '/');
 
-		routes.forEach(({ method, path, handlerName }) => {
+		const controllerMiddlewares = (
+			(Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ?? []) as MiddlewareMetadata[]
+		).map(
+			({ handlerName }) =>
+				(controller as Controller)[handlerName].bind(controller) as RequestHandler,
+		);
+
+		routes.forEach(({ method, path, middlewares: routeMiddlewares, handlerName }) => {
 			router[method](
 				path,
+				...controllerMiddlewares,
+				...routeMiddlewares,
 				send(async (req: Request, res: Response) =>
 					(controller as Controller)[handlerName](req, res),
 				),

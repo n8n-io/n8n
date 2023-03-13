@@ -59,7 +59,6 @@ import config from '@/config';
 import * as Queue from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
@@ -83,16 +82,18 @@ import type {
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	LdapController,
 	MeController,
+	NodesController,
+	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
+	TagsController,
 	TranslationController,
 	UsersController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
-import { nodeTypesController } from '@/api/nodeTypes.api';
-import { tagsController } from '@/api/tags.api';
 import { workflowStatsController } from '@/api/workflowStats.api';
 import { loadPublicApiVersions } from '@/PublicApi';
 import {
@@ -129,13 +130,16 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
-import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
-import { ldapController } from './Ldap/routes/ldap.controller.ee';
-import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
+import {
+	getLdapLoginLabel,
+	handleLdapInit,
+	isLdapEnabled,
+	isLdapLoginEnabled,
+} from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
@@ -144,12 +148,15 @@ import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
-import { samlControllerPublic } from './sso/saml/routes/saml.controller.public.ee';
+import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { samlControllerProtected } from './sso/saml/routes/saml.controller.protected.ee';
 import { variablesController } from './environments/variables.controller';
+import { LdapManager } from './Ldap/LdapManager.ee';
 
 const exec = promisify(callbackExec);
 
@@ -301,6 +308,7 @@ class Server extends AbstractServer {
 				ldap: false,
 				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
+				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -329,6 +337,7 @@ class Server extends AbstractServer {
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -352,22 +361,8 @@ class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId);
-
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			try {
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e);
-			}
-		}
-	}
-
 	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner } = this;
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
 
@@ -375,12 +370,15 @@ class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
+		const samlService = SamlService.getInstance();
 
-		const controllers = [
+		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
@@ -392,7 +390,20 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
+			new SamlController(samlService),
 		];
+
+		if (isLdapEnabled()) {
+			const { service, sync } = LdapManager.getInstance();
+			controllers.push(new LdapController(service, sync, internalHooks));
+		}
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			controllers.push(
+				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			);
+		}
+
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
@@ -409,7 +420,6 @@ class Server extends AbstractServer {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		await this.initLicense();
 		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
@@ -471,19 +481,11 @@ class Server extends AbstractServer {
 			}),
 		);
 
-		// ----------------------------------------
-		// User Management
-		// ----------------------------------------
+		await handleLdapInit();
+
 		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Packages and nodes management
-		// ----------------------------------------
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
 
 		// ----------------------------------------
 		// Workflow
@@ -501,27 +503,18 @@ class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
-		// Tags
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
-
-		// ----------------------------------------
-		// LDAP
-		// ----------------------------------------
-		if (isLdapEnabled()) {
-			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
-		}
-
-		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
 
-		// initialize SamlService
-		await SamlService.getInstance().init();
-
-		// public SAML endpoints
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerPublic);
-		this.app.use(`/${this.restEndpoint}/sso/saml`, samlControllerProtected);
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		if (isSamlLicensed()) {
+			try {
+				await SamlService.getInstance().init();
+			} catch (error) {
+				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
+			}
+		}
 
 		// ----------------------------------------
 		// Variables
@@ -640,12 +633,6 @@ class Server extends AbstractServer {
 				},
 			),
 		);
-
-		// ----------------------------------------
-		// Node-Types
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
 		// ----------------------------------------
 		// Active Workflows
@@ -1294,8 +1281,9 @@ class Server extends AbstractServer {
 				},
 			};
 
-			this.app.use('/icons/:packageName/*/*.(svg|png)', async (req, res) => {
-				const { packageName } = req.params;
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				let { scope, packageName } = req.params;
+				if (scope) packageName = `@${scope}/${packageName}`;
 				const loader = this.loadNodesAndCredentials.loaders[packageName];
 				if (loader) {
 					const pathPrefix = `/icons/${packageName}/`;
@@ -1310,7 +1298,10 @@ class Server extends AbstractServer {
 				}
 
 				res.sendStatus(404);
-			});
+			};
+
+			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
 			this.app.use(
 				'/',

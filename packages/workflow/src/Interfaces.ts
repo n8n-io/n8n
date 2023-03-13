@@ -673,7 +673,7 @@ export interface BinaryHelperFunctions {
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
-
+	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 }
@@ -757,6 +757,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					inputData: INodeExecutionData[],
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
+				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 			};
 	};
@@ -772,6 +773,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 
 	helpers: RequestHelperFunctions &
 		BinaryHelperFunctions & {
+			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
 		};
 }

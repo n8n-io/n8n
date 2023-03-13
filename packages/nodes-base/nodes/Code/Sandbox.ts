@@ -1,4 +1,3 @@
-import { normalizeItems } from 'n8n-core';
 import type { NodeVMOptions } from 'vm2';
 import { NodeVM } from 'vm2';
 import { ValidationError } from './ValidationError';
@@ -23,6 +22,7 @@ export class Sandbox extends NodeVM {
 		context: ReturnType<typeof getSandboxContext>,
 		workflowMode: WorkflowExecuteMode,
 		private nodeMode: CodeNodeMode,
+		private helpers: IExecuteFunctions['helpers'],
 	) {
 		super(Sandbox.getSandboxOptions(context, workflowMode));
 	}
@@ -138,7 +138,7 @@ export class Sandbox extends NodeVM {
 			}
 		}
 
-		return normalizeItems(executionResult as INodeExecutionData[]);
+		return this.helpers.normalizeItems(executionResult as INodeExecutionData[]);
 	}
 
 	private async runCodeEachItem() {

@@ -1,13 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, IOAuth2Options } from 'n8n-workflow';
+	IOAuth2Options,
+} from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 

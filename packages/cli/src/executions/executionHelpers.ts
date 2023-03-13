@@ -1,5 +1,7 @@
-import type { IExecutionFlattedDb } from '../Interfaces';
+import type { IExecutionFlattedDb } from '@/Interfaces';
 import type { ExecutionStatus } from 'n8n-workflow';
+import { getLicense } from '@/License';
+import config from '@/config';
 
 export function getStatusUsingPreviousExecutionStatusMethod(
 	execution: IExecutionFlattedDb,
@@ -15,4 +17,12 @@ export function getStatusUsingPreviousExecutionStatusMethod(
 	} else {
 		return 'unknown';
 	}
+}
+
+export function isAdvancedExecutionFiltersEnabled(): boolean {
+	const license = getLicense();
+	return (
+		config.getEnv('enterprise.features.advancedExecutionFilters') ||
+		license.isAdvancedExecutionFiltersEnabled()
+	);
 }
