@@ -9,6 +9,7 @@ describe('Test QuickChart Node', () => {
 		await Helpers.initBinaryDataManager();
 		nock.disableNetConnect();
 		nock('https://quickchart.io')
+			.persist()
 			.get(/chart.*/)
 			.reply(200, { success: true });
 	});
@@ -32,7 +33,7 @@ describe('Test QuickChart Node', () => {
 							{
 								json: {
 									chart: {
-										type: 'bar',
+										type: 'horizontalBar',
 										data: {
 											labels: ['Q1', 'Q2', 'Q3', 'Q4'],
 											datasets: [
@@ -41,14 +42,44 @@ describe('Test QuickChart Node', () => {
 													data: [50, 60, 70, 180],
 													backgroundColor: '#121d6d77',
 													borderColor: '#e81010',
-													type: 'bar',
+													type: 'horizontalBar',
 												},
 												{
 													label: 'Paid Users',
 													data: [30, 10, 14, 25],
 													backgroundColor: '#0c0d0d96',
 													borderColor: '#e81010',
-													type: 'bar',
+													type: 'horizontalBar',
+												},
+											],
+										},
+									},
+								},
+							},
+						],
+					],
+					Doughnut: [
+						[
+							{
+								json: {
+									chart: {
+										type: 'doughnut',
+										data: {
+											labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+											datasets: [
+												{
+													label: 'Free Users',
+													data: [50, 60, 70, 180],
+													backgroundColor: '#121d6d77',
+													borderColor: '#e81010',
+													type: 'doughnut',
+												},
+												{
+													label: 'Paid Users',
+													data: [30, 10, 14, 25],
+													backgroundColor: '#0c0d0d96',
+													borderColor: '#e81010',
+													type: 'doughnut',
 												},
 											],
 										},
