@@ -486,6 +486,7 @@ export interface IN8nUISettings {
 		debug: boolean;
 	};
 	personalizationSurveyEnabled: boolean;
+	userActivationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
@@ -544,6 +545,8 @@ export interface IPersonalizationSurveyAnswers {
 
 export interface IUserSettings {
 	isOnboarded?: boolean;
+	showUserActivationSurvey?: boolean;
+	firstWorkflowName?: string;
 }
 
 export interface IUserManagementSettings {
@@ -850,7 +853,9 @@ export interface PublicUser {
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
+	settings?: IUserSettings;
 	inviteAcceptUrl?: string;
+	featureFlags?: FeatureFlags;
 }
 
 export interface CurrentUser extends PublicUser {

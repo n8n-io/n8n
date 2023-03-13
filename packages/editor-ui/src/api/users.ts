@@ -5,7 +5,7 @@ import {
 	IRestApiContext,
 	IUserResponse,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, IUser } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<CurrentUserResponse | null> {
@@ -89,7 +89,13 @@ export async function changePassword(
 
 export function updateCurrentUser(
 	context: IRestApiContext,
-	params: { id: string; firstName: string; lastName: string; email: string },
+	params: {
+		id?: string;
+		firstName?: string;
+		lastName?: string;
+		email: string;
+		settings?: IUserResponse['settings'];
+	},
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
 }

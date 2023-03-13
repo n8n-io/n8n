@@ -29,6 +29,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
 import {
 	CurlToJSONResponse,
@@ -123,6 +124,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				mode: '',
 				activeId: null,
 				showAuthSelector: false,
+			},
+			[USER_ACTIVATION_SURVEY_MODAL]: {
+				open: false,
 			},
 		},
 		modalStack: [],

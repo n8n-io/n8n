@@ -1,7 +1,11 @@
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
+import {
+	addUserSettings,
+	sanitizeUser,
+	withFeatureFlags,
+} from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
@@ -21,6 +25,7 @@ import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 import { SamlUrls } from '../sso/saml/constants';
+import { get } from 'lodash-es';
 
 @RestController()
 export class AuthController {
@@ -105,11 +110,16 @@ export class AuthController {
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
 		let user: User;
+		let publicUser: PublicUser;
 		if (cookieContents) {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				return await withFeatureFlags(this.postHog, sanitizeUser(user));
+				publicUser = sanitizeUser(user);
+				publicUser = await addUserSettings(publicUser);
+				publicUser = await withFeatureFlags(this.postHog, publicUser);
+
+				return publicUser;
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}

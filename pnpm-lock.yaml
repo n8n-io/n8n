@@ -571,6 +571,7 @@ importers:
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
       '@testing-library/vue': ^5.8.3
+      '@types/canvas-confetti': ^1.6.0
       '@types/dateformat': ^3.0.0
       '@types/express': ^4.17.6
       '@types/file-saver': ^2.0.1
@@ -586,6 +587,7 @@ importers:
       '@vitejs/plugin-vue2': ^2.2.0
       axios: ^0.21.1
       c8: ^7.12.0
+      canvas-confetti: ^1.6.0
       codemirror-lang-html-n8n: ^1.0.0
       codemirror-lang-n8n-expression: ^0.2.0
       dateformat: ^3.0.3
@@ -650,6 +652,7 @@ importers:
       '@jsplumb/core': 5.13.2
       '@jsplumb/util': 5.13.2
       axios: 0.21.4
+      canvas-confetti: 1.6.0
       codemirror-lang-html-n8n: 1.0.0
       codemirror-lang-n8n-expression: 0.2.0_zyklskjzaprvz25ee7sq7godcq
       dateformat: 3.0.3
@@ -691,6 +694,7 @@ importers:
       '@pinia/testing': 0.0.14_pinia@2.0.23+vue@2.7.14
       '@testing-library/jest-dom': 5.16.5
       '@testing-library/vue': 5.8.3_rhqkolmkwunxzlyyxxsuwaiuri
+      '@types/canvas-confetti': 1.6.0
       '@types/dateformat': 3.0.1
       '@types/express': 4.17.14
       '@types/file-saver': 2.0.5
@@ -5395,6 +5399,10 @@ packages:
       '@types/connect': 3.4.35
       '@types/node': 16.18.12
 
+  /@types/canvas-confetti/1.6.0:
+    resolution: {integrity: sha512-Yq6rIccwcco0TLD5SMUrIM7Fk7Fe/C0jmNRxJJCLtAF6gebDkPuUjK5EHedxecm69Pi/aA+It39Ux4OHmFhjRw==}
+    dev: true
+
   /@types/caseless/0.12.2:
     resolution: {integrity: sha512-6ckxMjBBD8URvjB6J3NcnuAn5Pkl7t3TizAg+xdlzzQGSPSmBcXf8KoIH0ua/i+tio+ZRUHEXp0HEmvaR4kt0w==}
     dev: true
@@ -8264,6 +8272,10 @@ packages:
   /caniuse-lite/1.0.30001445:
     resolution: {integrity: sha512-8sdQIdMztYmzfTMO6KfLny878Ln9c2M0fc7EH60IjlP4Dc4PiCy7K2Vl3ITmWgOyPgVQKa5x+UP/KqFsxj4mBg==}
     dev: true
+
+  /canvas-confetti/1.6.0:
+    resolution: {integrity: sha512-ej+w/m8Jzpv9Z7W7uJZer14Ke8P2ogsjg4ZMGIuq4iqUOqY2Jq8BNW42iGmNfRwREaaEfFIczLuZZiEVSYNHAA==}
+    dev: false
 
   /capital-case/1.0.4:
     resolution: {integrity: sha512-ds37W8CytHgwnhGGTi88pcPyR15qoNkOpYwmMMfnWqqWgESapLqvDx6huFjQ5vqWSn2Z06173XNA7LtMOeUh1A==}

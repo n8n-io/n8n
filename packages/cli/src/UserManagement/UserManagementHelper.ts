@@ -16,6 +16,7 @@ import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
 import { RoleService } from '@/role/role.service';
 import type { PostHogClient } from '@/posthog';
+import { UserService } from '@/user/user.service';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
@@ -152,6 +153,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 			delete rest[key];
 		});
 	}
+	//@ts-ignore
 	const sanitizedUser: PublicUser = {
 		...rest,
 		signInType: 'email',
@@ -163,25 +165,58 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	return sanitizedUser;
 }
 
+export const addUserSettings = async (publicUser: PublicUser) => {
+	console.log('public user', publicUser);
+	console.log('firstworkfname', publicUser.settings?.firstWorkflowName);
+	console.log('firsworkfwan', publicUser.settings?.showUserActivationSurvey);
+
+	if (!config.getEnv('userActivationSurvey.enabled') || !config.getEnv('diagnostics.enabled')) {
+		return publicUser;
+	}
+
+	if (!publicUser.settings?.showUserActivationSurvey && publicUser.settings?.firstWorkflowName) {
+		return publicUser;
+	}
+
+	const execution = await UserService.getOneSuccefullyExecutedWorkflow(publicUser);
+	if (execution) {
+		await Db.collections.User.update(
+			{ id: publicUser.id },
+			{
+				settings: {
+					...publicUser.settings,
+					showUserActivationSurvey: true,
+					firstWorkflowName: execution.workflowData.name,
+				},
+			},
+		);
+		publicUser.settings = {
+			...publicUser.settings,
+			showUserActivationSurvey: true,
+			firstWorkflowName: execution.workflowData.name,
+		};
+	}
+	return publicUser;
+};
+
 export async function withFeatureFlags(
 	postHog: PostHogClient | undefined,
-	user: CurrentUser,
-): Promise<CurrentUser> {
+	user: PublicUser,
+): Promise<PublicUser> {
 	if (!postHog) {
 		return user;
 	}
 
 	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
 	// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
-	const timeoutPromise = new Promise<CurrentUser>((resolve) => {
+	const timeoutPromise = new Promise<PublicUser>((resolve) => {
 		setTimeout(() => {
 			resolve(user);
 		}, 1500);
 	});
 
-	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
+	const fetchPromise = new Promise<PublicUser>(async (resolve) => {
 		user.featureFlags = await postHog.getFeatureFlags(user);
-
 		resolve(user);
 	});
 
