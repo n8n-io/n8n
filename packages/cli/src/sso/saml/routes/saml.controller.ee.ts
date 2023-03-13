@@ -16,6 +16,7 @@ import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import { isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
+import { AuthenticatedRequest } from '../../../requests';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -33,7 +34,7 @@ export class SamlController {
 	 * Return SAML config
 	 */
 	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
-	async configGet(req: SamlConfiguration.Read, res: express.Response) {
+	async configGet(req: AuthenticatedRequest, res: express.Response) {
 		const prefs = this.samlService.samlPreferences;
 		return res.send(prefs);
 	}
@@ -128,7 +129,7 @@ export class SamlController {
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
-	async configTestGet(req: SamlConfiguration.Test, res: express.Response) {
+	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
 		return this.handleInitSSO(res);
 	}
 
