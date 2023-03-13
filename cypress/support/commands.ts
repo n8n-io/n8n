@@ -53,6 +53,10 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add('waitForLoad', () => {
+	// These aliases are set-up before each test in cypress/support/e2e.ts
+	// we can't set them up here because at this point it would be too late
+	// and the requests would already have been made
+	cy.wait(['@loadSettings', '@loadLogin'])
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
 });
