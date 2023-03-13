@@ -5,4 +5,5 @@ export declare namespace SamlConfiguration {
 	type Read = AuthenticatedRequest<{}, {}, {}, {}>;
 	type Update = AuthenticatedRequest<{}, {}, SamlPreferences, {}>;
 	type Toggle = AuthenticatedRequest<{}, {}, { loginEnabled: boolean }, {}>;
+	type Test = AuthenticatedRequest<{}, {}, {}, {}>;
 }
