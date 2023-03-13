@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { configurePostgres } from '../helpers/utils';
+import { configurePostgres } from '../transport';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const { db, pgp } = await configurePostgres.call(this);

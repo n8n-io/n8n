@@ -1,5 +1,6 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { configurePostgres, getTableSchema } from '../helpers/utils';
+import { getTableSchema } from '../helpers/utils';
+import { configurePostgres } from '../transport';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const { db, pgp } = await configurePostgres.call(this);
