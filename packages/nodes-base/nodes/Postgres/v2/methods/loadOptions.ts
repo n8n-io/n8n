@@ -27,6 +27,14 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	}
 }
 
+export async function getColumnsMultiOptions(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData = await getColumns.call(this);
+	const returnAll = { name: '*', value: '*', description: 'All columns' };
+	return [returnAll, ...returnData];
+}
+
 export async function getColumnsWithoutColumnToMatchOn(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {

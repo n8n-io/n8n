@@ -117,7 +117,18 @@ export async function execute(
 			const whereClauses =
 				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-			[query, values] = addWhereClauses('DELETE FROM $1:name.$2:name', whereClauses, values);
+			const combineConditions = this.getNodeParameter(
+				'options.combineConditions',
+				i,
+				'AND',
+			) as string;
+
+			[query, values] = addWhereClauses(
+				'DELETE FROM $1:name.$2:name',
+				whereClauses,
+				values,
+				combineConditions,
+			);
 		}
 
 		if (query === '') {

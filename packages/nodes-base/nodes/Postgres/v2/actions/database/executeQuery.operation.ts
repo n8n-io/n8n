@@ -24,33 +24,6 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Query Parameters',
-		name: 'queryReplacement',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: [],
-		placeholder: 'Add Query Parameter',
-		description:
-			'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
-		options: [
-			{
-				displayName: 'Values',
-				name: 'values',
-				values: [
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. queryParamValue',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: `
 		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters">More info</a>.
 		`,
@@ -84,9 +57,20 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		const query = this.getNodeParameter('query', i) as string;
-		const values = (this.getNodeParameter('queryReplacement.values', i, []) as IDataObject[]).map(
-			(entry) => entry.value as string,
-		);
+
+		let values: IDataObject[] = [];
+
+		const queryReplacement = this.getNodeParameter(
+			'options.queryReplacement',
+			i,
+			undefined,
+		) as IDataObject;
+
+		if (queryReplacement?.values) {
+			values = (queryReplacement.values as IDataObject[]).map(
+				(entry) => entry.value as IDataObject,
+			);
+		}
 		const queryFormat = { query, values };
 		queries.push(queryFormat);
 	}

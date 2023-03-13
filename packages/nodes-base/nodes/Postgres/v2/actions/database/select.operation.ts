@@ -21,13 +21,11 @@ import {
 
 import {
 	optionsCollection,
-	outpurSelector,
 	sortFixedCollection,
 	whereFixedCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	...outpurSelector,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -96,22 +94,27 @@ export async function execute(
 
 		let values: QueryValues = [schema, table];
 
-		const output = this.getNodeParameter('output', i) as string;
+		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
 		let query = '';
 
-		if (output === 'columns') {
-			const outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
+		if (outputColumns.includes('*')) {
+			query = 'SELECT * FROM $1:name.$2:name';
+		} else {
 			values.push(outputColumns);
 			query = `SELECT $${values.length}:name FROM $1:name.$2:name`;
-		} else {
-			query = 'SELECT * FROM $1:name.$2:name';
 		}
 
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-		[query, values] = addWhereClauses(query, whereClauses, values);
+		const combineConditions = this.getNodeParameter(
+			'options.combineConditions',
+			i,
+			'AND',
+		) as string;
+
+		[query, values] = addWhereClauses(query, whereClauses, values, combineConditions);
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];

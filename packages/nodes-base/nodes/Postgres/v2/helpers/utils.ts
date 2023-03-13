@@ -142,8 +142,15 @@ export function addWhereClauses(
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
+	combineConditions: string,
 ): [string, QueryValues] {
 	if (clauses.length === 0) return [query, replacements];
+
+	let combineWith = 'AND';
+
+	if (combineConditions === 'OR') {
+		combineWith = 'OR';
+	}
 
 	let replacementIndex = replacements.length + 1;
 
@@ -165,7 +172,7 @@ export function addWhereClauses(
 			replacementIndex = replacementIndex + 1;
 		}
 
-		const operator = index === clauses.length - 1 ? '' : ` ${clause.operator}`;
+		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
 
 		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
 	});
@@ -200,10 +207,10 @@ export function addSortRules(
 
 export function addReturning(
 	query: string,
-	outputColumns: string | string[],
+	outputColumns: string[],
 	replacements: QueryValues,
 ): [string, QueryValues] {
-	if (outputColumns === '*') return [`${query} RETURNING *`, replacements];
+	if (outputColumns.includes('*')) return [`${query} RETURNING *`, replacements];
 
 	const replacementIndex = replacements.length + 1;
 

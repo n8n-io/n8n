@@ -24,6 +24,51 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'Combine Conditions',
+			name: 'combineConditions',
+			type: 'options',
+			description: 'How to combine conditions',
+			options: [
+				{
+					name: 'AND',
+					value: 'AND',
+				},
+				{
+					name: 'OR',
+					value: 'OR',
+				},
+			],
+			default: 'AND',
+			displayOptions: {
+				show: {
+					'/operation': ['select'],
+				},
+			},
+		},
+		{
+			displayName: 'Combine Conditions',
+			name: 'combineConditions',
+			type: 'options',
+			description: 'How to combine conditions',
+			options: [
+				{
+					name: 'AND',
+					value: 'AND',
+				},
+				{
+					name: 'OR',
+					value: 'OR',
+				},
+			],
+			default: 'AND',
+			displayOptions: {
+				show: {
+					'/operation': ['deleteTable'],
+					'/deleteCommand': ['delete'],
+				},
+			},
+		},
+		{
 			displayName: 'Connection Timeout',
 			name: 'connectionTimeoutMillis',
 			type: 'number',
@@ -56,6 +101,52 @@ export const optionsCollection: INodeProperties = {
 			default: 'multiple',
 			description:
 				'The way queries should be sent to the database. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>.',
+		},
+		{
+			displayName: 'Query Parameters',
+			name: 'queryReplacement',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			default: [],
+			placeholder: 'Add Query Parameter',
+			description:
+				'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+							placeholder: 'e.g. queryParamValue',
+						},
+					],
+				},
+			],
+			displayOptions: {
+				show: { '/operation': ['executeQuery'] },
+			},
+		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+			displayName: 'Output Columns',
+			name: 'outputColumns',
+			type: 'multiOptions',
+			description:
+				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			typeOptions: {
+				loadOptionsMethod: 'getColumnsMultiOptions',
+				loadOptionsDependsOn: ['table.value'],
+			},
+			default: [],
+			displayOptions: {
+				show: { '/operation': ['select', 'insert', 'update', 'upsert'] },
+			},
 		},
 		{
 			displayName: 'Output Large-Format Numbers As',
@@ -260,23 +351,6 @@ export const whereFixedCollection: INodeProperties = {
 						},
 					},
 				},
-				{
-					displayName: 'Operator',
-					name: 'operator',
-					type: 'options',
-					hint: 'How to combine with next clause, operator from last clause will be ignored',
-					options: [
-						{
-							name: 'AND',
-							value: 'AND',
-						},
-						{
-							name: 'OR',
-							value: 'OR',
-						},
-					],
-					default: 'AND',
-				},
 			],
 		},
 	],
@@ -329,42 +403,3 @@ export const sortFixedCollection: INodeProperties = {
 		},
 	],
 };
-
-export const outpurSelector: INodeProperties[] = [
-	{
-		displayName: 'Output',
-		name: 'output',
-		type: 'options',
-		default: 'all',
-		options: [
-			{
-				name: 'All Columns',
-				value: 'all',
-				description: 'All columns in the table',
-			},
-			{
-				name: 'Selected Columns',
-				value: 'columns',
-				description: 'Only selected columns in the table',
-			},
-		],
-	},
-	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-		displayName: 'Columns',
-		name: 'returnColumns',
-		type: 'multiOptions',
-		description:
-			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getColumns',
-			loadOptionsDependsOn: ['schema.value', 'table.value'],
-		},
-		default: [],
-		displayOptions: {
-			show: {
-				output: ['columns'],
-			},
-		},
-	},
-];

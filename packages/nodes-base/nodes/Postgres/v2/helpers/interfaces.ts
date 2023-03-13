@@ -8,7 +8,7 @@ export type QueryValue = string | IDataObject | string[];
 export type QueryValues = QueryValue[];
 export type QueryWithValues = { query: string; values?: QueryValues };
 
-export type WhereClause = { column: string; condition: string; value: string; operator: string };
+export type WhereClause = { column: string; condition: string; value: string };
 export type SortRule = { column: string; direction: string };
 export type ColumnInfo = { column_name: string; data_type: string; is_nullable: string };
 

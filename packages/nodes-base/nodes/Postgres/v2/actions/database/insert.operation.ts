@@ -19,7 +19,7 @@ import {
 	runQueries,
 } from '../../helpers/utils';
 
-import { optionsCollection, outpurSelector } from '../common.descriptions';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -98,7 +98,6 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	...outpurSelector,
 	optionsCollection,
 ];
 
@@ -162,12 +161,7 @@ export async function execute(
 
 		values.push(checkItemAgainstSchema.call(this, item, tableSchema, i));
 
-		const output = this.getNodeParameter('output', i) as string;
-
-		let outputColumns: string | string[] = '*';
-		if (output === 'columns') {
-			outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
-		}
+		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
 		[query, values] = addReturning(query, outputColumns, values);
 

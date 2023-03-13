@@ -19,7 +19,7 @@ import {
 	runQueries,
 } from '../../helpers/utils';
 
-import { optionsCollection, outpurSelector } from '../common.descriptions';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -57,7 +57,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Column to match on',
+		displayName: 'Unique Column',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
@@ -68,10 +68,10 @@ const properties: INodeProperties[] = [
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
 		},
 		default: '',
-		hint: "Used to find the correct row to update. Doesn't get changed.",
+		hint: "Used to find the correct row to update. Doesn't get changed. Has to be unique.",
 	},
 	{
-		displayName: 'Value of Column to Match On',
+		displayName: 'Value of Unique Column',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
@@ -124,7 +124,6 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	...outpurSelector,
 	optionsCollection,
 ];
 
@@ -207,12 +206,7 @@ export async function execute(
 
 		let query = `${insertQuery} SET ${updates.join(', ')}`;
 
-		const output = this.getNodeParameter('output', i) as string;
-
-		let outputColumns: string | string[] = '*';
-		if (output === 'columns') {
-			outputColumns = this.getNodeParameter('returnColumns', i, []) as string[];
-		}
+		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
 		[query, values] = addReturning(query, outputColumns, values);
 
