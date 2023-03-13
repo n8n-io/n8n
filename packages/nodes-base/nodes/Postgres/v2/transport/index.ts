@@ -85,40 +85,28 @@ export async function configurePostgres(
 
 		const tunnelConfig = await createSshConnectConfig(credentials);
 
-		if (credentials.sshAuthenticateWith === 'privateKey') {
-			sshClient.on('end', async () => {
-				await rm(tunnelConfig.privateKey as string);
-			});
-		}
-
 		const srcHost = '127.0.0.1';
 		const srcPort = 5432;
 
 		const forwardConfig = {
 			srcHost,
 			srcPort,
-			dstHost: credentials.host as string,
-			dstPort: credentials.port as number,
+			host: credentials.host as string,
+			port: credentials.port as number,
 		};
-
-		if (credentials.sshAuthenticateWith === 'privateKey') {
-			sshClient.on('end', async () => {
-				await rm(tunnelConfig.privateKey as string);
-			});
-		}
 
 		const db = await new Promise<PgpDatabase>((resolve, reject) => {
 			const proxyPort = srcPort;
 			let ready = false;
 
-			createServer((socket) => {
+			const proxy = createServer((socket) => {
 				if (!ready) return socket.destroy();
 
 				sshClient.forwardOut(
-					forwardConfig.srcHost,
-					forwardConfig.srcPort,
-					forwardConfig.dstHost,
-					forwardConfig.dstPort,
+					socket.remoteAddress as string,
+					socket.remotePort as number,
+					forwardConfig.host,
+					forwardConfig.port,
 					(err, stream) => {
 						if (err) reject(err);
 
@@ -140,6 +128,13 @@ export async function configurePostgres(
 				};
 				const dbConnection = pgp(updatedDbServer);
 				resolve(dbConnection);
+			});
+
+			sshClient.on('end', async () => {
+				if (tunnelConfig.privateKey) {
+					await rm(tunnelConfig.privateKey as string, { force: true });
+				}
+				proxy.close();
 			});
 		});
 
