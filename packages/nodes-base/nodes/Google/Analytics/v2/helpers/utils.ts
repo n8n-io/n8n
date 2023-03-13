@@ -1,5 +1,10 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject, INodeListSearchItems, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodeListSearchItems,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 
