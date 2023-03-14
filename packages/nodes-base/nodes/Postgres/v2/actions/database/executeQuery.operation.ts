@@ -48,10 +48,9 @@ export async function execute(
 	pgp: PgpClient,
 	db: PgpDatabase,
 	items: INodeExecutionData[],
+	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0);
-
-	items = replaceEmptyStringsByNulls(items, options.replaceEmptyStrings as boolean);
+	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
 
@@ -71,9 +70,9 @@ export async function execute(
 				(entry) => entry.value as IDataObject,
 			);
 		}
-		const queryFormat = { query, values };
-		queries.push(queryFormat);
+
+		queries.push({ query, values });
 	}
 
-	return runQueries.call(this, pgp, db, queries, items, options);
+	return runQueries.call(this, pgp, db, queries, items, nodeOptions);
 }

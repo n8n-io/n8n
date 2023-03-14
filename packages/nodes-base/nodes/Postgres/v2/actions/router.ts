@@ -26,7 +26,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	try {
 		switch (postgresNodeData.resource) {
 			case 'database':
-				returnData = await database[postgresNodeData.operation].execute.call(this, pgp, db, items);
+				returnData = await database[postgresNodeData.operation].execute.call(
+					this,
+					pgp,
+					db,
+					items,
+					options,
+				);
 				break;
 			default:
 				throw new NodeOperationError(

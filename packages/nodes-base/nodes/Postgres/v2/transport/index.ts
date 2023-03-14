@@ -51,7 +51,7 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 		});
 	}
 
-	const config: IDataObject = {
+	const dbConfig: IDataObject = {
 		host: credentials.host as string,
 		port: credentials.port as number,
 		database: credentials.database as string,
@@ -60,51 +60,40 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 	};
 
 	if (options.connectionTimeoutMillis) {
-		config.connectionTimeoutMillis = options.connectionTimeoutMillis as number;
+		dbConfig.connectionTimeoutMillis = options.connectionTimeoutMillis as number;
 	}
 
 	if (credentials.allowUnauthorizedCerts === true) {
-		config.ssl = {
+		dbConfig.ssl = {
 			rejectUnauthorized: false,
 		};
 	} else {
-		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		config.sslmode = (credentials.ssl as string) || 'disable';
+		dbConfig.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+		dbConfig.sslmode = (credentials.ssl as string) || 'disable';
 	}
 
 	if (!credentials.sshTunnel) {
-		const db = pgp(config);
+		const db = pgp(dbConfig);
 		return { db, pgp };
 	} else {
 		const sshClient = new Client();
 
-		if (!sshClient) {
-			throw new Error('SSH Tunnel is enabled but no SSH Client was provided');
-		}
-
 		const tunnelConfig = await createSshConnectConfig(credentials);
 
-		const srcHost = '127.0.0.1';
-		const srcPort = 5432;
-
-		const forwardConfig = {
-			srcHost,
-			srcPort,
-			host: credentials.host as string,
-			port: credentials.port as number,
-		};
+		const localHost = '127.0.0.1';
+		const localPort = 5432;
 
 		const db = await new Promise<PgpDatabase>((resolve, reject) => {
-			let ready = false;
+			let sshClientReady = false;
 
 			const proxy = createServer((socket) => {
-				if (!ready) return socket.destroy();
+				if (!sshClientReady) return socket.destroy();
 
 				sshClient.forwardOut(
 					socket.remoteAddress as string,
 					socket.remotePort as number,
-					forwardConfig.host,
-					forwardConfig.port,
+					credentials.host as string,
+					credentials.port as number,
 					(err, stream) => {
 						if (err) reject(err);
 
@@ -112,7 +101,7 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 						stream.pipe(socket);
 					},
 				);
-			}).listen(srcPort, srcHost);
+			}).listen(localPort, localHost);
 
 			proxy.on('error', (err) => {
 				reject(err);
@@ -121,14 +110,14 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 			sshClient.connect(tunnelConfig);
 
 			sshClient.on('ready', () => {
-				ready = true;
+				sshClientReady = true;
 
-				const updatedDbServer = {
-					...config,
-					port: srcPort,
-					host: srcHost,
+				const updatedDbConfig = {
+					...dbConfig,
+					port: localPort,
+					host: localHost,
 				};
-				const dbConnection = pgp(updatedDbServer);
+				const dbConnection = pgp(updatedDbConfig);
 				resolve(dbConnection);
 			});
 

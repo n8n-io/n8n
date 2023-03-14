@@ -81,12 +81,13 @@ export async function execute(
 	pgp: PgpClient,
 	db: PgpDatabase,
 	items: INodeExecutionData[],
+	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0);
-
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
+		const options = this.getNodeParameter('options', i, {});
+
 		const schema = this.getNodeParameter('schema', i, undefined, {
 			extractValue: true,
 		}) as string;
@@ -144,5 +145,5 @@ export async function execute(
 		queries.push(queryWithValues);
 	}
 
-	return runQueries.call(this, pgp, db, queries, items, options);
+	return runQueries.call(this, pgp, db, queries, items, nodeOptions);
 }
