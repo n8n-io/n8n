@@ -23,6 +23,8 @@ import {
 import { ExternalHooks } from '@/mixins/externalHooks';
 import { useSegment } from '@/stores/segment';
 import { PartialDeep } from 'type-fest';
+import { IDataObject } from 'n8n-workflow';
+import { INodeUi } from '@/Interface';
 
 export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	parameterInput: {
@@ -349,7 +351,9 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 				const eventData = {
 					eventName: 'User selected credential from node modal',
 					properties: {
-						credential_name: meta.updateInformation.properties.credentials[creds[0]],
+						credential_name: (meta.updateInformation.properties.credentials as IDataObject)[
+							creds[0]
+						],
 						credential_type: creds[0],
 					},
 				};
@@ -457,7 +461,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 					eventName: 'User saved workflow',
 					properties: {
 						workflow_id: meta.workflowData.id,
-						workflow_name: meta.workflowData.workflowName,
+						workflow_name: meta.workflowData.name,
 						workflow_nodes: meta.workflowData.nodes.map((n) => n.type.split('.')[1]),
 					},
 				};
@@ -525,8 +529,8 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 				if (meta.newValue.length > meta.oldValue.length) {
 					nodesPanelSession.data.nodeFilter = meta.newValue;
 					nodesPanelSession.data.resultsNodes = meta.filteredNodes.map((node) => {
-						if (node.name) {
-							return node.name.split('.')[1];
+						if ((node as unknown as INodeUi).name) {
+							return (node as unknown as INodeUi).name.split('.')[1];
 						} else if (node.key) {
 							return node.key.split('.')[1];
 						}

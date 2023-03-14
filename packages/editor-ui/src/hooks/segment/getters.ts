@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import type { TelemetryEventData } from '@/hooks/types';
-import { IStartRunData } from '@/Interface';
+import { INodeUi, IStartRunData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { INode } from 'n8n-workflow/src';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -223,9 +223,9 @@ export const getExecutionFinishedEventData = (
 		},
 	};
 
-	if (meta.runDataExecutedStartData.destinationNode) {
+	if (meta.runDataExecutedStartData?.destinationNode) {
 		eventData.eventName = 'Node execution finished';
-		eventData.properties!.node_type = store.getNodeByName(meta.nodeName)?.type.split('.')[1];
+		eventData.properties!.node_type = store.getNodeByName(meta.nodeName || '')?.type.split('.')[1];
 		eventData.properties!.node_name = meta.nodeName;
 	} else {
 		eventData.eventName = 'Manual workflow execution finished';
@@ -241,17 +241,17 @@ export const getExecutionFinishedEventData = (
 		eventData.properties!.error_ui_message = meta.errorMessage || '';
 		eventData.properties!.error_timestamp = new Date();
 
-		if (meta.resultDataError && meta.resultDataError.node) {
+		if (meta.resultDataError && (meta.resultDataError as unknown as { node: INodeUi })?.node) {
 			eventData.properties!.error_node =
-				typeof meta.resultDataError.node === 'string'
-					? meta.resultDataError.node
-					: meta.resultDataError.node.name;
+				typeof (meta.resultDataError as unknown as { node: string })?.node === 'string'
+					? (meta.resultDataError as unknown as { node: string })?.node
+					: (meta.resultDataError as unknown as { node: INodeUi })?.node?.name;
 		} else {
 			eventData.properties!.error_node = meta.nodeName;
 		}
 	} else {
 		eventData.properties!.status = 'success';
-		if (meta.runDataExecutedStartData.destinationNode) {
+		if (meta.runDataExecutedStartData?.destinationNode) {
 			// Node execution finished
 			eventData.properties!.items_count = meta.itemsCount || 0;
 		}
@@ -260,11 +260,7 @@ export const getExecutionFinishedEventData = (
 };
 
 export interface NodeRemovedEventData {
-	node: {
-		name: string;
-		type: string;
-		disabled: boolean;
-	};
+	node: INodeUi;
 }
 
 export const getNodeRemovedEventData = (meta: NodeRemovedEventData): TelemetryEventData => {
@@ -316,8 +312,8 @@ export const getNodeEditingFinishedEventData = (
 };
 
 export interface ExecutionStartedEventData {
-	nodeName: string;
-	source: string;
+	nodeName?: string;
+	source?: string;
 }
 
 export const getExecutionStartedEventData = (

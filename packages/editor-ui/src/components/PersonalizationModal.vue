@@ -621,7 +621,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				this.$externalHooks().run('personalizationModal.onSubmit', survey);
+				this.$externalHooks().run(
+					'personalizationModal.onSubmit',
+					survey as IPersonalizationLatestVersion,
+				);
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 

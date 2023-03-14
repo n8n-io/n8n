@@ -5,8 +5,16 @@ import {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IPersonalizationLatestVersion,
+	IWorkflowDb,
 } from '@/Interface';
-import { IDataObject, INode, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import {
+	IConnections,
+	IDataObject,
+	INode,
+	INodeParameters,
+	INodeTypeDescription,
+	ITelemetryTrackProperties,
+} from 'n8n-workflow';
 import Vue, { ComponentPublicInstance, VueConstructor } from 'vue';
 import { Route } from 'vue-router/types/router';
 import {
@@ -39,7 +47,9 @@ export interface ExternalHooks {
 	};
 	nodeView: {
 		mount: Array<(meta: {}) => void>;
-		createNodeActiveChanged: Array<(meta: { source: string }) => void>;
+		createNodeActiveChanged: Array<
+			(meta: { source?: string; mode: string; createNodeActive: boolean }) => void
+		>;
 		addNodeButton: Array<(meta: { nodeTypeName: string }) => void>;
 		onRunNode: Array<(meta: ITelemetryTrackProperties) => void>;
 		onRunWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
@@ -114,7 +124,7 @@ export interface ExternalHooks {
 	};
 	workflowRun: {
 		runWorkflow: Array<(meta: ExecutionStartedEventData) => void>;
-		runError: Array<(meta: { errorMessages: string[]; nodeName: string }) => void>;
+		runError: Array<(meta: { errorMessages: string[]; nodeName: string | undefined }) => void>;
 	};
 	runData: {
 		updated: Array<(meta: { elements: HTMLElement[] }) => void>;
@@ -134,9 +144,8 @@ export interface ExternalHooks {
 	workflow: {
 		activeChange: Array<(meta: { active: boolean; workflowId: string }) => void>;
 		activeChangeCurrent: Array<(meta: { workflowId: string; active: boolean }) => void>;
-		afterUpdate: Array<
-			(meta: { workflowData: { id: string; workflowName: string; nodes: INode[] } }) => void
-		>;
+		afterUpdate: Array<(meta: { workflowData: IWorkflowDb }) => void>;
+		open: Array<(meta: { workflowId: string; workflowName: string }) => void>;
 	};
 	execution: {
 		open: Array<(meta: { workflowId: string; workflowName: string; executionId: string }) => void>;
@@ -152,6 +161,9 @@ export interface ExternalHooks {
 	};
 	nodeCreateList: {
 		destroyed: Array<(meta: {}) => void>;
+		addAction: Array<
+			(meta: { node_type?: string; action: string; resource: INodeParameters['resource'] }) => void
+		>;
 		selectedTypeChanged: Array<(meta: { oldValue: string; newValue: string }) => void>;
 		filteredNodeTypesComputed: Array<
 			(meta: {
@@ -186,17 +198,33 @@ export interface ExternalHooks {
 	runDataTable: {
 		onDragEnd: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
+	runDataJson: {
+		onDragEnd: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
 	sticky: {
 		mounted: Array<(meta: { stickyRef: HTMLElement }) => void>;
 	};
 	telemetry: {
 		currentUserIdChanged: Array<() => void>;
 	};
+	settingsCommunityNodesView: {
+		openInstallModal: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
 	templatesWorkflowView: {
 		openWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
 	templatesCollectionView: {
 		onUseWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
+	};
+	template: {
+		requested: Array<(meta: { templateId: string }) => void>;
+		open: Array<
+			(meta: {
+				templateId: string;
+				templateName: string;
+				workflow: { nodes: INodeUi[]; connections: IConnections };
+			}) => void
+		>;
 	};
 }
 
