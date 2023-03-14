@@ -3,6 +3,7 @@ import { Get, Post, RestController } from '../../../decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
+	samlLicensedMiddleware,
 	samlLicensedOwnerMiddleware,
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
@@ -13,6 +14,9 @@ import { getInitSSOPostView } from '../views/initSsoRedirect';
 import { issueCookie } from '../../../auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
+import { isSamlLicensedAndEnabled } from '../samlHelpers';
+import type { SamlLoginBinding } from '../types';
+import { AuthenticatedRequest } from '../../../requests';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -30,7 +34,7 @@ export class SamlController {
 	 * Return SAML config
 	 */
 	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
-	async configGet(req: SamlConfiguration.Read, res: express.Response) {
+	async configGet(req: AuthenticatedRequest, res: express.Response) {
 		const prefs = this.samlService.samlPreferences;
 		return res.send(prefs);
 	}
@@ -70,36 +74,39 @@ export class SamlController {
 	 * GET /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
-	@Get(SamlUrls.acs, { middlewares: [samlLicensedAndEnabledMiddleware] })
+	@Get(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsGet(req: express.Request, res: express.Response) {
-		const loginResult = await this.samlService.handleSamlLogin(req, 'redirect');
-		if (loginResult) {
-			if (loginResult.authenticatedUser) {
-				await issueCookie(res, loginResult.authenticatedUser);
-				if (loginResult.onboardingRequired) {
-					return res.redirect(SamlUrls.samlOnboarding);
-				} else {
-					return res.redirect(SamlUrls.defaultRedirect);
-				}
-			}
-		}
-		throw new AuthError('SAML Authentication failed');
+		return this.acsHandler(req, res, 'redirect');
 	}
 
 	/**
 	 * POST /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
-	@Post(SamlUrls.acs, { middlewares: [samlLicensedAndEnabledMiddleware] })
+	@Post(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsPost(req: express.Request, res: express.Response) {
-		const loginResult = await this.samlService.handleSamlLogin(req, 'post');
+		return this.acsHandler(req, res, 'post');
+	}
+
+	/**
+	 * Handles the ACS endpoint for both GET and POST requests
+	 * Available if SAML is licensed, even if not enabled to run connection tests
+	 * For test connections, returns status 202 if SAML is not enabled
+	 */
+	private async acsHandler(req: express.Request, res: express.Response, binding: SamlLoginBinding) {
+		const loginResult = await this.samlService.handleSamlLogin(req, binding);
 		if (loginResult) {
 			if (loginResult.authenticatedUser) {
-				await issueCookie(res, loginResult.authenticatedUser);
-				if (loginResult.onboardingRequired) {
-					return res.redirect(SamlUrls.samlOnboarding);
+				// Only sign in user if SAML is enabled, otherwise treat as test connection
+				if (isSamlLicensedAndEnabled()) {
+					await issueCookie(res, loginResult.authenticatedUser);
+					if (loginResult.onboardingRequired) {
+						return res.redirect(SamlUrls.samlOnboarding);
+					} else {
+						return res.redirect(SamlUrls.defaultRedirect);
+					}
 				} else {
-					return res.redirect(SamlUrls.defaultRedirect);
+					return res.status(202).send('SAML is not enabled, but authentication successful.');
 				}
 			}
 		}
@@ -109,9 +116,24 @@ export class SamlController {
 	/**
 	 * GET /sso/saml/initsso
 	 * Access URL for implementing SP-init SSO
+	 * This endpoint is available if SAML is licensed and enabled
 	 */
 	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
+		return this.handleInitSSO(res);
+	}
+
+	/**
+	 * GET /sso/saml/config/test
+	 * Test SAML config
+	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
+	 */
+	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
+	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
+		return this.handleInitSSO(res);
+	}
+
+	private async handleInitSSO(res: express.Response) {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
 			// forced client side redirect through the use of a javascript redirect
@@ -123,15 +145,5 @@ export class SamlController {
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
-	}
-
-	/**
-	 * GET /sso/saml/config/test
-	 * Test SAML config
-	 */
-	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
-	async configTestGet(req: express.Request, res: express.Response) {
-		const testResult = await this.samlService.testSamlConnection();
-		return res.send(testResult);
 	}
 }
