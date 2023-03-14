@@ -116,11 +116,11 @@
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
-							class="ph-no-capture"
 						>
 							<span
 								v-if="isSimple(data)"
 								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+								class="ph-no-capture"
 								>{{ getValueToRender(data) }}</span
 							>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
@@ -142,7 +142,7 @@
 									>
 								</template>
 								<template #value="{ value }">
-									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
+									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }" class="ph-no-capture">{{
 										getValueToRender(value)
 									}}</span>
 								</template>

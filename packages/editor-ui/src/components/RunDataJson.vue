@@ -58,8 +58,8 @@
 							:class="{
 								[$style.mappable]: mappingEnabled,
 								[$style.dragged]: draggingPath === node.path,
-								'ph-no-capture': true,
 							}"
+							class="ph-no-capture"
 							>{{ getContent(node.content) }}</span
 						>
 					</template>
