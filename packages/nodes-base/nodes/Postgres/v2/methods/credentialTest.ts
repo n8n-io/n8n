@@ -5,35 +5,17 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import pgPromise from 'pg-promise';
+import { configurePostgres } from '../transport';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	const credentials = credential.data as IDataObject;
-	const pgp = pgPromise();
+
+	const { db, pgp, sshClient } = await configurePostgres(credentials);
 
 	try {
-		const config: IDataObject = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-			connectionTimeoutMillis: 60000,
-		};
-
-		if (credentials.allowUnauthorizedCerts === true) {
-			config.ssl = {
-				rejectUnauthorized: false,
-			};
-		} else {
-			config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-			config.sslmode = (credentials.ssl as string) || 'disable'; // does not like it supported in the pg-promise config
-		}
-
-		const db = pgp(config);
 		await db.connect();
 	} catch (error) {
 		let message = error.message as string;
@@ -51,6 +33,9 @@ export async function postgresConnectionTest(
 			message,
 		};
 	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
 		pgp.end();
 	}
 	return {

@@ -3,7 +3,9 @@ import { getTableSchema } from '../helpers/utils';
 import { configurePostgres } from '../transport';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { db, pgp, sshClient } = await configurePostgres.call(this);
+	const credentials = await this.getCredentials('postgres');
+
+	const { db, pgp, sshClient } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,

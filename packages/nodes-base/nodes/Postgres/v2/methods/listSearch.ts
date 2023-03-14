@@ -2,7 +2,9 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 import { configurePostgres } from '../transport';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const { db, pgp, sshClient } = await configurePostgres.call(this);
+	const credentials = await this.getCredentials('postgres');
+
+	const { db, pgp, sshClient } = await configurePostgres(credentials);
 
 	try {
 		const response = await db.any('SELECT schema_name FROM information_schema.schemata');
@@ -23,7 +25,9 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const { db, pgp, sshClient } = await configurePostgres.call(this);
+	const credentials = await this.getCredentials('postgres');
+
+	const { db, pgp, sshClient } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,

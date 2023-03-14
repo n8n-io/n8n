@@ -1,13 +1,15 @@
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
+import type { IDataObject } from 'n8n-workflow';
 
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
+
 import { createServer } from 'net';
 
-import { rm, writeFile } from 'fs/promises';
+import pgPromise from 'pg-promise';
 
+import { rm, writeFile } from 'fs/promises';
 import { file } from 'tmp-promise';
+
 import type { PgpDatabase } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
@@ -37,10 +39,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-export async function configurePostgres(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('postgres');
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
+export async function configurePostgres(credentials: IDataObject, options: IDataObject = {}) {
 	const pgp = pgPromise();
 
 	if (options.largeNumbersOutput === 'numbers') {
