@@ -853,15 +853,10 @@ export interface PublicUser {
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
-	settings?: IUserSettings;
+	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
 	featureFlags?: FeatureFlags;
 }
-
-export interface CurrentUser extends PublicUser {
-	featureFlags?: FeatureFlags;
-}
-
 export interface N8nApp {
 	app: Application;
 	restEndpoint: string;

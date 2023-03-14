@@ -17,6 +17,7 @@ import { getLicense } from '@/License';
 import { RoleService } from '@/role/role.service';
 import type { PostHogClient } from '@/posthog';
 import { UserService } from '@/user/user.service';
+import { WorkflowsService } from '@/workflows/workflows.services';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
@@ -153,7 +154,6 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 			delete rest[key];
 		});
 	}
-	//@ts-ignore
 	const sanitizedUser: PublicUser = {
 		...rest,
 		signInType: 'email',
@@ -165,23 +165,32 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	return sanitizedUser;
 }
 
-export const addUserSettings = async (publicUser: PublicUser) => {
-	console.log('executionid', publicUser.settings?.firstSuccessfulExecutionId);
-	console.log('showUserActivationSurvey', publicUser.settings?.showUserActivationSurvey);
-
+export const updateUserSettings = async (publicUser: PublicUser) => {
 	if (!config.getEnv('userActivationSurvey.enabled') || !config.getEnv('diagnostics.enabled')) {
-		return publicUser;
+		return;
 	}
 
 	if (
 		!publicUser.settings?.showUserActivationSurvey &&
 		publicUser.settings?.firstSuccessfulExecutionId
 	) {
-		return publicUser;
+		return;
 	}
 
-	const execution = await UserService.getOneSuccessfullyExecutedWorkflow(publicUser);
-	console.log(execution);
+	const sharedWorkflowsIds = await WorkflowsService.getWorkflowIdsForUser(
+		publicUser as unknown as User,
+		['owner'],
+	);
+
+	const execution = await Db.collections.Execution.findOne({
+		select: ['id'],
+		where: {
+			workflowId: In(sharedWorkflowsIds),
+			status: 'success',
+			mode: In(['retry', 'webhook', 'trigger']),
+		},
+	});
+
 	if (execution) {
 		await Db.collections.User.update(
 			{ id: publicUser.id },
@@ -199,15 +208,12 @@ export const addUserSettings = async (publicUser: PublicUser) => {
 			firstSuccessfulExecutionId: execution.id,
 		};
 	}
-	return publicUser;
+	return;
 };
 
-export async function withFeatureFlags(
-	postHog: PostHogClient | undefined,
-	user: PublicUser,
-): Promise<PublicUser> {
+export async function addFeatureFlags(postHog: PostHogClient | undefined, user: PublicUser) {
 	if (!postHog) {
-		return user;
+		return;
 	}
 
 	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
@@ -223,7 +229,7 @@ export async function withFeatureFlags(
 		resolve(user);
 	});
 
-	return Promise.race([fetchPromise, timeoutPromise]);
+	await Promise.race([fetchPromise, timeoutPromise]);
 }
 
 export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {

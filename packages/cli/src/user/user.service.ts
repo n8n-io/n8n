@@ -15,27 +15,4 @@ export class UserService {
 	static async getByIds(transaction: EntityManager, ids: string[]) {
 		return transaction.find(User, { where: { id: In(ids) } });
 	}
-
-	static async getOneSuccessfullyExecutedWorkflow(user: PublicUser) {
-		const showUserActivationSurvey = user.settings?.showUserActivationSurvey;
-
-		if (!showUserActivationSurvey) {
-			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-				select: ['workflowId'],
-				//filter only where the workflow the user is the workflow owner;
-				where: { userId: user.id },
-			});
-
-			return Db.collections.Execution.findOne({
-				select: ['id'],
-				where: {
-					workflowId: In(sharedWorkflows.map((d) => d.workflowId)),
-					status: 'success',
-					mode: In(['retry', 'webhook', 'trigger']),
-				},
-			});
-		}
-
-		return undefined;
-	}
 }

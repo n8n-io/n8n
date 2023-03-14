@@ -2,8 +2,9 @@ import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import {
-	addUserSettings,
+	addFeatureFlags,
 	sanitizeUser,
+	updateUserSettings,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
@@ -15,17 +16,11 @@ import { LoginRequest, UserRequest } from '@/requests';
 import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IInternalHooksClass,
-	CurrentUser,
-} from '@/Interfaces';
+import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 import { SamlUrls } from '../sso/saml/constants';
-import { get } from 'lodash-es';
 
 @RestController()
 export class AuthController {
@@ -94,7 +89,10 @@ export class AuthController {
 		}
 		if (user) {
 			await issueCookie(res, user);
-			return withFeatureFlags(this.postHog, sanitizeUser(user));
+			const publicUser = sanitizeUser(user);
+			await updateUserSettings(publicUser);
+			await addFeatureFlags(this.postHog, publicUser);
+			return publicUser;
 		}
 
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
@@ -104,7 +102,7 @@ export class AuthController {
 	 * Manually check the `n8n-auth` cookie.
 	 */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
+	async currentUser(req: Request, res: Response): Promise<PublicUser> {
 		// Manually check the existing cookie.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
@@ -116,8 +114,8 @@ export class AuthController {
 			try {
 				user = await resolveJwt(cookieContents);
 				publicUser = sanitizeUser(user);
-				publicUser = await addUserSettings(publicUser);
-				publicUser = await withFeatureFlags(this.postHog, publicUser);
+				await updateUserSettings(publicUser);
+				await addFeatureFlags(this.postHog, publicUser);
 
 				return publicUser;
 			} catch (error) {
