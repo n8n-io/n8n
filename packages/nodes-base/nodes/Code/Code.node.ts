@@ -399,7 +399,7 @@ return _input.item;
 
 			const context = getSandboxContext.call(this);
 			context.items = context.$input.all();
-			const sandbox = new Sandbox(context, workflowMode, nodeMode);
+			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
 
 			if (workflowMode === 'manual') {
 				sandbox.on('console.log', this.sendMessageToUI);
@@ -432,7 +432,7 @@ return _input.item;
 
 			const context = getSandboxContext.call(this, index);
 			context.item = context.$input.item;
-			const sandbox = new Sandbox(context, workflowMode, nodeMode);
+			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
 
 			if (workflowMode === 'manual') {
 				sandbox.on('console.log', this.sendMessageToUI);

@@ -33,7 +33,7 @@
 				>
 					<canvas-add-button
 						:style="canvasAddButtonStyle"
-						@click="showTriggerCreator('trigger_placeholder_button')"
+						@click="showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON)"
 						v-show="showCanvasAddButton"
 						:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 						:position="canvasStore.canvasAddButtonPosition"
@@ -198,6 +198,7 @@ import {
 	ASSUMPTION_EXPERIMENT,
 	REGULAR_NODE_FILTER,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -208,7 +209,6 @@ import { restApi } from '@/mixins/restApi';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { showMessage } from '@/mixins/showMessage';
 import { titleChange } from '@/mixins/titleChange';
-import { newVersions } from '@/mixins/newVersions';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
@@ -257,6 +257,7 @@ import {
 	IWorkflowToShare,
 	IUser,
 	INodeUpdatePropertiesInformation,
+	NodeCreatorOpenSource,
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
@@ -327,7 +328,6 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
-	newVersions,
 	debounceHelper,
 ).extend({
 	name: 'NodeView',
@@ -615,6 +615,7 @@ export default mixins(
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
 			suspendRecordingDetachedConnections: false,
+			NODE_CREATOR_OPEN_SOURCES,
 		};
 	},
 	beforeDestroy() {
@@ -664,7 +665,7 @@ export default mixins(
 					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
 			this.registerCustomAction('showNodeCreator', () =>
-				this.showTriggerCreator('no_trigger_execution_tooltip'),
+				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
 			);
 			const notice = this.$showMessage({
 				type: 'info',
@@ -758,7 +759,7 @@ export default mixins(
 			const saved = await this.saveCurrentWorkflow();
 			if (saved) await this.settingsStore.fetchPromptsData();
 		},
-		showTriggerCreator(source: string) {
+		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
 			this.nodeCreatorStore.setShowScrim(true);
@@ -1031,7 +1032,7 @@ export default mixins(
 				this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 			} else if (e.key === 'Tab') {
 				this.onToggleNodeCreator({
-					source: 'tab',
+					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnly,
 				});
 			} else if (e.key === this.controlKeyCode) {
@@ -2067,7 +2068,7 @@ export default mixins(
 		insertNodeAfterSelected(info: {
 			sourceId: string;
 			index: number;
-			eventSource: string;
+			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
 		}) {
 			// Get the node and set it as active that new nodes
@@ -2086,7 +2087,10 @@ export default mixins(
 				this.lastSelectedConnection = info.connection;
 			}
 
-			this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true });
+			this.onToggleNodeCreator({
+				source: info.eventSource,
+				createNodeActive: true,
+			});
 		},
 		onEventConnectionAbort(connection: Connection) {
 			try {
@@ -2111,7 +2115,7 @@ export default mixins(
 				this.insertNodeAfterSelected({
 					sourceId: connection.parameters.nodeId,
 					index: connection.parameters.index,
-					eventSource: 'node_connection_drop',
+					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
 				});
 			} catch (e) {
 				console.error(e); // eslint-disable-line no-console
@@ -2191,7 +2195,7 @@ export default mixins(
 								sourceId: info.sourceEndpoint.parameters.nodeId,
 								index: sourceInfo.index,
 								connection: info.connection,
-								eventSource: 'node_connection_action',
+								eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 							});
 						},
 					);
@@ -2429,7 +2433,7 @@ export default mixins(
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
-					eventSource: 'plus_endpoint',
+					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 				});
 			}
 		},
@@ -3726,7 +3730,7 @@ export default mixins(
 			source,
 			createNodeActive,
 		}: {
-			source?: string;
+			source?: NodeCreatorOpenSource;
 			createNodeActive: boolean;
 		}) {
 			if (createNodeActive === this.createNodeActive) return;
@@ -3740,6 +3744,8 @@ export default mixins(
 
 			const mode =
 				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
+
+			this.nodeCreatorStore.openSource = source || '';
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
@@ -3891,7 +3897,6 @@ export default mixins(
 
 			setTimeout(() => {
 				this.usersStore.showPersonalizationSurvey();
-				this.checkForNewVersions();
 				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
 			}, 0);
 		});
@@ -3936,7 +3941,7 @@ export default mixins(
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
-			this.showTriggerCreator('trigger_placeholder_button');
+			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		}
 		this.uiStore.addFirstStepOnLoad = false;
 		this.bindCanvasEvents();
