@@ -226,6 +226,7 @@ export async function initTestServer({
 							logger,
 							externalHooks,
 							internalHooks,
+							mailer,
 							repositories,
 						}),
 					);

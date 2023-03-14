@@ -376,7 +376,14 @@ class Server extends AbstractServer {
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new NodeTypesController({ config, nodeTypes }),
-			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new PasswordResetController({
+				config,
+				externalHooks,
+				internalHooks,
+				mailer,
+				repositories,
+				logger,
+			}),
 			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({

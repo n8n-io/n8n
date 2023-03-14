@@ -27,6 +27,8 @@ import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';
 import { Push } from '@/push';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import { NodeTypes } from '@/NodeTypes';
 
 /**
  * TODO:
@@ -157,12 +159,17 @@ describe('ActiveWorkflowRunner', () => {
 
 	beforeEach(() => {
 		externalHooks = mock();
-		activeWorkflowRunner = new ActiveWorkflowRunner(externalHooks);
+		activeWorkflowRunner = new ActiveWorkflowRunner(
+			new ActiveExecutions(),
+			externalHooks,
+			Container.get(NodeTypes),
+		);
 	});
 
 	afterEach(async () => {
 		await activeWorkflowRunner.removeAll();
 		databaseActiveWorkflowsCount = 0;
+		databaseActiveWorkflowsList = [];
 		jest.clearAllMocks();
 	});
 

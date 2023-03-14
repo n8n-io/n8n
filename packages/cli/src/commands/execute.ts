@@ -6,7 +6,6 @@ import { ExecutionBaseError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
