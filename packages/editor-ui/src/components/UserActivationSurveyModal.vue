@@ -66,6 +66,8 @@ import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 
+const FEEDBACK_MAX_LENGTH = 300;
+
 const userStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 
@@ -76,7 +78,10 @@ const workflowName = ref('');
 const executionPath = ref('');
 
 onMounted(async () => {
-	const execution = await workflowsStore.fetchExecutionDataById('225');
+	const currentSettings = getCurrentSettings();
+	const execution = await workflowsStore.fetchExecutionDataById(
+		currentSettings?.firstSuccessfulExecutionId ?? '',
+	);
 	const workflowId = execution?.workflowId ?? '';
 	const executionId = execution?.id ?? '';
 	workflowName.value = execution?.workflowData.name ?? '';
@@ -92,13 +97,20 @@ onMounted(async () => {
 });
 
 const onShareFeedback = () => {
-	telemetry.track('User responded to activation modal', { response: feedback.value });
+	telemetry.track('User responded to activation modal', { response: getFeedback() });
 	modalBus.$emit('close');
-	showSharedFeedbackSuccess();
+};
+
+const getCurrentSettings = () => {
+	return userStore.currentUser?.settings;
+};
+
+const getFeedback = () => {
+	return feedback.value.slice(0, FEEDBACK_MAX_LENGTH);
 };
 
 const buildUserObject = (currentUser: IUser) => {
-	const currentSettings = userStore.currentUser?.settings;
+	const currentSettings = getCurrentSettings();
 	const { id = '', firstName = '', lastName = '', email = '' } = currentUser;
 	const newUser: IUser & { settings: { showUserActivationSurvey: boolean } } = {
 		id,
@@ -113,10 +125,16 @@ const buildUserObject = (currentUser: IUser) => {
 	return newUser;
 };
 
-const beforeClosingModal = () => {
+const beforeClosingModal = async () => {
 	const currentUser = userStore.currentUser;
 	if (currentUser) {
-		userStore.updateUser(buildUserObject(currentUser));
+		try {
+			await userStore.updateUser(buildUserObject(currentUser));
+			showSharedFeedbackSuccess();
+		} catch {
+			showSharedFeedbackError();
+			return false;
+		}
 	}
 	return true;
 };
@@ -128,6 +146,14 @@ const onInput = () => {
 const showSharedFeedbackSuccess = () => {
 	Notification.success({
 		title: locale.baseText('userActivationSurveyModal.sharedFeedback.success'),
+		message: '',
+		position: 'bottom-right',
+	});
+};
+
+const showSharedFeedbackError = () => {
+	Notification.error({
+		title: locale.baseText('userActivationSurveyModal.sharedFeedback.error'),
 		message: '',
 		position: 'bottom-right',
 	});
