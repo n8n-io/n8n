@@ -63,7 +63,7 @@ export async function execute(
 		const queryReplacement = this.getNodeParameter(
 			'options.queryReplacement',
 			i,
-			undefined,
+			{},
 		) as IDataObject;
 
 		if (queryReplacement?.values) {

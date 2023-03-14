@@ -114,6 +114,10 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 				);
 			}).listen(srcPort, srcHost);
 
+			proxy.on('error', (err) => {
+				reject(err);
+			});
+
 			sshClient.connect(tunnelConfig);
 
 			sshClient.on('ready', () => {
@@ -128,12 +132,18 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 				resolve(dbConnection);
 			});
 
+			sshClient.on('error', (err) => {
+				reject(err);
+			});
+
 			sshClient.on('end', async () => {
 				if (tunnelConfig.privateKey) {
 					await rm(tunnelConfig.privateKey as string, { force: true });
 				}
 				proxy.close();
 			});
+		}).catch((err) => {
+			throw new Error(`Connection by SSH Tunnel failed: ${err.message}`);
 		});
 
 		return { db, pgp, sshClient };
