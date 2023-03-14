@@ -95,16 +95,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				<span v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }">{{ key }}</span>
 			</span>
 		</div>
-		<span v-if="text" :class="$style.text">{{ text }}</span>
+		<span v-if="text" :class="$style.text" class="ph-no-capture">{{ text }}</span>
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
 		</label>
-		<div
-			v-if="isSchemaValueArray"
-			:class="{ [$style.sub]: true, [$style.flat]: isFlat }"
-			class="ph-no-capture"
-		>
+		<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
 			<run-data-schema-item
 				v-for="(s, i) in schema.value"
 				:key="`${s.type}-${level}-${i}`"

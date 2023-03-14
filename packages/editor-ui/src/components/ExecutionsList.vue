@@ -72,7 +72,7 @@
 							/>
 						</td>
 						<td>
-							<span>{{
+							<span class="ph-no-capture">{{
 								execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
 							}}</span>
 						</td>

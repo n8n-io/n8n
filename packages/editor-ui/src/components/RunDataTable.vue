@@ -116,6 +116,7 @@
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
+							class="ph-no-capture"
 						>
 							<span
 								v-if="isSimple(data)"
