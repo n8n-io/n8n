@@ -397,12 +397,17 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				const returnData = [];
 
 				if (['ALL', 'running'].includes(this.filter.status)) {
-					returnData.push(...this.activeExecutions);
+					returnData.push(...(this.activeExecutions as IExecutionsSummary[]));
 				}
+
 				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
-				return returnData;
+
+				return returnData.filter(
+					(execution) =>
+						this.filter.workflowId === 'ALL' || execution.workflowId === this.filter.workflowId,
+				);
 			},
 			numSelected(): number {
 				if (this.allExistingSelected) {
@@ -537,12 +542,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.handleClearSelection();
 				this.refreshData();
 			},
-			handleClearSelection() {
+			handleClearSelection(): void {
 				this.allVisibleSelected = false;
 				this.allExistingSelected = false;
 				Vue.set(this, 'selectedItems', {});
 			},
-			handleFilterChanged() {
+			handleFilterChanged(): void {
 				this.refreshData();
 			},
 			handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
@@ -690,13 +695,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.finishedExecutionsCount = data.count;
 				this.finishedExecutionsCountEstimated = data.estimated;
 
-				if (this.finishedExecutions.length === 0) {
-					this.allVisibleSelected = false;
-					this.allExistingSelected = false;
-					this.selectedItems = {};
-				}
-
 				this.workflowsStore.addToCurrentExecutions(data.results);
+
+				if (this.finishedExecutions.length === 0) {
+					this.handleClearSelection();
+				}
 			},
 			async loadMore() {
 				if (this.filter.status === 'running') {
