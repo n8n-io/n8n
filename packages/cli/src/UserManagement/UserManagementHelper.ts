@@ -178,7 +178,7 @@ export const addUserSettings = async (publicUser: PublicUser) => {
 		return publicUser;
 	}
 
-	const execution = await UserService.getOneSuccefullyExecutedWorkflow(publicUser);
+	const execution = await UserService.getOneSuccessfullyExecutedWorkflow(publicUser);
 	if (execution) {
 		await Db.collections.User.update(
 			{ id: publicUser.id },

@@ -14,10 +14,10 @@
 						<template #workflow>
 							<n8n-text :bold="true"> {{ workflowName }} </n8n-text>
 						</template>
-						<template #ranSuccefully>
+						<template #ranSuccessfully>
 							<n8n-text>
 								<a :class="$style.link">{{
-									locale.baseText('userActivationSurveyModal.description.workflowRanSuccefully')
+									locale.baseText('userActivationSurveyModal.description.workflowRanSuccessfully')
 								}}</a>
 							</n8n-text>
 						</template>

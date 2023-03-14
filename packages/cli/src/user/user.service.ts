@@ -16,7 +16,7 @@ export class UserService {
 		return transaction.find(User, { where: { id: In(ids) } });
 	}
 
-	static async getOneSuccefullyExecutedWorkflow(user: PublicUser) {
+	static async getOneSuccessfullyExecutedWorkflow(user: PublicUser) {
 		const showUserActivationSurvey = user.settings?.showUserActivationSurvey;
 
 		if (!showUserActivationSurvey) {
