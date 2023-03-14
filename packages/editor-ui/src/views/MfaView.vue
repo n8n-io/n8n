@@ -27,9 +27,7 @@
 						:bold="false"
 						v-if="!showRecoveryCodeForm && !formError"
 						>{{ $locale.baseText('mfa.code.input.info') }}
-						<a
-						data-test-id="mfa-enter-recovery-code-button"
-						@click="onRecoveryCodeClick">{{
+						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
 							$locale.baseText('mfa.code.input.info.action')
 						}}</a></n8n-text
 					>
