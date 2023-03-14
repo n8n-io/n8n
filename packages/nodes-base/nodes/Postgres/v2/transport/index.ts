@@ -1,7 +1,8 @@
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
-import type { Client, ConnectConfig } from 'ssh2';
+import { Client } from 'ssh2';
+import type { ConnectConfig } from 'ssh2';
 import { createServer } from 'net';
 
 import { rm, writeFile } from 'fs/promises';
@@ -36,10 +37,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-export async function configurePostgres(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	sshClient?: Client,
-) {
+export async function configurePostgres(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('postgres');
 	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
@@ -79,6 +77,8 @@ export async function configurePostgres(
 		const db = pgp(config);
 		return { db, pgp };
 	} else {
+		const sshClient = new Client();
+
 		if (!sshClient) {
 			throw new Error('SSH Tunnel is enabled but no SSH Client was provided');
 		}
@@ -96,7 +96,6 @@ export async function configurePostgres(
 		};
 
 		const db = await new Promise<PgpDatabase>((resolve, reject) => {
-			const proxyPort = srcPort;
 			let ready = false;
 
 			const proxy = createServer((socket) => {
@@ -114,7 +113,7 @@ export async function configurePostgres(
 						stream.pipe(socket);
 					},
 				);
-			}).listen(proxyPort, srcHost);
+			}).listen(srcPort, srcHost);
 
 			sshClient.connect(tunnelConfig);
 
@@ -123,7 +122,7 @@ export async function configurePostgres(
 
 				const updatedDbServer = {
 					...config,
-					port: proxyPort,
+					port: srcPort,
 					host: srcHost,
 				};
 				const dbConnection = pgp(updatedDbServer);
@@ -138,6 +137,6 @@ export async function configurePostgres(
 			});
 		});
 
-		return { db, pgp };
+		return { db, pgp, sshClient };
 	}
 }

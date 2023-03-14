@@ -13,7 +13,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter<PostgresType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
-	const { db, pgp } = await configurePostgres.call(this);
+	const { db, pgp, sshClient } = await configurePostgres.call(this);
 
 	const postgresNodeData = {
 		resource,
@@ -34,6 +34,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	} catch (error) {
 		throw error;
 	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
 		pgp.end();
 	}
 
