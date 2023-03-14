@@ -166,19 +166,22 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 }
 
 export const addUserSettings = async (publicUser: PublicUser) => {
-	console.log('public user', publicUser);
-	console.log('firstworkfname', publicUser.settings?.firstWorkflowName);
-	console.log('firsworkfwan', publicUser.settings?.showUserActivationSurvey);
+	console.log('executionid', publicUser.settings?.firstSuccessfulExecutionId);
+	console.log('showUserActivationSurvey', publicUser.settings?.showUserActivationSurvey);
 
 	if (!config.getEnv('userActivationSurvey.enabled') || !config.getEnv('diagnostics.enabled')) {
 		return publicUser;
 	}
 
-	if (!publicUser.settings?.showUserActivationSurvey && publicUser.settings?.firstWorkflowName) {
+	if (
+		!publicUser.settings?.showUserActivationSurvey &&
+		publicUser.settings?.firstSuccessfulExecutionId
+	) {
 		return publicUser;
 	}
 
 	const execution = await UserService.getOneSuccessfullyExecutedWorkflow(publicUser);
+	console.log(execution);
 	if (execution) {
 		await Db.collections.User.update(
 			{ id: publicUser.id },
@@ -186,14 +189,14 @@ export const addUserSettings = async (publicUser: PublicUser) => {
 				settings: {
 					...publicUser.settings,
 					showUserActivationSurvey: true,
-					firstWorkflowName: execution.workflowData.name,
+					firstSuccessfulExecutionId: execution.id,
 				},
 			},
 		);
 		publicUser.settings = {
 			...publicUser.settings,
 			showUserActivationSurvey: true,
-			firstWorkflowName: execution.workflowData.name,
+			firstSuccessfulExecutionId: execution.id,
 		};
 	}
 	return publicUser;

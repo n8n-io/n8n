@@ -546,7 +546,7 @@ export interface IPersonalizationSurveyAnswers {
 export interface IUserSettings {
 	isOnboarded?: boolean;
 	showUserActivationSurvey?: boolean;
-	firstWorkflowName?: string;
+	firstSuccessfulExecutionId?: string;
 }
 
 export interface IUserManagementSettings {

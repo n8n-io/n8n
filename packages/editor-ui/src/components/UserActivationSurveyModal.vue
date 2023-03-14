@@ -16,7 +16,7 @@
 						</template>
 						<template #ranSuccessfully>
 							<n8n-text>
-								<a :class="$style.link">{{
+								<a target="_blank" :href="executionPath" :class="$style.link">{{
 									locale.baseText('userActivationSurveyModal.description.workflowRanSuccessfully')
 								}}</a>
 							</n8n-text>
@@ -58,20 +58,29 @@ import Vue from 'vue';
 import Modal from './Modal.vue';
 import { USER_ACTIVATION_SURVEY_MODAL } from '../constants';
 import { useUsersStore } from '@/stores/users';
+
 import confetti from 'canvas-confetti';
 import { IUser } from 'n8n-workflow';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
+import { Notification } from 'element-ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const userStore = useUsersStore();
+const workflowsStore = useWorkflowsStore();
 
 const hasAnyChanges = ref(false);
 const feedback = ref('');
 const modalBus = new Vue();
 const workflowName = ref('');
+const executionPath = ref('');
 
-onMounted(() => {
-	workflowName.value = userStore.currentUser?.settings?.firstWorkflowName ?? '';
+onMounted(async () => {
+	const execution = await workflowsStore.fetchExecutionDataById('225');
+	const workflowId = execution?.workflowId ?? '';
+	const executionId = execution?.id ?? '';
+	workflowName.value = execution?.workflowData.name ?? '';
+	executionPath.value = `/workflow/${workflowId}/executions/${executionId}`;
 
 	confetti({
 		particleCount: 200,
@@ -85,6 +94,7 @@ onMounted(() => {
 const onShareFeedback = () => {
 	telemetry.track('User responded to activation modal', { response: feedback.value });
 	modalBus.$emit('close');
+	showSharedFeedbackSuccess();
 };
 
 const buildUserObject = (currentUser: IUser) => {
@@ -114,6 +124,14 @@ const beforeClosingModal = () => {
 const onInput = () => {
 	hasAnyChanges.value = true;
 };
+
+const showSharedFeedbackSuccess = () => {
+	Notification.success({
+		title: locale.baseText('userActivationSurveyModal.sharedFeedback.success'),
+		message: '',
+		position: 'bottom-right',
+	});
+};
 </script>
 
 <style module lang="scss">
@@ -125,8 +143,8 @@ const onInput = () => {
 	font-weight: var(--font-weight-bold);
 }
 
-.description {
-	font-size: var(--font-size-m);
+.description > * {
+	font-size: var(--font-size-s);
 }
 
 .container > * {

@@ -27,7 +27,7 @@ export class UserService {
 			});
 
 			return Db.collections.Execution.findOne({
-				select: ['workflowData'],
+				select: ['id'],
 				where: {
 					workflowId: In(sharedWorkflows.map((d) => d.workflowId)),
 					status: 'success',
