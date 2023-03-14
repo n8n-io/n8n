@@ -572,6 +572,7 @@ export class ExecutionsService {
 		);
 
 		do {
+			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
 			const batch = idsToDelete.splice(0, 500);
 			await Db.collections.Execution.delete(batch);
 		} while (idsToDelete.length > 0);
