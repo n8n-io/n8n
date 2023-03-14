@@ -61,6 +61,7 @@
 							<el-checkbox
 								:value="allVisibleSelected"
 								@change="handleCheckAllVisibleChange"
+								:disabled="finishedExecutions.length === 0"
 								label=""
 								data-testid="select-visible-executions-checkbox"
 							/>
@@ -688,6 +689,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.finishedExecutions = data.results;
 				this.finishedExecutionsCount = data.count;
 				this.finishedExecutionsCountEstimated = data.estimated;
+
+				if (this.finishedExecutions.length === 0) {
+					this.allVisibleSelected = false;
+					this.allExistingSelected = false;
+					this.selectedItems = {};
+				}
 
 				this.workflowsStore.addToCurrentExecutions(data.results);
 			},
