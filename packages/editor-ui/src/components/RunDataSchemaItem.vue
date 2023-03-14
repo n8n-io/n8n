@@ -72,7 +72,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 </script>
 
 <template>
-	<div :class="$style.item">
+	<div :class="$style.item" data-test-id="run-data-schema-item">
 		<div
 			v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
 			:title="schema.type"

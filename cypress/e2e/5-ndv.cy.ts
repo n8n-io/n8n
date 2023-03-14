@@ -89,4 +89,18 @@ describe('NDV', () => {
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
 	});
+
+	it('should switch to output schema view and validate it', () => {
+		const schemaKeys = ['id', 'name', 'email', 'notes', 'country', 'created'];
+		workflowPage.actions.addNodeToCanvas('Customer Datastore (n8n training)', true, true, 'Get All People');
+		ndv.actions.execute();
+		ndv.getters.outputDisplayMode().children().should('have.length', 3);
+		ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
+		ndv.getters.outputDisplayMode().contains('Schema').click();
+		ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
+
+		schemaKeys.forEach((key) => {
+			ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('exist');
+		});
+	})
 });
