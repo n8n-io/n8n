@@ -5,7 +5,6 @@ import {
 	addFeatureFlags,
 	sanitizeUser,
 	updateUserSettings,
-	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -143,7 +142,10 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return withFeatureFlags(this.postHog, sanitizeUser(user));
+
+		publicUser = sanitizeUser(user);
+		await addFeatureFlags(this.postHog, publicUser);
+		return publicUser;
 	}
 
 	/**

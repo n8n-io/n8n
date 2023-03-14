@@ -6,7 +6,7 @@ import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
+import type { PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
@@ -16,7 +16,6 @@ import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
 import { RoleService } from '@/role/role.service';
 import type { PostHogClient } from '@/posthog';
-import { UserService } from '@/user/user.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
@@ -188,6 +187,9 @@ export const updateUserSettings = async (publicUser: PublicUser) => {
 			workflowId: In(sharedWorkflowsIds),
 			status: 'success',
 			mode: In(['retry', 'webhook', 'trigger']),
+		},
+		order: {
+			stoppedAt: 'DESC',
 		},
 	});
 
