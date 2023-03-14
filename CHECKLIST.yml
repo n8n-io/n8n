@@ -38,3 +38,11 @@ paths:
   "packages/design-system/**/*.vue":
     - Used design system tokens (colors, spacings...) where possible.
     - Updated Storybook with new component or updated functionality.
+
+  # e2e
+  "cypress/e2e/**":
+    - Avoided chaining commands more than two or three times (to avoid flakiness because only last one will be retried).
+    - Spoofed endpoints that are not critical for the test (to avoid flakiness).
+    - Picked most efficient path to start the test (for example skipped account setup and starting at /workflow/new for a canvas test).
+    - Avoided adding waits on time (use request intercepts instead).
+    - Ensured each spec does not depend on any another spec to pass.

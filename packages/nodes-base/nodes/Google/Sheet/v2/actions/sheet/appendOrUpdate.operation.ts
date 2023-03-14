@@ -1,11 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type {
 	ISheetUpdateData,
 	SheetProperties,
 	ValueInputOption,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';

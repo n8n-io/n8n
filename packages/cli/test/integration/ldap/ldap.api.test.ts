@@ -49,13 +49,11 @@ beforeAll(async () => {
 
 	authAgent = utils.createAuthAgent(app);
 
-	config.set(LDAP_ENABLED, true);
 	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
 		defaultLdapConfig.bindingAdminPassword,
 	);
 
 	utils.initConfigFile();
-	await utils.initLdapManager();
 });
 
 beforeEach(async () => {

@@ -1,12 +1,11 @@
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import type { IExecuteFunctions } from 'n8n-core';
 
 import {
 	baserowApiRequest,
