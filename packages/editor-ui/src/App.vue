@@ -97,17 +97,25 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 			}
 		},
 		async initHooks(): Promise<void> {
+			const hooksImports = [];
+
 			if (this.settingsStore.isCloudDeployment) {
-				await import('./hooks/cloud').then(({ n8nCloudHooks }) => {
-					extendExternalHooks(n8nCloudHooks);
-				});
+				hooksImports.push(
+					import('./hooks/cloud').then(({ n8nCloudHooks }) => {
+						extendExternalHooks(n8nCloudHooks);
+					}),
+				);
 			}
 
 			if (this.settingsStore.isTelemetryEnabled) {
-				await import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
-					extendExternalHooks(n8nPosthogHooks);
-				});
+				hooksImports.push(
+					import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
+						extendExternalHooks(n8nPosthogHooks);
+					}),
+				);
 			}
+
+			await Promise.allSettled(hooksImports);
 		},
 		async loginWithCookie(): Promise<void> {
 			try {
