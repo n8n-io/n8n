@@ -119,6 +119,9 @@ jest.mock('@/Db', () => {
 				clear: jest.fn(),
 				delete: jest.fn(),
 			},
+			Variables: {
+				find: jest.fn(() => []),
+			},
 		},
 	};
 });
