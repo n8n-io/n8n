@@ -22,8 +22,7 @@
     "lintfix": "eslint --ext .js,.ts,.vue src --fix",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
-    "test": "vitest run",
-    "test:ci": "vitest run --coverage",
+    "test": "vitest run --coverage",
     "test:dev": "vitest"
   },
   "dependencies": {
@@ -84,6 +83,7 @@
     "xss": "^1.0.10"
   },
   "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
     "@pinia/testing": "^0.0.14",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/vue": "^5.8.3",
@@ -98,16 +98,18 @@
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^2.0.9",
     "@types/uuid": "^8.3.2",
+    "@vitest/coverage-c8": "^0.28.5",
     "@vitejs/plugin-legacy": "^3.0.1",
     "@vitejs/plugin-vue2": "^2.2.0",
     "c8": "^7.12.0",
     "jshint": "^2.9.7",
+    "miragejs": "^0.1.47",
     "sass": "^1.55.0",
     "sass-loader": "^10.1.1",
     "string-template-parser": "^1.2.6",
     "vite": "4.0.4",
     "vite-plugin-monaco-editor": "^1.0.10",
-    "vitest": "^0.28.4",
+    "vitest": "^0.28.5",
     "vue-tsc": "^1.0.24"
   }
 }
