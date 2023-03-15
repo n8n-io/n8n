@@ -39,6 +39,8 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	workflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
+
+	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
 
 	workflowPage.getters.saveButton().should('contain', 'Saved');

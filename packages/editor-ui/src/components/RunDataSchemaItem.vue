@@ -9,6 +9,7 @@ type Props = {
 	level: number;
 	parent: Schema | null;
 	subKey: string;
+	paneType: 'input' | 'output';
 	mappingEnabled: boolean;
 	draggingPath: string;
 	distanceFromActive: number;
@@ -107,7 +108,8 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:schema="s"
 				:level="level + 1"
 				:parent="schema"
-				:subKey="`${s.type}-${level}-${i}`"
+				:paneType="paneType"
+				:subKey="`${paneType}_${s.type}-${level}-${i}`"
 				:mappingEnabled="mappingEnabled"
 				:draggingPath="draggingPath"
 				:distanceFromActive="distanceFromActive"

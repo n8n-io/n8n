@@ -329,6 +329,7 @@
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
 				:node="node"
+				:paneType="paneType"
 				:runIndex="runIndex"
 				:totalRuns="maxRunIndex"
 			/>
@@ -1305,10 +1306,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				this.activeNode.type === HTML_NODE_TYPE &&
 				this.activeNode.parameters.operation === 'generateHtmlTemplate';
 
-			this.ndvStore.setPanelDisplayMode({
-				pane: 'output',
-				mode: shouldDisplayHtml ? 'html' : 'table',
-			});
+			if (shouldDisplayHtml) {
+				this.ndvStore.setPanelDisplayMode({
+					pane: 'output',
+					mode: 'html',
+				});
+			}
 		},
 	},
 	watch: {
