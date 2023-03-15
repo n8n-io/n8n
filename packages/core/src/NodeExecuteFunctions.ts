@@ -73,6 +73,7 @@ import {
 	ExpressionError,
 } from 'n8n-workflow';
 
+import pick from 'lodash.pick';
 import { Agent } from 'https';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
@@ -667,24 +668,12 @@ async function proxyRequestToAxios(
 			return body;
 		}
 	} catch (error) {
-		const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
-		if (configObject.simple === false && response) {
-			if (configObject.resolveWithFullResponse) {
-				return {
-					body: response.data,
-					headers: response.headers,
-					statusCode: response.status,
-					statusMessage: response.statusText,
-				};
-			} else {
-				return response.data;
-			}
-		}
+		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
 		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
-		if (response) {
+		if (error.isAxiosError) {
 			Logger.debug('Request proxied to Axios failed', { status: response.status });
 			let responseData = response.data;
 
@@ -693,23 +682,26 @@ async function proxyRequestToAxios(
 					buffer.toString('utf-8'),
 				);
 			}
-			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+
+			if (configObject.simple === false) {
+				if (configObject.resolveWithFullResponse) {
+					return {
+						body: responseData,
+						headers: response.headers,
+						statusCode: response.status,
+						statusMessage: response.statusText,
+					};
+				} else {
+					return responseData;
+				}
+			}
+
+			const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+			throw Object.assign(new Error(message, { cause: error }), {
+				status: response.status,
+				options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+			});
 		}
-
-		error.cause = errorData;
-		error.error = error.response?.data || errorData;
-		error.statusCode = error.response?.status;
-		error.options = config || {};
-
-		// Remove not needed data and so also remove circular references
-		error.request = undefined;
-		error.config = undefined;
-		error.options.adapter = undefined;
-		error.options.httpsAgent = undefined;
-		error.options.paramsSerializer = undefined;
-		error.options.transformRequest = undefined;
-		error.options.transformResponse = undefined;
-		error.options.validateStatus = undefined;
 
 		throw error;
 	}
