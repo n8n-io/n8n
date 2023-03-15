@@ -1,5 +1,11 @@
 import { IExecutionsCurrentSummaryExtended, IRestApiContext } from '@/Interface';
-import { ExecutionFilters, ExecutionOptions, ExecutionStatus, IDataObject, WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	ExecutionFilters,
+	ExecutionOptions,
+	ExecutionStatus,
+	IDataObject,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 
 export async function getNewWorkflow(context: IRestApiContext, name?: string) {
