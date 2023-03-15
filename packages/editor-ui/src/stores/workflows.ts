@@ -50,7 +50,7 @@ import {
 	getActiveWorkflows,
 	getCurrentExecutions,
 	getExecutionData,
-	getFinishedExecutions,
+	getExecutions,
 	getNewWorkflow,
 	getWorkflow,
 	getWorkflows,
@@ -949,10 +949,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						workflowId: requestFilter.workflowId,
 					});
 				}
-				const finishedExecutions = await getFinishedExecutions(
-					rootStore.getRestApiContext,
-					requestFilter,
-				);
+				const finishedExecutions = await getExecutions(rootStore.getRestApiContext, requestFilter);
 				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
