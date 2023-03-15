@@ -2,15 +2,11 @@
 	<n8n-node-creator-node
 		:key="`${action.actionKey}_${action.displayName}`"
 		@click="onActionClick(action)"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
-		draggable
 		:class="$style.action"
 		:title="action.displayName"
 		:isTrigger="isTriggerAction(action)"
 	>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
 			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
 				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
 			</div>
@@ -150,7 +146,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 	opacity: 0.66;
 	border: 2px solid var(--color-foreground-xdark);
 	border-radius: var(--border-radius-large);
-	background-color: var(--color-background-xlight);
+	// background-color: var(--color-background-xlight);
 	display: flex;
 	justify-content: center;
 	align-items: center;

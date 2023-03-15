@@ -139,51 +139,51 @@ export default () => {
 						},
 					},
 				},
-				{
-					key: MANUAL_TRIGGER_NODE_TYPE,
-					type: 'node',
-					category: [CORE_NODES_CATEGORY],
-					properties: {
-						nodeType: {
-							group: [],
-							name: MANUAL_TRIGGER_NODE_TYPE,
-							displayName: instance?.proxy.$locale.baseText(
-								'nodeCreator.triggerHelperPanel.manualTriggerDisplayName',
-							),
-							description: instance?.proxy.$locale.baseText(
-								'nodeCreator.triggerHelperPanel.manualTriggerDescription',
-							),
-							icon: 'fa:mouse-pointer',
-						},
-					},
-				},
-				{
-					key: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-					type: 'node',
-					category: [CORE_NODES_CATEGORY],
-					properties: {
-						nodeType: {
-							group: [],
-							name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-							displayName: instance?.proxy.$locale.baseText(
-								'nodeCreator.triggerHelperPanel.workflowTriggerDisplayName',
-							),
-							description: instance?.proxy.$locale.baseText(
-								'nodeCreator.triggerHelperPanel.workflowTriggerDescription',
-							),
-							icon: 'fa:sign-out-alt',
-						},
-					},
-				},
-				{
-					type: 'subcategory',
-					key: OTHER_TRIGGER_NODES_SUBCATEGORY,
-					category: CORE_NODES_CATEGORY,
-					properties: {
-						subcategory: OTHER_TRIGGER_NODES_SUBCATEGORY,
-						icon: 'folder-open',
-					},
-				},
+				// {
+				// 	key: MANUAL_TRIGGER_NODE_TYPE,
+				// 	type: 'node',
+				// 	category: [CORE_NODES_CATEGORY],
+				// 	properties: {
+				// 		nodeType: {
+				// 			group: [],
+				// 			name: MANUAL_TRIGGER_NODE_TYPE,
+				// 			displayName: instance?.proxy.$locale.baseText(
+				// 				'nodeCreator.triggerHelperPanel.manualTriggerDisplayName',
+				// 			),
+				// 			description: instance?.proxy.$locale.baseText(
+				// 				'nodeCreator.triggerHelperPanel.manualTriggerDescription',
+				// 			),
+				// 			icon: 'fa:mouse-pointer',
+				// 		},
+				// 	},
+				// },
+				// {
+				// 	key: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				// 	type: 'node',
+				// 	category: [CORE_NODES_CATEGORY],
+				// 	properties: {
+				// 		nodeType: {
+				// 			group: [],
+				// 			name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				// 			displayName: instance?.proxy.$locale.baseText(
+				// 				'nodeCreator.triggerHelperPanel.workflowTriggerDisplayName',
+				// 			),
+				// 			description: instance?.proxy.$locale.baseText(
+				// 				'nodeCreator.triggerHelperPanel.workflowTriggerDescription',
+				// 			),
+				// 			icon: 'fa:sign-out-alt',
+				// 		},
+				// 	},
+				// },
+				// {
+				// 	type: 'subcategory',
+				// 	key: OTHER_TRIGGER_NODES_SUBCATEGORY,
+				// 	category: CORE_NODES_CATEGORY,
+				// 	properties: {
+				// 		subcategory: OTHER_TRIGGER_NODES_SUBCATEGORY,
+				// 		icon: 'folder-open',
+				// 	},
+				// },
 			],
 		},
 	];

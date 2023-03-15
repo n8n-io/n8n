@@ -29,8 +29,6 @@
 				:nodeType="item.properties.nodeType"
 				:allow-actions="withActionsGetter && withActionsGetter(item)"
 				:allow-description="withDescriptionGetter && withDescriptionGetter(item)"
-				@dragstart="wrappedEmit('dragstart', item, $event)"
-				@dragend="wrappedEmit('dragend', item, $event)"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
 				@actionsOpen="$listeners.actionsOpen"
 			/>
@@ -39,8 +37,6 @@
 				v-else-if="item.type === 'action'"
 				:nodeType="item.properties.nodeType"
 				:action="item.properties.nodeType"
-				@dragstart="wrappedEmit('dragstart', item, $event)"
-				@dragend="wrappedEmit('dragend', item, $event)"
 			/>
 
 			<view-item v-else-if="item.type === 'view'" :view="item.properties" />
@@ -174,21 +170,21 @@ const { renderedItems } = toRefs(state);
 	// Make sure border is fully visible
 	margin-left: 1px;
 	position: relative;
-	&::before {
-		content: '';
-		position: absolute;
-		left: -1px;
-		top: 0;
-		bottom: 0;
-		border-left: 2px solid transparent;
-	}
-	&:hover::before {
-		border-color: $node-creator-item-hover-border-color;
-	}
+	// &::before {
+	// 	content: '';
+	// 	position: absolute;
+	// 	left: -1px;
+	// 	top: 0;
+	// 	bottom: 0;
+	// 	border-left: 2px solid transparent;
+	// }
+	// &:hover::before {
+	// 	border-color: $node-creator-item-hover-border-color;
+	// }
 
-	&.active::before {
-		border-color: $color-primary !important;
-	}
+	// &.active::before {
+	// 	border-color: $color-primary !important;
+	// }
 
 	&.category.singleCategory {
 		display: none;

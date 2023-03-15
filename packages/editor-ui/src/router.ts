@@ -36,6 +36,7 @@ import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SignoutView from '@/views/SignoutView.vue';
+import GetSTartedView from '@/components/GetStartedView.vue';
 
 Vue.use(Router);
 
@@ -74,6 +75,20 @@ const router = new Router({
 		}
 	},
 	routes: [
+		{
+			path: '/getstarted',
+			name: VIEWS.GET_STARTED,
+			components: {
+				default: GetSTartedView,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
 		{
 			path: '/',
 			name: VIEWS.HOMEPAGE,

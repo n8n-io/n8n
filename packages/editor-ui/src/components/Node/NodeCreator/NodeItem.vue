@@ -1,9 +1,7 @@
 <template>
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<n8n-node-creator-node
-		:draggable="!showActionArrow"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
+		:draggable="false"
 		@click.stop="onClick"
 		:class="$style.nodeItem"
 		:description="allowDescription ? description : ''"
@@ -198,7 +196,7 @@ const { dragging, draggableDataTransfer } = toRefs(state);
 	opacity: 0.66;
 	border: 2px solid var(--color-foreground-xdark);
 	border-radius: var(--border-radius-large);
-	background-color: var(--color-background-xlight);
+	// background-color: var(--color-background-xlight);
 	display: flex;
 	justify-content: center;
 	align-items: center;

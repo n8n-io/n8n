@@ -8,8 +8,6 @@
 				class="node-creator"
 				ref="nodeCreator"
 				v-click-outside="onClickOutside"
-				@dragover="onDragOver"
-				@drop="onDrop"
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"

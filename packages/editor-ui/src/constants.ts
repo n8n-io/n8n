@@ -386,6 +386,7 @@ export enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	GET_STARTED = 'GetStarted',
 }
 
 export enum FAKE_DOOR_FEATURES {

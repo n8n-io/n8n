@@ -337,6 +337,8 @@ const renderedItems = computed<INodeCreateElement[]>(() => {
 });
 
 const isSearchVisible = computed<boolean>(() => {
+	if (props.firstLevelItems.length > 0 && activeSubcategory.value === null) return false;
+
 	if (subcategorizedItems.value.length === 0) return true;
 
 	return subcategorizedItems.value.length > 9;
@@ -617,17 +619,17 @@ const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state
 	margin-right: var(--spacing-s);
 }
 .categorizedItems {
-	background: white;
+	// background: white;
 	height: 100%;
-	background-color: $node-creator-background-color;
-	&:before {
-		box-sizing: border-box;
-		content: '';
-		border-left: 1px solid $node-creator-border-color;
-		width: 1px;
-		position: absolute;
-		height: 100%;
-	}
+	// background-color: $node-creator-background-color;
+	// &:before {
+	// 	box-sizing: border-box;
+	// 	content: '';
+	// 	border-left: 1px solid $node-creator-border-color;
+	// 	width: 1px;
+	// 	position: absolute;
+	// 	height: 100%;
+	// }
 }
 .footer {
 	font-size: var(--font-size-2xs);
