@@ -5,7 +5,7 @@ import {
 	IRestApiContext,
 	IUserResponse,
 } from '@/Interface';
-import { IDataObject, IUser } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<CurrentUserResponse | null> {

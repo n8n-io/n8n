@@ -587,7 +587,6 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
-	executedWorkflowSuccessfully: boolean;
 	settings?: {
 		isOnboarded?: boolean;
 		showUserActivationSurvey?: boolean;
