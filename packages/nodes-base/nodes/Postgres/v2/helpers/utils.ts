@@ -33,9 +33,39 @@ export function prepareErrorItem(
 	} as INodeExecutionData;
 }
 
-export function parsePostgresError(this: IExecuteFunctions, error: any, itemIndex?: number) {
+export function parsePostgresError(
+	this: IExecuteFunctions,
+	error: any,
+	queries: QueryWithValues[],
+	itemIndex?: number,
+) {
+	if (error.message.includes('syntax error at or near "')) {
+		try {
+			const snippet = error.message.match(/syntax error at or near "(.*)"/)[1] as string;
+			const failedQureryIndex = queries.findIndex((query) => query.query.includes(snippet));
+
+			if (failedQureryIndex !== -1) {
+				if (!itemIndex) {
+					itemIndex = failedQureryIndex;
+				}
+				const failedQuery = queries[failedQureryIndex].query;
+				const lines = failedQuery.split('\n');
+				const statements = failedQuery.split(';');
+				const statementIndex = statements.findIndex((statement) => statement.includes(snippet));
+				const lineIndex = lines.findIndex((line) => line.includes(snippet));
+				const errorMessage = `Syntax error in statement ${statementIndex + 1} at line ${
+					lineIndex + 1
+				} near "${snippet}"`;
+				error.message = errorMessage;
+			}
+		} catch (_err) {}
+	}
+
 	let message = error.message;
-	const description = error.description ? error.description : error.detail || error.hint;
+	const errorDescription = error.description ? error.description : error.detail || error.hint;
+	const description = errorDescription
+		? errorDescription
+		: `Failed query: ${queries[itemIndex || 0].query}`;
 
 	if ((error?.message as string).includes('ECONNREFUSED')) {
 		message = 'Connection refused';
@@ -150,7 +180,7 @@ export async function runQueries(
 				.flat();
 			returnData = returnData.length ? returnData : [{ json: { success: true } }];
 		} catch (err) {
-			const error = parsePostgresError.call(this, err);
+			const error = parsePostgresError.call(this, err, queries);
 			if (!this.continueOnFail()) throw error;
 
 			return [
@@ -181,7 +211,7 @@ export async function runQueries(
 
 					result.push(...executionData);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err, i);
+					const error = parsePostgresError.call(this, err, queries, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 					return result;
@@ -205,7 +235,7 @@ export async function runQueries(
 
 					result.push(...executionData);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err, i);
+					const error = parsePostgresError.call(this, err, queries, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 				}
