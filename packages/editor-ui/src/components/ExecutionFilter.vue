@@ -136,7 +136,7 @@ onBeforeMount(() => {
 					type="tertiary"
 					size="medium"
 					:active="!!countSelectedFilterProps"
-					data-test-id="executions-filter-button"
+					data-testid="executions-filter-button"
 				>
 					<n8n-badge v-if="!!countSelectedFilterProps" theme="primary" class="mr-4xs">{{
 						countSelectedFilterProps
@@ -155,6 +155,7 @@ onBeforeMount(() => {
 						:placeholder="$locale.baseText('executionsFilter.selectWorkflow')"
 						size="medium"
 						filterable
+						data-testid="executions-filter-workflows-select"
 					>
 						<div class="ph-no-capture">
 							<n8n-option
@@ -176,6 +177,7 @@ onBeforeMount(() => {
 						:currentTagIds="filter.tags"
 						:createEnabled="false"
 						@update="onTagsChange"
+						data-testid="executions-filter-tags-select"
 					/>
 				</div>
 				<div :class="$style.group">
@@ -188,6 +190,7 @@ onBeforeMount(() => {
 						:placeholder="$locale.baseText('executionsFilter.selectStatus')"
 						size="medium"
 						filterable
+						data-testid="executions-filter-status-select"
 					>
 						<n8n-option
 							v-for="item in statuses"
@@ -208,6 +211,7 @@ onBeforeMount(() => {
 							v-model="vModel.startDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.startDate')"
+							data-testid="executions-filter-start-date-picker"
 						/>
 						<span :class="$style.divider">to</span>
 						<el-date-picker
@@ -216,6 +220,7 @@ onBeforeMount(() => {
 							v-model="vModel.endDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.endDate')"
+							data-testid="executions-filter-end-date-picker"
 						/>
 					</div>
 				</div>
@@ -247,9 +252,12 @@ onBeforeMount(() => {
 								<template #content>
 									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 										<template #link>
-											<a target="_blank" :href="viewPlansLink">{{
-												$locale.baseText('executionsFilter.customData.inputTooltip.link')
-											}}</a>
+											<a
+												target="_blank"
+												:href="viewPlansLink"
+												data-testid="executions-filter-view-plans-link"
+												>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
+											>
 										</template>
 									</i18n>
 								</template>
@@ -262,6 +270,7 @@ onBeforeMount(() => {
 									:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 									:value="filter.metadata[0]?.key"
 									@input="onFilterMetaChange(0, 'key', $event)"
+									data-testid="execution-filter-saved-data-key-input"
 								/>
 							</n8n-tooltip>
 						</div>
@@ -288,6 +297,7 @@ onBeforeMount(() => {
 									:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 									:value="filter.metadata[0]?.value"
 									@input="onFilterMetaChange(0, 'value', $event)"
+									data-testid="execution-filter-saved-data-value-input"
 								/>
 							</n8n-tooltip>
 						</div>
