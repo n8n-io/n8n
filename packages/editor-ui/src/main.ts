@@ -28,6 +28,7 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { useWebhooksStore } from './stores/webhooks';
 import { useUsersStore } from './stores/users';
 import { VIEWS } from '@/constants';
+import { useUIStore } from './stores/ui';
 
 Vue.config.productionTip = false;
 

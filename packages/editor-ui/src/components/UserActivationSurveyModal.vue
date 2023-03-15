@@ -85,6 +85,7 @@ onMounted(async () => {
 		const { results: executions } = await getFinishedExecutions(rootStore.getRestApiContext, {
 			workflowId,
 			limit: 1,
+			lastId: -1,
 		});
 		const executionId = executions[0]?.id ?? '';
 		workflowName.value = executions[0]?.workflowName ?? '';
@@ -131,6 +132,8 @@ const beforeClosingModal = async () => {
 		} catch {
 			showSharedFeedbackError();
 			return false;
+		} finally {
+			localStorage.removeItem('activeModal');
 		}
 	}
 	return true;

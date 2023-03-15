@@ -290,11 +290,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async showUserActivationSurveyModal() {
 			const settingsStore = useSettingsStore();
-			if (settingsStore.isUserActivationSurveyEnabled) {
+
+			if (
+				settingsStore.isUserActivationSurveyEnabled &&
+				localStorage.getItem('activeModal') !== USER_ACTIVATION_SURVEY_MODAL
+			) {
 				const currentUser = this.currentUser;
 				if (currentUser?.settings?.showUserActivationSurvey) {
 					const uiStore = useUIStore();
 					uiStore.openModal(USER_ACTIVATION_SURVEY_MODAL);
+					localStorage.setItem('activeModal', USER_ACTIVATION_SURVEY_MODAL);
 				}
 			}
 		},
