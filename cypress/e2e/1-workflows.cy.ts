@@ -1,13 +1,7 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { v4 as uuid } from 'uuid';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
@@ -16,17 +10,10 @@ const multipleWorkflowsCount = 5;
 describe('Workflows', () => {
 	before(() => {
 		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
+		cy.skipSetup();
 	});
 
 	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		});
-
-		cy.signin({ email, password });
 		cy.visit(WorkflowsPage.url);
 	});
 

@@ -99,7 +99,7 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
@@ -693,7 +693,12 @@ async function proxyRequestToAxios(
 		if (response) {
 			Logger.debug('Request proxied to Axios failed', { status: response.status });
 			let responseData = response.data;
-			responseData = await binaryToBuffer(responseData);
+
+			if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
+				responseData = await binaryToBuffer(responseData).then((buffer) =>
+					buffer.toString('utf-8'),
+				);
+			}
 			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 		}
 

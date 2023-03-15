@@ -3,10 +3,8 @@ import set from 'lodash.set';
 import unset from 'lodash.unset';
 import prettyBytes from 'pretty-bytes';
 
-import type { IExecuteFunctions } from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
@@ -14,7 +12,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeOperationError, fileTypeFromMimeType } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	deepCopy,
+	jsonParse,
+	NodeOperationError,
+	fileTypeFromMimeType,
+} from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
 iconv.encodingExists('utf8');
