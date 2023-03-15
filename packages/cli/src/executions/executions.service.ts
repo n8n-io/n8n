@@ -49,6 +49,8 @@ interface IGetExecutionsQueryFilter {
 	waitTill?: FindOperator<any> | boolean;
 }
 
+type SortOptions  = 'ASC' | 'DESC';
+
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
@@ -247,7 +249,9 @@ export class ExecutionsService {
 			});
 		}
 
-		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		const sorting = (req.query?.sort as SortOptions) ?? 'DESC';
+
+		// Omit `data` from the Execution since it is the largest and not necessary for the list.
 		let query = Db.collections.Execution.createQueryBuilder('execution')
 			.select([
 				'execution.id',
@@ -261,7 +265,7 @@ export class ExecutionsService {
 				'execution.workflowData',
 				'execution.status',
 			])
-			.orderBy('id', 'DESC')
+			.orderBy('id', sorting)
 			.take(limit)
 			.where(findWhere);
 
