@@ -293,7 +293,7 @@ export class ExecutionsService {
 		}
 
 		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push('id NOT IN (:...executingWorkflowIds)');
+			rangeQuery.push('execution.id NOT IN (:...executingWorkflowIds)');
 			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
 		}
 
