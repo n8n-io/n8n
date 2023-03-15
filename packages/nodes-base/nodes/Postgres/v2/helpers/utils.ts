@@ -13,7 +13,7 @@ import type {
 	WhereClause,
 } from './interfaces';
 
-export function wrapData(data: IDataObject[]): INodeExecutionData[] {
+export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
 		return [{ json: data }];
 	}
