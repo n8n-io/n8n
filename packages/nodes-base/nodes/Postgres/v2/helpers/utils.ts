@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -34,12 +34,12 @@ export function prepareErrorItem(
 }
 
 export function parsePostgresError(
-	this: IExecuteFunctions,
+	node: INode,
 	error: any,
 	queries: QueryWithValues[],
 	itemIndex?: number,
 ) {
-	if (error.message.includes('syntax error at or near "')) {
+	if (error.message.includes('syntax error at or near') && queries.length) {
 		try {
 			const snippet = error.message.match(/syntax error at or near "(.*)"/)[1] as string;
 			const failedQureryIndex = queries.findIndex((query) => query.query.includes(snippet));
@@ -50,12 +50,8 @@ export function parsePostgresError(
 				}
 				const failedQuery = queries[failedQureryIndex].query;
 				const lines = failedQuery.split('\n');
-				const statements = failedQuery.split(';');
-				const statementIndex = statements.findIndex((statement) => statement.includes(snippet));
 				const lineIndex = lines.findIndex((line) => line.includes(snippet));
-				const errorMessage = `Syntax error in statement ${statementIndex + 1} at line ${
-					lineIndex + 1
-				} near "${snippet}"`;
+				const errorMessage = `Syntax error at line ${lineIndex + 1} near "${snippet}"`;
 				error.message = errorMessage;
 			}
 		} catch (_err) {}
@@ -63,15 +59,17 @@ export function parsePostgresError(
 
 	let message = error.message;
 	const errorDescription = error.description ? error.description : error.detail || error.hint;
-	const description = errorDescription
-		? errorDescription
-		: `Failed query: ${queries[itemIndex || 0].query}`;
+	let description = errorDescription;
+
+	if (!description && queries[itemIndex || 0]?.query) {
+		description = `Failed query: ${queries[itemIndex || 0].query}`;
+	}
 
 	if ((error?.message as string).includes('ECONNREFUSED')) {
 		message = 'Connection refused';
 	}
 
-	return new NodeOperationError(this.getNode(), error as Error, {
+	return new NodeOperationError(node, error as Error, {
 		message,
 		description,
 		itemIndex,
@@ -180,7 +178,7 @@ export async function runQueries(
 				.flat();
 			returnData = returnData.length ? returnData : [{ json: { success: true } }];
 		} catch (err) {
-			const error = parsePostgresError.call(this, err, queries);
+			const error = parsePostgresError(this.getNode(), err, queries);
 			if (!this.continueOnFail()) throw error;
 
 			return [
@@ -211,7 +209,7 @@ export async function runQueries(
 
 					result.push(...executionData);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err, queries, i);
+					const error = parsePostgresError(this.getNode(), err, queries, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 					return result;
@@ -235,7 +233,7 @@ export async function runQueries(
 
 					result.push(...executionData);
 				} catch (err) {
-					const error = parsePostgresError.call(this, err, queries, i);
+					const error = parsePostgresError(this.getNode(), err, queries, i);
 					if (!this.continueOnFail()) throw error;
 					result.push(prepareErrorItem(items, error, i));
 				}

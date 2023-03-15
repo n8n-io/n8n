@@ -23,7 +23,7 @@
     "lint": "eslint --quiet nodes credentials",
     "lintfix": "eslint nodes credentials --fix",
     "watch": "tsc-watch --onSuccess \"pnpm n8n-generate-ui-types\"",
-    "test": "jest"
+    "test": "jest -t PostgresV2"
   },
   "files": [
     "dist"
