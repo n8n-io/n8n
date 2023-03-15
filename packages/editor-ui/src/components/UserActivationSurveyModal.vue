@@ -64,7 +64,7 @@ import { IUser } from 'n8n-workflow';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
-import { getFinishedExecutions } from '@/api/workflows';
+import { getExecutions } from '@/api/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 
 const FEEDBACK_MAX_LENGTH = 300;
@@ -82,11 +82,15 @@ onMounted(async () => {
 	const currentSettings = getCurrentSettings();
 	const workflowId = currentSettings?.firstSuccessfulWorkflowId ?? '';
 	try {
-		const { results: executions } = await getFinishedExecutions(rootStore.getRestApiContext, {
-			workflowId,
-			limit: 1,
-			lastId: -1,
-		});
+		const { results: executions } = await getExecutions(
+			rootStore.getRestApiContext,
+			{
+				workflowId,
+				status: ['success'],
+				mode: ['webhook', 'trigger'],
+			},
+			{ sort: 'ASC', limit: 1 },
+		);
 		const executionId = executions[0]?.id ?? '';
 		workflowName.value = executions[0]?.workflowName ?? '';
 		executionPath.value = `/workflow/${workflowId}/executions/${executionId}`;

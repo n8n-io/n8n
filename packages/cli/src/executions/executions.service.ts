@@ -11,6 +11,7 @@ import type {
 	IRunExecutionData,
 	NodeOperationError,
 	IExecutionsSummary,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator, FindOptionsWhere } from 'typeorm';
@@ -40,7 +41,7 @@ import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers'
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
 	finished?: boolean;
-	mode?: string;
+	mode?: WorkflowExecuteMode[];
 	retryOf?: string;
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
@@ -49,14 +50,17 @@ interface IGetExecutionsQueryFilter {
 	waitTill?: FindOperator<any> | boolean;
 }
 
-type SortOptions  = 'ASC' | 'DESC';
+type SortOptions = 'ASC' | 'DESC';
 
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
 		finished: { type: 'boolean' },
-		mode: { type: 'string' },
+		mode: {
+			type: 'array',
+			items: { type: 'string' },
+		},
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
 		status: {
@@ -221,6 +225,10 @@ export class ExecutionsService {
 			Object.assign(findWhere, { finished: filter.finished });
 		}
 
+		if (filter?.mode) {
+			Object.assign(findWhere, { mode: In(filter.mode) });
+		}
+
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
 			lastId?: string;
@@ -274,6 +282,11 @@ export class ExecutionsService {
 		if (filter?.status) {
 			Object.assign(filter, { status: In(filter.status) });
 			Object.assign(countFilter, { status: In(filter.status) });
+		}
+
+		if (filter?.mode) {
+			Object.assign(filter, { mode: In(filter.mode) });
+			Object.assign(countFilter, { mode: In(filter.mode) });
 		}
 
 		if (filter) {

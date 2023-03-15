@@ -1898,7 +1898,7 @@ export interface ExecutionOptions {
 
 export interface ExecutionFilters {
 	finished?: boolean;
-	mode?: WorkflowExecuteMode;
+	mode?: WorkflowExecuteMode[];
 	retryOf?: string;
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
