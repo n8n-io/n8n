@@ -130,12 +130,12 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
               <!---->
               <input
                 checked="checked"
-                id="array-0-2"
+                id="input_array-0-2"
                 type="checkbox"
               />
               <label
                 class="toggle"
-                for="array-0-2"
+                for="input_array-0-2"
               >
                 <font-awesome-icon-stub
                   icon="angle-up"
@@ -320,12 +320,12 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
               <!---->
               <input
                 checked="checked"
-                id="array-0-0"
+                id="input_array-0-0"
                 type="checkbox"
               />
               <label
                 class="toggle"
-                for="array-0-0"
+                for="input_array-0-0"
               >
                 <font-awesome-icon-stub
                   icon="angle-up"
@@ -368,12 +368,12 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                   <!---->
                   <input
                     checked="checked"
-                    id="object-1-0"
+                    id="input_object-1-0"
                     type="checkbox"
                   />
                   <label
                     class="toggle"
-                    for="object-1-0"
+                    for="input_object-1-0"
                   >
                     <font-awesome-icon-stub
                       icon="angle-up"
@@ -414,12 +414,12 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                       <!---->
                       <input
                         checked="checked"
-                        id="object-2-0"
+                        id="input_object-2-0"
                         type="checkbox"
                       />
                       <label
                         class="toggle"
-                        for="object-2-0"
+                        for="input_object-2-0"
                       >
                         <font-awesome-icon-stub
                           icon="angle-up"
