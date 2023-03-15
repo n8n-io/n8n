@@ -105,6 +105,31 @@ describe('Node Creator', () => {
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Rename');
 	})
 
+	it('should not show actions for single action nodes', () => {
+		const singleActionNodes = [
+			'DHL',
+			'iCalendar',
+			'LingvaNex',
+			'Mailcheck',
+			'MSG91',
+			'OpenThesaurus',
+			'Spontit',
+			'Vonage',
+			'Send Email',
+			'Toggl Trigger'
+		]
+		const doubleActionNode = 'OpenWeatherMap'
+
+		nodeCreatorFeature.actions.openNodeCreator();
+		singleActionNodes.forEach((node) => {
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type(node);
+			nodeCreatorFeature.getters.getCreatorItem(node).find('button[class*="panelIcon"]').should('not.exist');
+		})
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type(doubleActionNode);
+		nodeCreatorFeature.getters.getCreatorItem(doubleActionNode).click();
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
+	})
+
 	describe('should correctly append manual trigger for regular actions', () => {
 		// For these sources, manual node should be added
 		const sourcesWithAppend = [
