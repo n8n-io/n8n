@@ -1,4 +1,4 @@
-import { vi, describe, test, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import Vue from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,13 +8,22 @@ import { faker } from '@faker-js/faker';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { STORES } from '@/constants';
 import { i18nInstance } from '@/plugins/i18n';
-import type { IWorkflowShortResponse } from '@/Interface';
+import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
 
 Vue.use(PiniaVuePlugin);
 
 const CLOUD_HOST = 'https://app.n8n.cloud';
 const PRODUCTION_SUBSCRIPTION_HOST = 'https://subscription.n8n.io';
 const DEVELOPMENT_SUBSCRIPTION_HOST = 'https://staging-subscription.n8n.io';
+
+const defaultFilterState: ExecutionFilterType = {
+	status: 'all',
+	workflowId: 'all',
+	tags: [],
+	startDate: '',
+	endDate: '',
+	metadata: [{ key: '', value: '' }],
+};
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({
 	createdAt: faker.date.past().toDateString(),
@@ -89,4 +98,33 @@ describe('ExecutionFilter', () => {
 			expect(!!queryByTestId('executions-filter-workflows-select')).toBe(!!workflows?.length);
 		},
 	);
+
+	test('state change', async () => {
+		const { getByTestId, queryByTestId, emitted } = render(ExecutionFilter, renderOptions);
+
+		const filterChangedEvent = emitted().filterChanged;
+		expect(filterChangedEvent).toHaveLength(1);
+		expect(filterChangedEvent[0]).toEqual([defaultFilterState]);
+
+		expect(getByTestId('execution-filter-form')).not.toBeVisible();
+		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
+		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('executions-filter-button'));
+		expect(getByTestId('execution-filter-form')).toBeVisible();
+
+		await userEvent.click(getByTestId('executions-filter-status-select'));
+		await userEvent.click(getByTestId('executions-filter-status-select').querySelectorAll('li')[1]);
+
+		expect(emitted().filterChanged).toHaveLength(2);
+		expect(filterChangedEvent[1]).toEqual([{ ...defaultFilterState, status: 'error' }]);
+		expect(getByTestId('executions-filter-reset-button')).toBeInTheDocument();
+		expect(getByTestId('execution-filter-badge')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('executions-filter-reset-button'));
+		expect(emitted().filterChanged).toHaveLength(3);
+		expect(filterChangedEvent[2]).toEqual([defaultFilterState]);
+		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
+		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
+	});
 });

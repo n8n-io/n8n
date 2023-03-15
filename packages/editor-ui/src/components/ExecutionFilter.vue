@@ -138,13 +138,17 @@ onBeforeMount(() => {
 					:active="!!countSelectedFilterProps"
 					data-testid="executions-filter-button"
 				>
-					<n8n-badge v-if="!!countSelectedFilterProps" theme="primary" class="mr-4xs">{{
-						countSelectedFilterProps
-					}}</n8n-badge>
+					<n8n-badge
+						v-if="!!countSelectedFilterProps"
+						theme="primary"
+						class="mr-4xs"
+						data-testid="execution-filter-badge"
+						>{{ countSelectedFilterProps }}</n8n-badge
+					>
 					{{ $locale.baseText('executionsList.filters') }}
 				</n8n-button>
 			</template>
-			<div>
+			<div data-testid="execution-filter-form">
 				<div v-if="workflows?.length" :class="$style.group">
 					<label for="execution-filter-workflows">{{
 						$locale.baseText('workflows.heading')
@@ -309,7 +313,7 @@ onBeforeMount(() => {
 					@click="onFilterReset"
 					size="large"
 					text
-					data-test-id="executions-filter-reset-button"
+					data-testid="executions-filter-reset-button"
 				>
 					{{ $locale.baseText('executionsFilter.reset') }}
 				</n8n-button>
