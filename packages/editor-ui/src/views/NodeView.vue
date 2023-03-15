@@ -2494,6 +2494,18 @@ export default mixins(
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
 
+			const urlSearchParams = new URLSearchParams(window.location.search);
+			const params = Object.fromEntries(urlSearchParams.entries());
+			if (params.start) {
+				const nodes = params.start
+					.split(',')
+					.filter((name) => !!name)
+					.map((nodeTypeName) => ({ nodeTypeName }));
+
+				console.log('yo', nodes);
+				this.onAddNode(nodes, false, true);
+			}
+
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
 			this.tryToAddWelcomeSticky();
@@ -3755,10 +3767,13 @@ export default mixins(
 		onAddNode(
 			nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>,
 			dragAndDrop: boolean,
+			neverOpenNode = false,
 		) {
 			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
 				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
-				const openNDV = !isManualTrigger && (nodeTypes.length === 1 || index > 0);
+				const openNDV = neverOpenNode
+					? false
+					: !isManualTrigger && (nodeTypes.length === 1 || index > 0);
 				this.addNode(
 					nodeTypeName,
 					{ position, dragAndDrop },

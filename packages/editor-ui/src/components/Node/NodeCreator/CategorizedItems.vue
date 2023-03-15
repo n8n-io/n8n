@@ -1,5 +1,5 @@
 <template>
-	<transition :name="`panel-slide-${state.transitionDirection}`">
+	<transition>
 		<div
 			ref="mainPanelContainer"
 			tabindex="0"
@@ -653,7 +653,7 @@ const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state
 	&.headerWithBackground {
 		border-bottom: $node-creator-border-color solid 1px;
 		height: 50px;
-		background-color: $node-creator-subcategory-panel-header-bacground-color;
+		// background-color: $node-creator-subcategory-panel-header-bacground-color;
 		padding: var(--spacing-s) var(--spacing-s);
 	}
 }
