@@ -121,6 +121,15 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
+		test('should properly handle string that contain dollar signs', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce('"You \'owe\' me 200$"');
+
+			expect(completions('{{ "You \'owe\' me 200$".| }}')).toHaveLength(
+				natives('string').length + extensions('string').length,
+			);
+		});
+
 		test('should return completions for number literal: {{ (123).| }}', () => {
 			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce(123);
@@ -158,6 +167,26 @@ describe('Resolution-based completions', () => {
 			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
 				Object.keys(object).length + natives('object').length + extensions('object').length,
 			);
+		});
+	});
+
+	describe('complex expression completions', () => {
+		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
+		const { $input } = mockProxy;
+
+		test('should return completions when $input is used as a function parameter', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json.num);
+			const found = completions('{{ Math.abs($input.item.json.num1).| }}');
+			if (!found) throw new Error('Expected to find completions');
+			expect(found).toHaveLength(extensions('number').length + natives('number').length);
+		});
+
+		test('should return completions when node reference is used as a function parameter', () => {
+			const initialState = { workflows: { workflow: { nodes: mockNodes } } };
+
+			setActivePinia(createTestingPinia({ initialState }));
+
+			expect(completions('{{ new Date($(|) }}')).toHaveLength(mockNodes.length);
 		});
 	});
 
