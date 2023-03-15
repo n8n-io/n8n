@@ -7,15 +7,22 @@ import type {
 
 import { configurePostgres } from '../transport';
 
+import { Client } from 'ssh2';
+import type { PgpClient } from '../helpers/interfaces';
+
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	const credentials = credential.data as IDataObject;
 
-	const { db, pgp, sshClient } = await configurePostgres(credentials);
+	let sshClientCreated: Client | undefined = new Client();
+	let pgpClientCreated: PgpClient | undefined;
 
 	try {
+		const { db, pgp, sshClient } = await configurePostgres(credentials, {}, sshClientCreated);
+		sshClientCreated = sshClient;
+		pgpClientCreated = pgp;
 		await db.connect();
 	} catch (error) {
 		let message = error.message as string;
@@ -33,10 +40,12 @@ export async function postgresConnectionTest(
 			message,
 		};
 	} finally {
-		if (sshClient) {
-			sshClient.end();
+		if (sshClientCreated) {
+			sshClientCreated.end();
 		}
-		pgp.end();
+		if (pgpClientCreated) {
+			pgpClientCreated.end();
+		}
 	}
 	return {
 		status: 'OK',

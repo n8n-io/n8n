@@ -3,6 +3,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
 
+import type { Server } from 'net';
 import { createServer } from 'net';
 
 import pgPromise from 'pg-promise';
@@ -39,7 +40,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-export async function configurePostgres(credentials: IDataObject, options: IDataObject = {}) {
+export async function configurePostgres(
+	credentials: IDataObject,
+	options: IDataObject = {},
+	createdSshClient?: Client,
+) {
 	const pgp = pgPromise();
 
 	if (options.largeNumbersOutput === 'numbers') {
@@ -76,17 +81,19 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 		const db = pgp(dbConfig);
 		return { db, pgp };
 	} else {
-		const sshClient = new Client();
+		const sshClient = createdSshClient || new Client();
 
 		const tunnelConfig = await createSshConnectConfig(credentials);
 
 		const localHost = '127.0.0.1';
 		const localPort = 5432;
 
+		let proxy: Server | undefined;
+
 		const db = await new Promise<PgpDatabase>((resolve, reject) => {
 			let sshClientReady = false;
 
-			const proxy = createServer((socket) => {
+			proxy = createServer((socket) => {
 				if (!sshClientReady) return socket.destroy();
 
 				sshClient.forwardOut(
@@ -129,9 +136,11 @@ export async function configurePostgres(credentials: IDataObject, options: IData
 				if (tunnelConfig.privateKey) {
 					await rm(tunnelConfig.privateKey as string, { force: true });
 				}
-				proxy.close();
+				if (proxy) proxy.close();
 			});
 		}).catch((err) => {
+			if (proxy) proxy.close();
+			if (sshClient) sshClient.end();
 			throw new Error(`Connection by SSH Tunnel failed: ${err.message}`);
 		});
 
