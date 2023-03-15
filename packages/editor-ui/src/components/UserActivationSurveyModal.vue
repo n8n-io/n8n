@@ -56,7 +56,7 @@
 import { onMounted, ref } from 'vue';
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { USER_ACTIVATION_SURVEY_MODAL } from '../constants';
+import { LOCAL_STORAGE_ACTIVE_MODAL, USER_ACTIVATION_SURVEY_MODAL } from '../constants';
 import { useUsersStore } from '@/stores/users';
 
 import confetti from 'canvas-confetti';
@@ -133,7 +133,7 @@ const beforeClosingModal = async () => {
 			showSharedFeedbackError();
 			return false;
 		} finally {
-			localStorage.removeItem('activeModal');
+			localStorage.removeItem(LOCAL_STORAGE_ACTIVE_MODAL);
 		}
 	}
 	return true;
