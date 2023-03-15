@@ -151,7 +151,7 @@ oauth2CredentialController.get(
 		await Db.collections.Credentials.update(req.query.id, newCredentialsData);
 
 		const authQueryParameters = get(oauthCredentials, 'authQueryParameters', '') as string;
-		let returnUri = getUri(oAuthOptions, 'token') as string;
+		let returnUri = getUri(oAuthOptions, 'code') as string;
 
 		// if scope uses comma, change it as the library always return then with spaces
 		if ((get(oauthCredentials, 'scope') as string).includes(',')) {
