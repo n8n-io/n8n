@@ -66,7 +66,6 @@ import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
 import { getFinishedExecutions } from '@/api/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { IExecutionsCurrentSummaryExtended } from '@/Interface';
 
 const FEEDBACK_MAX_LENGTH = 300;
 
@@ -87,7 +86,6 @@ onMounted(async () => {
 			workflowId,
 			limit: 1,
 		});
-
 		const executionId = executions[0]?.id ?? '';
 		workflowName.value = executions[0]?.workflowName ?? '';
 		executionPath.value = `/workflow/${workflowId}/executions/${executionId}`;
@@ -97,6 +95,7 @@ onMounted(async () => {
 
 const onShareFeedback = () => {
 	telemetry.track('User responded to activation modal', { response: getFeedback() });
+	showSharedFeedbackSuccess();
 	modalBus.$emit('close');
 };
 
@@ -129,7 +128,6 @@ const beforeClosingModal = async () => {
 	if (currentUser) {
 		try {
 			await userStore.updateUser(buildUserObject(currentUser));
-			showSharedFeedbackSuccess();
 		} catch {
 			showSharedFeedbackError();
 			return false;
