@@ -14,16 +14,14 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { ExpressionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { extend, extendOptional, hasExpressionExtension, hasNativeMethod } from './Extensions';
-import type { ExpressionChunk, ExpressionCode } from './Extensions/ExpressionParser';
-import { joinExpression, splitExpression } from './Extensions/ExpressionParser';
-import { extendTransform } from './Extensions/ExpressionExtension';
+import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
+import { extendSyntax } from './Extensions/ExpressionExtension';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -292,7 +290,7 @@ export class Expression {
 		}
 
 		// Execute the expression
-		const extendedExpression = this.extendSyntax(parameterValue);
+		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
@@ -356,45 +354,6 @@ export class Expression {
 			}
 		}
 		return null;
-	}
-
-	extendSyntax(bracketedExpression: string): string {
-		const chunks = splitExpression(bracketedExpression);
-
-		const codeChunks = chunks
-			.filter((c) => c.type === 'code')
-			.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
-
-		if (!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression))
-			return bracketedExpression;
-
-		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
-			if (chunk.type === 'code') {
-				const output = extendTransform(chunk.text);
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				if (!output?.code) {
-					throw new ExpressionExtensionError('invalid syntax');
-				}
-
-				let text = output.code;
-
-				// We need to cut off any trailing semicolons. These cause issues
-				// with certain types of expression and cause the whole expression
-				// to fail.
-				if (text.trim().endsWith(';')) {
-					text = text.trim().slice(0, -1);
-				}
-
-				return {
-					...chunk,
-					text,
-				} as ExpressionCode;
-			}
-			return chunk;
-		});
-
-		return joinExpression(extendedChunks);
 	}
 
 	/**

@@ -1,3 +1,5 @@
+import type { Readable } from 'stream';
+
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -8,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request-promise-native';
 
@@ -931,7 +933,8 @@ export class HttpRequestV3 implements INodeType {
 			} catch {}
 		}
 
-		let requestOptions: OptionsWithUri = {
+		type RequestOptions = OptionsWithUri & { useStream?: boolean };
+		let requestOptions: RequestOptions = {
 			uri: '',
 		};
 
@@ -1060,18 +1063,23 @@ export class HttpRequestV3 implements INodeType {
 				});
 			}
 
-			const parametersToKeyValue = async (
-				acc: Promise<{ [key: string]: any }>,
+			const parametersToKeyValue = (
+				accumulator: { [key: string]: any },
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
-				const accumulator = await acc;
 				if (cur.parameterType === 'formBinaryData') {
 					if (!cur.inputDataFieldName) return accumulator;
 					const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
-					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, cur.inputDataFieldName);
+					let uploadData: Buffer | Readable;
+					const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+					}
 
 					accumulator[cur.name] = {
-						value: buffer,
+						value: uploadData,
 						options: {
 							filename: binaryData.fileName,
 							contentType: binaryData.mimeType,
@@ -1086,10 +1094,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.body = await bodyParameters.reduce(
-						parametersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.body = bodyParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
@@ -1128,11 +1133,26 @@ export class HttpRequestV3 implements INodeType {
 						'inputDataFieldName',
 						itemIndex,
 					) as string;
-					this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
-					requestOptions.body = await this.helpers.getBinaryDataBuffer(
-						itemIndex,
-						inputDataFieldName,
-					);
+
+					let uploadData: Buffer | Readable;
+					let contentLength: number;
+
+					const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
+
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
+						contentLength = metadata.fileSize;
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+						contentLength = uploadData.length;
+					}
+					requestOptions.body = uploadData;
+					requestOptions.headers = {
+						...requestOptions.headers,
+						'Content-Length': contentLength,
+						'Content-Type': itemBinaryData.mimeType ?? 'application/octet-stream',
+					};
 				} else if (bodyContentType === 'raw') {
 					requestOptions.body = body;
 				}
@@ -1141,10 +1161,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = await queryParameters.reduce(
-						parametersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1166,10 +1183,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
 				if (specifyHeaders === 'keypair') {
-					requestOptions.headers = await headerParameters.reduce(
-						parametersToKeyValue,
-						Promise.resolve({}),
-					);
+					requestOptions.headers = headerParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
@@ -1284,13 +1298,11 @@ export class HttpRequestV3 implements INodeType {
 				requestPromises.push(requestWithAuthentication);
 			}
 		}
-
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			response = promisesResponses.shift();
-
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
@@ -1336,7 +1348,10 @@ export class HttpRequestV3 implements INodeType {
 						0,
 						false,
 					) as boolean;
-					const data = Buffer.from(response.body as Buffer).toString();
+
+					const data = await this.helpers
+						.binaryToBuffer(response.body as Buffer | Readable)
+						.then((body) => body.toString());
 					response.body = jsonParse(data, {
 						...(neverError
 							? { fallbackValue: {} }
@@ -1346,7 +1361,9 @@ export class HttpRequestV3 implements INodeType {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					const data = Buffer.from(response.body as Buffer).toString();
+					const data = await this.helpers
+						.binaryToBuffer(response.body as Buffer | Readable)
+						.then((body) => body.toString());
 					response.body = !data ? undefined : data;
 				}
 			}
@@ -1395,14 +1412,14 @@ export class HttpRequestV3 implements INodeType {
 					newItem.json = returnItem;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body as Buffer,
+						response!.body as Buffer | Readable,
 						fileName,
 					);
 				} else {
 					newItem.json = items[itemIndex].json;
 
 					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response! as Buffer,
+						response! as Buffer | Readable,
 						fileName,
 					);
 				}
