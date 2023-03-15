@@ -46,6 +46,19 @@ export async function workflowExecutionCompleted(
 			workflow_id: workflowId,
 		};
 
+		if (!owner.settings?.firstSuccessfulWorkflowId) {
+			await Db.collections.User.update(
+				{ id: owner.id },
+				{
+					settings: {
+						...owner.settings,
+						firstSuccessfulWorkflowId: workflowId,
+						showUserActivationSurvey: true,
+					},
+				},
+			);
+		}
+
 		// Send the metrics
 		await Container.get(InternalHooks).onFirstProductionWorkflowSuccess(metrics);
 	} catch (error) {

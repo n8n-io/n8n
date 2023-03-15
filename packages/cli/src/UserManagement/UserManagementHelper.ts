@@ -165,13 +165,14 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 }
 
 export const updateUserSettings = async (publicUser: PublicUser) => {
+	return publicUser;
 	if (!config.getEnv('userActivationSurvey.enabled') || !config.getEnv('diagnostics.enabled')) {
 		return;
 	}
 
 	if (
 		!publicUser.settings?.showUserActivationSurvey &&
-		publicUser.settings?.firstSuccessfulExecutionId
+		publicUser.settings?.firstSuccessfulWorkflowId
 	) {
 		return;
 	}
@@ -200,14 +201,14 @@ export const updateUserSettings = async (publicUser: PublicUser) => {
 				settings: {
 					...publicUser.settings,
 					showUserActivationSurvey: true,
-					firstSuccessfulExecutionId: execution.id,
+					firstSuccessfulWorkflowId: execution.id,
 				},
 			},
 		);
 		publicUser.settings = {
 			...publicUser.settings,
 			showUserActivationSurvey: true,
-			firstSuccessfulExecutionId: execution.id,
+			firstSuccessfulWorkflowId: execution.id,
 		};
 	}
 	return;

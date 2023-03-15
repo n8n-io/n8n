@@ -64,12 +64,14 @@ import { IUser } from 'n8n-workflow';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { getFinishedExecutions } from '@/api/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { IExecutionsCurrentSummaryExtended } from '@/Interface';
 
 const FEEDBACK_MAX_LENGTH = 300;
 
 const userStore = useUsersStore();
-const workflowsStore = useWorkflowsStore();
+const rootStore = useRootStore();
 
 const hasAnyChanges = ref(false);
 const feedback = ref('');
@@ -79,21 +81,18 @@ const executionPath = ref('');
 
 onMounted(async () => {
 	const currentSettings = getCurrentSettings();
-	const execution = await workflowsStore.fetchExecutionDataById(
-		currentSettings?.firstSuccessfulExecutionId ?? '',
-	);
-	const workflowId = execution?.workflowId ?? '';
-	const executionId = execution?.id ?? '';
-	workflowName.value = execution?.workflowData.name ?? '';
-	executionPath.value = `/workflow/${workflowId}/executions/${executionId}`;
+	const workflowId = currentSettings?.firstSuccessfulWorkflowId ?? '';
+	try {
+		const { results: executions } = await getFinishedExecutions(rootStore.getRestApiContext, {
+			workflowId,
+			limit: 1,
+		});
 
-	confetti({
-		particleCount: 200,
-		spread: 100,
-		origin: { y: 0.6 },
-		zIndex: 2050,
-		colors: ['5C4EC2', 'D7E6F1', 'FF9284', '8D7FED', 'B8AFF9', 'FF6D5A'],
-	});
+		const executionId = executions[0]?.id ?? '';
+		workflowName.value = executions[0]?.workflowName ?? '';
+		executionPath.value = `/workflow/${workflowId}/executions/${executionId}`;
+		showConfetti();
+	} catch (e) {}
 });
 
 const onShareFeedback = () => {
@@ -156,6 +155,16 @@ const showSharedFeedbackError = () => {
 		title: locale.baseText('userActivationSurveyModal.sharedFeedback.error'),
 		message: '',
 		position: 'bottom-right',
+	});
+};
+
+const showConfetti = () => {
+	confetti({
+		particleCount: 200,
+		spread: 100,
+		origin: { y: 0.6 },
+		zIndex: 2050,
+		colors: ['5C4EC2', 'D7E6F1', 'FF9284', '8D7FED', 'B8AFF9', 'FF6D5A'],
 	});
 };
 </script>

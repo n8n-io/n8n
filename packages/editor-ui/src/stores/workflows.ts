@@ -938,7 +938,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async loadCurrentWorkflowExecutions(requestFilter: IDataObject): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
-			let finishedExecutions = [];
 
 			if (!requestFilter.workflowId) {
 				return [];
@@ -950,7 +949,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						workflowId: requestFilter.workflowId,
 					});
 				}
-				finishedExecutions = await getFinishedExecutions(
+				const finishedExecutions = await getFinishedExecutions(
 					rootStore.getRestApiContext,
 					requestFilter,
 				);
