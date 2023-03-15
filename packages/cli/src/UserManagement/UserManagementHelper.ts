@@ -6,7 +6,7 @@ import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { PublicUser, WhereClause } from '@/Interfaces';
+import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
@@ -164,75 +164,28 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	return sanitizedUser;
 }
 
-export const updateUserSettings = async (publicUser: PublicUser) => {
-	return publicUser;
-	if (!config.getEnv('userActivationSurvey.enabled') || !config.getEnv('diagnostics.enabled')) {
-		return;
-	}
-
-	if (
-		!publicUser.settings?.showUserActivationSurvey &&
-		publicUser.settings?.firstSuccessfulWorkflowId
-	) {
-		return;
-	}
-
-	const sharedWorkflowsIds = await WorkflowsService.getWorkflowIdsForUser(
-		publicUser as unknown as User,
-		['owner'],
-	);
-
-	const execution = await Db.collections.Execution.findOne({
-		select: ['id'],
-		where: {
-			workflowId: In(sharedWorkflowsIds),
-			status: 'success',
-			mode: In(['retry', 'webhook', 'trigger']),
-		},
-		order: {
-			stoppedAt: 'DESC',
-		},
-	});
-
-	if (execution) {
-		await Db.collections.User.update(
-			{ id: publicUser.id },
-			{
-				settings: {
-					...publicUser.settings,
-					showUserActivationSurvey: true,
-					firstSuccessfulWorkflowId: execution.id,
-				},
-			},
-		);
-		publicUser.settings = {
-			...publicUser.settings,
-			showUserActivationSurvey: true,
-			firstSuccessfulWorkflowId: execution.id,
-		};
-	}
-	return;
-};
-
-export async function addFeatureFlags(postHog: PostHogClient | undefined, user: PublicUser) {
+export async function withFeatureFlags(
+	postHog: PostHogClient | undefined,
+	user: CurrentUser,
+): Promise<CurrentUser> {
 	if (!postHog) {
-		return;
+		return user;
 	}
 
 	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
 	// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
-	const timeoutPromise = new Promise<PublicUser>((resolve) => {
+	const timeoutPromise = new Promise<CurrentUser>((resolve) => {
 		setTimeout(() => {
 			resolve(user);
 		}, 1500);
 	});
 
-	const fetchPromise = new Promise<PublicUser>(async (resolve) => {
+	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
 		user.featureFlags = await postHog.getFeatureFlags(user);
 		resolve(user);
 	});
 
-	await Promise.race([fetchPromise, timeoutPromise]);
+	return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {

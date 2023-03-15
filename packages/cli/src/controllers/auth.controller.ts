@@ -1,11 +1,7 @@
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import {
-	addFeatureFlags,
-	sanitizeUser,
-	updateUserSettings,
-} from '@/UserManagement/UserManagementHelper';
+import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
@@ -88,10 +84,7 @@ export class AuthController {
 		}
 		if (user) {
 			await issueCookie(res, user);
-			const publicUser = sanitizeUser(user);
-			await updateUserSettings(publicUser);
-			await addFeatureFlags(this.postHog, publicUser);
-			return publicUser;
+			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
 
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
@@ -107,16 +100,11 @@ export class AuthController {
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
 		let user: User;
-		let publicUser: PublicUser;
 		if (cookieContents) {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				publicUser = sanitizeUser(user);
-				await updateUserSettings(publicUser);
-				await addFeatureFlags(this.postHog, publicUser);
-
-				return publicUser;
+				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -142,10 +130,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-
-		publicUser = sanitizeUser(user);
-		await addFeatureFlags(this.postHog, publicUser);
-		return publicUser;
+		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
 
 	/**
