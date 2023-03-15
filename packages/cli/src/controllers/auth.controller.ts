@@ -11,7 +11,12 @@ import { LoginRequest, UserRequest } from '@/requests';
 import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
-import type { PublicUser, IDatabaseCollections, IInternalHooksClass, CurrentUser } from '@/Interfaces';
+import type {
+	PublicUser,
+	IDatabaseCollections,
+	IInternalHooksClass,
+	CurrentUser,
+} from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
