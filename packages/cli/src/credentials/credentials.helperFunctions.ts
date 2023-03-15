@@ -1,4 +1,3 @@
-import querystring from 'querystring';
 import type { AxiosResponse } from 'axios';
 import axios from 'axios';
 import type { IDataObject } from 'n8n-workflow';
@@ -133,7 +132,11 @@ export function getUri(options: OAuth2Parameters, tokenType: string) {
 	}
 
 	const sep = options.authorizationUri.includes('?') ? '&' : '?';
-	return options.authorizationUri + sep + querystring.stringify(Object.assign(qs, options.query));
+	return (
+		options.authorizationUri +
+		sep +
+		new URLSearchParams(Object.assign(qs, options.query) as Record<string, string>).toString()
+	);
 }
 
 export async function request(options: IDataObject) {
@@ -186,15 +189,17 @@ export async function getToken(
 	}
 
 	const data =
-		typeof url.search === 'string' ? querystring.parse(url.search.substr(1)) : url.search || {};
+		typeof url.search === 'string'
+			? Object.fromEntries(new URLSearchParams(url.search.substr(1)))
+			: url.search || {};
 	const error = getAuthError(data);
 
 	if (error) {
 		return Promise.reject(error);
 	}
 
-	if (options.state !== null && data.state !== options.state) {
-		return Promise.reject(new TypeError(`Invalid state: ${data.state as string}`));
+	if (options.state && data.state !== options.state) {
+		return Promise.reject(new TypeError(`Invalid state: ${data.state}`));
 	}
 
 	// Check whether the response code is set.
