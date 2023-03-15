@@ -188,6 +188,21 @@ describe('Resolution-based completions', () => {
 
 			expect(completions('{{ new Date($(|) }}')).toHaveLength(mockNodes.length);
 		});
+
+		test('should return completions for complex expression: {{ $now.diff($now.diff($now.|)) }}', () => {
+			expect(completions('{{ $now.diff($now.diff($now.|)) }}')).toHaveLength(
+				natives('date').length + extensions('object').length,
+			);
+		});
+
+		test('should return completions for complex expression: {{ $execution.resumeUrl.includes($json.) }}', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json);
+			const { $json } = mockProxy;
+			const found = completions('{{ $execution.resumeUrl.includes($json.|) }}');
+
+			if (!found) throw new Error('Expected to find completions');
+			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
+		});
 	});
 
 	describe('bracket-aware completions', () => {

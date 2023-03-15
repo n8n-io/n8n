@@ -5,7 +5,7 @@ import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
 import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
-// String literal expression is everything enclosed in singe, double or tick quotes following a dot
+// String literal expression is everything enclosed in single, double or tick quotes following a dot
 const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
 
 /**
@@ -44,10 +44,11 @@ function extractSubExpression(userInput: string): string {
 	// If it's not a dollar sign expression just strip parentheses
 	if (dollarSignIndex === -1) {
 		userInput = userInput.replace(/^.+(\(|\[|{)/, '');
-	} else if (dollarSignIndex > 0 && !stringLiteralRegex.test(userInput)) {
+	} else if (!stringLiteralRegex.test(userInput)) {
 		// If there is a dollar sign in the input and input is not a string literal,
-		// extract part of following $
-		userInput = `$${userInput.split('$')[1]}`;
+		// extract part of following the last $
+		const expressionParts = userInput.split('$');
+		userInput = `$${expressionParts[expressionParts.length - 1]}`;
 	}
 	return userInput;
 }
