@@ -10,7 +10,14 @@ export interface ExpressionTestEvaluation extends ExpressionTestBase {
 	output: IDataObject | GenericValue;
 }
 
-export type ExpressionTests = ExpressionTestEvaluation;
+export interface ExpressionTestTransform extends ExpressionTestBase {
+	type: 'transform';
+	// If we don't specify a result we expect it to be the same as the input
+	result?: string;
+	forceTransform?: boolean;
+}
+
+export type ExpressionTests = ExpressionTestEvaluation | ExpressionTestTransform;
 
 export interface ExpressionTestFixture {
 	expression: string;
@@ -31,6 +38,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ contact: null }],
 				output: undefined,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -56,6 +65,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{}],
 				output: undefined,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -66,6 +77,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ test: { json: { message: { message_id: 'value' } } } }],
 				output: 'value',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -76,6 +89,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ Set2: { json: { apiKey: 'testKey' } }, testKey: 'testValue' }],
 				output: 'testValue',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -86,6 +101,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ get: { json: { recipes: [{ image: 'test' }] } } }],
 				output: 'test',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -97,6 +114,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ Clockify1: { parameter: { workspaceId: 'test1' }, json: { id: 'test2' } } }],
 				output: 'https://example.com/api/v1/workspaces/test1/projects/test2',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -107,6 +126,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ 'dig check CF': { data: { stdout: 'testout' } } }],
 				output: ' testout',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -117,6 +138,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ 'Set URL': { json: { base_domain: 'left' } }, link: 'right' }],
 				output: 'leftright',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -127,6 +150,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [],
 				output: 0,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -137,6 +162,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [],
 				output: '',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -157,6 +184,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				],
 				output: 10,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -167,6 +196,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ GetTicket: { json: { tickets: [1, 2, 3, 4] } } }],
 				output: 4,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -177,6 +208,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ test: 1 }],
 				output: '[object Object]',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -186,6 +219,10 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				type: 'evaluation',
 				input: [],
 				output: 100,
+			},
+			{
+				type: 'transform',
+				result: '={{extend(Math, "floor", [extend(Math, "min", [1, 2]) * 100])}}',
 			},
 		],
 	},
@@ -203,6 +240,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				],
 				output: 'test',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -228,6 +267,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [],
 				output: undefined,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -239,6 +280,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ Webhook1: { json: { headers: { 'x-api-key': 'left' } } } }],
 				output: 'left-test',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -250,6 +293,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ Webhook1: { json: { headers: { 'x-api-key': 'left' } } }, test: 3 }],
 				output: 'left-3',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -260,6 +305,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ 'Create or update': { json: { vid: [1, 2, 3] } } }],
 				output: [1, 2, 3],
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -270,6 +317,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ Crypto: { json: { data: 'testtest' } } }],
 				output: 'https://example.com/test?id=testte',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -280,6 +329,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ body: { project: { name: 'test[1234]' } } }],
 				output: '1234',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -296,6 +347,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				],
 				output: 4,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -312,6 +365,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ projectName: 'Project Test', projectsCount: 3 }],
 				output: 'Project Test',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -322,6 +377,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ created_at: '2023-02-09T13:22:54.187Z' }],
 				output: '2023-02-09T13:22:54.187Z',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -332,6 +389,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ 'Find by ID1': { json: { fields: { clicks: 8 } } } }],
 				output: 9,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -343,6 +402,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ Bid: '3,80', Baserow: { json: { Count: '10' } } }],
 				output: '38.00',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -363,6 +424,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 	}
 }`,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -389,6 +452,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ 'Find by ID': { json: {} } }],
 				output: false,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -404,6 +469,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ 'HTTP Request': { json: {} } }],
 				output: false,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -414,6 +481,19 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [],
 				output: 1,
 			},
+			{ type: 'transform', result: '={{extend(Math, "min", [1, 2])}}' },
+		],
+	},
+	{
+		expression: '={{new String().toString();}}',
+		tests: [
+			{
+				type: 'evaluation',
+				input: [],
+				output: '',
+			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true, result: '={{new String().toString()}}' },
 		],
 	},
 	{
@@ -439,6 +519,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ different: { phone: 'test', name: 'test2' } }],
 				output: true,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -449,6 +531,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [],
 				output: 200,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -459,6 +543,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ assetValue: 50, value: 50 }],
 				output: 25,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -474,6 +560,8 @@ export const baseFixtures: ExpressionTestFixture[] = [
 				input: [{ search_term: 'asdf' }],
 				output: false,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -487,6 +575,8 @@ value
 multi
 line`,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -496,6 +586,12 @@ line`,
 				type: 'evaluation',
 				input: [{ body: { choices: 'testValue' } }],
 				output: { data: 'testValue' },
+			},
+			{ type: 'transform' },
+			{
+				type: 'transform',
+				forceTransform: true,
+				result: '={{( { "data": $json.body.choices } )}}',
 			},
 		],
 	},
@@ -517,6 +613,8 @@ line`,
 				input: [{ data: {} }],
 				output: undefined,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -532,6 +630,8 @@ line`,
 				input: [{ asdas: 1 }],
 				output: undefined,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -547,6 +647,8 @@ line`,
 				input: [{ data: {} }],
 				output: false,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -557,6 +659,8 @@ line`,
 				input: [],
 				output: 'TRUE',
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -597,6 +701,13 @@ line`,
 				input: [{}],
 				output: true,
 			},
+			{ type: 'transform' },
+			{
+				type: 'transform',
+				forceTransform: true,
+				result:
+					'={{ !(window.chainCancelToken1 = ((window.chainValue1 = $json) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.data) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.data) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.issues) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainCancelToken1 = ((window.chainValue1 = window.chainValue1.pageInfo) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.hasNextPage) }}',
+			},
 		],
 	},
 	{
@@ -607,6 +718,8 @@ line`,
 				input: [],
 				output: [{ name: 'something', batch_size: 1000, ignore_cols: ['x'] }],
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -622,6 +735,8 @@ line`,
 				input: [{ person: { json: {} } }],
 				output: false,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -636,6 +751,13 @@ line`,
 				type: 'evaluation',
 				input: [{}],
 				output: '',
+			},
+			{ type: 'transform' },
+			{
+				type: 'transform',
+				forceTransform: true,
+				result:
+					"={{ (window.chainCancelToken1 = ((window.chainValue1 = $json) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.data) == undefined ? '' : $json.data }}",
 			},
 		],
 	},
@@ -657,6 +779,8 @@ line`,
 				input: [{}],
 				output: false,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 	{
@@ -667,6 +791,8 @@ line`,
 				input: [],
 				output: 7,
 			},
+			{ type: 'transform' },
+			{ type: 'transform', forceTransform: true },
 		],
 	},
 ];
