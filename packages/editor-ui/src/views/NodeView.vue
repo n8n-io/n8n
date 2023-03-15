@@ -2502,7 +2502,6 @@ export default mixins(
 					.filter((name) => !!name)
 					.map((nodeTypeName) => ({ nodeTypeName }));
 
-				console.log('yo', nodes);
 				this.onAddNode(nodes, false, true);
 			}
 

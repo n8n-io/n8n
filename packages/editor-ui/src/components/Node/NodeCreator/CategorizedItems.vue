@@ -339,9 +339,7 @@ const renderedItems = computed<INodeCreateElement[]>(() => {
 const isSearchVisible = computed<boolean>(() => {
 	if (props.firstLevelItems.length > 0 && activeSubcategory.value === null) return false;
 
-	if (subcategorizedItems.value.length === 0) return true;
-
-	return subcategorizedItems.value.length > 9;
+	return props.categorizedItems.length > 9;
 });
 
 // Methods

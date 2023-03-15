@@ -315,13 +315,14 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			const triggers = this.visibleNodesWithActions.filter((node) =>
 				node.group.includes('trigger'),
 			);
-			const apps = this.visibleNodesWithActions
-				.filter((node) => !node.group.includes('trigger'))
-				.map((node) => {
-					const newNode = deepCopy(node);
-					newNode.actions = newNode.actions || [];
-					return newNode;
-				});
+			// const apps = this.visibleNodesWithActions
+			// 	.filter((node) => !node.group.includes('trigger'))
+			// 	.map((node) => {
+			// 		const newNode = deepCopy(node);
+			// 		newNode.actions = newNode.actions || [];
+			// 		return newNode;
+			// 	});
+			const apps = [];
 
 			triggers.forEach((node) => {
 				const normalizedName = node.name.toLowerCase().replace('trigger', '');

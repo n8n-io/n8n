@@ -2,7 +2,7 @@
 	<div :class="{ [$style.mainPanel]: true, [$style.isRoot]: isRoot }">
 		<CategorizedItems
 			:subcategoryOverride="nodeAppSubcategory"
-			:alwaysShowSearch="isActionsActive"
+			:alwaysShowSearch="false"
 			:hideOtherCategoryItems="isActionsActive"
 			:categorizedItems="computedCategorizedItems"
 			:searchItems="searchItems"
