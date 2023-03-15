@@ -1,6 +1,6 @@
 import moment from 'moment';
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -421,7 +421,7 @@ export class If implements INodeType {
 		// The different dataTypes to check the values in
 		const dataTypes = ['boolean', 'dateTime', 'number', 'string'];
 
-		// Itterate over all items to check which ones should be output as via output "true" and
+		// Iterate over all items to check which ones should be output as via output "true" and
 		// which ones via output "false"
 		let dataType: string;
 		let compareOperationResult: boolean;

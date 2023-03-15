@@ -1,8 +1,11 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type { OptionsWithUri } from 'request';
 
-import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { Accumulator, BaserowCredentials, LoadedResource } from './types';

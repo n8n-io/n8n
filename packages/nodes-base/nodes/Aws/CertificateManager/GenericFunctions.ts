@@ -1,13 +1,14 @@
 import get from 'lodash.get';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
+	IHttpRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
