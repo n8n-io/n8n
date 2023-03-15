@@ -10,7 +10,7 @@ import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import { WorkflowExecuteAdditionalData } from '../..';
+import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -182,7 +182,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 				status: 'crashed',
 			};
-			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
+			const workflowHooks = getWorkflowHooksMain(
 				{
 					userId: '',
 					workflowData: executionEntry.workflowData,
