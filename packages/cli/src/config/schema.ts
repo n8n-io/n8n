@@ -1012,6 +1012,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			variables: {
+				format: Boolean,
+				default: false,
+			},
 		},
 	},
 

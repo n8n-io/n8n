@@ -157,6 +157,7 @@ import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { variablesController } from './environments/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
 
 const exec = promisify(callbackExec);
 
@@ -309,10 +310,14 @@ class Server extends AbstractServer {
 				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
+				variables: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
+			variables: {
+				limit: 0,
 			},
 		};
 	}
@@ -338,6 +343,7 @@ class Server extends AbstractServer {
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -352,6 +358,10 @@ class Server extends AbstractServer {
 				loginLabel: getSamlLoginLabel(),
 				loginEnabled: isSamlLoginEnabled(),
 			});
+		}
+
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
 		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {

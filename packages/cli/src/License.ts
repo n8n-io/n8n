@@ -110,6 +110,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
+	isVariablesEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -154,6 +158,10 @@ export class License {
 	// Helper functions for computed data
 	getTriggerLimit(): number {
 		return (this.getFeatureValue('quota:activeWorkflows') ?? -1) as number;
+	}
+
+	getVariablesLimit(): number {
+		return (this.getFeatureValue('quota:maxVariables') ?? -1) as number;
 	}
 
 	getPlanName(): string {

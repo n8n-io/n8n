@@ -527,10 +527,14 @@ export interface IN8nUISettings {
 		saml: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
+		variables: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
 		environment: 'production' | 'staging';
+	};
+	variables: {
+		limit: number;
 	};
 }
 

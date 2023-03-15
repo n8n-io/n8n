@@ -1,8 +1,10 @@
 import type { Application } from 'express';
 
 import type { User } from '@/databases/entities/User';
+import config from '@/config';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import * as EnvironmentHelpers from '@/environments/enviromentHelpers';
 
 import type { AuthAgent } from './shared/types';
 
@@ -25,6 +27,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['Variables']);
+	config.set('enterprise.features.variables', true);
 });
 
 afterAll(async () => {
@@ -57,6 +60,10 @@ test('GET /variables should return all variables for a member', async () => {
 	expect(response.body.data.length).toBe(2);
 });
 
+// ----------------------------------------
+// GET /variables/:id - get a single variable
+// ----------------------------------------
+
 test('GET /variables/:id should return a single variable for an owner', async () => {
 	const [var1, var2] = await Promise.all([
 		testDb.createVariable('test1', 'value1'),
@@ -86,6 +93,10 @@ test('GET /variables/:id should return a single variable for a member', async ()
 	expect(response2.statusCode).toBe(200);
 	expect(response2.body.data.key).toBe('test2');
 });
+
+// ----------------------------------------
+// POST /variables - create a new variable
+// ----------------------------------------
 
 test('POST /variables should create a new credential and return it for an owner', async () => {
 	const toCreate = {
@@ -125,6 +136,21 @@ test('POST /variables should not create a new credential and return it for a mem
 	expect(byKey).toBeNull();
 });
 
+test("POST /variables should not create a new credential and return it if the instance doesn't have a license", async () => {
+	config.set('enterprise.features.variables', false);
+	const toCreate = {
+		key: 'create1',
+		value: 'createvalue1',
+	};
+	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
+	expect(response.statusCode).toBe(400);
+	expect(response.body.data?.key).not.toBe(toCreate.key);
+	expect(response.body.data?.value).not.toBe(toCreate.value);
+
+	const byKey = await testDb.getVariableByKey(toCreate.key);
+	expect(byKey).toBeNull();
+});
+
 test('POST /variables should fail to create a new credential and if one with the same key exists', async () => {
 	const toCreate = {
 		key: 'create1',
@@ -136,6 +162,10 @@ test('POST /variables should fail to create a new credential and if one with the
 	expect(response.body.data?.key).not.toBe(toCreate.key);
 	expect(response.body.data?.value).not.toBe(toCreate.value);
 });
+
+// ----------------------------------------
+// PATCH /variables/:id - change a variable
+// ----------------------------------------
 
 test('PATCH /variables/:id should modify existing credential if use is an owner', async () => {
 	const variable = await testDb.createVariable('test1', 'value1');
@@ -223,6 +253,10 @@ test('PATCH /variables/:id should not modify existing credential if one with the
 	expect(byId!.key).toBe(var1.key);
 	expect(byId!.value).toBe(var1.value);
 });
+
+// ----------------------------------------
+// DELETE /variables/:id - change a variable
+// ----------------------------------------
 
 test('DELETE /variables/:id should delete a single credential for an owner', async () => {
 	const [var1, var2, var3] = await Promise.all([

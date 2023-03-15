@@ -4,7 +4,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
-import { VariablesService } from './variables.service';
+import { VariablesLicenseError, VariablesService } from './variables.service';
 
 export const variablesController = express.Router();
 
@@ -38,7 +38,14 @@ variablesController.post(
 		}
 		const variable = req.body;
 		delete variable.id;
-		return VariablesService.create(variable);
+		try {
+			return await VariablesService.create(variable);
+		} catch (error) {
+			if (error instanceof VariablesLicenseError) {
+				throw new ResponseHelper.BadRequestError(error.message);
+			}
+			throw error;
+		}
 	}),
 );
 
