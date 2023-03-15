@@ -2,7 +2,6 @@ import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
-import type { PublicUser } from '..';
 
 export class UserService {
 	static async get(where: FindOptionsWhere<User>): Promise<User | null> {
