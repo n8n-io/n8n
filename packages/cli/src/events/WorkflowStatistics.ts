@@ -1,7 +1,10 @@
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import {
+	getWorkflowOwner,
+	setFirstSuccessfulWorkflow,
+} from '@/UserManagement/UserManagementHelper';
 import { QueryFailedError } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
@@ -46,18 +49,7 @@ export async function workflowExecutionCompleted(
 			workflow_id: workflowId,
 		};
 
-		if (!owner.settings?.firstSuccessfulWorkflowId) {
-			await Db.collections.User.update(
-				{ id: owner.id },
-				{
-					settings: {
-						...owner.settings,
-						firstSuccessfulWorkflowId: workflowId,
-						showUserActivationSurvey: true,
-					},
-				},
-			);
-		}
+		await setFirstSuccessfulWorkflow(owner, workflowId);
 
 		// Send the metrics
 		await Container.get(InternalHooks).onFirstProductionWorkflowSuccess(metrics);

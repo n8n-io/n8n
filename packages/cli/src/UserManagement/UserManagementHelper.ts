@@ -28,6 +28,21 @@ export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	return sharedWorkflow.user;
 }
 
+export async function setFirstSuccessfulWorkflow(user: User, workflowId: string) {
+	if (!user.settings?.firstSuccessfulWorkflowId) {
+		await Db.collections.User.update(
+			{ id: user.id },
+			{
+				settings: {
+					...user.settings,
+					firstSuccessfulWorkflowId: workflowId,
+					showUserActivationSurvey: true,
+				},
+			},
+		);
+	}
+}
+
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
 	const host = !!config.getEnv('userManagement.emails.smtp.host');

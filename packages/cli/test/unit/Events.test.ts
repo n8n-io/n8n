@@ -24,6 +24,8 @@ jest.spyOn(UserManagementHelper, 'getWorkflowOwner').mockImplementation(async (_
 	return { id: FAKE_USER_ID };
 });
 
+jest.spyOn(UserManagementHelper, 'setFirstSuccessfulWorkflow').mockImplementation();
+
 describe('Events', () => {
 	const internalHooks = mockInstance(InternalHooks);
 
