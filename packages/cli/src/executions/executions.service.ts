@@ -27,7 +27,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import * as Queue from '@/Queue';
+import { Queue } from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
@@ -203,7 +203,7 @@ export class ExecutionsService {
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const queue = await Queue.getInstance();
+			const queue = Container.get(Queue);
 			const currentJobs = await queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
