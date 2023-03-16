@@ -11,7 +11,6 @@ describe('Data transformation expressions', () => {
 
 	beforeEach(() => {
 		wf.actions.visit();
-		cy.waitForLoad();
 
 		cy.window()
 			// @ts-ignore

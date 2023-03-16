@@ -72,6 +72,7 @@ export enum LICENSE_FEATURES {
 	LDAP = 'feat:ldap',
 	SAML = 'feat:saml',
 	LOG_STREAMING = 'feat:logStreaming',
+	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

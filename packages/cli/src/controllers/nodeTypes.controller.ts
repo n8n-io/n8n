@@ -1,39 +1,43 @@
-import express from 'express';
 import { readFile } from 'fs/promises';
 import get from 'lodash.get';
-
+import { Request } from 'express';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
-
-import config from '@/config';
-import { NodeTypes } from '@/NodeTypes';
-import * as ResponseHelper from '@/ResponseHelper';
+import { Post, RestController } from '@/decorators';
 import { getNodeTranslationPath } from '@/TranslationHelpers';
-import { Container } from 'typedi';
+import type { Config } from '@/config';
+import type { NodeTypes } from '@/NodeTypes';
 
-export const nodeTypesController = express.Router();
+@RestController('/node-types')
+export class NodeTypesController {
+	private readonly config: Config;
 
-// Returns node information based on node names and versions
-nodeTypesController.post(
-	'/',
-	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
+	private readonly nodeTypes: NodeTypes;
+
+	constructor({ config, nodeTypes }: { config: Config; nodeTypes: NodeTypes }) {
+		this.config = config;
+		this.nodeTypes = nodeTypes;
+	}
+
+	@Post('/')
+	async getNodeInfo(req: Request) {
 		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 
-		const defaultLocale = config.getEnv('defaultLocale');
+		const defaultLocale = this.config.getEnv('defaultLocale');
 
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-				const { description } = Container.get(NodeTypes).getByNameAndVersion(name, version);
+				const { description } = this.nodeTypes.getByNameAndVersion(name, version);
 				acc.push(description);
 				return acc;
 			}, []);
 		}
 
-		async function populateTranslation(
+		const populateTranslation = async (
 			name: string,
 			version: number,
 			nodeTypes: INodeTypeDescription[],
-		) {
-			const { description, sourcePath } = Container.get(NodeTypes).getWithSourcePath(name, version);
+		) => {
+			const { description, sourcePath } = this.nodeTypes.getWithSourcePath(name, version);
 			const translationPath = await getNodeTranslationPath({
 				nodeSourcePath: sourcePath,
 				longNodeType: description.name,
@@ -44,12 +48,12 @@ nodeTypesController.post(
 				const translation = await readFile(translationPath, 'utf8');
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				description.translation = JSON.parse(translation);
-			} catch (error) {
+			} catch {
 				// ignore - no translation exists at path
 			}
 
 			nodeTypes.push(description);
-		}
+		};
 
 		const nodeTypes: INodeTypeDescription[] = [];
 
@@ -60,5 +64,5 @@ nodeTypesController.post(
 		await Promise.all(promises);
 
 		return nodeTypes;
-	}),
-);
+	}
+}

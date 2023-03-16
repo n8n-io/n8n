@@ -24,11 +24,11 @@ import * as GenericHelpers from '@/GenericHelpers';
 import * as Server from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
-import { handleLdapInit } from '@/Ldap/helpers';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
+import { getLicense } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -182,11 +182,26 @@ export class Start extends BaseCommand {
 		await Promise.all(files.map(compileFile));
 	}
 
+	async initLicense(): Promise<void> {
+		const license = getLicense();
+		await license.init(this.instanceId);
+
+		const activationKey = config.getEnv('license.activationKey');
+		if (activationKey) {
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
+			}
+		}
+	}
+
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 
@@ -330,8 +345,6 @@ export class Start extends BaseCommand {
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
-
-		await handleLdapInit();
 
 		const editorUrl = GenericHelpers.getBaseUrl();
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
