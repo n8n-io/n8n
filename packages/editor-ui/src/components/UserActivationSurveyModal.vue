@@ -15,10 +15,10 @@
 							<n8n-text :bold="true"> {{ workflowName }} </n8n-text>
 						</template>
 						<template #ranSuccessfully>
-							<n8n-text>
-								<a :class="$style.link">{{
+							<n8n-text :bold="true" :class="$style.link">
+								{{
 									locale.baseText('userActivationSurveyModal.description.workflowRanSuccessfully')
-								}}</a>
+								}}
 							</n8n-text>
 						</template>
 						<template #savedTime>
@@ -33,7 +33,14 @@
 						:label="$locale.baseText('userActivationSurveyModal.form.label')"
 						color="text-dark"
 					>
-						<n8n-input v-model="feedback" @input="onInput" ref="input" />
+						<n8n-input
+							type="textarea"
+							:maxlength="FEEDBACK_MAX_LENGTH"
+							rows="3"
+							v-model="feedback"
+							@input="onInput"
+							ref="input"
+						/>
 					</n8n-input-label>
 				</div>
 			</div>
@@ -56,7 +63,7 @@
 import { onMounted, ref } from 'vue';
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { LOCAL_STORAGE_ACTIVE_MODAL, USER_ACTIVATION_SURVEY_MODAL } from '../constants';
+import { USER_ACTIVATION_SURVEY_MODAL } from '../constants';
 import { useUsersStore } from '@/stores/users';
 
 import confetti from 'canvas-confetti';
@@ -108,8 +115,6 @@ const beforeClosingModal = async () => {
 		} catch {
 			showSharedFeedbackError();
 			return false;
-		} finally {
-			localStorage.removeItem(LOCAL_STORAGE_ACTIVE_MODAL);
 		}
 	}
 	return true;
@@ -152,7 +157,7 @@ const showConfetti = () => {
 }
 
 .link {
-	font-weight: var(--font-weight-bold);
+	color: var(--color-primary);
 }
 
 .description > * {

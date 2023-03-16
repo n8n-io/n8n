@@ -1691,7 +1691,7 @@
 	"settings.ldap.form.searchTimeout.infoText": "The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server",
 	"settings.ldap.section.synchronization.title": "Synchronization",
 	"userActivationSurveyModal.title": "Congrats! Your workflow ran automatically 👏",
-	"userActivationSurveyModal.description.workflowRan": "{workflow} workflow {ranSuccessfully} {savedTime}",
+	"userActivationSurveyModal.description.workflowRan": "{workflow} {ranSuccessfully} {savedTime}",
 	"userActivationSurveyModal.description.workflowRanSuccessfully": "ran successfully",
 	"userActivationSurveyModal.description.savedTime": "for the first time. Looks like n8n just saved you some time! Can you help us make n8n even better and answer the following questions?",
 	"userActivationSurveyModal.form.label": "What almost stopped you from creating this workflow?",
