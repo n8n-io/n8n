@@ -100,6 +100,13 @@ export function updateCurrentUser(
 	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
 }
 
+export function updateCurrentUserSettings(
+	context: IRestApiContext,
+	settings: IUserResponse['settings'],
+): Promise<IUserResponse['settings']> {
+	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
+}
+
 export function updateCurrentUserPassword(
 	context: IRestApiContext,
 	params: { newPassword: string; currentPassword: string },

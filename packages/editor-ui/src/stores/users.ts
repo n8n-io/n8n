@@ -16,6 +16,7 @@ import {
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
+	updateCurrentUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
@@ -236,11 +237,21 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			firstName: string;
 			lastName: string;
 			email: string;
-			settings?: IUserResponse['settings'];
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await updateCurrentUser(rootStore.getRestApiContext, params);
 			this.addUsers([user]);
+		},
+		async updateUserSettings(settings: IUserResponse['settings']): Promise<void> {
+			const rootStore = useRootStore();
+			const updatedSettings = await updateCurrentUserSettings(
+				rootStore.getRestApiContext,
+				settings,
+			);
+			if (this.currentUser) {
+				this.currentUser.settings = updatedSettings;
+				this.addUsers([this.currentUser]);
+			}
 		},
 		async updateCurrentUserPassword({
 			password,

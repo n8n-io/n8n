@@ -14,7 +14,12 @@ import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
 import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
-import { AuthenticatedRequest, MeRequest, UserUpdatePayload } from '@/requests';
+import {
+	AuthenticatedRequest,
+	MeRequest,
+	UserSettingsUpdatePayload,
+	UserUpdatePayload,
+} from '@/requests';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -52,7 +57,7 @@ export class MeController {
 	}
 
 	/**
-	 * Update the logged-in user's settings, except password.
+	 * Update the logged-in user's properties, except password.
 	 */
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
@@ -233,5 +238,23 @@ export class MeController {
 		});
 
 		return { success: true };
+	}
+
+	/**
+	 * Update the logged-in user's settings.
+	 */
+	@Patch('/settings')
+	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const { settings: currentSettings, id: userId } = req.user;
+
+		await this.userRepository.update(userId, { settings: { ...currentSettings, ...payload } });
+
+		const user = await this.userRepository.findOneOrFail({
+			select: ['settings'],
+			where: { id: userId },
+		});
+
+		return user.settings;
 	}
 }

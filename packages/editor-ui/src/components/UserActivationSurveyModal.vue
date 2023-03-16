@@ -16,7 +16,7 @@
 						</template>
 						<template #ranSuccessfully>
 							<n8n-text>
-								<a target="_blank" :href="executionPath" :class="$style.link">{{
+								<a :class="$style.link">{{
 									locale.baseText('userActivationSurveyModal.description.workflowRanSuccessfully')
 								}}</a>
 							</n8n-text>
@@ -60,40 +60,28 @@ import { LOCAL_STORAGE_ACTIVE_MODAL, USER_ACTIVATION_SURVEY_MODAL } from '../con
 import { useUsersStore } from '@/stores/users';
 
 import confetti from 'canvas-confetti';
-import { IUser } from 'n8n-workflow';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
-import { getExecutions } from '@/api/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const FEEDBACK_MAX_LENGTH = 300;
 
 const userStore = useUsersStore();
-const rootStore = useRootStore();
+const workflowStore = useWorkflowsStore();
 
 const hasAnyChanges = ref(false);
 const feedback = ref('');
 const modalBus = new Vue();
 const workflowName = ref('');
-const executionPath = ref('');
 
 onMounted(async () => {
 	const currentSettings = getCurrentSettings();
-	const workflowId = currentSettings?.firstSuccessfulWorkflowId ?? '';
 	try {
-		const { results: executions } = await getExecutions(
-			rootStore.getRestApiContext,
-			{
-				workflowId,
-				status: ['success'],
-				mode: ['webhook', 'trigger'],
-			},
-			{ sort: 'ASC', limit: 1 },
+		const { name } = await workflowStore.fetchWorkflow(
+			currentSettings?.firstSuccessfulWorkflowId ?? '',
 		);
-		const executionId = executions[0]?.id ?? '';
-		workflowName.value = executions[0]?.workflowName ?? '';
-		executionPath.value = `/workflow/${workflowId}/executions/${executionId}`;
+		workflowName.value = name;
 		showConfetti();
 	} catch (e) {}
 });
@@ -112,27 +100,11 @@ const getFeedback = () => {
 	return feedback.value.slice(0, FEEDBACK_MAX_LENGTH);
 };
 
-const buildUserObject = (currentUser: IUser) => {
-	const currentSettings = getCurrentSettings();
-	const { id = '', firstName = '', lastName = '', email = '' } = currentUser;
-	const newUser: IUser & { settings: { showUserActivationSurvey: boolean } } = {
-		id,
-		firstName,
-		lastName,
-		email,
-		settings: {
-			...currentSettings,
-			showUserActivationSurvey: false,
-		},
-	};
-	return newUser;
-};
-
 const beforeClosingModal = async () => {
 	const currentUser = userStore.currentUser;
 	if (currentUser) {
 		try {
-			await userStore.updateUser(buildUserObject(currentUser));
+			await userStore.updateUserSettings({ showUserActivationSurvey: false });
 		} catch {
 			showSharedFeedbackError();
 			return false;
