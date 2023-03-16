@@ -2602,6 +2602,7 @@ export default mixins(
 					await this.newWorkflow();
 				}
 			}
+
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -3640,8 +3641,14 @@ export default mixins(
 				const json = JSON.parse(message.data);
 				if (json && json.command === 'openWorkflow') {
 					try {
-						await this.importWorkflowExact(json);
+						const nodes = (json.workflow as string[]).map((name) => ({ nodeTypeName: name }));
+						this.onAddNode(nodes, false, true);
+						// await this.importWorkflowExact(json);
 						this.isExecutionPreview = false;
+
+						setTimeout(() => {
+							this.canvasStore.zoomToFit();
+						}, 0);
 					} catch (e) {
 						if (window.top) {
 							window.top.postMessage(

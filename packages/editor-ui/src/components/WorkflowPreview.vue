@@ -14,7 +14,7 @@
 				[$style.show]: this.showPreview,
 			}"
 			ref="preview_iframe"
-			:src="`${rootStore.baseUrl}workflows/demo`"
+			:src="src"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		></iframe>
@@ -44,6 +44,9 @@ export default mixins(showMessage).extend({
 			type: Object as () => IWorkflowDb,
 			required: false,
 		},
+		nodes: {
+			type: Array as () => string[],
+		},
 		executionId: {
 			type: String,
 			required: false,
@@ -70,12 +73,10 @@ export default mixins(showMessage).extend({
 	computed: {
 		...mapStores(useRootStore),
 		showPreview(): boolean {
-			return (
-				!this.loading &&
-				((this.mode === 'workflow' && !!this.workflow) ||
-					(this.mode === 'execution' && !!this.executionId)) &&
-				this.ready
-			);
+			return !this.loading && this.ready && !!this.nodes?.length;
+		},
+		src(): string {
+			return `${window.location.origin}/workflows/demo`;
 		},
 	},
 	methods: {
@@ -89,19 +90,19 @@ export default mixins(showMessage).extend({
 		},
 		loadWorkflow() {
 			try {
-				if (!this.workflow) {
-					throw new Error(this.$locale.baseText('workflowPreview.showError.missingWorkflow'));
-				}
-				if (!this.workflow.nodes || !Array.isArray(this.workflow.nodes)) {
-					throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
-				}
+				// if (!this.workflow) {
+				// 	throw new Error(this.$locale.baseText('workflowPreview.showError.missingWorkflow'));
+				// }
+				// if (!this.workflow.nodes || !Array.isArray(this.workflow.nodes)) {
+				// 	throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
+				// }
 
 				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
+				if (iframe.contentWindow && this.nodes) {
 					iframe.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openWorkflow',
-							workflow: this.workflow,
+							workflow: this.nodes,
 						}),
 						'*',
 					);

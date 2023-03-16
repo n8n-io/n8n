@@ -45,18 +45,19 @@ export const genericHelpers = mixins(showMessage).extend({
 			return { date, time };
 		},
 		editAllowedCheck(): boolean {
-			if (this.isReadOnly) {
-				this.$showMessage({
-					// title: 'Workflow can not be changed!',
-					title: this.$locale.baseText('genericHelpers.showMessage.title'),
-					message: this.$locale.baseText('genericHelpers.showMessage.message'),
-					type: 'info',
-					duration: 0,
-				});
-
-				return false;
-			}
 			return true;
+			// if (this.isReadOnly) {
+			// 	this.$showMessage({
+			// 		// title: 'Workflow can not be changed!',
+			// 		title: this.$locale.baseText('genericHelpers.showMessage.title'),
+			// 		message: this.$locale.baseText('genericHelpers.showMessage.message'),
+			// 		type: 'info',
+			// 		duration: 0,
+			// 	});
+
+			// 	return false;
+			// }
+			// return true;
 		},
 
 		startLoading(text?: string) {
