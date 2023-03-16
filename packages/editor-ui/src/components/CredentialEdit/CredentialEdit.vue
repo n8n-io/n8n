@@ -776,6 +776,14 @@ export default mixins(showMessage, nodeHelpers).extend({
 				credential = await this.updateCredential(credentialDetails);
 			}
 
+
+			window.top?.postMessage(
+					JSON.stringify({
+						command: 'credSaved',
+					}),
+					'*',
+				);
+
 			this.isSaving = false;
 			if (credential) {
 				this.credentialId = credential.id as string;

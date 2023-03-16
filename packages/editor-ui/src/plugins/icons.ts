@@ -1,6 +1,7 @@
 import Vue from 'vue';
 
 import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
+import { faYoutube } from '@fortawesome/free-brands-svg-icons';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
@@ -186,6 +187,7 @@ addIcon(faFileAlt);
 addIcon(faFileArchive);
 addIcon(faFileCode);
 addIcon(faFileDownload);
+addIcon(faYoutube);
 addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);

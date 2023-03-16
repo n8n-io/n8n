@@ -345,9 +345,33 @@ export default mixins(restApi).extend({
 		},
 	},
 	watch: {
+		requiredPropertiesFilled(filled) {
+			if (filled) {
+				window.top?.postMessage(
+					JSON.stringify({
+						command: 'credFilled',
+					}),
+					'*',
+				);
+			} else {
+				window.top?.postMessage(
+					JSON.stringify({
+						command: 'credUnFilled',
+					}),
+					'*',
+				);
+			}
+		},
 		showOAuthSuccessBanner(newValue, oldValue) {
 			if (newValue && !oldValue) {
 				this.$emit('scrollToTop');
+
+				window.top?.postMessage(
+					JSON.stringify({
+						command: 'credConnected',
+					}),
+					'*',
+				);
 			}
 		},
 	},

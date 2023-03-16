@@ -3639,6 +3639,19 @@ export default mixins(
 		async onPostMessageReceived(message: MessageEvent) {
 			try {
 				const json = JSON.parse(message.data);
+				if (json && json.command === 'saveWorkflow') {
+					this.saveCurrentWorkflowExternal(() => {
+						setTimeout(() => {
+							window.top?.postMessage(
+								JSON.stringify({
+									command: 'workflowSaved',
+									id: this.workflowsStore.workflowId,
+								}),
+								'*',
+							);
+						}, 0);
+					});
+				}
 				if (json && json.command === 'openWorkflow') {
 					try {
 						const nodes = (json.workflow as string[]).map((name) => ({ nodeTypeName: name }));

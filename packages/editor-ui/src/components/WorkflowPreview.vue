@@ -142,6 +142,7 @@ export default mixins(showMessage).extend({
 		receiveMessage({ data }: MessageEvent) {
 			try {
 				const json = JSON.parse(data);
+				console.log('yo', json);
 				if (json.command === 'n8nReady') {
 					this.ready = true;
 				} else if (json.command === 'openNDV') {
@@ -149,6 +150,18 @@ export default mixins(showMessage).extend({
 					this.nodeViewDetailsOpened = true;
 				} else if (json.command === 'closeNDV') {
 					this.nodeViewDetailsOpened = false;
+				} else if (json.command === 'workflowSaved') {
+					this.$emit('workflow-saved', { id: json.id });
+				} else if (json.command === 'credFilled') {
+					this.$emit('cred-filled');
+				} else if (json.command === 'credConnected') {
+					this.$emit('cred-connected');
+				} else if (json.command === 'credUnFilled') {
+					this.$emit('cred-unfilled');
+				} else if (json.command === 'credSaved') {
+					this.$emit('cred-saved');
+				} else if (json.command === 'ranNode') {
+					this.$emit('ran-node');
 				} else if (json.command === 'newCred') {
 					this.$emit('new-cred');
 				} else if (json.command === 'error') {
@@ -159,6 +172,17 @@ export default mixins(showMessage).extend({
 		onDocumentScroll() {
 			if (this.insideIframe) {
 				window.scrollTo(this.scrollX, this.scrollY);
+			}
+		},
+		save() {
+			const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
+			if (iframe.contentWindow) {
+				iframe.contentWindow.postMessage(
+					JSON.stringify({
+						command: 'saveWorkflow',
+					}),
+					'*',
+				);
 			}
 		},
 	},

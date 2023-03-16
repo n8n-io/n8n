@@ -39,7 +39,7 @@ const steps = [
 			{
 				title: 'Google credential documentation',
 				desc: 'Official docs maintained by the n8n team',
-				href: 'https://docs.n8n.io/integrations/builtin/credentials/google/'
+				href: 'https://docs.n8n.io/integrations/builtin/credentials/google/',
 			},
 			{
 				title: 'Google OAuth2 setup video',
@@ -108,9 +108,10 @@ const steps = [
 ];
 
 const router = useRouter();
-const current = ref(6);
+const current = ref(0);
 const loading = ref(true);
 const kickoff = ref([] as string[]);
+const preview = ref();
 
 onMounted(async () => {
 	await useNodeTypesStore().getNodeTypes();
@@ -140,6 +141,41 @@ const onOpenNDV = () => {
 const onNewCred = () => {
 	current.value = 3;
 };
+
+const onContinue = () => {
+	if (preview) {
+		preview.save();
+	}
+};
+
+const onCredFilled = () => {
+	console.log('hello');
+	current.value = 4;
+};
+
+const onCredUnFilled = () => {
+	current.value = 3;
+};
+
+const onCredConnected = () => {
+	current.value = 5;
+};
+
+const onCredSaved = () => {
+	current.value = 6;
+};
+
+const onParamsCompleted = () => {
+	current.value = 7;
+};
+
+const onSuccess = () => {
+	current.value = 8;
+};
+
+const onWorflowSaved = ({ id }) => {
+	router.push(`/workflows/${id}`);
+};
 </script>
 
 <template>
@@ -152,7 +188,19 @@ const onNewCred = () => {
 			<main-panel @nodeTypeSelected="openWorkflow" />
 		</div>
 		<div v-show="!loading && currentStep.id !== 'select-node'" :class="$style.other">
-			<WorkflowPreview :nodes="kickoff" @open-ndv="onOpenNDV" @new-cred="onNewCred" />
+			<WorkflowPreview
+				:nodes="kickoff"
+				@open-ndv="onOpenNDV"
+				@new-cred="onNewCred"
+				@workflow-saved="onWorflowSaved"
+				@cred-filled="onCredFilled"
+				@cred-unfilled="onCredUnFilled"
+				@cred-connected="onCredConnected"
+				@cred-saved="onCredSaved"
+				@ran-node="onSuccess"
+				@params-completed="onParamsCompleted"
+				ref="preview"
+			/>
 			<div :class="$style.panel">
 				<div :class="$style.icon">
 					<font-awesome-icon icon="question-circle" />
@@ -165,6 +213,7 @@ const onNewCred = () => {
 						<a :class="$style.resource" :href="res.href" target="_blank">
 							<div :class="$style.resourceIcon">
 								<font-awesome-icon v-if="res.type === 'forum'" icon="comments" />
+								<font-awesome-icon v-else-if="res.type === 'youtube'" icon="video" />
 								<font-awesome-icon v-else icon="book" />
 							</div>
 							<div :class="$style.resourceInfo">
@@ -173,6 +222,9 @@ const onNewCred = () => {
 							</div>
 						</a>
 					</div>
+				</div>
+				<div v-if="currentStep.action">
+					<n8n-button size="large" @click="onContinue">{{ currentStep.action.title }}</n8n-button>
 				</div>
 			</div>
 		</div>
@@ -197,7 +249,7 @@ const onNewCred = () => {
 
 .resourceIcon {
 	padding: 20px 16px;
-	color: #7D838F;
+	color: #7d838f;
 }
 
 .resourceInfo {
