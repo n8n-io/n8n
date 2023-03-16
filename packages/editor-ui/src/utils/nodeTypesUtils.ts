@@ -38,6 +38,7 @@ import {
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 import { useCredentialsStore } from '@/stores/credentials';
 import { i18n as locale } from '@/plugins/i18n';
+import { useSettingsStore } from '@/stores/settings';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -400,11 +401,13 @@ export const getNodeAuthOptions = (
 				field.options.map((option) => {
 					// Check if credential type associated with this auth option has overwritten properties
 					let hasOverrides = false;
-					const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
-					if (cred) {
-						hasOverrides =
-							useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
-							undefined;
+					if (useSettingsStore().isCloudDeployment) {
+						const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+						if (cred) {
+							hasOverrides =
+								useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
+								undefined;
+						}
 					}
 					return {
 						name:
