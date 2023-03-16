@@ -369,6 +369,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+
+			if (window.top) {
+				window.top.postMessage(JSON.stringify({ command: 'newCred' }), '*');
+			}
 		},
 		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
 			const rootStore = useRootStore();

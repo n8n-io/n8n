@@ -58,7 +58,7 @@
 					@input="onDisplayModeChange"
 					data-test-id="ndv-run-data-display-mode"
 				/>
-				<n8n-icon-button
+				<!-- <n8n-icon-button
 					v-if="canPinData && !isReadOnly"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
@@ -69,7 +69,7 @@
 					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
-				/>
+				/> -->
 				<n8n-tooltip
 					placement="bottom-end"
 					v-if="canPinData && jsonData && jsonData.length > 0"

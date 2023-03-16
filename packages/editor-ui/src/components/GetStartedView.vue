@@ -39,10 +39,12 @@ const steps = [
 			{
 				title: 'Google credential documentation',
 				desc: 'Official docs maintained by the n8n team',
+				href: 'https://docs.n8n.io/integrations/builtin/credentials/google/'
 			},
 			{
 				title: 'Google OAuth2 setup video',
 				type: 'youtube',
+				href: 'https://www.youtube.com/watch?v=gZ6N2H3_vys',
 			},
 		],
 	},
@@ -61,16 +63,6 @@ const steps = [
 			title: 'Save your new credential',
 			desc: 'Save the credential so that your Google Calendar Trigger can use it to watch for new <b>On Event Created</b> events in your account',
 		},
-		resources: [
-			{
-				title: 'Google credential documentation',
-				desc: 'Official docs maintained by the n8n team',
-			},
-			{
-				title: 'Google OAuth2 setup video',
-				type: 'youtube',
-			},
-		],
 	},
 	{
 		id: 'setup-params',
@@ -83,11 +75,13 @@ const steps = [
 			{
 				title: 'Google Calendar Trigger documentation',
 				desc: 'Official docs maintained by the n8n team',
+				href: 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecalendar/',
 			},
 			{
 				title: 'n8n community forums',
 				desc: 'Global community of n8n power users ready to help',
 				type: 'forum',
+				href: 'https://community.n8n.io/',
 			},
 		],
 	},
@@ -114,7 +108,7 @@ const steps = [
 ];
 
 const router = useRouter();
-const current = ref(0);
+const current = ref(6);
 const loading = ref(true);
 const kickoff = ref([] as string[]);
 
@@ -138,6 +132,14 @@ function openWorkflow(nodes: string[]) {
 const currentStep = computed(() => {
 	return steps[current.value];
 });
+
+const onOpenNDV = () => {
+	current.value = 2;
+};
+
+const onNewCred = () => {
+	current.value = 3;
+};
 </script>
 
 <template>
@@ -150,13 +152,28 @@ const currentStep = computed(() => {
 			<main-panel @nodeTypeSelected="openWorkflow" />
 		</div>
 		<div v-show="!loading && currentStep.id !== 'select-node'" :class="$style.other">
-			<WorkflowPreview :nodes="kickoff" />
+			<WorkflowPreview :nodes="kickoff" @open-ndv="onOpenNDV" @new-cred="onNewCred" />
 			<div :class="$style.panel">
 				<div :class="$style.icon">
 					<font-awesome-icon icon="question-circle" />
 				</div>
 				<div :class="$style.title">{{ currentStep.panel?.title }}</div>
-				<div :class="$style.desc">{{ currentStep.panel?.desc }}</div>
+				<div :class="$style.desc" v-html="currentStep.panel?.desc"></div>
+				<div v-if="currentStep.resources">
+					<div :class="$style.resourcesTitle">Helpful Resources</div>
+					<div v-for="res in currentStep.resources" :key="res.title">
+						<a :class="$style.resource" :href="res.href" target="_blank">
+							<div :class="$style.resourceIcon">
+								<font-awesome-icon v-if="res.type === 'forum'" icon="comments" />
+								<font-awesome-icon v-else icon="book" />
+							</div>
+							<div :class="$style.resourceInfo">
+								<h3>{{ res.title }}</h3>
+								<h4 v-if="res.desc">{{ res.desc }}</h4>
+							</div>
+						</a>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -170,9 +187,46 @@ const currentStep = computed(() => {
 	align-items: center;
 }
 
+.resource {
+	border: 1px solid #dbdfe7;
+	border-radius: 4px;
+	display: flex;
+	margin-bottom: 8px;
+	cursor: pointer;
+}
+
+.resourceIcon {
+	padding: 20px 16px;
+	color: #7D838F;
+}
+
+.resourceInfo {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+
+	h3 {
+		font-weight: 600;
+		font-size: 14px;
+		line-height: 18px;
+		color: #555555;
+	}
+
+	h4 {
+		font-weight: 400;
+		font-size: 12px;
+		line-height: 16px;
+		color: #7d7d87;
+	}
+}
+
+.resourcesTitle {
+	margin-bottom: 8px;
+}
+
 .icon {
 	margin-bottom: 16px;
-	color: #C6C8D0;
+	color: #c6c8d0;
 	font-size: 24px;
 }
 
@@ -203,6 +257,7 @@ const currentStep = computed(() => {
 	color: #7d7d87;
 	font-size: 14px;
 	line-height: 19px;
+	margin-bottom: 40px;
 }
 
 .progressBar {

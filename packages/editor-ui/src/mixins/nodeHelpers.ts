@@ -114,19 +114,19 @@ export const nodeHelpers = mixins(restApi).extend({
 				// Node type is known
 
 				// Add potential parameter issues
-				if (!ignoreIssues.includes('parameters')) {
-					nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
-				}
+				// if (!ignoreIssues.includes('parameters')) {
+				// 	nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+				// }
 
-				if (!ignoreIssues.includes('credentials')) {
-					// Add potential credential issues
-					const nodeCredentialIssues = this.getNodeCredentialIssues(node, nodeType);
-					if (nodeIssues === null) {
-						nodeIssues = nodeCredentialIssues;
-					} else {
-						NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
-					}
-				}
+				// if (!ignoreIssues.includes('credentials')) {
+				// 	// Add potential credential issues
+				// 	const nodeCredentialIssues = this.getNodeCredentialIssues(node, nodeType);
+				// 	if (nodeIssues === null) {
+				// 		nodeIssues = nodeCredentialIssues;
+				// 	} else {
+				// 		NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
+				// 	}
+				// }
 			}
 
 			if (this.hasNodeExecutionIssues(node) === true && !ignoreIssues.includes('execution')) {
@@ -231,6 +231,7 @@ export const nodeHelpers = mixins(restApi).extend({
 
 		// Returns all the credential-issues of the node
 		getNodeCredentialIssues(node: INodeUi, nodeType?: INodeTypeDescription): INodeIssues | null {
+			return null;
 			if (node.disabled) {
 				// Node is disabled
 				return null;

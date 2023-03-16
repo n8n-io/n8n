@@ -13,9 +13,12 @@ export const genericHelpers = mixins(showMessage).extend({
 	},
 	computed: {
 		isReadOnly(): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOG_STREAMING_SETTINGS].includes(
-				this.$route.name as VIEWS,
-			);
+			return ![
+				VIEWS.WORKFLOW,
+				VIEWS.NEW_WORKFLOW,
+				VIEWS.DEMO,
+				VIEWS.LOG_STREAMING_SETTINGS,
+			].includes(this.$route.name as VIEWS);
 		},
 	},
 	methods: {

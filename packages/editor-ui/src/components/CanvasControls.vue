@@ -5,6 +5,7 @@
 			[$style.regularZoomMenu]: !isDemo,
 			[$style.demoZoomMenu]: isDemo,
 		}"
+		v-if="!isDemo"
 	>
 		<n8n-icon-button
 			@click="zoomToFit"

@@ -55,29 +55,29 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 				},
 			},
 		});
-		this.messageOverlay = this.endpoint.addOverlay({
-			type: 'Custom',
-			options: {
-				id: HoverMessageOverlay,
-				location: 0.5,
-				create: () => {
-					const hoverMessage = createElement('p', {}, `${HoverMessageOverlay} ${this.params.size}`);
-					hoverMessage.innerHTML = this.params.hoverMessage;
-					return hoverMessage;
-				},
-			},
-		});
+		// this.messageOverlay = this.endpoint.addOverlay({
+		// 	type: 'Custom',
+		// 	options: {
+		// 		id: HoverMessageOverlay,
+		// 		location: 0.5,
+		// 		create: () => {
+		// 			const hoverMessage = createElement('p', {}, `${HoverMessageOverlay} ${this.params.size}`);
+		// 			hoverMessage.innerHTML = this.params.hoverMessage;
+		// 			return hoverMessage;
+		// 		},
+		// 	},
+		// });
 		this.endpoint.instance.setSuspendDrawing(false);
 	}
 	bindEvents() {
-		this.instance.bind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
-		this.instance.bind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
+		// this.instance.bind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
+		// this.instance.bind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 		this.instance.bind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
 	}
 	unbindEvents() {
-		this.instance.unbind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
-		this.instance.unbind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
+		// this.instance.unbind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
+		// this.instance.unbind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 		this.instance.unbind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
 	}

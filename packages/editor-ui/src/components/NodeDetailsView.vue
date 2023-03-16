@@ -247,6 +247,7 @@ export default mixins(
 			return null;
 		},
 		showTriggerPanel(): boolean {
+			return false;
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
 			const override = !!this.activeNodeType?.triggerPanel;

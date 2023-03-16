@@ -94,14 +94,14 @@
 				@stopExecution="stopExecution"
 			/>
 			<node-creation
-				v-if="!isReadOnly"
+				v-if="!isReadOnly && !isDemo"
 				:create-node-active="createNodeActive"
 				:node-view-scale="nodeViewScale"
 				@toggleNodeCreator="onToggleNodeCreator"
 				@addNode="onAddNode"
 			/>
 			<canvas-controls />
-			<div class="workflow-execute-wrapper" v-if="!isReadOnly">
+			<div class="workflow-execute-wrapper" v-if="!isReadOnly && !isDemo">
 				<span
 					@mouseenter="showTriggerMissingToltip(true)"
 					@mouseleave="showTriggerMissingToltip(false)"

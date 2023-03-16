@@ -10,7 +10,7 @@
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
-				[$style.openNDV]: this.nodeViewDetailsOpened,
+				// [$style.openNDV]: this.nodeViewDetailsOpened,
 				[$style.show]: this.showPreview,
 			}"
 			ref="preview_iframe"
@@ -145,9 +145,12 @@ export default mixins(showMessage).extend({
 				if (json.command === 'n8nReady') {
 					this.ready = true;
 				} else if (json.command === 'openNDV') {
+					this.$emit('open-ndv');
 					this.nodeViewDetailsOpened = true;
 				} else if (json.command === 'closeNDV') {
 					this.nodeViewDetailsOpened = false;
+				} else if (json.command === 'newCred') {
+					this.$emit('new-cred');
 				} else if (json.command === 'error') {
 					this.$emit('close');
 				}

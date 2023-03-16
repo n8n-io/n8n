@@ -695,11 +695,11 @@ export default mixins(
 		&.touch-active,
 		&:hover {
 			.node-execute {
-				display: initial;
+				display: none;
 			}
 
 			.node-options {
-				display: initial;
+				display: none;
 			}
 		}
 
@@ -873,9 +873,9 @@ export default mixins(
 		}
 	}
 }
-.dot-output-endpoint:hover circle {
-	fill: var(--color-primary);
-}
+// .dot-output-endpoint:hover circle {
+// 	fill: var(--color-primary);
+// }
 /** connector */
 .jtk-connector {
 	z-index: 3;
@@ -1038,7 +1038,7 @@ export default mixins(
 }
 
 .plus-endpoint {
-	cursor: pointer;
+	// cursor: pointer;
 	z-index: 10;
 	margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size) / 2) - 1px);
 	g {
@@ -1046,14 +1046,14 @@ export default mixins(
 		pointer-events: none;
 	}
 
-	&:hover {
-		path {
-			fill: var(--color-primary);
-		}
-		rect {
-			stroke: var(--color-primary);
-		}
-	}
+	// &:hover {
+	// 	path {
+	// 		fill: var(--color-primary);
+	// 	}
+	// 	rect {
+	// 		stroke: var(--color-primary);
+	// 	}
+	// }
 	path {
 		fill: var(--color-foreground-xdark);
 	}

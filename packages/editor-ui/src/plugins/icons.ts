@@ -92,6 +92,7 @@ import {
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
+	faComments,
 	faRss,
 	faSave,
 	faSatelliteDish,
@@ -173,6 +174,7 @@ addIcon(faGripVertical);
 addIcon(faEdit);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
+addIcon(faComments);
 addIcon(faEye);
 addIcon(faExclamationTriangle);
 addIcon(faExpand);
