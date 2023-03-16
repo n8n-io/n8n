@@ -657,9 +657,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary' });
 			}
 
-			// For the input panel we want to show the schema view first
-			const addOperation = this.isPaneTypeInput ? 'unshift' : 'push';
-			defaults[addOperation]({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
+			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
+			if (this.isPaneTypeInput) {
+				defaults.unshift(schemaView);
+			} else {
+				defaults.push(schemaView);
+			}
 
 			if (
 				this.isPaneTypeOutput &&
