@@ -24,6 +24,7 @@ describe('RunDataJsonSchema.vue', () => {
 			distanceFromActive: 1,
 			runIndex: 1,
 			totalRuns: 2,
+			paneType: 'input',
 			node: {
 				parameters: {
 					keepOnlySet: false,
