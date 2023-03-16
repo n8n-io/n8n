@@ -168,23 +168,16 @@ const exec = promisify(callbackExec);
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 
 function parseNdjson(str: string): any[] {
-	const result: any[] = [];
-	const items = str
+	const items = str.trim()
 		.split('\n')
-		.map((item: string) => item.trim())
-		.filter((item: string) => item !== '');
-	for (const item of items) {
+		.filter((item: string) => item !== ''); // ignore empty lines, even though the ndjson spec does not allow empty lines
+	return items.map((item, i) => {
 		try {
-			result.push(JSON.parse(item));
+			return JSON.parse(item);
 		} catch (e) {
-			throw Error(
-				// eslint-disable-next-line prettier/prettier
-				`error parsing ndjson, while parsing item ${result.length + 1} of ${result.length}: ${e.message}`,
-				{ cause: e },
-			);
+			throw new Error(`error parsing ndjson, while parsing item ${i + 1} of ${items.length}: ${e.message}`);
 		}
-	}
-	return result;
+	});
 }
 
 function onJsonErrorTryNdjson() {
@@ -194,14 +187,15 @@ function onJsonErrorTryNdjson() {
 			err.type === 'entity.parse.failed'
 		) {
 			let body = err.body;
-			if (body.match(/^\s*\{[^\n]*}\s*(\n\s*\{[^\n]*}\s*)+$/)) {
+			const isNdJson = body.match(/^\s*\{[^\n]*}\s*(\n\s*\{[^\n]*}\s*)+$/);
+			if (isNdJson) {
 				try {
 					const result = parseNdjson(body);
 					req.body = result;
 					req.rawBody = Buffer.from(`[${result.join(',\n')}]`);
 					res.status(200);
 					next();
-					return; //this is the only "happy flow" - in every other case we continue with the original error
+					return;
 				} catch (e) {
 					console.error(e);
 				}
