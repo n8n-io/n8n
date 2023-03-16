@@ -139,8 +139,6 @@ export class ExecutionsService {
 				query = query.andWhere(countFilter);
 			}
 
-			// const countParams = { where: { workflowId: In(sharedWorkflowIds), ...countFilter } };
-			// const count = await Db.collections.Execution.count(countParams);
 			const count = await query.getCount();
 			return { count, estimated: false };
 		}
