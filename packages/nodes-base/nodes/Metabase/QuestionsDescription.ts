@@ -1,10 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
@@ -56,43 +50,38 @@ export const questionsOperations: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							// @ts-ignore
-							async function (
-								this: IExecuteSingleFunctions,
-								_items: INodeExecutionData[],
-								response: IN8nHttpFullResponse,
-							): Promise<INodeExecutionData[]> {
-								const items = _items;
-								const result: INodeExecutionData[] = [];
-								for (let i = 0; i < items.length; i++) {
-									const newItem: INodeExecutionData = {
-										json: items[i].json,
-										binary: {},
-									};
+							async function (this, items, responseData) {
+								const datatype = this.getNodeParameter('format') as string;
 
-									if (items[i].binary !== undefined && newItem.binary) {
-										Object.assign(newItem.binary, items[i].binary);
-									}
-									items[i] = newItem;
-									if (this.getNode().parameters.format === 'json') {
-										items[i].json = jsonParse<IDataObject[]>(items[i].json as unknown as string)[0];
-										console.log(items[i].json);
-										delete items[i].binary;
-									} else {
-										items[i].binary!.data = await this.helpers.prepareBinaryData(
-											response.body as Buffer,
-											'data',
-											response.headers['content-type'] as string,
-										);
-									}
-									result.push(items[i]);
+								if (datatype !== 'json') {
+									const binaryData = await this.helpers.prepareBinaryData(
+										responseData.body as Buffer,
+										'data',
+										responseData.headers['content-type'] as string,
+									);
+
+									// Transform items
+									items = items.map((item) => {
+										item.json = {};
+										item.binary = { ['data']: binaryData };
+										return item;
+									});
+								} else {
+									const results = jsonParse<IDataObject[]>(responseData.body as unknown as string);
+									items = results.map((result) => {
+										return {
+											json: {
+												...result,
+											},
+										};
+									});
 								}
-								return result;
+								return items;
 							},
 						],
 					},
 				},
-				action: 'Result Data a questions',
+				action: 'Get the results from a question',
 			},
 		],
 		default: 'getAll',
