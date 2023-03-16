@@ -6,6 +6,8 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 import packageJSON from './package.json';
 
+const { coverageReporters } = require('../../jest.config.js');
+
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
@@ -112,6 +114,12 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			coverage: {
+				provider: 'c8',
+				reporter: coverageReporters,
+				include: ['src/**/*.ts'],
+				all: true,
+			},
 			css: {
 				modules: {
 					classNameStrategy: 'non-scoped',

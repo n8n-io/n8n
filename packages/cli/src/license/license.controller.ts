@@ -7,7 +7,7 @@ import { getLogger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
 import { Container } from 'typedi';
@@ -69,7 +69,7 @@ licenseController.post(
 	'/activate',
 	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
-		const license = getLicense();
+		const license = Container.get(License);
 		try {
 			await license.activate(req.body.activationKey);
 		} catch (e) {
@@ -111,7 +111,7 @@ licenseController.post(
 	'/renew',
 	ResponseHelper.send(async (): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
-		const license = getLicense();
+		const license = Container.get(License);
 		try {
 			await license.renew();
 		} catch (e) {

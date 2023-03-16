@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
+import { Container } from 'typedi';
 
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
@@ -15,7 +16,8 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
-import * as Queue from '@/Queue';
+import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
+import { Queue } from '@/Queue';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
@@ -38,7 +40,7 @@ export class Worker extends BaseCommand {
 		[key: string]: PCancelable<IRun>;
 	} = {};
 
-	static jobQueue: Queue.JobQueue;
+	static jobQueue: JobQueue;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -86,7 +88,7 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	async runJob(job: Queue.Job, nodeTypes: INodeTypes): Promise<Queue.JobResponse> {
+	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
 		const executionDb = await Db.collections.Execution.findOneBy({ id: executionId });
 
@@ -179,7 +181,7 @@ export class Worker extends BaseCommand {
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const progress: Queue.WebhookResponse = {
+				const progress: WebhookResponse = {
 					executionId,
 					response: WebhookHelpers.encodeWebhookResponse(response),
 				};
@@ -238,7 +240,8 @@ export class Worker extends BaseCommand {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
-		const queue = await Queue.getInstance();
+		const queue = Container.get(Queue);
+		await queue.init();
 		Worker.jobQueue = queue.getBullObjectInstance();
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, this.nodeTypes));
@@ -248,7 +251,7 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${flags.concurrency}`);
 		this.logger.info('');
 
-		Worker.jobQueue.on('global:progress', (jobId: Queue.JobId, progress) => {
+		Worker.jobQueue.on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used
 			// to communicate that a job got canceled.
 
