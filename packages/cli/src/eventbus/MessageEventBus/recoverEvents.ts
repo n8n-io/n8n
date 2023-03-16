@@ -107,7 +107,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 							[
 								{
 									json: {
-										isArtificalRecoveredEventItem: true,
+										isArtificialRecoveredEventItem: true,
 									},
 									pairedItem: undefined,
 								},
