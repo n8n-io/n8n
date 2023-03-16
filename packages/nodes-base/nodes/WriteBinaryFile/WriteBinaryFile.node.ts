@@ -1,10 +1,10 @@
-import { BINARY_ENCODING } from 'n8n-core';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { writeFile as fsWriteFile } from 'fs/promises';
 import type { Readable } from 'stream';

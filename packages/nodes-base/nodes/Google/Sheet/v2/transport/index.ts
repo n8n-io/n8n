@@ -1,8 +1,10 @@
 import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import type {
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';

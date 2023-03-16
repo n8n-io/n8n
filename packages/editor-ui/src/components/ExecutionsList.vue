@@ -1118,24 +1118,24 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: var(--color-danger);
+			background: hsl(var(--color-danger-h), 94%, 80%);
 		}
 
 		&.success td:first-child::before {
-			background: var(--color-success);
+			background: hsl(var(--color-success-h), 60%, 70%);
 		}
 
 		&.new td:first-child::before,
 		&.running td:first-child::before {
-			background: var(--color-warning);
+			background: hsl(var(--color-warning-h), 94%, 80%);
 		}
 
 		&.waiting td:first-child::before {
-			background: var(--color-secondary);
+			background: hsl(var(--color-secondary-h), 94%, 80%);
 		}
 
 		&.unknown td:first-child::before {
-			background: var(--color-background-dark);
+			background: var(--color-text-light);
 		}
 	}
 }

@@ -1,8 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { ICredentialTestFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';

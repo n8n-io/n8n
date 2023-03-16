@@ -4,7 +4,7 @@
 			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
-			:class="$style['pinned-data-callout']"
+			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
 			<span class="ml-4xs" v-if="!isReadOnly">
@@ -78,7 +78,7 @@
 					:manual="isControlledPinDataTooltip"
 				>
 					<template #content v-if="!isControlledPinDataTooltip">
-						<div :class="$style['tooltip-container']">
+						<div :class="$style.tooltipContainer">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
@@ -90,12 +90,12 @@
 						</div>
 					</template>
 					<template #content v-else>
-						<div :class="$style['tooltip-container']">
+						<div :class="$style.tooltipContainer">
 							{{ $locale.baseText('node.discovery.pinData.ndv') }}
 						</div>
 					</template>
 					<n8n-icon-button
-						:class="['ml-2xs', $style['pin-data-button']]"
+						:class="['ml-2xs', $style.pinDataButton]"
 						type="tertiary"
 						:active="hasPinData"
 						icon="thumbtack"
@@ -105,7 +105,7 @@
 					/>
 				</n8n-tooltip>
 
-				<div :class="$style['edit-mode-actions']" v-show="editMode.enabled">
+				<div :class="$style.editModeActions" v-show="editMode.enabled">
 					<n8n-button
 						type="tertiary"
 						:label="$locale.baseText('runData.editor.cancel')"
@@ -171,14 +171,14 @@
 			</n8n-text>
 		</div>
 
-		<div :class="$style['data-container']" ref="dataContainer" data-test-id="ndv-data-container">
+		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
 			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>
 
-			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<div :class="[$style['edit-mode-body'], 'ignore-key-press']">
+			<div v-else-if="editMode.enabled" :class="$style.editMode">
+				<div :class="[$style.editModeBody, 'ignore-key-press']">
 					<code-editor
 						:value="editMode.value"
 						:options="{ scrollBeyondLastLine: false }"
@@ -186,8 +186,8 @@
 						@input="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
-				<div :class="$style['edit-mode-footer']">
-					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
+				<div :class="$style.editModeFooter">
+					<n8n-info-tip :bold="false" :class="$style.editModeFooterInfotip">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
 						<n8n-link :to="dataEditingDocsUrl" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
@@ -329,6 +329,7 @@
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
 				:node="node"
+				:paneType="paneType"
 				:runIndex="runIndex"
 				:totalRuns="maxRunIndex"
 			/>
@@ -656,8 +657,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary' });
 			}
 
+			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
 			if (this.isPaneTypeInput) {
-				defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
+				defaults.unshift(schemaView);
+			} else {
+				defaults.push(schemaView);
 			}
 
 			if (
@@ -1305,10 +1309,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				this.activeNode.type === HTML_NODE_TYPE &&
 				this.activeNode.parameters.operation === 'generateHtmlTemplate';
 
-			this.ndvStore.setPanelDisplayMode({
-				pane: 'output',
-				mode: shouldDisplayHtml ? 'html' : 'table',
-			});
+			if (shouldDisplayHtml) {
+				this.ndvStore.setPanelDisplayMode({
+					pane: 'output',
+					mode: 'html',
+				});
+			}
 		},
 	},
 	watch: {
@@ -1380,7 +1386,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	flex-direction: column;
 }
 
-.pinned-data-callout {
+.pinnedDataCallout {
 	border-radius: inherit;
 	border-bottom-right-radius: 0;
 	border-top: 0;
@@ -1403,7 +1409,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	}
 }
 
-.data-container {
+.dataContainer {
 	position: relative;
 	height: 100%;
 
@@ -1421,7 +1427,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	padding: 0 var(--spacing-s) var(--spacing-3xl) var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
-	line-height: 1.5;
+	line-height: var(--font-line-height-xloose);
 	word-break: normal;
 	height: 100%;
 }
@@ -1500,10 +1506,10 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 
 .binaryHeader {
 	color: $color-primary;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	font-size: 1.2em;
-	padding-bottom: 0.5em;
-	margin-bottom: 0.5em;
+	padding-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing-2xs);
 	border-bottom: 1px solid var(--color-text-light);
 }
 
@@ -1529,12 +1535,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	justify-content: flex-end;
 	flex-grow: 1;
 }
-
-.tooltip-container {
+.tooltipContain {
 	max-width: 240px;
 }
 
-.pin-data-button {
+.pinDataButton {
 	svg {
 		transition: transform 0.3s ease;
 	}
@@ -1552,7 +1557,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	margin-bottom: var(--spacing-s);
 }
 
-.edit-mode {
+.editMode {
 	height: calc(100% - var(--spacing-s));
 	display: flex;
 	flex-direction: column;
@@ -1562,14 +1567,14 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	padding-right: var(--spacing-s);
 }
 
-.edit-mode-body {
+.editModeBody {
 	flex: 1 1 auto;
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
 }
 
-.edit-mode-footer {
+.editModeFooter {
 	display: flex;
 	width: 100%;
 	justify-content: space-between;
@@ -1577,13 +1582,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	padding-top: var(--spacing-s);
 }
 
-.edit-mode-footer-infotip {
+.editModeFooterInfotip {
 	display: flex;
 	flex: 1;
 	width: 100%;
 }
 
-.edit-mode-actions {
+.editModeActions {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
