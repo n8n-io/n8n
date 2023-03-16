@@ -429,7 +429,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 
 	// user is above threshold --> set flag in settings
 	if (!belowThreshold) {
-		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+		void Db.collections.User.update(user.id, { settings: { ...user.settings, isOnboarded: true } });
 	}
 
 	return belowThreshold;
