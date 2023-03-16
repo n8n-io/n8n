@@ -15,7 +15,8 @@ export class CreateExecutionMetadataTable1674133106779 implements MigrationInter
 				executionId int(11) NOT NULL,
 				\`key\` TEXT NOT NULL,
 				value TEXT NOT NULL,
-				CONSTRAINT ${tablePrefix}execution_metadata_FK FOREIGN KEY (executionId) REFERENCES ${tablePrefix}execution_entity(id) ON DELETE CASCADE
+				CONSTRAINT \`${tablePrefix}execution_metadata_FK\` FOREIGN KEY (\`executionId\`) REFERENCES \`${tablePrefix}execution_entity\` (\`id\`) ON DELETE CASCADE,
+				INDEX \`IDX_${tablePrefix}6d44376da6c1058b5e81ed8a154e1fee106046eb\` (\`executionId\` ASC)
 			)
 			ENGINE=InnoDB`,
 		);
