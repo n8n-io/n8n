@@ -135,9 +135,11 @@ export function addSortRules(
 		values.push(rule.column);
 		replacementIndex = replacementIndex + 1;
 
-		const endWith = index === rules.length - 1 ? '' : ', ';
+		const endWith = index === rules.length - 1 ? '' : ',';
 
-		orderByQuery += ` ${columnReplacement} ${rule.direction}${endWith}`;
+		const sortDirection = rule.direction === 'DESC' ? 'DESC' : 'ASC';
+
+		orderByQuery += ` ${columnReplacement} ${sortDirection}${endWith}`;
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat(...values)];
@@ -290,7 +292,7 @@ export async function getTableSchema(
 }
 
 export function checkItemAgainstSchema(
-	this: IExecuteFunctions,
+	node: INode,
 	item: IDataObject,
 	columnsInfo: ColumnInfo[],
 	index: number,
@@ -303,14 +305,12 @@ export function checkItemAgainstSchema(
 
 	for (const key of Object.keys(item)) {
 		if (schema[key] === undefined) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`Column '${key}' does not exist in selected table`,
-				{ itemIndex: index },
-			);
+			throw new NodeOperationError(node, `Column '${key}' does not exist in selected table`, {
+				itemIndex: index,
+			});
 		}
 		if (item[key] === null && !(schema[key] as IDataObject)?.nullable) {
-			throw new NodeOperationError(this.getNode(), `Column '${key}' is not nullable`, {
+			throw new NodeOperationError(node, `Column '${key}' is not nullable`, {
 				itemIndex: index,
 			});
 		}

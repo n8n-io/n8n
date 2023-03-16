@@ -182,7 +182,7 @@ export async function execute(
 
 		const tableSchema = await getTableSchema(db, schema, table);
 
-		item = checkItemAgainstSchema.call(this, item, tableSchema, i);
+		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 
 		let values: QueryValues = [schema, table];
 

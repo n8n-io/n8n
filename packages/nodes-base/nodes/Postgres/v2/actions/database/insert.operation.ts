@@ -160,7 +160,7 @@ export async function execute(
 
 		const tableSchema = await getTableSchema(db, schema, table);
 
-		values.push(checkItemAgainstSchema.call(this, item, tableSchema, i));
+		values.push(checkItemAgainstSchema(this.getNode(), item, tableSchema, i));
 
 		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
