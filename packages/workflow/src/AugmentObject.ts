@@ -69,11 +69,11 @@ export function augmentArray<T>(data: T[]): T[] {
 
 export function augmentObject<T extends object>(data: T): T {
 	const newData = {} as IDataObject;
-	const deletedProperies: Array<string | symbol> = [];
+	const deletedProperties: Array<string | symbol> = [];
 
 	return new Proxy(data, {
 		get(target, key, receiver): unknown {
-			if (deletedProperies.indexOf(key) !== -1) {
+			if (deletedProperties.indexOf(key) !== -1) {
 				return undefined;
 			}
 
@@ -101,7 +101,7 @@ export function augmentObject<T extends object>(data: T): T {
 				delete newData[key as string];
 			}
 			if (key in target) {
-				deletedProperies.push(key);
+				deletedProperties.push(key);
 			}
 
 			return true;
@@ -112,23 +112,23 @@ export function augmentObject<T extends object>(data: T): T {
 					delete newData[key as string];
 				}
 				if (key in target) {
-					deletedProperies.push(key);
+					deletedProperties.push(key);
 				}
 				return true;
 			}
 
 			newData[key as string] = newValue as IDataObject;
 
-			const deleteIndex = deletedProperies.indexOf(key);
+			const deleteIndex = deletedProperties.indexOf(key);
 			if (deleteIndex !== -1) {
-				deletedProperies.splice(deleteIndex, 1);
+				deletedProperties.splice(deleteIndex, 1);
 			}
 
 			return true;
 		},
 		ownKeys(target) {
 			return [...new Set([...Reflect.ownKeys(target), ...Object.keys(newData)])].filter(
-				(key) => deletedProperies.indexOf(key) === -1,
+				(key) => deletedProperties.indexOf(key) === -1,
 			);
 		},
 
