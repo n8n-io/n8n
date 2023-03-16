@@ -12,10 +12,10 @@ export function augmentArray<T>(data: T[]): T[] {
 	}
 
 	return new Proxy(data, {
-		deleteProperty(target, key) {
+		deleteProperty(target, key: string) {
 			return Reflect.deleteProperty(getData(), key);
 		},
-		get(target, key, receiver): unknown {
+		get(target, key: string, receiver): unknown {
 			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
 
 			if (typeof value === 'object') {
@@ -72,13 +72,13 @@ export function augmentObject<T extends object>(data: T): T {
 	const deletedProperties: Array<string | symbol> = [];
 
 	return new Proxy(data, {
-		get(target, key, receiver): unknown {
+		get(target, key: string, receiver): unknown {
 			if (deletedProperties.indexOf(key) !== -1) {
 				return undefined;
 			}
 
-			if (newData[key as string] !== undefined) {
-				return newData[key as string];
+			if (newData[key] !== undefined) {
+				return newData[key];
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -86,19 +86,19 @@ export function augmentObject<T extends object>(data: T): T {
 
 			if (value !== null && typeof value === 'object') {
 				if (Array.isArray(value)) {
-					newData[key as string] = augmentArray(value);
+					newData[key] = augmentArray(value);
 				} else {
-					newData[key as string] = augmentObject(value as IDataObject);
+					newData[key] = augmentObject(value as IDataObject);
 				}
 
-				return newData[key as string];
+				return newData[key];
 			}
 
 			return value as string;
 		},
-		deleteProperty(target, key) {
+		deleteProperty(target, key: string) {
 			if (key in newData) {
-				delete newData[key as string];
+				delete newData[key];
 			}
 			if (key in target) {
 				deletedProperties.push(key);
@@ -106,10 +106,10 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return true;
 		},
-		set(target, key, newValue: unknown) {
+		set(target, key: string, newValue: unknown) {
 			if (newValue === undefined) {
 				if (key in newData) {
-					delete newData[key as string];
+					delete newData[key];
 				}
 				if (key in target) {
 					deletedProperties.push(key);
@@ -117,7 +117,7 @@ export function augmentObject<T extends object>(data: T): T {
 				return true;
 			}
 
-			newData[key as string] = newValue as IDataObject;
+			newData[key] = newValue as IDataObject;
 
 			const deleteIndex = deletedProperties.indexOf(key);
 			if (deleteIndex !== -1) {
