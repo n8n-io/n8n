@@ -937,8 +937,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					await this.restApi().deleteExecutions({ ids: [execution.id] });
 					await this.refreshData();
 
-					if (this.allVisibleSelected && !this.allExistingSelected) {
-						this.handleClearSelection();
+					if (this.allVisibleSelected) {
+						Vue.set(this, 'selectedItems', {});
 						this.selectAllVisibleExecutions();
 					}
 				} catch (error) {
