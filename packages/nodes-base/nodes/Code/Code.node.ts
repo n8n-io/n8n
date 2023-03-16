@@ -297,6 +297,8 @@ return _input.item;
 		}
 
 		if (language === 'python') {
+			const sandbox = new SandboxPython(nodeMode);
+
 			// ----------------------------------
 			//        runOnceForAllItems
 			// ----------------------------------
@@ -315,8 +317,6 @@ return _input.item;
 				} else {
 					context.printOverwrite = null;
 				}
-
-				const sandbox = new SandboxPython(workflowMode, nodeMode);
 
 				try {
 					items = (await sandbox.runCode(
@@ -345,9 +345,6 @@ return _input.item;
 			const returnData: INodeExecutionData[] = [];
 
 			let item: INodeExecutionData | undefined;
-
-			const sandbox = new SandboxPython(workflowMode, nodeMode);
-
 			for (let index = 0; index < items.length; index++) {
 				const pythonCode = this.getNodeParameter('pythonCode', index) as string;
 				const modules = this.getNodeParameter('modules', index) as string;

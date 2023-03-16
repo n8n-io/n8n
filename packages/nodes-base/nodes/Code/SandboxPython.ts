@@ -1,10 +1,10 @@
 import { normalizeItems } from 'n8n-core';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { ValidationError } from './ValidationError';
 import type { CodeNodeMode } from './utils';
 import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 import { LoadPyodide } from './Pyodide';
 
-import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 type PyodideError = Error & { type: string };
 
 export class SandboxPython {
@@ -12,7 +12,7 @@ export class SandboxPython {
 
 	private itemIndex: number | undefined = undefined;
 
-	constructor(private workflowMode: WorkflowExecuteMode, private nodeMode: CodeNodeMode) {}
+	constructor(private nodeMode: CodeNodeMode) {}
 
 	async runCode(
 		context: ReturnType<typeof getSandboxContextPython>,
