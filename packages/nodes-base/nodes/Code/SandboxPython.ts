@@ -222,9 +222,9 @@ await __main()
 
 export function getSandboxContextPython(
 	this: IExecuteFunctions,
-	index?: number,
+	index: number,
 ): Record<string, unknown> {
-	const item = this.getWorkflowDataProxy(index ?? 0);
+	const item = this.getWorkflowDataProxy(index);
 
 	return {
 		// from NodeExecuteFunctions

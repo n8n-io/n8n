@@ -238,7 +238,7 @@ export class Sandbox extends NodeVM {
 	}
 }
 
-export function getSandboxContext(this: IExecuteFunctions, index?: number) {
+export function getSandboxContext(this: IExecuteFunctions, index: number) {
 	const sandboxContext: Record<string, unknown> & {
 		$item: (i: number) => IWorkflowDataProxyData;
 		$input: any;
@@ -254,7 +254,7 @@ export function getSandboxContext(this: IExecuteFunctions, index?: number) {
 	};
 
 	// $node, $items(), $parameter, $json, $env, etc.
-	Object.assign(sandboxContext, sandboxContext.$item(index ?? 0));
+	Object.assign(sandboxContext, sandboxContext.$item(index));
 
 	return sandboxContext;
 }

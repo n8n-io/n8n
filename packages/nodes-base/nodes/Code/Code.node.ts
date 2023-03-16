@@ -1,4 +1,5 @@
 import type {
+	EditorLanguageTypes,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -285,63 +286,50 @@ return _input.item;
 		],
 	};
 
-	async execute(this: IExecuteFunctions) {
+	async executePython(this: IExecuteFunctions) {
 		let items = this.getInputData();
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
+		const sandbox = new SandboxPython(nodeMode);
 
-		let language = 'javaScript';
-		if (this.getNode().typeVersion === 2) {
-			language = this.getNodeParameter('language', 0) as string;
-		}
+		// ----------------------------------
+		//        runOnceForAllItems
+		// ----------------------------------
+		if (nodeMode === 'runOnceForAllItems') {
+			const pythonCode = this.getNodeParameter('pythonCode', 0) as string;
+			const modules = this.getNodeParameter('modules', 0) as string;
+			const moduleImports = modules
+				? modules.split(',').map((importModule) => importModule.trim())
+				: [];
 
-		if (language === 'python') {
-			const sandbox = new SandboxPython(nodeMode);
+			const context = getSandboxContextPython.call(this, 0);
 
-			// ----------------------------------
-			//        runOnceForAllItems
-			// ----------------------------------
-
-			if (nodeMode === 'runOnceForAllItems') {
-				const pythonCode = this.getNodeParameter('pythonCode', 0) as string;
-				const modules = this.getNodeParameter('modules', 0) as string;
-				const moduleImports = modules
-					? modules.split(',').map((importModule) => importModule.trim())
-					: [];
-
-				const context = getSandboxContextPython.call(this);
-
-				if (workflowMode === 'manual') {
-					context.printOverwrite = this.sendMessageToUI;
-				} else {
-					context.printOverwrite = null;
-				}
-
-				try {
-					items = (await sandbox.runCode(
-						context,
-						pythonCode,
-						moduleImports,
-					)) as INodeExecutionData[];
-				} catch (error) {
-					if (!this.continueOnFail()) {
-						return Promise.reject(error);
-					}
-					items = [{ json: { error: error.message } }];
-				}
-
-				for (const item of items) {
-					standardizeOutput(item.json);
-				}
-
-				return this.prepareOutputData(items);
+			if (workflowMode === 'manual') {
+				context.printOverwrite = this.sendMessageToUI;
+			} else {
+				context.printOverwrite = null;
 			}
 
-			// ----------------------------------
-			//        runOnceForEachItem
-			// ----------------------------------
+			try {
+				items = (await sandbox.runCode(context, pythonCode, moduleImports)) as INodeExecutionData[];
+			} catch (error) {
+				if (!this.continueOnFail()) {
+					return Promise.reject(error);
+				}
+				items = [{ json: { error: error.message } }];
+			}
 
+			for (const item of items) {
+				standardizeOutput(item.json);
+			}
+
+			return this.prepareOutputData(items);
+		}
+		// ----------------------------------
+		//        runOnceForEachItem
+		// ----------------------------------
+		else {
 			const returnData: INodeExecutionData[] = [];
 
 			let item: INodeExecutionData | undefined;
@@ -386,15 +374,21 @@ return _input.item;
 
 			return this.prepareOutputData(returnData);
 		}
+	}
+
+	async executeJavascript(this: IExecuteFunctions) {
+		let items = this.getInputData();
+
+		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
+		const workflowMode = this.getMode();
 
 		// ----------------------------------
 		//        runOnceForAllItems
 		// ----------------------------------
-
 		if (nodeMode === 'runOnceForAllItems') {
 			const jsCodeAllItems = this.getNodeParameter('jsCode', 0) as string;
 
-			const context = getSandboxContext.call(this);
+			const context = getSandboxContext.call(this, 0);
 			context.items = context.$input.all();
 			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
 
@@ -415,42 +409,50 @@ return _input.item;
 
 			return this.prepareOutputData(items);
 		}
-
 		// ----------------------------------
 		//        runOnceForEachItem
 		// ----------------------------------
+		else {
+			const returnData: INodeExecutionData[] = [];
 
-		const returnData: INodeExecutionData[] = [];
+			for (let index = 0; index < items.length; index++) {
+				let item = items[index];
 
-		for (let index = 0; index < items.length; index++) {
-			let item = items[index];
+				const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
 
-			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
+				const context = getSandboxContext.call(this, index);
+				context.item = context.$input.item;
+				const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
 
-			const context = getSandboxContext.call(this, index);
-			context.item = context.$input.item;
-			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
+				if (workflowMode === 'manual') {
+					sandbox.on('console.log', this.sendMessageToUI);
+				}
 
-			if (workflowMode === 'manual') {
-				sandbox.on('console.log', this.sendMessageToUI);
+				try {
+					item = await sandbox.runCode(jsCodeEachItem, index);
+				} catch (error) {
+					if (!this.continueOnFail()) return Promise.reject(error);
+					returnData.push({ json: { error: error.message } });
+				}
+
+				if (item) {
+					returnData.push({
+						json: standardizeOutput(item.json),
+						pairedItem: { item: index },
+						...(item.binary && { binary: item.binary }),
+					});
+				}
 			}
 
-			try {
-				item = await sandbox.runCode(jsCodeEachItem, index);
-			} catch (error) {
-				if (!this.continueOnFail()) return Promise.reject(error);
-				returnData.push({ json: { error: error.message } });
-			}
-
-			if (item) {
-				returnData.push({
-					json: standardizeOutput(item.json),
-					pairedItem: { item: index },
-					...(item.binary && { binary: item.binary }),
-				});
-			}
+			return this.prepareOutputData(returnData);
 		}
+	}
 
-		return this.prepareOutputData(returnData);
+	async execute(this: IExecuteFunctions) {
+		let language: EditorLanguageTypes = 'javaScript';
+		if (this.getNode().typeVersion === 2) {
+			language = this.getNodeParameter('language', 0) as EditorLanguageTypes;
+		}
+		return Code.prototype[language === 'python' ? 'executePython' : 'executeJavascript'].call(this);
 	}
 }
