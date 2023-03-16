@@ -28,8 +28,7 @@ import type {
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
-import { augmentObject } from './AugmentObject';
-import { deepCopy } from './utils';
+import { augmentArray, augmentObject } from './AugmentObject';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -102,10 +101,8 @@ export class WorkflowDataProxy {
 				: null
 			: runExecutionData;
 
-		// This is slower with augmentArray than deepCopy because literally all
-		// data gets always accessed, so leave for now
 		this.connectionInputData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(connectionInputData)
+			? augmentArray(connectionInputData)
 			: connectionInputData;
 
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
