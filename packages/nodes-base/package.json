@@ -38,6 +38,7 @@
       "dist/credentials/AffinityApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AirtableApi.credentials.js",
+      "dist/credentials/AirtablePersonalAccessTokenApi.credentials.js",
       "dist/credentials/Amqp.credentials.js",
       "dist/credentials/ApiTemplateIoApi.credentials.js",
       "dist/credentials/AsanaApi.credentials.js",

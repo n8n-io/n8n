@@ -28,12 +28,42 @@ export class AirtableTrigger implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
+			},
+			{
+				name: 'airtablePersonalAccessTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['personalAccessToken'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'Personal Access Token',
+						value: 'personalAccessToken',
+					},
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Base',
 				name: 'baseId',

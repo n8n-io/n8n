@@ -59,7 +59,14 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
+	let credentialType = 'airtableApi';
+
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'airtableApi') as string;
+	if (authenticationMethod === 'personalAccessToken') {
+		credentialType = 'airtablePersonalAccessTokenApi';
+	}
+
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 /**
