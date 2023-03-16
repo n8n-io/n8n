@@ -53,9 +53,9 @@
 		</template>
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
-				<div :class="$style.sidebar">
+				<!-- <div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
-				</div>
+				</div> -->
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<CredentialConfig
 						:credentialType="credentialType"
@@ -513,6 +513,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 
 			if (!keepEditing) {
+				if (this.isOAuthConnected) {
+					window.top?.postMessage(
+						JSON.stringify({
+							command: 'credSaved',
+						}),
+						'*',
+					);
+				}
+
 				return true;
 			} else if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
@@ -775,14 +784,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} else {
 				credential = await this.updateCredential(credentialDetails);
 			}
-
-
-			window.top?.postMessage(
-					JSON.stringify({
-						command: 'credSaved',
-					}),
-					'*',
-				);
 
 			this.isSaving = false;
 			if (credential) {

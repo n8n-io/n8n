@@ -473,6 +473,13 @@ export const pushConnection = mixins(
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
+
+							window.top?.postMessage(
+								JSON.stringify({
+									command: 'ranNode',
+								}),
+								'*',
+							);
 						}
 					} else {
 						this.$showMessage({
