@@ -5,14 +5,13 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 import type {
-	PgpClient,
-	PgpDatabase,
+	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { addWhereClauses, runQueries } from '../../helpers/utils';
+import { addWhereClauses } from '../../helpers/utils';
 
 import { optionsCollection, whereFixedCollection } from '../common.descriptions';
 
@@ -78,8 +77,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	pgp: PgpClient,
-	db: PgpDatabase,
+	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
@@ -145,5 +143,5 @@ export async function execute(
 		queries.push(queryWithValues);
 	}
 
-	return runQueries.call(this, pgp, db, queries, items, nodeOptions);
+	return runQueries(queries, items, nodeOptions);
 }

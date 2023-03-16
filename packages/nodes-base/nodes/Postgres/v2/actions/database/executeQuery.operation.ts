@@ -3,9 +3,9 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import type { PgpClient, PgpDatabase, QueryWithValues } from '../../helpers/interfaces';
+import type { QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
 
-import { replaceEmptyStringsByNulls, runQueries } from '../../helpers/utils';
+import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 
@@ -45,8 +45,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	pgp: PgpClient,
-	db: PgpDatabase,
+	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
@@ -74,5 +73,5 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries.call(this, pgp, db, queries, items, nodeOptions);
+	return runQueries(queries, items, nodeOptions);
 }

@@ -5,6 +5,7 @@ import type { PostgresType } from './node.type';
 
 import * as database from './database/Database.resource';
 import { configurePostgres } from '../transport';
+import { configureQueryRunner } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -18,6 +19,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const { db, pgp, sshClient } = await configurePostgres(credentials, options);
 
+	const runQueries = configureQueryRunner(
+		this.getNode(),
+		this.helpers.constructExecutionMetaData,
+		this.continueOnFail(),
+		pgp,
+		db,
+	);
+
 	const postgresNodeData = {
 		resource,
 		operation,
@@ -28,10 +37,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			case 'database':
 				returnData = await database[postgresNodeData.operation].execute.call(
 					this,
-					pgp,
-					db,
+					runQueries,
 					items,
 					options,
+					db,
 				);
 				break;
 			default:
