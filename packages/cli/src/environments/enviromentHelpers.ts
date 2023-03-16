@@ -17,7 +17,7 @@ export function canCreateNewVariable(variableCount: number): boolean {
 	if (limit === -1) {
 		return true;
 	}
-	return limit <= variableCount;
+	return limit < variableCount;
 }
 
 export function getVariablesLimit(): number {
