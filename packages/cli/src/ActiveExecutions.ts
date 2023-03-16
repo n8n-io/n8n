@@ -1,7 +1,4 @@
-/* eslint-disable prefer-template */
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -25,7 +22,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { isWorkflowIdValid } from '@/utils';
 import { Service } from 'typedi';
 
 @Service()
@@ -60,7 +57,7 @@ export class ActiveExecutions {
 			}
 
 			const workflowId = executionData.workflowData.id;
-			if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+			if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
 				fullExecutionData.workflowId = workflowId;
 			}
 

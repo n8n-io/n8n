@@ -2,6 +2,7 @@
 import { AES, enc } from 'crypto-js';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
+import { Container } from 'typedi';
 import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
@@ -23,15 +24,14 @@ import {
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
 import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
-import { getLicense } from '@/License';
-import { Container } from 'typedi';
+import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
 export const isLdapEnabled = (): boolean => {
-	const license = getLicense();
+	const license = Container.get(License);
 	return isUserManagementEnabled() && (config.getEnv(LDAP_ENABLED) || license.isLdapEnabled());
 };
 

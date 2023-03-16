@@ -28,7 +28,7 @@ import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -183,7 +183,7 @@ export class Start extends BaseCommand {
 	}
 
 	async initLicense(): Promise<void> {
-		const license = getLicense();
+		const license = Container.get(License);
 		await license.init(this.instanceId);
 
 		const activationKey = config.getEnv('license.activationKey');
