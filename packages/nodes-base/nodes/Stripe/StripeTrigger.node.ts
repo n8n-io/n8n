@@ -864,6 +864,13 @@ export class StripeTrigger implements INodeType {
 
 				const endpoint = '/webhook_endpoints';
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body = {
 					url: webhookUrl,
 					enabled_events: events,

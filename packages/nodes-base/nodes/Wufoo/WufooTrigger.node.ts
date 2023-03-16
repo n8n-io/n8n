@@ -112,6 +112,13 @@ export class WufooTrigger implements INodeType {
 				const formHash = this.getNodeParameter('form') as IDataObject;
 				const endpoint = `forms/${formHash}/webhooks.json`;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				// Handshake key for webhook endpoint protection
 				webhookData.handshakeKey = randomBytes(20).toString('hex');
 				const body: IWebhook = {
