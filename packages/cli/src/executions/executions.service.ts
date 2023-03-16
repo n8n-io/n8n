@@ -11,7 +11,6 @@ import type {
 	IRunExecutionData,
 	NodeOperationError,
 	IExecutionsSummary,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator, FindOptionsWhere } from 'typeorm';
@@ -41,7 +40,7 @@ import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers'
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
 	finished?: boolean;
-	mode?: WorkflowExecuteMode[];
+	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
@@ -50,17 +49,12 @@ interface IGetExecutionsQueryFilter {
 	waitTill?: FindOperator<any> | boolean;
 }
 
-type SortOptions = 'ASC' | 'DESC';
-
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
 		finished: { type: 'boolean' },
-		mode: {
-			type: 'array',
-			items: { type: 'string' },
-		},
+		mode: { type: 'string' },
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
 		status: {
@@ -225,10 +219,6 @@ export class ExecutionsService {
 			Object.assign(findWhere, { finished: filter.finished });
 		}
 
-		if (filter?.mode) {
-			Object.assign(findWhere, { mode: In(filter.mode) });
-		}
-
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
 			lastId?: string;
@@ -257,8 +247,6 @@ export class ExecutionsService {
 			});
 		}
 
-		const sorting = (req.query?.sort as SortOptions) ?? 'DESC';
-
 		// Omit `data` from the Execution since it is the largest and not necessary for the list.
 		let query = Db.collections.Execution.createQueryBuilder('execution')
 			.select([
@@ -273,7 +261,7 @@ export class ExecutionsService {
 				'execution.workflowData',
 				'execution.status',
 			])
-			.orderBy('id', sorting)
+			.orderBy('id', 'DESC')
 			.take(limit)
 			.where(findWhere);
 
@@ -282,11 +270,6 @@ export class ExecutionsService {
 		if (filter?.status) {
 			Object.assign(filter, { status: In(filter.status) });
 			Object.assign(countFilter, { status: In(filter.status) });
-		}
-
-		if (filter?.mode) {
-			Object.assign(filter, { mode: In(filter.mode) });
-			Object.assign(countFilter, { mode: In(filter.mode) });
 		}
 
 		if (filter) {

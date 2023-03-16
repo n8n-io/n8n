@@ -1893,7 +1893,6 @@ export interface IExceutionSummaryNodeExecutionResult {
 
 export interface ExecutionOptions {
 	limit?: number;
-	sort?: 'ASC' | 'DESC';
 }
 
 export interface ExecutionFilters {

@@ -146,7 +146,6 @@ export declare namespace ExecutionRequest {
 			limit: string;
 			lastId: string;
 			firstId: string;
-			sort: string;
 		};
 
 		type GetAllCurrent = {

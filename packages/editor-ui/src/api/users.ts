@@ -94,7 +94,6 @@ export function updateCurrentUser(
 		firstName?: string;
 		lastName?: string;
 		email: string;
-		settings?: IUserResponse['settings'];
 	},
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
