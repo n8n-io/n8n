@@ -1,5 +1,5 @@
 import { normalizeItems } from 'n8n-core';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { ValidationError } from './ValidationError';
 import type { CodeNodeMode } from './utils';
 import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
@@ -113,7 +113,15 @@ await __main()
 		}
 
 		if (Array.isArray(executionResult)) {
-			for (const item of executionResult) {
+			// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
+			// then validate all keys to be a supported item key, else allow user keys
+			// to be wrapped in `json` when normalizing items below.
+
+			const mustHaveTopLevelN8nKey = executionResult.some((item: IDataObject) =>
+				Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
+			);
+
+			for (const item of executionResult as IDataObject[]) {
 				if (item.json !== undefined && !isObject(item.json)) {
 					throw new ValidationError({
 						message: "A 'json' property isn't a dictionary",
@@ -122,15 +130,7 @@ await __main()
 					});
 				}
 
-				// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
-				// then validate all keys to be a supported item key, else allow user keys
-				// to be wrapped in `json` when normalizing items below.
-
-				if (
-					executionResult.some((resultItem) =>
-						Object.keys(resultItem).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
-					)
-				) {
+				if (mustHaveTopLevelN8nKey) {
 					Object.keys(item).forEach((key) => {
 						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 
