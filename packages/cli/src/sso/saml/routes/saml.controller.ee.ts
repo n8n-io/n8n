@@ -137,9 +137,9 @@ export class SamlController {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
 			// forced client side redirect through the use of a javascript redirect
-			return res.send(getInitSSOPostView(result.context));
-			// TODO:SAML: If we want the frontend to handle the redirect, we will send the redirect URL instead:
-			// return res.status(301).send(result.context.context);
+			// return res.send(getInitSSOPostView(result.context));
+			// Return the redirect URL directly
+			return res.send(result.context.context);
 		} else if (result?.binding === 'post') {
 			return res.send(getInitSSOFormView(result.context as PostBindingContext));
 		} else {

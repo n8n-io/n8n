@@ -1,7 +1,20 @@
 <script lang="ts" setup>
+import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 
 const ssoStore = useSSOStore();
+
+const onSSOLogin = async () => {
+	try {
+		window.location.href = await ssoStore.getSSORedirectUrl();
+	} catch (error) {
+		Notification.error({
+			title: 'Error',
+			message: error.message,
+			position: 'bottom-right',
+		});
+	}
+};
 </script>
 
 <template>
@@ -9,7 +22,13 @@ const ssoStore = useSSOStore();
 		<div :class="$style.divider">
 			<span>{{ $locale.baseText('sso.login.divider') }}</span>
 		</div>
-		<n8n-button size="large" type="primary" outline :label="$locale.baseText('sso.login.button')" />
+		<n8n-button
+			@click="onSSOLogin"
+			size="large"
+			type="primary"
+			outline
+			:label="$locale.baseText('sso.login.button')"
+		/>
 	</div>
 </template>
 
