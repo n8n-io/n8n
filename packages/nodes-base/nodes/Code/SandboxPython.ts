@@ -5,6 +5,7 @@ import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 import { LoadPyodide } from './Pyodide';
 
 import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+type PyodideError = Error & { type: string };
 
 export class SandboxPython {
 	private code = '';
@@ -73,7 +74,7 @@ await __main()
 			executionResult = await pyodide.runPythonAsync(runCode, { globals: globalsDict });
 			globalsDict.destroy();
 		} catch (error) {
-			throw this.getPrettyError(error);
+			throw this.getPrettyError(error as PyodideError);
 		}
 
 		if (executionResult?.toJs) {
@@ -83,7 +84,7 @@ await __main()
 		return executionResult;
 	}
 
-	private getPrettyError(error: Error & { type: string }): Error {
+	private getPrettyError(error: PyodideError): Error {
 		const errorTypeIndex = error.message.indexOf(error.type);
 		if (errorTypeIndex !== -1) {
 			return new Error(error.message.slice(errorTypeIndex));
