@@ -1,6 +1,6 @@
 import type express from 'express';
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -20,12 +20,11 @@ import {
 	updateWorkflow,
 	hasStartNode,
 	getStartNode,
-	getWorkflows,
 	getSharedWorkflows,
-	getWorkflowsCount,
 	createWorkflow,
 	getWorkflowIdsViaTags,
 	parseTagNames,
+	getWorkflowsAndCount,
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
@@ -98,28 +97,15 @@ export = {
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
 
-			let workflows: WorkflowEntity[];
-			let count: number;
-
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
-			};
-			const query: FindManyOptions<WorkflowEntity> = {
-				skip: offset,
-				take: limit,
-				where,
-				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			};
 
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(where, { id: In(workflowIds) });
+					where.id = In(workflowIds);
 				}
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
 			} else {
 				const options: { workflowIds?: string[] } = {};
 
@@ -137,13 +123,15 @@ export = {
 				}
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
-
-				Object.assign(where, { id: In(workflowsIds) });
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
+				where.id = In(workflowsIds);
 			}
+
+			const [workflows, count] = await getWorkflowsAndCount({
+				skip: offset,
+				take: limit,
+				where,
+				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+			});
 
 			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
