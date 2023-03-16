@@ -1,6 +1,6 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 
-const KV_LIMIT = 10;
+export const KV_LIMIT = 10;
 
 export function setWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,

@@ -265,11 +265,11 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 	}
 }
 
-async function saveExecutionMetadata(
+export async function saveExecutionMetadata(
 	executionId: string,
 	executionMetadata: Record<string, string>,
 ): Promise<void> {
-	await Db.collections.Execution.manager.transaction(async (em) => {
+	await Db.transaction(async (em) => {
 		for (const [key, value] of Object.entries(executionMetadata)) {
 			await em.save(ExecutionMetadata, {
 				execution: { id: executionId },
