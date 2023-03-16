@@ -199,6 +199,13 @@ export class FacebookTrigger implements INodeType {
 				const fields = this.getNodeParameter('fields') as string[];
 				const options = this.getNodeParameter('options') as IDataObject;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body = {
 					object: snakeCase(object),
 					callback_url: webhookUrl,

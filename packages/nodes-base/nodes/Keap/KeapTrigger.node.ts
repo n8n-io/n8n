@@ -114,6 +114,13 @@ export class KeapTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body = {
 					eventKey: eventId,
 					hookUrl: webhookUrl,

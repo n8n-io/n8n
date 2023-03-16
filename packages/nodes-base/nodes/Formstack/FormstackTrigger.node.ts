@@ -127,6 +127,13 @@ export class FormstackTrigger implements INodeType {
 
 				const endpoint = `form/${formId}/webhook.json`;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				// TODO: Add handshake key support
 				const body = {
 					url: webhookUrl,

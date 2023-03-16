@@ -122,6 +122,14 @@ export class CopperTrigger implements INodeType {
 				const resource = this.getNodeParameter('resource') as string;
 				const event = this.getNodeParameter('event') as string;
 				const endpoint = '/webhooks';
+
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body: IDataObject = {
 					target: webhookUrl,
 					type: resource,

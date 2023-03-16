@@ -132,6 +132,14 @@ export class FlowTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
 				const endpoint = '/integration_webhooks';
+
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				if (resource === 'list') {
 					resourceIds = (this.getNodeParameter('listIds') as string).split(',');
 				}

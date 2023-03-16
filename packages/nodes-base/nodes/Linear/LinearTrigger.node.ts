@@ -166,6 +166,14 @@ export class LinearTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const teamId = this.getNodeParameter('teamId') as string;
 				const resources = this.getNodeParameter('resources') as string[];
+
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body = {
 					query: `
 						mutation webhookCreate($url: String!, $teamId: String!, $resources: [String!]!) {

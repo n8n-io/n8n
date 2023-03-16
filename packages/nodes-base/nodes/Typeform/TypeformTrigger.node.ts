@@ -183,6 +183,13 @@ export class TypeformTrigger implements INodeType {
 
 				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				// TODO: Add HMAC-validation once either the JSON data can be used for it or there is a way to access the binary-payload-data
 				const body = {
 					url: webhookUrl,

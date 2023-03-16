@@ -225,6 +225,14 @@ export class WebflowTrigger implements INodeType {
 				const siteId = this.getNodeParameter('site') as string;
 				const event = this.getNodeParameter('event') as string;
 				const endpoint = `/sites/${siteId}/webhooks`;
+
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body: IDataObject = {
 					site_id: siteId,
 					triggerType: event,

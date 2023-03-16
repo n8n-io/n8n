@@ -158,6 +158,13 @@ export class PostmarkTrigger implements INodeType {
 
 				const endpoint = '/webhooks';
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body: any = {
 					Url: webhookUrl,
 					Triggers: {

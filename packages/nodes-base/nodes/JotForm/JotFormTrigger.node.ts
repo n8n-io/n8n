@@ -131,9 +131,16 @@ export class JotFormTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
 				const endpoint = `/form/${formId}/webhooks`;
+
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body: IDataObject = {
 					webhookURL: webhookUrl,
-					//webhookURL: 'https://en0xsizp3qyt7f.x.pipedream.net/',
 				};
 				const { content } = await jotformApiRequest.call(this, 'POST', endpoint, body);
 				webhookData.webhookId = Object.keys(content as IDataObject)[0];

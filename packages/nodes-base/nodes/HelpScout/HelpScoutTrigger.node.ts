@@ -137,6 +137,13 @@ export class HelpScoutTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const endpoint = '/v2/webhooks';
 
 				const body = {

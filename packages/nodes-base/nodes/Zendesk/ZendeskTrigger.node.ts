@@ -302,6 +302,13 @@ export class ZendeskTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const service = this.getNodeParameter('service') as string;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				if (service === 'support') {
 					const message: IDataObject = {};
 					const resultAll = [],

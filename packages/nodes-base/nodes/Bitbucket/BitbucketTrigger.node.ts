@@ -281,6 +281,13 @@ export class BitbucketTrigger implements INodeType {
 				const resource = this.getNodeParameter('resource', 0);
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				if (resource === 'workspace') {
 					endpoint = `/workspaces/${workspace}/hooks`;
 				}

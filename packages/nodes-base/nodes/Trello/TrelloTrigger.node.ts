@@ -91,6 +91,13 @@ export class TrelloTrigger implements INodeType {
 
 				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body = {
 					description: `n8n Webhook - ${idModel}`,
 					callbackURL: webhookUrl,

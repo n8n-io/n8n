@@ -149,6 +149,13 @@ export class WorkableTrigger implements INodeType {
 				const { stage, job } = this.getNodeParameter('filters') as IDataObject;
 				const endpoint = '/subscriptions';
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const body: IDataObject = {
 					event: snakeCase(triggerOn).toLowerCase(),
 					args: {

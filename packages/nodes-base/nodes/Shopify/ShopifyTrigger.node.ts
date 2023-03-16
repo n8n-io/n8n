@@ -360,6 +360,13 @@ export class ShopifyTrigger implements INodeType {
 					},
 				};
 
+				if (webhookUrl.includes('//localhost')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
+				}
+
 				const responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
