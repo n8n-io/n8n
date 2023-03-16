@@ -35,7 +35,10 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
 import { Container } from 'typedi';
-import { getStatusUsingPreviousExecutionStatusMethod, isAdvancedExecutionFiltersEnabled } from './executionHelpers';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executionHelpers';
 import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
