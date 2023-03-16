@@ -7,7 +7,8 @@ import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
 // String literal expression is everything enclosed in single, double or tick quotes following a dot
 const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
-
+// JavaScript operands
+const operandsRegex = /[+\-*/><<==>**!=?]/;
 /**
  * Split user input into base (to resolve) and tail (to filter).
  */
@@ -36,7 +37,7 @@ export function longestCommonPrefix(...strings: string[]) {
 }
 
 // Process user input if expressions are used as part of complex expression
-// i.e. as a function parameter
+// i.e. as a function parameter or an operation expression
 // this function will extract expression that is currently typed so autocomplete
 // suggestions can be matched based on it.
 function extractSubExpression(userInput: string): string {
@@ -49,6 +50,12 @@ function extractSubExpression(userInput: string): string {
 		// extract part of following the last $
 		const expressionParts = userInput.split('$');
 		userInput = `$${expressionParts[expressionParts.length - 1]}`;
+		// If input is part of a complex operation expression and extract last operand
+		const operationPart = userInput.split(operandsRegex).pop()?.trim() || '';
+		const lastOperand = operationPart.split(' ').pop();
+		if (lastOperand) {
+			userInput = lastOperand;
+		}
 	}
 	return userInput;
 }

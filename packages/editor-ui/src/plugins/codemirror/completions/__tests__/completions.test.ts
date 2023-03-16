@@ -203,6 +203,26 @@ describe('Resolution-based completions', () => {
 			if (!found) throw new Error('Expected to find completions');
 			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
 		});
+
+		test('should return completions for operation expression: {{ $now.day + $json. }}', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json);
+			const { $json } = mockProxy;
+			const found = completions('{{ $now.day + $json.| }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
+		});
+
+		test('should return completions for operation expression: {{ Math.abs($now.day) >= 10 ? $now : Math.abs($json.). }}', () => {
+			resolveParameterSpy.mockReturnValue($input.item.json);
+			const { $json } = mockProxy;
+			const found = completions('{{ Math.abs($now.day) >= 10 ? $now : Math.abs($json.|) }}');
+
+			if (!found) throw new Error('Expected to find completions');
+
+			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
+		});
 	});
 
 	describe('bracket-aware completions', () => {
