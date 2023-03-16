@@ -1,18 +1,22 @@
 import { CODE_NODE_NAME, SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { NDV } from '../pages/ndv';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';
 
 const WorkflowPage = new WorkflowPageClass();
+const ndv = new NDV();
 
 describe('Undo/Redo', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should undo/redo adding nodes', () => {
@@ -36,18 +40,18 @@ describe('Undo/Redo', () => {
 	it('should undo/redo adding node in the middle', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
-		cy.get('.connection-actions .add').should('be.visible');
-		cy.get('.connection-actions .add').click();
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addNodeBetweenNodes(
+			SCHEDULE_TRIGGER_NODE_NAME,
+			CODE_NODE_NAME,
+			SET_NODE_NAME,
+		);
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
-		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 4);
-		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 	});
 
 	it('should undo/redo deleting node using delete button', () => {
@@ -118,7 +122,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
@@ -138,8 +142,8 @@ describe('Undo/Redo', () => {
 	it('should undo/redo deleting a connection by pressing delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
-		cy.get('.connection-actions .delete').click();
+		WorkflowPage.getters.nodeConnections().realHover();
+		cy.get('.connection-actions .delete').filter(':visible').should('be.visible').click();
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -150,7 +154,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo deleting a connection by moving it away', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', 0, -100);
+		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', [0, -100]);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -204,11 +208,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
-		WorkflowPage.getters.nodeNameContainerNDV().click();
-		WorkflowPage.getters.nodeRenameInput().should('be.visible');
-		WorkflowPage.getters.nodeRenameInput().type('{selectall}');
-		WorkflowPage.getters.nodeRenameInput().type(CODE_NODE_NEW_NAME);
-		cy.get('body').type('{enter}');
+		ndv.actions.rename(CODE_NODE_NEW_NAME);
 		cy.get('body').type('{esc}');
 		WorkflowPage.actions.hitUndo();
 		cy.get('body').type('{esc}');
@@ -272,7 +272,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		// Move first one
 		WorkflowPage.getters.canvasNodes().first().click();
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		// Delete the set node
 		WorkflowPage.getters.canvasNodeByName(SET_NODE_NAME).click().click();
 		cy.get('body').type('{backspace}');

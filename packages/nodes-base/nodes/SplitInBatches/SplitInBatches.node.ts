@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 export class SplitInBatches implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,7 +20,9 @@ export class SplitInBatches implements INodeType {
 			color: '#007755',
 		},
 		inputs: ['main'],
-		outputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+		outputs: ['main', 'main'],
+		outputNames: ['loop', 'done'],
 		properties: [
 			{
 				displayName:
@@ -84,12 +86,18 @@ export class SplitInBatches implements INodeType {
 			// Get the items which should be returned
 			returnItems.push.apply(returnItems, items.splice(0, batchSize));
 
-			// Set the other items to be saved in the context to return at later runs
+			// Save the incoming items to be able to return them for later runs
 			nodeContext.items = [...items];
+
+			// Reset processedItems as they get only added starting from the first iteration
+			nodeContext.processedItems = [];
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
-			returnItems.push.apply(returnItems, nodeContext.items.splice(0, batchSize));
+			returnItems.push.apply(
+				returnItems,
+				(nodeContext.items as INodeExecutionData[]).splice(0, batchSize),
+			);
 
 			const addSourceOverwrite = (pairedItem: IPairedItemData | number): IPairedItemData => {
 				if (typeof pairedItem === 'number') {
@@ -122,6 +130,20 @@ export class SplitInBatches implements INodeType {
 				return addSourceOverwrite(item.pairedItem);
 			}
 
+			const sourceOverwrite = this.getInputSourceData();
+
+			const newItems = items.map((item, index) => {
+				return {
+					...item,
+					pairedItem: {
+						sourceOverwrite,
+						item: index,
+					},
+				};
+			});
+
+			nodeContext.processedItems = [...nodeContext.processedItems, ...newItems];
+
 			returnItems.map((item) => {
 				item.pairedItem = getPairedItemInformation(item);
 			});
@@ -130,10 +152,9 @@ export class SplitInBatches implements INodeType {
 		nodeContext.noItemsLeft = nodeContext.items.length === 0;
 
 		if (returnItems.length === 0) {
-			// No data left to return so stop execution of the branch
-			return null;
+			return [[], nodeContext.processedItems];
 		}
 
-		return [returnItems];
+		return [returnItems, []];
 	}
 }

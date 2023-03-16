@@ -1,3 +1,4 @@
+import { INodeUi, IUsedCredential } from './../Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -72,6 +73,38 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				{},
 			);
 		},
+		allUsableCredentialsForNode() {
+			return (node: INodeUi): ICredentialsResponse[] => {
+				let credentials: ICredentialsResponse[] = [];
+				const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+				if (nodeType && nodeType.credentials) {
+					nodeType.credentials.forEach((cred) => {
+						credentials = credentials.concat(this.allUsableCredentialsByType[cred.name]);
+					});
+				}
+				return credentials.sort((a, b) => {
+					const aDate = new Date(a.updatedAt);
+					const bDate = new Date(b.updatedAt);
+					return aDate.getTime() - bDate.getTime();
+				});
+			};
+		},
+		allUsableCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
+			const credentials = this.allCredentials;
+			const types = this.allCredentialTypes;
+			const usersStore = useUsersStore();
+
+			return types.reduce(
+				(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
+					accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
+						return cred.type === type.name && usersStore.isResourceAccessible(cred);
+					});
+
+					return accu;
+				},
+				{},
+			);
+		},
 		getCredentialTypeByName() {
 			return (type: string): ICredentialType => this.credentialTypes[type];
 		},
@@ -87,6 +120,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		getCredentialsByType() {
 			return (credentialType: string): ICredentialsResponse[] => {
 				return this.allCredentialsByType[credentialType] || [];
+			};
+		},
+		getUsableCredentialByType() {
+			return (credentialType: string): ICredentialsResponse[] => {
+				return this.allUsableCredentialsByType[credentialType] || [];
 			};
 		},
 		getNodesWithAccess() {
@@ -139,11 +177,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 		},
 		getCredentialOwnerName() {
-			return (credentialId: string): string => {
-				const credential = this.getCredentialById(credentialId);
-				return credential && credential.ownedBy && credential.ownedBy.firstName
+			return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
+				return credential?.ownedBy?.firstName
 					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
 					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			};
+		},
+		getCredentialOwnerNameById() {
+			return (credentialId: string): string => {
+				const credential = this.getCredentialById(credentialId);
+
+				return this.getCredentialOwnerName(credential);
 			};
 		},
 	},

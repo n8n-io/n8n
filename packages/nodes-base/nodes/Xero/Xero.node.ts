@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,9 +15,9 @@ import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IInvoice, ILineItem } from './InvoiceInterface';
+import type { IInvoice, ILineItem } from './InvoiceInterface';
 
-import { IAddress, IContact, IPhone } from './IContactInterface';
+import type { IAddress, IContact, IPhone } from './IContactInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -449,7 +448,7 @@ export class Xero implements INodeType {
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Invoices`,
+								'/Invoices',
 								{ organizationId },
 								qs,
 							);
@@ -602,7 +601,7 @@ export class Xero implements INodeType {
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Contacts`,
+								'/Contacts',
 								{ organizationId },
 								qs,
 							);
@@ -719,7 +718,7 @@ export class Xero implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

@@ -38,6 +38,7 @@
 				:value="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
+				:path="path"
 				@valueChanged="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -76,6 +77,16 @@
 					:mode="node.parameters.mode"
 					:jsCode="node.parameters.jsCode"
 					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
+				<html-editor
+					v-else-if="getArgument('editor') === 'htmlEditor'"
+					:html="node.parameters.html"
+					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
+					:disableExpressionColoring="!isHtmlNode(node)"
+					:disableExpressionCompletions="!isHtmlNode(node)"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -308,7 +319,7 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
@@ -337,6 +348,7 @@ import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue'
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -344,7 +356,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -353,6 +365,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
 
 export default mixins(
 	externalHooks,
@@ -365,6 +378,7 @@ export default mixins(
 	components: {
 		CodeEdit,
 		CodeNodeEditor,
+		HtmlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
@@ -492,7 +506,7 @@ export default mixins(
 	computed: {
 		...mapStores(useCredentialsStore, useNodeTypesStore, useNDVStore, useWorkflowsStore),
 		expressionDisplayValue(): string {
-			if (this.activeDrop || this.forceShowExpression) {
+			if (this.forceShowExpression) {
 				return '';
 			}
 
@@ -948,6 +962,9 @@ export default mixins(
 		isCodeNode(node: INodeUi): boolean {
 			return node.type === CODE_NODE_TYPE;
 		},
+		isHtmlNode(node: INodeUi): boolean {
+			return node.type === HTML_NODE_TYPE;
+		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
 			const valueMatch = (value as string).match(
@@ -1077,6 +1094,8 @@ export default mixins(
 					}
 				}
 				this.loadRemoteParameterOptions();
+			} else if (command === 'formatHtml') {
+				htmlEditorEventBus.$emit('format-html');
 			}
 
 			if (this.node && (command === 'addExpression' || command === 'removeExpression')) {

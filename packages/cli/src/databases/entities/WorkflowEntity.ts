@@ -1,37 +1,33 @@
 import { Length } from 'class-validator';
 
-import type {
-	IBinaryKeyData,
-	IConnections,
-	IDataObject,
-	INode,
-	IPairedItemData,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
+import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
 import {
 	Column,
 	Entity,
+	Generated,
 	Index,
 	JoinColumn,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 } from 'typeorm';
 
 import config from '@/config';
-import { TagEntity } from './TagEntity';
-import { SharedWorkflow } from './SharedWorkflow';
-import { objectRetriever, sqlite } from '../utils/transformers';
+import type { TagEntity } from './TagEntity';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { WorkflowStatistics } from './WorkflowStatistics';
+import { idStringifier, objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import { WorkflowStatistics } from './WorkflowStatistics';
 import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	// TODO: Add XSS check
 	@Index({ unique: true })
@@ -63,7 +59,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	staticData?: IDataObject;
 
-	@ManyToMany(() => TagEntity, (tag) => tag.workflows)
+	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
 		joinColumn: {
@@ -77,18 +73,12 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	tags?: TagEntity[];
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
 
-	@OneToMany(
-		() => WorkflowStatistics,
-		(workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow,
-	)
+	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })
 	statistics: WorkflowStatistics[];
-
-	@Column({ default: false })
-	dataLoaded: boolean;
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
@@ -99,6 +89,9 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 
 	@Column({ length: 36 })
 	versionId: string;
+
+	@Column({ default: 0 })
+	triggerCount: number;
 }
 
 /**

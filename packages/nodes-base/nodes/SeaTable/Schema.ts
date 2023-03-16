@@ -1,4 +1,4 @@
-import { TColumnType, TDateTimeFormat, TInheritColumnKey } from './types';
+import type { TColumnType, TDateTimeFormat, TInheritColumnKey } from './types';
 
 export type ColumnType = keyof typeof schema.columnTypes;
 

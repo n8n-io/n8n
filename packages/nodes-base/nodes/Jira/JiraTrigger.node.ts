@@ -1,13 +1,13 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { allEvents, eventExists, getId, jiraSoftwareCloudApiRequest } from './GenericFunctions';
 
@@ -359,7 +359,6 @@ export class JiraTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -369,13 +368,13 @@ export class JiraTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				const endpoint = `/webhooks/1.0/webhook`;
+				const endpoint = '/webhooks/1.0/webhook';
 
 				const webhooks = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
 
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && eventExists(events, webhook.events)) {
-						webhookData.webhookId = getId(webhook.self);
+					if (webhook.url === webhookUrl && eventExists(events, webhook.events as string[])) {
+						webhookData.webhookId = getId(webhook.self as string);
 						return true;
 					}
 				}
@@ -389,7 +388,7 @@ export class JiraTrigger implements INodeType {
 
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
-				const endpoint = `/webhooks/1.0/webhook`;
+				const endpoint = '/webhooks/1.0/webhook';
 
 				const webhookData = this.getWorkflowStaticData('node');
 
@@ -430,7 +429,7 @@ export class JiraTrigger implements INodeType {
 						);
 					}
 					if (!httpQueryAuth.name && !httpQueryAuth.value) {
-						throw new NodeOperationError(this.getNode(), `HTTP Query Auth credentials are empty`);
+						throw new NodeOperationError(this.getNode(), 'HTTP Query Auth credentials are empty');
 					}
 					parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(
 						httpQueryAuth.value as string,
@@ -439,18 +438,19 @@ export class JiraTrigger implements INodeType {
 
 				if (additionalFields.includeFields) {
 					for (const field of additionalFields.includeFields as string[]) {
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						parameters[field] = '${' + field + '}';
 					}
 				}
 
-				if (Object.keys(parameters).length) {
-					const params = new URLSearchParams(parameters).toString();
+				if (Object.keys(parameters as IDataObject).length) {
+					const params = new URLSearchParams(parameters as string).toString();
 					body.url = `${body.url}?${decodeURIComponent(params)}`;
 				}
 
 				const responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'POST', body);
 
-				webhookData.webhookId = getId(responseData.self);
+				webhookData.webhookId = getId(responseData.self as string);
 
 				return true;
 			},
@@ -467,7 +467,7 @@ export class JiraTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 

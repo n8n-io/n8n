@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -9,6 +9,8 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 	name = 'venafiTlsProtectCloudApi';
 
 	displayName = 'Venafi TLS Protect Cloud';
+
+	documentationUrl = 'venafitlsprotectcloud';
 
 	properties = [
 		{

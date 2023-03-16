@@ -1,15 +1,14 @@
-import express from 'express';
+import type express from 'express';
+import { Container } from 'typedi';
+import type { FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 
-import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
-
-import * as Db from '@/Db';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
-import { WorkflowRequest } from '../../../types';
+import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
@@ -21,13 +20,14 @@ import {
 	updateWorkflow,
 	hasStartNode,
 	getStartNode,
-	getWorkflows,
 	getSharedWorkflows,
-	getWorkflowsCount,
 	createWorkflow,
 	getWorkflowIdsViaTags,
 	parseTagNames,
+	getWorkflowsAndCount,
 } from './workflows.service';
+import { WorkflowsService } from '@/workflows/workflows.services';
+import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	createWorkflow: [
@@ -49,8 +49,8 @@ export = {
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
-			await externalHooks.run('workflow.afterCreate', [createdWorkflow]);
-			void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, createdWorkflow, true);
+			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
+			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
 
 			return res.json(createdWorkflow);
 		},
@@ -58,27 +58,16 @@ export = {
 	deleteWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
-			const { id } = req.params;
+			const { id: workflowId } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
-
-			if (!sharedWorkflow) {
+			const workflow = await WorkflowsService.delete(req.user, workflowId);
+			if (!workflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (sharedWorkflow.workflow.active) {
-				// deactivate before deleting
-				await ActiveWorkflowRunner.getInstance().remove(id.toString());
-			}
-
-			await Db.collections.Workflow.delete(id);
-
-			void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, id.toString(), true);
-			await externalHooks.run('workflow.afterDelete', [id.toString()]);
-
-			return res.json(sharedWorkflow.workflow);
+			return res.json(workflow);
 		},
 	],
 	getWorkflow: [
@@ -86,7 +75,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -94,7 +83,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void InternalHooksManager.getInstance().onUserRetrievedWorkflow({
+			void Container.get(InternalHooks).onUserRetrievedWorkflow({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -108,29 +97,17 @@ export = {
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
 
-			let workflows: WorkflowEntity[];
-			let count: number;
-
-			const query: FindManyOptions<WorkflowEntity> & { where: ObjectLiteral } = {
-				skip: offset,
-				take: limit,
-				where: {
-					...(active !== undefined && { active }),
-				},
-				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+			const where: FindOptionsWhere<WorkflowEntity> = {
+				...(active !== undefined && { active }),
 			};
 
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(query.where, { id: In(workflowIds) });
+					where.id = In(workflowIds);
 				}
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
 			} else {
-				const options: { workflowIds?: number[] } = {};
+				const options: { workflowIds?: string[] } = {};
 
 				if (tags) {
 					options.workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
@@ -146,15 +123,17 @@ export = {
 				}
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
-
-				Object.assign(query.where, { id: In(workflowsIds) });
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
+				where.id = In(workflowsIds);
 			}
 
-			void InternalHooksManager.getInstance().onUserRetrievedAllWorkflows({
+			const [workflows, count] = await getWorkflowsAndCount({
+				skip: offset,
+				take: limit,
+				where,
+				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+			});
+
+			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -176,7 +155,7 @@ export = {
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -191,12 +170,12 @@ export = {
 			await replaceInvalidCredentials(updateData);
 			addNodeIds(updateData);
 
-			const workflowRunner = ActiveWorkflowRunner.getInstance();
+			const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 			if (sharedWorkflow.workflow.active) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
-				await workflowRunner.remove(id.toString());
+				await workflowRunner.remove(id);
 			}
 
 			try {
@@ -209,7 +188,7 @@ export = {
 
 			if (sharedWorkflow.workflow.active) {
 				try {
-					await workflowRunner.add(sharedWorkflow.workflowId.toString(), 'update');
+					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -219,8 +198,8 @@ export = {
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
 
-			await externalHooks.run('workflow.afterUpdate', [updateData]);
-			void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updateData, true);
+			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
+			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 
 			return res.json(updatedWorkflow);
 		},
@@ -230,7 +209,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -240,10 +219,7 @@ export = {
 
 			if (!sharedWorkflow.workflow.active) {
 				try {
-					await ActiveWorkflowRunner.getInstance().add(
-						sharedWorkflow.workflowId.toString(),
-						'activate',
-					);
+					await Container.get(ActiveWorkflowRunner).add(sharedWorkflow.workflowId, 'activate');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -267,7 +243,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -275,10 +251,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const workflowRunner = ActiveWorkflowRunner.getInstance();
+			const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 			if (sharedWorkflow.workflow.active) {
-				await workflowRunner.remove(sharedWorkflow.workflowId.toString());
+				await workflowRunner.remove(sharedWorkflow.workflowId);
 
 				await setWorkflowAsInactive(sharedWorkflow.workflow);
 

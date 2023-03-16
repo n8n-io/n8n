@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,8 +7,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { countriesCodes } from './CountriesCodes';
 
@@ -17,9 +16,9 @@ import { conversationFields, conversationOperations } from './ConversationDescri
 
 import { customerFields, customerOperations } from './CustomerDescription';
 
-import { ICustomer } from './CustomerInterface';
+import type { ICustomer } from './CustomerInterface';
 
-import { IConversation } from './ConversationInterface';
+import type { IConversation } from './ConversationInterface';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
@@ -27,7 +26,7 @@ import { mailboxFields, mailboxOperations } from './MailboxDescription';
 
 import { threadFields, threadOperations } from './ThreadDescription';
 
-import { IAttachment, IThread } from './ThreadInterface';
+import type { IAttachment, IThread } from './ThreadInterface';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
@@ -217,7 +216,7 @@ export class HelpScout implements INodeType {
 						const id = responseData.headers['resource-id'];
 						const uri = responseData.headers.location;
 						if (resolveData) {
-							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri);
+							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri as string);
 						} else {
 							responseData = {
 								id,
@@ -248,7 +247,12 @@ export class HelpScout implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
+						if (options.tags) {
+							qs.tag = options.tags.toString();
+						}
 						Object.assign(qs, options);
+						delete qs.tags;
+
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
@@ -330,7 +334,7 @@ export class HelpScout implements INodeType {
 						const id = responseData.headers['resource-id'];
 						const uri = responseData.headers.location;
 						if (resolveData) {
-							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri);
+							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri as string);
 						} else {
 							responseData = {
 								id,
@@ -568,7 +572,7 @@ export class HelpScout implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

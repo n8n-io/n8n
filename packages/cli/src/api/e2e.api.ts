@@ -9,8 +9,9 @@ import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
-import { Role } from '@/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
+import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -18,12 +19,16 @@ if (process.env.E2E_TESTS !== 'true') {
 }
 
 const tablesToTruncate = [
+	'auth_identity',
+	'auth_provider_sync_history',
+	'event_destinations',
 	'shared_workflow',
 	'shared_credentials',
 	'webhook_entity',
 	'workflows_tags',
 	'credentials_entity',
 	'tag_entity',
+	'workflow_statistics',
 	'workflow_entity',
 	'execution_entity',
 	'settings',
@@ -40,7 +45,6 @@ const truncateAll = async () => {
 			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 		);
 	}
-	config.set('userManagement.isInstanceOwnerSetUp', false);
 };
 
 const setupUserManagement = async () => {
@@ -67,13 +71,23 @@ const setupUserManagement = async () => {
 		`INSERT INTO user (id, globalRoleId) values ("${uuid()}", ${instanceOwnerRole[0].insertId})`,
 	);
 	await connection.query(
-		`INSERT INTO "settings" (key, value, loadOnStartup) values ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)`,
+		"INSERT INTO \"settings\" (key, value, loadOnStartup) values ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)",
 	);
+
+	config.set('userManagement.isInstanceOwnerSetUp', false);
+};
+
+const resetLogStreaming = async () => {
+	config.set('enterprise.features.logStreaming', false);
+	for (const id in eventBus.destinations) {
+		await eventBus.removeDestination(id);
+	}
 };
 
 export const e2eController = Router();
 
 e2eController.post('/db/reset', async (req, res) => {
+	await resetLogStreaming();
 	await truncateAll();
 	await setupUserManagement();
 
@@ -87,11 +101,14 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	}
 
 	const globalRole = await Db.collections.Role.findOneOrFail({
-		name: 'owner',
-		scope: 'global',
+		select: ['id'],
+		where: {
+			name: 'owner',
+			scope: 'global',
+		},
 	});
 
-	const owner = await Db.collections.User.findOneOrFail({ globalRole });
+	const owner = await Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 
 	await Db.collections.User.update(owner.id, {
 		email: req.body.email,
@@ -107,5 +124,10 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
+	res.writeHead(204).end();
+});
+
+e2eController.post('/enable-feature/:feature', async (req, res) => {
+	config.set(`enterprise.features.${req.params.feature}`, true);
 	res.writeHead(204).end();
 });

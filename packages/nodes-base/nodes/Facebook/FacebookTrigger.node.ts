@@ -1,14 +1,15 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -220,7 +221,7 @@ export class FacebookTrigger implements INodeType {
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new NodeApiError(this.getNode(), responseData, {
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 						message: 'Facebook webhook creation response did not contain the expected data.',
 					});
 				}

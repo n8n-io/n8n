@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { handleListing, redditApiRequest } from './GenericFunctions';
 
@@ -138,7 +138,7 @@ export class Reddit implements INodeType {
 						const postTypePrefix = 't3_';
 
 						const qs: IDataObject = {
-							id: postTypePrefix + this.getNodeParameter('postId', i),
+							id: postTypePrefix + (this.getNodeParameter('postId', i) as string),
 						};
 
 						await redditApiRequest.call(this, 'POST', 'api/del', qs);
@@ -228,7 +228,7 @@ export class Reddit implements INodeType {
 
 						const qs: IDataObject = {
 							text: this.getNodeParameter('commentText', i),
-							thing_id: postTypePrefix + this.getNodeParameter('postId', i),
+							thing_id: postTypePrefix + (this.getNodeParameter('postId', i) as string),
 						};
 
 						responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
@@ -255,7 +255,7 @@ export class Reddit implements INodeType {
 						const commentTypePrefix = 't1_';
 
 						const qs: IDataObject = {
-							id: commentTypePrefix + this.getNodeParameter('commentId', i),
+							id: commentTypePrefix + (this.getNodeParameter('commentId', i) as string),
 						};
 
 						await redditApiRequest.call(this, 'POST', 'api/del', qs);
@@ -272,7 +272,7 @@ export class Reddit implements INodeType {
 
 						const qs: IDataObject = {
 							text: this.getNodeParameter('replyText', i),
-							thing_id: commentTypePrefix + this.getNodeParameter('commentId', i),
+							thing_id: commentTypePrefix + (this.getNodeParameter('commentId', i) as string),
 						};
 
 						responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
@@ -308,7 +308,7 @@ export class Reddit implements INodeType {
 						let username;
 
 						if (details === 'saved') {
-							({ name: username } = await redditApiRequest.call(this, 'GET', `api/v1/me`, {}));
+							({ name: username } = await redditApiRequest.call(this, 'GET', 'api/v1/me', {}));
 						}
 
 						responseData =
@@ -321,12 +321,12 @@ export class Reddit implements INodeType {
 						} else if (details === 'friends') {
 							responseData = responseData.data.children;
 							if (!responseData.length) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 						} else if (details === 'karma') {
 							responseData = responseData.data;
 							if (!responseData.length) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 						} else if (details === 'trophies') {
 							responseData = responseData.data.trophies.map((trophy: IDataObject) => trophy.data);
@@ -422,7 +422,7 @@ export class Reddit implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as JsonObject),
 					{ itemData: { item: i } },
 				);
 

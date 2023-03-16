@@ -1,13 +1,12 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function sendGridApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -28,7 +27,7 @@ export async function sendGridApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -55,9 +54,10 @@ export async function sendGridApiRequestAllItems(
 	let uri;
 
 	do {
-		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri); // posible bug, as function does not have uri parameter
 		uri = responseData._metadata.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		if (query.limit && returnData.length >= query.limit) {
 			return returnData;
 		}

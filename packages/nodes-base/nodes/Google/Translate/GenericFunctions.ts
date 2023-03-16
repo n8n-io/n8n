@@ -1,8 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -13,6 +18,58 @@ interface IGoogleAuthCredentials {
 	email: string;
 	inpersonate: boolean;
 	privateKey: string;
+}
+
+async function getAccessToken(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	credentials: IGoogleAuthCredentials,
+): Promise<IDataObject> {
+	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
+
+	const scopes = [
+		'https://www.googleapis.com/auth/cloud-translation',
+		'https://www.googleapis.com/auth/cloud-platform',
+	];
+
+	const now = moment().unix();
+
+	credentials.email = credentials.email.trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
+
+	const signature = jwt.sign(
+		{
+			iss: credentials.email,
+			sub: credentials.email,
+			scope: scopes.join(' '),
+			aud: 'https://oauth2.googleapis.com/token',
+			iat: now,
+			exp: now + 3600,
+		},
+		privateKey,
+		{
+			algorithm: 'RS256',
+			header: {
+				kid: privateKey,
+				typ: 'JWT',
+				alg: 'RS256',
+			},
+		},
+	);
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+			assertion: signature,
+		},
+		uri: 'https://oauth2.googleapis.com/token',
+		json: true,
+	};
+
+	return this.helpers.request(options);
 }
 
 export async function googleApiRequest(
@@ -44,7 +101,7 @@ export async function googleApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -64,7 +121,7 @@ export async function googleApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'googleTranslateOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -85,60 +142,8 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
-}
-
-async function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IGoogleAuthCredentials,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = [
-		'https://www.googleapis.com/auth/cloud-translation',
-		'https://www.googleapis.com/auth/cloud-platform',
-	];
-
-	const now = moment().unix();
-
-	credentials.email = credentials.email.trim();
-	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email,
-			sub: credentials.email,
-			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request!(options);
 }

@@ -1,14 +1,13 @@
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-import { IExecuteFunctions } from 'n8n-core';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	capitalize,
@@ -17,7 +16,7 @@ import {
 	// validateJSON,
 } from './GenericFunctions';
 
-import { ICreateContactBody } from './ContactInterface';
+import type { ICreateContactBody } from './ContactInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
@@ -1405,7 +1404,7 @@ export class Freshdesk implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function quickbaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
@@ -43,7 +44,7 @@ export async function quickbaseApiRequest(
 			json: true,
 		};
 
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -54,16 +55,16 @@ export async function quickbaseApiRequest(
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		//@ts-ignore
+
 		return await this.helpers?.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 //@ts-ignore
 // prettier-ignore
-export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any { 
+export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any {
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
 	const data = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
@@ -115,7 +116,7 @@ export async function quickbaseApiRequestAllItems(
 
 		for (const record of data) {
 			const recordData: IDataObject = {};
-			for (const [key, value] of Object.entries(record)) {
+			for (const [key, value] of Object.entries(record as IDataObject)) {
 				recordData[fieldsIdKey[key]] = (value as IDataObject).value;
 			}
 			responseData.push(recordData);

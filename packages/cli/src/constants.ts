@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
+import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
+import type { n8n } from 'n8n-core';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';
@@ -10,11 +13,22 @@ export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
 export const inTest = NODE_ENV === 'test';
 export const inE2ETests = E2E_TESTS === 'true';
 
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
+export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
 export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
+
+export function getN8nPackageJson() {
+	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
+}
+
+export const START_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
+
+export const N8N_VERSION = getN8nPackageJson().version;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -55,6 +69,10 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
+	LDAP = 'feat:ldap',
+	SAML = 'feat:saml',
+	LOG_STREAMING = 'feat:logStreaming',
+	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

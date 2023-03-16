@@ -1,4 +1,11 @@
 import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
+import {
+	getLdapConfig,
+	getLdapSynchronizations,
+	runLdapSync,
+	testLdapConnection,
+	updateLdapConfig,
+} from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import {
@@ -15,9 +22,9 @@ import {
 	IN8nValueSurveyData,
 	ISettingsState,
 	WorkflowCallerPolicyDefaultOption,
+	ILdapConfig,
 } from '@/Interface';
-import { store } from '@/store';
-import { ITelemetrySettings } from 'n8n-workflow';
+import { IDataObject, ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';
@@ -39,6 +46,17 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			enabled: false,
 			latestVersion: 0,
 			path: '/',
+			swaggerUi: {
+				enabled: false,
+			},
+		},
+		ldap: {
+			loginLabel: '',
+			loginEnabled: false,
+		},
+		saml: {
+			loginLabel: '',
+			loginEnabled: false,
 		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
@@ -58,14 +76,32 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
 		},
+		isSwaggerUIEnabled(): boolean {
+			return this.api.swaggerUi.enabled;
+		},
 		publicApiLatestVersion(): number {
 			return this.api.latestVersion;
 		},
 		publicApiPath(): string {
 			return this.api.path;
 		},
+		isLdapLoginEnabled(): boolean {
+			return this.ldap.loginEnabled;
+		},
+		ldapLoginLabel(): string {
+			return this.ldap.loginLabel;
+		},
+		isSamlLoginEnabled(): boolean {
+			return this.saml.loginEnabled;
+		},
+		samlLoginLabel(): string {
+			return this.saml.loginLabel;
+		},
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;
+		},
+		deploymentType(): string {
+			return this.settings.deployment?.type || 'default';
 		},
 		isDesktopDeployment(): boolean {
 			if (!this.settings.deployment) {
@@ -115,6 +151,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		templatesHost(): string {
 			return this.settings.templates.host;
 		},
+		pushBackend(): IN8nUISettings['pushBackend'] {
+			return this.settings.pushBackend;
+		},
 		isCommunityNodesFeatureEnabled(): boolean {
 			return this.settings.communityNodesEnabled;
 		},
@@ -137,10 +176,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.userManagement.enabled = settings.userManagement.enabled;
 			this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			this.userManagement.smtpSetup = settings.userManagement.smtpSetup;
-			this.api.enabled = settings.publicApi.enabled;
-			this.api.latestVersion = settings.publicApi.latestVersion;
-			this.api.path = settings.publicApi.path;
+			this.api = settings.publicApi;
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
+			this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
+			this.ldap.loginLabel = settings.sso.ldap.loginLabel;
+			this.saml.loginEnabled = settings.sso.saml.loginEnabled;
+			this.saml.loginLabel = settings.sso.saml.loginLabel;
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
@@ -246,6 +287,26 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
 			await deleteApiKey(rootStore.getRestApiContext);
+		},
+		async getLdapConfig() {
+			const rootStore = useRootStore();
+			return await getLdapConfig(rootStore.getRestApiContext);
+		},
+		async getLdapSynchronizations(pagination: { page: number }) {
+			const rootStore = useRootStore();
+			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+		},
+		async testLdapConnection() {
+			const rootStore = useRootStore();
+			return await testLdapConnection(rootStore.getRestApiContext);
+		},
+		async updateLdapConfig(ldapConfig: ILdapConfig) {
+			const rootStore = useRootStore();
+			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+		},
+		async runLdapSync(data: IDataObject) {
+			const rootStore = useRootStore();
+			return await runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			Vue.set(this, 'saveDataErrorExecution', newValue);

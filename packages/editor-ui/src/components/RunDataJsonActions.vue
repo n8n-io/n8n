@@ -132,7 +132,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			let startPath = `$node["${this.node!.name}"].json`;
 
 			if (this.distanceFromActive === 1) {
-				startPath = `$json`;
+				startPath = '$json';
 			}
 
 			return { path, startPath };

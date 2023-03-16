@@ -5,7 +5,7 @@
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
-		size="small"
+		:size="label.size"
 		color="text-dark"
 	>
 		<template #options>
@@ -53,7 +53,9 @@
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
+							:hide-issues="hideIssues"
 							@valueChanged="valueChanged"
+							@textInput="onTextInput"
 							@focus="onFocus"
 							@blur="onBlur"
 							@drop="onDrop"
@@ -75,7 +77,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -83,12 +84,15 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
+import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import { useSegment } from '@/stores/segment';
+import { externalHooks } from '@/mixins/externalHooks';
+import { getMappedResult } from '../utils/mappingUtils';
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, externalHooks).extend({
 	name: 'parameter-input-full',
 	components: {
 		ParameterOptions,
@@ -117,6 +121,10 @@ export default mixins(showMessage).extend({
 			type: Boolean,
 			default: false,
 		},
+		hideIssues: {
+			type: Boolean,
+			default: false,
+		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
 		},
@@ -126,6 +134,12 @@ export default mixins(showMessage).extend({
 		value: {
 			type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
 		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
+		},
 	},
 	created() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
@@ -133,6 +147,7 @@ export default mixins(showMessage).extend({
 			{
 				attrs: {
 					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
 					click: mappingTooltipDismissHandler,
@@ -172,10 +187,10 @@ export default mixins(showMessage).extend({
 		showMappingTooltip(): boolean {
 			return (
 				this.mappingTooltipEnabled &&
+				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
-				!this.isInputDataEmpty &&
-				window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'
+				!this.isInputDataEmpty
 			);
 		},
 	},
@@ -195,6 +210,7 @@ export default mixins(showMessage).extend({
 			if (!this.parameter.noDataExpression) {
 				this.ndvStore.setMappableNDVInputFocus('');
 			}
+			this.$emit('blur');
 		},
 		onMenuExpanded(expanded: boolean) {
 			this.menuExpanded = expanded;
@@ -207,18 +223,22 @@ export default mixins(showMessage).extend({
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
-		onDrop(data: string) {
-			this.forceShowExpression = true;
+		onTextInput(parameterData: IUpdateInformation) {
+			const param = this.$refs.param as Vue | undefined;
+
+			if (isValueExpression(this.parameter, parameterData.value)) {
+				param?.$emit('optionSelected', 'addExpression');
+			}
+		},
+		onDrop(newParamValue: string) {
+			const updatedValue = getMappedResult(this.parameter, newParamValue, this.value);
+			const prevValue = this.isResourceLocator ? this.value.value : this.value;
+
+			if (updatedValue.startsWith('=')) {
+				this.forceShowExpression = true;
+			}
 			setTimeout(() => {
 				if (this.node) {
-					const prevValue = this.isResourceLocator ? this.value.value : this.value;
-					let updatedValue: string;
-					if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
-						updatedValue = `${prevValue} ${data}`;
-					} else {
-						updatedValue = `=${data}`;
-					}
-
 					let parameterData;
 					if (this.isResourceLocator) {
 						if (!isResourceLocatorValue(this.value)) {
@@ -262,14 +282,14 @@ export default mixins(showMessage).extend({
 
 					this.$emit('valueChanged', parameterData);
 
-					if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
+					if (!this.ndvStore.isMappingOnboarded) {
 						this.$showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
 						});
 
-						window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						this.ndvStore.disableMappingHint();
 					}
 
 					this.ndvStore.setMappingTelemetry({
@@ -284,12 +304,15 @@ export default mixins(showMessage).extend({
 							hasExpressionMapping(prevValue),
 						success: true,
 					});
+
+					const segment = useSegment();
+					segment.track(segment.EVENTS.MAPPED_DATA);
 				}
 				this.forceShowExpression = false;
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+			this.ndvStore.disableMappingHint(false);
 		},
 	},
 	watch: {

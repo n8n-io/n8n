@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { customerIoApiRequest, eventExists } from './GenericFunctions';
 
@@ -239,7 +244,10 @@ export class CustomerIoTrigger implements INodeType {
 				}
 
 				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl && eventExists(currentEvents, webhook.events)) {
+					if (
+						webhook.endpoint === webhookUrl &&
+						eventExists(currentEvents, webhook.events as IDataObject)
+					) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}

@@ -11,6 +11,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
+import { forceParse } from '@/utils/forceParse';
 
 export default Vue.extend({
 	name: 'ExpressionEditorModalOutput',
@@ -37,7 +38,12 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		const extensions = [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping];
+		const extensions = [
+			outputTheme(),
+			EditorState.readOnly.of(true),
+			EditorView.lineWrapping,
+			EditorView.domEventHandlers({ scroll: forceParse }),
+		];
 
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,

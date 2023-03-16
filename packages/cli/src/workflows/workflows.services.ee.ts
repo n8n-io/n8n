@@ -1,10 +1,12 @@
-import { DeleteResult, EntityManager, In, Not } from 'typeorm';
+import type { DeleteResult, EntityManager } from 'typeorm';
+import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { User } from '@db/entities/User';
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleService } from '@/role/role.service';
 import { UserService } from '@/user/user.service';
@@ -12,9 +14,11 @@ import { WorkflowsService } from './workflows.services';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
+	WorkflowForList,
 } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async getWorkflowIdsForUser(user: User) {
@@ -41,7 +45,8 @@ export class EEWorkflowsService extends WorkflowsService {
 		transaction: EntityManager,
 		workflowId: string,
 	): Promise<SharedWorkflow[]> {
-		const workflow = await transaction.findOne(WorkflowEntity, workflowId, {
+		const workflow = await transaction.findOne(WorkflowEntity, {
+			where: { id: workflowId },
 			relations: ['shared'],
 		});
 		return workflow?.shared ?? [];
@@ -53,8 +58,8 @@ export class EEWorkflowsService extends WorkflowsService {
 		userIds: string[],
 	): Promise<DeleteResult> {
 		return transaction.delete(SharedWorkflow, {
-			workflow: { id: workflowId },
-			user: { id: Not(In(userIds)) },
+			workflowId,
+			userId: Not(In(userIds)),
 		});
 	}
 
@@ -72,23 +77,32 @@ export class EEWorkflowsService extends WorkflowsService {
 			if (user.isPending) {
 				return acc;
 			}
-			acc.push(
-				Db.collections.SharedWorkflow.create({
-					workflow,
-					user,
-					role,
-				}),
-			);
+			const entity: Partial<SharedWorkflow> = {
+				workflowId: workflow.id,
+				userId: user.id,
+				roleId: role?.id,
+			};
+			acc.push(Db.collections.SharedWorkflow.create(entity));
 			return acc;
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
 	}
 
+	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role): void {
+		const ownerId = workflow.shared?.find(
+			({ roleId }) => String(roleId) === workflowOwnerRole.id,
+		)?.userId;
+		workflow.ownedBy = ownerId ? { id: ownerId } : null;
+		delete workflow.shared;
+	}
+
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
-		workflow.usedCredentials = [];
+		if (!workflow.usedCredentials) {
+			workflow.usedCredentials = [];
+		}
 
 		workflow.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
@@ -110,7 +124,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	): Promise<void> {
 		workflow.usedCredentials = [];
 		const userCredentials = await EECredentials.getAll(currentUser, { disableGlobalRole: true });
-		const credentialIdsUsedByWorkflow = new Set<number>();
+		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
 				return;
@@ -120,8 +134,7 @@ export class EEWorkflowsService extends WorkflowsService {
 				if (!credential?.id) {
 					return;
 				}
-				const credentialId = parseInt(credential.id, 10);
-				credentialIdsUsedByWorkflow.add(credentialId);
+				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
 		const workflowCredentials = await EECredentials.getMany({
@@ -130,11 +143,11 @@ export class EEWorkflowsService extends WorkflowsService {
 			},
 			relations: ['shared', 'shared.user', 'shared.role'],
 		});
-		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
+		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
-			const credentialId = credential.id.toString();
+			const credentialId = credential.id;
 			const workflowCredential: CredentialUsedByWorkflow = {
-				id: credential.id.toString(),
+				id: credentialId,
 				name: credential.name,
 				type: credential.type,
 				currentUserHasAccess: userCredentialIds.includes(credentialId),
@@ -162,10 +175,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				return;
 			}
 			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = parseInt(node.credentials?.[credentialType].id ?? '', 10);
-				const matchedCredential = allowedCredentials.find(
-					(credential) => credential.id === credentialId,
-				);
+				const credentialId = node.credentials?.[credentialType].id;
+				if (credentialId === undefined) return;
+				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
 					throw new Error('The workflow contains credentials that you do not have access to');
 				}
@@ -174,7 +186,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
-		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
+		const previousVersion = await EEWorkflowsService.get({ id: workflowId });
 
 		if (!previousVersion) {
 			throw new ResponseHelper.NotFoundError('Workflow not found');
@@ -189,6 +201,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				allCredentials,
 			);
 		} catch (error) {
+			if (error instanceof NodeOperationError) {
+				throw new ResponseHelper.BadRequestError(error.message);
+			}
 			throw new ResponseHelper.BadRequestError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);

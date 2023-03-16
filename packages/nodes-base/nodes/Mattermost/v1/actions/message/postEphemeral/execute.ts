@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -10,7 +8,7 @@ export async function postEphemeral(
 ): Promise<INodeExecutionData[]> {
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `posts/ephemeral`;
+	const endpoint = 'posts/ephemeral';
 
 	const body = {
 		user_id: this.getNodeParameter('userId', index),
@@ -22,5 +20,5 @@ export async function postEphemeral(
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

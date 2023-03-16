@@ -9,7 +9,6 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
-		:isReadOnly="isReadOnly"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="output"
@@ -19,7 +18,6 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
-		data-test-id="ndv-output-panel"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -80,6 +78,17 @@
 				}}</a>
 				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
 			</n8n-text>
+		</template>
+
+		<template #recovered-artifical-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
 		</template>
 
 		<template #run-info v-if="!hasPinData && runsCount > 1">
@@ -285,5 +294,27 @@ export default mixins(pinData).extend({
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
+}
+
+.noOutputData {
+	max-width: 180px;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
+
+	> * {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.recoveredOutputData {
+	margin: auto;
+	max-width: 250px;
+	text-align: center;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
 }
 </style>

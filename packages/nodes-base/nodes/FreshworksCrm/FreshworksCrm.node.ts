@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -37,7 +36,7 @@ import {
 	taskOperations,
 } from './descriptions';
 
-import { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
+import type { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
 
 import { tz } from 'moment-timezone';
 
@@ -225,7 +224,7 @@ export class FreshworksCrm implements INodeType {
 				const response = (await freshworksCrmApiRequest.call(
 					this,
 					'GET',
-					`/selector/owners`,
+					'/selector/owners',
 				)) as FreshworksConfigResponse<LoadedUser>;
 
 				const key = Object.keys(response)[0];
@@ -989,7 +988,7 @@ export class FreshworksCrm implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

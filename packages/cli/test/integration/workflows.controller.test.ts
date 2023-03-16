@@ -8,35 +8,24 @@ import type { Role } from '@db/entities/Role';
 import type { IPinData } from 'n8n-workflow';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 
 // mock whether sharing is enabled or not
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['workflows'],
-		applyAuth: true,
-	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['workflows'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow'], testDbName);
+	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('POST /workflows should store pin data for node in workflow', async () => {

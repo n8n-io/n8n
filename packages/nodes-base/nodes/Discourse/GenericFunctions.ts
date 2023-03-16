@@ -1,8 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function discourseApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -24,7 +29,7 @@ export async function discourseApiRequest(
 	};
 
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'discourseApi', options);
@@ -47,7 +52,7 @@ export async function discourseApiRequestAllItems(
 	query.page = 1;
 	do {
 		responseData = await discourseApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 		query.page++;
 	} while (responseData.length !== 0);
 	return returnData;

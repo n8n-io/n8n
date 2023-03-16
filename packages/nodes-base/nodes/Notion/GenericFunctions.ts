@@ -1,21 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	IDisplayOptions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IBinaryKeyData,
-	IDataObject,
-	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
 
@@ -24,6 +22,21 @@ import { filters } from './Filters';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+
+function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
+	if (uuidValidate(value)) return true;
+	if (value.length == 32) {
+		//prettier-ignore
+		const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+		if (uuidValidate(strWithDashes)) return true;
+	}
+	throw new NodeOperationError(
+		this.getNode(),
+		`The relation id "${value}" is not a valid uuid with optional dashes.`,
+	);
+}
+
+export type SortData = { key: string; type: string; direction: string; timestamp: boolean };
 
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
@@ -57,15 +70,15 @@ export async function notionApiRequest(
 			json: true,
 		};
 		options = Object.assign({}, options, option);
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (!uri) {
-			return this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
+			return await this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
 		}
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -92,7 +105,7 @@ export async function notionApiRequestAllItems(
 		} else {
 			body.start_cursor = next_cursor;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}
@@ -139,6 +152,10 @@ export function getBlockTypes() {
 			name: 'Numbered List Item',
 			value: 'numbered_list_item',
 		},
+		{
+			name: 'Image',
+			value: 'image',
+		},
 	];
 }
 
@@ -173,23 +190,20 @@ function getLink(text: { textLink: string; isLink: boolean }) {
 	return {};
 }
 
-function getTexts(
-	texts: [
-		{
-			textType: string;
-			text: string;
-			isLink: boolean;
-			range: boolean;
-			textLink: string;
-			mentionType: string;
-			dateStart: string;
-			dateEnd: string;
-			date: string;
-			annotationUi: IDataObject;
-			expression: string;
-		},
-	],
-) {
+type TextData = {
+	textType: string;
+	text: string;
+	isLink: boolean;
+	range: boolean;
+	textLink: string;
+	mentionType: string;
+	dateStart: string;
+	dateEnd: string;
+	date: string;
+	annotationUi: IDataObject;
+	expression: string;
+};
+function getTexts(texts: TextData[]) {
 	const results = [];
 	for (const text of texts) {
 		if (text.textType === 'text') {
@@ -237,6 +251,15 @@ function getTexts(
 	return results;
 }
 
+function getTextBlocks(block: IDataObject) {
+	return {
+		text:
+			block.richText === false
+				? formatText(block.textContent as string).text
+				: getTexts(((block.text as IDataObject).text as TextData[]) || []),
+	};
+}
+
 export function formatBlocks(blocks: IDataObject[]) {
 	const results = [];
 	for (const block of blocks) {
@@ -245,16 +268,29 @@ export function formatBlocks(blocks: IDataObject[]) {
 			type: block.type,
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
-				// prettier-ignore
-
-				text: (block.richText === false) ? formatText(block.textContent as string).text : getTexts((block.text as IDataObject).text as any || []),
+				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
+				// prettier-ignore,
+				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}
 	return results;
 }
 
-function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
+function getDateFormat(includeTime: boolean) {
+	if (!includeTime) {
+		return 'yyyy-MM-DD';
+	}
+	return '';
+}
+
+function getPropertyKeyValue(
+	this: IExecuteFunctions,
+	value: any,
+	type: string,
+	timezone: string,
+	version = 1,
+) {
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result: IDataObject = {};
@@ -264,7 +300,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			if (value.richText === false) {
 				result = { rich_text: [{ text: { content: value.textContent } }] };
 			} else {
-				result = { rich_text: getTexts(value.text.text) };
+				result = { rich_text: getTexts(value.text.text as TextData[]) };
 			}
 			break;
 		case 'title':
@@ -282,10 +318,17 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'relation':
 			result = {
 				type: 'relation',
-
-				relation: value.relationValue.reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-				}, []),
+				relation: value.relationValue
+					.filter((relation: IDataObject) => {
+						return relation && typeof relation === 'string';
+					})
+					.reduce((acc: string[], cur: string) => {
+						return acc.concat(cur.split(',').map((relation: string) => relation.trim()));
+					}, [])
+					.filter((relation: string) => {
+						return uuidValidateWithoutDashes.call(this, relation);
+					})
+					.map((relation: string) => ({ id: relation })),
 			};
 			break;
 		case 'multi_select':
@@ -296,7 +339,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					? multiSelectValue
 					: multiSelectValue.split(',').map((v: string) => v.trim())
 				)
-					// tslint:disable-next-line: no-any
 					.filter((entry: any) => entry !== null)
 					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
@@ -337,21 +379,21 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			};
 			break;
 		case 'date':
-			const format = getDateFormat(value.includeTime);
+			const format = getDateFormat(value.includeTime as boolean);
 			const timezoneValue = value.timezone === 'default' ? timezone : value.timezone;
 			if (value.range === true) {
 				result = {
 					type: 'date',
 					date: {
-						start: moment.tz(value.dateStart, timezoneValue).format(format),
-						end: moment.tz(value.dateEnd, timezoneValue).format(format),
+						start: moment.tz(value.dateStart as number, timezoneValue as string).format(format),
+						end: moment.tz(value.dateEnd as number, timezoneValue as string).format(format),
 					},
 				};
 			} else {
 				result = {
 					type: 'date',
 					date: {
-						start: moment.tz(value.date, timezoneValue).format(format),
+						start: moment.tz(value.date as number, timezoneValue as string).format(format),
 						end: null,
 					},
 				};
@@ -378,13 +420,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 	return result;
 }
 
-function getDateFormat(includeTime: boolean) {
-	if (!includeTime) {
-		return 'yyyy-MM-DD';
-	}
-	return '';
-}
-
 function getNameAndType(key: string) {
 	const [name, type] = key.split('|');
 	return {
@@ -393,7 +428,12 @@ function getNameAndType(key: string) {
 	};
 }
 
-export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
+export function mapProperties(
+	this: IExecuteFunctions,
+	properties: IDataObject[],
+	timezone: string,
+	version = 1,
+) {
 	return properties
 		.filter(
 			(property): property is Record<string, { key: string; [k: string]: any }> =>
@@ -403,7 +443,13 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 			(property) =>
 				[
 					`${property.key.split('|')[0]}`,
-					getPropertyKeyValue(property, property.key.split('|')[1], timezone, version),
+					getPropertyKeyValue.call(
+						this,
+						property,
+						property.key.split('|')[1] as string,
+						timezone,
+						version,
+					),
 				] as const,
 		)
 		.filter(([, value]) => value)
@@ -416,9 +462,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 		);
 }
 
-export function mapSorting(
-	data: [{ key: string; type: string; direction: string; timestamp: boolean }],
-) {
+export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,
@@ -428,9 +472,8 @@ export function mapSorting(
 }
 
 export function mapFilters(filtersList: IDataObject[], timezone: string) {
-	// tslint:disable-next-line: no-any
 	return filtersList.reduce((obj, value: { [key: string]: any }) => {
-		let key = getNameAndType(value.key).type;
+		let key = getNameAndType(value.key as string).type;
 
 		let valuePropertyName =
 			key === 'last_edited_time' ? value[camelCase(key)] : value[`${camelCase(key)}Value`];
@@ -458,16 +501,16 @@ export function mapFilters(filtersList: IDataObject[], timezone: string) {
 		}
 
 		if (value.type === 'formula') {
-			const vpropertyName = value[`${camelCase(value.returnType)}Value`];
+			const vpropertyName = value[`${camelCase(value.returnType as string)}Value`];
 
 			return Object.assign(obj, {
-				['property']: getNameAndType(value.key).name,
+				['property']: getNameAndType(value.key as string).name,
 				[key]: { [value.returnType]: { [`${value.condition}`]: vpropertyName } },
 			});
 		}
 
 		return Object.assign(obj, {
-			['property']: getNameAndType(value.key).name,
+			['property']: getNameAndType(value.key as string).name,
 			[key]: { [`${value.condition}`]: valuePropertyName },
 		});
 	}, {});
@@ -476,9 +519,9 @@ export function mapFilters(filtersList: IDataObject[], timezone: string) {
 function simplifyProperty(property: any) {
 	let result: any;
 	const type = (property as IDataObject).type as string;
-	if (['text'].includes(property.type)) {
+	if (['text'].includes(property.type as string)) {
 		result = property.plain_text;
-	} else if (['rich_text', 'title'].includes(property.type)) {
+	} else if (['rich_text', 'title'].includes(property.type as string)) {
 		if (Array.isArray(property[type]) && property[type].length !== 0) {
 			result = property[type].map((text: any) => simplifyProperty(text) as string).join('');
 		} else {
@@ -494,32 +537,32 @@ function simplifyProperty(property: any) {
 			'email',
 			'phone_number',
 			'date',
-		].includes(property.type)
+		].includes(property.type as string)
 	) {
 		result = property[type];
-	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type)) {
+	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type as string)) {
 		result = property[type] ? property[type].name : null;
-	} else if (['people'].includes(property.type)) {
+	} else if (['people'].includes(property.type as string)) {
 		if (Array.isArray(property[type])) {
 			result = property[type].map((person: any) => person.person?.email || {});
 		} else {
 			result = property[type];
 		}
-	} else if (['multi_select'].includes(property.type)) {
+	} else if (['multi_select'].includes(property.type as string)) {
 		if (Array.isArray(property[type])) {
 			result = property[type].map((e: IDataObject) => e.name || {});
 		} else {
 			result = property[type].options.map((e: IDataObject) => e.name || {});
 		}
-	} else if (['relation'].includes(property.type)) {
+	} else if (['relation'].includes(property.type as string)) {
 		if (Array.isArray(property[type])) {
 			result = property[type].map((e: IDataObject) => e.id || {});
 		} else {
 			result = property[type].database_id;
 		}
-	} else if (['formula'].includes(property.type)) {
+	} else if (['formula'].includes(property.type as string)) {
 		result = property[type][property[type].type];
-	} else if (['rollup'].includes(property.type)) {
+	} else if (['rollup'].includes(property.type as string)) {
 		const rollupFunction = property[type].function as string;
 		if (rollupFunction.startsWith('count') || rollupFunction.includes('empty')) {
 			result = property[type].number;
@@ -528,13 +571,13 @@ function simplifyProperty(property: any) {
 			}
 		} else if (rollupFunction.startsWith('show') && property[type].type === 'array') {
 			const elements = property[type].array.map(simplifyProperty).flat();
-			result = rollupFunction === 'show_unique' ? [...new Set(elements)] : elements;
+			result = rollupFunction === 'show_unique' ? [...new Set(elements as string)] : elements;
 		}
-	} else if (['files'].includes(property.type)) {
+	} else if (['files'].includes(property.type as string)) {
 		result = property[type].map(
 			(file: { type: string; [key: string]: any }) => file[file.type].url,
 		);
-	} else if (['status'].includes(property.type)) {
+	} else if (['status'].includes(property.type as string)) {
 		result = property[type].name;
 	}
 	return result;
@@ -542,10 +585,25 @@ function simplifyProperty(property: any) {
 
 export function simplifyProperties(properties: any) {
 	const results: any = {};
-	for (const key of Object.keys(properties)) {
+	for (const key of Object.keys(properties as IDataObject)) {
 		results[`${key}`] = simplifyProperty(properties[key]);
 	}
 	return results;
+}
+
+export function getPropertyTitle(properties: { [key: string]: any }) {
+	return (
+		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
+			?.plain_text || ''
+	);
+}
+
+function prepend(stringKey: string, properties: { [key: string]: any }) {
+	for (const key of Object.keys(properties)) {
+		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		delete properties[key];
+	}
+	return properties;
 }
 
 export function simplifyObjects(objects: any, download = false, version = 2) {
@@ -563,20 +621,20 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		} else if (object === 'page' && parent.type === 'database_id') {
 			results.push({
 				id,
-				...(version === 2 ? { name: getPropertyTitle(properties) } : {}),
+				...(version === 2 ? { name: getPropertyTitle(properties as IDataObject) } : {}),
 				...(version === 2 ? { url } : {}),
 				...(version === 2
-					? { ...prepend('property', simplifyProperties(properties)) }
+					? { ...prepend('property', simplifyProperties(properties) as IDataObject) }
 					: { ...simplifyProperties(properties) }),
-			});
+			} as IDataObject);
 		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
 			results.push({
 				json: {
 					id: json.id,
-					...(version === 2 ? { name: getPropertyTitle(json.properties) } : {}),
+					...(version === 2 ? { name: getPropertyTitle(json.properties as IDataObject) } : {}),
 					...(version === 2 ? { url: json.url } : {}),
 					...(version === 2
-						? { ...prepend('property', simplifyProperties(json.properties)) }
+						? { ...prepend('property', simplifyProperties(json.properties) as IDataObject) }
 						: { ...simplifyProperties(json.properties) }),
 				},
 				binary,
@@ -733,8 +791,19 @@ export function getConditions() {
 	return elements;
 }
 
+export type FileRecord = {
+	properties: {
+		[key: string]:
+			| any
+			| {
+					id: string;
+					type: string;
+					files: [{ external: { url: string } } | { file: { url: string } }];
+			  };
+	};
+};
 // prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string; type: string; files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { // tslint:disable-line:no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: FileRecord[]): Promise<INodeExecutionData[]> {
 
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
@@ -750,10 +819,10 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 							'',
 							{},
 							{},
-							file?.file?.url || file?.external?.url,
+							file?.file?.url as string || file?.external?.url as string,
 							{ json: false, encoding: null },
 						);
-						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data);
+						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data as Buffer);
 					}
 				}
 			}
@@ -786,21 +855,6 @@ export function extractDatabaseId(database: string) {
 	} else {
 		return database;
 	}
-}
-
-function prepend(stringKey: string, properties: { [key: string]: any }) {
-	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
-		delete properties[key];
-	}
-	return properties;
-}
-
-export function getPropertyTitle(properties: { [key: string]: any }) {
-	return (
-		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
-			?.plain_text || ''
-	);
 }
 
 export function getSearchFilters(resource: string) {

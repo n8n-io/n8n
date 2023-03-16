@@ -1,26 +1,32 @@
 <template>
-	<div ref="root" class="ph-no-capture"></div>
+	<div ref="root" class="ph-no-capture" @keydown.stop></div>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
+import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
-import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
-import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
+import { completionManager } from '@/mixins/completionManager';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
+import { forceParse } from '@/utils/forceParse';
+import { autocompletion } from '@codemirror/autocomplete';
 
 import type { IVariableItemSelected } from '@/Interface';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+export default mixins(expressionManager, completionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
 	props: {
 		value: {
+			type: String,
+		},
+		path: {
 			type: String,
 		},
 		isReadOnly: {
@@ -35,25 +41,44 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	mounted() {
 		const extensions = [
 			inputTheme(),
-			n8nLanguageSupport(),
+			autocompletion(),
+			Prec.highest(
+				keymap.of([
+					{
+						any: (_: EditorView, event: KeyboardEvent) => {
+							if (event.key === 'Escape') {
+								event.stopPropagation();
+								this.$emit('close');
+							}
+
+							return false;
+						},
+					},
+				]),
+			),
+			n8nLang(),
 			history(),
-			doubleBraceHandler(),
+			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
-				setTimeout(() => this.editor?.focus()); // prevent blur on paste
-
 				setTimeout(() => {
-					this.$emit('change', {
-						value: this.unresolvedExpression,
-						segments: this.displayableSegments,
-					});
-				}, this.evaluationDelay);
+					this.editor?.focus(); // prevent blur on paste
+					try {
+						this.trackCompletion(viewUpdate, this.path);
+					} catch {}
+				});
+
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 

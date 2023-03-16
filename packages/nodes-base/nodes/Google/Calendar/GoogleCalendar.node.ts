@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	encodeURIComponentOnce,
@@ -23,7 +22,7 @@ import { eventFields, eventOperations } from './EventDescription';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
 
-import { IEvent } from './EventInterface';
+import type { IEvent } from './EventInterface';
 
 import moment from 'moment-timezone';
 
@@ -110,7 +109,7 @@ export class GoogleCalendar implements INodeType {
 			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { event } = await googleApiRequest.call(this, 'GET', '/calendar/v3/colors');
-				for (const key of Object.keys(event)) {
+				for (const key of Object.keys(event as IDataObject)) {
 					const colorName = `Background: ${event[key].background} - Foreground: ${event[key].foreground}`;
 					const colorId = key;
 					returnData.push({
@@ -163,15 +162,19 @@ export class GoogleCalendar implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/calendar/v3/freeBusy`,
+							'/calendar/v3/freeBusy',
 							body,
 							{},
 						);
 
 						if (responseData.calendars[calendarId].errors) {
-							throw new NodeApiError(this.getNode(), responseData.calendars[calendarId], {
-								itemIndex: i,
-							});
+							throw new NodeApiError(
+								this.getNode(),
+								responseData.calendars[calendarId] as JsonObject,
+								{
+									itemIndex: i,
+								},
+							);
 						}
 
 						if (outputFormat === 'availability') {
@@ -287,7 +290,7 @@ export class GoogleCalendar implements INodeType {
 							if (additionalFields.repeatHowManyTimes && additionalFields.repeatUntil) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									"You can set either 'Repeat How Many Times' or 'Repeat Until' but not both",
 									{ itemIndex: i },
 								);
 							}
@@ -544,7 +547,7 @@ export class GoogleCalendar implements INodeType {
 							if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									"You can set either 'Repeat How Many Times' or 'Repeat Until' but not both",
 									{ itemIndex: i },
 								);
 							}
@@ -580,7 +583,7 @@ export class GoogleCalendar implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

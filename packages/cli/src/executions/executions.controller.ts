@@ -1,6 +1,6 @@
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import {
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -41,7 +41,7 @@ executionsController.get(
  * GET /executions/:id
  */
 executionsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(
 		async (
 			req: ExecutionRequest.Get,

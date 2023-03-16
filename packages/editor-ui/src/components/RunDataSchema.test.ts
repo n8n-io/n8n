@@ -24,6 +24,7 @@ describe('RunDataJsonSchema.vue', () => {
 			distanceFromActive: 1,
 			runIndex: 1,
 			totalRuns: 2,
+			paneType: 'input',
 			node: {
 				parameters: {
 					keepOnlySet: false,
@@ -54,6 +55,25 @@ describe('RunDataJsonSchema.vue', () => {
 		renderOptions.props.data = [
 			{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] },
 			{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
+		];
+		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
+			vue.use(PiniaVuePlugin);
+		});
+		expect(container).toMatchSnapshot();
+	});
+
+	it('renders schema with spaces and dots', () => {
+		renderOptions.props.data = [
+			{
+				'hello world': [
+					{
+						test: {
+							'more to think about': 1,
+						},
+						'test.how': 'ignore',
+					},
+				],
+			},
 		];
 		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
 			vue.use(PiniaVuePlugin);

@@ -1,15 +1,16 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { ICustomProperties } from './GenericFunctions';
 import {
-	ICustomProperties,
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
 	pipedriveEncodeCustomProperties,
@@ -4120,7 +4121,7 @@ export class Pipedrive implements INodeType {
 							qs.type = (qs.type as string[]).join(',');
 						}
 
-						endpoint = `/activities`;
+						endpoint = '/activities';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         activity:update
@@ -4198,7 +4199,7 @@ export class Pipedrive implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 						addAdditionalFields(qs, filters);
 
-						endpoint = `/deals`;
+						endpoint = '/deals';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         deal:update
@@ -4250,7 +4251,7 @@ export class Pipedrive implements INodeType {
 							qs.status = additionalFields.status as string;
 						}
 
-						endpoint = `/deals/search`;
+						endpoint = '/deals/search';
 					}
 				} else if (resource === 'dealActivity') {
 					if (operation === 'getAll') {
@@ -4337,31 +4338,15 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/files';
 
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (item.binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						formData.file = {
 							value: fileBufferData,
 							options: {
-								contentType: item.binary[binaryPropertyName].mimeType,
-								filename: item.binary[binaryPropertyName].fileName,
+								contentType: binaryData.mimeType,
+								filename: binaryData.fileName,
 							},
 						};
 
@@ -4432,7 +4417,7 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = `/notes`;
+						endpoint = '/notes';
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (!returnAll) {
@@ -4640,7 +4625,7 @@ export class Pipedrive implements INodeType {
 							qs.first_char = qs.first_char.substring(0, 1);
 						}
 
-						endpoint = `/organizations`;
+						endpoint = '/organizations';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         organization:update
@@ -4682,7 +4667,7 @@ export class Pipedrive implements INodeType {
 							qs.exact_match = additionalFields.exactMatch as boolean;
 						}
 
-						endpoint = `/organizations/search`;
+						endpoint = '/organizations/search';
 					}
 				} else if (resource === 'person') {
 					if (operation === 'create') {
@@ -4736,7 +4721,7 @@ export class Pipedrive implements INodeType {
 							qs.first_char = additionalFields.firstChar as string;
 						}
 
-						endpoint = `/persons`;
+						endpoint = '/persons';
 					} else if (operation === 'search') {
 						// ----------------------------------
 						//         persons:search
@@ -4768,7 +4753,7 @@ export class Pipedrive implements INodeType {
 							qs.include_fields = additionalFields.includeFields as string;
 						}
 
-						endpoint = `/persons/search`;
+						endpoint = '/persons/search';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         person:update
@@ -4799,7 +4784,7 @@ export class Pipedrive implements INodeType {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						endpoint = `/products`;
+						endpoint = '/products';
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
@@ -4847,10 +4832,10 @@ export class Pipedrive implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-						responseData.data,
+						responseData.data as Buffer,
 					);
 				} else {
 					if (responseData.data === null) {
@@ -4878,7 +4863,7 @@ export class Pipedrive implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

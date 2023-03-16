@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function mailerliteApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -31,13 +32,13 @@ export async function mailerliteApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -58,7 +59,7 @@ export async function mailerliteApiRequestAllItems(
 
 	do {
 		responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 		query.offset = query.offset + query.limit;
 	} while (responseData.length !== 0);
 	return returnData;

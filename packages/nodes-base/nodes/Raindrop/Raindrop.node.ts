@@ -1,15 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { isEmpty, omit } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import { raindropApiRequest } from './GenericFunctions';
 
@@ -138,7 +138,7 @@ export class Raindrop implements INodeType {
 							body.tags = (additionalFields.tags as string).split(',').map((tag) => tag.trim());
 						}
 
-						const endpoint = `/raindrop`;
+						const endpoint = '/raindrop';
 						responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
 						responseData = responseData.item;
 					} else if (operation === 'delete') {
@@ -243,7 +243,7 @@ export class Raindrop implements INodeType {
 							delete additionalFields.parentId;
 						}
 
-						responseData = await raindropApiRequest.call(this, 'POST', `/collection`, {}, body);
+						responseData = await raindropApiRequest.call(this, 'POST', '/collection', {}, body);
 						responseData = responseData.item;
 					} else if (operation === 'delete') {
 						// ----------------------------------
@@ -314,23 +314,8 @@ export class Raindrop implements INodeType {
 						// cover-specific endpoint
 
 						if (updateFields.cover) {
-							if (!items[i].binary) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							if (!updateFields.cover) {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Please enter a binary property to upload a cover image.',
-									{ itemIndex: i },
-								);
-							}
-
 							const binaryPropertyName = updateFields.cover as string;
-
-							const binaryData = items[i].binary![binaryPropertyName];
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const formData = {
@@ -390,7 +375,7 @@ export class Raindrop implements INodeType {
 						//           tag: delete
 						// ----------------------------------
 
-						let endpoint = `/tags`;
+						let endpoint = '/tags';
 
 						const body: IDataObject = {
 							tags: (this.getNodeParameter('tags', i) as string).split(','),
@@ -408,7 +393,7 @@ export class Raindrop implements INodeType {
 						//           tag: getAll
 						// ----------------------------------
 
-						let endpoint = `/tags`;
+						let endpoint = '/tags';
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -429,8 +414,8 @@ export class Raindrop implements INodeType {
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+					? returnData.push(...(responseData as IDataObject[]))
+					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

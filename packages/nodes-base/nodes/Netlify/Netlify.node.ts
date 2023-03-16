@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -171,7 +170,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all' },
 							);
@@ -180,7 +179,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all', per_page: limit },
 							);
@@ -189,7 +188,7 @@ export class Netlify implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

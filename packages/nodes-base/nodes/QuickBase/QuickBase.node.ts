@@ -1,15 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getFieldsObject,
@@ -149,7 +148,7 @@ export class QuickBase implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -176,7 +175,7 @@ export class QuickBase implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -208,7 +207,7 @@ export class QuickBase implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					responseData = await quickbaseApiRequest.call(
 						this,
@@ -220,7 +219,7 @@ export class QuickBase implements INodeType {
 					);
 
 					//content-disposition': 'attachment; filename="dog-puppy-on-garden-royalty-free-image-1586966191.jpg"',
-					const contentDisposition = responseData.headers['content-disposition'];
+					const contentDisposition: string = responseData.headers['content-disposition'];
 
 					const data = Buffer.from(responseData.body as string, 'base64');
 
@@ -287,7 +286,7 @@ export class QuickBase implements INodeType {
 
 					for (const record of records) {
 						const recordData: IDataObject = {};
-						for (const [key, value] of Object.entries(record)) {
+						for (const [key, value] of Object.entries(record as IDataObject)) {
 							recordData[key] = (value as IDataObject).value;
 						}
 						responseData.push(recordData);
@@ -295,7 +294,7 @@ export class QuickBase implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -316,7 +315,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(this, 'DELETE', '/records', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -374,14 +373,14 @@ export class QuickBase implements INodeType {
 
 						for (const record of records) {
 							const data: IDataObject = {};
-							for (const [key, value] of Object.entries(record)) {
+							for (const [key, value] of Object.entries(record as IDataObject)) {
 								data[fieldsIdKey[key]] = (value as IDataObject).value;
 							}
 							responseData.push(data);
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -457,7 +456,7 @@ export class QuickBase implements INodeType {
 
 					for (const record of records) {
 						const recordData: IDataObject = {};
-						for (const [key, value] of Object.entries(record)) {
+						for (const [key, value] of Object.entries(record as IDataObject)) {
 							recordData[fieldsIdKey[key]] = (value as IDataObject).value;
 						}
 						responseData.push(recordData);
@@ -465,7 +464,7 @@ export class QuickBase implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -540,7 +539,7 @@ export class QuickBase implements INodeType {
 
 					for (const record of records) {
 						const recordData: IDataObject = {};
-						for (const [key, value] of Object.entries(record)) {
+						for (const [key, value] of Object.entries(record as IDataObject)) {
 							recordData[key] = (value as IDataObject).value;
 						}
 						responseData.push(recordData);
@@ -548,7 +547,7 @@ export class QuickBase implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -597,7 +596,7 @@ export class QuickBase implements INodeType {
 
 						for (const record of records) {
 							const data: IDataObject = {};
-							for (const [key, value] of Object.entries(record)) {
+							for (const [key, value] of Object.entries(record as IDataObject)) {
 								data[fieldsIdKey[key]] = (value as IDataObject).value;
 							}
 							responseData.push(data);
@@ -605,7 +604,7 @@ export class QuickBase implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -630,7 +629,7 @@ export class QuickBase implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 

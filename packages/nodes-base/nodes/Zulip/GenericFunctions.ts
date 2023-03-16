@@ -1,19 +1,29 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IHookFunctions,
+	IWebhookFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import type { IMessage } from './MessageInterface';
+import type { IStream } from './StreamInterface';
+import type { IUser } from './UserInterface';
 
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IMessage | IStream | IUser = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('zulipApi');
 
 	const endpoint = `${credentials.url}/api/v1`;
@@ -40,9 +50,9 @@ export async function zulipApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

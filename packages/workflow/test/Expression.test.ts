@@ -6,6 +6,13 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { Expression } from '@/Expression';
 import { Workflow } from '@/Workflow';
 import * as Helpers from './Helpers';
+import {
+	baseFixtures,
+	ExpressionTestEvaluation,
+	ExpressionTestTransform,
+} from './ExpressionFixtures/base';
+import { INodeExecutionData } from '@/Interfaces';
+import { extendSyntax } from '@/Extensions/ExpressionExtension';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -146,5 +153,61 @@ describe('Expression', () => {
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 		});
+	});
+
+	describe('Test all expression value fixtures', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			nodes: [
+				{
+					name: 'node',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-1234',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		const expression = new Expression(workflow);
+
+		const evaluate = (value: string, data: INodeExecutionData[]) => {
+			return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', '', {});
+		};
+
+		for (const t of baseFixtures) {
+			if (!t.tests.some((test) => test.type === 'evaluation')) {
+				continue;
+			}
+			test(t.expression, () => {
+				for (const test of t.tests.filter(
+					(test) => test.type === 'evaluation',
+				) as ExpressionTestEvaluation[]) {
+					expect(evaluate(t.expression, test.input.map((d) => ({ json: d })) as any)).toStrictEqual(
+						test.output,
+					);
+				}
+			});
+		}
+	});
+
+	describe('Test all expression transform fixtures', () => {
+		for (const t of baseFixtures) {
+			if (!t.tests.some((test) => test.type === 'transform')) {
+				continue;
+			}
+			test(t.expression, () => {
+				for (const test of t.tests.filter(
+					(test) => test.type === 'transform',
+				) as ExpressionTestTransform[]) {
+					const expr = t.expression;
+					expect(extendSyntax(expr, test.forceTransform)).toEqual(test.result ?? expr);
+				}
+			});
+		}
 	});
 });

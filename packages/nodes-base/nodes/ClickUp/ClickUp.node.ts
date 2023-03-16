@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { clickupApiRequest, clickupApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -45,9 +44,9 @@ import { timeEntryTagFields, timeEntryTagOperations } from './TimeEntryTagDescri
 
 import { listFields, listOperations } from './ListDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
-import { IList } from './ListInterface';
+import type { IList } from './ListInterface';
 
 import moment from 'moment-timezone';
 
@@ -1625,7 +1624,7 @@ export class ClickUp implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

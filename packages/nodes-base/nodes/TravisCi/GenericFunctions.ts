@@ -1,26 +1,26 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export async function travisciApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject | string = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('travisCiApi');
 	let options: OptionsWithUri = {
 		headers: {
@@ -36,13 +36,13 @@ export async function travisciApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -56,21 +56,21 @@ export async function travisciApiRequestAllItems(
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await travisciApiRequest.call(this, method, resource, body, query);
-		const path = get(responseData, '@pagination.next.@href');
+		const path = get(responseData, '@pagination.next.@href') as string;
 		if (path !== undefined) {
 			const parsedPath = new URLSearchParams(path);
 			query = Object.fromEntries(parsedPath);
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@pagination'].is_last !== true);
 	return returnData;
 }

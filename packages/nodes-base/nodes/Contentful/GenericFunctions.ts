@@ -1,8 +1,13 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function contentfulApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -33,9 +38,9 @@ export async function contentfulApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -58,7 +63,7 @@ export async function contenfulApiRequestAllItems(
 	do {
 		responseData = await contentfulApiRequest.call(this, method, resource, body, query);
 		query.skip = (query.skip + 1) * query.limit;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
 	return returnData;

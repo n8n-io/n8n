@@ -43,6 +43,14 @@ export default mixins(userHelpers, pushConnection).extend({
 		sidebarMenuItems(): IMenuItem[] {
 			const menuItems: IMenuItem[] = [
 				{
+					id: 'settings-usage-and-plan',
+					icon: 'chart-bar',
+					label: this.$locale.baseText('settings.usageAndPlan.title'),
+					position: 'top',
+					available: this.canAccessUsageAndPlan(),
+					activateOnRouteNames: [VIEWS.USAGE],
+				},
+				{
 					id: 'settings-personal',
 					icon: 'user-circle',
 					label: this.$locale.baseText('settings.personal'),
@@ -66,6 +74,14 @@ export default mixins(userHelpers, pushConnection).extend({
 					available: this.canAccessApiSettings(),
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
+				{
+					id: 'settings-ldap',
+					icon: 'network-wired',
+					label: this.$locale.baseText('settings.ldap'),
+					position: 'top',
+					available: this.canAccessLdapSettings(),
+					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -80,6 +96,15 @@ export default mixins(userHelpers, pushConnection).extend({
 					});
 				}
 			}
+
+			menuItems.push({
+				id: 'settings-log-streaming',
+				icon: 'sign-in-alt',
+				label: this.$locale.baseText('settings.log-streaming'),
+				position: 'top',
+				available: this.canAccessLogStreamingSettings(),
+				activateOnRouteNames: [VIEWS.LOG_STREAMING_SETTINGS],
+			});
 
 			menuItems.push({
 				id: 'settings-community-nodes',
@@ -109,6 +134,15 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
+		canAccessLdapSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
+		},
+		canAccessLogStreamingSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
+		},
+		canAccessUsageAndPlan(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.USAGE);
+		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
@@ -132,6 +166,16 @@ export default mixins(userHelpers, pushConnection).extend({
 						this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
+				case 'settings-ldap':
+					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
+						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
+					}
+					break;
+				case 'settings-log-streaming':
+					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
+						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
+					}
+					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
 				case 'environments':
 				case 'logging':
@@ -140,6 +184,11 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
 						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					}
+					break;
+				case 'settings-usage-and-plan':
+					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
+						this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				default:

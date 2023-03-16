@@ -1,5 +1,9 @@
-import { ITriggerFunctions } from 'n8n-core';
-import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 
 type eventType = 'Workflow activated' | 'Workflow updated' | undefined;
 type activationType = 'activate' | 'update';
@@ -69,18 +73,17 @@ export class WorkflowTrigger implements INodeType {
 			]);
 		}
 
-		const self = this;
-		async function manualTriggerFunction() {
-			self.emit([
-				self.helpers.returnJsonArray([
+		const manualTriggerFunction = async () => {
+			this.emit([
+				this.helpers.returnJsonArray([
 					{
 						event: 'Manual execution',
 						timestamp: new Date().toISOString(),
-						workflow_id: self.getWorkflow().id,
+						workflow_id: this.getWorkflow().id,
 					},
 				]),
 			]);
-		}
+		};
 
 		return {
 			manualTriggerFunction,

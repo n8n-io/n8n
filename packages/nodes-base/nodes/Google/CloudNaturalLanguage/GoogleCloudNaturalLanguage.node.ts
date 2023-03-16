@@ -1,8 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import { IData } from './Interface';
+import type { IData } from './Interface';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -287,7 +290,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					const response = await googleApiRequest.call(
 						this,
 						'POST',
-						`/v1/documents:analyzeSentiment`,
+						'/v1/documents:analyzeSentiment',
 						body,
 					);
 					responseData.push(response);

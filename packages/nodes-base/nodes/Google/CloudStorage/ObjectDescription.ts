@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
 const metagenerationFilters: INodeProperties[] = [
@@ -139,7 +139,6 @@ export const objectOperations: INodeProperties[] = [
 
 								// Populate request body
 								const body = new FormData();
-								const item = this.getInputData();
 								body.append('metadata', JSON.stringify(metadata), {
 									contentType: 'application/json',
 								});
@@ -151,20 +150,8 @@ export const objectOperations: INodeProperties[] = [
 									const binaryPropertyName = this.getNodeParameter(
 										'createBinaryPropertyName',
 									) as string;
-									if (!item.binary) {
-										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-											itemIndex: this.getItemIndex(),
-										});
-									}
-									if (item.binary[binaryPropertyName] === undefined) {
-										throw new NodeOperationError(
-											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exist on item!`,
-											{ itemIndex: this.getItemIndex() },
-										);
-									}
 
-									const binaryData = item.binary[binaryPropertyName];
+									const binaryData = this.helpers.assertBinaryData(binaryPropertyName);
 
 									// Decode from base64 for upload
 									content = Buffer.from(binaryData.data, 'base64');

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -321,7 +320,7 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'POST', `/users/me/meetings`, body, qs);
+						responseData = await zoomApiRequest.call(this, 'POST', '/users/me/meetings', body, qs);
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate
@@ -775,7 +774,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// }
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

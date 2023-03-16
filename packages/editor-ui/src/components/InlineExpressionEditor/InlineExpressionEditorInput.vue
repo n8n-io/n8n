@@ -5,19 +5,21 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
+import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
+import { autocompletion, completionStatus } from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
-import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import { completionManager } from '@/mixins/completionManager';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+export default mixins(completionManager, expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
 	props: {
 		value: {
@@ -31,26 +33,25 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			type: Boolean,
 			default: false,
 		},
-	},
-	data() {
-		return {
-			cursorPosition: 0,
-		};
+		path: {
+			type: String,
+		},
 	},
 	watch: {
 		value(newValue) {
-			try {
-				this.editor?.dispatch({
-					changes: {
-						from: 0,
-						to: this.editor.state.doc.length,
-						insert: newValue,
-					},
-					selection: { anchor: this.cursorPosition, head: this.cursorPosition },
-				});
-			} catch (_) {
-				// ignore out-of-range selection error on drop
-			}
+			const isInternalChange = newValue === this.editor?.state.doc.toString();
+
+			if (isInternalChange) return;
+
+			// manual update on external change, e.g. from expression modal or mapping drop
+
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor?.state.doc.length,
+					insert: newValue,
+				},
+			});
 		},
 		ndvInputData() {
 			this.editor?.dispatch({
@@ -75,9 +76,23 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	mounted() {
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
-			n8nLanguageSupport(),
+			Prec.highest(
+				keymap.of([
+					{
+						any(view: EditorView, event: KeyboardEvent) {
+							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
+								event.stopPropagation();
+							}
+
+							return false;
+						},
+					},
+				]),
+			),
+			autocompletion(),
+			n8nLang(),
 			history(),
-			doubleBraceHandler(),
+			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorView.editable.of(!this.isReadOnly),
 			EditorView.domEventHandlers({
@@ -91,14 +106,16 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
-				this.cursorPosition = viewUpdate.view.state.selection.ranges[0].from;
-
 				setTimeout(() => {
-					this.$emit('change', {
-						value: this.unresolvedExpression,
-						segments: this.displayableSegments,
-					});
-				}, this.evaluationDelay);
+					try {
+						this.trackCompletion(viewUpdate, this.path);
+					} catch {}
+				});
+
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 

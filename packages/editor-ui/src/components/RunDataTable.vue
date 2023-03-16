@@ -40,15 +40,7 @@
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
-									<div
-										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
-									>
-										{{
-											$locale.baseText('dataMapping.mapKeyToField', {
-												interpolate: { name: shorten(column, 16, 2) },
-											})
-										}}
-									</div>
+									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
 								</template>
 								<template #default="{ isDragging }">
 									<div
@@ -105,18 +97,10 @@
 				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
-					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-						{{
-							$locale.baseText(
-								tableData.data.length > 1
-									? 'dataMapping.mapAllKeysToField'
-									: 'dataMapping.mapKeyToField',
-								{
-									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
-								},
-							)
-						}}
-					</div>
+					<MappingPill
+						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
+						:can-drop="canDrop"
+					/>
 				</template>
 				<template>
 					<tr
@@ -185,12 +169,14 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
-	components: { Draggable },
+	components: { Draggable, MappingPill },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -330,11 +316,11 @@ export default mixins(externalHooks).extend({
 				return '';
 			}
 
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"] }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column],
+			});
 		},
 		getPathNameFromTarget(el: HTMLElement) {
 			if (!el) {
@@ -358,21 +344,12 @@ export default mixins(externalHooks).extend({
 			if (!this.node) {
 				return '';
 			}
-
-			const expr = path.reduce((accu: string, key: string | number) => {
-				if (typeof key === 'number') {
-					return `${accu}[${key}]`;
-				}
-
-				return `${accu}["${key}"]`;
-			}, '');
 			const column = this.tableData.columns[colIndex];
-
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"]${expr} }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column, ...path],
+			});
 		},
 		isEmpty(value: unknown): boolean {
 			return (
@@ -390,19 +367,15 @@ export default mixins(externalHooks).extend({
 			if (typeof value === 'string') {
 				return value.replaceAll('\n', '\\n');
 			}
-
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
 			}
-
 			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
 				return this.$locale.baseText('runData.emptyObject');
 			}
-
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
-
 			return value;
 		},
 		onDragStart() {
@@ -497,8 +470,8 @@ export default mixins(externalHooks).extend({
 							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
 							false;
 					} else {
-						// Entry does not have key so add null
-						entryRows.push(null);
+						// Entry does not have key so add undefined
+						entryRows.push(undefined);
 					}
 				});
 
@@ -663,28 +636,6 @@ export default mixins(externalHooks).extend({
 .dragButton {
 	opacity: 0;
 	margin-left: var(--spacing-2xs);
-}
-
-.dragPill {
-	display: flex;
-	height: 24px;
-	align-items: center;
-	padding: 0 var(--spacing-4xs);
-	color: var(--color-text-xlight);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	border-radius: var(--border-radius-base);
-	white-space: nowrap;
-}
-
-.droppablePill {
-	background-color: var(--color-success);
-}
-
-.defaultPill {
-	background-color: var(--color-primary);
-	transform: translate(-50%, -100%);
-	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
 }
 
 .dataKey {

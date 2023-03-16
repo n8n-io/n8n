@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,14 +8,14 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IEmail } from '../GenericFunctions';
 import {
 	encodeEmail,
 	googleApiRequest,
 	googleApiRequestAllItems,
-	IEmail,
 	parseRawEmail,
 	prepareEmailAttachments,
 	prepareEmailBody,
@@ -260,9 +259,9 @@ export class GmailV2 implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+						responseData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 
-						responseData = this.helpers.returnJsonArray(responseData.labels);
+						responseData = this.helpers.returnJsonArray(responseData.labels as IDataObject[]);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
@@ -372,7 +371,7 @@ export class GmailV2 implements INodeType {
 								dataPropertyNameDownload,
 							);
 						} else {
-							const [json, _] = await simplifyOutput.call(this, [responseData]);
+							const [json, _] = await simplifyOutput.call(this, [responseData as IDataObject]);
 							nodeExecutionData = { json };
 						}
 
@@ -390,7 +389,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'messages',
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -399,7 +398,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -442,7 +441,7 @@ export class GmailV2 implements INodeType {
 
 						if (simple) {
 							responseData = this.helpers.returnJsonArray(
-								await simplifyOutput.call(this, responseData),
+								await simplifyOutput.call(this, responseData as IDataObject[]),
 							);
 						}
 					}
@@ -613,7 +612,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'drafts',
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -622,7 +621,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -694,10 +693,13 @@ export class GmailV2 implements INodeType {
 
 						if (onlyMessages) {
 							responseData = this.helpers.returnJsonArray(
-								await simplifyOutput.call(this, responseData.messages),
+								await simplifyOutput.call(this, responseData.messages as IDataObject[]),
 							);
 						} else {
-							responseData.messages = await simplifyOutput.call(this, responseData.messages);
+							responseData.messages = await simplifyOutput.call(
+								this,
+								responseData.messages as IDataObject[],
+							);
 							responseData = [{ json: responseData }];
 						}
 					}
@@ -713,7 +715,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'threads',
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);
@@ -722,7 +724,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);
@@ -733,7 +735,7 @@ export class GmailV2 implements INodeType {
 							responseData = [];
 						}
 
-						responseData = this.helpers.returnJsonArray(responseData);
+						responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 					}
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
@@ -783,7 +785,7 @@ export class GmailV2 implements INodeType {
 				//------------------------------------------------------------------//
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{
 						itemData: { item: i },
 					},
@@ -795,7 +797,7 @@ export class GmailV2 implements INodeType {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}
-				throw new NodeOperationError(this.getNode(), error, {
+				throw new NodeOperationError(this.getNode(), error as Error, {
 					description: error.description,
 					itemIndex: i,
 				});

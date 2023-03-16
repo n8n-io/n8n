@@ -9,7 +9,10 @@
 				<div v-if="$slots.title || title" :class="$style.title">
 					<slot name="title">{{ title }}</slot>
 				</div>
-				<div v-if="$slots.default || description" :class="$style.description">
+				<div
+					v-if="$slots.default || description"
+					:class="{ [$style.description]: true, [$style.hasTitle]: $slots.title || title }"
+				>
 					<slot>{{ description }}</slot>
 				</div>
 			</div>
@@ -42,18 +45,16 @@ const props = withDefaults(defineProps<AlertProps>(), {
 });
 
 const icon = computed(() => {
-	/* eslint-disable prettier/prettier */
 	switch (props.type) {
-	case 'success':
-		return 'check-circle';
-	case 'warning':
-		return 'exclamation-triangle';
-	case 'error':
-		return 'times-circle';
-	default:
-		return 'info-circle';
+		case 'success':
+			return 'check-circle';
+		case 'warning':
+			return 'exclamation-triangle';
+		case 'error':
+			return 'times-circle';
+		default:
+			return 'info-circle';
 	}
-	/* eslint-enable */
 });
 
 const style = useCssModule();
@@ -231,7 +232,10 @@ const alertBoxClassNames = computed(() => {
 
 .description {
 	font-size: $alert-description-font-size;
-	margin: 5px 0 0 0;
+
+	&.hasTitle {
+		margin: 5px 0 0 0;
+	}
 }
 
 .aside {

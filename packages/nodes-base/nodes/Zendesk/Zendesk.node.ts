@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 
@@ -21,7 +20,7 @@ import { userFields, userOperations } from './UserDescription';
 
 import { organizationFields, organizationOperations } from './OrganizationDescription';
 
-import { IComment, ITicket } from './TicketInterface';
+import type { IComment, ITicket } from './TicketInterface';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -142,7 +141,7 @@ export class Zendesk implements INodeType {
 					'/ticket_fields',
 				);
 				for (const field of fields) {
-					if (customFields.includes(field.type)) {
+					if (customFields.includes(field.type as string)) {
 						const fieldName = field.title;
 						const fieldId = field.id;
 						returnData.push({
@@ -247,7 +246,7 @@ export class Zendesk implements INodeType {
 					this,
 					'organizations',
 					'GET',
-					`/organizations`,
+					'/organizations',
 					{},
 					{},
 				);
@@ -438,7 +437,7 @@ export class Zendesk implements INodeType {
 						if (options.sortOrder) {
 							qs.sort_order = options.sortOrder;
 						}
-						const endpoint = ticketType === 'regular' ? `/search` : `/suspended_tickets`;
+						const endpoint = ticketType === 'regular' ? '/search' : '/suspended_tickets';
 						const property = ticketType === 'regular' ? 'results' : 'suspended_tickets';
 						if (returnAll) {
 							responseData = await zendeskApiRequestAllItems.call(
@@ -478,7 +477,7 @@ export class Zendesk implements INodeType {
 							);
 							responseData = responseData.ticket;
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -595,14 +594,14 @@ export class Zendesk implements INodeType {
 								this,
 								'users',
 								'GET',
-								`/users`,
+								'/users',
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
+							responseData = await zendeskApiRequest.call(this, 'GET', '/users', {}, qs);
 							responseData = responseData.users;
 						}
 					}
@@ -629,14 +628,14 @@ export class Zendesk implements INodeType {
 								this,
 								'users',
 								'GET',
-								`/users/search`,
+								'/users/search',
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
+							responseData = await zendeskApiRequest.call(this, 'GET', '/users/search', {}, qs);
 							responseData = responseData.users;
 						}
 					}
@@ -705,7 +704,7 @@ export class Zendesk implements INodeType {
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#count-organizations
 					if (operation === 'count') {
-						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/count`, {});
+						responseData = await zendeskApiRequest.call(this, 'GET', '/organizations/count', {});
 						responseData = responseData.count;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organization
@@ -728,14 +727,14 @@ export class Zendesk implements INodeType {
 								this,
 								'organizations',
 								'GET',
-								`/organizations`,
+								'/organizations',
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', `/organizations`, {}, qs);
+							responseData = await zendeskApiRequest.call(this, 'GET', '/organizations', {}, qs);
 							responseData = responseData.organizations;
 						}
 					}
@@ -788,7 +787,7 @@ export class Zendesk implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

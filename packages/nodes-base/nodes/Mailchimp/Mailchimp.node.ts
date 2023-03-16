@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -2119,7 +2118,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
-								`/campaigns`,
+								'/campaigns',
 								'GET',
 								'campaigns',
 								{},
@@ -2127,7 +2126,7 @@ export class Mailchimp implements INodeType {
 							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i);
-							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+							responseData = await mailchimpApiRequest.call(this, '/campaigns', 'GET', {}, qs);
 							responseData = responseData.campaigns;
 						}
 					}
@@ -2186,7 +2185,7 @@ export class Mailchimp implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

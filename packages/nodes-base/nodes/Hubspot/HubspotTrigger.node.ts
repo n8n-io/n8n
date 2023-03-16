@@ -1,14 +1,14 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
 
@@ -108,6 +108,32 @@ export class HubspotTrigger implements INodeType {
 										value: 'contact.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any contact in a customer's account",
+									},
+									{
+										name: 'Conversation Creation',
+										value: 'conversation.creation',
+										description: 'To get notified if a new thread is created in an account',
+									},
+									{
+										name: 'Conversation Deletion',
+										value: 'conversation.deletion',
+										description:
+											'To get notified if a thread is archived or soft-deleted in an account',
+									},
+									{
+										name: 'Conversation New Message',
+										value: 'conversation.newMessage',
+										description: 'To get notified if a new message on a thread has been received',
+									},
+									{
+										name: 'Conversation Privacy Deletion',
+										value: 'conversation.privacyDeletion',
+										description: 'To get notified if a thread is permanently deleted in an account',
+									},
+									{
+										name: 'Conversation Property Change',
+										value: 'conversation.propertyChange',
+										description: 'To get notified if a property on a thread has been changed',
 									},
 									{
 										name: 'Deal Created',
@@ -328,7 +354,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), 'You must define at least one event');
 				}
 
 				for (const event of events) {
@@ -410,7 +436,7 @@ export class HubspotTrigger implements INodeType {
 			delete bodyData[i].objectId;
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(bodyData)],
+			workflowData: [this.helpers.returnJsonArray(bodyData as IDataObject[])],
 		};
 	}
 }

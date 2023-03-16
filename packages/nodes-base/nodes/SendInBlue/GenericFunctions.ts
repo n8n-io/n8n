@@ -1,13 +1,12 @@
-import {
+import type {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	IHttpRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 import MailComposer from 'nodemailer/lib/mail-composer';
 export namespace SendInBlueNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
@@ -52,6 +51,24 @@ export namespace SendInBlueNode {
 		],
 	]);
 	export namespace Validators {
+		function getFileName(
+			itemIndex: number,
+			mimeType: string,
+			fileExt: string,
+			fileName: string,
+		): string {
+			let ext = fileExt;
+			if (fileExt === undefined) {
+				ext = mimeType.split('/')[1];
+			}
+
+			let name = `${fileName}.${ext}`;
+			if (fileName === undefined) {
+				name = `file-${itemIndex}.${ext}`;
+			}
+			return name;
+		}
+
 		export async function validateAndCompileAttachmentsData(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
@@ -67,20 +84,8 @@ export namespace SendInBlueNode {
 				const { binaryPropertyName } = dataPropertyList;
 				const dataMappingList = (binaryPropertyName as string).split(',');
 				for (const attachmentDataName of dataMappingList) {
-					const binaryPropertyAttachmentName = attachmentDataName;
-
-					const item = this.getInputData();
-
-					if (item.binary![binaryPropertyAttachmentName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
-						);
-					}
-
-					const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
-						binaryPropertyAttachmentName,
-					)) as Buffer;
+					const binaryData = this.helpers.assertBinaryData(attachmentDataName);
+					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(attachmentDataName);
 
 					const {
 						data: content,
@@ -93,8 +98,8 @@ export namespace SendInBlueNode {
 					const name = getFileName(
 						itemIndex,
 						mimeType,
-						fileExtension,
-						fileName || item.binary!.data.fileName,
+						fileExtension!,
+						fileName ?? binaryData.fileName!,
 					);
 
 					attachment.push({ content, name });
@@ -104,7 +109,7 @@ export namespace SendInBlueNode {
 
 				return requestOptions;
 			} catch (err) {
-				throw new NodeOperationError(this.getNode(), err);
+				throw new NodeOperationError(this.getNode(), err as Error);
 			}
 		}
 
@@ -122,6 +127,69 @@ export namespace SendInBlueNode {
 			const { body } = requestOptions;
 			Object.assign(body!, { tags });
 			return requestOptions;
+		}
+
+		function formatToEmailName(data: Address): Email {
+			const { address: email, name } = data;
+			const result = { email };
+			if (name !== undefined && name !== '') {
+				Object.assign(result, { name });
+			}
+			return { ...result };
+		}
+
+		function validateEmailStrings(input: ValidEmailFields): ValidatedEmail {
+			const composer = new MailComposer({ ...input });
+			const addressFields = composer.compile().getAddresses();
+
+			const fieldFetcher = new Map<string, () => Email[] | Email>([
+				[
+					'bcc',
+					() => {
+						return (addressFields.bcc as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'cc',
+					() => {
+						return (addressFields.cc as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'from',
+					() => {
+						return (addressFields.from as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'reply-to',
+					() => {
+						return (addressFields['reply-to'] as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'sender',
+					() => {
+						return (addressFields.sender as unknown as Address[])?.map(formatToEmailName)[0];
+					},
+				],
+				[
+					'to',
+					() => {
+						return (addressFields.to as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+			]);
+
+			const result: { [key in keyof ValidatedEmail]: Email[] | Email } = {} as ValidatedEmail;
+			Object.keys(input).reduce((obj: { [key: string]: Email[] | Email }, key: string) => {
+				const getter = fieldFetcher.get(key);
+				const value = getter!();
+				obj[key] = value;
+				return obj;
+			}, result);
+
+			return result as ValidatedEmail;
 		}
 
 		export async function validateAndCompileCCEmails(
@@ -186,8 +254,8 @@ export namespace SendInBlueNode {
 				'additionalFields.templateParameters.parameterValues',
 			);
 			const { body } = requestOptions;
-			const { parmeters } = parameterData as JsonObject;
-			const params = (parmeters as string)
+			const { parameters } = parameterData as JsonObject;
+			const params = (parameters as string)
 				.split(',')
 				.filter((parameter) => {
 					return parameter.split('=').length === 2;
@@ -206,87 +274,6 @@ export namespace SendInBlueNode {
 			Object.assign(body!, { params });
 			return requestOptions;
 		}
-
-		function validateEmailStrings(input: ValidEmailFields): ValidatedEmail {
-			const composer = new MailComposer({ ...input });
-			const addressFields = composer.compile().getAddresses();
-
-			const fieldFetcher = new Map<string, () => Email[] | Email>([
-				[
-					'bcc',
-					() => {
-						return (addressFields.bcc as unknown as Address[])?.map(formatToEmailName);
-					},
-				],
-				[
-					'cc',
-					() => {
-						return (addressFields.cc as unknown as Address[])?.map(formatToEmailName);
-					},
-				],
-				[
-					'from',
-					() => {
-						return (addressFields.from as unknown as Address[])?.map(formatToEmailName);
-					},
-				],
-				[
-					'reply-to',
-					() => {
-						return (addressFields['reply-to'] as unknown as Address[])?.map(formatToEmailName);
-					},
-				],
-				[
-					'sender',
-					() => {
-						return (addressFields.sender as unknown as Address[])?.map(formatToEmailName)[0];
-					},
-				],
-				[
-					'to',
-					() => {
-						return (addressFields.to as unknown as Address[])?.map(formatToEmailName);
-					},
-				],
-			]);
-
-			const result: { [key in keyof ValidatedEmail]: Email[] | Email } = {} as ValidatedEmail;
-			Object.keys(input).reduce((obj: { [key: string]: Email[] | Email }, key: string) => {
-				const getter = fieldFetcher.get(key);
-				const value = getter!();
-				obj[key] = value;
-				return obj;
-			}, result);
-
-			return result as ValidatedEmail;
-		}
-	}
-
-	function getFileName(
-		itemIndex: number,
-		mimeType: string,
-		fileExt: string,
-		fileName: string,
-	): string {
-		let ext = fileExt;
-		if (fileExt === undefined) {
-			ext = mimeType.split('/')[1];
-		}
-
-		let name = `${fileName}.${ext}`;
-		if (fileName === undefined) {
-			name = `file-${itemIndex}.${ext}`;
-		}
-		return name;
-	}
-
-	function formatToEmailName(data: Address): Email {
-		const { address: email, name } = data;
-		const result = { email };
-		if (name !== undefined && name !== '') {
-			Object.assign(result, { name });
-		}
-		return { ...result };
 	}
 }
 
@@ -368,7 +355,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return jsonParse(webhookId);
+		return jsonParse(webhookId as string);
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {

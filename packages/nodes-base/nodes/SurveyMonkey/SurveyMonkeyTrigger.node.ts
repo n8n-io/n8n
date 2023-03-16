@@ -1,7 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,13 +8,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
 
-import { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
+import type { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
 
 import { createHmac } from 'crypto';
 
@@ -357,7 +355,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -462,7 +459,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -499,7 +496,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			const data: Buffer[] = [];
 
 			req.on('data', (chunk) => {
-				data.push(chunk);
+				data.push(chunk as Buffer);
 			});
 
 			req.on('end', async () => {
@@ -544,7 +541,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						);
 
 						for (const page of pages) {
-							questions.push.apply(questions, page.questions);
+							questions.push.apply(questions, page.questions as IQuestion[]);
 						}
 
 						for (const page of responseData.pages as IDataObject[]) {

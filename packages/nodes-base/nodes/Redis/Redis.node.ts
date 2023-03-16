@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -9,10 +9,10 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 import redis from 'redis';
 
 import util from 'util';
@@ -506,9 +506,8 @@ export class Redis implements INodeType {
 				}
 				try {
 					const client = redis.createClient(redisOptions);
-					// tslint:disable-next-line: no-any
 
-					const _data = await new Promise((resolve, reject): any => {
+					await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
 							client.ping('ping', (error, pong) => {
 								if (error) reject(error);

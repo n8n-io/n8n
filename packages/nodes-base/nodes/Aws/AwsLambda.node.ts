@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -7,8 +7,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
 
@@ -193,7 +193,7 @@ export class AwsLambda implements INodeType {
 						_errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
 					}
 
-					throw new NodeApiError(this.getNode(), responseData);
+					throw new NodeApiError(this.getNode(), responseData as JsonObject);
 				} else {
 					returnData.push({
 						result: responseData,

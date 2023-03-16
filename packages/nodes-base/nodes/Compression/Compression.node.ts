@@ -1,11 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IBinaryKeyData,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
@@ -158,7 +156,7 @@ export class Compression implements INodeType {
 						outputFormat: ['gzip'],
 					},
 				},
-				description: 'Prefix use for all gzip compresed files',
+				description: 'Prefix use for all gzip compressed files',
 			},
 			{
 				displayName: 'Output Prefix',
@@ -185,7 +183,7 @@ export class Compression implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'decompress') {
-					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string)
+					const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', 0)
 						.split(',')
 						.map((key) => key.trim());
 
@@ -196,28 +194,14 @@ export class Compression implements INodeType {
 					let zipIndex = 0;
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData.fileExtension === 'zip') {
 							const files = await unzip(binaryDataBuffer);
 
 							for (const key of Object.keys(files)) {
-								// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
+								// when files are compressed using MACOSX for some reason they are duplicated under __MACOSX
 								if (key.includes('__MACOSX')) {
 									continue;
 								}
@@ -256,7 +240,7 @@ export class Compression implements INodeType {
 				}
 
 				if (operation === 'compress') {
-					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string)
+					const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', 0)
 						.split(',')
 						.map((key) => key.trim());
 
@@ -267,21 +251,7 @@ export class Compression implements INodeType {
 					const binaryObject: IBinaryKeyData = {};
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (outputFormat === 'zip') {
@@ -308,7 +278,7 @@ export class Compression implements INodeType {
 					if (outputFormat === 'zip') {
 						const fileName = this.getNodeParameter('fileName', 0) as string;
 
-						const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0) as string;
+						const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0);
 
 						const buffer = await zip(zipData);
 
