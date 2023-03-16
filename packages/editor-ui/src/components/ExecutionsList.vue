@@ -41,7 +41,7 @@
 			</div>
 
 			<el-checkbox
-				v-if="allVisibleSelected"
+				v-if="allVisibleSelected && finishedExecutionsCount > 0"
 				:class="$style.selectAll"
 				:label="
 					$locale.baseText('executionsList.selectAll', {
@@ -61,7 +61,7 @@
 							<el-checkbox
 								:value="allVisibleSelected"
 								@change="handleCheckAllVisibleChange"
-								:disabled="finishedExecutions.length === 0"
+								:disabled="finishedExecutionsCount < 1"
 								label=""
 								data-testid="select-visible-executions-checkbox"
 							/>
@@ -936,6 +936,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				try {
 					await this.restApi().deleteExecutions({ ids: [execution.id] });
 					await this.refreshData();
+
+					if (this.allVisibleSelected && !this.allExistingSelected) {
+						this.handleClearSelection();
+						this.selectAllVisibleExecutions();
+					}
 				} catch (error) {
 					this.$showError(
 						error,
