@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
+import path from 'path';
 import { BinaryDataManager, Credentials } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -26,9 +27,10 @@ import {
 } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
 import { WorkflowTestData } from './types';
-import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
+
+const nodesBaseDir = path.resolve(__dirname, '../..');
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -153,7 +155,7 @@ let knownNodes: Record<string, LoadingDetails> | null = null;
 
 const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	if (knownNodes === null) {
-		knownNodes = JSON.parse(readFileSync('dist/known/nodes.json').toString());
+		knownNodes = readJsonFileSync('dist/known/nodes.json');
 	}
 	return knownNodes!;
 };
@@ -195,7 +197,7 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 			throw new Error(`Unknown node type: ${nodeName}`);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
-		const nodeSourcePath = path.join(process.cwd(), sourcePath);
+		const nodeSourcePath = path.join(nodesBaseDir, sourcePath);
 		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
 		nodeTypes.addNode(nodeName, node);
 	}
@@ -240,8 +242,8 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	});
 }
 
-export function readJsonFileSync(path: string) {
-	return JSON.parse(readFileSync(path, 'utf-8'));
+export function readJsonFileSync(filePath: string) {
+	return JSON.parse(readFileSync(path.join(nodesBaseDir, filePath), 'utf-8'));
 }
 
 export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes) => {
