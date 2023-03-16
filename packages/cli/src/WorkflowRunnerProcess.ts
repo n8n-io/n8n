@@ -54,9 +54,9 @@ import config from '@/config';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { getLicense } from './License';
-import { InternalHooks } from './InternalHooks';
-import { PostHogClient } from './posthog';
+import { License } from '@/License';
+import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -127,7 +127,7 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const license = getLicense();
+		const license = Container.get(License);
 		await license.init(instanceId);
 
 		// Start timeout for the execution

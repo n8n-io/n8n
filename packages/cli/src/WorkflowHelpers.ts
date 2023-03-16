@@ -1,4 +1,5 @@
 import { In } from 'typeorm';
+import { Container } from 'typedi';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -32,7 +33,7 @@ import type { User } from '@db/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { Container } from 'typedi';
+import { isWorkflowIdValid } from './utils';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -72,15 +73,6 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 	}
 
 	return lastNodeRunData;
-}
-
-/**
- * Returns if the given id is a valid workflow id
- *
- * @param {(string | null | undefined)} id The id to check
- */
-export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
 }
 
 /**
