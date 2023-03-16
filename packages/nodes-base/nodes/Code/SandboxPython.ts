@@ -57,11 +57,9 @@ await __main()
 		if (moduleImportsFiltered.length) {
 			await pyodide.loadPackage('micropip');
 			const micropip = pyodide.pyimport('micropip');
-			const pythonImports: Array<Promise<unknown>> = [];
-			moduleImportsFiltered.forEach((importModule) => {
-				pythonImports.push(micropip.install(importModule));
-			});
-			await Promise.all(pythonImports);
+			await Promise.all(
+				moduleImportsFiltered.map((importModule) => micropip.install(importModule)),
+			);
 		}
 
 		let executionResult;
