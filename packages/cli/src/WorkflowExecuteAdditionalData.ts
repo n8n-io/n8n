@@ -66,7 +66,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { findSubworkflowStart } from '@/utils';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
@@ -530,11 +530,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
 				try {
-					if (
-						!isManualMode &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) &&
-						newStaticData
-					) {
+					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -641,7 +637,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					const workflowId = this.workflowData.id;
-					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+					if (isWorkflowIdValid(workflowId)) {
 						fullExecutionData.workflowId = workflowId;
 					}
 
@@ -729,7 +725,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				newStaticData: IDataObject,
 			): Promise<void> {
 				try {
-					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) && newStaticData) {
+					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -776,7 +772,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowId = this.workflowData.id;
-					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+					if (isWorkflowIdValid(workflowId)) {
 						fullExecutionData.workflowId = workflowId;
 					}
 
