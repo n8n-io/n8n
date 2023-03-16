@@ -7,9 +7,9 @@ import { get } from 'lodash';
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
-// import * as select from '../../v2/actions/database/select.operation';
-// import * as update from '../../v2/actions/database/update.operation';
-// import * as upsert from '../../v2/actions/database/upsert.operation';
+import * as select from '../../v2/actions/database/select.operation';
+import * as update from '../../v2/actions/database/update.operation';
+import * as upsert from '../../v2/actions/database/upsert.operation';
 
 const runQueries: QueriesRunner = jest.fn();
 
@@ -367,14 +367,457 @@ describe('Test PostgresV2, insert operation', () => {
 	});
 });
 
-// describe('Test PostgresV2, select operation', () => {
-// 	it('should call runQueries with', async () => {});
-// });
+describe('Test PostgresV2, select operation', () => {
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
 
-// describe('Test PostgresV2, update operation', () => {
-// 	it('should call runQueries with', async () => {});
-// });
+	it('returnAll, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+				cachedResultName: 'my_table',
+			},
+			returnAll: true,
+			options: {},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
 
-// describe('Test PostgresV2, upsert operation', () => {
-// 	it('should call runQueries with', async () => {});
-// });
+		await select.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM $1:name.$2:name',
+					values: ['public', 'my_table'],
+				},
+			],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('limit, whereClauses, sortRules, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+				cachedResultName: 'my_table',
+			},
+			limit: 5,
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '>=',
+						value: 2,
+					},
+					{
+						column: 'foo',
+						condition: 'equal',
+						value: 'data 2',
+					},
+				],
+			},
+			sort: {
+				values: [
+					{
+						column: 'id',
+					},
+				],
+			},
+			options: {
+				outputColumns: ['json', 'id'],
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await select.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name >= $5 AND $6:name = $7 ORDER BY $8:name ASC LIMIT 5',
+					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id'],
+				},
+			],
+			items,
+			nodeOptions,
+		);
+	});
+});
+
+describe('Test PostgresV2, update operation', () => {
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('dataMode: define, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'update',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			dataMode: 'defineBelow',
+			columnToMatchOn: 'id',
+			valueToMatchOn: '1',
+			valuesToSend: {
+				values: [
+					{
+						column: 'json',
+						value: { text: 'some text' },
+					},
+					{
+						column: 'foo',
+						value: 'updated',
+					},
+				],
+			},
+			options: {
+				outputColumns: ['json', 'foo'],
+			},
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await update.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'UPDATE $1:name.$2:name SET $5:name = $6, $7:name = $8 WHERE $3:name = $4 RETURNING $9:name',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						'1',
+						'json',
+						{ text: 'some text' },
+						'foo',
+						'updated',
+						['json', 'foo'],
+					],
+				},
+			],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('dataMode: autoMapInputData, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'update',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			dataMode: 'autoMapInputData',
+			columnToMatchOn: 'id',
+			options: {},
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+		];
+
+		const inputItems = [
+			{
+				json: {
+					id: 1,
+					json: {
+						test: 15,
+					},
+					foo: 'data 1',
+				},
+			},
+			{
+				json: {
+					id: 2,
+					json: {
+						test: 10,
+					},
+					foo: 'data 2',
+				},
+			},
+			{
+				json: {
+					id: 3,
+					json: {
+						test: 5,
+					},
+					foo: 'data 3',
+				},
+			},
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await update.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'UPDATE $1:name.$2:name SET $5:name = $6, $7:name = $8 WHERE $3:name = $4 RETURNING *',
+					values: ['public', 'my_table', 'id', 1, 'json', { test: 15 }, 'foo', 'data 1'],
+				},
+				{
+					query:
+						'UPDATE $1:name.$2:name SET $5:name = $6, $7:name = $8 WHERE $3:name = $4 RETURNING *',
+					values: ['public', 'my_table', 'id', 2, 'json', { test: 10 }, 'foo', 'data 2'],
+				},
+				{
+					query:
+						'UPDATE $1:name.$2:name SET $5:name = $6, $7:name = $8 WHERE $3:name = $4 RETURNING *',
+					values: ['public', 'my_table', 'id', 3, 'json', { test: 5 }, 'foo', 'data 3'],
+				},
+			],
+			inputItems,
+			nodeOptions,
+		);
+	});
+});
+
+describe('Test PostgresV2, upsert operation', () => {
+	it('dataMode: define, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			dataMode: 'defineBelow',
+			columnToMatchOn: 'id',
+			valueToMatchOn: '5',
+			valuesToSend: {
+				values: [
+					{
+						column: 'json',
+						value: '{ "test": 5 }',
+					},
+					{
+						column: 'foo',
+						value: 'data 5',
+					},
+				],
+			},
+			options: {
+				outputColumns: ['json'],
+			},
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await upsert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING $9:name',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						{ json: '{ "test": 5 }', foo: 'data 5', id: '5' },
+						'json',
+						'{ "test": 5 }',
+						'foo',
+						'data 5',
+						['json'],
+					],
+				},
+			],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('dataMode: autoMapInputData, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			dataMode: 'autoMapInputData',
+			columnToMatchOn: 'id',
+			options: {},
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+		];
+
+		const inputItems = [
+			{
+				json: {
+					id: 1,
+					json: {
+						test: 15,
+					},
+					foo: 'data 1',
+				},
+			},
+			{
+				json: {
+					id: 2,
+					json: {
+						test: 10,
+					},
+					foo: 'data 2',
+				},
+			},
+			{
+				json: {
+					id: 3,
+					json: {
+						test: 5,
+					},
+					foo: 'data 3',
+				},
+			},
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await upsert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING *',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						{ id: 1, json: { test: 15 }, foo: 'data 1' },
+						'json',
+						{ test: 15 },
+						'foo',
+						'data 1',
+					],
+				},
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING *',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						{ id: 2, json: { test: 10 }, foo: 'data 2' },
+						'json',
+						{ test: 10 },
+						'foo',
+						'data 2',
+					],
+				},
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING *',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						{ id: 3, json: { test: 5 }, foo: 'data 3' },
+						'json',
+						{ test: 5 },
+						'foo',
+						'data 3',
+					],
+				},
+			],
+			inputItems,
+			nodeOptions,
+		);
+	});
+});
