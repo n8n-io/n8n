@@ -19,6 +19,10 @@ export class CreateExecutionMetadataTable1674133106778 implements MigrationInter
 			)`,
 		);
 
+		await queryRunner.query(
+			`CREATE INDEX "IDX_${tablePrefix}6d44376da6c1058b5e81ed8a154e1fee106046eb" ON "${tablePrefix}execution_metadata" ("executionId");`,
+		);
+
 		logMigrationEnd(this.name);
 	}
 

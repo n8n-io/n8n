@@ -71,6 +71,7 @@ import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -264,17 +265,19 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 	}
 }
 
-async function saveExecutionMetadata(
+export async function saveExecutionMetadata(
 	executionId: string,
 	executionMetadata: Record<string, string>,
 ): Promise<void> {
-	for (const [key, value] of Object.entries(executionMetadata)) {
-		await Db.collections.ExecutionMetadata.save({
-			execution: { id: executionId },
-			key,
-			value,
-		});
-	}
+	await Db.transaction(async (em) => {
+		for (const [key, value] of Object.entries(executionMetadata)) {
+			await em.save(ExecutionMetadata, {
+				execution: { id: executionId },
+				key,
+				value,
+			});
+		}
+	});
 }
 
 /**

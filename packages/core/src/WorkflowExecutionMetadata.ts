@@ -1,5 +1,7 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 
+export const KV_LIMIT = 10;
+
 export function setWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,
 	key: string,
@@ -8,7 +10,14 @@ export function setWorkflowExecutionMetadata(
 	if (!executionData.resultData.metadata) {
 		executionData.resultData.metadata = {};
 	}
-	executionData.resultData.metadata[String(key)] = String(value);
+	// Currently limited to 10 metadata KVs
+	if (
+		!(key in executionData.resultData.metadata) &&
+		Object.keys(executionData.resultData.metadata).length >= KV_LIMIT
+	) {
+		return;
+	}
+	executionData.resultData.metadata[String(key).slice(0, 50)] = String(value).slice(0, 255);
 }
 
 export function setAllWorkflowExecutionMetadata(
@@ -23,12 +32,13 @@ export function setAllWorkflowExecutionMetadata(
 export function getAllWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,
 ): Record<string, string> {
-	return executionData.resultData.metadata ?? {};
+	// Make a copy so it can't be modified directly
+	return { ...executionData.resultData.metadata } ?? {};
 }
 
 export function getWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,
 	key: string,
 ): string {
-	return getAllWorkflowExecutionMetadata(executionData)[String(key)];
+	return getAllWorkflowExecutionMetadata(executionData)[String(key).slice(0, 50)];
 }
