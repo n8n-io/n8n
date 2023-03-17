@@ -48,14 +48,35 @@ export async function getNodeParameterOptions(
 	return makeRestApiRequest(context, 'GET', '/node-parameter-options', sendData);
 }
 
+async function sleep(time: number) {
+	return new Promise((resolve) => {
+		setTimeout(resolve, time);
+	});
+}
+
 export async function getResourceLocatorResults(
 	context: IRestApiContext,
 	sendData: IResourceLocatorReqParams,
 ): Promise<INodeListSearchResult> {
-	return makeRestApiRequest(
-		context,
-		'GET',
-		'/nodes-list-search',
-		sendData as unknown as IDataObject,
-	);
+	if (!sendData.credentials) {
+		throw Error('');
+	}
+
+	await sleep(1000);
+
+	return {
+		results: [
+			{
+				name: 'My Calendar',
+				value: 'my-calendar',
+				url: 'https://calendar.google.com/calendar',
+			},
+		],
+	};
+	// return makeRestApiRequest(
+	// 	context,
+	// 	'GET',
+	// 	'/nodes-list-search',
+	// 	sendData as unknown as IDataObject,
+	// );
 }

@@ -142,7 +142,6 @@ export default mixins(showMessage).extend({
 		receiveMessage({ data }: MessageEvent) {
 			try {
 				const json = JSON.parse(data);
-				console.log('yo', json);
 				if (json.command === 'n8nReady') {
 					this.ready = true;
 				} else if (json.command === 'openNDV') {

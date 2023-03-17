@@ -163,7 +163,7 @@ export class GoogleCalendarTrigger implements INodeType {
 		// 	});
 		// }
 
-		// await sleep(3000);
+		await sleep(3000);
 
 		const events = [
 			{
