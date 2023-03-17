@@ -537,14 +537,14 @@ export default mixins(
 		},
 		workflowClasses() {
 			const returnClasses = [];
-			if (this.ctrlKeyPressed || this.spaceKeyPressed) {
+			if (this.ctrlKeyPressed || this.moveCanvasKeyPressed) {
 				if (this.uiStore.nodeViewMoveInProgress === true) {
 					returnClasses.push('move-in-process');
 				} else {
 					returnClasses.push('move-active');
 				}
 			}
-			if (this.selectActive || this.ctrlKeyPressed || this.spaceKeyPressed) {
+			if (this.selectActive || this.ctrlKeyPressed || this.moveCanvasKeyPressed) {
 				// Makes sure that nothing gets selected while select or move is active
 				returnClasses.push('do-not-select');
 			}
@@ -595,7 +595,7 @@ export default mixins(
 			lastSelectedConnection: null as null | Connection,
 			lastClickPosition: [450, 450] as XYPosition,
 			ctrlKeyPressed: false,
-			spaceKeyPressed: false,
+			moveCanvasKeyPressed: false,
 			stopExecutionInProgress: false,
 			blankRedirect: false,
 			credentialsUpdated: false,
@@ -972,14 +972,20 @@ export default mixins(
 		mouseDown(e: MouseEvent | TouchEvent) {
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
+			if (e instanceof MouseEvent && e.button === 1) {
+				this.moveCanvasKeyPressed = true;
+			}
 
-			this.mouseDownMouseSelect(e as MouseEvent, this.spaceKeyPressed);
-			this.mouseDownMoveWorkflow(e as MouseEvent, this.spaceKeyPressed);
+			this.mouseDownMouseSelect(e as MouseEvent, this.moveCanvasKeyPressed);
+			this.mouseDownMoveWorkflow(e as MouseEvent, this.moveCanvasKeyPressed);
 
 			// Hide the node-creator
 			this.createNodeActive = false;
 		},
 		mouseUp(e: MouseEvent) {
+			if (e.button === 1) {
+				this.moveCanvasKeyPressed = false;
+			}
 			this.mouseUpMouseSelect(e);
 			this.mouseUpMoveWorkflow(e);
 		},
@@ -988,7 +994,7 @@ export default mixins(
 				this.ctrlKeyPressed = false;
 			}
 			if (e.key === ' ') {
-				this.spaceKeyPressed = false;
+				this.moveCanvasKeyPressed = false;
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
@@ -1042,7 +1048,7 @@ export default mixins(
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
 			} else if (e.key === ' ') {
-				this.spaceKeyPressed = true;
+				this.moveCanvasKeyPressed = true;
 			} else if (e.key === 'F2' && !this.isReadOnly) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
