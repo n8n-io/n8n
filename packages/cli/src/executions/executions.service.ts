@@ -26,7 +26,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import * as Queue from '@/Queue';
+import { Queue } from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
@@ -197,7 +197,7 @@ export class ExecutionsService {
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const queue = await Queue.getInstance();
+			const queue = Container.get(Queue);
 			const currentJobs = await queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
@@ -541,6 +541,9 @@ export class ExecutionsService {
 			// delete executions by date, if user may access the underlying workflows
 			where.startedAt = LessThanOrEqual(deleteBefore);
 			Object.assign(where, requestFilters);
+			if (where.status) {
+				where.status = In(requestFiltersRaw!.status as string[]);
+			}
 		} else if (ids) {
 			// delete executions by IDs, if user may access the underlying workflows
 			where.id = In(ids);
@@ -568,6 +571,10 @@ export class ExecutionsService {
 			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
 		);
 
-		await Db.collections.Execution.delete(idsToDelete);
+		do {
+			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
+			const batch = idsToDelete.splice(0, 500);
+			await Db.collections.Execution.delete(batch);
+		} while (idsToDelete.length > 0);
 	}
 }
