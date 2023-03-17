@@ -284,6 +284,15 @@ export class InternalHooks implements IInternalHooksClass {
 			properties.user_id = userId;
 		}
 
+		let executionStatus: ExecutionStatus;
+		if (runData?.status === 'crashed') {
+			executionStatus = 'crashed';
+		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
+			executionStatus = 'waiting';
+		} else {
+			executionStatus = properties.success ? 'success' : 'failed';
+		}
+
 		if (runData !== undefined) {
 			properties.execution_mode = runData.mode;
 			properties.success = !!runData.finished;
@@ -342,7 +351,7 @@ export class InternalHooks implements IInternalHooksClass {
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					user_id: userId,
 					workflow_id: workflow.id,
-					status: properties.success ? 'success' : 'failed',
+					status: executionStatus,
 					executionStatus: runData?.status ?? 'unknown',
 					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
@@ -390,15 +399,6 @@ export class InternalHooks implements IInternalHooksClass {
 					);
 				}
 			}
-		}
-
-		let executionStatus: ExecutionStatus;
-		if (runData?.status === 'crashed') {
-			executionStatus = 'crashed';
-		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
-			executionStatus = 'waiting';
-		} else {
-			executionStatus = properties.success ? 'success' : 'failed';
 		}
 
 		promises.push(
