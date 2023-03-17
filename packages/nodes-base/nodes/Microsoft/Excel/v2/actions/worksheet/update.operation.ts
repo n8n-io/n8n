@@ -295,7 +295,7 @@ export async function execute(
 			);
 
 			returnData.push(
-				...prepareOutput.call(this, responseData as ExcelResponse, {
+				...prepareOutput(this.getNode(), responseData as ExcelResponse, {
 					rawData,
 					dataProperty,
 				}),
@@ -358,7 +358,7 @@ export async function execute(
 			const { updatedRows } = updateSummary;
 
 			returnData.push(
-				...prepareOutput.call(this, responseData as ExcelResponse, {
+				...prepareOutput(this.getNode(), responseData as ExcelResponse, {
 					updatedRows,
 					rawData,
 					dataProperty,

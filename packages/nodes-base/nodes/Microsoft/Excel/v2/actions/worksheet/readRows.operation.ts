@@ -50,7 +50,7 @@ const properties: INodeProperties[] = [
 		name: 'dataStartRow',
 		type: 'number',
 		typeOptions: {
-			minValue: 1,
+			minValue: 0,
 		},
 		default: 1,
 		hint: 'Index of first row which contains the actual data',
@@ -167,7 +167,7 @@ export async function execute(
 				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
 
 				returnData.push(
-					...prepareOutput.call(this, responseData as ExcelResponse, {
+					...prepareOutput(this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						keyRow,
 						firstDataRow,
@@ -176,7 +176,10 @@ export async function execute(
 			} else {
 				const dataProperty = (options.dataProperty as string) || 'data';
 				returnData.push(
-					...prepareOutput.call(this, responseData as ExcelResponse, { rawData, dataProperty }),
+					...prepareOutput(this.getNode(), responseData as ExcelResponse, {
+						rawData,
+						dataProperty,
+					}),
 				);
 			}
 		} catch (error) {

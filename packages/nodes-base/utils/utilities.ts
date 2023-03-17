@@ -1,4 +1,9 @@
-import type { IDataObject, IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IDisplayOptions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
 
@@ -192,3 +197,12 @@ export const fuzzyCompare = (useFuzzyCompare: boolean, compareVersion = 1) => {
 		return isEqual(item1, item2);
 	};
 };
+
+export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
+}

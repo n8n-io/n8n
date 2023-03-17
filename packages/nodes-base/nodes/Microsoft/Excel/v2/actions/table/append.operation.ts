@@ -260,7 +260,7 @@ export async function execute(
 		const dataProperty = (options.dataProperty as string) || 'data';
 
 		returnData.push(
-			...prepareOutput.call(this, responseData as ExcelResponse, {
+			...prepareOutput(this.getNode(), responseData as ExcelResponse, {
 				columnsRow,
 				dataProperty,
 				rawData,

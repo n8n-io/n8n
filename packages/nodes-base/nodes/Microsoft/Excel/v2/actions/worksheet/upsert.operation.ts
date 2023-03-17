@@ -297,7 +297,7 @@ export async function execute(
 		const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
 		returnData.push(
-			...prepareOutput.call(this, responseData as ExcelResponse, {
+			...prepareOutput(this.getNode(), responseData as ExcelResponse, {
 				updatedRows,
 				rawData,
 				dataProperty,

@@ -1,7 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
+import { constructExecutionMetaData } from 'n8n-core';
+import { wrapData } from '../../../../../utils/utilities';
 
 type PrepareOutputConfig = {
 	rawData: boolean;
@@ -13,7 +15,7 @@ type PrepareOutputConfig = {
 };
 
 export function prepareOutput(
-	this: IExecuteFunctions,
+	node: INode,
 	responseData: ExcelResponse,
 	config: PrepareOutputConfig,
 ) {
@@ -30,31 +32,30 @@ export function prepareOutput(
 	if (!rawData) {
 		let values = responseData.values;
 		if (values === null) {
-			throw new NodeOperationError(this.getNode(), 'Operation did not return data');
+			throw new NodeOperationError(node, 'Operation did not return data');
 		}
 
 		const columns = columnsRow ? columnsRow : values[keyRow];
-		const startIndex = columnsRow ? 0 : firstDataRow;
 
 		if (updatedRows) {
 			values = values.filter((_, index) => updatedRows.includes(index));
 		}
 
-		for (let rowIndex = startIndex; rowIndex < values.length; rowIndex++) {
+		for (let rowIndex = firstDataRow; rowIndex < values.length; rowIndex++) {
+			if (rowIndex === keyRow) continue;
 			const data: IDataObject = {};
 			for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
 				data[columns[columnIndex] as string] = values[rowIndex][columnIndex];
 			}
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray({ ...data }),
-				{ itemData: { item: rowIndex } },
-			);
+			const executionData = constructExecutionMetaData(wrapData({ ...data }), {
+				itemData: { item: rowIndex },
+			});
 
 			returnData.push(...executionData);
 		}
 	} else {
-		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray({ [config.dataProperty as string]: responseData }),
+		const executionData = constructExecutionMetaData(
+			wrapData({ [config.dataProperty || 'data']: responseData }),
 			{ itemData: { item: 0 } },
 		);
 

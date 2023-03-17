@@ -1,6 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
 
-export type SheetRow = Array<string | null>;
+export type SheetRow = Array<string | number | null>;
 export type SheetData = SheetRow[];
 
 export type ExcelResponse = {
