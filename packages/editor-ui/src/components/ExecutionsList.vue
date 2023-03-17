@@ -280,9 +280,10 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
 	IWorkflowShortResponse,
-	ExecutionFilterType, ExecutionsQueryFilter,
+	ExecutionFilterType,
+	ExecutionsQueryFilter,
 } from '@/Interface';
-import type { IExecutionsSummary, ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
