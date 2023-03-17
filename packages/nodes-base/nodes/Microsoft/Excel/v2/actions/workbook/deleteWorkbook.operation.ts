@@ -34,7 +34,7 @@ export async function execute(
 					const errorDescription =
 						'Lock token does not match existing lock, this error could happen if the file is opened in the browser or the Office client, please close file and try again.';
 
-					throw new NodeOperationError(this.getNode(), error, {
+					throw new NodeOperationError(this.getNode(), error as Error, {
 						itemIndex: i,
 						description: errorDescription,
 					});

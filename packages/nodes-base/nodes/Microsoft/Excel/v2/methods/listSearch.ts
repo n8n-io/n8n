@@ -123,7 +123,7 @@ export async function getWorksheetTables(
 
 		const [sheetName, sheetRange] = address.split('!' as string);
 
-		const url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName)}${
+		const url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName as string)}${
 			sheetRange ? '!' + (sheetRange as string) : ''
 		}`;
 

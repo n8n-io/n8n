@@ -99,7 +99,7 @@ export async function execute(
 				returnData.push(...executionData);
 			} else if (responseData !== undefined) {
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

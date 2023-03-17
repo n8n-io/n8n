@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
+import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
@@ -208,7 +209,7 @@ export async function execute(
 	const from = `${cellDataFrom[1]}${Number(cellDataTo[2]) + 1}`;
 	const to = `${cellDataTo[1]}${Number(cellDataTo[2]) + Number(values.length)}`;
 
-	const responseData = await microsoftApiRequest.call(
+	const responseData: ExcelResponse = await microsoftApiRequest.call(
 		this,
 		'PATCH',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${from}:${to}')`,

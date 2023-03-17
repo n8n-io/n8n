@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { SheetData, UpdateSummary } from './interfaces';
+import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
 
 type PrepareOutputConfig = {
 	rawData: boolean;
@@ -14,7 +14,7 @@ type PrepareOutputConfig = {
 
 export function prepareOutput(
 	this: IExecuteFunctions,
-	responseData: { values: string[][] },
+	responseData: ExcelResponse,
 	config: PrepareOutputConfig,
 ) {
 	const returnData: INodeExecutionData[] = [];
@@ -43,7 +43,7 @@ export function prepareOutput(
 		for (let rowIndex = startIndex; rowIndex < values.length; rowIndex++) {
 			const data: IDataObject = {};
 			for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-				data[columns[columnIndex]] = values[rowIndex][columnIndex];
+				data[columns[columnIndex] as string] = values[rowIndex][columnIndex];
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ ...data }),

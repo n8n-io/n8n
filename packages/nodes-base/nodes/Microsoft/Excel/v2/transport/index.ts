@@ -1,6 +1,6 @@
 import type { OptionsWithUri } from 'request';
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import type { UpdateSummary } from '../helpers/interfaces';
 
@@ -29,7 +29,7 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, 'microsoftExcelOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -53,7 +53,7 @@ export async function microsoftApiRequestAllItems(
 		if (uri?.includes('$top')) {
 			delete query.$top;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
@@ -76,7 +76,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
 		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
 
 	return returnData;

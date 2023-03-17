@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { microsoftApiRequest } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
@@ -42,7 +42,7 @@ export async function execute(
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 

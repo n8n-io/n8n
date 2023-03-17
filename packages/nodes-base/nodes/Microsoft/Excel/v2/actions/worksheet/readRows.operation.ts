@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
@@ -166,7 +167,7 @@ export async function execute(
 				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
 
 				returnData.push(
-					...prepareOutput.call(this, responseData, {
+					...prepareOutput.call(this, responseData as ExcelResponse, {
 						rawData,
 						keyRow,
 						firstDataRow,
@@ -174,7 +175,9 @@ export async function execute(
 				);
 			} else {
 				const dataProperty = (options.dataProperty as string) || 'data';
-				returnData.push(...prepareOutput.call(this, responseData, { rawData, dataProperty }));
+				returnData.push(
+					...prepareOutput.call(this, responseData as ExcelResponse, { rawData, dataProperty }),
+				);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {

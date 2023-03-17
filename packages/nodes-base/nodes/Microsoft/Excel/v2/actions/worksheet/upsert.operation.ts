@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
-import type { UpdateSummary } from '../../helpers/interfaces';
+import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import { prepareOutput, updateByAutoMaping, updateByDefinedValues } from '../../helpers/utils';
 import { microsoftApiRequest, updateOrUpsertRange } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
@@ -294,7 +294,11 @@ export async function execute(
 		const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
 		returnData.push(
-			...prepareOutput.call(this, responseData, { updatedRows, rawData, dataProperty }),
+			...prepareOutput.call(this, responseData as ExcelResponse, {
+				updatedRows,
+				rawData,
+				dataProperty,
+			}),
 		);
 	} catch (error) {
 		if (this.continueOnFail()) {

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { microsoftApiRequestAllItemsSkip } from '../../transport';
@@ -103,7 +103,7 @@ export async function execute(
 			columns = columns.map((column: IDataObject) => column.name);
 
 			if (!columns.includes(lookupColumn)) {
-				throw new NodeApiError(this.getNode(), responseData, {
+				throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 					message: `Column ${lookupColumn} does not exist on the table selected`,
 				});
 			}
@@ -123,7 +123,7 @@ export async function execute(
 					return data[lookupColumn]?.toString() === lookupValue;
 				});
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

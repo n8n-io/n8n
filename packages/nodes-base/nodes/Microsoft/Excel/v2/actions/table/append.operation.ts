@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
+import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
@@ -259,7 +260,11 @@ export async function execute(
 		const dataProperty = (options.dataProperty as string) || 'data';
 
 		returnData.push(
-			...prepareOutput.call(this, responseData, { columnsRow, dataProperty, rawData }),
+			...prepareOutput.call(this, responseData as ExcelResponse, {
+				columnsRow,
+				dataProperty,
+				rawData,
+			}),
 		);
 	} catch (error) {
 		if (this.continueOnFail()) {
