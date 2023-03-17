@@ -45,7 +45,7 @@ export default mixins(showMessage).extend({
 			required: false,
 		},
 		nodes: {
-			type: Array as () => string[],
+			type: Array as () => Array<string | IUpdateInformation>,
 		},
 		executionId: {
 			type: String,

@@ -115,7 +115,7 @@ import useMainPanelView from './useMainPanelView';
 const instance = getCurrentInstance();
 
 const emit = defineEmits({
-	nodeTypeSelected: (nodeTypes: string[]) => true,
+	nodeTypeSelected: (nodeTypes: Array<string | IUpdateInformation>) => true,
 });
 
 const state = reactive({
@@ -303,7 +303,8 @@ function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
 function onActionSelected(actionCreateElement: INodeCreateElement) {
 	const action = (actionCreateElement.properties as IActionItemProps).nodeType;
 	const actionUpdateData = getActionData(action);
-	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
+	emit('nodeTypeSelected', [actionUpdateData]);
+	// emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
 	setAddedNodeActionParameters(actionUpdateData, telemetry);
 }
 function addWebHookNode() {

@@ -6,6 +6,7 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import MainPanel from './Node/NodeCreator/MainPanel.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { SCHEDULE_TRIGGER_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
+import { IUpdateInformation } from '@/Interface';
 
 const steps = [
 	{
@@ -110,7 +111,7 @@ const steps = [
 const router = useRouter();
 const current = ref(0);
 const loading = ref(true);
-const kickoff = ref([] as string[]);
+const kickoff = ref([] as Array<string | IUpdateInformation>);
 const preview = ref();
 
 onMounted(async () => {
@@ -118,15 +119,17 @@ onMounted(async () => {
 	loading.value = false;
 });
 
-function openWorkflow(nodes: string[]) {
+function openWorkflow(nodes: Array<string | IUpdateInformation>) {
 	if (
 		nodes.length === 1 &&
 		(nodes.includes(SCHEDULE_TRIGGER_NODE_TYPE) || nodes.includes(WEBHOOK_NODE_TYPE))
 	) {
 		router.push({ name: VIEWS.NEW_WORKFLOW, query: { start: nodes.join(',') } });
+		return;
 	} else {
-		kickoff.value = nodes;
+		kickoff.value = [nodes[0]];
 		current.value = 1;
+		return;
 	}
 }
 

@@ -308,10 +308,13 @@ import {
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
 import { usePostHog } from '@/stores/posthog';
+import { INodeParameters } from 'n8n-workflow/src/Interfaces';
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
+	name?: string;
+	parameters?: INodeParameters;
 }
 
 const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue');
@@ -1909,10 +1912,22 @@ export default mixins(
 			}
 
 			// Check if node-name is unique else find one that is
-			newNodeData.name = this.getUniqueNodeName({
-				originalName: newNodeData.name,
-				type: newNodeData.type,
-			});
+			if (options.name) {
+				newNodeData.name = options.name;
+			} else {
+				newNodeData.name = this.getUniqueNodeName({
+					originalName: newNodeData.name,
+					type: newNodeData.type,
+				});
+			}
+
+			if (options.parameters) {
+				newNodeData.parameters = newNodeData.parameters || {};
+				newNodeData.parameters = {
+					...newNodeData.parameters,
+					...options.parameters,
+				};
+			}
 
 			if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
 				newNodeData.webhookId = uuid();
@@ -3656,7 +3671,17 @@ export default mixins(
 				}
 				if (json && json.command === 'openWorkflow') {
 					try {
-						const nodes = (json.workflow as string[]).map((name) => ({ nodeTypeName: name }));
+						const nodes = (json.workflow as Array<string | IUpdateInformation>).map((name) => {
+							if (typeof name === 'string') {
+								return { nodeTypeName: name };
+							}
+
+							return {
+								nodeTypeName: name.key,
+								name: name.name,
+								parameters: name.value,
+							};
+						});
 						this.onAddNode(nodes, false, true);
 						// await this.importWorkflowExact(json);
 						this.isExecutionPreview = false;
@@ -3786,18 +3811,23 @@ export default mixins(
 			});
 		},
 		onAddNode(
-			nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>,
+			nodeTypes: Array<{
+				nodeTypeName: string;
+				position: XYPosition;
+				name?: string;
+				parameters?: INodeParameters;
+			}>,
 			dragAndDrop: boolean,
 			neverOpenNode = false,
 		) {
-			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
+			nodeTypes.forEach(({ nodeTypeName, position, name, parameters }, index) => {
 				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
 				const openNDV = neverOpenNode
 					? false
 					: !isManualTrigger && (nodeTypes.length === 1 || index > 0);
 				this.addNode(
 					nodeTypeName,
-					{ position, dragAndDrop },
+					{ position, dragAndDrop, name, parameters },
 					openNDV,
 					true,
 					nodeTypes.length > 1 && index < 1,
