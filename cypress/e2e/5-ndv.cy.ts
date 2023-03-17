@@ -89,4 +89,42 @@ describe('NDV', () => {
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
 	});
+
+	describe('test output schema view', () => {
+		const schemaKeys = ['id', 'name', 'email', 'notes', 'country', 'created', 'objectValue', 'prop1', 'prop2'];
+		beforeEach(() => {
+			cy.createFixtureWorkflow('Test_workflow_schema_test.json', `NDV test schema view ${uuid()}`);
+			workflowPage.actions.zoomToFit();
+			workflowPage.actions.openNode('Set');
+			ndv.actions.execute();
+		});
+		it('should switch to output schema view and validate it', () => {
+			ndv.getters.outputDisplayMode().children().should('have.length', 3);
+			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
+
+			schemaKeys.forEach((key) => {
+				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('exist');
+			});
+		});
+		it('should preserve schema view after execution', () => {
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.execute();
+			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
+		})
+		it('should collapse and expand nested schema object', () => {
+			const expandedObjectProps = ['prop1', 'prop2'];;
+			const getObjectValueItem = () => ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').filter(':contains("objectValue")');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+
+			expandedObjectProps.forEach((key) => {
+				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('be.visible');
+			});
+			getObjectValueItem().find('label').click();
+			expandedObjectProps.forEach((key) => {
+				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('not.be.visible');
+			});
+		})
+	})
 });

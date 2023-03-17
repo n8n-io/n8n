@@ -2,6 +2,7 @@ import { Telemetry } from '@/telemetry';
 import config from '@/config';
 import { flushPromises } from './Helpers';
 import { PostHogClient } from '@/posthog';
+import { mock } from 'jest-mock-extended';
 
 jest.unmock('@/telemetry');
 jest.mock('@/license/License.service', () => {
@@ -45,7 +46,7 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient();
 		postHog.init(instanceId);
 
-		telemetry = new Telemetry(postHog);
+		telemetry = new Telemetry(postHog, mock());
 		telemetry.setInstanceId(instanceId);
 		(telemetry as any).rudderStack = {
 			flush: () => {},

@@ -1,11 +1,12 @@
 import express from 'express';
 import type { Entry as LdapUser } from 'ldapts';
+import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED, LDAP_FEATURE_NAME } from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
 import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
@@ -21,7 +22,6 @@ jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let globalMemberRole: Role;
-let globalOwnerRole: Role;
 let owner: User;
 let authAgent: AuthAgent;
 
@@ -42,10 +42,11 @@ const defaultLdapConfig = {
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'] });
 
-	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
+	const [globalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
 
-	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
+
+	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	authAgent = utils.createAuthAgent(app);
 
@@ -64,10 +65,9 @@ beforeEach(async () => {
 		'Credentials',
 		'SharedWorkflow',
 		'Workflow',
-		'User',
 	]);
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	await Db.collections.User.delete({ id: Not(owner.id) });
 
 	jest.mock('@/telemetry');
 

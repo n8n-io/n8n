@@ -3,6 +3,7 @@
 import { In } from 'typeorm';
 import type express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
+import Container from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -13,7 +14,7 @@ import type { Role } from '@db/entities/Role';
 import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 import { RoleService } from '@/role/role.service';
 import type { PostHogClient } from '@/posthog';
 
@@ -55,7 +56,7 @@ export function isUserManagementEnabled(): boolean {
 }
 
 export function isSharingEnabled(): boolean {
-	const license = getLicense();
+	const license = Container.get(License);
 	return (
 		isUserManagementEnabled() &&
 		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
