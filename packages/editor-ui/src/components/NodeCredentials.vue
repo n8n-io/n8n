@@ -6,6 +6,7 @@
 		<div
 			v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed"
 			:key="credentialTypeDescription.name"
+			:class="{ [$style.blockInteraction]: !!getSelectedName(credentialTypeDescription.name) }"
 		>
 			<n8n-input-label
 				:label="getCredentialsFieldLabel(credentialTypeDescription)"
@@ -568,6 +569,14 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 </script>
 
 <style lang="scss" module>
+.blockInteraction {
+	pointer-events: none;
+
+	* {
+		pointer-events: none !important;
+	}
+}
+
 .container {
 	margin-top: var(--spacing-xs);
 

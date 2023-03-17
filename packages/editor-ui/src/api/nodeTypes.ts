@@ -68,7 +68,7 @@ export async function getResourceLocatorResults(
 		results: [
 			{
 				name: 'My Calendar',
-				value: 'my-calendar',
+				value: 'addressbook#contacts@group.v.calendar.google.com',
 				url: 'https://calendar.google.com/calendar',
 			},
 		],

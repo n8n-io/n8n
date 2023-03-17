@@ -26,7 +26,7 @@ const steps = [
 		progress: 25,
 		panel: {
 			title: 'Create a Google Calendar credential',
-			desc: 'Your Google Calendar Trigger needs this to connect to your Google Calendar account and listen for new <b>On Event Created</b> events',
+			desc: 'Your Google Calendar Trigger needs this to connect to your Google Calendar account and listen for new <b>On Event Created<svg data-v-9b141c92="" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="bolt" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="svg-inline--fa fa-bolt fa-w-10 fa-xs _triggerIcon_1mk62_64"><path data-v-9b141c92="" fill="#7d7d87" d="M296 160H180.6l42.6-129.8C227.2 15 215.7 0 200 0H56C44 0 33.8 8.9 32.2 20.8l-32 240C-1.7 275.2 9.5 288 24 288h118.7L96.6 482.5c-3.6 15.2 8 29.5 23.3 29.5 8.4 0 16.4-4.4 20.8-12l176-304c9.3-15.9-2.2-36-20.7-36z" class=""></path></svg></b> events',
 		},
 	},
 	{
@@ -91,7 +91,7 @@ const steps = [
 		progress: 94,
 		panel: {
 			title: 'Test your Trigger Step',
-			desc: 'Testing a Trigger ensures that n8n can receive new events from Google Calendar. \n It also loads the schema and typical values of a <b>On Event Created</b> event into the Trigger, which you can reference in other steps in your workflow.',
+			desc: 'Testing a Trigger ensures that n8n can receive new events from Google Calendar. \n It also loads the schema and typical values of a <b>On Event Created<svg data-v-9b141c92="" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="bolt" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="svg-inline--fa fa-bolt fa-w-10 fa-xs _triggerIcon_1mk62_64"><path data-v-9b141c92="" fill="#7d7d87" d="M296 160H180.6l42.6-129.8C227.2 15 215.7 0 200 0H56C44 0 33.8 8.9 32.2 20.8l-32 240C-1.7 275.2 9.5 288 24 288h118.7L96.6 482.5c-3.6 15.2 8 29.5 23.3 29.5 8.4 0 16.4-4.4 20.8-12l176-304c9.3-15.9-2.2-36-20.7-36z" class=""></path></svg></b> event into the Trigger, which you can reference in other steps in your workflow.',
 		},
 	},
 	{
@@ -147,7 +147,7 @@ const onNewCred = () => {
 
 const onContinue = () => {
 	if (preview) {
-		preview.save();
+		preview.value.save();
 	}
 };
 
