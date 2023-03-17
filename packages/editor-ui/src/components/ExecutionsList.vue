@@ -5,6 +5,7 @@
 				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
 					<el-checkbox
+						class="mr-xl"
 						v-model="autoRefresh"
 						@change="handleAutoRefreshToggle"
 						data-testid="execution-auto-refresh-checkbox"
@@ -279,9 +280,9 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
 	IWorkflowShortResponse,
-	ExecutionFilterType,
+	ExecutionFilterType, ExecutionsQueryFilter,
 } from '@/Interface';
-import type { ExecutionStatus, IDataObject, IExecutionsSummary } from 'n8n-workflow';
+import type { IExecutionsSummary, ExecutionStatus, IDataObject } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
@@ -326,7 +327,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		},
 		async created() {
 			await this.loadWorkflows();
-			await this.refreshData();
+			//await this.refreshData();
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
@@ -357,7 +358,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				return returnData.filter(
 					(execution) =>
-						this.filter.workflowId === 'ALL' || execution.workflowId === this.filter.workflowId,
+						this.filter.workflowId === 'all' || execution.workflowId === this.filter.workflowId,
 				);
 			},
 			numSelected(): number {
@@ -367,14 +368,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				return Object.keys(this.selectedItems).length;
 			},
-			workflowFilterCurrent(): IDataObject {
-				const filter: IDataObject = {};
+			workflowFilterCurrent(): ExecutionsQueryFilter {
+				const filter: ExecutionsQueryFilter = {};
 				if (this.filter.workflowId !== 'all') {
 					filter.workflowId = this.filter.workflowId;
 				}
 				return filter;
 			},
-			workflowFilterPast(): IDataObject {
+			workflowFilterPast(): ExecutionsQueryFilter {
 				return executionFilterToQueryFilter(this.filter);
 			},
 			pageTitle() {
@@ -480,15 +481,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.allExistingSelected = false;
 				Vue.set(this, 'selectedItems', {});
 			},
-			onFilterChanged(filter: {
-				status: string;
-				workflowId: string;
-				startDate: string;
-				endDate: string;
-				tags: string[];
-			}) {
+			onFilterChanged(filter: ExecutionFilterType) {
 				this.filter = filter;
 				this.refreshData();
+				this.handleClearSelection();
 			},
 			handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 				if (['currentlySaved', 'original'].includes(commandData.command)) {
@@ -964,16 +960,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	button {
 		margin-left: var(--spacing-2xs);
 	}
-}
-
-.filters {
-	display: flex;
-	line-height: 2em;
-	margin: var(--spacing-l) 0;
-}
-
-.filterItem {
-	margin: 0 var(--spacing-3xl) 0 0;
 }
 
 .statusColumn {

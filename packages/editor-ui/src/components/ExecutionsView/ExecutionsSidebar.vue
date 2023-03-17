@@ -93,9 +93,9 @@ export default Vue.extend({
 	data() {
 		return {
 			VIEWS,
+			filter: {} as ExecutionFilterType,
 			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
-			filter: {} as ExecutionFilterType,
 		};
 	},
 	computed: {
@@ -227,7 +227,7 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-l);
+	padding-right: var(--spacing-m);
 
 	button {
 		display: flex;
