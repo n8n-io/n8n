@@ -175,6 +175,28 @@ export default mixins(showMessage).extend({
 		},
 		save() {
 			const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
+			if (iframe.contentWindow && this.nodes) {
+				iframe.contentWindow.postMessage(
+					JSON.stringify({
+						command: 'openWorkflow',
+						workflow: [
+							{
+								key: 'n8n-nodes-base.stickyNote',
+								name: 'Does not matter',
+								value: {
+									content:
+										'☝️  Any node connected to this Trigger can access it’s **On Event Created** output data.',
+									height: 80,
+									width: 283,
+									position: [130, 120],
+								},
+							},
+						],
+					}),
+					'*',
+				);
+			}
+
 			if (iframe.contentWindow) {
 				iframe.contentWindow.postMessage(
 					JSON.stringify({

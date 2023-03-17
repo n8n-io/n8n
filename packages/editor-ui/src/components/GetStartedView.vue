@@ -109,9 +109,16 @@ const steps = [
 ];
 
 const router = useRouter();
-const current = ref(3);
 const loading = ref(true);
+
+const current = ref(0);
 const kickoff = ref([] as Array<string | IUpdateInformation>);
+
+// const current = ref(8);
+// const kickoff = ref([
+// 	{ key: 'n8n-nodes-base.googleCalendarTrigger', name: 'Test node', value: { position: [0, 0] } },
+// ] as Array<string | IUpdateInformation>);
+
 const preview = ref();
 
 onMounted(async () => {
@@ -127,6 +134,9 @@ function openWorkflow(nodes: Array<string | IUpdateInformation>) {
 		router.push({ name: VIEWS.NEW_WORKFLOW, query: { start: nodes.join(',') } });
 		return;
 	} else {
+		if (typeof nodes[0] === 'object') {
+			nodes[0].value.position = [0, 0];
+		}
 		kickoff.value = [nodes[0]];
 		current.value = 1;
 		return;
@@ -176,7 +186,7 @@ const onSuccess = () => {
 };
 
 const onWorflowSaved = ({ id }) => {
-	router.push(`/workflows/${id}`);
+	router.push(`/workflow/${id}`);
 };
 </script>
 

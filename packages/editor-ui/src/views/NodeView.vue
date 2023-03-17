@@ -3680,6 +3680,7 @@ export default mixins(
 								nodeTypeName: name.key,
 								name: name.name,
 								parameters: name.value,
+								position: name.value.position,
 							};
 						});
 						this.onAddNode(nodes, false, true);
@@ -3858,7 +3859,7 @@ export default mixins(
 			});
 		},
 		async saveCurrentWorkflowExternal(callback: () => void) {
-			await this.saveCurrentWorkflow();
+			await this.saveCurrentWorkflow({ name: 'Onboarding workflow' });
 			callback?.();
 		},
 		setSuspendRecordingDetachedConnections(suspend: boolean) {
