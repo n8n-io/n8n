@@ -537,14 +537,14 @@ export default mixins(
 		},
 		workflowClasses() {
 			const returnClasses = [];
-			if (this.ctrlKeyPressed) {
+			if (this.ctrlKeyPressed || this.spaceKeyPressed) {
 				if (this.uiStore.nodeViewMoveInProgress === true) {
 					returnClasses.push('move-in-process');
 				} else {
 					returnClasses.push('move-active');
 				}
 			}
-			if (this.selectActive || this.ctrlKeyPressed) {
+			if (this.selectActive || this.ctrlKeyPressed || this.spaceKeyPressed) {
 				// Makes sure that nothing gets selected while select or move is active
 				returnClasses.push('do-not-select');
 			}
@@ -595,6 +595,7 @@ export default mixins(
 			lastSelectedConnection: null as null | Connection,
 			lastClickPosition: [450, 450] as XYPosition,
 			ctrlKeyPressed: false,
+			spaceKeyPressed: false,
 			stopExecutionInProgress: false,
 			blankRedirect: false,
 			credentialsUpdated: false,
@@ -972,8 +973,8 @@ export default mixins(
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
-			this.mouseDownMouseSelect(e as MouseEvent);
-			this.mouseDownMoveWorkflow(e as MouseEvent);
+			this.mouseDownMouseSelect(e as MouseEvent, this.spaceKeyPressed);
+			this.mouseDownMoveWorkflow(e as MouseEvent, this.spaceKeyPressed);
 
 			// Hide the node-creator
 			this.createNodeActive = false;
@@ -985,6 +986,9 @@ export default mixins(
 		keyUp(e: KeyboardEvent) {
 			if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = false;
+			}
+			if (e.key === ' ') {
+				this.spaceKeyPressed = false;
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
@@ -1037,6 +1041,8 @@ export default mixins(
 				});
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
+			} else if (e.key === ' ') {
+				this.spaceKeyPressed = true;
 			} else if (e.key === 'F2' && !this.isReadOnly) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {

@@ -141,8 +141,8 @@ export const mouseSelect = mixins(deviceSupportHelpers).extend({
 
 			return returnNodes;
 		},
-		mouseDownMouseSelect(e: MouseEvent) {
-			if (this.isCtrlKeyPressed(e) === true) {
+		mouseDownMouseSelect(e: MouseEvent, spacePressed: boolean) {
+			if (this.isCtrlKeyPressed(e) === true || spacePressed) {
 				// We only care about it when the ctrl key is not pressed at the same time.
 				// So we exit when it is pressed.
 				return;

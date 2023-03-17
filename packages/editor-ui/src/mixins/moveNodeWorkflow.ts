@@ -27,8 +27,8 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 			this.moveLastPosition[0] = x;
 			this.moveLastPosition[1] = y;
 		},
-		mouseDownMoveWorkflow(e: MouseEvent) {
-			if (this.isCtrlKeyPressed(e) === false) {
+		mouseDownMoveWorkflow(e: MouseEvent, spacePressed: boolean) {
+			if (this.isCtrlKeyPressed(e) === false && !spacePressed) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
