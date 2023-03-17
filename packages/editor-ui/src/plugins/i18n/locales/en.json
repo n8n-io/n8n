@@ -283,6 +283,7 @@
 	"credentialEdit.credentialConfig.missingCredentialType": "This credential's type isn't available. This usually happens when a previously installed community or custom node was uninstalled.",
 	"credentialEdit.credentialConfig.authTypeSelectorLabel": "Connect using",
 	"credentialEdit.credentialConfig.authTypeSelectorTooltip": "The authentication method to use for the connection",
+	"credentialEdit.credentialConfig.recommendedAuthTypeSuffix": "(recommended)",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText": "Keep Editing",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText": "Close",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline": "Close without saving?",
