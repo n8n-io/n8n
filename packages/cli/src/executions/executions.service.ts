@@ -541,6 +541,9 @@ export class ExecutionsService {
 			// delete executions by date, if user may access the underlying workflows
 			where.startedAt = LessThanOrEqual(deleteBefore);
 			Object.assign(where, requestFilters);
+			if (where.status) {
+				where.status = In(requestFiltersRaw!.status as string[]);
+			}
 		} else if (ids) {
 			// delete executions by IDs, if user may access the underlying workflows
 			where.id = In(ids);
@@ -568,6 +571,10 @@ export class ExecutionsService {
 			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
 		);
 
-		await Db.collections.Execution.delete(idsToDelete);
+		do {
+			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
+			const batch = idsToDelete.splice(0, 500);
+			await Db.collections.Execution.delete(batch);
+		} while (idsToDelete.length > 0);
 	}
 }
