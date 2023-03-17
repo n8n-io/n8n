@@ -221,21 +221,18 @@ export class LinkedIn implements INodeType {
 							body = {
 								author: authorUrn,
 								lifecycleState: 'PUBLISHED',
-								specificContent: {
-									'com.linkedin.ugc.ShareContent': {
-										shareCommentary: {
-											text,
-										},
-										shareMediaCategory,
-									},
+								commentary: text,
+								distribution: {
+									feedDistribution: 'MAIN_FEED',
+									targetEnties: [],
+									thirdPartyDistributionChannels: [],
 								},
-								visibility: {
-									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
-								},
+								visibility,
 							};
 						}
 
-						const endpoint = '/ugcPosts';
+						const endpoint = '/posts';
+						console.log(body);
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}

@@ -22,10 +22,11 @@ export async function linkedInApiRequest(
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
+			'LinkedIn-Version': '202301',
 		},
 		method,
 		body,
-		url: binary ? endpoint : `https://api.linkedin.com/v2${endpoint}`,
+		url: binary ? endpoint : `https://api.linkedin.com/rest${endpoint}`,
 		json: true,
 	};
 
