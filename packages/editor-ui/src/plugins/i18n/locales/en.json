@@ -262,7 +262,7 @@
 	"codeNodeEditor.linter.bothModes.syntaxError": "Syntax error",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
-	"credentialEdit.credentialConfig.accountConnected": "Account connected",
+	"credentialEdit.credentialConfig.accountConnected": "Google Calendar account connected",
 	"credentialEdit.credentialConfig.clickToCopy": "Click To Copy",
 	"credentialEdit.credentialConfig.connectionTestedSuccessfully": "Connection tested successfully",
 	"credentialEdit.credentialConfig.couldntConnectWithTheseSettings": "Couldn’t connect with these settings",

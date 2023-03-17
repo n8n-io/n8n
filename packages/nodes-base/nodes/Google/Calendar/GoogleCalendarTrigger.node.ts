@@ -78,8 +78,7 @@ export class GoogleCalendarTrigger implements INodeType {
 				displayName: 'Trigger On',
 				name: 'triggerOn',
 				type: 'options',
-				required: true,
-				default: '',
+				default: 'eventCreated',
 				options: [
 					{
 						name: 'Event Created',

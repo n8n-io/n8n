@@ -81,13 +81,13 @@ export default mixins(externalHooks).extend({
 					value: 'params',
 				},
 			];
-			if (this.documentationUrl) {
-				options.push({
-					label: this.$locale.baseText('nodeSettings.docs'),
-					value: 'docs',
-					href: this.documentationUrl,
-				});
-			}
+			// if (this.documentationUrl) {
+			// 	options.push({
+			// 		label: this.$locale.baseText('nodeSettings.docs'),
+			// 		value: 'docs',
+			// 		href: this.documentationUrl,
+			// 	});
+			// }
 			if (this.isCommunityNode) {
 				options.push({
 					icon: 'cube',
@@ -101,13 +101,13 @@ export default mixins(externalHooks).extend({
 					}),
 				});
 			}
-			// If both tabs have align right, both will have excessive left margin
-			const pushCogRight = this.isCommunityNode ? false : true;
-			options.push({
-				icon: 'cog',
-				value: 'settings',
-				align: pushCogRight ? 'right' : undefined,
-			});
+			// // If both tabs have align right, both will have excessive left margin
+			// const pushCogRight = this.isCommunityNode ? false : true;
+			// options.push({
+			// 	icon: 'cog',
+			// 	value: 'settings',
+			// 	align: pushCogRight ? 'right' : undefined,
+			// });
 
 			return options;
 		},

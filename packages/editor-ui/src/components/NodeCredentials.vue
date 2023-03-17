@@ -75,7 +75,7 @@
 						</n8n-tooltip>
 					</div>
 
-					<div
+					<!-- <div
 						:class="$style.edit"
 						v-if="
 							selected[credentialTypeDescription.name] &&
@@ -89,7 +89,7 @@
 							class="clickable"
 							:title="$locale.baseText('nodeCredentials.updateCredential')"
 						/>
-					</div>
+					</div> -->
 				</div>
 			</n8n-input-label>
 		</div>

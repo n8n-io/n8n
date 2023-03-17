@@ -35,17 +35,17 @@
 		<banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
-			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
+			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')">
+			<!-- :buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
-		>
+		> -->
 			<template #button v-if="isGoogleOAuthType">
-				<p
+				<!-- <p
 					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					:class="$style.googleReconnectLabel"
 				/>
-				<GoogleAuthButton @click="$emit('oauth')" />
+				<GoogleAuthButton @click="$emit('oauth')" /> -->
 			</template>
 		</banner>
 

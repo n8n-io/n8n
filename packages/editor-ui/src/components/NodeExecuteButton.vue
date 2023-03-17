@@ -5,10 +5,11 @@
 		</template>
 		<div>
 			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+				:loading="nodeRunning || isListeningForEvents || isListeningForWorkflowEvents"
 				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
 				:type="type"
+				icon="flask"
 				:size="size"
 				:transparentBackground="transparent"
 				@click="onClick"
@@ -146,8 +147,9 @@ export default mixins(workflowRun, pinData).extend({
 		},
 		buttonLabel(): string {
 			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
-				return this.$locale.baseText('ndv.execute.stopListening');
+				return 'Stop Test';
 			}
+			return 'Test step';
 
 			if (this.label) {
 				return this.label;

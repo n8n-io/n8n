@@ -60,8 +60,8 @@ const steps = [
 		id: 'save-cred',
 		progress: 76,
 		panel: {
-			title: 'Save your new credential',
-			desc: 'Save the credential so that your Google Calendar Trigger can use it to watch for new <b>On Event Created</b> events in your account',
+			title: 'Go back to coninue building app',
+			desc: 'Close this view by clicking on the background or the close <b>X</b> button.',
 		},
 	},
 	{

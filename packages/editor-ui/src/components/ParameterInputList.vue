@@ -296,6 +296,9 @@ export default mixins(workflowHelpers).extend({
 			return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 		},
 		displayNodeParameter(parameter: INodeProperties): boolean {
+			if (parameter.displayName !== 'Calendar') {
+				return false;
+			}
 			if (parameter.type === 'hidden') {
 				return false;
 			}

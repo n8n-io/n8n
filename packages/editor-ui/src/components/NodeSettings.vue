@@ -17,7 +17,7 @@
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && creds"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -165,6 +165,7 @@ import {
 	NodeHelpers,
 	NodeParameterValue,
 	deepCopy,
+INodeCredentials,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -271,6 +272,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
+		},
+		creds(): INodeCredentials | undefined {
+			return this.node?.credentials;
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {

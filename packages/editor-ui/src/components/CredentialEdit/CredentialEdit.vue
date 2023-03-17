@@ -5,6 +5,7 @@
 		:eventBus="modalBus"
 		:loading="loading"
 		:beforeClose="beforeClose"
+		:showClose="isOAuthConnected"
 		width="70%"
 		height="80%"
 	>
@@ -23,8 +24,8 @@
 						data-test-id="credential-name"
 					/>
 				</div>
-				<div :class="$style.credActions">
-					<n8n-icon-button
+				<div :class="{ [$style.credActions]: true, [$style.moveButton]: isOAuthConnected }">
+					<!-- <n8n-icon-button
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
@@ -34,7 +35,7 @@
 						:loading="isDeleting"
 						@click="deleteCredential"
 						data-test-id="credential-delete-button"
-					/>
+					/> -->
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
 						:saved="!hasUnsavedChanges && !isTesting"
@@ -474,6 +475,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 	},
 	methods: {
 		async beforeClose() {
+			if (!this.isOAuthConnected) {
+				return false;
+			}
+
 			let keepEditing = false;
 
 			if (this.hasUnsavedChanges) {
@@ -1101,12 +1106,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing-xl);
 	margin-bottom: var(--spacing-l);
 
 	> * {
 		margin-left: var(--spacing-2xs);
 	}
+}
+
+.moveButton {
+	margin-right: var(--spacing-l);
 }
 
 .credIcon {
