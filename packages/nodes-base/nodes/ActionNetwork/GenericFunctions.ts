@@ -1,10 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
-import { flow, omit } from 'lodash';
+import flow from 'lodash.flow';
+import omit from 'lodash.omit';
 
 import type {
 	AllFieldsUi,
@@ -80,14 +79,16 @@ export async function handleListing(
 	do {
 		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
 		const items = responseData._embedded[itemsKey];
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);
 		}
 
 		if (responseData._links?.next?.href) {
-			const queryString = new URLSearchParams(responseData._links.next.href.split('?')[1]);
+			const queryString = new URLSearchParams(
+				responseData._links.next.href.split('?')[1] as string,
+			);
 			qs.page = queryString.get('page') as string;
 		}
 	} while (responseData._links?.next);

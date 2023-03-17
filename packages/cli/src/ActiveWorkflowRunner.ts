@@ -9,7 +9,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -82,7 +82,11 @@ export class ActiveWorkflowRunner {
 		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
-	constructor(private externalHooks: ExternalHooks) {}
+	constructor(
+		private activeExecutions: ActiveExecutions,
+		private externalHooks: ExternalHooks,
+		private nodeTypes: NodeTypes,
+	) {}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async init() {
@@ -271,14 +275,13 @@ export class ActiveWorkflowRunner {
 			);
 		}
 
-		const nodeTypes = Container.get(NodeTypes);
 		const workflow = new Workflow({
 			id: webhook.workflowId,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: workflowData.active,
-			nodeTypes,
+			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});
@@ -514,14 +517,13 @@ export class ActiveWorkflowRunner {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
 		}
 
-		const nodeTypes = Container.get(NodeTypes);
 		const workflow = new Workflow({
 			id: workflowId,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: workflowData.active,
-			nodeTypes,
+			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});
@@ -638,7 +640,7 @@ export class ActiveWorkflowRunner {
 
 				if (donePromise) {
 					executePromise.then((executionId) => {
-						Container.get(ActiveExecutions)
+						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
 							.catch(donePromise.reject);
@@ -695,7 +697,7 @@ export class ActiveWorkflowRunner {
 
 				if (donePromise) {
 					executePromise.then((executionId) => {
-						Container.get(ActiveExecutions)
+						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
 							.catch(donePromise.reject);
@@ -782,14 +784,13 @@ export class ActiveWorkflowRunner {
 			if (!workflowData) {
 				throw new Error(`Could not find workflow with id "${workflowId}".`);
 			}
-			const nodeTypes = Container.get(NodeTypes);
 			workflowInstance = new Workflow({
 				id: workflowId,
 				name: workflowData.name,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 				active: workflowData.active,
-				nodeTypes,
+				nodeTypes: this.nodeTypes,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
 			});

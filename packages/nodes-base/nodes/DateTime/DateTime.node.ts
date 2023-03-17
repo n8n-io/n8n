@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -9,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 import moment from 'moment-timezone';
 

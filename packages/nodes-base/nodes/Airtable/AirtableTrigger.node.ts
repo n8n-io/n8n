@@ -1,6 +1,5 @@
-import type { IPollFunctions } from 'n8n-core';
-
 import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -8,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { IRecord } from './GenericFunctions';
 import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 import moment from 'moment';
@@ -245,7 +245,11 @@ export class AirtableTrigger implements INodeType {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
 					',',
 				);
-				const data = await downloadRecordAttachments.call(this, records, downloadFieldNames);
+				const data = await downloadRecordAttachments.call(
+					this,
+					records as IRecord[],
+					downloadFieldNames,
+				);
 				return [data];
 			}
 

@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -8,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 export class Airtable implements INodeType {
@@ -567,7 +567,7 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -609,7 +609,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -654,7 +654,7 @@ export class Airtable implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				returnData.push.apply(returnData, responseData.records);
+				returnData.push.apply(returnData, responseData.records as INodeExecutionData[]);
 
 				if (downloadAttachments === true) {
 					const downloadFieldNames = (
@@ -662,7 +662,7 @@ export class Airtable implements INodeType {
 					).split(',');
 					const data = await downloadRecordAttachments.call(
 						this,
-						responseData.records,
+						responseData.records as IRecord[],
 						downloadFieldNames,
 					);
 					return [data];
@@ -704,7 +704,7 @@ export class Airtable implements INodeType {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -786,7 +786,7 @@ export class Airtable implements INodeType {
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.records),
+							this.helpers.returnJsonArray(responseData.records as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 

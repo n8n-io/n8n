@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -436,7 +436,7 @@ export class HubspotTrigger implements INodeType {
 			delete bodyData[i].objectId;
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(bodyData)],
+			workflowData: [this.helpers.returnJsonArray(bodyData as IDataObject[])],
 		};
 	}
 }

@@ -1,13 +1,14 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 /**
  * Make an API request to Asana
@@ -51,9 +52,16 @@ export async function asanaApiRequestAllItems(
 	query.limit = 100;
 
 	do {
-		responseData = await asanaApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await asanaApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body as IDataObject,
+			query,
+			uri,
+		);
 		uri = get(responseData, 'next_page.uri');
-		returnData.push.apply(returnData, responseData.data);
+		returnData.push.apply(returnData, responseData.data as IDataObject[]);
 	} while (responseData.next_page !== null);
 
 	return returnData;

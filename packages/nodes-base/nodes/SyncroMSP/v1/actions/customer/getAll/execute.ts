@@ -1,6 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
 
@@ -36,6 +34,6 @@ export async function getAll(
 		return this.helpers.returnJsonArray(responseData);
 	} else {
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-		return this.helpers.returnJsonArray(responseData.customers);
+		return this.helpers.returnJsonArray(responseData.customers as IDataObject[]);
 	}
 }

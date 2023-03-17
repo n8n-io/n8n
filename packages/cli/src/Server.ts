@@ -56,10 +56,9 @@ import timezones from 'google-timezones-json';
 import history from 'connect-history-api-fallback';
 
 import config from '@/config';
-import * as Queue from '@/Queue';
+import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
@@ -83,16 +82,18 @@ import type {
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	LdapController,
 	MeController,
+	NodesController,
+	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
+	TagsController,
 	TranslationController,
 	UsersController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
-import { nodeTypesController } from '@/api/nodeTypes.api';
-import { tagsController } from '@/api/tags.api';
 import { workflowStatsController } from '@/api/workflowStats.api';
 import { loadPublicApiVersions } from '@/PublicApi';
 import {
@@ -102,7 +103,7 @@ import {
 	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
-import { getInstance as getMailerInstance } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
 	ICredentialsDb,
@@ -129,23 +130,32 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
-import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
-import { ldapController } from './Ldap/routes/ldap.controller.ee';
-import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
+import {
+	getLdapLoginLabel,
+	handleLdapInit,
+	isLdapEnabled,
+	isLdapLoginEnabled,
+} from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
-import { isSamlEnabled } from './Saml/helpers';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executions/executionHelpers';
+import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
+import { SamlController } from './sso/saml/routes/saml.controller.ee';
+import { SamlService } from './sso/saml/saml.service.ee';
+import { LdapManager } from './Ldap/LdapManager.ee';
 
 const exec = promisify(callbackExec);
 
@@ -255,9 +265,15 @@ class Server extends AbstractServer {
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
-			ldap: {
-				loginEnabled: false,
-				loginLabel: '',
+			sso: {
+				saml: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+				ldap: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
 			},
 			publicApi: {
 				enabled: !config.getEnv('publicApi.disabled'),
@@ -291,6 +307,7 @@ class Server extends AbstractServer {
 				ldap: false,
 				saml: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
+				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -318,13 +335,21 @@ class Server extends AbstractServer {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
-			saml: isSamlEnabled(),
+			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 		});
 
 		if (isLdapEnabled()) {
-			Object.assign(this.frontendSettings.ldap, {
+			Object.assign(this.frontendSettings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
 				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
+
+		if (isSamlLicensed()) {
+			Object.assign(this.frontendSettings.sso.saml, {
+				loginLabel: getSamlLoginLabel(),
+				loginEnabled: isSamlLoginEnabled(),
 			});
 		}
 
@@ -335,35 +360,31 @@ class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId);
-
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			try {
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e);
-			}
-		}
-	}
-
 	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner } = this;
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
 
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = getMailerInstance();
+		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
+		const samlService = Container.get(SamlService);
 
-		const controllers = [
+		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
-			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new NodeTypesController({ config, nodeTypes }),
+			new PasswordResetController({
+				config,
+				externalHooks,
+				internalHooks,
+				mailer,
+				repositories,
+				logger,
+			}),
+			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
@@ -375,7 +396,20 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
+			new SamlController(samlService),
 		];
+
+		if (isLdapEnabled()) {
+			const { service, sync } = LdapManager.getInstance();
+			controllers.push(new LdapController(service, sync, internalHooks));
+		}
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			controllers.push(
+				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			);
+		}
+
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
@@ -392,7 +426,6 @@ class Server extends AbstractServer {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		await this.initLicense();
 		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
@@ -454,19 +487,15 @@ class Server extends AbstractServer {
 			}),
 		);
 
-		// ----------------------------------------
-		// User Management
-		// ----------------------------------------
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(Queue).init();
+		}
+
+		await handleLdapInit();
+
 		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Packages and nodes management
-		// ----------------------------------------
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
 
 		// ----------------------------------------
 		// Workflow
@@ -484,17 +513,20 @@ class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
-		// Tags
+		// SAML
 		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
 
-		// ----------------------------------------
-		// LDAP
-		// ----------------------------------------
-		if (isLdapEnabled()) {
-			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		if (isSamlLicensed()) {
+			try {
+				await Container.get(SamlService).init();
+			} catch (error) {
+				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
+			}
 		}
 
+		// ----------------------------------------
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(
@@ -604,12 +636,6 @@ class Server extends AbstractServer {
 				},
 			),
 		);
-
-		// ----------------------------------------
-		// Node-Types
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
 		// ----------------------------------------
 		// Active Workflows
@@ -938,7 +964,7 @@ class Server extends AbstractServer {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const queue = await Queue.getInstance();
+						const queue = Container.get(Queue);
 						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
@@ -1081,7 +1107,7 @@ class Server extends AbstractServer {
 						} as IExecutionsStopData;
 					}
 
-					const queue = await Queue.getInstance();
+					const queue = Container.get(Queue);
 					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
@@ -1258,8 +1284,9 @@ class Server extends AbstractServer {
 				},
 			};
 
-			this.app.use('/icons/:packageName/*/*.(svg|png)', async (req, res) => {
-				const { packageName } = req.params;
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				let { scope, packageName } = req.params;
+				if (scope) packageName = `@${scope}/${packageName}`;
 				const loader = this.loadNodesAndCredentials.loaders[packageName];
 				if (loader) {
 					const pathPrefix = `/icons/${packageName}/`;
@@ -1274,7 +1301,10 @@ class Server extends AbstractServer {
 				}
 
 				res.sendStatus(404);
-			});
+			};
+
+			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
 			this.app.use(
 				'/',

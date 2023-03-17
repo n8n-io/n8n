@@ -5,11 +5,16 @@ import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
 import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
+// String literal expression is everything enclosed in single, double or tick quotes following a dot
+const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
+// JavaScript operands
+const operandsRegex = /[+\-*/><<==>**!=?]/;
 /**
  * Split user input into base (to resolve) and tail (to filter).
  */
 export function splitBaseTail(userInput: string): [string, string] {
-	const parts = userInput.split('.');
+	const processedInput = extractSubExpression(userInput);
+	const parts = processedInput.split('.');
 	const tail = parts.pop() ?? '';
 
 	return [parts.join('.'), tail];
@@ -29,6 +34,30 @@ export function longestCommonPrefix(...strings: string[]) {
 
 		return acc.slice(0, i);
 	});
+}
+
+// Process user input if expressions are used as part of complex expression
+// i.e. as a function parameter or an operation expression
+// this function will extract expression that is currently typed so autocomplete
+// suggestions can be matched based on it.
+function extractSubExpression(userInput: string): string {
+	const dollarSignIndex = userInput.indexOf('$');
+	// If it's not a dollar sign expression just strip parentheses
+	if (dollarSignIndex === -1) {
+		userInput = userInput.replace(/^.+(\(|\[|{)/, '');
+	} else if (!stringLiteralRegex.test(userInput)) {
+		// If there is a dollar sign in the input and input is not a string literal,
+		// extract part of following the last $
+		const expressionParts = userInput.split('$');
+		userInput = `$${expressionParts[expressionParts.length - 1]}`;
+		// If input is part of a complex operation expression and extract last operand
+		const operationPart = userInput.split(operandsRegex).pop()?.trim() || '';
+		const lastOperand = operationPart.split(' ').pop();
+		if (lastOperand) {
+			userInput = lastOperand;
+		}
+	}
+	return userInput;
 }
 
 export const prefixMatch = (first: string, second: string) =>

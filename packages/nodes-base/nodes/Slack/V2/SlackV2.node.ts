@@ -1,8 +1,8 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
+import type { Readable } from 'stream';
 
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchItems,
@@ -15,7 +15,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
@@ -587,7 +587,7 @@ export class SlackV2 implements INodeType {
 									{},
 									{ user: member },
 								);
-								data.push(user);
+								data.push(user as IDataObject);
 							}
 							responseData = data;
 						}
@@ -1042,7 +1042,6 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
 						const options = this.getNodeParameter('options', i);
-						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -1059,31 +1058,21 @@ export class SlackV2 implements INodeType {
 						if (options.title) {
 							body.title = options.title as string;
 						}
-						if (binaryData) {
+						if (this.getNodeParameter('binaryData', i)) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							if (
-								items[i].binary === undefined ||
-								//@ts-ignore
-								items[i].binary[binaryPropertyName] === undefined
-							) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
-									{ itemIndex: i },
-								);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+
+							let uploadData: Buffer | Readable;
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
+							} else {
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
-							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-								i,
-								binaryPropertyName,
-							);
 							body.file = {
-								//@ts-ignore
-								value: binaryDataBuffer,
+								value: uploadData,
 								options: {
-									//@ts-ignore
-									filename: items[i].binary[binaryPropertyName].fileName,
-									//@ts-ignore
-									contentType: items[i].binary[binaryPropertyName].mimeType,
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
 								},
 							};
 							responseData = await slackApiRequest.call(
@@ -1325,7 +1314,7 @@ export class SlackV2 implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

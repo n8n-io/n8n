@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -198,7 +197,7 @@ export class Brandfetch implements INodeType {
 
 									newItem.binary![`${imageType}_${imageFormat}`] =
 										await this.helpers.prepareBinaryData(
-											data,
+											data as Buffer,
 											`${imageType}_${domain}.${imageFormat}`,
 										);
 
@@ -212,7 +211,7 @@ export class Brandfetch implements INodeType {
 						}
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response.response),
+							this.helpers.returnJsonArray(response.response as IDataObject),
 							{ itemData: { item: i } },
 						);
 						responseData.push(...executionData);
@@ -227,7 +226,7 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', '/color', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
@@ -241,7 +240,7 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', '/font', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
@@ -255,7 +254,7 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', '/company', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
@@ -270,7 +269,7 @@ export class Brandfetch implements INodeType {
 					const response = await brandfetchApiRequest.call(this, 'POST', '/industry', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);

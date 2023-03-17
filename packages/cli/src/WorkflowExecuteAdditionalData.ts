@@ -44,7 +44,7 @@ import {
 
 import pick from 'lodash.pick';
 import type { FindOptionsWhere } from 'typeorm';
-import { LessThanOrEqual } from 'typeorm';
+import { LessThanOrEqual, In } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -66,7 +66,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { findSubworkflowStart } from '@/utils';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
@@ -212,7 +212,9 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		const toPrune: FindOptionsWhere<IExecutionFlattedDb> = { stoppedAt: LessThanOrEqual(utcDate) };
+		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
+			{ stoppedAt: LessThanOrEqual(utcDate) },
+		];
 
 		if (maxCount > 0) {
 			const executions = await Db.collections.Execution.find({
@@ -223,27 +225,29 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			});
 
 			if (executions[0]) {
-				toPrune.id = LessThanOrEqual(executions[0].id);
+				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
 			}
 		}
 
 		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
-			const executions = isBinaryModeDefaultMode
-				? []
-				: await Db.collections.Execution.find({
-						select: ['id'],
-						where: toPrune,
-				  });
-			await Db.collections.Execution.delete(toPrune);
 			setTimeout(() => {
 				throttling = false;
 			}, timeout * 1000);
-			// Mark binary data for deletion for all executions
-			if (!isBinaryModeDefaultMode)
-				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-					executions.map(({ id }) => id),
-				);
+			let executionIds: Array<IExecutionFlattedDb['id']>;
+			do {
+				executionIds = (
+					await Db.collections.Execution.find({
+						select: ['id'],
+						where: toPrune,
+						take: 100,
+					})
+				).map(({ id }) => id);
+				await Db.collections.Execution.delete({ id: In(executionIds) });
+				// Mark binary data for deletion for all executions
+				if (!isBinaryModeDefaultMode)
+					await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(executionIds);
+			} while (executionIds.length > 0);
 		} catch (error) {
 			ErrorReporter.error(error);
 			throttling = false;
@@ -472,7 +476,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					fullExecutionData.status = 'running';
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-
 					await Db.collections.Execution.update(
 						this.executionId,
 						flattenedExecutionData as IExecutionFlattedDb,
@@ -527,11 +530,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
 				try {
-					if (
-						!isManualMode &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) &&
-						newStaticData
-					) {
+					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -578,7 +577,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							saveDataSuccessExecution;
 					}
 
-					const workflowDidSucceed = !fullRunData.data.resultData.error;
+					const workflowHasCrashed = fullRunData.status === 'crashed';
+					const workflowDidSucceed = !fullRunData.data.resultData.error && !workflowHasCrashed;
+					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
+					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
+
 					if (
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
@@ -626,7 +629,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: pristineWorkflowData,
 						waitTill: fullRunData.waitTill,
-						status: fullRunData.status,
+						status: workflowStatusFinal,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -634,7 +637,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					const workflowId = this.workflowData.id;
-					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+					if (isWorkflowIdValid(workflowId)) {
 						fullExecutionData.workflowId = workflowId;
 					}
 
@@ -722,7 +725,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				newStaticData: IDataObject,
 			): Promise<void> {
 				try {
-					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) && newStaticData) {
+					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -769,7 +772,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowId = this.workflowData.id;
-					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+					if (isWorkflowIdValid(workflowId)) {
 						fullExecutionData.workflowId = workflowId;
 					}
 

@@ -3,12 +3,10 @@ export * from './CredentialsHelper';
 export * from './CredentialTypes';
 export * from './CredentialsOverwrites';
 export * from './Interfaces';
-export * from './NodeTypes';
 export * from './WaitingWebhooks';
 export * from './WorkflowCredentials';
 export * from './WorkflowRunner';
 
-import { ActiveExecutions } from './ActiveExecutions';
 import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
 import * as ResponseHelper from './ResponseHelper';
@@ -20,7 +18,6 @@ import * as WorkflowExecuteAdditionalData from './WorkflowExecuteAdditionalData'
 import * as WorkflowHelpers from './WorkflowHelpers';
 
 export {
-	ActiveExecutions,
 	Db,
 	GenericHelpers,
 	ResponseHelper,

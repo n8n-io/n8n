@@ -1,8 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function vonageApiRequest(
@@ -29,12 +33,11 @@ export async function vonageApiRequest(
 	};
 
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

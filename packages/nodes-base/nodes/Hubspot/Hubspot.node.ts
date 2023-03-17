@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -959,7 +958,7 @@ export class Hubspot implements INodeType {
 						`/contacts/v1/lists/${listId}/add`,
 						body,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
@@ -975,7 +974,7 @@ export class Hubspot implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2720,7 +2719,7 @@ export class Hubspot implements INodeType {
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

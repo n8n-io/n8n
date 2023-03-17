@@ -1,3 +1,3 @@
-import { getInstance, UserManagementMailer } from './UserManagementMailer';
+import { UserManagementMailer } from './UserManagementMailer';
 
-export { getInstance, UserManagementMailer };
+export { UserManagementMailer };

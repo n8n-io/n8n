@@ -1,7 +1,8 @@
 import config from '@/config';
-import { getLicense } from '@/License';
+import { License } from '@/License';
+import { Container } from 'typedi';
 
 export function isLogStreamingEnabled(): boolean {
-	const license = getLicense();
+	const license = Container.get(License);
 	return config.getEnv('enterprise.features.logStreaming') || license.isLogStreamingEnabled();
 }
