@@ -109,7 +109,7 @@ const steps = [
 ];
 
 const router = useRouter();
-const current = ref(0);
+const current = ref(3);
 const loading = ref(true);
 const kickoff = ref([] as Array<string | IUpdateInformation>);
 const preview = ref();
@@ -215,7 +215,19 @@ const onWorflowSaved = ({ id }) => {
 						<a :class="$style.resource" :href="res.href" target="_blank">
 							<div :class="$style.resourceIcon">
 								<font-awesome-icon v-if="res.type === 'forum'" icon="comments" />
-								<font-awesome-icon v-else-if="res.type === 'youtube'" icon="video" />
+								<svg
+									width="20"
+									height="13"
+									viewBox="0 0 20 13"
+									fill="none"
+									xmlns="http://www.w3.org/2000/svg"
+									v-else-if="res.type === 'youtube'"
+								>
+									<path
+										d="M18.666 2.27539C18.4668 1.47852 17.836 0.847656 17.0723 0.648438C15.6446 0.25 10 0.25 10 0.25C10 0.25 4.3223 0.25 2.89456 0.648438C2.13089 0.847656 1.50003 1.47852 1.30081 2.27539C0.902374 3.66992 0.902374 6.6582 0.902374 6.6582C0.902374 6.6582 0.902374 9.61328 1.30081 11.041C1.50003 11.8379 2.13089 12.4355 2.89456 12.6348C4.3223 13 10 13 10 13C10 13 15.6446 13 17.0723 12.6348C17.836 12.4355 18.4668 11.8379 18.666 11.041C19.0645 9.61328 19.0645 6.6582 19.0645 6.6582C19.0645 6.6582 19.0645 3.66992 18.666 2.27539ZM8.14066 9.34766V3.96875L12.8555 6.6582L8.14066 9.34766Z"
+										fill="#7D838F"
+									/>
+								</svg>
 								<font-awesome-icon v-else icon="book" />
 							</div>
 							<div :class="$style.resourceInfo">
