@@ -47,7 +47,7 @@
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
 			>
-				<n8n-radio-buttons
+				<!-- <n8n-radio-buttons
 					v-show="
 						hasNodeRun &&
 						((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) &&
@@ -57,7 +57,7 @@
 					:options="buttons"
 					@input="onDisplayModeChange"
 					data-test-id="ndv-run-data-display-mode"
-				/>
+				/> -->
 				<!-- <n8n-icon-button
 					v-if="canPinData && !isReadOnly"
 					v-show="!editMode.enabled"
@@ -70,7 +70,7 @@
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/> -->
-				<n8n-tooltip
+				<!-- <n8n-tooltip
 					placement="bottom-end"
 					v-if="canPinData && jsonData && jsonData.length > 0"
 					v-show="!editMode.enabled"
@@ -103,9 +103,9 @@
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
 					/>
-				</n8n-tooltip>
+				</n8n-tooltip> -->
 
-				<div :class="$style['edit-mode-actions']" v-show="editMode.enabled">
+				<!-- <div :class="$style['edit-mode-actions']" v-show="editMode.enabled">
 					<n8n-button
 						type="tertiary"
 						:label="$locale.baseText('runData.editor.cancel')"
@@ -117,7 +117,7 @@
 						:label="$locale.baseText('runData.editor.save')"
 						@click="onClickSaveEdit"
 					/>
-				</div>
+				</div> -->
 			</div>
 		</div>
 
@@ -155,6 +155,14 @@
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
+		</div>
+
+		<div :class="$style.banner">
+			<banner
+				v-if="hasNodeRun"
+				theme="success"
+				message="We found the most recent Event from your Google Calendar account"
+			/>
 		</div>
 
 		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
@@ -447,7 +455,7 @@
 				</n8n-select>
 			</div>
 		</div>
-		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
+		<!-- <n8n-block-ui :show="blockUI" :class="$style.uiBlocker" /> -->
 	</div>
 </template>
 
@@ -501,6 +509,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import Banner from '@/components/Banner.vue';
 
 const RunDataTable = () => import('@/components/RunDataTable.vue');
 const RunDataJson = () => import('@/components/RunDataJson.vue');
@@ -522,6 +531,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		RunDataJson,
 		RunDataSchema,
 		RunDataHtml,
+		Banner,
 	},
 	props: {
 		nodeUi: {
@@ -1307,7 +1317,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 
 			this.ndvStore.setPanelDisplayMode({
 				pane: 'output',
-				mode: shouldDisplayHtml ? 'html' : 'table',
+				mode: 'json',
 			});
 		},
 	},
@@ -1352,6 +1362,16 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 </script>
 
 <style lang="scss" module>
+.banner {
+	padding: 0 var(--spacing-s);
+
+	> * {
+		border: 1px solid #E1F3D8;
+		border-radius: 4px;
+		margin-bottom: 16px;
+	}
+}
+
 .infoIcon {
 	color: var(--color-foreground-dark);
 }

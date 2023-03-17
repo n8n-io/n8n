@@ -17,7 +17,7 @@
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI && creds"
+						v-if="!blockUI && creds && !hasNodeRun"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -165,7 +165,7 @@ import {
 	NodeHelpers,
 	NodeParameterValue,
 	deepCopy,
-INodeCredentials,
+	INodeCredentials,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -298,6 +298,31 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
+		},
+		workflowExecution(): IExecutionResponse | null {
+			return this.workflowsStore.getWorkflowExecution;
+		},
+		workflowRunData(): IRunData | null {
+			if (this.workflowExecution === null) {
+				return null;
+			}
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
+			if (executionData && executionData.resultData) {
+				return executionData.resultData.runData;
+			}
+			return null;
+		},
+		hasNodeRun(): boolean {
+			return Boolean(
+				!this.isNodeRunning &&
+					this.node &&
+					this.workflowRunData &&
+					this.workflowRunData.hasOwnProperty(this.node.name),
+			);
+		},
+		isNodeRunning(): boolean {
+			const executingNode = this.workflowsStore.executingNode;
+			return !!this.node && executingNode === this.node.name;
 		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);

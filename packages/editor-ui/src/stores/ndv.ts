@@ -20,7 +20,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			},
 		},
 		output: {
-			displayMode: 'table',
+			displayMode: 'json',
 			branch: undefined,
 			data: {
 				isEmpty: true,

@@ -631,7 +631,7 @@
 	"ndv.output.edit": "Edit Output",
 	"ndv.output.all": "all",
 	"ndv.output.branch": "Branch",
-	"ndv.output.executing": "Executing node...",
+	"ndv.output.executing": "Finding an Event in your Google Calendar account",
 	"ndv.output.items": "item | items",
 	"ndv.output.noOutputData.message": "n8n stops executing the workflow when a node has no output data. You can change this default behaviour via",
 	"ndv.output.noOutputData.message.settings": "Settings",
