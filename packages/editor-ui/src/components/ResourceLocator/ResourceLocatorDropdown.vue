@@ -265,7 +265,7 @@ export default Vue.extend({
 .container {
 	position: relative;
 	max-height: 236px;
-	overflow: scroll;
+	overflow: auto;
 }
 
 .messageContainer {

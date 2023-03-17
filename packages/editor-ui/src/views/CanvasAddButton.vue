@@ -82,7 +82,7 @@ const containerCssVars = computed(() => ({
 	}
 }
 
-.tooltip {
+:root .tooltip {
 	max-width: 180px;
 }
 

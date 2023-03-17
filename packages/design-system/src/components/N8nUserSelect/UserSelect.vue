@@ -149,7 +149,7 @@ export default mixins(Locale).extend({
 	--select-option-line-height: 1;
 }
 
-.limitPopperWidth {
+:root .limitPopperWidth {
 	width: 0;
 
 	li > span {

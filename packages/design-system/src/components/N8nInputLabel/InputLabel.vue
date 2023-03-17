@@ -206,7 +206,7 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 }
 
-.tooltipPopper {
+:root .tooltipPopper {
 	max-width: 400px;
 
 	li {
