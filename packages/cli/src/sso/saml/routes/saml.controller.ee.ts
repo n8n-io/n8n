@@ -106,7 +106,7 @@ export class SamlController {
 						return res.redirect(SamlUrls.defaultRedirect);
 					}
 				} else {
-					return res.status(202).send('SAML is not enabled, but authentication successful.');
+					return res.status(202).send(loginResult.attributes);
 				}
 			}
 		}
