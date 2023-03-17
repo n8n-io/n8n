@@ -37,11 +37,11 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('Owner shell', () => {
+describe('Instance owner', () => {
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
-		const response = await authOwnerShellAgent.patch('/me').send({
+		const owner = await testDb.createOwner();
+		const authOwnerAgent = authAgent(owner);
+		const response = await authOwnerAgent.patch('/me').send({
 			email: randomEmail(),
 			firstName: randomName(),
 			lastName: randomName(),
@@ -52,9 +52,9 @@ describe('Owner shell', () => {
 
 	test('PATCH /me should throw BadRequestError if email is changed when SAML is enabled', async () => {
 		enableSaml(true);
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
-		const response = await authOwnerShellAgent.patch('/me').send({
+		const owner = await testDb.createOwner();
+		const authOwnerAgent = authAgent(owner);
+		const response = await authOwnerAgent.patch('/me').send({
 			email: randomEmail(),
 			firstName: randomName(),
 			lastName: randomName(),
@@ -66,9 +66,9 @@ describe('Owner shell', () => {
 
 	test('PATCH /password should throw BadRequestError if password is changed when SAML is enabled', async () => {
 		enableSaml(true);
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
-		const response = await authOwnerShellAgent.patch('/me/password').send({
+		const owner = await testDb.createOwner();
+		const authOwnerAgent = authAgent(owner);
+		const response = await authOwnerAgent.patch('/me/password').send({
 			password: randomValidPassword(),
 		});
 		expect(response.statusCode).toBe(400);

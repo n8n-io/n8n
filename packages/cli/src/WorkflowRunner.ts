@@ -44,7 +44,8 @@ import type {
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import * as Queue from '@/Queue';
+import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
+import { Queue } from '@/Queue';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -63,7 +64,7 @@ export class WorkflowRunner {
 
 	push: Push;
 
-	jobQueue: Queue.JobQueue;
+	jobQueue: JobQueue;
 
 	constructor() {
 		this.push = Container.get(Push);
@@ -167,7 +168,7 @@ export class WorkflowRunner {
 		await initErrorHandling();
 
 		if (executionsMode === 'queue') {
-			const queue = await Queue.getInstance();
+			const queue = Container.get(Queue);
 			this.jobQueue = queue.getBullObjectInstance();
 		}
 
@@ -434,7 +435,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		const jobData: Queue.JobData = {
+		const jobData: JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
@@ -451,7 +452,7 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		let job: Queue.Job;
+		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
@@ -485,7 +486,7 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					const queue = await Queue.getInstance();
+					const queue = Container.get(Queue);
 					await queue.stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
@@ -503,11 +504,11 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<Queue.JobResponse> = job.finished();
+				const jobData: Promise<JobResponse> = job.finished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<Queue.JobResponse | object>> = [jobData];
+				const racingPromises: Array<Promise<JobResponse | object>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {

@@ -36,6 +36,9 @@ import {
 	INodePropertyCollection,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
+import { useCredentialsStore } from '@/stores/credentials';
+import { i18n as locale } from '@/plugins/i18n';
+import { useSettingsStore } from '@/stores/settings';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -381,6 +384,9 @@ export const getNodeAuthOptions = (
 	if (!nodeType) {
 		return [];
 	}
+	const recommendedSuffix = locale.baseText(
+		'credentialEdit.credentialConfig.recommendedAuthTypeSuffix',
+	);
 	let options: NodeAuthenticationOption[] = [];
 	const authProp = getMainAuthField(nodeType);
 	// Some nodes have multiple auth fields with same name but different display options so need
@@ -392,18 +398,34 @@ export const getNodeAuthOptions = (
 	authProps.forEach((field) => {
 		if (field.options) {
 			options = options.concat(
-				field.options.map((option) => ({
-					name: option.name,
-					value: option.value,
-					// Also add in the display options so we can hide/show the option if necessary
-					displayOptions: field.displayOptions,
-				})) || [],
+				field.options.map((option) => {
+					// Check if credential type associated with this auth option has overwritten properties
+					let hasOverrides = false;
+					if (useSettingsStore().isCloudDeployment) {
+						const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+						if (cred) {
+							hasOverrides =
+								useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
+								undefined;
+						}
+					}
+					return {
+						name:
+							// Add recommended suffix if credentials have overrides and option is not already recommended
+							hasOverrides && !option.name.endsWith(recommendedSuffix)
+								? `${option.name} ${recommendedSuffix}`
+								: option.name,
+						value: option.value,
+						// Also add in the display options so we can hide/show the option if necessary
+						displayOptions: field.displayOptions,
+					};
+				}) || [],
 			);
 		}
 	});
 	// sort so recommended options are first
 	options.forEach((item, i) => {
-		if (item.name.includes('(recommended)')) {
+		if (item.name.includes(recommendedSuffix)) {
 			options.splice(i, 1);
 			options.unshift(item);
 		}

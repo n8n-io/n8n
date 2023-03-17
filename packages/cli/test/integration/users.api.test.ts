@@ -20,7 +20,7 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 import { NodeMailer } from '@/UserManagement/email/NodeMailer';
 
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -512,7 +512,7 @@ test('UserManagementMailer expect NodeMailer.verifyConnection not be called when
 	const mockVerifyConnection = jest.spyOn(NodeMailer.prototype, 'verifyConnection');
 	mockVerifyConnection.mockImplementation(async () => {});
 
-	const userManagementMailer = UserManagementMailer.getInstance();
+	const userManagementMailer = new UserManagementMailer();
 	// NodeMailer.verifyConnection gets called only explicitly
 	expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
 
@@ -531,7 +531,7 @@ test('UserManagementMailer expect NodeMailer.verifyConnection to be called when 
 	config.set('userManagement.emails.smtp.host', 'host');
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const userManagementMailer = new UserManagementMailer.UserManagementMailer();
+	const userManagementMailer = new UserManagementMailer();
 	// NodeMailer.verifyConnection gets called only explicitly
 	expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
 

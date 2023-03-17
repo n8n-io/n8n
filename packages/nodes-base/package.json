@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.217.1",
+  "version": "0.218.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -621,6 +621,7 @@
       "dist/nodes/QuestDb/QuestDb.node.js",
       "dist/nodes/QuickBase/QuickBase.node.js",
       "dist/nodes/QuickBooks/QuickBooks.node.js",
+      "dist/nodes/QuickChart/QuickChart.node.js",
       "dist/nodes/RabbitMQ/RabbitMQ.node.js",
       "dist/nodes/RabbitMQ/RabbitMQTrigger.node.js",
       "dist/nodes/Raindrop/Raindrop.node.js",
