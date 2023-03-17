@@ -157,11 +157,11 @@ export class GoogleCalendarTrigger implements INodeType {
 		// 	qs.q = matchTerm;
 		// }
 
-		// async function sleep(time: number) {
-		// 	return new Promise((resolve) => {
-		// 		setTimeout(resolve, time);
-		// 	});
-		// }
+		async function sleep(time: number) {
+			return new Promise((resolve) => {
+				setTimeout(resolve, time);
+			});
+		}
 
 		await sleep(3000);
 
