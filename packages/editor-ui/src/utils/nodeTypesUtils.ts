@@ -401,13 +401,11 @@ export const getNodeAuthOptions = (
 				field.options.map((option) => {
 					// Check if credential type associated with this auth option has overwritten properties
 					let hasOverrides = false;
-					if (useSettingsStore().isCloudDeployment) {
-						const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
-						if (cred) {
-							hasOverrides =
-								useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
-								undefined;
-						}
+					const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+					if (cred) {
+						hasOverrides =
+							useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
+							undefined;
 					}
 					return {
 						name:
