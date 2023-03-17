@@ -15,5 +15,5 @@
 			}
 		]
 	},
-	"alias": ["image", "graph"]
+	"alias": ["image", "graph", "report", "chart", "diagram", "data", "visualize"]
 }

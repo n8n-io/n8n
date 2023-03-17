@@ -1,7 +1,8 @@
+import type { IDataObject } from 'n8n-workflow';
+
 export interface IDataset {
 	label?: string;
-	// tslint:disable-next-line:no-any
-	data: any;
+	data: string | IDataObject;
 	backgroundColor?: string;
 	borderColor?: string;
 	color?: string;
