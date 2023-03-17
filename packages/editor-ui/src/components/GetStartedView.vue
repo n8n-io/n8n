@@ -149,7 +149,6 @@ const onContinue = () => {
 };
 
 const onCredFilled = () => {
-	console.log('hello');
 	current.value = 4;
 };
 

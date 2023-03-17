@@ -125,111 +125,123 @@ export class GoogleCalendarTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
-		const triggerOn = this.getNodeParameter('triggerOn', '') as string;
-		const calendarId = this.getNodeParameter('calendarId', '', { extractValue: true }) as string;
-		const webhookData = this.getWorkflowStaticData('node');
-		const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
+		// const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
+		// const triggerOn = this.getNodeParameter('triggerOn', '') as string;
+		// const calendarId = this.getNodeParameter('calendarId', '', { extractValue: true }) as string;
+		// const webhookData = this.getWorkflowStaticData('node');
+		// const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
 
-		if (poolTimes.length === 0) {
-			throw new NodeOperationError(this.getNode(), 'Please set a poll time');
-		}
+		// if (poolTimes.length === 0) {
+		// 	throw new NodeOperationError(this.getNode(), 'Please set a poll time');
+		// }
 
-		if (triggerOn === '') {
-			throw new NodeOperationError(this.getNode(), 'Please select an event');
-		}
+		// if (triggerOn === '') {
+		// 	throw new NodeOperationError(this.getNode(), 'Please select an event');
+		// }
 
-		if (calendarId === '') {
-			throw new NodeOperationError(this.getNode(), 'Please select a calendar');
-		}
+		// if (calendarId === '') {
+		// 	throw new NodeOperationError(this.getNode(), 'Please select a calendar');
+		// }
 
-		const now = moment().utc().format();
+		// const now = moment().utc().format();
 
-		const startDate = (webhookData.lastTimeChecked as string) || now;
+		// const startDate = (webhookData.lastTimeChecked as string) || now;
 
-		const endDate = now;
+		// const endDate = now;
 
-		const qs: IDataObject = {
-			showDeleted: false,
-		};
+		// const qs: IDataObject = {
+		// 	showDeleted: false,
+		// };
 
-		if (matchTerm !== '') {
-			qs.q = matchTerm;
-		}
+		// if (matchTerm !== '') {
+		// 	qs.q = matchTerm;
+		// }
 
-		let events;
+		// async function sleep(time: number) {
+		// 	return new Promise((resolve) => {
+		// 		setTimeout(resolve, time);
+		// 	});
+		// }
 
-		if (triggerOn === 'eventCreated' || triggerOn === 'eventUpdated') {
-			Object.assign(qs, {
-				updatedMin: startDate,
-				orderBy: 'updated',
-			});
-		} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
-			Object.assign(qs, {
-				singleEvents: true,
-				timeMin: moment(startDate).startOf('second').utc().format(),
-				timeMax: moment(endDate).endOf('second').utc().format(),
-				orderBy: 'startTime',
-			});
-		}
+		// await sleep(3000);
 
-		if (this.getMode() === 'manual') {
-			delete qs.updatedMin;
-			delete qs.timeMin;
-			delete qs.timeMax;
+		const events = [
+			{
+				id: '12345test',
+			},
+		];
 
-			qs.maxResults = 1;
-			events = await googleApiRequest.call(
-				this,
-				'GET',
-				`/calendar/v3/calendars/${calendarId}/events`,
-				{},
-				qs,
-			);
-			events = events.items;
-		} else {
-			events = await googleApiRequestAllItems.call(
-				this,
-				'items',
-				'GET',
-				`/calendar/v3/calendars/${calendarId}/events`,
-				{},
-				qs,
-			);
-			if (triggerOn === 'eventCreated') {
-				events = events.filter((event: { created: string }) =>
-					moment(event.created).isBetween(startDate, endDate),
-				);
-			} else if (triggerOn === 'eventUpdated') {
-				events = events.filter(
-					(event: { created: string; updated: string }) =>
-						!moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(
-							moment(event.updated).format('YYYY-MM-DDTHH:mm:ss'),
-						),
-				);
-			} else if (triggerOn === 'eventStarted') {
-				events = events.filter((event: { start: { dateTime: string } }) =>
-					moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'),
-				);
-			} else if (triggerOn === 'eventEnded') {
-				events = events.filter((event: { end: { dateTime: string } }) =>
-					moment(event.end.dateTime).isBetween(startDate, endDate, null, '[]'),
-				);
-			}
-		}
+		// if (triggerOn === 'eventCreated' || triggerOn === 'eventUpdated') {
+		// 	Object.assign(qs, {
+		// 		updatedMin: startDate,
+		// 		orderBy: 'updated',
+		// 	});
+		// } else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
+		// 	Object.assign(qs, {
+		// 		singleEvents: true,
+		// 		timeMin: moment(startDate).startOf('second').utc().format(),
+		// 		timeMax: moment(endDate).endOf('second').utc().format(),
+		// 		orderBy: 'startTime',
+		// 	});
+		// }
 
-		webhookData.lastTimeChecked = endDate;
+		// if (this.getMode() === 'manual') {
+		// 	delete qs.updatedMin;
+		// 	delete qs.timeMin;
+		// 	delete qs.timeMax;
 
-		if (Array.isArray(events) && events.length) {
-			return [this.helpers.returnJsonArray(events)];
-		}
+		// 	qs.maxResults = 1;
+		// 	events = await googleApiRequest.call(
+		// 		this,
+		// 		'GET',
+		// 		`/calendar/v3/calendars/${calendarId}/events`,
+		// 		{},
+		// 		qs,
+		// 	);
+		// 	events = events.items;
+		// } else {
+		// 	events = await googleApiRequestAllItems.call(
+		// 		this,
+		// 		'items',
+		// 		'GET',
+		// 		`/calendar/v3/calendars/${calendarId}/events`,
+		// 		{},
+		// 		qs,
+		// 	);
+		// 	if (triggerOn === 'eventCreated') {
+		// 		events = events.filter((event: { created: string }) =>
+		// 			moment(event.created).isBetween(startDate, endDate),
+		// 		);
+		// 	} else if (triggerOn === 'eventUpdated') {
+		// 		events = events.filter(
+		// 			(event: { created: string; updated: string }) =>
+		// 				!moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(
+		// 					moment(event.updated).format('YYYY-MM-DDTHH:mm:ss'),
+		// 				),
+		// 		);
+		// 	} else if (triggerOn === 'eventStarted') {
+		// 		events = events.filter((event: { start: { dateTime: string } }) =>
+		// 			moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'),
+		// 		);
+		// 	} else if (triggerOn === 'eventEnded') {
+		// 		events = events.filter((event: { end: { dateTime: string } }) =>
+		// 			moment(event.end.dateTime).isBetween(startDate, endDate, null, '[]'),
+		// 		);
+		// 	}
+		// }
 
-		if (this.getMode() === 'manual') {
-			throw new NodeApiError(this.getNode(), {
-				message: 'No data with the current filter could be found',
-			});
-		}
+		// webhookData.lastTimeChecked = endDate;
 
-		return null;
+		// if (Array.isArray(events) && events.length) {
+		return [this.helpers.returnJsonArray(events)];
+		// }
+
+		// if (this.getMode() === 'manual') {
+		// 	throw new NodeApiError(this.getNode(), {
+		// 		message: 'No data with the current filter could be found',
+		// 	});
+		// }
+
+		// return null;
 	}
 }

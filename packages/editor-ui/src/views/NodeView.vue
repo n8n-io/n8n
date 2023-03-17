@@ -259,6 +259,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	NodeCreatorOpenSource,
 } from '@/Interface';
+import { pushConnection } from '@/mixins/pushConnection';
 
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
@@ -329,6 +330,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	debounceHelper,
+	pushConnection,
 ).extend({
 	name: 'NodeView',
 	components: {
@@ -3891,6 +3893,8 @@ export default mixins(
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
 		}
+
+		this.pushConnect();
 
 		try {
 			await Promise.all(loadPromises);
