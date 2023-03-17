@@ -16,7 +16,7 @@ export class If implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Splits a stream based on comparisons',
+		description: 'Route items to different branches (true/false)',
 		defaults: {
 			name: 'IF',
 			color: '#408000',

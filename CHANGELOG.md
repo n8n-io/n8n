@@ -1,3 +1,46 @@
+# [0.220.0](https://github.com/n8n-io/n8n/compare/n8n@0.219.1...n8n@0.220.0) (2023-03-16)
+
+
+### Bug Fixes
+
+* **core:** Initialize License and LDAP in the correct order ([#5673](https://github.com/n8n-io/n8n/issues/5673)) ([90afa5e](https://github.com/n8n-io/n8n/commit/90afa5e55f96fbe46417f4be8f764795fb5c2225))
+* **editor:** Display correct error message for env access ([#5634](https://github.com/n8n-io/n8n/issues/5634)) ([5f238ea](https://github.com/n8n-io/n8n/commit/5f238ea6413d25704a5865d339401117e81dbbab))
+* **editor:** Fix autocomplete for complex expresions ([#5695](https://github.com/n8n-io/n8n/issues/5695)) ([11bf260](https://github.com/n8n-io/n8n/commit/11bf260bf164c6c9dffe71b875fde139c93f905d))
+* **editor:** Fix owner set-up checkbox wording ([#5697](https://github.com/n8n-io/n8n/issues/5697)) ([58232be](https://github.com/n8n-io/n8n/commit/58232bec618edd403f18527913c489bfa11f570b))
+* **editor:** Properly handle mapping of dragged expression if it contains hyphen ([#5703](https://github.com/n8n-io/n8n/issues/5703)) ([7025efe](https://github.com/n8n-io/n8n/commit/7025efe8654a8a55ff10e2105ddc6ce2dc5a89d6))
+* **Metabase Node:** Fix issue with question results not correctly being returned ([#5665](https://github.com/n8n-io/n8n/issues/5665)) ([d1e3c19](https://github.com/n8n-io/n8n/commit/d1e3c192ba9e2dfd852e570e88f6135d42d2ed45))
+
+
+### Features
+
+* **core:** Improve SAML connection test ([#5680](https://github.com/n8n-io/n8n/issues/5680)) ([ef07528](https://github.com/n8n-io/n8n/commit/ef07528cc21f06ee52f93bafb34ac54a244609f9))
+* **editor:** Add basic Datatable and Pagination components ([#5652](https://github.com/n8n-io/n8n/issues/5652)) ([29f2629](https://github.com/n8n-io/n8n/commit/29f2629716e3693372ec9a4572113a3f3721ff5e))
+* **editor:** Add support for schema view in the NDV output ([#5688](https://github.com/n8n-io/n8n/issues/5688)) ([541850f](https://github.com/n8n-io/n8n/commit/541850f95f1c42fc16d9aeee3a3fef68a4b77082))
+* **editor:** Do not show actions panel for single-action nodes ([#5683](https://github.com/n8n-io/n8n/issues/5683)) ([de1db92](https://github.com/n8n-io/n8n/commit/de1db927cbdc5fc8ef7d697cccbd8603f66391ea))
+* **Item Lists Node:** Update actions ([#5648](https://github.com/n8n-io/n8n/issues/5648)) ([332d50c](https://github.com/n8n-io/n8n/commit/332d50c5f1f8ba63b87325799360adecdbaa06bf))
+* **OpenAI Node:** Add support for gpt4 on chat completion ([#5692](https://github.com/n8n-io/n8n/issues/5692)) ([ba73fff](https://github.com/n8n-io/n8n/commit/ba73fff27d2972093746acc3f7016c7420e23459))
+* **Split In Batches Node:** Make it easy to combine processed data ([#5655](https://github.com/n8n-io/n8n/issues/5655)) ([2f7639e](https://github.com/n8n-io/n8n/commit/2f7639e9e4b10f08c5cb1c4916fc6ae031375cf3))
+
+
+
+## [0.215.4](https://github.com/n8n-io/n8n/compare/n8n@0.215.3...n8n@0.215.4) (2023-03-14)
+
+
+### Bug Fixes
+
+* **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([6d2c50d](https://github.com/n8n-io/n8n/commit/6d2c50dfed0aeffa2afdb09f5aac80c0e25a6a06))
+
+
+
+## [0.214.5](https://github.com/n8n-io/n8n/compare/n8n@0.214.4...n8n@0.214.5) (2023-03-14)
+
+
+### Bug Fixes
+
+* **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([b94af03](https://github.com/n8n-io/n8n/commit/b94af0384243d634683212d5199316067956f628))
+
+
+
 ## [0.219.1](https://github.com/n8n-io/n8n/compare/n8n@0.219.0...n8n@0.219.1) (2023-03-10)
 
 
