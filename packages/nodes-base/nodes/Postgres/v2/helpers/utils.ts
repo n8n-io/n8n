@@ -156,6 +156,7 @@ export function addReturning(
 
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
+
 export const configureQueryRunner =
 	(
 		node: INode,

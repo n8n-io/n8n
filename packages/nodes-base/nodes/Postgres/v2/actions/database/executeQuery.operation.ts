@@ -22,6 +22,7 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			rows: 3,
 		},
+		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
 	},
 	{
 		displayName: `
