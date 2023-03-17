@@ -253,7 +253,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.popover {
+:root .popover {
 	padding: 0;
 	border: var(--border-base);
 }
