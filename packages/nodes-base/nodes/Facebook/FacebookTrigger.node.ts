@@ -170,7 +170,6 @@ export class FacebookTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

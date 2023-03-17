@@ -982,17 +982,8 @@ export class Workflow {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		if (nodeType.webhookMethods === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name] === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name][method] === undefined) {
-			return;
-		}
+		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
+		if (webhookFn === undefined) return;
 
 		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(
 			this,
@@ -1003,8 +994,8 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
-		// eslint-disable-next-line consistent-return
-		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
+
+		return webhookFn.call(thisArgs);
 	}
 
 	/**
