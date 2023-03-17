@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Automatically',
 				value: 'auto',
-				description: 'The whole used range on a selected sheet will be converted into a table',
+				description: 'The whole used range on the selected sheet will be converted into a table',
 			},
 			{
 				name: 'Manually',

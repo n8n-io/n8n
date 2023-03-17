@@ -188,11 +188,28 @@ const properties: INodeProperties[] = [
 				description: 'The name of the property into which to write the RAW data',
 			},
 			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
+			},
+			{
 				displayName: 'Update All Matches',
 				name: 'updateAll',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to update all matching rows or just the first match',
+				displayOptions: {
+					hide: {
+						'/dataMode': ['raw'],
+					},
+				},
 			},
 		],
 	},
@@ -214,6 +231,16 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	try {
+		const options = this.getNodeParameter('options', 0, {});
+
+		const rawData = options.rawData as boolean;
+		const dataProperty = options.dataProperty ? (options.dataProperty as string) : 'data';
+
+		const qs: IDataObject = {};
+		if (rawData && options.fields) {
+			qs.$select = options.fields;
+		}
+
 		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 			extractValue: true,
 		}) as string;
@@ -264,78 +291,80 @@ export async function execute(
 				'PATCH',
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 				{ values },
+				qs,
 			);
-		}
 
-		if (worksheetData.values === undefined || (worksheetData.values as string[][]).length <= 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No data found in the specified range, mapping not possible, you can use raw mode instead to update selected range',
+			returnData.push(
+				...prepareOutput.call(this, responseData as ExcelResponse, {
+					rawData,
+					dataProperty,
+				}),
 			);
-		}
-
-		const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
-
-		let updateSummary: UpdateSummary = {
-			updatedData: [],
-			updatedRows: [],
-			appendData: [],
-		};
-
-		if (dataMode === 'define') {
-			updateSummary = updateByDefinedValues.call(
-				this,
-				items,
-				worksheetData.values as string[][],
-				updateAll,
-			);
-		}
-
-		if (dataMode === 'autoMap') {
-			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
-
-			if (!items.some(({ json }) => json[columnToMatchOn] !== undefined)) {
+		} else {
+			if (worksheetData.values === undefined || (worksheetData.values as string[][]).length <= 1) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`Any item in input data contains column '${columnToMatchOn}', that is selected to match on`,
+					'No data found in the specified range, mapping not possible, you can use raw mode instead to update selected range',
 				);
 			}
 
-			updateSummary = updateByAutoMaping.call(
+			const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
+
+			let updateSummary: UpdateSummary = {
+				updatedData: [],
+				updatedRows: [],
+				appendData: [],
+			};
+
+			if (dataMode === 'define') {
+				updateSummary = updateByDefinedValues.call(
+					this,
+					items,
+					worksheetData.values as string[][],
+					updateAll,
+				);
+			}
+
+			if (dataMode === 'autoMap') {
+				const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+
+				if (!items.some(({ json }) => json[columnToMatchOn] !== undefined)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Any item in input data contains column '${columnToMatchOn}', that is selected to match on`,
+					);
+				}
+
+				updateSummary = updateByAutoMaping.call(
+					this,
+					items,
+					worksheetData.values as string[][],
+					columnToMatchOn,
+					updateAll,
+				);
+			}
+
+			responseData = await updateOrUpsertRange.call(
 				this,
-				items,
-				worksheetData.values as string[][],
-				columnToMatchOn,
-				updateAll,
+				updateSummary,
+				workbookId,
+				worksheetId,
+				range,
+				(worksheetData.values as string[][])[0],
+				false,
+				qs,
+			);
+
+			const { updatedRows } = updateSummary;
+
+			returnData.push(
+				...prepareOutput.call(this, responseData as ExcelResponse, {
+					updatedRows,
+					rawData,
+					dataProperty,
+				}),
 			);
 		}
-
-		const columnsRow = (worksheetData.values as string[][])[0];
-
-		// const upsert = operation === 'upsert' ? true : false;
-
-		responseData = await updateOrUpsertRange.call(
-			this,
-			updateSummary,
-			workbookId,
-			worksheetId,
-			range,
-			columnsRow,
-			false,
-		);
-
-		const { updatedRows } = updateSummary;
-
-		const rawData = this.getNodeParameter('options.rawData', 0, false) as boolean;
-		const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
-
-		returnData.push(
-			...prepareOutput.call(this, responseData as ExcelResponse, {
-				updatedRows,
-				rawData,
-				dataProperty,
-			}),
-		);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			const executionErrorData = this.helpers.constructExecutionMetaData(

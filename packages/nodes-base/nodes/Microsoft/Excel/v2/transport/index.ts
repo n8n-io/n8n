@@ -90,6 +90,7 @@ export async function updateOrUpsertRange(
 	range: string,
 	columnsRow: string[],
 	upsert = false,
+	qs: IDataObject = {},
 ) {
 	const { appendData, updatedRows } = updateSummary;
 	let { updatedData } = updateSummary;
@@ -120,5 +121,6 @@ export async function updateOrUpsertRange(
 		'PATCH',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 		{ values: updatedData },
+		qs,
 	);
 }

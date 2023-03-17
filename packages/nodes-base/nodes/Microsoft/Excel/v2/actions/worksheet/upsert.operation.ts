@@ -231,7 +231,10 @@ export async function execute(
 			);
 		}
 
-		if (worksheetData.values === undefined || (worksheetData.values as string[][]).length <= 1) {
+		if (
+			dataMode !== 'raw' &&
+			(worksheetData.values === undefined || (worksheetData.values as string[][]).length <= 1)
+		) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'No data found in the specified range, mapping not possible, you can use raw mode instead to update selected range',

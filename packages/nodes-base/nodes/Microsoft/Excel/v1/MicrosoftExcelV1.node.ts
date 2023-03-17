@@ -46,6 +46,12 @@ const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
+			displayName: 'Version 1',
+			name: 'versionNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
