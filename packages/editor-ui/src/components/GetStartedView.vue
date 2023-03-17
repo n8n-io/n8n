@@ -61,7 +61,7 @@ const steps = [
 		id: 'save-cred',
 		progress: 76,
 		panel: {
-			title: 'Go back to coninue building app',
+			title: 'Go back to continue building app',
 			desc: 'Close this view by clicking on the background or the close <b>X</b> button.',
 		},
 	},
