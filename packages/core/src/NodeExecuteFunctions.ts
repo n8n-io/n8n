@@ -674,33 +674,39 @@ async function proxyRequestToAxios(
 		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
 		if (error.isAxiosError) {
-			Logger.debug('Request proxied to Axios failed', { status: response.status });
-			let responseData = response.data;
+			if (response) {
+				Logger.debug('Request proxied to Axios failed', { status: response.status });
+				let responseData = response.data;
 
-			if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-				responseData = await binaryToBuffer(responseData).then((buffer) =>
-					buffer.toString('utf-8'),
-				);
-			}
-
-			if (configObject.simple === false) {
-				if (configObject.resolveWithFullResponse) {
-					return {
-						body: responseData,
-						headers: response.headers,
-						statusCode: response.status,
-						statusMessage: response.statusText,
-					};
-				} else {
-					return responseData;
+				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
+					responseData = await binaryToBuffer(responseData).then((buffer) =>
+						buffer.toString('utf-8'),
+					);
 				}
-			}
 
-			const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
-			throw Object.assign(new Error(message, { cause: error }), {
-				status: response.status,
-				options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
-			});
+				if (configObject.simple === false) {
+					if (configObject.resolveWithFullResponse) {
+						return {
+							body: responseData,
+							headers: response.headers,
+							statusCode: response.status,
+							statusMessage: response.statusText,
+						};
+					} else {
+						return responseData;
+					}
+				}
+
+				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+				throw Object.assign(new Error(message, { cause: error }), {
+					status: response.status,
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			} else {
+				throw Object.assign(new Error(error.message, { cause: error }), {
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			}
 		}
 
 		throw error;
