@@ -1,31 +1,36 @@
-import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
-import { QueryFailedError } from 'typeorm';
+import { IRun, LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
+import { QueryFailedError, Repository } from 'typeorm';
+import { mock } from 'jest-mock-extended';
+
 import config from '@/config';
-import { Db } from '@/index';
+import * as Db from '@/Db';
+import { User } from '@db/entities/User';
+import { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
-import { getLogger } from '@/Logger';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
+import { getLogger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
+
 import { mockInstance } from '../integration/shared/utils';
 
-const FAKE_USER_ID = 'abcde-fghij';
-
+type WorkflowStatisticsRepository = Repository<WorkflowStatistics>;
 jest.mock('@/Db', () => {
 	return {
 		collections: {
-			WorkflowStatistics: {
-				insert: jest.fn((...args) => {}),
-				update: jest.fn((...args) => {}),
-			},
+			WorkflowStatistics: mock<WorkflowStatisticsRepository>(),
 		},
 	};
 });
-jest.spyOn(UserManagementHelper, 'getWorkflowOwner').mockImplementation(async (_workflowId) => {
-	return { id: FAKE_USER_ID };
-});
 
 describe('Events', () => {
+	const fakeUser = Object.assign(new User(), { id: 'abcde-fghij' });
 	const internalHooks = mockInstance(InternalHooks);
+
+	jest.spyOn(UserManagementHelper, 'getWorkflowOwner').mockResolvedValue(fakeUser);
+
+	const workflowStatisticsRepository = Db.collections.WorkflowStatistics as ReturnType<
+		typeof mock<WorkflowStatisticsRepository>
+	>;
 
 	beforeAll(() => {
 		config.set('diagnostics.enabled', true);
@@ -57,8 +62,9 @@ describe('Events', () => {
 				nodes: [],
 				connections: {},
 			};
-			const runData = {
+			const runData: IRun = {
 				finished: true,
+				status: 'success',
 				data: { resultData: { runData: {} } },
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
@@ -66,7 +72,7 @@ describe('Events', () => {
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
-				user_id: FAKE_USER_ID,
+				user_id: fakeUser.id,
 				workflow_id: workflow.id,
 			});
 		});
@@ -82,8 +88,9 @@ describe('Events', () => {
 				nodes: [],
 				connections: {},
 			};
-			const runData = {
+			const runData: IRun = {
 				finished: false,
+				status: 'failed',
 				data: { resultData: { runData: {} } },
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
@@ -94,7 +101,7 @@ describe('Events', () => {
 
 		test('should not send metrics for updated entries', async () => {
 			// Call the function with a fail insert, ensure update is called *and* metrics aren't sent
-			Db.collections.WorkflowStatistics.insert.mockImplementationOnce(() => {
+			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
 				throw new QueryFailedError('invalid insert', [], '');
 			});
 			const workflow = {
@@ -106,8 +113,9 @@ describe('Events', () => {
 				nodes: [],
 				connections: {},
 			};
-			const runData = {
+			const runData: IRun = {
 				finished: true,
+				status: 'success',
 				data: { resultData: { runData: {} } },
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
@@ -132,7 +140,7 @@ describe('Events', () => {
 			await nodeFetchedData(workflowId, node);
 			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(internalHooks.onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
-				user_id: FAKE_USER_ID,
+				user_id: fakeUser.id,
 				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
@@ -159,7 +167,7 @@ describe('Events', () => {
 			await nodeFetchedData(workflowId, node);
 			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(internalHooks.onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
-				user_id: FAKE_USER_ID,
+				user_id: fakeUser.id,
 				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
@@ -170,7 +178,7 @@ describe('Events', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			Db.collections.WorkflowStatistics.insert.mockImplementationOnce(() => {
+			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
 				throw new QueryFailedError('invalid insert', [], '');
 			});
 			const workflowId = '1';
