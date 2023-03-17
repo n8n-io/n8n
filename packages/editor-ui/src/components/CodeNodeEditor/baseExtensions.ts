@@ -37,7 +37,7 @@ export const baseExtensions = [
 		{ key: 'Tab', run: acceptCompletion },
 		{ key: 'Enter', run: acceptCompletion },
 		{ key: 'Mod-/', run: toggleComment },
-		{ key: 'Cmd-Shift-z', run: redo },
+		{ key: 'Mod-Shift-z', run: redo },
 		indentWithTab,
 	]),
 	EditorView.lineWrapping,

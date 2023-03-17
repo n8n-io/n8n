@@ -87,7 +87,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 							return false;
 						},
 					},
-					{ key: 'Cmd-Shift-z', run: redo },
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			autocompletion(),

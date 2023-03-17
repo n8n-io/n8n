@@ -54,7 +54,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 							return false;
 						},
 					},
-					{ key: 'Cmd-Shift-z', run: redo },
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			n8nLang(),

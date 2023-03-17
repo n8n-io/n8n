@@ -89,7 +89,7 @@ export default mixins(expressionManager).extend({
 				keymap.of([
 					indentWithTab,
 					{ key: 'Enter', run: insertNewlineAndIndent },
-					{ key: 'Cmd-Shift-z', run: redo },
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
 				theme,
