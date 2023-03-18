@@ -33,6 +33,7 @@
 				{{ redirectText }}
 			</n8n-link>
 		</div>
+		<slot></slot>
 	</div>
 </template>
 

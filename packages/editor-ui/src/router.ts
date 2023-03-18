@@ -31,7 +31,7 @@ import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
-import { EnterpriseEditionFeature, VIEWS } from './constants';
+import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';

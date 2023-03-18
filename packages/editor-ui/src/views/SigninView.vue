@@ -2,6 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		:with-sso="true"
 		data-test-id="signin-form"
 		@submit="onSubmit"
 	/>
