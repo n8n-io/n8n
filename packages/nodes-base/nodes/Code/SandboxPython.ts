@@ -1,18 +1,23 @@
-import { normalizeItems } from 'n8n-core';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { ValidationError } from './ValidationError';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { CodeNodeMode } from './utils';
-import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 import { LoadPyodide } from './Pyodide';
+import { Sandbox } from './Sandbox';
 
 type PyodideError = Error & { type: string };
 
-export class SandboxPython {
+export class SandboxPython extends Sandbox {
 	private code = '';
 
 	private itemIndex: number | undefined = undefined;
 
-	constructor(private nodeMode: CodeNodeMode) {}
+	constructor(private nodeMode: CodeNodeMode, private helpers: IExecuteFunctions['helpers']) {
+		super({
+			object: {
+				singular: 'dictionary',
+				plural: 'dictionaries',
+			},
+		});
+	}
 
 	async runCode(
 		context: ReturnType<typeof getSandboxContextPython>,
@@ -99,123 +104,19 @@ await __main()
 	) {
 		const executionResult = await this.runCodeInPython(context, moduleImports);
 
-		if (
-			executionResult === undefined ||
-			executionResult === null ||
-			typeof executionResult !== 'object'
-		) {
-			throw new ValidationError({
-				message: "Code doesn't return items properly",
-				description:
-					'Please return an array of dictionaries, one for each item you would like to output',
-				itemIndex: this.itemIndex,
-			});
-		}
+		this.validateRunCodeAllItems(executionResult as INodeExecutionData[], this.itemIndex);
 
-		if (Array.isArray(executionResult)) {
-			// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
-			// then validate all keys to be a supported item key, else allow user keys
-			// to be wrapped in `json` when normalizing items below.
-
-			const mustHaveTopLevelN8nKey = executionResult.some((item: IDataObject) =>
-				Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
-			);
-
-			for (const item of executionResult as IDataObject[]) {
-				if (item.json !== undefined && !isObject(item.json)) {
-					throw new ValidationError({
-						message: "A 'json' property isn't a dictionary",
-						description: "In the returned data, every key named 'json' must point to a dictionary",
-						itemIndex: this.itemIndex,
-					});
-				}
-
-				if (mustHaveTopLevelN8nKey) {
-					Object.keys(item).forEach((key) => {
-						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
-
-						throw new ValidationError({
-							message: `Unknown top-level item key: ${key}`,
-							description: 'Access the properties of an item under `json`, e.g. `item["json"]`',
-							itemIndex: this.itemIndex,
-						});
-					});
-				}
-
-				if (item.binary !== undefined && !isObject(item.binary)) {
-					throw new ValidationError({
-						message: "A 'binary' property isn't a dictionary",
-						description:
-							"In the returned data, every key named 'binary’ must point to an dictionary.",
-						itemIndex: this.itemIndex,
-					});
-				}
-			}
-		} else {
-			if (executionResult.json !== undefined && !isObject(executionResult.json)) {
-				throw new ValidationError({
-					message: "A 'json' property isn't a dictionary",
-					description: "In the returned data, every key named 'json' must point to a dictionary",
-					itemIndex: this.itemIndex,
-				});
-			}
-
-			if (executionResult.binary !== undefined && !isObject(executionResult.binary)) {
-				throw new ValidationError({
-					message: "A 'binary' property isn't a dictionary",
-					description: "In the returned data, every key named 'binary’ must point to a dictionary.",
-					itemIndex: this.itemIndex,
-				});
-			}
-		}
-
-		return normalizeItems(executionResult as INodeExecutionData[]);
+		return this.helpers.normalizeItems(executionResult as INodeExecutionData[]);
 	}
 
 	private async runCodeEachItem(
 		context: ReturnType<typeof getSandboxContextPython>,
 		moduleImports: string[],
 	) {
-		let executionResult = await this.runCodeInPython(context, moduleImports);
-		if (
-			executionResult === undefined ||
-			executionResult === null ||
-			typeof executionResult !== 'object'
-		) {
-			throw new ValidationError({
-				message: "Code doesn't return a dictionary",
-				description: `Please return a dictionary representing the output item. ('${executionResult}' was returned instead.)`,
-				itemIndex: this.itemIndex,
-			});
-		}
+		const executionResult = await this.runCodeInPython(context, moduleImports);
 
-		executionResult = executionResult as INodeExecutionData;
+		this.validateRunCodeEachItem(executionResult as INodeExecutionData, false, this.itemIndex);
 
-		if (executionResult.json !== undefined && !isObject(executionResult.json)) {
-			throw new ValidationError({
-				message: "A 'json' property isn't a dictionary",
-				description: "In the returned data, every key named 'json' must point to a dictionary",
-				itemIndex: this.itemIndex,
-			});
-		}
-		if (executionResult.binary !== undefined && !isObject(executionResult.binary)) {
-			throw new ValidationError({
-				message: "A 'binary' property isn't a dictionary",
-				description: "In the returned data, every key named 'binary’ must point to a dictionary.",
-				itemIndex: this.itemIndex,
-			});
-		}
-		if (Array.isArray(executionResult)) {
-			const firstSentence =
-				executionResult.length > 0
-					? `An array of ${typeof executionResult[0]}s was returned.`
-					: 'An empty array was returned.';
-			throw new ValidationError({
-				message: "Code doesn't return a single dictionary",
-				description: `${firstSentence} If you need to output multiple items, please use the 'Run Once for All Items' mode instead`,
-				itemIndex: this.itemIndex,
-			});
-		}
 		return executionResult.json ? executionResult : { json: executionResult };
 	}
 }

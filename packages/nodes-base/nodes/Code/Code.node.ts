@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { getSandboxContext, Sandbox } from './SandboxJavaScript';
+import { getSandboxContext, SandboxJavaScript } from './SandboxJavaScript';
 import { getSandboxContextPython, SandboxPython } from './SandboxPython';
 import { standardizeOutput } from './utils';
 import type { CodeNodeMode } from './utils';
@@ -291,7 +291,7 @@ return _input.item;
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
-		const sandbox = new SandboxPython(nodeMode);
+		const sandbox = new SandboxPython(nodeMode, this.helpers);
 
 		// ----------------------------------
 		//        runOnceForAllItems
@@ -390,10 +390,10 @@ return _input.item;
 
 			const context = getSandboxContext.call(this, 0);
 			context.items = context.$input.all();
-			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
+			const sandbox = new SandboxJavaScript(context, workflowMode, nodeMode, this.helpers);
 
 			if (workflowMode === 'manual') {
-				sandbox.on('console.log', this.sendMessageToUI);
+				sandbox.vm.on('console.log', this.sendMessageToUI);
 			}
 
 			try {
@@ -422,10 +422,10 @@ return _input.item;
 
 				const context = getSandboxContext.call(this, index);
 				context.item = context.$input.item;
-				const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
+				const sandbox = new SandboxJavaScript(context, workflowMode, nodeMode, this.helpers);
 
 				if (workflowMode === 'manual') {
-					sandbox.on('console.log', this.sendMessageToUI);
+					sandbox.vm.on('console.log', this.sendMessageToUI);
 				}
 
 				try {

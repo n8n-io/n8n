@@ -24,6 +24,13 @@ export function standardizeOutput(output: IDataObject) {
 	return output;
 }
 
+export interface SandboxTextKeys {
+	object: {
+		singular: string;
+		plural: string;
+	};
+}
+
 export type CodeNodeMode = 'runOnceForAllItems' | 'runOnceForEachItem';
 
 export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);
