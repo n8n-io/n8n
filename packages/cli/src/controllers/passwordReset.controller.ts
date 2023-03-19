@@ -14,7 +14,7 @@ import {
 	hashPassword,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
-import * as UserManagementMailer from '@/UserManagement/email';
+import type { UserManagementMailer } from '@/UserManagement/email';
 
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
@@ -35,6 +35,8 @@ export class PasswordResetController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
+	private readonly mailer: UserManagementMailer;
+
 	private readonly userRepository: Repository<User>;
 
 	constructor({
@@ -42,18 +44,21 @@ export class PasswordResetController {
 		logger,
 		externalHooks,
 		internalHooks,
+		mailer,
 		repositories,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
+		mailer: UserManagementMailer;
 		repositories: Pick<IDatabaseCollections, 'User'>;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
+		this.mailer = mailer;
 		this.userRepository = repositories.User;
 	}
 
@@ -126,8 +131,7 @@ export class PasswordResetController {
 		url.searchParams.append('token', resetPasswordToken);
 
 		try {
-			const mailer = UserManagementMailer.getInstance();
-			await mailer.passwordReset({
+			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
