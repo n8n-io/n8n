@@ -36,6 +36,7 @@ export const useSSOStore = defineStore('sso', () => {
 	return {
 		isLoading,
 		setLoading,
+		isEnterpriseSamlEnabled,
 		showSsoLoginButton,
 		getSSORedirectUrl,
 	};

@@ -34,7 +34,9 @@ import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
+import { useSSOStore } from './stores/sso';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
+import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 
 Vue.use(Router);
@@ -558,6 +560,36 @@ const router = new Router({
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
 									return settingsStore.isPublicApiEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'sso',
+					name: VIEWS.SSO_SETTINGS,
+					components: {
+						settingsView: SettingsSso,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'sso',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+								role: [ROLE.Owner],
+							},
+							deny: {
+								role: [ROLE.Default],
+								shouldDeny: () => {
+									const ssoStore = useSSOStore();
+									return !ssoStore.isEnterpriseSamlEnabled;
 								},
 							},
 						},
