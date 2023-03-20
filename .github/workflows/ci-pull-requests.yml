@@ -17,9 +17,6 @@ jobs:
           node-version: 16.x
           cache: pnpm
 
-      - name: Print GitHub repository
-        run: "echo 1: ${{ github.event.pull_request.head.repo.full_name }} 2: ${{ inputs.branch }} 3: ${{ github.event.pull_request.head.ref }}"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -75,9 +72,6 @@ jobs:
     needs: install
     steps:
       - uses: actions/checkout@v3
-
-      - name: Print GitHub repository
-        run: echo ${{ github.event.pull_request.head.repo.full_name }} ${{ inputs.branch }} ${{ github.event.pull_request.head.ref }}
 
       - name: Restore cached build artifacts
         uses: actions/cache@v3
