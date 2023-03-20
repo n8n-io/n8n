@@ -36,7 +36,7 @@
 		<div
 			v-else-if="!errorView"
 			ref="resultsContainer"
-			:class="{ [$style.container]: true, [$style.pushDownResults]: filterable }"
+			:class="$style.container"
 			@scroll="onResultsEnd"
 		>
 			<div
@@ -65,7 +65,7 @@
 				</div>
 			</div>
 			<div v-if="loading && !errorView">
-				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
+				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
 					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				</div>
 			</div>
@@ -254,17 +254,16 @@ export default Vue.extend({
 
 <style lang="scss" module>
 :root .popover {
+	--content-height: 236px;
 	padding: 0;
 	border: var(--border-base);
-}
-
-.pushDownResults {
-	padding-top: 36px;
+	display: flex;
+	max-height: calc(var(--content-height) + var(--spacing-xl));
+	flex-direction: column;
 }
 
 .container {
 	position: relative;
-	max-height: 236px;
 	overflow: auto;
 }
 
@@ -279,8 +278,6 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 	--input-border-color: none;
 	--input-font-size: var(--font-size-2xs);
-	position: absolute;
-	top: 0;
 	width: 100%;
 	z-index: 1;
 }
