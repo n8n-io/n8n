@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, reactive, onBeforeMount } from 'vue';
 import debounce from 'lodash/debounce';
+import type { PopoverPlacement } from 'element-ui/types/popover';
 import type {
 	ExecutionFilterType,
 	ExecutionFilterMetadata,
@@ -15,7 +16,7 @@ import { useUsageStore } from '@/stores/usage';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
-	popoverPlacement?: String;
+	popoverPlacement?: PopoverPlacement;
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
@@ -23,7 +24,9 @@ const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
-const props = defineProps<ExecutionFilterProps>();
+const props = withDefaults(defineProps<ExecutionFilterProps>(), {
+	popoverPlacement: 'bottom',
+});
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
 }>();
