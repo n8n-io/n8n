@@ -284,12 +284,12 @@ export class ExecutionsService {
 		} = {};
 
 		if (req.query.lastId) {
-			rangeQuery.push('id < :lastId');
+			rangeQuery.push('execution.id < :lastId');
 			rangeQueryParams.lastId = req.query.lastId;
 		}
 
 		if (req.query.firstId) {
-			rangeQuery.push('id > :firstId');
+			rangeQuery.push('execution.id > :firstId');
 			rangeQueryParams.firstId = req.query.firstId;
 		}
 

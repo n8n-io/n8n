@@ -268,16 +268,17 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 export async function saveExecutionMetadata(
 	executionId: string,
 	executionMetadata: Record<string, string>,
-): Promise<void> {
-	await Db.transaction(async (em) => {
-		for (const [key, value] of Object.entries(executionMetadata)) {
-			await em.save(ExecutionMetadata, {
-				execution: { id: executionId },
-				key,
-				value,
-			});
-		}
-	});
+): Promise<ExecutionMetadata[]> {
+	const metadataRows = [];
+	for (const [key, value] of Object.entries(executionMetadata)) {
+		metadataRows.push({
+			execution: { id: executionId },
+			key,
+			value,
+		});
+	}
+
+	return Db.collections.ExecutionMetadata.save(metadataRows);
 }
 
 /**
