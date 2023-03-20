@@ -92,6 +92,8 @@ import { useSegment } from '@/stores/segment';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '../utils/mappingUtils';
 
+const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
+
 export default mixins(showMessage, externalHooks).extend({
 	name: 'parameter-input-full',
 	components: {
@@ -190,7 +192,8 @@ export default mixins(showMessage, externalHooks).extend({
 				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
-				!this.isInputDataEmpty
+				!this.isInputDataEmpty &&
+				DISPLAY_MODES_WITH_DATA_MAPPING.includes(this.displayMode)
 			);
 		},
 	},

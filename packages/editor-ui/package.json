@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.185.0",
+  "version": "0.186.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -86,6 +86,7 @@
     "@faker-js/faker": "^7.6.0",
     "@pinia/testing": "^0.0.14",
     "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3",
     "@testing-library/vue": "^5.8.3",
     "@types/dateformat": "^3.0.0",
     "@types/express": "^4.17.6",
