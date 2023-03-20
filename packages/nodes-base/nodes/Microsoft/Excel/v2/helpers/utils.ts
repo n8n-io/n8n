@@ -142,49 +142,46 @@ export function updateByDefinedValues(
 
 // update values of spreadsheet when update mode is 'autoMap'
 export function updateByAutoMaping(
-	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	sheetData: SheetData,
 	columnToMatchOn: string,
 	updateAllOccurences = false,
 ): UpdateSummary {
 	const [columns, ...values] = sheetData;
-	const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
-	const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
+	const matchColumnIndex = columns.indexOf(columnToMatchOn);
+	const matchValuesMap = values.map((row) => row[matchColumnIndex]);
 
 	const updatedRowsIndexes = new Set<number>();
 	const appendData: IDataObject[] = [];
 
-	const itemsData = items.map((item) => item.json);
-	for (const item of itemsData) {
-		const columnValue = item[columnToMatchOn] as string;
+	for (const { json } of items) {
+		const columnValue = json[columnToMatchOn] as string;
+		if (columnValue === undefined) continue;
 
 		const rowIndexes: number[] = [];
 		if (updateAllOccurences) {
-			columnToMatchOnData.forEach((value, index) => {
+			matchValuesMap.forEach((value, index) => {
 				if (value === columnValue || Number(value) === Number(columnValue)) {
 					rowIndexes.push(index);
 				}
 			});
 		} else {
-			const rowIndex = columnToMatchOnData.findIndex(
+			const rowIndex = matchValuesMap.findIndex(
 				(value) => value === columnValue || Number(value) === Number(columnValue),
 			);
 
-			if (rowIndex === -1) continue;
-
-			rowIndexes.push(rowIndex);
+			if (rowIndex !== -1) rowIndexes.push(rowIndex);
 		}
 
 		if (!rowIndexes.length) {
-			appendData.push(item);
+			appendData.push(json);
 			continue;
 		}
 
 		const updatedRow: Array<string | null> = [];
 
 		for (const columnName of columns as string[]) {
-			const updateValue = item[columnName] === undefined ? null : (item[columnName] as string);
+			const updateValue = json[columnName] === undefined ? null : (json[columnName] as string);
 			updatedRow.push(updateValue);
 		}
 

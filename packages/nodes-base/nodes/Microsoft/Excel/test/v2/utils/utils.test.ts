@@ -1,6 +1,10 @@
 import { get } from 'lodash';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-import { prepareOutput, updateByDefinedValues } from '../../../v2/helpers/utils';
+import {
+	prepareOutput,
+	updateByAutoMaping,
+	updateByDefinedValues,
+} from '../../../v2/helpers/utils';
 
 const node: INode = {
 	id: '1',
@@ -336,6 +340,192 @@ describe('Test MicrosoftExcelV2, updateByDefinedValues', () => {
 			sheetData,
 			true,
 		);
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0);
+		expect(updateSummary.updatedRows.length).toEqual(1);
+		expect(updateSummary.appendData[0]).toEqual({ id: 4, name: 'Donald', age: 45, data: 'data 4' });
+		expect(updateSummary.appendData[1]).toEqual({ id: 5, name: 'Victor', age: 67, data: 'data 5' });
+	});
+});
+
+describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
+	it('should update single row', () => {
+		const items = [
+			{
+				json: {
+					id: 2,
+					name: 'Donald',
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 33, 'data 1'],
+			[2, 'Jon', 44, 'data 2'],
+			[3, 'Ron', 55, 'data 3'],
+		];
+
+		const updateSummary = updateByAutoMaping(items, sheetData, 'id');
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toHaveLength(2);
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.updatedRows).toContain(2); //updated row
+		expect(updateSummary.updatedData[2][1]).toEqual('Donald'); // updated value
+	});
+
+	it('should append single row', () => {
+		const items = [
+			{
+				json: {
+					id: 5,
+					name: 'Donald',
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 33, 'data 1'],
+			[2, 'Jon', 44, 'data 2'],
+			[3, 'Ron', 55, 'data 3'],
+		];
+
+		const updateSummary = updateByAutoMaping(items, sheetData, 'id');
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toHaveLength(1);
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.appendData[0]).toEqual({ id: 5, name: 'Donald' });
+	});
+
+	it('should append skip row with match column undefined', () => {
+		const items = [
+			{
+				json: {
+					id: 5,
+					name: 'Donald',
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 33, 'data 1'],
+			[2, 'Jon', 44, 'data 2'],
+			[3, 'Ron', 55, 'data 3'],
+		];
+
+		const updateSummary = updateByAutoMaping(items, sheetData, 'idd');
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toHaveLength(1);
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.appendData.length).toEqual(0);
+	});
+
+	it('should update multiple rows', () => {
+		const items = [
+			{
+				json: {
+					id: 2,
+					name: 'Donald',
+				},
+			},
+			{
+				json: {
+					id: 3,
+					name: 'Eduard',
+				},
+			},
+			{
+				json: {
+					id: 4,
+					name: 'Ismael',
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 33, 'data 1'],
+			[2, 'Jon', 44, 'data 2'],
+			[3, 'Ron', 55, 'data 3'],
+			[4, 'Ron', 55, 'data 3'],
+		];
+
+		const updateSummary = updateByAutoMaping(items, sheetData, 'id');
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.updatedRows).toContain(2); //updated row
+		expect(updateSummary.updatedRows).toContain(3); //updated row
+		expect(updateSummary.updatedRows).toContain(4); //updated row
+		expect(updateSummary.updatedRows).toHaveLength(4);
+		expect(updateSummary.updatedData[2][1]).toEqual('Donald'); // updated value
+		expect(updateSummary.updatedData[3][1]).toEqual('Eduard'); // updated value
+		expect(updateSummary.updatedData[4][1]).toEqual('Ismael'); // updated value
+	});
+
+	it('should update all occurances', () => {
+		const items = [
+			{
+				json: {
+					data: 'data 3',
+					name: 'Donald',
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 55, 'data 3'],
+			[2, 'Jon', 77, 'data 3'],
+			[3, 'Ron', 44, 'data 3'],
+			[4, 'Ron', 33, 'data 3'],
+		];
+
+		const updateSummary = updateByAutoMaping(items, sheetData, 'data', true);
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.updatedRows).toHaveLength(5);
+
+		for (let i = 1; i < updateSummary.updatedRows.length; i++) {
+			expect(updateSummary.updatedData[i][1]).toEqual('Donald'); // updated value
+		}
+	});
+
+	it('should append rows', () => {
+		const items = [
+			{
+				json: {
+					id: 4,
+					data: 'data 4',
+					name: 'Donald',
+					age: 45,
+				},
+			},
+			{
+				json: {
+					id: 5,
+					data: 'data 5',
+					name: 'Victor',
+					age: 67,
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 55, 'data 3'],
+			[2, 'Jon', 77, 'data 3'],
+			[3, 'Ron', 44, 'data 3'],
+		];
+
+		const updateSummary = updateByAutoMaping(items, sheetData, 'data', true);
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toContain(0);

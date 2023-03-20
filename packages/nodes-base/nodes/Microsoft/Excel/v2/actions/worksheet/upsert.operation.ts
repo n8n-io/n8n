@@ -268,8 +268,7 @@ export async function execute(
 				);
 			}
 
-			updateSummary = updateByAutoMaping.call(
-				this,
+			updateSummary = updateByAutoMaping(
 				items,
 				worksheetData.values as string[][],
 				columnToMatchOn,
@@ -278,8 +277,6 @@ export async function execute(
 		}
 
 		const columnsRow = (worksheetData.values as string[][])[0];
-
-		// const upsert = operation === 'upsert' ? true : false;
 
 		responseData = await updateOrUpsertRange.call(
 			this,

@@ -335,8 +335,7 @@ export async function execute(
 					);
 				}
 
-				updateSummary = updateByAutoMaping.call(
-					this,
+				updateSummary = updateByAutoMaping(
 					items,
 					worksheetData.values as string[][],
 					columnToMatchOn,
