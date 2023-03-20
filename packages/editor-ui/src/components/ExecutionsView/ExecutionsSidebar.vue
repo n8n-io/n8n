@@ -17,7 +17,7 @@
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<execution-filter @filterChanged="onFilterChanged" />
+			<execution-filter popover-placement="left-start" @filterChanged="onFilterChanged" />
 		</div>
 		<div
 			:class="$style.executionList"

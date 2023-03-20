@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, reactive, onBeforeMount } from 'vue';
 import debounce from 'lodash/debounce';
+import type { PopoverPlacement } from 'element-ui/types/popover';
 import type {
 	ExecutionFilterType,
 	ExecutionFilterMetadata,
@@ -15,6 +16,7 @@ import { useUsageStore } from '@/stores/usage';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
+	popoverPlacement?: PopoverPlacement;
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
@@ -22,7 +24,9 @@ const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
-const props = defineProps<ExecutionFilterProps>();
+const props = withDefaults(defineProps<ExecutionFilterProps>(), {
+	popoverPlacement: 'bottom',
+});
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
 }>();
@@ -129,7 +133,7 @@ onBeforeMount(() => {
 </script>
 <template>
 	<div :class="$style.filter">
-		<n8n-popover trigger="click">
+		<n8n-popover trigger="click" :placement="popoverPlacement">
 			<template #reference>
 				<n8n-button
 					icon="filter"
@@ -248,63 +252,59 @@ onBeforeMount(() => {
 						</span>
 					</n8n-tooltip>
 					<div :class="$style.subGroup">
-						<div :class="$style.group">
-							<label for="execution-filter-saved-data-key">{{
-								$locale.baseText('executionsFilter.savedDataKey')
-							}}</label>
-							<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
-								<template #content>
-									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
-										<template #link>
-											<a
-												target="_blank"
-												:href="viewPlansLink"
-												data-testid="executions-filter-view-plans-link"
-												>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
-											>
-										</template>
-									</i18n>
-								</template>
-								<n8n-input
-									id="execution-filter-saved-data-key"
-									name="execution-filter-saved-data-key"
-									type="text"
-									size="medium"
-									:disabled="!isAdvancedExecutionFilterEnabled"
-									:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-									:value="filter.metadata[0]?.key"
-									@input="onFilterMetaChange(0, 'key', $event)"
-									data-testid="execution-filter-saved-data-key-input"
-								/>
-							</n8n-tooltip>
-						</div>
-						<div :class="$style.group">
-							<label for="execution-filter-saved-data-value">{{
-								$locale.baseText('executionsFilter.savedDataValue')
-							}}</label>
-							<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
-								<template #content>
-									<i18n tag="span" path="executionsFilter.customData.inputTooltip">
-										<template #link>
-											<a target="_blank" :href="viewPlansLink">{{
-												$locale.baseText('executionsFilter.customData.inputTooltip.link')
-											}}</a>
-										</template>
-									</i18n>
-								</template>
-								<n8n-input
-									id="execution-filter-saved-data-value"
-									name="execution-filter-saved-data-value"
-									type="text"
-									size="medium"
-									:disabled="!isAdvancedExecutionFilterEnabled"
-									:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-									:value="filter.metadata[0]?.value"
-									@input="onFilterMetaChange(0, 'value', $event)"
-									data-testid="execution-filter-saved-data-value-input"
-								/>
-							</n8n-tooltip>
-						</div>
+						<label for="execution-filter-saved-data-key">{{
+							$locale.baseText('executionsFilter.savedDataKey')
+						}}</label>
+						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+							<template #content>
+								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
+									<template #link>
+										<a
+											target="_blank"
+											:href="viewPlansLink"
+											data-testid="executions-filter-view-plans-link"
+											>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
+										>
+									</template>
+								</i18n>
+							</template>
+							<n8n-input
+								id="execution-filter-saved-data-key"
+								name="execution-filter-saved-data-key"
+								type="text"
+								size="medium"
+								:disabled="!isAdvancedExecutionFilterEnabled"
+								:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
+								:value="filter.metadata[0]?.key"
+								@input="onFilterMetaChange(0, 'key', $event)"
+								data-testid="execution-filter-saved-data-key-input"
+							/>
+						</n8n-tooltip>
+						<label for="execution-filter-saved-data-value">{{
+							$locale.baseText('executionsFilter.savedDataValue')
+						}}</label>
+						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+							<template #content>
+								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
+									<template #link>
+										<a target="_blank" :href="viewPlansLink">{{
+											$locale.baseText('executionsFilter.customData.inputTooltip.link')
+										}}</a>
+									</template>
+								</i18n>
+							</template>
+							<n8n-input
+								id="execution-filter-saved-data-value"
+								name="execution-filter-saved-data-value"
+								type="text"
+								size="medium"
+								:disabled="!isAdvancedExecutionFilterEnabled"
+								:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
+								:value="filter.metadata[0]?.value"
+								@input="onFilterMetaChange(0, 'value', $event)"
+								data-testid="execution-filter-saved-data-value-input"
+							/>
+						</n8n-tooltip>
 					</div>
 				</div>
 				<n8n-button
@@ -331,12 +331,18 @@ onBeforeMount(() => {
 	.label {
 		display: inline-block;
 		font-size: var(--font-size-2xs);
-		margin: var(--spacing-xs) 0 var(--spacing-3xs);
+		margin: var(--spacing-s) 0 var(--spacing-3xs);
 	}
 }
 
 .subGroup {
 	padding: 0 0 var(--spacing-xs) var(--spacing-s);
+
+	label,
+	.label {
+		font-size: var(--font-size-3xs);
+		margin: var(--spacing-4xs) 0 var(--spacing-4xs);
+	}
 }
 
 .dates {
