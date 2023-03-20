@@ -1682,7 +1682,7 @@ export default mixins(
 							// If adding more than one node, offset the X position
 							mousePosition[0] -
 								NodeViewUtils.NODE_SIZE / 2 +
-								NodeViewUtils.NODE_SIZE * (index * 2),
+								NodeViewUtils.NODE_SIZE * (index * 2 + NodeViewUtils.GRID_SIZE),
 							mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
 						] as XYPosition,
 						dragAndDrop: true,
@@ -3794,7 +3794,9 @@ export default mixins(
 
 							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [
-								previouslyAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2,
+								previouslyAddedNode.position[0] +
+									NodeViewUtils.NODE_SIZE * 2 +
+									NodeViewUtils.GRID_SIZE,
 								previouslyAddedNode.position[1],
 							];
 							actionWatcher();
