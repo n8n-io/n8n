@@ -448,6 +448,7 @@ export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Saml = 'saml',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
