@@ -26,6 +26,7 @@ jobs:
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
+      repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
       spec: 'e2e/*'

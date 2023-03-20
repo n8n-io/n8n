@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: 'master'
+      repository:
+        description: 'GitHub repository to checkout the branch from.'
+        required: false
+        type: string
+        default: 'n8n-io/n8n'
       user:
         description: 'User who kicked this off.'
         required: false
@@ -71,8 +76,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: n8n-io/n8n
+          repository: ${{ inputs.repository }}
           ref: ${{ inputs.branch }}
+
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4

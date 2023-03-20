@@ -113,6 +113,7 @@ jobs:
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
+      repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
