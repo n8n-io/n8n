@@ -1,5 +1,6 @@
-import type { INode } from 'n8n-workflow';
-import { prepareOutput } from '../../../v2/helpers/utils';
+import { get } from 'lodash';
+import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
+import { prepareOutput, updateByDefinedValues } from '../../../v2/helpers/utils';
 
 const node: INode = {
 	id: '1',
@@ -8,6 +9,21 @@ const node: INode = {
 	type: 'n8n-nodes-base.microsoftExcel',
 	position: [60, 760],
 	parameters: {},
+};
+
+const fakeExecute = (nodeParameters: IDataObject[]) => {
+	const fakeExecuteFunction = {
+		getNodeParameter(
+			parameterName: string,
+			itemIndex: number,
+			fallbackValue?: IDataObject | undefined,
+			options?: IGetNodeParameterOptions | undefined,
+		) {
+			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+			return get(nodeParameters[itemIndex], parameter, fallbackValue);
+		},
+	} as unknown as IExecuteFunctions;
+	return fakeExecuteFunction;
 };
 
 const responseData = {
@@ -121,5 +137,210 @@ describe('Test MicrosoftExcelV2, prepareOutput', () => {
 			age: 33,
 			data: 'data 1',
 		});
+	});
+});
+
+describe('Test MicrosoftExcelV2, updateByDefinedValues', () => {
+	it('should update single row', () => {
+		const nodeParameters = [
+			{
+				columnToMatchOn: 'id',
+				valueToMatchOn: 2,
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Donald',
+						},
+					],
+				},
+			},
+		];
+
+		const sheetData = responseData.values;
+
+		const updateSummary = updateByDefinedValues.call(
+			fakeExecute(nodeParameters),
+			nodeParameters.length,
+			sheetData,
+			false,
+		);
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.updatedRows).toContain(2); //updated row
+		expect(updateSummary.updatedRows).toHaveLength(2);
+		expect(updateSummary.updatedData[2][1]).toEqual('Donald'); // updated value
+	});
+
+	it('should update multiple rows', () => {
+		const nodeParameters = [
+			{
+				columnToMatchOn: 'id',
+				valueToMatchOn: 2,
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Donald',
+						},
+					],
+				},
+			},
+			{
+				columnToMatchOn: 'id',
+				valueToMatchOn: 3,
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Eduard',
+						},
+					],
+				},
+			},
+			{
+				columnToMatchOn: 'id',
+				valueToMatchOn: 4,
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Ismael',
+						},
+					],
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 33, 'data 1'],
+			[2, 'Jon', 44, 'data 2'],
+			[3, 'Ron', 55, 'data 3'],
+			[4, 'Ron', 55, 'data 3'],
+		];
+
+		const updateSummary = updateByDefinedValues.call(
+			fakeExecute(nodeParameters),
+			nodeParameters.length,
+			sheetData,
+			false,
+		);
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.updatedRows).toContain(2); //updated row
+		expect(updateSummary.updatedRows).toContain(3); //updated row
+		expect(updateSummary.updatedRows).toContain(4); //updated row
+		expect(updateSummary.updatedRows).toHaveLength(4);
+		expect(updateSummary.updatedData[2][1]).toEqual('Donald'); // updated value
+		expect(updateSummary.updatedData[3][1]).toEqual('Eduard'); // updated value
+		expect(updateSummary.updatedData[4][1]).toEqual('Ismael'); // updated value
+	});
+
+	it('should update all occurances', () => {
+		const nodeParameters = [
+			{
+				columnToMatchOn: 'data',
+				valueToMatchOn: 'data 3',
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Donald',
+						},
+					],
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 55, 'data 3'],
+			[2, 'Jon', 77, 'data 3'],
+			[3, 'Ron', 44, 'data 3'],
+			[4, 'Ron', 33, 'data 3'],
+		];
+
+		const updateSummary = updateByDefinedValues.call(
+			fakeExecute(nodeParameters),
+			nodeParameters.length,
+			sheetData,
+			true,
+		);
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0); //header row
+		expect(updateSummary.updatedRows).toHaveLength(5);
+
+		for (let i = 1; i < updateSummary.updatedRows.length; i++) {
+			expect(updateSummary.updatedData[i][1]).toEqual('Donald'); // updated value
+		}
+	});
+
+	it('should append rows', () => {
+		const nodeParameters = [
+			{
+				columnToMatchOn: 'id',
+				valueToMatchOn: 4,
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Donald',
+						},
+						{
+							column: 'age',
+							fieldValue: 45,
+						},
+						{
+							column: 'data',
+							fieldValue: 'data 4',
+						},
+					],
+				},
+			},
+			{
+				columnToMatchOn: 'id',
+				valueToMatchOn: 5,
+				fieldsUi: {
+					values: [
+						{
+							column: 'name',
+							fieldValue: 'Victor',
+						},
+						{
+							column: 'age',
+							fieldValue: 67,
+						},
+						{
+							column: 'data',
+							fieldValue: 'data 5',
+						},
+					],
+				},
+			},
+		];
+
+		const sheetData = [
+			['id', 'name', 'age', 'data'],
+			[1, 'Sam', 55, 'data 3'],
+			[2, 'Jon', 77, 'data 3'],
+			[3, 'Ron', 44, 'data 3'],
+		];
+
+		const updateSummary = updateByDefinedValues.call(
+			fakeExecute(nodeParameters),
+			nodeParameters.length,
+			sheetData,
+			true,
+		);
+
+		expect(updateSummary).toBeDefined();
+		expect(updateSummary.updatedRows).toContain(0);
+		expect(updateSummary.updatedRows.length).toEqual(1);
+		expect(updateSummary.appendData[0]).toEqual({ id: 4, name: 'Donald', age: 45, data: 'data 4' });
+		expect(updateSummary.appendData[1]).toEqual({ id: 5, name: 'Victor', age: 67, data: 'data 5' });
 	});
 });
