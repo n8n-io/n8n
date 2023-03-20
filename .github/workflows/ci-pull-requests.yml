@@ -9,8 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - uses: pnpm/action-setup@v2.2.4
 
@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: 16.x
           cache: pnpm
+
+      - name: Print GitHub repository
+        run: echo ${{ github.event.pull_request.head.repo.full_name }} ${{ inputs.branch }} ${{ github.event.pull_request.head.ref }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -43,8 +46,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Restore cached build artifacts
         uses: actions/cache@v3
@@ -79,8 +82,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Print GitHub repository
+        run: echo ${{ github.event.pull_request.head.repo.full_name }} ${{ inputs.branch }} ${{ github.event.pull_request.head.ref }}
 
       - name: Restore cached build artifacts
         uses: actions/cache@v3

@@ -119,7 +119,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: n8n-io/n8n
+          repository: ${{ inputs.repository }}
           ref: ${{ inputs.branch }}
 
       - name: Setup pnpm
