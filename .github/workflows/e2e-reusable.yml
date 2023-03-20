@@ -79,6 +79,8 @@ jobs:
           repository: ${{ inputs.repository }}
           ref: ${{ inputs.branch }}
 
+      - name: Print GitHub repository
+        run: "echo 1: ${{ github.event.pull_request.head.repo.full_name }} 2: ${{ inputs.branch }} 3: ${{ github.event.pull_request.head.ref }}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4

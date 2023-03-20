@@ -8,9 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - uses: pnpm/action-setup@v2.2.4
 
@@ -21,7 +18,7 @@ jobs:
           cache: pnpm
 
       - name: Print GitHub repository
-        run: echo ${{ github.event.pull_request.head.repo.full_name }} ${{ inputs.branch }} ${{ github.event.pull_request.head.ref }}
+        run: "echo 1: ${{ github.event.pull_request.head.repo.full_name }} 2: ${{ inputs.branch }} 3: ${{ github.event.pull_request.head.ref }}"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -45,9 +42,6 @@ jobs:
     needs: install
     steps:
       - uses: actions/checkout@v3
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Restore cached build artifacts
         uses: actions/cache@v3
@@ -81,9 +75,6 @@ jobs:
     needs: install
     steps:
       - uses: actions/checkout@v3
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || 'n8n-io/n8n' }}
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Print GitHub repository
         run: echo ${{ github.event.pull_request.head.repo.full_name }} ${{ inputs.branch }} ${{ github.event.pull_request.head.ref }}
