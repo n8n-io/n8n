@@ -260,6 +260,20 @@ export default Vue.extend({
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));
 	flex-direction: column;
+
+	& ::-webkit-scrollbar {
+		width: 12px;
+	}
+
+	& ::-webkit-scrollbar-thumb {
+		border-radius: 12px;
+		background: var(--color-foreground-dark);
+		border: 3px solid white;
+	}
+
+	& ::-webkit-scrollbar-thumb:hover {
+		background: var(--color-foreground-xdark);
+	}
 }
 
 .container {
