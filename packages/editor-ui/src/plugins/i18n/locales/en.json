@@ -1693,7 +1693,7 @@
 	"userActivationSurveyModal.title": "Congrats! Your workflow ran automatically 👏",
 	"userActivationSurveyModal.description.workflowRan": "{workflow} {ranSuccessfully} {savedTime}",
 	"userActivationSurveyModal.description.workflowRanSuccessfully": "ran successfully",
-	"userActivationSurveyModal.description.savedTime": "for the first time. Looks like n8n just saved you some time! Can you help us make n8n even better and answer the following questions?",
+	"userActivationSurveyModal.description.savedTime": "for the first time. Looks like n8n just saved you some time! Can you help us make n8n even better and answer the following question?",
 	"userActivationSurveyModal.form.label": "What almost stopped you from creating this workflow?",
 	"userActivationSurveyModal.form.button.shareFeedback": "Share feedback",
 	"userActivationSurveyModal.sharedFeedback.success": "Thanks for your feedback",
