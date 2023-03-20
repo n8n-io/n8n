@@ -445,6 +445,7 @@
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/Figma/FigmaTrigger.node.js",
       "dist/nodes/FileMaker/FileMaker.node.js",
+      "dist/nodes/Filter/Filter.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
       "dist/nodes/FormIo/FormIoTrigger.node.js",
