@@ -18,7 +18,7 @@ export async function pgTriggerFunction(
 ): Promise<IPostgresTrigger> {
 	const tableName = this.getNodeParameter('tableName', 0) as INodeParameterResourceLocator;
 	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
-	const target = (schema.value as string) + '.' + (tableName.value as string);
+	const target = `${schema.value as string}."${tableName.value as string}"`;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	let functionName =
