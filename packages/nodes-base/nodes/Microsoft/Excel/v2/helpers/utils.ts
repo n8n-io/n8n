@@ -67,7 +67,7 @@ export function prepareOutput(
 
 export function updateByDefinedValues(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
+	itemslength: number,
 	sheetData: SheetData,
 	updateAll = false,
 ): UpdateSummary {
@@ -77,7 +77,7 @@ export function updateByDefinedValues(
 	const updatedRowsIndexes = new Set<number>();
 	const appendData: IDataObject[] = [];
 
-	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+	for (let itemIndex = 0; itemIndex < itemslength; itemIndex++) {
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', itemIndex) as string;
 		const valueToMatchOn = this.getNodeParameter('valueToMatchOn', itemIndex) as string;
 
@@ -126,16 +126,16 @@ export function updateByDefinedValues(
 				const columnIndex = columns.indexOf(entry.column);
 				if (rowIndex === -1) continue;
 				updateValues[rowIndex][columnIndex] = entry.fieldValue;
-				updatedRowsIndexes.add(rowIndex);
+				//add rows index and shift by 1 to account for header row
+				updatedRowsIndexes.add(rowIndex + 1);
 			}
 		}
 	}
 
-	const summary: UpdateSummary = {
-		updatedData: [columns, ...updateValues],
-		appendData,
-		updatedRows: [0, ...Array.from(updatedRowsIndexes).map((index) => index + 1)], //add columns index and shift by 1
-	};
+	const updatedData = [columns, ...updateValues];
+	const updatedRows = [0, ...Array.from(updatedRowsIndexes)];
+
+	const summary: UpdateSummary = { updatedData, appendData, updatedRows };
 
 	return summary;
 }
@@ -189,15 +189,15 @@ export function updateByAutoMaping(
 
 		for (const rowIndex of rowIndexes) {
 			values[rowIndex] = updatedRow as string[];
-			updatedRowsIndexes.add(rowIndex);
+			//add rows index and shift by 1 to account for header row
+			updatedRowsIndexes.add(rowIndex + 1);
 		}
 	}
 
-	const summary: UpdateSummary = {
-		updatedData: [columns, ...values],
-		appendData,
-		updatedRows: [0, ...Array.from(updatedRowsIndexes).map((index) => index + 1)], //add columns index and shift by 1
-	};
+	const updatedData = [columns, ...values];
+	const updatedRows = [0, ...Array.from(updatedRowsIndexes)];
+
+	const summary: UpdateSummary = { updatedData, appendData, updatedRows };
 
 	return summary;
 }

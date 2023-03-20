@@ -319,7 +319,7 @@ export async function execute(
 			if (dataMode === 'define') {
 				updateSummary = updateByDefinedValues.call(
 					this,
-					items,
+					items.length,
 					worksheetData.values as string[][],
 					updateAll,
 				);
