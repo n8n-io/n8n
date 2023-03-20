@@ -728,6 +728,7 @@ export interface IProcessMessageDataHook {
 
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
+	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
