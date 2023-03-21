@@ -1,43 +1,19 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
-			<div :class="$style.filters">
-				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
-				<n8n-select
-					:class="$style.filterItem"
-					v-model="filter.workflowId"
-					:placeholder="$locale.baseText('executionsList.selectWorkflow')"
-					size="medium"
-					filterable
-					@change="handleFilterChanged"
-				>
-					<div class="ph-no-capture">
-						<n8n-option
-							v-for="item in workflows"
-							:key="item.id"
-							:label="item.name"
-							:value="item.id"
-						/>
-					</div>
-				</n8n-select>
-				<n8n-select
-					:class="$style.filterItem"
-					v-model="filter.status"
-					:placeholder="$locale.baseText('executionsList.selectStatus')"
-					size="medium"
-					filterable
-					@change="handleFilterChanged"
-				>
-					<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id" />
-				</n8n-select>
-				<el-checkbox
-					v-model="autoRefresh"
-					@change="handleAutoRefreshToggle"
-					data-testid="execution-auto-refresh-checkbox"
-				>
-					{{ $locale.baseText('executionsList.autoRefresh') }}
-				</el-checkbox>
+			<div :class="$style.execListHeader">
+				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
+				<div :class="$style.execListHeaderControls">
+					<el-checkbox
+						class="mr-xl"
+						v-model="autoRefresh"
+						@change="handleAutoRefreshToggle"
+						data-testid="execution-auto-refresh-checkbox"
+					>
+						{{ $locale.baseText('executionsList.autoRefresh') }}
+					</el-checkbox>
+					<execution-filter :workflows="workflows" @filterChanged="onFilterChanged" />
+				</div>
 			</div>
 
 			<el-checkbox
@@ -292,6 +268,7 @@
 import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { restApi } from '@/mixins/restApi';
@@ -303,14 +280,17 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
 	IWorkflowShortResponse,
+	ExecutionFilterType,
+	ExecutionsQueryFilter,
 } from '@/Interface';
-import type { IExecutionsSummary, ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { setPageTitle } from '@/utils';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -318,6 +298,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		components: {
 			ExecutionTime,
 			WorkflowActivator,
+			ExecutionFilter,
 		},
 		data() {
 			return {
@@ -330,10 +311,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				autoRefresh: true,
 				autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
-				filter: {
-					status: 'ALL',
-					workflowId: 'ALL',
-				},
+				filter: {} as ExecutionFilterType,
 
 				isDataLoading: false,
 
@@ -350,7 +328,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		},
 		async created() {
 			await this.loadWorkflows();
-			await this.refreshData();
+			//await this.refreshData();
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
@@ -366,47 +344,22 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		},
 		computed: {
 			...mapStores(useUIStore, useWorkflowsStore),
-			statuses() {
-				return [
-					{
-						id: 'ALL',
-						name: this.$locale.baseText('executionsList.anyStatus'),
-					},
-					{
-						id: 'error',
-						name: this.$locale.baseText('executionsList.error'),
-					},
-					{
-						id: 'running',
-						name: this.$locale.baseText('executionsList.running'),
-					},
-					{
-						id: 'success',
-						name: this.$locale.baseText('executionsList.success'),
-					},
-					{
-						id: 'waiting',
-						name: this.$locale.baseText('executionsList.waiting'),
-					},
-				];
-			},
 			activeExecutions(): IExecutionsCurrentSummaryExtended[] {
 				return this.workflowsStore.activeExecutions;
 			},
 			combinedExecutions(): IExecutionsSummary[] {
-				const returnData = [];
+				const returnData: IExecutionsSummary[] = [];
 
-				if (['ALL', 'running'].includes(this.filter.status)) {
-					returnData.push(...(this.activeExecutions as IExecutionsSummary[]));
+				if (['all', 'running'].includes(this.filter.status)) {
+					returnData.push(...this.activeExecutions);
 				}
-
-				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
+				if (['all', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
 
 				return returnData.filter(
 					(execution) =>
-						this.filter.workflowId === 'ALL' || execution.workflowId === this.filter.workflowId,
+						this.filter.workflowId === 'all' || execution.workflowId === this.filter.workflowId,
 				);
 			},
 			numSelected(): number {
@@ -416,33 +369,15 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				return Object.keys(this.selectedItems).length;
 			},
-			workflowFilterCurrent(): IDataObject {
-				const filter: IDataObject = {};
-				if (this.filter.workflowId !== 'ALL') {
+			workflowFilterCurrent(): ExecutionsQueryFilter {
+				const filter: ExecutionsQueryFilter = {};
+				if (this.filter.workflowId !== 'all') {
 					filter.workflowId = this.filter.workflowId;
 				}
 				return filter;
 			},
-			workflowFilterPast(): IDataObject {
-				const queryFilter: IDataObject = {};
-				if (this.filter.workflowId !== 'ALL') {
-					queryFilter.workflowId = this.filter.workflowId;
-				}
-				switch (this.filter.status as ExecutionStatus) {
-					case 'waiting':
-						queryFilter.status = ['waiting'];
-						break;
-					case 'error':
-						queryFilter.status = ['failed', 'crashed'];
-						break;
-					case 'success':
-						queryFilter.status = ['success'];
-						break;
-					case 'running':
-						queryFilter.status = ['running'];
-						break;
-				}
-				return queryFilter;
+			workflowFilterPast(): ExecutionsQueryFilter {
+				return executionFilterToQueryFilter(this.filter);
 			},
 			pageTitle() {
 				return this.$locale.baseText('executionsList.workflowExecutions');
@@ -547,8 +482,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.allExistingSelected = false;
 				Vue.set(this, 'selectedItems', {});
 			},
-			handleFilterChanged(): void {
+			onFilterChanged(filter: ExecutionFilterType) {
+				this.filter = filter;
 				this.refreshData();
+				this.handleClearSelection();
 			},
 			handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 				if (['currentlySaved', 'original'].includes(commandData.command)) {
@@ -759,7 +696,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 					// @ts-ignore
 					workflows.unshift({
-						id: 'ALL',
+						id: 'all',
 						name: this.$locale.baseText('executionsList.allWorkflows'),
 					});
 
@@ -994,6 +931,19 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	}
 }
 
+.execListHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing-s);
+}
+
+.execListHeaderControls {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
+
 .selectionOptions {
 	display: flex;
 	align-items: center;
@@ -1011,16 +961,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	button {
 		margin-left: var(--spacing-2xs);
 	}
-}
-
-.filters {
-	display: flex;
-	line-height: 2em;
-	margin: var(--spacing-l) 0;
-}
-
-.filterItem {
-	margin: 0 var(--spacing-3xl) 0 0;
 }
 
 .statusColumn {

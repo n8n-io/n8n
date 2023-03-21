@@ -110,6 +110,12 @@ import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
 import { binaryToBuffer } from './BinaryDataManager/utils';
+import {
+	getAllWorkflowExecutionMetadata,
+	getWorkflowExecutionMetadata,
+	setAllWorkflowExecutionMetadata,
+	setWorkflowExecutionMetadata,
+} from './WorkflowExecutionMetadata';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1614,6 +1620,7 @@ export async function requestWithAuthentication(
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	runExecutionData: IRunExecutionData | null,
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
@@ -1622,6 +1629,22 @@ export function getAdditionalKeys(
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			customData: runExecutionData
+				? {
+						set(key: string, value: string): void {
+							setWorkflowExecutionMetadata(runExecutionData, key, value);
+						},
+						setAll(obj: Record<string, string>): void {
+							setAllWorkflowExecutionMetadata(runExecutionData, obj);
+						},
+						get(key: string): string {
+							return getWorkflowExecutionMetadata(runExecutionData, key);
+						},
+						getAll(): Record<string, string> {
+							return getAllWorkflowExecutionMetadata(runExecutionData);
+						},
+				  }
+				: undefined,
 		},
 
 		// deprecated
@@ -2111,7 +2134,7 @@ export function getExecutePollFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2169,7 +2192,7 @@ export function getExecuteTriggerFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2227,7 +2250,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 			},
@@ -2293,7 +2316,7 @@ export function getExecuteFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
 					options,
@@ -2310,7 +2333,7 @@ export function getExecuteFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
@@ -2398,7 +2421,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 			},
@@ -2469,7 +2492,7 @@ export function getExecuteSingleFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
 					options,
@@ -2486,7 +2509,7 @@ export function getExecuteSingleFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
@@ -2578,7 +2601,7 @@ export function getLoadOptionsFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2627,7 +2650,7 @@ export function getExecuteHookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2641,7 +2664,7 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 					isTest,
 				);
 			},
@@ -2704,7 +2727,7 @@ export function getExecuteWebhookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 					undefined,
 					fallbackValue,
 					options,
@@ -2742,7 +2765,7 @@ export function getExecuteWebhookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 				),
 			getWebhookName: () => webhookData.webhookDescription.name,
 			prepareOutputData: NodeHelpers.prepareOutputData,
