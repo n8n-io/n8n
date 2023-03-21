@@ -159,8 +159,8 @@ export class MessageEventBusLogWriter {
 			unfinishedExecutions: {},
 		};
 		const logCount = logHistory
-			? Math.min(config.get('eventBus.logWriter.keepLogCount') as number, logHistory)
-			: (config.get('eventBus.logWriter.keepLogCount') as number);
+			? Math.min(config.get('eventBus.logWriter.keepLogCount'), logHistory)
+			: config.get('eventBus.logWriter.keepLogCount');
 		for (let i = logCount; i >= 0; i--) {
 			const logFileName = this.getLogFileName(i);
 			if (logFileName) {
@@ -256,8 +256,8 @@ export class MessageEventBusLogWriter {
 	): Promise<EventMessageTypes[]> {
 		const result: EventMessageTypes[] = [];
 		const logCount = logHistory
-			? Math.min(config.get('eventBus.logWriter.keepLogCount') as number, logHistory)
-			: (config.get('eventBus.logWriter.keepLogCount') as number);
+			? Math.min(config.get('eventBus.logWriter.keepLogCount'), logHistory)
+			: config.get('eventBus.logWriter.keepLogCount');
 		for (let i = 0; i < logCount; i++) {
 			const logFileName = this.getLogFileName(i);
 			if (logFileName) {

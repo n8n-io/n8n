@@ -62,6 +62,36 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 	}
 };
 
+type JSONStringifyOptions = {
+	replaceCircularRefs?: boolean;
+	circularRefReplacement?: string;
+};
+
+const getReplaceCircularReferencesFn = (options: JSONStringifyOptions) => {
+	const knownObjects = new WeakSet();
+	return (key: any, value: any) => {
+		if (typeof value === 'object' && value !== null) {
+			if (knownObjects.has(value)) {
+				return options?.circularRefReplacement ?? '[Circular Reference]';
+			}
+			knownObjects.add(value);
+		}
+		return value;
+	};
+};
+
+export const jsonStringify = (obj: unknown, options?: JSONStringifyOptions): string => {
+	try {
+		if (options?.replaceCircularRefs === true) {
+			return JSON.stringify(obj, getReplaceCircularReferencesFn(options));
+		}
+		return JSON.stringify(obj);
+	} catch (error) {
+		// TOOD: handle stringify errors?
+		throw error;
+	}
+};
+
 export const sleep = async (ms: number): Promise<void> =>
 	new Promise((resolve) => {
 		setTimeout(resolve, ms);
