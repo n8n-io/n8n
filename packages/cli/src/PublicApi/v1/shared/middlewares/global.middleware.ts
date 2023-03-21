@@ -2,7 +2,7 @@
 
 import type express from 'express';
 
-import type { AuthenticatedRequest, PaginatatedRequest } from '../../../types';
+import type { AuthenticatedRequest, PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 export const authorize =
@@ -22,7 +22,7 @@ export const authorize =
 	};
 
 export const validCursor = (
-	req: PaginatatedRequest,
+	req: PaginatedRequest,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {

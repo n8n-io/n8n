@@ -125,7 +125,7 @@ const isJsonRequest = (curlJson: CurlJson): boolean => {
 		try {
 			JSON.parse(bodyKey);
 			return true;
-		} catch (_) {
+		} catch {
 			return false;
 		}
 	}

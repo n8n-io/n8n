@@ -15,6 +15,7 @@
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
 				:isSingleLine="isForRecordLocator"
+				:path="path"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"
@@ -93,6 +94,9 @@ export default Vue.extend({
 		};
 	},
 	props: {
+		path: {
+			type: String,
+		},
 		value: {
 			type: String,
 		},

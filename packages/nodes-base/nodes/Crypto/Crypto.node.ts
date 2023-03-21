@@ -1,8 +1,7 @@
-import { set } from 'lodash';
-
-import type { IExecuteFunctions } from 'n8n-core';
+import set from 'lodash.set';
 
 import type {
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,

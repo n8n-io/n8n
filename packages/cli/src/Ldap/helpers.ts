@@ -2,6 +2,7 @@
 import { AES, enc } from 'crypto-js';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
+import { Container } from 'typedi';
 import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
@@ -22,15 +23,15 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
-import { getLicense } from '@/License';
+import { License } from '@/License';
+import { InternalHooks } from '@/InternalHooks';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
 export const isLdapEnabled = (): boolean => {
-	const license = getLicense();
+	const license = Container.get(License);
 	return isUserManagementEnabled() && (config.getEnv(LDAP_ENABLED) || license.isLdapEnabled());
 };
 
@@ -162,7 +163,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
 			await deleteAllLdapIdentities();
-			void InternalHooksManager.getInstance().onLdapUsersDisabled({
+			void Container.get(InternalHooks).onLdapUsersDisabled({
 				reason: 'ldap_update',
 				users: ldapUsers.length,
 				user_ids: ldapUsers.map((user) => user.id),
@@ -185,7 +186,7 @@ export const handleLdapInit = async (): Promise<void> => {
 	if (!isLdapEnabled()) {
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
-			void InternalHooksManager.getInstance().onLdapUsersDisabled({
+			void Container.get(InternalHooks).onLdapUsersDisabled({
 				reason: 'ldap_feature_deactivated',
 				users: ldapUsers.length,
 				user_ids: ldapUsers.map((user) => user.id),
@@ -238,7 +239,7 @@ export const findAndAuthenticateLdapUser = async (
 		);
 	} catch (e) {
 		if (e instanceof Error) {
-			void InternalHooksManager.getInstance().onLdapLoginSyncFailed({
+			void Container.get(InternalHooks).onLdapLoginSyncFailed({
 				error: e.message,
 			});
 			Logger.error('LDAP - Error during search', { message: e.message });

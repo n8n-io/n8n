@@ -88,7 +88,7 @@ export const executeCommand = async (
 
 	try {
 		await fsAccess(downloadFolder);
-	} catch (_) {
+	} catch {
 		await fsMkdir(downloadFolder);
 		// Also init the folder since some versions
 		// of npm complain if the folder is empty
@@ -154,7 +154,7 @@ export function matchMissingPackages(
 			return parsedPackageData.packageName;
 
 			// eslint-disable-next-line no-empty
-		} catch (_) {}
+		} catch {}
 		return undefined;
 	});
 

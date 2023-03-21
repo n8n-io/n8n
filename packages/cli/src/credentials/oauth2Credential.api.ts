@@ -30,6 +30,7 @@ import type { OAuthRequest } from '@/requests';
 import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Container } from 'typedi';
 
 export const oauth2CredentialController = express.Router();
 
@@ -129,7 +130,7 @@ oauth2CredentialController.get(
 			state: stateEncodedStr,
 		};
 
-		await ExternalHooks().run('oauth2.authenticate', [oAuthOptions]);
+		await Container.get(ExternalHooks).run('oauth2.authenticate', [oAuthOptions]);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 
@@ -281,7 +282,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			}
 
-			await ExternalHooks().run('oauth2.callback', [oAuth2Parameters]);
+			await Container.get(ExternalHooks).run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 

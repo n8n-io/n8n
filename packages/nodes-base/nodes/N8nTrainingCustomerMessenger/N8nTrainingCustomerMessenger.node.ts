@@ -1,7 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -43,7 +41,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 
@@ -53,9 +51,13 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 			const message = this.getNodeParameter('message', i) as string;
 
 			responseData = { output: `Sent message to customer ${customerId}:  ${message}` };
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
 
-			returnData.push(responseData);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

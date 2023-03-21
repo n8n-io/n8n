@@ -1,19 +1,13 @@
-import Command, { flags } from '@oclif/command';
-import { LoggerProxy } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
-import type { Logger } from '@/Logger';
-import { getLogger } from '@/Logger';
+import { flags } from '@oclif/command';
 import { audit } from '@/audit';
 import { RISK_CATEGORIES } from '@/audit/constants';
-import { CredentialTypes } from '@/CredentialTypes';
-import { NodeTypes } from '@/NodeTypes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import config from '@/config';
-import * as Db from '@/Db';
 import type { Risk } from '@/audit/types';
+import { BaseCommand } from './BaseCommand';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
-export class SecurityAudit extends Command {
+export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
 
 	static examples = [
@@ -35,11 +29,7 @@ export class SecurityAudit extends Command {
 		}),
 	};
 
-	logger: Logger;
-
 	async run() {
-		await this.init();
-
 		const { flags: auditFlags } = this.parse(SecurityAudit);
 
 		const categories =
@@ -67,41 +57,11 @@ export class SecurityAudit extends Command {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
 
-		void InternalHooksManager.getInstance().onAuditGeneratedViaCli();
-	}
-
-	async init() {
-		await Db.init();
-
-		this.initLogger();
-
-		await this.initInternalHooksManager();
-	}
-
-	initLogger() {
-		this.logger = getLogger();
-		LoggerProxy.init(this.logger);
-	}
-
-	async initInternalHooksManager(): Promise<void> {
-		const loadNodesAndCredentials = LoadNodesAndCredentials();
-		await loadNodesAndCredentials.init();
-
-		const nodeTypes = NodeTypes(loadNodesAndCredentials);
-		CredentialTypes(loadNodesAndCredentials);
-
-		const instanceId = await UserSettings.getInstanceId();
-		await InternalHooksManager.init(instanceId, nodeTypes);
+		void Container.get(InternalHooks).onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {
 		this.logger.error('Failed to generate security audit');
 		this.logger.error(error.message);
-
-		this.exit(1);
-	}
-
-	async finally() {
-		this.exit();
 	}
 }

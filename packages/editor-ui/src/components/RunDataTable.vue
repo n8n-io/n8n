@@ -367,19 +367,15 @@ export default mixins(externalHooks).extend({
 			if (typeof value === 'string') {
 				return value.replaceAll('\n', '\\n');
 			}
-
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
 			}
-
 			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
 				return this.$locale.baseText('runData.emptyObject');
 			}
-
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
-
 			return value;
 		},
 		onDragStart() {

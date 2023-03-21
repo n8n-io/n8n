@@ -1,6 +1,11 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	JsonObject,
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -77,7 +82,7 @@ export async function pipedriveApiRequest(
 		}
 
 		if (responseData.success === false) {
-			throw new NodeApiError(this.getNode(), responseData);
+			throw new NodeApiError(this.getNode(), responseData as JsonObject);
 		}
 
 		return {
@@ -85,7 +90,7 @@ export async function pipedriveApiRequest(
 			data: responseData.data === null ? [] : responseData.data,
 		};
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -116,9 +121,9 @@ export async function pipedriveApiRequestAllItems(
 		responseData = await pipedriveApiRequest.call(this, method, endpoint, body, query);
 		// the search path returns data diferently
 		if (responseData.data.items) {
-			returnData.push.apply(returnData, responseData.data.items);
+			returnData.push.apply(returnData, responseData.data.items as IDataObject[]);
 		} else {
-			returnData.push.apply(returnData, responseData.data);
+			returnData.push.apply(returnData, responseData.data as IDataObject[]);
 		}
 
 		query.start = responseData.additionalData.pagination.next_start;
@@ -230,7 +235,7 @@ export function pipedriveResolveCustomProperties(
 
 	const json = item.json as IDataObject;
 
-	// Itterate over all keys and replace the custom ones
+	// Iterate over all keys and replace the custom ones
 	for (const key of Object.keys(json)) {
 		if (customProperties[key] !== undefined) {
 			// Is a custom property

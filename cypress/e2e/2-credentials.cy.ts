@@ -1,4 +1,3 @@
-import { HTTP_REQUEST_NODE_TYPE } from './../../packages/editor-ui/src/constants';
 import {
 	NEW_NOTION_ACCOUNT_NAME,
 	NOTION_NODE_NAME,
@@ -6,7 +5,6 @@ import {
 	HTTP_REQUEST_NODE_NAME,
 	NEW_QUERY_AUTH_ACCOUNT_NAME,
 } from './../constants';
-import { visit } from 'recast';
 import {
 	DEFAULT_USER_EMAIL,
 	DEFAULT_USER_PASSWORD,
@@ -18,6 +16,9 @@ import {
 } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
+import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
+import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
+import CustomCredential from '../fixtures/Custom_credential.json';
 
 const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
@@ -33,17 +34,10 @@ const NEW_CREDENTIAL_NAME = 'Something else';
 describe('Credentials', () => {
 	before(() => {
 		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
+		cy.skipSetup();
 	});
 
 	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		});
-
-		cy.signin({ email, password });
 		cy.visit(credentialsPage.url);
 	});
 
@@ -55,7 +49,6 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
@@ -73,7 +66,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-
+		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('Airtable Account');
@@ -107,7 +100,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with multiple auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -124,7 +116,6 @@ describe('Credentials', () => {
 
 	it('should show multiple credential types in the same dropdown', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -150,8 +141,7 @@ describe('Credentials', () => {
 
 	it('should correctly render required and optional credentials', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
-		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true);
+		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
 		cy.get('body').type('{downArrow}');
 		cy.get('body').type('{enter}');
 		// Select incoming authentication
@@ -175,7 +165,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with no auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -189,7 +178,6 @@ describe('Credentials', () => {
 
 	it('should delete credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -209,7 +197,6 @@ describe('Credentials', () => {
 
 	it('should rename credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -230,7 +217,6 @@ describe('Credentials', () => {
 
 	it('should setup generic authentication for HTTP node', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();

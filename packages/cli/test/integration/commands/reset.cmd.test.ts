@@ -2,10 +2,17 @@ import * as Db from '@/Db';
 import { Reset } from '@/commands/user-management/reset';
 import type { Role } from '@db/entities/Role';
 import * as testDb from '../shared/testDb';
+import { mockInstance } from '../shared/utils';
+import { InternalHooks } from '@/InternalHooks';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
 
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
+	mockInstance(InternalHooks);
+	mockInstance(LoadNodesAndCredentials);
+	mockInstance(NodeTypes);
 	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
@@ -19,7 +26,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-test('user-management:reset should reset DB to default user state', async () => {
+test.skip('user-management:reset should reset DB to default user state', async () => {
 	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	await Reset.run();

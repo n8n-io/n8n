@@ -81,8 +81,6 @@ type ExceptionPaths = {
 	'nodes.include': string[] | undefined;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'userManagement.skipInstanceOwnerSetup': boolean;
-	'ldap.loginLabel': string;
-	'ldap.loginEnabled': boolean;
 };
 
 // -----------------------------------

@@ -41,7 +41,11 @@
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>
 					</el-radio>
-					<div :class="$style.optionInput" v-if="operation === 'delete'">
+					<div
+						:class="$style.optionInput"
+						v-if="operation === 'delete'"
+						data-test-id="delete-data-input"
+					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
 								:value="deleteConfirmText"

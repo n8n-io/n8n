@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.214.0
+
+### What changed?
+
+Invalid Luxon datetimes no longer resolve to `null`. Now they throw the error `invalid DateTime`.
+
+### When is action necessary?
+
+If you are relying on the above behavior, review your workflow to ensure you handle invalid Luxon datetimes.
+
 ## 0.202.0
 
 ### What changed?

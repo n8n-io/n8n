@@ -1,4 +1,9 @@
-import { closeBrackets, completionStatus, insertBracket } from '@codemirror/autocomplete';
+import {
+	closeBrackets,
+	completionStatus,
+	insertBracket,
+	startCompletion,
+} from '@codemirror/autocomplete';
 import { codePointAt, codePointSize, Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
@@ -59,6 +64,8 @@ const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 			selection: { anchor: cursor + 1 },
 		});
 
+		startCompletion(view);
+
 		return true;
 	}
 
@@ -68,7 +75,13 @@ const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isBraceSetup) {
+	const { head } = view.state.selection.main;
+
+	const isInsideResolvable =
+		view.state.sliceDoc(0, head).includes('{{') &&
+		view.state.sliceDoc(head, view.state.doc.length).includes('}}');
+
+	if (isBraceSetup && !isInsideResolvable) {
 		view.dispatch({ changes: { from: cursor, insert: ' ' } });
 
 		return true;

@@ -19,6 +19,7 @@ import {
 	saveCredential,
 	toJsonSchema,
 } from './credentials.service';
+import { Container } from 'typedi';
 
 export = {
 	createCredential: [
@@ -87,7 +88,7 @@ export = {
 			const { credentialTypeName } = req.params;
 
 			try {
-				CredentialTypes().getByName(credentialTypeName);
+				Container.get(CredentialTypes).getByName(credentialTypeName);
 			} catch (error) {
 				return res.status(404).json({ message: 'Not Found' });
 			}

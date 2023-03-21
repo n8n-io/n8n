@@ -48,7 +48,7 @@ import { restApi } from '@/mixins/restApi';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
@@ -82,6 +82,7 @@ export function resolveParameter(
 
 	const inputName = 'main';
 	const activeNode = useNDVStore().activeNode;
+
 	const workflow = getCurrentWorkflow();
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);

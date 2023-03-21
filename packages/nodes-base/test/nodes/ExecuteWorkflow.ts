@@ -1,8 +1,9 @@
 import { WorkflowExecute } from 'n8n-core';
 import { createDeferredPromise, INodeTypes, IRun, Workflow } from 'n8n-workflow';
 import * as Helpers from './Helpers';
+import type { WorkflowTestData } from './types';
 
-export async function executeWorkflow(testData, nodeTypes: INodeTypes) {
+export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INodeTypes) {
 	const executionMode = 'manual';
 	const workflowInstance = new Workflow({
 		id: 'test',

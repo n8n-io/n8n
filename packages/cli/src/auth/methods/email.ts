@@ -1,8 +1,9 @@
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export const handleEmailLogin = async (
 	email: string,
@@ -21,7 +22,7 @@ export const handleEmailLogin = async (
 	// so suggest to reset the password to gain access to the instance.
 	const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 	if (user && ldapIdentity) {
-		void InternalHooksManager.getInstance().userLoginFailedDueToLdapDisabled({
+		void Container.get(InternalHooks).userLoginFailedDueToLdapDisabled({
 			user_id: user.id,
 		});
 

@@ -12,9 +12,7 @@ export class CredentialsModal extends BasePage {
 		connectionParameter: (fieldName: string) =>
 			this.getters
 				.connectionParameters()
-				.contains(fieldName)
-				.parents('[data-test-id="credential-connection-parameter"]')
-				.find('.n8n-input input'),
+				.find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		// Saving of the credentials takes a while on the CI so we need to increase the timeout
@@ -26,18 +24,25 @@ export class CredentialsModal extends BasePage {
 		credentialAuthTypeRadioButtons: () =>
 			this.getters.credentialsAuthTypeSelector().find('label[role=radio]'),
 		credentialInputs: () => cy.getByTestId('credential-connection-parameter'),
+		menu: () => this.getters.editCredentialModal().get('.menu-container'),
+		menuItem: (name: string) => this.getters.menu().get('.n8n-menu-item').contains(name),
+		usersSelect: () => cy.getByTestId('credential-sharing-modal-users-select'),
 	};
 	actions = {
+		addUser: (email: string) => {
+			this.getters.usersSelect().click();
+			this.getters
+				.usersSelect()
+				.get('.el-select-dropdown__item')
+				.contains(email.toLowerCase())
+				.click();
+		},
 		setName: (name: string) => {
 			this.getters.name().click();
 			this.getters.nameInput().clear().type(name);
 		},
 		save: (test = false) => {
 			cy.intercept('POST', '/rest/credentials').as('saveCredential');
-			if (test) {
-				cy.intercept('POST', '/rest/credentials/test').as('testCredential');
-			}
-
 			this.getters.saveButton().click();
 
 			cy.wait('@saveCredential');
@@ -63,6 +68,9 @@ export class CredentialsModal extends BasePage {
 			this.getters.nameInput().type('{selectall}');
 			this.getters.nameInput().type(newName);
 			this.getters.nameInput().type('{enter}');
+		},
+		changeTab: (tabName: string) => {
+			this.getters.menuItem(tabName).click();
 		},
 	};
 }

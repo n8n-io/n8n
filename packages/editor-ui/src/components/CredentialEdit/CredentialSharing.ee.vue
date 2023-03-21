@@ -61,6 +61,7 @@
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				data-test-id="credential-sharing-modal-users-select"
 				@input="onAddSharee"
 			>
 				<template #prefix>
@@ -89,6 +90,7 @@ import { useUIStore } from '@/stores/ui';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useUsageStore } from '@/stores/usage';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(showMessage).extend({
 	name: 'CredentialSharing',
@@ -135,7 +137,7 @@ export default mixins(showMessage).extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 	},
 	methods: {
@@ -179,9 +181,14 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl);
-			if (linkUrl.includes('subscription')) {
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
 				linkUrl = `${this.usageStore.viewPlansUrl}&source=credential_sharing`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-credentials-sharing`;
 			}
 
 			window.open(linkUrl, '_blank');

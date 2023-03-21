@@ -7,4 +7,5 @@ export * from './workflow';
 export * from './modals';
 export * from './settings-users';
 export * from './settings-log-streaming';
+export * from './sidebar';
 export * from './ndv';
