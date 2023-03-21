@@ -81,15 +81,10 @@ const getReplaceCircularReferencesFn = (options: JSONStringifyOptions) => {
 };
 
 export const jsonStringify = (obj: unknown, options?: JSONStringifyOptions): string => {
-	try {
-		if (options?.replaceCircularRefs === true) {
-			return JSON.stringify(obj, getReplaceCircularReferencesFn(options));
-		}
-		return JSON.stringify(obj);
-	} catch (error) {
-		// TOOD: handle stringify errors?
-		throw error;
+	if (options?.replaceCircularRefs === true) {
+		return JSON.stringify(obj, getReplaceCircularReferencesFn(options));
 	}
+	return JSON.stringify(obj);
 };
 
 export const sleep = async (ms: number): Promise<void> =>
