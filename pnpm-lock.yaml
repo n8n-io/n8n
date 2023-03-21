@@ -124,7 +124,7 @@ importers:
       '@types/body-parser-xml': ^2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': ^1.3.1
-      '@types/convict': ^4.2.1
+      '@types/convict': ^6.1.1
       '@types/cookie-parser': ^1.4.2
       '@types/express': ^4.17.6
       '@types/json-diff': ^0.5.1
@@ -172,7 +172,7 @@ importers:
       compression: ^1.7.4
       concurrently: ^5.1.0
       connect-history-api-fallback: ^1.6.0
-      convict: ^6.0.1
+      convict: ^6.2.4
       cookie-parser: ^1.4.6
       crypto-js: ~4.1.1
       csrf: ^3.1.0
@@ -273,7 +273,7 @@ importers:
       client-oauth2: 4.3.3
       compression: 1.7.4
       connect-history-api-fallback: 1.6.0
-      convict: 6.2.3
+      convict: 6.2.4
       cookie-parser: 1.4.6
       crypto-js: 4.1.1
       csrf: 3.1.0
@@ -354,7 +354,7 @@ importers:
       '@types/body-parser-xml': 2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': 1.3.5
-      '@types/convict': 4.2.1
+      '@types/convict': 6.1.1
       '@types/cookie-parser': 1.4.3
       '@types/express': 4.17.14
       '@types/json-diff': 0.5.2
@@ -5509,8 +5509,10 @@ packages:
     dependencies:
       '@types/node': 16.18.12
 
-  /@types/convict/4.2.1:
-    resolution: {integrity: sha512-2cd51m3i0yeY1i3dKxcqJKeS5Q4jZnjP37OseoNeIX1OM0AhmGPuuYmwJ9OqtsU35YrREQxdb2VeX5sM3cwGMQ==}
+  /@types/convict/6.1.1:
+    resolution: {integrity: sha512-R+JLaTvhsD06p4jyjUDtbd5xMtZTRE3c0iI+lrFWZogSVEjgTWPYwvJPVf+t92E+yrlbXa4X4Eg9ro6gPdUt4w==}
+    dependencies:
+      '@types/node': 16.18.12
     dev: true
 
   /@types/cookie-parser/1.4.3:
@@ -9249,8 +9251,8 @@ packages:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
     dev: true
 
-  /convict/6.2.3:
-    resolution: {integrity: sha512-mTY04Qr7WrqiXifdeUYXr4/+Te4hPFWDvz6J2FVIKCLc2XBhq63VOSSYAKJ+unhZAYOAjmEdNswTOeHt7s++pQ==}
+  /convict/6.2.4:
+    resolution: {integrity: sha512-qN60BAwdMVdofckX7AlohVJ2x9UvjTNoKVXCL2LxFk1l7757EJqf1nySdMkPQer0bt8kQ5lQiyZ9/2NvrFBuwQ==}
     engines: {node: '>=6'}
     dependencies:
       lodash.clonedeep: 4.5.0
