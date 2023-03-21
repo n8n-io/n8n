@@ -208,7 +208,7 @@ importers:
       lodash.uniq: ^4.5.0
       lodash.uniqby: ^4.7.0
       lodash.unset: ^4.5.2
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       mock-jwks: ^1.0.9
       mysql2: ~2.3.3
       n8n-core: workspace:*
@@ -308,7 +308,7 @@ importers:
       lodash.uniq: 4.5.0
       lodash.uniqby: 4.7.0
       lodash.unset: 4.5.2
-      luxon: 3.1.1
+      luxon: 3.3.0
       mysql2: 2.3.3
       n8n-core: link:../core
       n8n-editor-ui: link:../editor-ui
@@ -588,7 +588,7 @@ importers:
       '@types/lodash.camelcase': ^4.3.6
       '@types/lodash.get': ^4.4.6
       '@types/lodash.set': ^4.3.6
-      '@types/luxon': ^2.0.9
+      '@types/luxon': ^3.2.0
       '@types/uuid': ^8.3.2
       '@vitejs/plugin-legacy': ^3.0.1
       '@vitejs/plugin-vue2': ^2.2.0
@@ -607,7 +607,7 @@ importers:
       jshint: ^2.9.7
       jsonpath: ^1.1.1
       lodash-es: ^4.17.21
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       miragejs: ^0.1.47
       monaco-editor: ^0.33.0
       n8n-design-system: workspace:*
@@ -671,7 +671,7 @@ importers:
       jquery: 3.6.1
       jsonpath: 1.1.1
       lodash-es: 4.17.21
-      luxon: 3.1.1
+      luxon: 3.3.0
       monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
       n8n-workflow: link:../workflow
@@ -712,7 +712,7 @@ importers:
       '@types/lodash.camelcase': 4.3.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.set': 4.3.7
-      '@types/luxon': 2.4.0
+      '@types/luxon': 3.2.0
       '@types/uuid': 8.3.4
       '@vitejs/plugin-legacy': 3.0.1_terser@5.16.1+vite@4.0.4
       '@vitejs/plugin-vue2': 2.2.0_vite@4.0.4+vue@2.7.14
@@ -902,7 +902,7 @@ importers:
       lodash.upperfirst: ^4
       lodash.zip: ^4
       lossless-json: ^1.0.4
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       mailparser: ^3.2.0
       moment: ~2.29.2
       moment-timezone: ^0.5.28
@@ -998,7 +998,7 @@ importers:
       lodash.upperfirst: 4.3.1
       lodash.zip: 4.2.0
       lossless-json: 1.0.5
-      luxon: 3.1.1
+      luxon: 3.3.0
       mailparser: 3.5.0
       moment: 2.29.4
       moment-timezone: 0.5.37
@@ -1113,7 +1113,7 @@ importers:
       '@types/lodash.isequal': ^4.5.6
       '@types/lodash.merge': ^4.6.6
       '@types/lodash.set': ^4.3.6
-      '@types/luxon': ^2.0.9
+      '@types/luxon': ^3.2.0
       '@types/xml2js': ^0.4.3
       ast-types: 0.15.2
       crypto-js: ^4.1.1
@@ -1125,7 +1125,7 @@ importers:
       lodash.isequal: ^4.5.0
       lodash.merge: ^4.6.2
       lodash.set: ^4.3.2
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       recast: ^0.21.5
       title-case: ^3.0.3
       transliteration: ^2.3.5
@@ -1142,7 +1142,7 @@ importers:
       lodash.isequal: 4.5.0
       lodash.merge: 4.6.2
       lodash.set: 4.3.2
-      luxon: 3.1.1
+      luxon: 3.3.0
       recast: 0.21.5
       title-case: 3.0.3
       transliteration: 2.3.5
@@ -1156,7 +1156,7 @@ importers:
       '@types/lodash.isequal': 4.5.6
       '@types/lodash.merge': 4.6.7
       '@types/lodash.set': 4.3.7
-      '@types/luxon': 2.4.0
+      '@types/luxon': 3.2.0
       '@types/xml2js': 0.4.11
 
 packages:
@@ -6047,8 +6047,8 @@ packages:
     resolution: {integrity: sha512-zPE8kmpeL5/6L5gtTQHSOkAW/OSYYNTDRt6/2oEgLO1Zd3Rj5WVDoMloTtLJxQJhZGLGbL4pktKSh3NbzdaWdw==}
     dev: true
 
-  /@types/luxon/2.4.0:
-    resolution: {integrity: sha512-oCavjEjRXuR6URJEtQm0eBdfsBiEcGBZbq21of8iGkeKxU1+1xgKuFPClaBZl2KB8ZZBSWlgk61tH6Mf+nvZVw==}
+  /@types/luxon/3.2.0:
+    resolution: {integrity: sha512-lGmaGFoaXHuOLXFvuju2bfvZRqxAqkHPx9Y9IQdQABrinJJshJwfNCKV+u7rR3kJbiqfTF/NhOkcxxAFrObyaA==}
     dev: true
 
   /@types/mailparser/2.7.4:
@@ -9381,7 +9381,7 @@ packages:
     resolution: {integrity: sha512-BdAELR+MCT2ZWsIBhZKDuUqIUCBjHHulPJnm53OfdRLA4EWBjva3R+KM5NeidJuGsNXdEcZkjC7SCnkW5rAFSA==}
     engines: {node: '>=12.0.0'}
     dependencies:
-      luxon: 3.1.1
+      luxon: 3.3.0
     dev: false
 
   /cron/1.7.2:
@@ -14983,8 +14983,8 @@ packages:
     resolution: {integrity: sha512-Pn9cox5CsMYngeDbmChANltQl+5pi6XmTrraMSzhPmMBbmgcxmqWry0U3PGapCU1yB4/LqCcom7qhHZiF/jGfQ==}
     dev: false
 
-  /luxon/3.1.1:
-    resolution: {integrity: sha512-Ah6DloGmvseB/pX1cAmjbFvyU/pKuwQMQqz7d0yvuDlVYLTs2WeDHQMpC8tGjm1da+BriHROW/OEIT/KfYg6xw==}
+  /luxon/3.3.0:
+    resolution: {integrity: sha512-An0UCfG/rSiqtAIiBPO0Y9/zAnHUZxAMiCpTd5h2smgsj7GGmcenvrvww2cqNA8/4A5ZrD1gJpHN2mIHZQF+Mg==}
     engines: {node: '>=12'}
     dev: false
 

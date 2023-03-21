@@ -47,7 +47,7 @@
     "@types/lodash.isequal": "^4.5.6",
     "@types/lodash.merge": "^4.6.6",
     "@types/lodash.set": "^4.3.6",
-    "@types/luxon": "^2.0.9",
+    "@types/luxon": "^3.2.0",
     "@types/xml2js": "^0.4.3"
   },
   "dependencies": {
@@ -62,7 +62,7 @@
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "luxon": "^3.1.0",
+    "luxon": "^3.3.0",
     "recast": "^0.21.5",
     "title-case": "^3.0.3",
     "transliteration": "^2.3.5",
