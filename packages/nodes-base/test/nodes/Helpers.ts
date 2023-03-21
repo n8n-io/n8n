@@ -214,6 +214,8 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 
 export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	return Object.keys(testData.output.nodeData).map((nodeName) => {
+		console.log(nodeName);
+		//console.log(result.data.resultData);
 		if (result.data.resultData.runData[nodeName] === undefined) {
 			throw new Error(`Data for node "${nodeName}" is missing!`);
 		}

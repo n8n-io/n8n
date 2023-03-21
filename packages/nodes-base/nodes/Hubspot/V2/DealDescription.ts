@@ -39,8 +39,8 @@ export const dealOperations: INodeProperties[] = [
 			{
 				name: 'Get Recently Created/Updated',
 				value: 'getRecentlyCreatedUpdated',
-				description: 'Get recently created/updated contacts',
-				action: 'Get recently created/updated contacts',
+				description: 'Get recently created/updated deals',
+				action: 'Get recently created/updated deals',
 			},
 			{
 				name: 'Search',
