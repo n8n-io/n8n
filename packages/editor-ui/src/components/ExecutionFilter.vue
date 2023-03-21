@@ -390,4 +390,29 @@ onBeforeMount(() => {
 		}
 	}
 }
+
+:deep(.el-select-dropdown.el-popper[x-placement^='bottom']) {
+	> .popper__arrow {
+		top: -6px;
+		left: 50%;
+		right: unset;
+		margin-bottom: 0;
+		margin-right: 3px;
+		border-left-width: 6px;
+		border-top-width: 0;
+		border-bottom-color: var(--border-color-light);
+		border-right-color: transparent;
+
+		&::after {
+			top: 1px;
+			left: unset;
+			bottom: unset;
+			margin-left: -6px;
+			border-left-width: 6px;
+			border-top-width: 0;
+			border-bottom-color: var(--color-foreground-xlight);
+			border-right-color: transparent;
+		}
+	}
+}
 </style>
