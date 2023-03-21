@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import type { AuthenticatedRequest } from '../../../requests';
+import type { AuthenticatedRequest } from '@/requests';
 import { isSamlLicensed, isSamlLicensedAndEnabled } from '../samlHelpers';
 
 export const samlLicensedOwnerMiddleware: RequestHandler = (
