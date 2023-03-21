@@ -2243,7 +2243,7 @@ export class HubspotV2 implements INodeType {
 							const companyId = this.getNodeParameter('companyId', i, undefined, {
 								extractValue: true,
 							}) as string;
-							const endpoint = `/companies/v2/companies/${companyId}`;
+							const endpoint = `/crm/v3/objects/companies/${companyId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 							responseData =
 								responseData === undefined ? { vid: companyId, deleted: true } : responseData;
