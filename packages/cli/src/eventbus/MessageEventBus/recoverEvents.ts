@@ -10,6 +10,7 @@ import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -122,9 +123,6 @@ export async function recoverExecutionDataFromEventLogMessages(
 			}
 		}
 
-		if (!executionData.resultData.error && workflowError) {
-			executionData.resultData.error = workflowError;
-		}
 		if (!lastNodeRunTimestamp) {
 			const workflowEndedMessage = messages.find((message) =>
 				(
@@ -138,6 +136,11 @@ export async function recoverExecutionDataFromEventLogMessages(
 			if (workflowEndedMessage) {
 				lastNodeRunTimestamp = workflowEndedMessage.ts;
 			} else {
+				if (!workflowError) {
+					workflowError = new WorkflowOperationError(
+						'Workflow did not finish, possible out-of-memory issue',
+					);
+				}
 				const workflowStartedMessage = messages.find(
 					(message) => message.eventName === 'n8n.workflow.started',
 				);
@@ -146,6 +149,11 @@ export async function recoverExecutionDataFromEventLogMessages(
 				}
 			}
 		}
+
+		if (!executionData.resultData.error && workflowError) {
+			executionData.resultData.error = workflowError;
+		}
+
 		if (applyToDb) {
 			await Db.collections.Execution.update(executionId, {
 				data: stringify(executionData),
@@ -174,6 +182,20 @@ export async function recoverExecutionDataFromEventLogMessages(
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 				status: 'crashed',
 			};
+			const workflowHooks = getWorkflowHooksMain(
+				{
+					userId: '',
+					workflowData: executionEntry.workflowData,
+					executionMode: executionEntry.mode,
+					executionData,
+					runData: executionData.resultData.runData,
+					retryOf: executionEntry.retryOf,
+				},
+				executionId,
+			);
+
+			// execute workflowExecuteAfter hook to trigger error workflow
+			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [iRunData]);
 
 			// calling workflowExecutionCompleted directly because the eventEmitter is not up yet at this point
 			await workflowExecutionCompleted(executionEntry.workflowData, iRunData);
