@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import { prepareOutput, updateByAutoMaping, updateByDefinedValues } from '../../helpers/utils';
-import { microsoftApiRequest, updateOrUpsertRange } from '../../transport';
+import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -343,15 +343,11 @@ export async function execute(
 				);
 			}
 
-			responseData = await updateOrUpsertRange.call(
+			responseData = await microsoftApiRequest.call(
 				this,
-				updateSummary,
-				workbookId,
-				worksheetId,
-				range,
-				(worksheetData.values as string[][])[0],
-				false,
-				qs,
+				'PATCH',
+				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				{ values: updateSummary.updatedData },
 			);
 
 			const { updatedRows } = updateSummary;

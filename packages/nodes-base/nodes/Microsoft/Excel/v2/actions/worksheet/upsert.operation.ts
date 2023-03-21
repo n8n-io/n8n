@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import { prepareOutput, updateByAutoMaping, updateByDefinedValues } from '../../helpers/utils';
-import { microsoftApiRequest, updateOrUpsertRange } from '../../transport';
+import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -276,16 +276,33 @@ export async function execute(
 			);
 		}
 
-		const columnsRow = (worksheetData.values as string[][])[0];
+		if (updateSummary.appendData.length) {
+			const appendValues: string[][] = [];
+			const columnsRow = (worksheetData.values as string[][])[0];
 
-		responseData = await updateOrUpsertRange.call(
+			for (const [index, item] of updateSummary.appendData.entries()) {
+				const updateRow: string[] = [];
+
+				for (const column of columnsRow) {
+					updateRow.push(item[column] as string);
+				}
+
+				appendValues.push(updateRow);
+				updateSummary.updatedRows.push(index + updateSummary.updatedData.length);
+			}
+
+			updateSummary.updatedData = updateSummary.updatedData.concat(appendValues);
+			const [rangeFrom, rangeTo] = range.split(':');
+			const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+
+			range = `${rangeFrom}:${cellDataTo[1]}${Number(cellDataTo[2]) + appendValues.length}`;
+		}
+
+		responseData = await microsoftApiRequest.call(
 			this,
-			updateSummary,
-			workbookId,
-			worksheetId,
-			range,
-			columnsRow,
-			true,
+			'PATCH',
+			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+			{ values: updateSummary.updatedData },
 		);
 
 		const { updatedRows } = updateSummary;

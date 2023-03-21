@@ -35,7 +35,14 @@ export function prepareOutput(
 			throw new NodeOperationError(node, 'Operation did not return data');
 		}
 
-		const columns = columnsRow ? columnsRow : values[keyRow];
+		let columns = [];
+
+		if (columnsRow?.length) {
+			columns = columnsRow;
+			values = [columns, ...values];
+		} else {
+			columns = values[keyRow];
+		}
 
 		if (updatedRows) {
 			values = values.filter((_, index) => updatedRows.includes(index));
