@@ -135,7 +135,11 @@
 							<slot :data="item" :updateItemSize="updateItemSize" />
 						</template>
 					</n8n-recycle-scroller>
-					<n8n-datatable :columns="typeProps.columns" :rows="filteredAndSortedSubviewResources">
+					<n8n-datatable
+						v-if="typeProps.columns"
+						:columns="typeProps.columns"
+						:rows="filteredAndSortedSubviewResources"
+					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
 						</template>

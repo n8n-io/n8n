@@ -130,6 +130,7 @@
 	"codeNodeEditor.completer.$prevNode.runIndex": "The run of the node providing input data to the current one",
 	"codeNodeEditor.completer.$runIndex": "The index of the current run of this node",
 	"codeNodeEditor.completer.$today": "A timestamp representing the current day (at midnight, as a Luxon object)",
+	"codeNodeEditor.completer.$vars": "The variables defined in your instance",
 	"codeNodeEditor.completer.$workflow": "Information about the workflow",
 	"codeNodeEditor.completer.$workflow.active": "Whether the workflow is active or not (boolean)",
 	"codeNodeEditor.completer.$workflow.id": "The ID of the workflow",

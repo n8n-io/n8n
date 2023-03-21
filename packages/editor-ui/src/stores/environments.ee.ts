@@ -6,8 +6,7 @@ import * as environmentsApi from '@/api/environments.ee';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { createVariable } from '@/api/environments.ee';
 
-export const useEnvironmentsStore = defineStore('enviornments', () => {
-	const settingsStore = useSettingsStore();
+export const useEnvironmentsStore = defineStore('environments', () => {
 	const rootStore = useRootStore();
 
 	const variables = ref<EnvironmentVariable[]>([]);
@@ -54,3 +53,5 @@ export const useEnvironmentsStore = defineStore('enviornments', () => {
 		deleteVariable,
 	};
 });
+
+export default useEnvironmentsStore;
