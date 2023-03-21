@@ -1,5 +1,5 @@
 import express from 'express';
-import { Get, Post, RestController } from '../../../decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -8,15 +8,14 @@ import {
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
-import { AuthError, BadRequestError } from '../../../ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getInitSSOFormView } from '../views/initSsoPost';
-import { getInitSSOPostView } from '../views/initSsoRedirect';
-import { issueCookie } from '../../../auth/jwt';
+import { issueCookie } from '@/auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import { isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
-import { AuthenticatedRequest } from '../../../requests';
+import { AuthenticatedRequest } from '@/requests';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -136,8 +135,6 @@ export class SamlController {
 	private async handleInitSSO(res: express.Response) {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
-			// forced client side redirect through the use of a javascript redirect
-			// return res.send(getInitSSOPostView(result.context));
 			// Return the redirect URL directly
 			return res.send(result.context.context);
 		} else if (result?.binding === 'post') {
