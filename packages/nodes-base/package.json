@@ -868,7 +868,7 @@
     "lodash.upperfirst": "^4",
     "lodash.zip": "^4",
     "lossless-json": "^1.0.4",
-    "luxon": "^3.1.0",
+    "luxon": "^3.3.0",
     "mailparser": "^3.2.0",
     "moment": "~2.29.2",
     "moment-timezone": "^0.5.28",
