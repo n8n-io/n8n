@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -15,8 +15,8 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	clean,
@@ -42,9 +42,9 @@ import { engagementFields, engagementOperations } from './EngagementDescription'
 
 import { ticketFields, ticketOperations } from './TicketDescription';
 
-import { IForm } from './FormInterface';
+import type { IForm } from './FormInterface';
 
-import { IAssociation, IDeal } from './DealInterface';
+import type { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
 
@@ -189,7 +189,7 @@ export class HubspotV2 implements INodeType {
 					if (err.statusCode === 401) {
 						return {
 							status: 'Error',
-							message: `Invalid credentials`,
+							message: 'Invalid credentials',
 						};
 					}
 				}
@@ -1084,7 +1084,7 @@ export class HubspotV2 implements INodeType {
 				};
 			},
 			async searchTickets(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const endpoint = `/crm-objects/v1/objects/tickets/paged`;
+				const endpoint = '/crm-objects/v1/objects/tickets/paged';
 				const qs: IDataObject = {
 					properties: ['ticket_name'],
 				};
@@ -1150,7 +1150,7 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/add`,
 						body,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
@@ -1166,7 +1166,7 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -1494,7 +1494,6 @@ export class HubspotV2 implements INodeType {
 
 							if (!options.resolveData) {
 								const isNew = responseData.isNew;
-								const qs: IDataObject = {};
 								if (additionalFields.properties) {
 									qs.property = additionalFields.properties as string[];
 								}
@@ -1569,7 +1568,6 @@ export class HubspotV2 implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/contacts/get_recently_created_contacts
 						if (operation === 'getRecentlyCreatedUpdated') {
-							let endpoint;
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							if (additionalFields.formSubmissionMode) {
@@ -1588,7 +1586,7 @@ export class HubspotV2 implements INodeType {
 								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 
-							endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
+							const endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
 
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
@@ -1632,7 +1630,7 @@ export class HubspotV2 implements INodeType {
 								],
 							};
 
-							if (filtersGroupsUi && filtersGroupsUi.filterGroupsValues) {
+							if (filtersGroupsUi?.filterGroupsValues) {
 								const filterGroupValues = filtersGroupsUi.filterGroupsValues as IDataObject[];
 								body.filterGroups = [];
 								for (const filterGroupValue of filterGroupValues) {
@@ -2161,7 +2159,7 @@ export class HubspotV2 implements INodeType {
 									: properties;
 								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
-							const endpoint = `/companies/v2/companies/paged`;
+							const endpoint = '/companies/v2/companies/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2193,8 +2191,7 @@ export class HubspotV2 implements INodeType {
 									: properties;
 								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
-							let endpoint;
-							endpoint = `/companies/v2/companies/recent/modified`;
+							const endpoint = '/companies/v2/companies/recent/modified';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2439,7 +2436,7 @@ export class HubspotV2 implements INodeType {
 								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 
-							const endpoint = `/deals/v1/deal/paged`;
+							const endpoint = '/deals/v1/deal/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2456,7 +2453,7 @@ export class HubspotV2 implements INodeType {
 							}
 						}
 						if (operation === 'getRecentlyCreatedUpdated') {
-							const endpoint = `/deals/v1/deal/recent/created`;
+							const endpoint = '/deals/v1/deal/recent/created';
 							const filters = this.getNodeParameter('filters', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (filters.since) {
@@ -2509,7 +2506,7 @@ export class HubspotV2 implements INodeType {
 								],
 							};
 
-							if (filtersGroupsUi && filtersGroupsUi.filterGroupsValues) {
+							if (filtersGroupsUi?.filterGroupsValues) {
 								const filterGroupValues = filtersGroupsUi.filterGroupsValues as IDataObject[];
 								body.filterGroups = [];
 								for (const filterGroupValue of filterGroupValues) {
@@ -2564,7 +2561,7 @@ export class HubspotV2 implements INodeType {
 							if (!Object.keys(metadata).length) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`At least one metadata field needs to set`,
+									'At least one metadata field needs to set',
 									{ itemIndex: i },
 								);
 							}
@@ -2624,7 +2621,7 @@ export class HubspotV2 implements INodeType {
 						//https://legacydocs.hubspot.com/docs/methods/engagements/get-all-engagements
 						if (operation === 'getAll') {
 							const returnAll = this.getNodeParameter('returnAll', 0);
-							const endpoint = `/engagements/v1/engagements/paged`;
+							const endpoint = '/engagements/v1/engagements/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2854,7 +2851,7 @@ export class HubspotV2 implements INodeType {
 									',',
 								);
 							}
-							const endpoint = `/crm-objects/v1/objects/tickets/paged`;
+							const endpoint = '/crm-objects/v1/objects/tickets/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -3001,7 +2998,7 @@ export class HubspotV2 implements INodeType {
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -3013,7 +3010,7 @@ export class HubspotV2 implements INodeType {
 					) {
 						throw new NodeOperationError(
 							this.getNode(),
-							error.cause.error.validationResults[0].message,
+							error.cause.error.validationResults[0].message as string,
 						);
 					}
 					if (error.cause.error.message !== 'The resource you are requesting could not be found') {
@@ -3025,7 +3022,7 @@ export class HubspotV2 implements INodeType {
 								} could not be found. Check your ${error.node.parameters.resource} ID is correct`,
 							);
 						}
-						throw new NodeOperationError(this.getNode(), error.cause.error.message);
+						throw new NodeOperationError(this.getNode(), error.cause.error.message as string);
 					}
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: (error as JsonObject).message } });
