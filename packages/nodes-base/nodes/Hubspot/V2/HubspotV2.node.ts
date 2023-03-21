@@ -1150,7 +1150,7 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/add`,
 						body,
 					);
-					returnData.push(responseData as INodeExecutionData);
+					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
@@ -1166,7 +1166,7 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push(responseData as INodeExecutionData);
+					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
