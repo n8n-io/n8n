@@ -195,7 +195,7 @@
     "semver": "^7.3.8",
     "shelljs": "^0.8.5",
     "source-map-support": "^0.5.21",
-    "sqlite3": "^5.1.4",
+    "sqlite3": "^5.1.6",
     "sse-channel": "^4.0.0",
     "swagger-ui-express": "^4.3.0",
     "syslog-client": "^1.1.1",
