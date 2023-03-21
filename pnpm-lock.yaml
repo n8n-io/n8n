@@ -124,7 +124,7 @@ importers:
       '@types/body-parser-xml': ^2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': ^1.3.1
-      '@types/convict': ^4.2.1
+      '@types/convict': ^6.1.1
       '@types/cookie-parser': ^1.4.2
       '@types/express': ^4.17.6
       '@types/json-diff': ^0.5.1
@@ -172,7 +172,7 @@ importers:
       compression: ^1.7.4
       concurrently: ^5.1.0
       connect-history-api-fallback: ^1.6.0
-      convict: ^6.0.1
+      convict: ^6.2.4
       cookie-parser: ^1.4.6
       crypto-js: ~4.1.1
       csrf: ^3.1.0
@@ -208,7 +208,7 @@ importers:
       lodash.uniq: ^4.5.0
       lodash.uniqby: ^4.7.0
       lodash.unset: ^4.5.2
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       mock-jwks: ^1.0.9
       mysql2: ~2.3.3
       n8n-core: workspace:*
@@ -237,7 +237,7 @@ importers:
       semver: ^7.3.8
       shelljs: ^0.8.5
       source-map-support: ^0.5.21
-      sqlite3: ^5.1.4
+      sqlite3: ^5.1.6
       sse-channel: ^4.0.0
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
@@ -273,7 +273,7 @@ importers:
       client-oauth2: 4.3.3
       compression: 1.7.4
       connect-history-api-fallback: 1.6.0
-      convict: 6.2.3
+      convict: 6.2.4
       cookie-parser: 1.4.6
       crypto-js: 4.1.1
       csrf: 3.1.0
@@ -308,7 +308,7 @@ importers:
       lodash.uniq: 4.5.0
       lodash.uniqby: 4.7.0
       lodash.unset: 4.5.2
-      luxon: 3.1.1
+      luxon: 3.3.0
       mysql2: 2.3.3
       n8n-core: link:../core
       n8n-editor-ui: link:../editor-ui
@@ -334,12 +334,12 @@ importers:
       semver: 7.3.8
       shelljs: 0.8.5
       source-map-support: 0.5.21
-      sqlite3: 5.1.4
+      sqlite3: 5.1.6
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
       typedi: 0.10.0_syy565ld7euwcedfbmx53j2qc4
-      typeorm: 0.3.12_pgelcv6ef3switkrteavpif3pq
+      typeorm: 0.3.12_xhn75toxsyq5eybpqzthgymf2a
       uuid: 8.3.2
       validator: 13.7.0
       winston: 3.8.2
@@ -354,7 +354,7 @@ importers:
       '@types/body-parser-xml': 2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': 1.3.5
-      '@types/convict': 4.2.1
+      '@types/convict': 6.1.1
       '@types/cookie-parser': 1.4.3
       '@types/express': 4.17.14
       '@types/json-diff': 0.5.2
@@ -404,6 +404,7 @@ importers:
       '@types/crypto-js': ^4.0.1
       '@types/express': ^4.17.6
       '@types/lodash.get': ^4.4.6
+      '@types/lodash.pick': ^4.4.7
       '@types/mime-types': ^2.1.0
       '@types/request-promise-native': ~1.0.15
       '@types/uuid': ^8.3.2
@@ -417,6 +418,7 @@ importers:
       flatted: ^3.2.4
       form-data: ^4.0.0
       lodash.get: ^4.4.2
+      lodash.pick: ^4.4.0
       mime-types: ^2.1.27
       n8n-workflow: workspace:*
       oauth-1.0a: ^2.2.6
@@ -437,6 +439,7 @@ importers:
       flatted: 3.2.7
       form-data: 4.0.0
       lodash.get: 4.4.2
+      lodash.pick: 4.4.0
       mime-types: 2.1.35
       n8n-workflow: link:../workflow
       oauth-1.0a: 2.2.6
@@ -452,6 +455,7 @@ importers:
       '@types/crypto-js': 4.1.1
       '@types/express': 4.17.14
       '@types/lodash.get': 4.4.7
+      '@types/lodash.pick': 4.4.7
       '@types/mime-types': 2.1.1
       '@types/request-promise-native': 1.0.18
       '@types/uuid': 8.3.4
@@ -584,7 +588,7 @@ importers:
       '@types/lodash.camelcase': ^4.3.6
       '@types/lodash.get': ^4.4.6
       '@types/lodash.set': ^4.3.6
-      '@types/luxon': ^2.0.9
+      '@types/luxon': ^3.2.0
       '@types/uuid': ^8.3.2
       '@vitejs/plugin-legacy': ^3.0.1
       '@vitejs/plugin-vue2': ^2.2.0
@@ -603,7 +607,7 @@ importers:
       jshint: ^2.9.7
       jsonpath: ^1.1.1
       lodash-es: ^4.17.21
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       miragejs: ^0.1.47
       monaco-editor: ^0.33.0
       n8n-design-system: workspace:*
@@ -667,7 +671,7 @@ importers:
       jquery: 3.6.1
       jsonpath: 1.1.1
       lodash-es: 4.17.21
-      luxon: 3.1.1
+      luxon: 3.3.0
       monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
       n8n-workflow: link:../workflow
@@ -708,7 +712,7 @@ importers:
       '@types/lodash.camelcase': 4.3.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.set': 4.3.7
-      '@types/luxon': 2.4.0
+      '@types/luxon': 3.2.0
       '@types/uuid': 8.3.4
       '@vitejs/plugin-legacy': 3.0.1_terser@5.16.1+vite@4.0.4
       '@vitejs/plugin-vue2': 2.2.0_vite@4.0.4+vue@2.7.14
@@ -898,7 +902,7 @@ importers:
       lodash.upperfirst: ^4
       lodash.zip: ^4
       lossless-json: ^1.0.4
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       mailparser: ^3.2.0
       moment: ~2.29.2
       moment-timezone: ^0.5.28
@@ -921,7 +925,7 @@ importers:
       rhea: ^1.0.11
       rss-parser: ^3.7.0
       showdown: ^2.0.3
-      simple-git: ^3.5.0
+      simple-git: ^3.17.0
       snowflake-sdk: ^1.5.3
       ssh2-sftp-client: ^7.0.0
       tmp-promise: ^3.0.2
@@ -994,7 +998,7 @@ importers:
       lodash.upperfirst: 4.3.1
       lodash.zip: 4.2.0
       lossless-json: 1.0.5
-      luxon: 3.1.1
+      luxon: 3.3.0
       mailparser: 3.5.0
       moment: 2.29.4
       moment-timezone: 0.5.37
@@ -1016,7 +1020,7 @@ importers:
       rhea: 1.0.24
       rss-parser: 3.12.0
       showdown: 2.1.0
-      simple-git: 3.14.1
+      simple-git: 3.17.0
       snowflake-sdk: 1.6.14_asn1.js@5.4.1
       ssh2-sftp-client: 7.2.3
       tmp-promise: 3.0.3
@@ -1109,7 +1113,7 @@ importers:
       '@types/lodash.isequal': ^4.5.6
       '@types/lodash.merge': ^4.6.6
       '@types/lodash.set': ^4.3.6
-      '@types/luxon': ^2.0.9
+      '@types/luxon': ^3.2.0
       '@types/xml2js': ^0.4.3
       ast-types: 0.15.2
       crypto-js: ^4.1.1
@@ -1121,7 +1125,7 @@ importers:
       lodash.isequal: ^4.5.0
       lodash.merge: ^4.6.2
       lodash.set: ^4.3.2
-      luxon: ^3.1.0
+      luxon: ^3.3.0
       recast: ^0.21.5
       title-case: ^3.0.3
       transliteration: ^2.3.5
@@ -1138,7 +1142,7 @@ importers:
       lodash.isequal: 4.5.0
       lodash.merge: 4.6.2
       lodash.set: 4.3.2
-      luxon: 3.1.1
+      luxon: 3.3.0
       recast: 0.21.5
       title-case: 3.0.3
       transliteration: 2.3.5
@@ -1152,7 +1156,7 @@ importers:
       '@types/lodash.isequal': 4.5.6
       '@types/lodash.merge': 4.6.7
       '@types/lodash.set': 4.3.7
-      '@types/luxon': 2.4.0
+      '@types/luxon': 3.2.0
       '@types/xml2js': 0.4.11
 
 packages:
@@ -1298,7 +1302,7 @@ packages:
       '@types/node-fetch': 2.6.2
       '@types/tunnel': 0.0.3
       form-data: 4.0.0
-      node-fetch: 2.6.7
+      node-fetch: 2.6.8
       process: 0.11.10
       tough-cookie: 4.1.2
       tslib: 2.5.0
@@ -3669,12 +3673,12 @@ packages:
       detect-libc: 2.0.1
       https-proxy-agent: 5.0.1
       make-dir: 3.1.0
-      node-fetch: 2.6.7
+      node-fetch: 2.6.8
       nopt: 5.0.0
       npmlog: 5.0.1
       rimraf: 3.0.2
       semver: 7.3.8
-      tar: 6.1.11
+      tar: 6.1.13
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -5505,8 +5509,10 @@ packages:
     dependencies:
       '@types/node': 16.18.12
 
-  /@types/convict/4.2.1:
-    resolution: {integrity: sha512-2cd51m3i0yeY1i3dKxcqJKeS5Q4jZnjP37OseoNeIX1OM0AhmGPuuYmwJ9OqtsU35YrREQxdb2VeX5sM3cwGMQ==}
+  /@types/convict/6.1.1:
+    resolution: {integrity: sha512-R+JLaTvhsD06p4jyjUDtbd5xMtZTRE3c0iI+lrFWZogSVEjgTWPYwvJPVf+t92E+yrlbXa4X4Eg9ro6gPdUt4w==}
+    dependencies:
+      '@types/node': 16.18.12
     dev: true
 
   /@types/cookie-parser/1.4.3:
@@ -6041,8 +6047,8 @@ packages:
     resolution: {integrity: sha512-zPE8kmpeL5/6L5gtTQHSOkAW/OSYYNTDRt6/2oEgLO1Zd3Rj5WVDoMloTtLJxQJhZGLGbL4pktKSh3NbzdaWdw==}
     dev: true
 
-  /@types/luxon/2.4.0:
-    resolution: {integrity: sha512-oCavjEjRXuR6URJEtQm0eBdfsBiEcGBZbq21of8iGkeKxU1+1xgKuFPClaBZl2KB8ZZBSWlgk61tH6Mf+nvZVw==}
+  /@types/luxon/3.2.0:
+    resolution: {integrity: sha512-lGmaGFoaXHuOLXFvuju2bfvZRqxAqkHPx9Y9IQdQABrinJJshJwfNCKV+u7rR3kJbiqfTF/NhOkcxxAFrObyaA==}
     dev: true
 
   /@types/mailparser/2.7.4:
@@ -7655,7 +7661,7 @@ packages:
       core-js: 3.27.2
       handlebars: 4.7.7
       lodash.uniqby: 4.7.0
-      node-fetch: 2.6.7
+      node-fetch: 2.6.8
       parse-github-url: 1.0.2
       regenerator-runtime: 0.13.9
       semver: 6.3.0
@@ -9245,8 +9251,8 @@ packages:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
     dev: true
 
-  /convict/6.2.3:
-    resolution: {integrity: sha512-mTY04Qr7WrqiXifdeUYXr4/+Te4hPFWDvz6J2FVIKCLc2XBhq63VOSSYAKJ+unhZAYOAjmEdNswTOeHt7s++pQ==}
+  /convict/6.2.4:
+    resolution: {integrity: sha512-qN60BAwdMVdofckX7AlohVJ2x9UvjTNoKVXCL2LxFk1l7757EJqf1nySdMkPQer0bt8kQ5lQiyZ9/2NvrFBuwQ==}
     engines: {node: '>=6'}
     dependencies:
       lodash.clonedeep: 4.5.0
@@ -9375,7 +9381,7 @@ packages:
     resolution: {integrity: sha512-BdAELR+MCT2ZWsIBhZKDuUqIUCBjHHulPJnm53OfdRLA4EWBjva3R+KM5NeidJuGsNXdEcZkjC7SCnkW5rAFSA==}
     engines: {node: '>=12.0.0'}
     dependencies:
-      luxon: 3.1.1
+      luxon: 3.3.0
     dev: false
 
   /cron/1.7.2:
@@ -14977,8 +14983,8 @@ packages:
     resolution: {integrity: sha512-Pn9cox5CsMYngeDbmChANltQl+5pi6XmTrraMSzhPmMBbmgcxmqWry0U3PGapCU1yB4/LqCcom7qhHZiF/jGfQ==}
     dev: false
 
-  /luxon/3.1.1:
-    resolution: {integrity: sha512-Ah6DloGmvseB/pX1cAmjbFvyU/pKuwQMQqz7d0yvuDlVYLTs2WeDHQMpC8tGjm1da+BriHROW/OEIT/KfYg6xw==}
+  /luxon/3.3.0:
+    resolution: {integrity: sha512-An0UCfG/rSiqtAIiBPO0Y9/zAnHUZxAMiCpTd5h2smgsj7GGmcenvrvww2cqNA8/4A5ZrD1gJpHN2mIHZQF+Mg==}
     engines: {node: '>=12'}
     dev: false
 
@@ -15056,7 +15062,7 @@ packages:
       https-proxy-agent: 5.0.1
       is-lambda: 1.0.1
       lru-cache: 6.0.0
-      minipass: 3.3.4
+      minipass: 3.3.6
       minipass-collect: 1.0.2
       minipass-fetch: 1.4.1
       minipass-flush: 1.0.5
@@ -15325,7 +15331,7 @@ packages:
     resolution: {integrity: sha512-CGH1eblLq26Y15+Azk7ey4xh0J/XfJfrCox5LDJiKqI2Q2iwOLOKrlmIaODiSQS8d18jalF6y2K2ePUm0CmShw==}
     engines: {node: '>=8'}
     dependencies:
-      minipass: 3.3.4
+      minipass: 3.3.6
       minipass-sized: 1.0.3
       minizlib: 2.1.2
     optionalDependencies:
@@ -15353,16 +15359,9 @@ packages:
     resolution: {integrity: sha512-MbkQQ2CTiBMlA2Dm/5cY+9SWFEN8pzzOXi6rlM5Xxq0Yqbda5ZQy9sU75a673FE9ZK0Zsbr6Y5iP6u9nktfg2g==}
     engines: {node: '>=8'}
     dependencies:
-      minipass: 3.3.4
+      minipass: 3.3.6
     dev: false
     optional: true
-
-  /minipass/3.3.4:
-    resolution: {integrity: sha512-I9WPbWHCGu8W+6k1ZiGpPu0GkoKBeorkfKNuAFBNS1HNFJvke82sxvI5bzcCNpWPorkOO5QQ+zomzzwRxejXiw==}
-    engines: {node: '>=8'}
-    dependencies:
-      yallist: 4.0.0
-    dev: false
 
   /minipass/3.3.6:
     resolution: {integrity: sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw==}
@@ -15789,6 +15788,7 @@ packages:
         optional: true
     dependencies:
       whatwg-url: 5.0.0
+    dev: true
 
   /node-fetch/2.6.8:
     resolution: {integrity: sha512-RZ6dBYuj8dRSfxpUSu+NsdF1dpPpluJxwOp+6IoDp/sH2QNDSvurYsAa+F1WxY2RjA1iP93xhcsUoYbF2XBqVg==}
@@ -15800,7 +15800,6 @@ packages:
         optional: true
     dependencies:
       whatwg-url: 5.0.0
-    dev: true
 
   /node-forge/1.3.1:
     resolution: {integrity: sha512-dPEtOeMvF9VMcYV/1Wb8CPoVAXtp6MKMlcbAt4ddqmGqUJ6fQZFXkNZNkNlfevtNkGtaSoXf/vNNNSvgrdXwtA==}
@@ -15825,7 +15824,7 @@ packages:
       npmlog: 6.0.2
       rimraf: 3.0.2
       semver: 7.3.8
-      tar: 6.1.11
+      tar: 6.1.13
       which: 2.0.2
     transitivePeerDependencies:
       - bluebird
@@ -18610,8 +18609,8 @@ packages:
   /signal-exit/3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
-  /simple-git/3.14.1:
-    resolution: {integrity: sha512-1ThF4PamK9wBORVGMK9HK5si4zoGS2GpRO7tkAFObA4FZv6dKaCVHLQT+8zlgiBm6K2h+wEU9yOaFCu/SR3OyA==}
+  /simple-git/3.17.0:
+    resolution: {integrity: sha512-JozI/s8jr3nvLd9yn2jzPVHnhVzt7t7QWfcIoDcqRIGN+f1IINGv52xoZti2kkYfoRhhRvzMSNPfogHMp97rlw==}
     dependencies:
       '@kwsites/file-exists': 1.1.1
       '@kwsites/promise-deferred': 1.1.1
@@ -18928,8 +18927,8 @@ packages:
     resolution: {integrity: sha512-VE0SOVEHCk7Qc8ulkWw3ntAzXuqf7S2lvwQaDLRnUeIEaKNQJzV6BwmLKhOqT61aGhfUMrXeaBk+oDGCzvhcug==}
     dev: false
 
-  /sqlite3/5.1.4:
-    resolution: {integrity: sha512-i0UlWAzPlzX3B5XP2cYuhWQJsTtlMD6obOa1PgeEQ4DHEXUuyJkgv50I3isqZAP5oFc2T8OFvakmDh2W6I+YpA==}
+  /sqlite3/5.1.6:
+    resolution: {integrity: sha512-olYkWoKFVNSSSQNvxVUfjiVbz3YtBwTJj+mfV5zpHmqW3sELx2Cf4QCdirMelhM5Zh+KDVaKgQHqCxrqiWHybw==}
     requiresBuild: true
     peerDependenciesMeta:
       node-gyp:
@@ -18937,7 +18936,7 @@ packages:
     dependencies:
       '@mapbox/node-pre-gyp': 1.0.10
       node-addon-api: 4.3.0
-      tar: 6.1.11
+      tar: 6.1.13
     optionalDependencies:
       node-gyp: 8.4.1
     transitivePeerDependencies:
@@ -19521,18 +19520,6 @@ packages:
       inherits: 2.0.4
       readable-stream: 3.6.0
     dev: true
-
-  /tar/6.1.11:
-    resolution: {integrity: sha512-an/KZQzQUkZCkuoAA64hM92X0Urb6VpRhAFllDzz44U2mcD5scmT3zBc4VgVpkugF580+DQn8eAFSyoQt0tznA==}
-    engines: {node: '>= 10'}
-    dependencies:
-      chownr: 2.0.0
-      fs-minipass: 2.1.0
-      minipass: 3.3.4
-      minizlib: 2.1.2
-      mkdirp: 1.0.4
-      yallist: 4.0.0
-    dev: false
 
   /tar/6.1.13:
     resolution: {integrity: sha512-jdIBIN6LTIe2jqzay/2vtYLlBHa3JF42ot3h1dW8Q0PaAG4v8rm0cvpVePtau5C6OKXGGcgO9q2AMNSWxiLqKw==}
@@ -20237,7 +20224,7 @@ packages:
     dev: false
     patched: true
 
-  /typeorm/0.3.12_pgelcv6ef3switkrteavpif3pq:
+  /typeorm/0.3.12_xhn75toxsyq5eybpqzthgymf2a:
     resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
     engines: {node: '>= 12.9.0'}
     hasBin: true
@@ -20311,7 +20298,7 @@ packages:
       pg: 8.8.0
       reflect-metadata: 0.1.13
       sha.js: 2.4.11
-      sqlite3: 5.1.4
+      sqlite3: 5.1.6
       tslib: 2.5.0
       uuid: 9.0.0
       xml2js: 0.4.23
