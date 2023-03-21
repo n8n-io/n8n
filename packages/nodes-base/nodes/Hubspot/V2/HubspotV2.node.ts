@@ -3013,7 +3013,7 @@ export class HubspotV2 implements INodeType {
 							error.cause.error.validationResults[0].message as string,
 						);
 					}
-					if (error.cause.error.message !== 'The resource you are requesting could not be found') {
+					if (error.cause.error?.message !== 'The resource you are requesting could not be found') {
 						if (error.httpCode === '404' && error.description === 'resource not found') {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -3022,7 +3022,7 @@ export class HubspotV2 implements INodeType {
 								} could not be found. Check your ${error.node.parameters.resource} ID is correct`,
 							);
 						}
-						throw new NodeOperationError(this.getNode(), error.cause.error.message as string);
+						throw new NodeOperationError(this.getNode(), error as string);
 					}
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: (error as JsonObject).message } });
