@@ -156,7 +156,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								description:
@@ -174,7 +174,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								description:
@@ -192,7 +192,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								description:
