@@ -142,9 +142,11 @@
 									>
 								</template>
 								<template #value="{ value }">
-									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }" class="ph-no-capture">{{
-										getValueToRender(value)
-									}}</span>
+									<span
+										:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+										class="ph-no-capture"
+										>{{ getValueToRender(value) }}</span
+									>
 								</template>
 							</n8n-tree>
 						</td>
