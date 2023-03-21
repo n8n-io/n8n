@@ -141,14 +141,14 @@ export const videoFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The language of the text in the video resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: "The playlist's description",
+				description: "The video's description",
 			},
 			{
 				displayName: 'Embeddable',
@@ -201,7 +201,7 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: "The playlist's privacy status",
+				description: "The video's privacy status",
 			},
 			{
 				displayName: 'Public Stats Viewable',
@@ -240,7 +240,7 @@ export const videoFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+					'Keyword tags associated with the video. Mulplie can be defined separated by comma.',
 			},
 		],
 	},
@@ -719,14 +719,14 @@ export const videoFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The language of the text in the video resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: "The playlist's description",
+				description: "The video's description",
 			},
 			{
 				displayName: 'Embeddable',
@@ -779,7 +779,7 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: "The playlist's privacy status",
+				description: "The video's privacy status",
 			},
 			{
 				displayName: 'Public Stats Viewable',
@@ -818,7 +818,7 @@ export const videoFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+					'Keyword tags associated with the video. Multiple can be defined separated by comma.',
 			},
 		],
 	},
