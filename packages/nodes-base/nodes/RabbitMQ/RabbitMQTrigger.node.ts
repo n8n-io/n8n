@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
+	IDeferredPromise,
 	INodeExecutionData,
 	INodeProperties,
 	INodeType,
@@ -9,7 +10,7 @@ import type {
 	ITriggerFunctions,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
 
@@ -220,9 +221,9 @@ export class RabbitMQTrigger implements INodeType {
 							}
 						}
 
-						let responsePromise = undefined;
+						let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
 						if (acknowledgeMode !== 'immediately') {
-							responsePromise = await createDeferredPromise<IRun>();
+							responsePromise = await this.helpers.createDeferredPromise();
 						}
 
 						this.emit([[item]], undefined, responsePromise);
