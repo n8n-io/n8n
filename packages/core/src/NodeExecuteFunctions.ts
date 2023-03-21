@@ -1956,6 +1956,7 @@ const getCommonWorkflowFunctions = (
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
+	logger: Logger,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
