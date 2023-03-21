@@ -1,10 +1,6 @@
 <script lang="ts">
 import { computed, defineComponent, PropType, ref, useCssModule } from 'vue';
-import {
-	DatatableColumn,
-	DatatableRow,
-	DatatableRowDataType,
-} from '@/components/N8nDatatable/mixins';
+import { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
 import { useI18n } from '../../composables';
 import N8nSelect from '../N8nSelect';
@@ -112,14 +108,16 @@ export default defineComponent({
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="row in visibleRows" :key="row.id" :class="getTrClass(row)">
+				<template v-for="row in visibleRows">
 					<slot name="row" :columns="columns" :row="row" :getTdValue="getTdValue">
-						<td v-for="column in columns" :key="column.id">
-							<component v-if="column.render" :is="column.render" :row="row" :column="column" />
-							<span v-else>{{ getTdValue(row, column) }}</span>
-						</td>
+						<tr :key="row.id">
+							<td v-for="column in columns" :key="column.id">
+								<component v-if="column.render" :is="column.render" :row="row" :column="column" />
+								<span v-else>{{ getTdValue(row, column) }}</span>
+							</td>
+						</tr>
 					</slot>
-				</tr>
+				</template>
 			</tbody>
 		</table>
 
@@ -158,6 +156,23 @@ export default defineComponent({
 
 .datatable {
 	width: 100%;
+
+	tbody {
+		tr {
+			td {
+				color: var(--color-text-base);
+				padding: var(--spacing-s) var(--spacing-2xs);
+			}
+
+			&:nth-of-type(even) {
+				background: var(--color-background-xlight);
+			}
+
+			&:nth-of-type(odd) {
+				background: var(--color-background-light);
+			}
+		}
+	}
 }
 
 .datatableHeader {
@@ -166,21 +181,6 @@ export default defineComponent({
 	th {
 		text-align: left;
 		padding: var(--spacing-s) var(--spacing-2xs);
-	}
-}
-
-.datatableRow {
-	td {
-		color: var(--color-text-base);
-		padding: var(--spacing-s) var(--spacing-2xs);
-	}
-
-	&:nth-of-type(even) {
-		background: var(--color-background-xlight);
-	}
-
-	&:nth-of-type(odd) {
-		background: var(--color-background-light);
 	}
 }
 

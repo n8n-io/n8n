@@ -623,7 +623,7 @@ importers:
       vitest: ^0.28.5
       vue: ^2.7.14
       vue-agile: ^2.0.0
-      vue-fragment: 1.5.1
+      vue-fragment: 1.6.0
       vue-i18n: ^8.26.7
       vue-infinite-loading: ^2.4.5
       vue-json-pretty: 1.9.3
@@ -680,7 +680,7 @@ importers:
       v-click-outside: 3.2.0
       vue: 2.7.14
       vue-agile: 2.0.0
-      vue-fragment: 1.5.1_vue@2.7.14
+      vue-fragment: 1.6.0_vue@2.7.14
       vue-i18n: 8.27.2_vue@2.7.14
       vue-infinite-loading: 2.4.5_vue@2.7.14
       vue-json-pretty: 1.9.3
@@ -6562,7 +6562,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.58.0
+      vite: 4.0.4_sass@1.55.0+terser@5.16.1
       vue: 2.7.14
     dev: true
 
@@ -21090,8 +21090,8 @@ packages:
       - supports-color
     dev: true
 
-  /vue-fragment/1.5.1_vue@2.7.14:
-    resolution: {integrity: sha512-ig6eES6TcMBbANW71ylB+AJgRN+Zksb3f50AxjGpAk6hMzqmeuD80qeh4LJP0jVw2dMBMjgRUfIkrvxygoRgtQ==}
+  /vue-fragment/1.6.0_vue@2.7.14:
+    resolution: {integrity: sha512-a5T8ZZZK/EQzgVShEl374HbobUJ0a7v12BzOzS6Z/wd/5EE/5SffcyHC+7bf9hP3L7Yc0hhY/GhMdwFQ25O/8A==}
     peerDependencies:
       vue: ^2.5.16
     dependencies:

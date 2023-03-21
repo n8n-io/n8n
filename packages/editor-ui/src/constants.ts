@@ -365,6 +365,7 @@ export enum VIEWS {
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
@@ -426,6 +427,7 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$vars',
 	'$workflow',
 ];
 
@@ -448,6 +450,7 @@ export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Variables = 'variables',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

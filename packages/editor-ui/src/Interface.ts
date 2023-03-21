@@ -1448,3 +1448,13 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
+
+export interface EnvironmentVariable {
+	id: number;
+	key: string;
+	value: string;
+}
+
+export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
+	id: string;
+}

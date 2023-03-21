@@ -11,6 +11,7 @@
 				<n8n-button
 					size="large"
 					block
+					:disabled="disabled"
 					@click="$emit('click:add', $event)"
 					data-test-id="resources-list-add"
 				>
@@ -121,18 +122,25 @@
 					<div class="pb-xs" />
 				</template>
 
-				<n8n-recycle-scroller
-					v-if="filteredAndSortedSubviewResources.length > 0"
-					data-test-id="resources-list"
-					:class="[$style.list, 'list-style-none']"
-					:items="filteredAndSortedSubviewResources"
-					:item-size="itemSize"
-					item-key="id"
-				>
-					<template #default="{ item, updateItemSize }">
-						<slot :data="item" :updateItemSize="updateItemSize" />
-					</template>
-				</n8n-recycle-scroller>
+				<div v-if="filteredAndSortedSubviewResources.length > 0">
+					<n8n-recycle-scroller
+						v-if="type === 'list'"
+						data-test-id="resources-list"
+						:class="[$style.list, 'list-style-none']"
+						:items="filteredAndSortedSubviewResources"
+						:item-size="typeProps.itemSize"
+						item-key="id"
+					>
+						<template #default="{ item, updateItemSize }">
+							<slot :data="item" :updateItemSize="updateItemSize" />
+						</template>
+					</n8n-recycle-scroller>
+					<n8n-datatable :columns="typeProps.columns" :rows="filteredAndSortedSubviewResources">
+						<template #row="{ columns, row }">
+							<slot :data="row" :columns="columns" />
+						</template>
+					</n8n-datatable>
+				</div>
 
 				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
 					{{ $locale.baseText(`${resourceKey}.noResults`) }}
@@ -177,6 +185,7 @@ import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { DatatableColumn } from 'n8n-design-system';
 
 export interface IResource {
 	id: string;
@@ -217,9 +226,9 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: Array,
 			default: (): IResource[] => [],
 		},
-		itemSize: {
-			type: Number,
-			default: 80,
+		disabled: {
+			type: Boolean,
+			default: false,
 		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
@@ -239,6 +248,16 @@ export default mixins(showMessage, debounceHelper).extend({
 		shareable: {
 			type: Boolean,
 			default: true,
+		},
+		type: {
+			type: String as PropType<'datatable' | 'list'>,
+			default: 'list',
+		},
+		typeProps: {
+			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
+			default: () => ({
+				itemSize: 0,
+			}),
 		},
 	},
 	data() {
