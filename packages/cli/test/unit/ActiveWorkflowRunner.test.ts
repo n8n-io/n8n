@@ -18,7 +18,7 @@ import { User } from '@/databases/entities/User';
 import { getLogger } from '@/Logger';
 import { randomEmail, randomName } from '../integration/shared/random';
 import * as Helpers from './Helpers';
-import { WorkflowExecuteAdditionalData } from '@/index';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
