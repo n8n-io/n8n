@@ -289,7 +289,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { setPageTitle } from '@/utils';
+import { isEmpty, setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
@@ -510,14 +510,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return this.workflows.find((data) => data.id === workflowId)?.name;
 			},
 			async loadActiveExecutions(): Promise<void> {
-				const activeExecutions = await this.restApi().getCurrentExecutions(
-					this.workflowFilterCurrent,
-				);
+				const activeExecutions = isEmpty(this.workflowFilterCurrent.metadata)
+					? await this.restApi().getCurrentExecutions(this.workflowFilterCurrent)
+					: [];
 				for (const activeExecution of activeExecutions) {
-					if (
-						activeExecution.workflowId !== undefined &&
-						activeExecution.workflowName === undefined
-					) {
+					if (activeExecution.workflowId && !activeExecution.workflowName) {
 						activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
 					}
 				}
@@ -526,7 +523,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.workflowsStore.addToCurrentExecutions(activeExecutions);
 			},
 			async loadAutoRefresh(): Promise<void> {
-				const filter = this.workflowFilterPast;
+				const filter: ExecutionsQueryFilter = this.workflowFilterPast;
 				// We cannot use firstId here as some executions finish out of order. Let's say
 				// You have execution ids 500 to 505 running.
 				// Suppose 504 finishes before 500, 501, 502 and 503.
@@ -534,8 +531,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				// ever get ids 500, 501, 502 and 503 when they finish
 				const pastExecutionsPromise: Promise<IExecutionsListResponse> =
 					this.restApi().getPastExecutions(filter, this.requestItemsPerRequest);
-				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> =
-					this.restApi().getCurrentExecutions({});
+				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = isEmpty(
+					filter.metadata,
+				)
+					? this.restApi().getCurrentExecutions({})
+					: Promise.resolve([]);
 
 				const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
 
@@ -740,9 +740,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = true;
 
 				try {
-					const activeExecutionsPromise = this.loadActiveExecutions();
-					const finishedExecutionsPromise = this.loadFinishedExecutions();
-					await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
+					await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
 				} catch (error) {
 					this.$showError(
 						error,
