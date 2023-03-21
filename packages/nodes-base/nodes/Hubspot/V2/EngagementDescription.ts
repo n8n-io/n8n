@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const engagementOperations: INodeProperties[] = [
 	{
@@ -250,7 +250,7 @@ export const engagementFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Internal Meeting Notes',
@@ -264,7 +264,7 @@ export const engagementFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Title',

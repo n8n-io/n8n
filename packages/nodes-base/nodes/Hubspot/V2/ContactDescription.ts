@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -95,7 +95,7 @@ export const contactFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Associated Company',
+				displayName: 'Associated Company Name or ID',
 				name: 'associatedCompanyId',
 				type: 'options',
 				typeOptions: {
@@ -123,7 +123,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Company Name',
@@ -138,7 +138,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Contact Owner',
+				displayName: 'Contact Owner Name or ID',
 				name: 'contactOwner',
 				type: 'options',
 				description:
@@ -169,7 +169,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -197,7 +197,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Degree',
@@ -282,7 +282,7 @@ export const contactFields: INodeProperties[] = [
 				description: "A contact's last name",
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead Status Name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
@@ -293,7 +293,7 @@ export const contactFields: INodeProperties[] = [
 					'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Legal Basic For Processing Contact Data',
+				displayName: 'Legal Basic For Processing Contact Data Name or ID',
 				name: 'processingContactData',
 				type: 'options',
 				typeOptions: {
@@ -304,7 +304,7 @@ export const contactFields: INodeProperties[] = [
 					"Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>.",
 			},
 			{
-				displayName: 'Lifecycle Stage',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
@@ -363,7 +363,7 @@ export const contactFields: INodeProperties[] = [
 					'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Original Source',
+				displayName: 'Original Source Name or ID',
 				name: 'originalSource',
 				type: 'options',
 				typeOptions: {
@@ -394,7 +394,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Postal Code',
@@ -404,7 +404,7 @@ export const contactFields: INodeProperties[] = [
 				description: "The contact's zip code. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'Preffered Language',
+				displayName: 'Preffered Language Name or ID',
 				name: 'prefferedLanguage',
 				type: 'options',
 				typeOptions: {
@@ -462,7 +462,7 @@ export const contactFields: INodeProperties[] = [
 					"The contact's state of residence. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -572,7 +572,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: "This is not a contact's email but a number like 1485.",
+		description: "This is not a contact's email but a number like 1485",
 	},
 	{
 		displayName: 'Options',
@@ -639,7 +639,7 @@ export const contactFields: INodeProperties[] = [
 								},
 								default: [],
 								description:
-									'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Include',
@@ -766,7 +766,7 @@ export const contactFields: INodeProperties[] = [
 								},
 								default: [],
 								description:
-									'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Include',
@@ -838,7 +838,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: "This is not a contact's email but a number like 1485.",
+		description: "This is not a contact's email but a number like 1485",
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -939,7 +939,7 @@ export const contactFields: INodeProperties[] = [
 								},
 								default: [],
 								description:
-									'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Include',
@@ -1037,7 +1037,7 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property',
+										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
 										description:
@@ -1199,7 +1199,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				default: ['firstname', 'lastname', 'email'],
 				description:
-					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',

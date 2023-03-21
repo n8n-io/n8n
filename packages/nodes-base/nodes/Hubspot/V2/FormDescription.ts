@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const formOperations: INodeProperties[] = [
 	{
@@ -34,7 +34,7 @@ export const formFields: INodeProperties[] = [
 	/*                                form:submit                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -77,7 +77,7 @@ export const formFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Time of the form submission. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
+					'Time of the form submission. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 		],
 	},
@@ -206,7 +206,7 @@ export const formFields: INodeProperties[] = [
 								name: 'communicationValues',
 								values: [
 									{
-										displayName: 'Subcription Type',
+										displayName: 'Subcription Type Name or ID',
 										name: 'subscriptionTypeId',
 										type: 'options',
 										typeOptions: {
@@ -243,7 +243,7 @@ export const formFields: INodeProperties[] = [
 				name: 'legitimateInterestValues',
 				values: [
 					{
-						displayName: 'Subcription Type',
+						displayName: 'Subcription Type Name or ID',
 						name: 'subscriptionTypeId',
 						type: 'options',
 						typeOptions: {
@@ -295,7 +295,7 @@ export const formFields: INodeProperties[] = [
 	/*                                  form:getFields                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {

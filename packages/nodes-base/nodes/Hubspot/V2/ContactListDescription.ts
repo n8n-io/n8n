@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const contactListOperations: INodeProperties[] = [
 	{
@@ -86,7 +86,7 @@ export const contactListFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'List to Add from',
+		displayName: 'List to Add From',
 		name: 'listId',
 		type: 'number',
 		required: true,
@@ -116,7 +116,7 @@ export const contactListFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'List to Remove from',
+		displayName: 'List to Remove From',
 		name: 'listId',
 		type: 'number',
 		required: true,

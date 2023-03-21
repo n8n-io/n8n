@@ -3005,7 +3005,7 @@ export class HubspotV2 implements INodeType {
 				} catch (errorObject) {
 					const error = errorObject.cause.cause ? errorObject.cause : errorObject;
 					if (
-						error.cause.error.validationResults &&
+						error.cause.error?.validationResults &&
 						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
 					) {
 						throw new NodeOperationError(
