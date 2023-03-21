@@ -1,4 +1,4 @@
-import { jsonParse, deepCopy } from '@/utils';
+import { jsonParse, jsonStringify, deepCopy } from '@/utils';
 
 describe('jsonParse', () => {
 	it('parses JSON', () => {
@@ -14,6 +14,21 @@ describe('jsonParse', () => {
 
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
+	});
+});
+
+describe('jsonStringify', () => {
+	const source: any = { a: 1, b: 2 };
+	source.c = source;
+
+	it('should throw errors on circular references by default', () => {
+		expect(() => jsonStringify(source)).toThrow('Converting circular structure to JSON');
+	});
+
+	it('should break circular references when requested', () => {
+		expect(jsonStringify(source, { replaceCircularRefs: true })).toEqual(
+			'{"a":1,"b":2,"c":"[Circular Reference]"}',
+		);
 	});
 });
 
