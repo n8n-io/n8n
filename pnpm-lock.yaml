@@ -11,6 +11,7 @@ overrides:
   decode-uri-component: 0.2.2
   ejs: ^3.1.8
   fork-ts-checker-webpack-plugin: ^6.0.4
+  http-cache-semantics: 4.1.1
   jsonwebtoken: 9.0.0
   prettier: ^2.8.3
   ts-node: ^10.9.1
@@ -12426,8 +12427,8 @@ packages:
       domutils: 3.0.1
       entities: 4.4.0
 
-  /http-cache-semantics/4.1.0:
-    resolution: {integrity: sha512-carPklcUh7ROWRK7Cv27RPtdhYhUsela/ue5/jKzjegVvXDqM2ILE9Q2BGn9JZJh1g87cp56su/FgQSzcWS8cQ==}
+  /http-cache-semantics/4.1.1:
+    resolution: {integrity: sha512-er295DKPVsV82j5kw1Gjt+ADA/XYHsajl82cGNQG2eyoPkvgUhX+nDIyelzhIWbbsXP39EHcI6l5tYs2FYqYXQ==}
     dev: false
     optional: true
 
@@ -15052,7 +15053,7 @@ packages:
     dependencies:
       agentkeepalive: 4.2.1
       cacache: 15.3.0
-      http-cache-semantics: 4.1.0
+      http-cache-semantics: 4.1.1
       http-proxy-agent: 4.0.1
       https-proxy-agent: 5.0.1
       is-lambda: 1.0.1
