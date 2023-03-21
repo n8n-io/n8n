@@ -6,7 +6,7 @@ import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Authorized, NoAuthRequired, Delete, Get, Post, RestController } from '@/decorators';
 import {
 	addInviteLinkToUser,
 	generateUserInviteUrl,
@@ -37,6 +37,7 @@ import type { PostHogClient } from '@/posthog';
 import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 
+@Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
 	private config: Config;
@@ -278,6 +279,7 @@ export class UsersController {
 	/**
 	 * Fill out user shell with first name, last name, and password.
 	 */
+	@NoAuthRequired()
 	@Post('/:id')
 	async updateUser(req: UserRequest.Update, res: Response) {
 		const { id: inviteeId } = req.params;

@@ -9,6 +9,7 @@ import { idStringifier } from '../utils/transformers';
 
 export type RoleNames = 'owner' | 'member' | 'user' | 'editor';
 export type RoleScopes = 'global' | 'workflow' | 'credential';
+export type AuthRole = [RoleScopes, RoleNames] | 'any' | 'none';
 
 @Entity()
 @Unique(['scope', 'name'])
@@ -32,4 +33,8 @@ export class Role extends AbstractEntity {
 
 	@OneToMany('SharedCredentials', 'role')
 	sharedCredentials: SharedCredentials[];
+
+	matches([scope, name]: [RoleScopes, RoleNames]) {
+		return this.name === name && this.scope === scope;
+	}
 }

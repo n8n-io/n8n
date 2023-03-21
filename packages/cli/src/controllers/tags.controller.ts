@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import type { Repository } from 'typeorm';
 import type { Config } from '@/config';
-import { Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
 import { TagEntity } from '@db/entities/TagEntity';
 import { getTagsWithCountDb } from '@/TagHelpers';
@@ -9,6 +9,7 @@ import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
 
+@Authorized()
 @RestController('/tags')
 export class TagsController {
 	private config: Config;
