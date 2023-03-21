@@ -925,7 +925,7 @@ importers:
       rhea: ^1.0.11
       rss-parser: ^3.7.0
       showdown: ^2.0.3
-      simple-git: ^3.5.0
+      simple-git: ^3.17.0
       snowflake-sdk: ^1.5.3
       ssh2-sftp-client: ^7.0.0
       tmp-promise: ^3.0.2
@@ -1020,7 +1020,7 @@ importers:
       rhea: 1.0.24
       rss-parser: 3.12.0
       showdown: 2.1.0
-      simple-git: 3.14.1
+      simple-git: 3.17.0
       snowflake-sdk: 1.6.14_asn1.js@5.4.1
       ssh2-sftp-client: 7.2.3
       tmp-promise: 3.0.3
@@ -18609,8 +18609,8 @@ packages:
   /signal-exit/3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
-  /simple-git/3.14.1:
-    resolution: {integrity: sha512-1ThF4PamK9wBORVGMK9HK5si4zoGS2GpRO7tkAFObA4FZv6dKaCVHLQT+8zlgiBm6K2h+wEU9yOaFCu/SR3OyA==}
+  /simple-git/3.17.0:
+    resolution: {integrity: sha512-JozI/s8jr3nvLd9yn2jzPVHnhVzt7t7QWfcIoDcqRIGN+f1IINGv52xoZti2kkYfoRhhRvzMSNPfogHMp97rlw==}
     dependencies:
       '@kwsites/file-exists': 1.1.1
       '@kwsites/promise-deferred': 1.1.1
