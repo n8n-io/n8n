@@ -491,7 +491,7 @@ importers:
       markdown-it-link-attributes: ^4.0.1
       markdown-it-task-lists: ^2.1.1
       node-notifier: ^10.0.1
-      sanitize-html: 2.9.0
+      sanitize-html: 2.10.0
       sass: ^1.58.0
       sass-loader: ^13.2.0
       storybook: ^7.0.0-beta.46
@@ -515,7 +515,7 @@ importers:
       markdown-it-emoji: 2.0.2
       markdown-it-link-attributes: 4.0.1
       markdown-it-task-lists: 2.1.1
-      sanitize-html: 2.9.0
+      sanitize-html: 2.10.0
       vue: 2.7.14
       vue-typed-mixins: 0.2.0
       vue2-boring-avatars: 0.3.8
@@ -18236,8 +18236,8 @@ packages:
       xpath: 0.0.32
     dev: false
 
-  /sanitize-html/2.9.0:
-    resolution: {integrity: sha512-KY1hpSbqFNcpoLf+nP7iStbP5JfQZ2Nd19ZEE7qFsQqRdp+sO5yX/e5+HoG9puFAcSTEpzQuihfKUltDcLlQjg==}
+  /sanitize-html/2.10.0:
+    resolution: {integrity: sha512-JqdovUd81dG4k87vZt6uA6YhDfWkUGruUu/aPmXLxXi45gZExnt9Bnw/qeQU8oGf82vPyaE0vO4aH0PbobB9JQ==}
     dependencies:
       deepmerge: 4.2.2
       escape-string-regexp: 4.0.0
