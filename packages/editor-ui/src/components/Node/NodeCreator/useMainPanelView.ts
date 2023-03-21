@@ -69,6 +69,15 @@ export default () => {
 					},
 				},
 				{
+					type: 'subcategory',
+					key: 'Stripe',
+					category: 'Stripe',
+					properties: {
+						subcategory: 'Stripe',
+						icon: 'stripe',
+					},
+				},
+				{
 					key: TRIGGER_NODE_FILTER,
 					type: 'view',
 					properties: {

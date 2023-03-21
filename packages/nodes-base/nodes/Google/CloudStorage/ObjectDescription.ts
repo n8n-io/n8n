@@ -1,3 +1,4 @@
+// @ts-ignore
 import FormData from 'form-data';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
