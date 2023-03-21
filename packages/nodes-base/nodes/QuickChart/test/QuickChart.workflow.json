@@ -1,0 +1,132 @@
+{
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5ebe2f65-45db-4b22-bd2b-43993c20806f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [740, 320]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    label: 'Free Users',\n    labels: [\"Berlin\", \"Paris\", \"Rome\", \"New York\"],\n    data: [50, 60, 70, 180],\n    backgroundColor: '#121d6d77',\n    chartType: 'line'\n  },\n  {\n    label: 'Paid Users',\n    labels: [\"Berlin\", \"Paris\", \"Rome\", \"New York\"],\n    data: [30, 10, 14, 25],\n    backgroundColor: '#0c0d0d96',\n    chartType: 'bar'\n  },\n]"
+			},
+			"id": "2e81f78c-41a5-48de-80c4-74abf163cd57",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [980, 320]
+		},
+		{
+			"parameters": {
+				"labelsUi": {
+					"labelsValues": [
+						{
+							"label": "Q1"
+						},
+						{
+							"label": "Q2"
+						},
+						{
+							"label": "Q3"
+						},
+						{
+							"label": "Q4"
+						}
+					]
+				},
+				"data": "={{ $json.data }}",
+				"chartOptions": {
+					"backgroundColor": "#f93636ff",
+					"devicePixelRatio": 2,
+					"format": "png",
+					"height": 300,
+					"horizontal": true,
+					"width": 500
+				},
+				"datasetOptions": {
+					"backgroundColor": "={{ $json[\"backgroundColor\"] }}",
+					"borderColor": "#e81010",
+					"label": "={{ $json[\"label\"] }}"
+				}
+			},
+			"name": "BarChart",
+			"type": "n8n-nodes-base.quickChart",
+			"typeVersion": 1,
+			"position": [1220, 200],
+			"id": "9f6c9d1c-2732-473f-a357-5766265cd0db"
+		},
+		{
+			"parameters": {
+				"chartType": "doughnut",
+				"labelsUi": {
+					"labelsValues": [
+						{
+							"label": "Q1"
+						},
+						{
+							"label": "Q2"
+						},
+						{
+							"label": "Q3"
+						},
+						{
+							"label": "Q4"
+						}
+					]
+				},
+				"data": "={{ $json.data }}",
+				"chartOptions": {
+					"backgroundColor": "#f93636ff",
+					"devicePixelRatio": 2,
+					"format": "png",
+					"height": 300,
+					"width": 500
+				},
+				"datasetOptions": {
+					"backgroundColor": "={{ $json[\"backgroundColor\"] }}",
+					"borderColor": "#e81010",
+					"label": "={{ $json[\"label\"] }}"
+				}
+			},
+			"name": "Doughnut",
+			"type": "n8n-nodes-base.quickChart",
+			"typeVersion": 1,
+			"position": [1220, 400],
+			"id": "6c8e1463-c384-4f5c-9de3-d7e052b02b0a"
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "BarChart",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Doughnut",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
