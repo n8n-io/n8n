@@ -27,15 +27,18 @@ export const optionsCollection: INodeProperties = {
 			displayName: 'Combine Conditions',
 			name: 'combineConditions',
 			type: 'options',
-			description: 'How to combine conditions',
+			description:
+				'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
 			options: [
 				{
 					name: 'AND',
 					value: 'AND',
+					description: 'Only rows that meet all the conditions are selected',
 				},
 				{
 					name: 'OR',
 					value: 'OR',
+					description: 'Rows that meet at least one condition are selected',
 				},
 			],
 			default: 'AND',
@@ -49,15 +52,18 @@ export const optionsCollection: INodeProperties = {
 			displayName: 'Combine Conditions',
 			name: 'combineConditions',
 			type: 'options',
-			description: 'How to combine conditions',
+			description:
+				'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
 			options: [
 				{
 					name: 'AND',
 					value: 'AND',
+					description: 'Only rows that meet all the conditions are deleted',
 				},
 				{
 					name: 'OR',
 					value: 'OR',
+					description: 'Rows that meet at least one condition are deleted',
 				},
 			],
 			default: 'AND',

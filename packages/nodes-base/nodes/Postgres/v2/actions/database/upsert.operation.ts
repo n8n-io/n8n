@@ -56,24 +56,26 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Unique Column',
+		displayName: 'Column to Match On',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
 		},
 		default: '',
-		hint: "Used to find the correct row to update. Doesn't get changed. Has to be unique.",
+		hint: 'The column that identifies the row(s) to modify',
 	},
 	{
-		displayName: 'Value of Unique Column',
+		displayName: 'Value of Column to Match On',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
+		description:
+			'Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated. New rows will be created for non-matching items.',
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
