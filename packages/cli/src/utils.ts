@@ -3,6 +3,13 @@ import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workfl
 import type { INode } from 'n8n-workflow';
 import { START_NODES } from './constants';
 
+/**
+ * Returns if the given id is a valid workflow id
+ */
+export function isWorkflowIdValid(id: string | null | undefined): boolean {
+	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
+}
+
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
 		const executeWorkflowTriggerNode = nodes.find(

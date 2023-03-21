@@ -80,7 +80,7 @@
 	"auth.role": "Role",
 	"auth.roles.member": "Member",
 	"auth.roles.owner": "Owner",
-	"auth.agreement.label": "I’d be OK sharing my opinion on n8n (no marketing emails though)",
+	"auth.agreement.label": "Inform me about security vulnerabilities if they arise",
 	"auth.setup.confirmOwnerSetup": "Set up owner account?",
 	"auth.setup.confirmOwnerSetupMessage": "To give others access to your <b>{entities}</b>, you’ll need to share these account details with them. Or you can continue as before with no account, by going back and skipping this setup. <a href=\"https://docs.n8n.io/user-management/\" target=\"_blank\">More info</a>",
 	"auth.setup.createAccount": "Create account",
@@ -283,6 +283,7 @@
 	"credentialEdit.credentialConfig.missingCredentialType": "This credential's type isn't available. This usually happens when a previously installed community or custom node was uninstalled.",
 	"credentialEdit.credentialConfig.authTypeSelectorLabel": "Connect using",
 	"credentialEdit.credentialConfig.authTypeSelectorTooltip": "The authentication method to use for the connection",
+	"credentialEdit.credentialConfig.recommendedAuthTypeSuffix": "(recommended)",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText": "Keep Editing",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText": "Close",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline": "Close without saving?",
@@ -454,6 +455,7 @@
 	"executionsList.error": "Failed",
 	"executionsList.filters": "Filters",
 	"executionsList.loadMore": "Load More",
+	"executionsList.empty": "No executions",
 	"executionsList.loadedAll": "No more executions to fetch",
 	"executionsList.modes.error": "error",
 	"executionsList.modes.integrated": "integrated",
@@ -471,7 +473,8 @@
 	"executionsList.succeeded": "Succeeded",
 	"executionsList.selectStatus": "Select Status",
 	"executionsList.selectWorkflow": "Select Workflow",
-	"executionsList.selected": "{numSelected} execution selected:",
+	"executionsList.selected": "{numSelected} execution selected: | {numSelected} executions selected:",
+	"executionsList.selectAll": "Select {executionNum} finished execution | Select all {executionNum} finished executions",
 	"executionsList.test": "Test execution",
 	"executionsList.showError.handleDeleteSelected.title": "Problem deleting executions",
 	"executionsList.showError.loadMore.title": "Problem loading executions",
@@ -1739,5 +1742,7 @@
 	"settings.personal.mfa.toast.disabledMfa.message": "You will no longer need your authenticator app when signing in",
 	"settings.personal.mfa.toast.disabledMfa.error.message": "Error disabling two-factor authentication",
 	"settings.mfa.toast.noRecoveryCodeLeft.title": "No 2FA recovery codes remaining",
-	"settings.mfa.toast.noRecoveryCodeLeft.message": "You have used all of your recovery codes. Disable then re-enable two-factor authentication to generate new codes. <a href='/settings/personal' target='_blank' >Open settings</a>"
+	"settings.mfa.toast.noRecoveryCodeLeft.message": "You have used all of your recovery codes. Disable then re-enable two-factor authentication to generate new codes. <a href='/settings/personal' target='_blank' >Open settings</a>",
+	"sso.login.divider": "or",
+	"sso.login.button": "Continue with SSO"
 }

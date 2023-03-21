@@ -56,7 +56,7 @@ import timezones from 'google-timezones-json';
 import history from 'connect-history-api-fallback';
 
 import config from '@/config';
-import * as Queue from '@/Queue';
+import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -104,7 +104,7 @@ import {
 	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
-import { getInstance as getMailerInstance } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
 	ICredentialsDb,
@@ -369,10 +369,10 @@ class Server extends AbstractServer {
 
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = getMailerInstance();
+		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
 		const mfaService = Container.get(MultiFactorAuthService);
-		const samlService = SamlService.getInstance();
+		const samlService = Container.get(SamlService);
 
 		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
@@ -380,7 +380,14 @@ class Server extends AbstractServer {
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new MFAController(repositories.User, mfaService),
 			new NodeTypesController({ config, nodeTypes }),
-			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new PasswordResetController({
+				config,
+				externalHooks,
+				internalHooks,
+				mailer,
+				repositories,
+				logger,
+			}),
 			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
@@ -484,6 +491,10 @@ class Server extends AbstractServer {
 			}),
 		);
 
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(Queue).init();
+		}
+
 		await handleLdapInit();
 
 		this.registerControllers(ignoredEndpoints);
@@ -513,7 +524,7 @@ class Server extends AbstractServer {
 		// set up the initial environment
 		if (isSamlLicensed()) {
 			try {
-				await SamlService.getInstance().init();
+				await Container.get(SamlService).init();
 			} catch (error) {
 				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
 			}
@@ -957,7 +968,7 @@ class Server extends AbstractServer {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const queue = await Queue.getInstance();
+						const queue = Container.get(Queue);
 						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
@@ -1100,7 +1111,7 @@ class Server extends AbstractServer {
 						} as IExecutionsStopData;
 					}
 
-					const queue = await Queue.getInstance();
+					const queue = Container.get(Queue);
 					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);

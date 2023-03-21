@@ -56,6 +56,8 @@ const customNodeActionsParsers: {
 };
 
 function filterActions(actions: INodeActionTypeDescription[]) {
+	// Do not show single action nodes
+	if (actions.length <= 1) return [];
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
 			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;

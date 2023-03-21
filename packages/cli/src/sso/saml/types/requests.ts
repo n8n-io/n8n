@@ -1,4 +1,4 @@
-import type { AuthenticatedRequest } from '../../../requests';
+import type { AuthenticatedRequest } from '@/requests';
 import type { SamlPreferences } from './samlPreferences';
 
 export declare namespace SamlConfiguration {

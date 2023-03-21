@@ -28,8 +28,7 @@ const config = {
 };
 
 if (process.env.CI === 'true') {
-	config.maxWorkers = 2;
-	config.workerIdleMemoryLimit = 2048;
+	config.workerIdleMemoryLimit = 1024;
 	config.coverageReporters = ['cobertura'];
 }
 
