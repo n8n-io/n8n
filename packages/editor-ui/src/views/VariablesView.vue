@@ -123,6 +123,10 @@ async function deleteVariable(data: EnvironmentVariable) {
 function goToUpgrade() {
 	window.open(upgradeLinkUrl.value, '_blank');
 }
+
+function displayName(resource: EnvironmentVariable) {
+	return resource.key;
+}
 </script>
 
 <template>
@@ -133,6 +137,9 @@ function goToUpgrade() {
 		:resources="allVariables"
 		:initialize="initialize"
 		:shareable="false"
+		:displayName="displayName"
+		:sortOptions="['nameAsc', 'nameDesc']"
+		:showFiltersDropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
 		@click:add="addTemporaryVariable"

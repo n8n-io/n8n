@@ -76,23 +76,13 @@
 							<div :class="$style['sort-and-filter']">
 								<n8n-select v-model="sortBy" size="medium" data-test-id="resources-list-sort">
 									<n8n-option
-										value="lastUpdated"
-										:label="$locale.baseText(`${resourceKey}.sort.lastUpdated`)"
-									/>
-									<n8n-option
-										value="lastCreated"
-										:label="$locale.baseText(`${resourceKey}.sort.lastCreated`)"
-									/>
-									<n8n-option
-										value="nameAsc"
-										:label="$locale.baseText(`${resourceKey}.sort.nameAsc`)"
-									/>
-									<n8n-option
-										value="nameDesc"
-										:label="$locale.baseText(`${resourceKey}.sort.nameDesc`)"
+										v-for="sortOption in sortOptions"
+										:value="sortOption"
+										:label="$locale.baseText(`${resourceKey}.sort.${sortOption}`)"
 									/>
 								</n8n-select>
 								<resource-filters-dropdown
+									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:value="filters"
@@ -226,6 +216,10 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: String,
 			default: '' as IResourceKeyType,
 		},
+		displayName: {
+			type: Function as PropType<(resource: IResource) => string>,
+			default: () => (resource: IResource) => resource.name,
+		},
 		resources: {
 			type: Array,
 			default: (): IResource[] => [],
@@ -253,6 +247,14 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: Boolean,
 			default: true,
 		},
+		showFiltersDropdown: {
+			type: Boolean,
+			default: true,
+		},
+		sortOptions: {
+			type: Array as PropType<string[]>,
+			default: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+		},
 		type: {
 			type: String as PropType<'datatable' | 'list'>,
 			default: 'list',
@@ -268,7 +270,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		return {
 			loading: true,
 			isOwnerSubview: false,
-			sortBy: 'lastUpdated',
+			sortBy: this.sortOptions[0],
 			hasFilters: false,
 			resettingFilters: false,
 			EnterpriseEditionFeature,
@@ -315,7 +317,7 @@ export default mixins(showMessage, debounceHelper).extend({
 				if (this.filters.search) {
 					const searchString = this.filters.search.toLowerCase();
 
-					matches = matches && resource.name.toLowerCase().includes(searchString);
+					matches = matches && this.displayName(resource).toLowerCase().includes(searchString);
 				}
 
 				if (this.additionalFiltersHandler) {
@@ -332,9 +334,9 @@ export default mixins(showMessage, debounceHelper).extend({
 					case 'lastCreated':
 						return new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
 					case 'nameAsc':
-						return a.name.trim().localeCompare(b.name.trim());
+						return this.displayName(a).trim().localeCompare(this.displayName(a).trim());
 					case 'nameDesc':
-						return b.name.localeCompare(a.name);
+						return this.displayName(b).localeCompare(this.displayName(a));
 					default:
 						return 0;
 				}

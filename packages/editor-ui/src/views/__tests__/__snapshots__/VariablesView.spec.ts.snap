@@ -1,0 +1,89 @@
+// Vitest Snapshot v1
+
+exports[`store > should render empty state 1`] = `
+"<div class=\\"wrapper\\">
+  <div class=\\"container\\">
+    <aside class=\\"aside\\">
+      <div class=\\"heading-wrapper mb-xs\\"><span class=\\"n8n-heading size-2xlarge regular\\"> Variables </span></div>
+      <div class=\\"mt-xs mb-l\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary large block\\" data-test-id=\\"resources-list-add\\">
+          <!----><span> Add Variable </span></button></div>
+      <!---->
+    </aside>
+    <main class=\\"content\\">
+      <div>
+        <div class=\\"n8n-loading n8n-loading-custom header-loading mb-l\\">
+          <div class=\\"el-skeleton is-animated\\">
+            <div class=\\"custom\\">
+              <div class=\\"el-skeleton__item el-skeleton__custom\\">
+                <!---->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class=\\"n8n-loading n8n-loading-custom card-loading mb-2xs\\">
+          <div class=\\"el-skeleton is-animated\\">
+            <div class=\\"custom\\">
+              <div class=\\"el-skeleton__item el-skeleton__custom\\">
+                <!---->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class=\\"n8n-loading n8n-loading-custom card-loading\\">
+          <div class=\\"el-skeleton is-animated\\">
+            <div class=\\"custom\\">
+              <div class=\\"el-skeleton__item el-skeleton__custom\\">
+                <!---->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>"
+`;
+
+exports[`store > should render variable entries 1`] = `
+"<div class=\\"wrapper\\">
+  <div class=\\"container\\">
+    <aside class=\\"aside\\">
+      <div class=\\"heading-wrapper mb-xs\\"><span class=\\"n8n-heading size-2xlarge regular\\"> Variables </span></div>
+      <div class=\\"mt-xs mb-l\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary large block\\" data-test-id=\\"resources-list-add\\">
+          <!----><span> Add Variable </span></button></div>
+      <!---->
+    </aside>
+    <main class=\\"content\\">
+      <div>
+        <div class=\\"n8n-loading n8n-loading-custom header-loading mb-l\\">
+          <div class=\\"el-skeleton is-animated\\">
+            <div class=\\"custom\\">
+              <div class=\\"el-skeleton__item el-skeleton__custom\\">
+                <!---->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class=\\"n8n-loading n8n-loading-custom card-loading mb-2xs\\">
+          <div class=\\"el-skeleton is-animated\\">
+            <div class=\\"custom\\">
+              <div class=\\"el-skeleton__item el-skeleton__custom\\">
+                <!---->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class=\\"n8n-loading n8n-loading-custom card-loading\\">
+          <div class=\\"el-skeleton is-animated\\">
+            <div class=\\"custom\\">
+              <div class=\\"el-skeleton__item el-skeleton__custom\\">
+                <!---->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>"
+`;
