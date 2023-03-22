@@ -1021,7 +1021,7 @@ export interface INodePropertyTypeOptions {
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
-	resourceMapper: ResourceMapperTypeOptions;
+	resourceMapper?: ResourceMapperTypeOptions;
 	[key: string]: any;
 }
 
