@@ -6,7 +6,7 @@ const MICHIGAN_LOGIN_URL = 'https://mto.treasury.michigan.gov/eai/mtologin/authe
 puppeteer.use(pluginStealth());
 
 export async function michiganLogin(username: string, password: string) {
-	const browser = await puppeteer.launch({ headless: false });
+	const browser = await puppeteer.launch({ headless: true });
 
 	const page = await browser.newPage();
 

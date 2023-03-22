@@ -9,7 +9,7 @@ const nextSelector =
 	'.ActionButton.ActionButtonNext.ActionButtonPosStep.ActionButtonStepNext.FastEvtExecuteAction';
 
 export async function georgiaLogin() {
-	const browser = await puppeteer.launch({ headless: false });
+	const browser = await puppeteer.launch({ headless: true });
 
 	const page = await browser.newPage();
 
