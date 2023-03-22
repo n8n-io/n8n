@@ -58,6 +58,7 @@
     "supertest": "^6.3.3",
     "ts-jest": "^29.0.5",
     "tsc-watch": "^6.0.0",
+    "typescript": "*",
     "turbo": "1.8.8"
   },
   "pnpm": {
@@ -75,8 +76,9 @@
       "http-cache-semantics": "4.1.1",
       "jsonwebtoken": "9.0.0",
       "prettier": "^2.8.3",
+      "tslib": "^2.5.0",
       "ts-node": "^10.9.1",
-      "typescript": "^4.9.5",
+      "typescript": "^5.0.2",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
     },
