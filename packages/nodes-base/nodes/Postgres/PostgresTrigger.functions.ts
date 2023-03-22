@@ -8,71 +8,49 @@ import type {
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
-import { v4 as uuid } from 'uuid';
-import type { IPostgresTrigger } from './PostgresInterface';
 
 export async function pgTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-	triggers: IPostgresTrigger,
-): Promise<IPostgresTrigger> {
+): Promise<void> {
 	const tableName = this.getNodeParameter('tableName', 0) as INodeParameterResourceLocator;
 	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
 	const target = `${schema.value as string}."${tableName.value as string}"`;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const nodeId = this.getNode().id.replace(/-/g, '_');
 	let functionName =
-		(additionalFields.functionName as string) ||
-		`n8n_trigger_function_${uuid().replace(/-/g, '_')}()`;
+		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}()`;
 	if (!functionName.includes('()')) {
 		functionName = functionName.concat('()');
 	}
-	const triggerName =
-		(additionalFields.triggerName as string) || `n8n_trigger_${uuid().replace(/-/g, '_')}`;
-	const channelName =
-		(additionalFields.channelName as string) || `n8n_channel_${uuid().replace(/-/g, '_')}`;
+	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
+	const channelName = (additionalFields.channelName as string) || `n8n_channel_${nodeId}`;
 	const replaceIfExists = additionalFields.replaceIfExists || false;
-	let createdTrigger: IPostgresTrigger;
-	if (!triggers) {
-		createdTrigger = {
-			functionName,
-			triggerName,
-			channelName,
-			target,
-		};
-	} else {
-		createdTrigger = {
-			functionName: triggers.functionName,
-			triggerName: triggers.triggerName,
-			channelName: triggers.channelName,
-			target,
-		};
-	}
 	try {
 		if (replaceIfExists) {
 			await db.any(
 				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
-				[createdTrigger.functionName, createdTrigger.channelName],
+				[functionName, channelName],
 			);
 			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
 			await db.any(
 				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[target, createdTrigger.functionName, firesOn, createdTrigger.triggerName],
+				[target, functionName, firesOn, triggerName],
 			);
 		} else {
 			await db.any(
 				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
-				[createdTrigger.functionName, createdTrigger.channelName],
+				[functionName, channelName],
 			);
 			await db.any(
 				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[target, createdTrigger.functionName, firesOn, createdTrigger.triggerName],
+				[target, functionName, firesOn, triggerName],
 			);
 		}
 	} catch (err) {
 		throw new Error(err as string);
 	}
-	return createdTrigger;
 }
 
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -147,14 +125,18 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 export async function dropTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-	triggers: IPostgresTrigger,
 ): Promise<void> {
+	const triggerName = this.getNodeParameter('triggers', 0, {
+		extractValue: true,
+	}) as IDataObject;
+	const schema = this.getNodeParameter('schema', 0, { extractValue: true }) as IDataObject;
+	const tableName = this.getNodeParameter('tableName', 0, { extractValue: true }) as IDataObject;
+	const target = `${schema.value as string}."${tableName.value as string}"`;
+	const functionName = this.getNodeParameter('functions', 0, { extractValue: true }) as IDataObject;
+
 	try {
-		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [
-			triggers.triggerName,
-			triggers.target,
-		]);
-		await db.any('DROP FUNCTION IF EXISTS $1:raw', [triggers.functionName]);
+		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
+		await db.any('DROP FUNCTION IF EXISTS $1:raw', [functionName]);
 	} catch (error) {
 		throw new Error(error as string);
 	}
