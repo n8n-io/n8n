@@ -27,6 +27,6 @@ export const toggleSamlConfig = (
 	return makeRestApiRequest(context, 'POST', '/sso/saml/config/toggle', data);
 };
 
-export const testSamlConfig = (context: IRestApiContext): Promise<void> => {
+export const testSamlConfig = (context: IRestApiContext): Promise<string> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/config/test');
 };

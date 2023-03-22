@@ -33,7 +33,8 @@ const onSave = async () => {
 
 const onTest = async () => {
 	try {
-		await ssoStore.testSamlConfig();
+		const url = await ssoStore.testSamlConfig();
+		window.open(url, '_blank');
 	} catch (error) {
 		Notification.error({
 			title: 'Error',
