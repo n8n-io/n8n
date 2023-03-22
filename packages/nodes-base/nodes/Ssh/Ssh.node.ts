@@ -1,5 +1,3 @@
-import { BINARY_ENCODING } from 'n8n-core';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { rm, writeFile } from 'fs/promises';
 

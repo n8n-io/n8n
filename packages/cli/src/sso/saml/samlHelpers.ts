@@ -1,16 +1,21 @@
+import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
-import { AuthIdentity } from '../../databases/entities/AuthIdentity';
-import { User } from '../../databases/entities/User';
-import { getLicense } from '../../License';
-import { AuthError } from '../../ResponseHelper';
-import { hashPassword, isUserManagementEnabled } from '../../UserManagement/UserManagementHelper';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
+import { User } from '@db/entities/User';
+import { License } from '@/License';
+import { AuthError } from '@/ResponseHelper';
+import { hashPassword, isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
-import { isSamlCurrentAuthenticationMethod } from '../ssoHelpers';
+import {
+	isEmailCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '../ssoHelpers';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -22,8 +27,17 @@ export function getSamlLoginLabel(): string {
 	return config.getEnv(SAML_LOGIN_LABEL);
 }
 
+// can only toggle between email and saml, not directly to e.g. ldap
 export function setSamlLoginEnabled(enabled: boolean): void {
-	config.set(SAML_LOGIN_ENABLED, enabled);
+	if (enabled) {
+		if (isEmailCurrentAuthenticationMethod()) {
+			config.set(SAML_LOGIN_ENABLED, true);
+			setCurrentAuthenticationMethod('saml');
+		}
+	} else {
+		config.set(SAML_LOGIN_ENABLED, false);
+		setCurrentAuthenticationMethod('email');
+	}
 }
 
 export function setSamlLoginLabel(label: string): void {
@@ -31,7 +45,7 @@ export function setSamlLoginLabel(label: string): void {
 }
 
 export function isSamlLicensed(): boolean {
-	const license = getLicense();
+	const license = Container.get(License);
 	return (
 		isUserManagementEnabled() &&
 		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))

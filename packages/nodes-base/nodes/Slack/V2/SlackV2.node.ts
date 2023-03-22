@@ -1,4 +1,3 @@
-import { BINARY_ENCODING } from 'n8n-core';
 import type { Readable } from 'stream';
 
 import type {
@@ -16,7 +15,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';

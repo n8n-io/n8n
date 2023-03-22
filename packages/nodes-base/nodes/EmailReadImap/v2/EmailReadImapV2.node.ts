@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { ITriggerFunctions } from 'n8n-core';
 import type {
+	ITriggerFunctions,
 	IBinaryData,
 	IBinaryKeyData,
 	ICredentialsDecrypted,

@@ -49,7 +49,7 @@
 			</div>
 			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
-					:class="[$style.emptyStateCard, 'mr-s']"
+					:class="$style.emptyStateCard"
 					hoverable
 					@click="addWorkflow"
 					data-test-id="new-workflow-card"
@@ -60,21 +60,15 @@
 					</n8n-text>
 				</n8n-card>
 				<n8n-card
+					v-if="isDemoTest"
 					:class="$style.emptyStateCard"
 					hoverable
 					@click="goToTemplates"
 					data-test-id="new-workflow-template-card"
 				>
-					<n8n-icon
-						:class="$style.emptyStateCardIcon"
-						:icon="isDemoTest ? 'graduation-cap' : 'box-open'"
-					/>
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{
-							$locale.baseText(
-								isDemoTest ? 'workflows.empty.viewDemo' : 'workflows.empty.browseTemplates',
-							)
-						}}
+						{{ $locale.baseText('workflows.empty.viewDemo') }}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -137,6 +131,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useCredentialsStore } from '@/stores/credentials';
 import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
@@ -170,7 +165,13 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+			useCredentialsStore,
+		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -229,14 +230,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
 
-			// If the user has no workflows and is not participating in the demo experiment,
-			// redirect to the new workflow view
-			if (!this.isDemoTest && this.allWorkflows.length === 0) {
-				this.uiStore.nodeViewInitialized = false;
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
-			}
-
-			return Promise.resolve();
+			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -294,6 +288,10 @@ export default WorkflowsView;
 	text-align: center;
 	display: inline-flex;
 	height: 230px;
+
+	& + & {
+		margin-left: var(--spacing-s);
+	}
 
 	&:hover {
 		svg {

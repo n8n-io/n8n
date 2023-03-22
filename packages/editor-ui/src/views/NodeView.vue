@@ -33,7 +33,7 @@
 				>
 					<canvas-add-button
 						:style="canvasAddButtonStyle"
-						@click="showTriggerCreator('trigger_placeholder_button')"
+						@click="showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON)"
 						v-show="showCanvasAddButton"
 						:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 						:position="canvasStore.canvasAddButtonPosition"
@@ -198,6 +198,7 @@ import {
 	ASSUMPTION_EXPERIMENT,
 	REGULAR_NODE_FILTER,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -256,6 +257,7 @@ import {
 	IWorkflowToShare,
 	IUser,
 	INodeUpdatePropertiesInformation,
+	NodeCreatorOpenSource,
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
@@ -535,14 +537,14 @@ export default mixins(
 		},
 		workflowClasses() {
 			const returnClasses = [];
-			if (this.ctrlKeyPressed) {
+			if (this.ctrlKeyPressed || this.moveCanvasKeyPressed) {
 				if (this.uiStore.nodeViewMoveInProgress === true) {
 					returnClasses.push('move-in-process');
 				} else {
 					returnClasses.push('move-active');
 				}
 			}
-			if (this.selectActive || this.ctrlKeyPressed) {
+			if (this.selectActive || this.ctrlKeyPressed || this.moveCanvasKeyPressed) {
 				// Makes sure that nothing gets selected while select or move is active
 				returnClasses.push('do-not-select');
 			}
@@ -593,6 +595,7 @@ export default mixins(
 			lastSelectedConnection: null as null | Connection,
 			lastClickPosition: [450, 450] as XYPosition,
 			ctrlKeyPressed: false,
+			moveCanvasKeyPressed: false,
 			stopExecutionInProgress: false,
 			blankRedirect: false,
 			credentialsUpdated: false,
@@ -613,6 +616,7 @@ export default mixins(
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
 			suspendRecordingDetachedConnections: false,
+			NODE_CREATOR_OPEN_SOURCES,
 		};
 	},
 	beforeDestroy() {
@@ -662,7 +666,7 @@ export default mixins(
 					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
 			this.registerCustomAction('showNodeCreator', () =>
-				this.showTriggerCreator('no_trigger_execution_tooltip'),
+				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
 			);
 			const notice = this.$showMessage({
 				type: 'info',
@@ -756,7 +760,7 @@ export default mixins(
 			const saved = await this.saveCurrentWorkflow();
 			if (saved) await this.settingsStore.fetchPromptsData();
 		},
-		showTriggerCreator(source: string) {
+		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
 			this.nodeCreatorStore.setShowScrim(true);
@@ -968,20 +972,29 @@ export default mixins(
 		mouseDown(e: MouseEvent | TouchEvent) {
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
+			if (e instanceof MouseEvent && e.button === 1) {
+				this.moveCanvasKeyPressed = true;
+			}
 
-			this.mouseDownMouseSelect(e as MouseEvent);
-			this.mouseDownMoveWorkflow(e as MouseEvent);
+			this.mouseDownMouseSelect(e as MouseEvent, this.moveCanvasKeyPressed);
+			this.mouseDownMoveWorkflow(e as MouseEvent, this.moveCanvasKeyPressed);
 
 			// Hide the node-creator
 			this.createNodeActive = false;
 		},
 		mouseUp(e: MouseEvent) {
+			if (e.button === 1) {
+				this.moveCanvasKeyPressed = false;
+			}
 			this.mouseUpMouseSelect(e);
 			this.mouseUpMoveWorkflow(e);
 		},
 		keyUp(e: KeyboardEvent) {
 			if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = false;
+			}
+			if (e.key === ' ') {
+				this.moveCanvasKeyPressed = false;
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
@@ -1029,11 +1042,13 @@ export default mixins(
 				this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 			} else if (e.key === 'Tab') {
 				this.onToggleNodeCreator({
-					source: 'tab',
+					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnly,
 				});
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
+			} else if (e.key === ' ') {
+				this.moveCanvasKeyPressed = true;
 			} else if (e.key === 'F2' && !this.isReadOnly) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
@@ -1667,7 +1682,7 @@ export default mixins(
 							// If adding more than one node, offset the X position
 							mousePosition[0] -
 								NodeViewUtils.NODE_SIZE / 2 +
-								NodeViewUtils.NODE_SIZE * (index * 2),
+								NodeViewUtils.NODE_SIZE * (index * 2 + NodeViewUtils.GRID_SIZE),
 							mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
 						] as XYPosition,
 						dragAndDrop: true,
@@ -2059,7 +2074,7 @@ export default mixins(
 		insertNodeAfterSelected(info: {
 			sourceId: string;
 			index: number;
-			eventSource: string;
+			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
 		}) {
 			// Get the node and set it as active that new nodes
@@ -2078,7 +2093,10 @@ export default mixins(
 				this.lastSelectedConnection = info.connection;
 			}
 
-			this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true });
+			this.onToggleNodeCreator({
+				source: info.eventSource,
+				createNodeActive: true,
+			});
 		},
 		onEventConnectionAbort(connection: Connection) {
 			try {
@@ -2103,7 +2121,7 @@ export default mixins(
 				this.insertNodeAfterSelected({
 					sourceId: connection.parameters.nodeId,
 					index: connection.parameters.index,
-					eventSource: 'node_connection_drop',
+					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
 				});
 			} catch (e) {
 				console.error(e); // eslint-disable-line no-console
@@ -2183,7 +2201,7 @@ export default mixins(
 								sourceId: info.sourceEndpoint.parameters.nodeId,
 								index: sourceInfo.index,
 								connection: info.connection,
-								eventSource: 'node_connection_action',
+								eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 							});
 						},
 					);
@@ -2421,7 +2439,7 @@ export default mixins(
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
-					eventSource: 'plus_endpoint',
+					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 				});
 			}
 		},
@@ -3718,7 +3736,7 @@ export default mixins(
 			source,
 			createNodeActive,
 		}: {
-			source?: string;
+			source?: NodeCreatorOpenSource;
 			createNodeActive: boolean;
 		}) {
 			if (createNodeActive === this.createNodeActive) return;
@@ -3732,6 +3750,8 @@ export default mixins(
 
 			const mode =
 				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
+
+			this.nodeCreatorStore.openSource = source || '';
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
@@ -3774,7 +3794,9 @@ export default mixins(
 
 							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [
-								previouslyAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2,
+								previouslyAddedNode.position[0] +
+									NodeViewUtils.NODE_SIZE * 2 +
+									NodeViewUtils.GRID_SIZE,
 								previouslyAddedNode.position[1],
 							];
 							actionWatcher();
@@ -3927,7 +3949,7 @@ export default mixins(
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
-			this.showTriggerCreator('trigger_placeholder_button');
+			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		}
 		this.uiStore.addFirstStepOnLoad = false;
 		this.bindCanvasEvents();

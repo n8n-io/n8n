@@ -2,7 +2,7 @@ import { readFile, stat } from 'fs/promises';
 import type { BinaryMetadata, IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
-import { BINARY_ENCODING } from '../Constants';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
 import { binaryToBuffer } from './utils';

@@ -623,10 +623,17 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export enum UserManagementAuthenticationMethod {
+	Email = 'email',
+	Ldap = 'ldap',
+	Saml = 'saml',
+}
+
 export interface IUserManagementConfig {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+	authenticationMethod: UserManagementAuthenticationMethod;
 }
 
 export interface IPermissionGroup {
@@ -1179,11 +1186,22 @@ export type IFakeDoorLocation =
 
 export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
 
+export type NodeCreatorOpenSource =
+	| ''
+	| 'no_trigger_execution_tooltip'
+	| 'plus_endpoint'
+	| 'trigger_placeholder_button'
+	| 'tab'
+	| 'node_connection_action'
+	| 'node_connection_drop'
+	| 'add_node_button';
+
 export interface INodeCreatorState {
 	itemsFilter: string;
 	showScrim: boolean;
 	rootViewHistory: INodeFilterType[];
 	selectedView: INodeFilterType;
+	openSource: NodeCreatorOpenSource;
 }
 
 export interface ISettingsState {

@@ -28,7 +28,7 @@ import type {
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
-import { deepCopy } from './utils';
+import { augmentArray, augmentObject } from './AugmentObject';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -96,11 +96,13 @@ export class WorkflowDataProxy {
 		this.workflow = workflow;
 
 		this.runExecutionData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(runExecutionData)
+			? runExecutionData !== null
+				? augmentObject(runExecutionData)
+				: null
 			: runExecutionData;
 
 		this.connectionInputData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(connectionInputData)
+			? augmentArray(connectionInputData)
 			: connectionInputData;
 
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -461,10 +463,14 @@ export class WorkflowDataProxy {
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 
-					if (
-						typeof process === 'undefined' || // env vars are inaccessible to frontend
-						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
-					) {
+					if (typeof process === 'undefined') {
+						throw new ExpressionError('not accessible via UI, please run node', {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
+					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
 						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',

@@ -1,13 +1,7 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { v4 as uuid } from 'uuid';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
@@ -16,23 +10,17 @@ const multipleWorkflowsCount = 5;
 describe('Workflows', () => {
 	before(() => {
 		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
+		cy.skipSetup();
 	});
 
 	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		});
-
-		cy.signin({ email, password });
-		cy.visit('/');
-		cy.waitForLoad();
+		cy.visit(WorkflowsPage.url);
 	});
 
-	it('should land on empty canvas after registration', () => {
-		cy.url().should('include', WorkflowPage.url);
+	it('should create a new workflow using empty state card', () => {
+		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
+		WorkflowsPage.getters.newWorkflowButtonCard().click();
+
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Empty State Card Workflow ${uuid()}`);
 
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-1');
@@ -89,13 +77,5 @@ describe('Workflows', () => {
 		});
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
-	});
-
-	it('should redirect to new canvas if no workflows', () => {
-		cy.wait(1000);
-		cy.visit(WorkflowsPage.url);
-		cy.wait(1000);
-		cy.url().should('include', WorkflowPage.url);
 	});
 });

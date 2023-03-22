@@ -5,6 +5,7 @@ import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import { LICENSE_FEATURES, N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import { Service } from 'typedi';
 
 async function loadCertStr(): Promise<TLicenseContainerStr> {
 	const databaseSettings = await Db.collections.Settings.findOne({
@@ -27,6 +28,7 @@ async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
 	);
 }
 
+@Service()
 export class License {
 	private logger: ILogger;
 
@@ -159,14 +161,4 @@ export class License {
 	getPlanName(): string {
 		return (this.getFeatureValue('planName') ?? 'Community') as string;
 	}
-}
-
-let licenseInstance: License | undefined;
-
-export function getLicense(): License {
-	if (licenseInstance === undefined) {
-		licenseInstance = new License();
-	}
-
-	return licenseInstance;
 }

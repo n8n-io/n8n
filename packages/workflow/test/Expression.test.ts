@@ -6,15 +6,13 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { Expression } from '@/Expression';
 import { Workflow } from '@/Workflow';
 import * as Helpers from './Helpers';
-import { baseFixtures } from './ExpressionFixtures/base';
 import {
-	IConnections,
-	IExecuteData,
-	INode,
-	INodeExecutionData,
-	IRunExecutionData,
-	ITaskData,
-} from '@/Interfaces';
+	baseFixtures,
+	ExpressionTestEvaluation,
+	ExpressionTestTransform,
+} from './ExpressionFixtures/base';
+import { INodeExecutionData } from '@/Interfaces';
+import { extendSyntax } from '@/Extensions/ExpressionExtension';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -186,10 +184,28 @@ describe('Expression', () => {
 				continue;
 			}
 			test(t.expression, () => {
-				for (const test of t.tests.filter((test) => test.type === 'evaluation')) {
+				for (const test of t.tests.filter(
+					(test) => test.type === 'evaluation',
+				) as ExpressionTestEvaluation[]) {
 					expect(evaluate(t.expression, test.input.map((d) => ({ json: d })) as any)).toStrictEqual(
 						test.output,
 					);
+				}
+			});
+		}
+	});
+
+	describe('Test all expression transform fixtures', () => {
+		for (const t of baseFixtures) {
+			if (!t.tests.some((test) => test.type === 'transform')) {
+				continue;
+			}
+			test(t.expression, () => {
+				for (const test of t.tests.filter(
+					(test) => test.type === 'transform',
+				) as ExpressionTestTransform[]) {
+					const expr = t.expression;
+					expect(extendSyntax(expr, test.forceTransform)).toEqual(test.result ?? expr);
 				}
 			});
 		}

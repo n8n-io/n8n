@@ -1,7 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import { BINARY_ENCODING, WAIT_TIME_UNLIMITED } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
@@ -10,7 +8,7 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';

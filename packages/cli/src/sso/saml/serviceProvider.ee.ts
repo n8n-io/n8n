@@ -15,6 +15,7 @@ export function getServiceProviderInstance(prefs: SamlPreferences): ServiceProvi
 			authnRequestsSigned: prefs.authnRequestsSigned,
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
 			wantMessageSigned: prefs.wantMessageSigned,
+			signatureConfig: prefs.signatureConfig,
 			nameIDFormat: ['urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
 			assertionConsumerService: [
 				{

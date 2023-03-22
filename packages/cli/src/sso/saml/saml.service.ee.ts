@@ -1,4 +1,5 @@
 import type express from 'express';
+import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type { User } from '@/databases/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
@@ -26,9 +27,8 @@ import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
 
+@Service()
 export class SamlService {
-	private static instance: SamlService;
-
 	private identityProviderInstance: IdentityProviderInstance | undefined;
 
 	private _samlPreferences: SamlPreferences = {
@@ -48,6 +48,13 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
+		signatureConfig: {
+			prefix: 'ds',
+			location: {
+				reference: '/samlp:Response/saml:Issuer',
+				action: 'after',
+			},
+		},
 	};
 
 	public get samlPreferences(): SamlPreferences {
@@ -56,13 +63,6 @@ export class SamlService {
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
 		};
-	}
-
-	static getInstance(): SamlService {
-		if (!SamlService.instance) {
-			SamlService.instance = new SamlService();
-		}
-		return SamlService.instance;
 	}
 
 	async init(): Promise<void> {
@@ -189,6 +189,8 @@ export class SamlService {
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
+		this._samlPreferences.signatureConfig =
+			prefs.signatureConfig ?? this._samlPreferences.signatureConfig;
 		this._samlPreferences.authnRequestsSigned =
 			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
 		this._samlPreferences.wantAssertionsSigned =

@@ -1,8 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { LoggerProxy as Logger, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
