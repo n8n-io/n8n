@@ -3603,7 +3603,6 @@ export default mixins(
 			await this.credentialsStore.fetchAllCredentials();
 		},
 		async loadVariables(): Promise<void> {
-			alert('wt');
 			await this.environmentsStore.fetchAllVariables();
 		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
@@ -3859,10 +3858,7 @@ export default mixins(
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
 		];
-
-		if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
-			this.loadVariables();
-		}
+		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
