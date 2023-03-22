@@ -133,7 +133,7 @@ export class MFAController {
 	private async getSecretAndRecoveryCodes(userId: string) {
 		return this.userRepository.findOneOrFail({
 			where: { id: userId },
-			select: ['mfaSecret', 'mfaRecoveryCodes'],
+			select: ['id', 'mfaSecret', 'mfaRecoveryCodes'],
 		});
 	}
 }
