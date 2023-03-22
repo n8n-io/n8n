@@ -9,13 +9,11 @@ import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
-	ICredentialTypes,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -89,13 +87,6 @@ export const mockInstance = <T>(
 	Container.set(ctor, instance);
 	return instance;
 };
-
-const loadNodesAndCredentials: INodesAndCredentials = {
-	loaded: { nodes: {}, credentials: {} },
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
-};
-Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -739,6 +730,15 @@ export async function isInstanceOwnerSetUp() {
 
 	return Boolean(value);
 }
+
+export const setInstanceOwnerSetUp = async (value: boolean) => {
+	config.set('userManagement.isInstanceOwnerSetUp', value);
+
+	await Db.collections.Settings.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: JSON.stringify(value) },
+	);
+};
 
 // ----------------------------------
 //              misc

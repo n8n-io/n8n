@@ -11,20 +11,59 @@ import {
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
-import * as Helpers from './Helpers';
 import { Container } from 'typedi';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
-const TEST_ENCRYPTION_KEY = 'test';
-const mockNodesAndCredentials: INodesAndCredentials = {
-	loaded: { nodes: {}, credentials: {} },
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
-};
-Container.set(LoadNodesAndCredentials, mockNodesAndCredentials);
-
 describe('CredentialsHelper', () => {
+	const TEST_ENCRYPTION_KEY = 'test';
+
+	const mockNodesAndCredentials: INodesAndCredentials = {
+		loaded: {
+			nodes: {
+				'test.set': {
+					sourcePath: '',
+					type: {
+						description: {
+							displayName: 'Set',
+							name: 'set',
+							group: ['input'],
+							version: 1,
+							description: 'Sets a value',
+							defaults: {
+								name: 'Set',
+								color: '#0000FF',
+							},
+							inputs: ['main'],
+							outputs: ['main'],
+							properties: [
+								{
+									displayName: 'Value1',
+									name: 'value1',
+									type: 'string',
+									default: 'default-value1',
+								},
+								{
+									displayName: 'Value2',
+									name: 'value2',
+									type: 'string',
+									default: 'default-value2',
+								},
+							],
+						},
+					},
+				},
+			},
+			credentials: {},
+		},
+		known: { nodes: {}, credentials: {} },
+		credentialTypes: {} as ICredentialTypes,
+	};
+
+	Container.set(LoadNodesAndCredentials, mockNodesAndCredentials);
+
+	const nodeTypes = Container.get(NodeTypes);
+
 	describe('authenticate', () => {
 		const tests: Array<{
 			description: string;
@@ -218,8 +257,6 @@ describe('CredentialsHelper', () => {
 			headers: {},
 			qs: {},
 		};
-
-		const nodeTypes = Helpers.NodeTypes() as unknown as NodeTypes;
 
 		const workflow = new Workflow({
 			nodes: [node],
