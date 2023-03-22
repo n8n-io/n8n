@@ -1,3 +1,12 @@
+## [0.220.1](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.220.1) (2023-03-22)
+
+
+### Bug Fixes
+
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([6d1c88e](https://github.com/n8n-io/n8n/commit/6d1c88ea8c2e5dc72c6e6edeeeef52dc1fba4075))
+
+
+
 # [0.220.0](https://github.com/n8n-io/n8n/compare/n8n@0.219.1...n8n@0.220.0) (2023-03-16)
 
 
