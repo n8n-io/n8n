@@ -5,6 +5,7 @@
 		:popper-class="$style.popover"
 		:value="show"
 		trigger="manual"
+		v-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
@@ -15,7 +16,6 @@
 				:value="filter"
 				:clearable="true"
 				@input="onFilterInput"
-				@blur="onSearchBlur"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -201,7 +201,7 @@ export default Vue.extend({
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onSearchBlur() {
+		onClickOutside() {
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
