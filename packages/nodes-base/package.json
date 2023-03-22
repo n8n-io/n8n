@@ -346,7 +346,7 @@
     ],
     "nodes": [
       "dist/nodes/ActionNetwork/ActionNetwork.node.js",
-      "dist/nodes/usStateTaxPortalHelper/UsStateTaxPortalHelper.node.js",
+      "dist/nodes/UsStateTaxPortalHelper/UsStateTaxPortalHelper.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AcuityScheduling/AcuitySchedulingTrigger.node.js",
