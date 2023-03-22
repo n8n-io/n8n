@@ -6,11 +6,7 @@ const fnSave = jest.fn();
 
 // const fnTransaction = jest.fn();
 
-const fnTransaction = jest.spyOn(Db, 'transaction').mockImplementation((fn: Function) => {
-	return fn({
-		save: fnSave,
-	});
-});
+const fnTransaction = jest.spyOn(Db.collections.ExecutionMetadata, 'save');
 
 describe('WorkflowExecuteAdditionalData', () => {
 	test('Execution metadata is saved in a transaction', async () => {
