@@ -17,7 +17,7 @@ export async function createVariable(
 	context: IRestApiContext,
 	data: Omit<EnvironmentVariable, 'id'>,
 ) {
-	return await makeRestApiRequest(context, 'POST', `/variables`, data as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/variables', data as unknown as IDataObject);
 }
 
 export async function updateVariable(
