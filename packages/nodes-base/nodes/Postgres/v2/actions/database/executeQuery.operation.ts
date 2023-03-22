@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -59,15 +60,19 @@ export async function execute(
 
 		let values: IDataObject[] = [];
 
-		const queryReplacement = this.getNodeParameter(
-			'options.queryReplacement',
-			i,
-			{},
-		) as IDataObject;
+		let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
 
-		if (queryReplacement?.values) {
-			values = (queryReplacement.values as IDataObject[]).map(
-				(entry) => entry.value as IDataObject,
+		if (typeof queryReplacement === 'string') {
+			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+		}
+
+		if (Array.isArray(queryReplacement)) {
+			values = queryReplacement as IDataObject[];
+		} else {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Query Replacement must be a string of comma-separated values, or an array of values',
+				{ itemIndex: i },
 			);
 		}
 

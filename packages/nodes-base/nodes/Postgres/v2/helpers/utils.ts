@@ -168,9 +168,9 @@ export const configureQueryRunner =
 	async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 
-		const queryBatching = (options.queryBatching as QueryMode) || 'multiple';
+		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
-		if (queryBatching === 'multiple') {
+		if (queryBatching === 'single') {
 			try {
 				returnData = (await db.multi(pgp.helpers.concat(queries)))
 					.map((result, i) => {
@@ -275,7 +275,7 @@ export function replaceEmptyStringsByNulls(
 
 export function prepareItem(values: IDataObject[]) {
 	const item = values.reduce((acc, { column, value }) => {
-		acc[column as string] = value === '' ? null : value;
+		acc[column as string] = value;
 		return acc;
 	}, {} as IDataObject);
 

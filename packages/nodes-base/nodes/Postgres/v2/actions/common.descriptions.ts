@@ -24,62 +24,11 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Combine Conditions',
-			name: 'combineConditions',
-			type: 'options',
-			description:
-				'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
-			options: [
-				{
-					name: 'AND',
-					value: 'AND',
-					description: 'Only rows that meet all the conditions are selected',
-				},
-				{
-					name: 'OR',
-					value: 'OR',
-					description: 'Rows that meet at least one condition are selected',
-				},
-			],
-			default: 'AND',
-			displayOptions: {
-				show: {
-					'/operation': ['select'],
-				},
-			},
-		},
-		{
-			displayName: 'Combine Conditions',
-			name: 'combineConditions',
-			type: 'options',
-			description:
-				'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
-			options: [
-				{
-					name: 'AND',
-					value: 'AND',
-					description: 'Only rows that meet all the conditions are deleted',
-				},
-				{
-					name: 'OR',
-					value: 'OR',
-					description: 'Rows that meet at least one condition are deleted',
-				},
-			],
-			default: 'AND',
-			displayOptions: {
-				show: {
-					'/operation': ['deleteTable'],
-					'/deleteCommand': ['delete'],
-				},
-			},
-		},
-		{
 			displayName: 'Connection Timeout',
-			name: 'connectionTimeoutMillis',
+			name: 'connectionTimeout',
 			type: 'number',
-			default: 0,
-			description: 'Number of milliseconds reserved for connecting to the database',
+			default: 30,
+			description: 'Number of seconds reserved for connecting to the database',
 		},
 		{
 			displayName: 'Query Batching',
@@ -88,8 +37,8 @@ export const optionsCollection: INodeProperties = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Multiple Queries',
-					value: 'multiple',
+					name: 'Single Query',
+					value: 'single',
 					description: 'A single query for all incoming items',
 				},
 				{
@@ -104,36 +53,48 @@ export const optionsCollection: INodeProperties = {
 						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
 				},
 			],
-			default: 'multiple',
+			default: 'single',
 			description:
 				'The way queries should be sent to the database. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>.',
 		},
+		// {
+		// 	displayName: 'Query Parameters',
+		// 	name: 'queryReplacement',
+		// 	type: 'fixedCollection',
+		// 	typeOptions: {
+		// 		multipleValues: true,
+		// 	},
+		// 	default: [],
+		// 	placeholder: 'Add Query Parameter',
+		// 	description:
+		// 		'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
+		// 	options: [
+		// 		{
+		// 			displayName: 'Values',
+		// 			name: 'values',
+		// 			values: [
+		// 				{
+		// 					displayName: 'Value',
+		// 					name: 'value',
+		// 					type: 'string',
+		// 					default: '',
+		// 					placeholder: 'e.g. queryParamValue',
+		// 				},
+		// 			],
+		// 		},
+		// 	],
+		// 	displayOptions: {
+		// 		show: { '/operation': ['executeQuery'] },
+		// 	},
+		// },
 		{
 			displayName: 'Query Parameters',
 			name: 'queryReplacement',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: true,
-			},
-			default: [],
+			type: 'string',
+			default: '',
 			placeholder: 'Add Query Parameter',
 			description:
-				'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
-			options: [
-				{
-					displayName: 'Values',
-					name: 'values',
-					values: [
-						{
-							displayName: 'Value',
-							name: 'value',
-							type: 'string',
-							default: '',
-							placeholder: 'e.g. queryParamValue',
-						},
-					],
-				},
-			],
+				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. More info.',
 			displayOptions: {
 				show: { '/operation': ['executeQuery'] },
 			},
@@ -408,4 +369,25 @@ export const sortFixedCollection: INodeProperties = {
 			],
 		},
 	],
+};
+
+export const combineConditionsCollection: INodeProperties = {
+	displayName: 'Combine Conditions',
+	name: 'combineConditions',
+	type: 'options',
+	description:
+		'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
+	options: [
+		{
+			name: 'AND',
+			value: 'AND',
+			description: 'Only rows that meet all the conditions are selected',
+		},
+		{
+			name: 'OR',
+			value: 'OR',
+			description: 'Rows that meet at least one condition are selected',
+		},
+	],
+	default: 'AND',
 };

@@ -64,8 +64,8 @@ export async function configurePostgres(
 		password: credentials.password as string,
 	};
 
-	if (options.connectionTimeoutMillis) {
-		dbConfig.connectionTimeoutMillis = options.connectionTimeoutMillis as number;
+	if (options.connectionTimeout) {
+		dbConfig.connectionTimeoutMillis = (options.connectionTimeout as number) * 1000;
 	}
 
 	if (credentials.allowUnauthorizedCerts === true) {

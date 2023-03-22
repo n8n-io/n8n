@@ -13,7 +13,11 @@ import type {
 
 import { addWhereClauses } from '../../helpers/utils';
 
-import { optionsCollection, whereFixedCollection } from '../common.descriptions';
+import {
+	combineConditionsCollection,
+	optionsCollection,
+	whereFixedCollection,
+} from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -54,6 +58,14 @@ const properties: INodeProperties[] = [
 	},
 	{
 		...whereFixedCollection,
+		displayOptions: {
+			show: {
+				deleteCommand: ['delete'],
+			},
+		},
+	},
+	{
+		...combineConditionsCollection,
 		displayOptions: {
 			show: {
 				deleteCommand: ['delete'],
@@ -116,11 +128,7 @@ export async function execute(
 			const whereClauses =
 				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-			const combineConditions = this.getNodeParameter(
-				'options.combineConditions',
-				i,
-				'AND',
-			) as string;
+			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
 			[query, values] = addWhereClauses(
 				'DELETE FROM $1:name.$2:name',

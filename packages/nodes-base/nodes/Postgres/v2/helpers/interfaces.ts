@@ -7,7 +7,7 @@ import type {
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
-export type QueryMode = 'multiple' | 'transaction' | 'independently';
+export type QueryMode = 'single' | 'transaction' | 'independently';
 
 export type QueryValue = string | IDataObject | string[];
 export type QueryValues = QueryValue[];

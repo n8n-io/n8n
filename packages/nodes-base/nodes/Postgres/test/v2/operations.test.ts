@@ -195,13 +195,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			operation: 'executeQuery',
 			query: 'select * from $1:name;',
 			options: {
-				queryReplacement: {
-					values: [
-						{
-							value: 'my_table',
-						},
-					],
-				},
+				queryReplacement: 'my_table',
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
