@@ -1458,6 +1458,7 @@ export interface IWorkflowDataProxyData {
 	$node: any;
 	$parameter: any;
 	$position: any;
+	$vars: any;
 	$workflow: any;
 	$: any;
 	$input: any;

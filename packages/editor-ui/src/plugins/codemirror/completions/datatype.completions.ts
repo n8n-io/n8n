@@ -46,12 +46,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		if (base === '$vars') {
 			const environmentsStore = useEnvironmentsStore();
-			base = JSON.stringify(
-				environmentsStore.variables.reduce<Record<string, string>>((acc, variable) => {
-					acc[variable.key] = variable.value;
-					return acc;
-				}, {}),
-			);
+			const variables = environmentsStore.variablesAsObject;
+			base = JSON.stringify(variables);
 		}
 
 		try {
@@ -68,8 +64,6 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 			return null;
 		}
 	}
-
-	console.log(options);
 
 	if (options.length === 0) return null;
 

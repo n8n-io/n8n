@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { EnvironmentVariable } from '@/Interface';
 import * as environmentsApi from '@/api/environments.ee';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -45,8 +45,16 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		return data;
 	}
 
+	const variablesAsObject = computed(() =>
+		variables.value.reduce<Record<string, string | boolean | number>>((acc, variable) => {
+			acc[variable.key] = variable.value;
+			return acc;
+		}, {}),
+	);
+
 	return {
 		variables,
+		variablesAsObject,
 		fetchAllVariables,
 		createVariable,
 		updateVariable,
