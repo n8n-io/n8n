@@ -112,7 +112,7 @@ export const description: SheetProperties = [
 		required: true,
 		typeOptions: {
 			resourceMapper: {
-				resourceMapperMethod: 'getColumns',
+				resourceMapperMethod: 'getMappingColumns',
 				mode: 'add',
 				fieldWords: {
 					singular: 'column',

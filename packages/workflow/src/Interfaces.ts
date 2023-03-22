@@ -1200,6 +1200,9 @@ export interface INodeType {
 			// Contains a group of functions that test credentials.
 			[functionName: string]: ICredentialTestFunction;
 		};
+		resourceMapping?: {
+			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
 	};
 	webhookMethods?: {
 		[name in IWebhookDescription['name']]?: {
@@ -1891,5 +1894,17 @@ export interface IExceutionSummaryNodeExecutionResult {
 		name?: string;
 		message?: string;
 		description?: string;
+	}>;
+}
+
+export interface ResourceMapperFields {
+	fields: Array<{
+		id: string;
+		displayName: string;
+		match: boolean;
+		defaultMatch: boolean;
+		required: boolean;
+		display: boolean;
+		type?: string;
 	}>;
 }
