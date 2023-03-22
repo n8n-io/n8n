@@ -57,44 +57,15 @@ export const optionsCollection: INodeProperties = {
 			description:
 				'The way queries should be sent to the database. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>.',
 		},
-		// {
-		// 	displayName: 'Query Parameters',
-		// 	name: 'queryReplacement',
-		// 	type: 'fixedCollection',
-		// 	typeOptions: {
-		// 		multipleValues: true,
-		// 	},
-		// 	default: [],
-		// 	placeholder: 'Add Query Parameter',
-		// 	description:
-		// 		'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
-		// 	options: [
-		// 		{
-		// 			displayName: 'Values',
-		// 			name: 'values',
-		// 			values: [
-		// 				{
-		// 					displayName: 'Value',
-		// 					name: 'value',
-		// 					type: 'string',
-		// 					default: '',
-		// 					placeholder: 'e.g. queryParamValue',
-		// 				},
-		// 			],
-		// 		},
-		// 	],
-		// 	displayOptions: {
-		// 		show: { '/operation': ['executeQuery'] },
-		// 	},
-		// },
 		{
 			displayName: 'Query Parameters',
 			name: 'queryReplacement',
 			type: 'string',
 			default: '',
-			placeholder: 'Add Query Parameter',
 			description:
 				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. More info.',
+			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
+			placeholder: 'e.g. value1,value2,value3',
 			displayOptions: {
 				show: { '/operation': ['executeQuery'] },
 			},
