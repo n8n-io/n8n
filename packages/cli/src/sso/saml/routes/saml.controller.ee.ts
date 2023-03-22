@@ -10,7 +10,6 @@ import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
 import { AuthError, BadRequestError } from '../../../ResponseHelper';
 import { getInitSSOFormView } from '../views/initSsoPost';
-import { getInitSSOPostView } from '../views/initSsoRedirect';
 import { issueCookie } from '../../../auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';

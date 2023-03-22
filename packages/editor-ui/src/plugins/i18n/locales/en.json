@@ -1698,6 +1698,10 @@
 	"settings.sso.subtitle": "SAML 2.0",
 	"settings.sso.info": "SAML SSO (Security Assertion Markup Language Single Sign-On) is a type of authentication process that enables users to access multiple applications with a single set of login credentials. {link}",
 	"settings.sso.info.link": "More info.",
+	"settings.sso.activated": "Activated",
+	"settings.sso.deactivated": "Deactivated",
+	"settings.sso.settings.test": "Test settings",
+	"settings.sso.settings.save": "Save settings",
 	"sso.login.divider": "or",
 	"sso.login.button": "Continue with SSO"
 }
