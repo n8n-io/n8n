@@ -4,6 +4,7 @@ import {
 	getNodeTranslationHeaders,
 	getNodeTypes,
 	getResourceLocatorResults,
+	getResourceMapperFields,
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
 import {
@@ -11,6 +12,7 @@ import {
 	INodeCreateElement,
 	INodeTypesState,
 	IResourceLocatorReqParams,
+ResourceMapperReqParams,
 } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit, getCategoriesWithNodes, getCategorizedList } from '@/utils';
@@ -29,6 +31,7 @@ import { useCredentialsStore } from './credentials';
 import { useRootStore } from './n8nRootStore';
 import { useUsersStore } from './users';
 import { useNodeCreatorStore } from './nodeCreator';
+import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }
@@ -192,6 +195,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		): Promise<INodeListSearchResult> {
 			const rootStore = useRootStore();
 			return getResourceLocatorResults(rootStore.getRestApiContext, sendData);
+		},
+		async getResourceMapperFields(
+			sendData: ResourceMapperReqParams,
+		): Promise<ResourceMapperFields> {
+			const rootStore = useRootStore();
+			return getResourceMapperFields(rootStore.getRestApiContext, sendData);
 		},
 	},
 });

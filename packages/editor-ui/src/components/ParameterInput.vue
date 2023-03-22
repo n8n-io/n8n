@@ -33,6 +33,12 @@
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
+			<resource-mapper
+				v-else-if="parameter.type === 'resourceMapper'"
+				:parameter="parameter"
+				:node="node"
+				:path="path"
+			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
 				:value="expressionDisplayValue"
@@ -344,6 +350,7 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
+import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -388,6 +395,7 @@ export default mixins(
 		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
+		ResourceMapper,
 		TextEdit,
 		ImportParameter,
 	},
