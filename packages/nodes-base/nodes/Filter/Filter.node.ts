@@ -19,7 +19,7 @@ export class Filter implements INodeType {
 		description: 'Filter out incoming items based on given conditions',
 		defaults: {
 			name: 'Filter',
-			color: '#ff9922',
+			color: '#229eff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
