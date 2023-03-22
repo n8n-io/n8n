@@ -47,6 +47,7 @@
 					[$style.selected]: result.value === value,
 					[$style.hovering]: hoverIndex === i,
 				}"
+				class="ph-no-capture"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
