@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onBeforeMount } from 'vue';
+import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
@@ -13,22 +14,48 @@ const ssoActivatedLabel = computed(() =>
 );
 
 const ssoSettingsSaved = ref(false);
-const metadata = ref('');
-const redirectUrl = ref('');
-const entityId = ref('');
+const metadata = ref();
+const redirectUrl = ref();
+const entityId = ref();
 
 const onSave = async () => {
 	try {
 		await ssoStore.saveSamlConfig({ metadata: metadata.value });
 		ssoSettingsSaved.value = true;
 	} catch (error) {
-		console.error(error);
+		Notification.error({
+			title: 'Error',
+			message: error.message,
+			position: 'bottom-right',
+		});
 	}
 };
 
-const onTest = () => {
-	console.log('test');
+const onTest = async () => {
+	try {
+		await ssoStore.testSamlConfig();
+	} catch (error) {
+		Notification.error({
+			title: 'Error',
+			message: error.message,
+			position: 'bottom-right',
+		});
+	}
 };
+
+onBeforeMount(async () => {
+	try {
+		const config = await ssoStore.getSamlConfig();
+		metadata.value = config.metadata;
+		ssoSettingsSaved.value = !!config.metadata;
+	} catch (error) {
+		Notification.error({
+			title: 'Error',
+			message: error.message,
+			position: 'bottom-right',
+		});
+	}
+});
 </script>
 
 <template>
@@ -44,7 +71,7 @@ const onTest = () => {
 				</template>
 				<el-switch
 					v-model="ssoStore.isSamlLoginEnabled"
-					:disabled="!ssoSettingsSaved && !ssoStore.isSamlLoginEnabled"
+					:disabled="!ssoSettingsSaved"
 					:class="$style.switch"
 					:inactive-text="ssoActivatedLabel"
 				/>
@@ -100,7 +127,7 @@ const onTest = () => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing-2xl) 0 var(--spacing-m);
+	padding: var(--spacing-2xl) 0 var(--spacing-xl);
 }
 
 .switch {
