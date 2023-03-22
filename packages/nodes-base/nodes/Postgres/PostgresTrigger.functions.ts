@@ -126,14 +126,17 @@ export async function dropTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 ): Promise<void> {
-	const triggerName = this.getNodeParameter('triggers', 0, {
-		extractValue: true,
-	}) as IDataObject;
 	const schema = this.getNodeParameter('schema', 0, { extractValue: true }) as IDataObject;
 	const tableName = this.getNodeParameter('tableName', 0, { extractValue: true }) as IDataObject;
 	const target = `${schema.value as string}."${tableName.value as string}"`;
-	const functionName = this.getNodeParameter('functions', 0, { extractValue: true }) as IDataObject;
-
+	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const nodeId = this.getNode().id.replace(/-/g, '_');
+	let functionName =
+		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}()`;
+	if (!functionName.includes('()')) {
+		functionName = functionName.concat('()');
+	}
+	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
 	try {
 		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
 		await db.any('DROP FUNCTION IF EXISTS $1:raw', [functionName]);
