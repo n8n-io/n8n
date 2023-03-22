@@ -21,6 +21,7 @@
 			@click="wrappedEmit('selected', item)"
 		>
 			<category-item v-if="item.type === 'category'" :item="item.properties" />
+			<p v-if="item.type === 'label'" v-text="item.key" @click.prevent.stop :class="$style.label" />
 
 			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item.properties" />
 
@@ -182,7 +183,7 @@ const { renderedItems } = toRefs(state);
 		bottom: 0;
 		border-left: 2px solid transparent;
 	}
-	&:hover::before {
+	&:not(.label):hover::before {
 		border-color: $node-creator-item-hover-border-color;
 	}
 

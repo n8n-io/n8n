@@ -323,17 +323,87 @@ const filteredCategorizedItems = computed<INodeCreateElement[]>(() => {
 	return reducedItems;
 });
 
+function sortNodes(nodes: INodeCreateElement[]) {
+	return nodes.sort((a, b) => {
+		const labelA = a.label;
+		const labelB = b.label;
+
+		if (labelA < labelB) {
+			return -1;
+		} else if (labelA > labelB) {
+			return 1;
+		} else {
+			const keyA = a.key.toLowerCase();
+			const keyB = b.key.toLowerCase();
+			if (keyA < keyB) {
+				return -1;
+			} else if (keyA > keyB) {
+				return 1;
+			} else {
+				return 0;
+			}
+		}
+	});
+}
+
+function addLabels(nodes: INodeCreateElement[]): INodeCreateElement[] {
+	const labeledNodes = nodes.filter((el) => el.label !== undefined);
+	const categories = nodes.filter((el) => el.type === 'category');
+	const categoriesChunk = categories.map((el) => nodes.filter((node) => node.category === el.key));
+
+	if (labeledNodes.length === 0) return nodes;
+
+	const injectedLabelsChunks = categoriesChunk.map((chunk) => {
+		const labelsSet = new Set<string>();
+		// Collect unique labels
+		for (const node of chunk) {
+			const label = node.label;
+			labelsSet.add(label);
+		}
+
+		sortNodes(chunk);
+
+		if (labelsSet.size <= 1) return chunk;
+
+		for (const label of labelsSet) {
+			let firstIndex = -1;
+			for (let i = 0; i < chunk.length; i++) {
+				if (chunk[i].label === label) {
+					firstIndex = i;
+					break;
+				}
+			}
+			if (firstIndex > -1) {
+				chunk.splice(firstIndex, 0, {
+					type: 'label',
+					key: label,
+				});
+			}
+		}
+		return chunk;
+	});
+
+	const result = categories.flatMap((el, index) => [el, ...injectedLabelsChunks[index]]);
+	console.log('🚀 ~ file: MainPanel.vue:265 ~ addLabels ~ clonedNodes:', result);
+	return result;
+}
+
 const renderedItems = computed<INodeCreateElement[]>(() => {
-	if (props.firstLevelItems.length > 0 && activeSubcategory.value === null)
-		return props.firstLevelItems;
+	let items = [];
+	if (props.firstLevelItems.length > 0 && activeSubcategory.value === null) {
+		items = props.firstLevelItems;
+	} else if (activeSubcategory.value?.key === '*') {
+		// If active subcategory is * then we show all items
+		items = props.searchItems;
+	} else if (subcategorizedItems.value.length > 0) {
+		// Otherwise we show only items that match the subcategory
+		items = subcategorizedItems.value;
+	} else {
+		// Finally if none of the above is true we show the categorized items
+		items = filteredCategorizedItems.value;
+	}
 
-	// If active subcategory is * then we show all items
-	if (activeSubcategory.value?.key === '*') return props.searchItems;
-	// Otherwise we show only items that match the subcategory
-	if (subcategorizedItems.value.length > 0) return subcategorizedItems.value;
-
-	// Finally if none of the above is true we show the categorized items
-	return filteredCategorizedItems.value;
+	return addLabels(items);
 });
 
 const isSearchVisible = computed<boolean>(() => {

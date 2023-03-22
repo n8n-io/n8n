@@ -24,7 +24,7 @@ if (inE2ETests) {
 	dotenv.config();
 }
 
-const config = convict(schema, { args: [] });
+const config = convict(schema);
 
 if (inE2ETests) {
 	config.set('enterprise.features.sharing', true);

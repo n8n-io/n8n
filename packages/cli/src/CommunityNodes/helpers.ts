@@ -1,5 +1,8 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call  */
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
@@ -210,7 +213,7 @@ export function removePackageFromMissingList(packageName: string): void {
 		const failedPackages = config.get('nodes.packagesMissing').split(' ');
 
 		const packageFailedToLoad = failedPackages.filter(
-			(packageNameAndVersion) =>
+			(packageNameAndVersion: string) =>
 				!packageNameAndVersion.startsWith(packageName) ||
 				!packageNameAndVersion.replace(packageName, '').startsWith('@'),
 		);

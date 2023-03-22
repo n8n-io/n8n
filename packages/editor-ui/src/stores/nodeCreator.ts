@@ -42,6 +42,7 @@ const customNodeActionsParsers: {
 				...getNodeTypeBase(
 					nodeTypeDescription,
 					i18n.baseText('nodeCreator.actionsCategory.triggers'),
+					i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				),
 				actionKey: categoryItem.value as string,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
@@ -69,11 +70,16 @@ function filterActions(actions: INodeActionTypeDescription[]) {
 	);
 }
 
-function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, category: string) {
+function getNodeTypeBase(
+	nodeTypeDescription: INodeTypeDescription,
+	label: string,
+	category: string,
+) {
 	return {
 		name: nodeTypeDescription.name,
 		group: ['trigger'],
 		codex: {
+			label,
 			categories: [category],
 			subcategories: {
 				[nodeTypeDescription.displayName]: [category],
@@ -107,7 +113,11 @@ function operationsCategory(
 	);
 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
-		...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.actions')),
+		...getNodeTypeBase(
+			nodeTypeDescription,
+			i18n.baseText('nodeCreator.actionsCategory.actions'),
+			i18n.baseText('nodeCreator.actionsCategory.actions'),
+		),
 		actionKey: item.value as string,
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
@@ -140,6 +150,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActio
 				...getNodeTypeBase(
 					nodeTypeDescription,
 					i18n.baseText('nodeCreator.actionsCategory.triggers'),
+					'Triggers',
 				),
 				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
@@ -164,6 +175,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActio
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
 			...getNodeTypeBase(
 				nodeTypeDescription,
+				i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				i18n.baseText('nodeCreator.actionsCategory.triggers'),
 			),
 			actionKey: categoryItem.value as string,
@@ -219,7 +231,7 @@ function resourceCategories(
 							: operations?.displayOptions;
 
 						return {
-							...getNodeTypeBase(nodeTypeDescription, resourceOption.name),
+							...getNodeTypeBase(nodeTypeDescription, resourceOption.name, 'Actions'),
 							actionKey: operationOption.value as string,
 							description: operationOption?.description ?? '',
 							displayOptions,

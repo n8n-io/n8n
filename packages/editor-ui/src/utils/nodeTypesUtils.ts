@@ -76,6 +76,7 @@ const addNodeToCategory = (
 		type: nodeType.actionKey ? 'action' : 'node',
 		key: `${nodeType.name}`,
 		category,
+		label: nodeType?.codex?.label,
 		properties: {
 			nodeType,
 			subcategory,
@@ -156,6 +157,7 @@ export const getCategorizedList = (
 				expanded: categoryIsExpanded,
 			},
 		};
+		// console.log('🚀 ~ file: nodeTypesUtils.ts:159 ~ result ~ categoryEl:', categoryEl);
 
 		const subcategories = Object.keys(categoriesWithNodes[category]);
 		if (subcategories.length === 1) {
