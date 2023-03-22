@@ -62,25 +62,27 @@ const onTest = () => {
 		<div :class="$style.group">
 			<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 			<CopyInput
+				:class="$style.copyInput"
 				:value="redirectUrl"
 				:copy-button-text="locale.baseText('generic.clickToCopy')"
-				:toast-title="locale.baseText('settings.api.view.copy.toast')"
+				:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')"
 			/>
-			<span>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</span>
+			<small>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 		</div>
 		<div :class="$style.group">
 			<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
 			<CopyInput
+				:class="$style.copyInput"
 				:value="entityId"
 				:copy-button-text="locale.baseText('generic.clickToCopy')"
-				:toast-title="locale.baseText('settings.api.view.copy.toast')"
+				:toast-title="locale.baseText('settings.sso.settings.entityId.copied')"
 			/>
-			<span>{{ locale.baseText('settings.sso.settings.entityId.help') }}</span>
+			<small>{{ locale.baseText('settings.sso.settings.entityId.help') }}</small>
 		</div>
 		<div :class="$style.group">
 			<label>{{ locale.baseText('settings.sso.settings.ips.label') }}</label>
 			<n8n-input v-model="metadata" type="textarea" />
-			<span>{{ locale.baseText('settings.sso.settings.ips.help') }}</span>
+			<small>{{ locale.baseText('settings.sso.settings.ips.help') }}</small>
 		</div>
 		<div :class="$style.buttons">
 			<n8n-button type="tertiary" @click="onTest">
@@ -120,6 +122,20 @@ const onTest = () => {
 }
 
 .group {
-	padding: var(--spacing-2xl) 0 0;
+	padding: var(--spacing-xl) 0 0;
+
+	label {
+		display: inline-block;
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-bold);
+		padding: 0 0 var(--spacing-2xs);
+	}
+
+	small {
+		display: block;
+		padding: var(--spacing-2xs) 0 0;
+		font-size: var(--font-size-2xs);
+		color: var(--color-text-base);
+	}
 }
 </style>
