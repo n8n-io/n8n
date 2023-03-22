@@ -1,7 +1,12 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	autoMapInputData,
+	mapFields,
+	RESOURCE_MAPPING_MODES,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -12,12 +17,12 @@ export const description: SheetProperties = [
 		options: [
 			{
 				name: 'Auto-Map Input Data to Columns',
-				value: 'autoMapInputData',
+				value: RESOURCE_MAPPING_MODES.AUTO,
 				description: 'Use when node input properties match destination column names',
 			},
 			{
 				name: 'Map Each Column Below',
-				value: 'defineBelow',
+				value: RESOURCE_MAPPING_MODES.MANUAL,//'defineBelow',
 				description: 'Set the value for each destination column',
 			},
 			{
@@ -36,7 +41,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		default: 'defineBelow',
+		default: RESOURCE_MAPPING_MODES.MANUAL.toString(),
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
@@ -48,7 +53,7 @@ export const description: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: ['append'],
-				dataMode: ['autoMapInputData'],
+				dataMode: [RESOURCE_MAPPING_MODES.AUTO],
 				'@version': [3],
 			},
 			hide: {
@@ -69,7 +74,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
-				dataMode: ['defineBelow'],
+				dataMode: [RESOURCE_MAPPING_MODES.MANUAL],
 				'@version': [3],
 			},
 			hide: {
@@ -189,7 +194,11 @@ export async function execute(
 	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const dataMode =
+		nodeVersion === 3
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mode', 0) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 
@@ -203,7 +212,7 @@ export async function execute(
 
 	let setData: IDataObject[] = [];
 
-	if (dataMode === 'autoMapInputData') {
+	if (dataMode === RESOURCE_MAPPING_MODES.AUTO) {
 		setData = await autoMapInputData.call(this, sheetName, sheet, items, options);
 	} else {
 		setData = mapFields.call(this, items.length);

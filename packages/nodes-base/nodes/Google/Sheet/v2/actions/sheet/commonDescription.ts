@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { RESOURCE_MAPPING_MODES } from '../../helpers/GoogleSheets.utils';
 
 export const dataLocationOnSheet: INodeProperties[] = [
 	{
@@ -261,7 +262,7 @@ export const handlingExtraData: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				'/dataMode': ['autoMapInputData'],
+				'/dataMode': [RESOURCE_MAPPING_MODES.AUTO],
 			},
 		},
 		default: 'insertInNewColumn',

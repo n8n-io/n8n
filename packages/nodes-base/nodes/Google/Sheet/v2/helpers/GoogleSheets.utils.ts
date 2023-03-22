@@ -16,6 +16,10 @@ import type {
 import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
 
 export const untilSheetSelected = { sheetName: [''] };
+export const RESOURCE_MAPPING_MODES = {
+	AUTO: 'auto',
+	MANUAL: 'manual',
+};
 
 // Used to extract the ID from the URL
 export function getSpreadsheetId(documentIdType: ResourceLocator, value: string): string {
@@ -195,7 +199,11 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 	const returnData: IDataObject[] = [];
 
 	for (let i = 0; i < inputSize; i++) {
-		const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+		const nodeVersion = this.getNode().typeVersion;
+		const fields =
+			nodeVersion === 3
+				? (this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[])
+				: (this.getNodeParameter('column.values', i, []) as IDataObject[]);
 		let dataToSend: IDataObject = {};
 		for (const field of fields) {
 			dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };

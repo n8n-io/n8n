@@ -7,7 +7,7 @@ import type {
 } from '../../helpers/GoogleSheets.types';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { RESOURCE_MAPPING_MODES, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -18,12 +18,12 @@ export const description: SheetProperties = [
 		options: [
 			{
 				name: 'Auto-Map Input Data to Columns',
-				value: 'autoMapInputData',
+				value: RESOURCE_MAPPING_MODES.AUTO,
 				description: 'Use when node input properties match destination column names',
 			},
 			{
 				name: 'Map Each Column Below',
-				value: 'defineBelow',
+				value: RESOURCE_MAPPING_MODES.MANUAL,
 				description: 'Set the value for each destination column',
 			},
 			{
@@ -42,7 +42,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		default: 'defineBelow',
+		default: RESOURCE_MAPPING_MODES.MANUAL.toString(),
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
@@ -78,7 +78,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				dataMode: ['defineBelow'],
+				dataMode: [RESOURCE_MAPPING_MODES.MANUAL],
 				'@version': [3],
 			},
 			hide: {
@@ -98,7 +98,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				dataMode: ['defineBelow'],
+				dataMode: [RESOURCE_MAPPING_MODES.MANUAL],
 				'@version': [3],
 			},
 			hide: {
@@ -209,6 +209,8 @@ export async function execute(
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 
+	const nodeVersion = this.getNode().typeVersion;
+
 	let headerRow = 0;
 	let firstDataRow = 1;
 
@@ -235,7 +237,10 @@ export async function execute(
 	columnNames = sheetData[headerRow];
 	const newColumns = new Set<string>();
 
-	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+	const columnToMatchOn =
+		nodeVersion === 3
+			? (this.getNodeParameter('columnToMatchOn', 0) as string)
+			: (this.getNodeParameter('columns.match', 0) as string);
 	const keyIndex = columnNames.indexOf(columnToMatchOn);
 
 	const columnValues = await sheet.getColumnValues(
@@ -249,16 +254,16 @@ export async function execute(
 	const updateData: ISheetUpdateData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const dataMode = this.getNodeParameter('dataMode', i) as
-			| 'defineBelow'
-			| 'autoMapInputData'
-			| 'nothing';
+		const dataMode =
+			nodeVersion === 3
+				? (this.getNodeParameter('dataMode', 0) as string)
+				: (this.getNodeParameter('columns.mode', 0) as string);
 
 		if (dataMode === 'nothing') continue;
 
 		const data: IDataObject[] = [];
 
-		if (dataMode === 'autoMapInputData') {
+		if (dataMode === RESOURCE_MAPPING_MODES.AUTO) {
 			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
 			if (handlingExtraDataOption === 'ignoreIt') {
 				data.push(items[i].json);
