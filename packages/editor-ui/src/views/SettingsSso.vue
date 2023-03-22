@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useSSOStore } from '@/stores/sso';
 import { i18n as locale } from '@/plugins/i18n';
+import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();
 
@@ -13,6 +14,8 @@ const ssoActivatedLabel = computed(() =>
 
 const ssoSettingsSaved = ref(false);
 const metadata = ref('');
+const redirectUrl = ref('');
+const entityId = ref('');
 
 const onSave = async () => {
 	try {
@@ -56,6 +59,29 @@ const onTest = () => {
 				</template>
 			</i18n>
 		</n8n-info-tip>
+		<div :class="$style.group">
+			<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+			<CopyInput
+				:value="redirectUrl"
+				:copy-button-text="locale.baseText('generic.clickToCopy')"
+				:toast-title="locale.baseText('settings.api.view.copy.toast')"
+			/>
+			<span>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</span>
+		</div>
+		<div :class="$style.group">
+			<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
+			<CopyInput
+				:value="entityId"
+				:copy-button-text="locale.baseText('generic.clickToCopy')"
+				:toast-title="locale.baseText('settings.api.view.copy.toast')"
+			/>
+			<span>{{ locale.baseText('settings.sso.settings.entityId.help') }}</span>
+		</div>
+		<div :class="$style.group">
+			<label>{{ locale.baseText('settings.sso.settings.ips.label') }}</label>
+			<n8n-input v-model="metadata" type="textarea" />
+			<span>{{ locale.baseText('settings.sso.settings.ips.help') }}</span>
+		</div>
 		<div :class="$style.buttons">
 			<n8n-button type="tertiary" @click="onTest">
 				{{ locale.baseText('settings.sso.settings.test') }}
@@ -86,10 +112,14 @@ const onTest = () => {
 .buttons {
 	display: flex;
 	justify-content: flex-start;
-	padding: var(--spacing-xl) 0 0;
+	padding: var(--spacing-2xl) 0 0;
 
 	button {
 		margin: 0 var(--spacing-s) 0 0;
 	}
+}
+
+.group {
+	padding: var(--spacing-2xl) 0 0;
 }
 </style>
