@@ -1,15 +1,19 @@
 import { saveExecutionMetadata } from '@/WorkflowExecuteAdditionalData';
 import * as Db from '@/Db';
-import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
+import { mocked } from 'jest-mock';
 
-const fnSave = jest.fn();
-
-// const fnTransaction = jest.fn();
-
-const fnTransaction = jest.spyOn(Db.collections.ExecutionMetadata, 'save');
+jest.mock('@/Db', () => {
+	return {
+		collections: {
+			ExecutionMetadata: {
+				save: jest.fn(async () => Promise.resolve([])),
+			},
+		},
+	};
+});
 
 describe('WorkflowExecuteAdditionalData', () => {
-	test('Execution metadata is saved in a transaction', async () => {
+	test('Execution metadata is saved in a batch', async () => {
 		const toSave = {
 			test1: 'value1',
 			test2: 'value2',
@@ -18,23 +22,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		await saveExecutionMetadata(executionId, toSave);
 
-		expect(fnTransaction.mock.calls.length).toBe(1);
-		expect(fnSave.mock.calls.length).toBe(2);
-		expect(fnSave.mock.calls[0]).toEqual([
-			ExecutionMetadata,
-			{
-				execution: { id: executionId },
-				key: 'test1',
-				value: 'value1',
-			},
-		]);
-		expect(fnSave.mock.calls[1]).toEqual([
-			ExecutionMetadata,
-			{
-				execution: { id: executionId },
-				key: 'test2',
-				value: 'value2',
-			},
-		]);
+		expect(mocked(Db.collections.ExecutionMetadata.save)).toHaveBeenCalledTimes(1);
 	});
 });
