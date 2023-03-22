@@ -6,6 +6,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { accountTypes } from './accountTypes';
+import { georgiaLogin } from './georgia.debug';
+import { michiganLogin } from './michigan.debug';
 
 export class UsStateTaxPortalHelper implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,6 +96,33 @@ export class UsStateTaxPortalHelper implements INodeType {
 					},
 				},
 			},
+
+			{
+				displayName: 'Username',
+				name: 'username',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['verifyBusinessRelationship'],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: { password: true },
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['verifyBusinessRelationship'],
+					},
+				},
+				default: '',
+			},
+
 			{
 				displayName:
 					'Hey Stripe team 👋 This "Create new account" operation is partially implemented. It will get through to the "Provide Account Information" step of the signup flow, enter the Sales Tax ID, click "next" then take a screenshot of the result (will be "Invalid Sales Tax #" message). The parameters below are shown to illustrate how you could create usecase specific workflow steps, that have simple form-like structures. Check out the "Michigan Treasury Online" resource for a working example of signing into a Govt Portal, or "Submit sales tax return (monthly)" operation to see a working 2FA (TOPT) login example.',
@@ -233,27 +262,38 @@ export class UsStateTaxPortalHelper implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
 
 		const operation = this.getNodeParameter('operation', 0);
 
-		const x = accountTypes.map((t) => {
-			return { name: t, value: camelCase(t).replace(/\s/g, '') };
-		});
-
-		console.log('x', x);
-
 		for (let i = 0; i < items.length; i++) {
-			if (operation === 'generateSecret') {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ hello: 123 }),
-					{ itemData: { item: i } },
+			if (operation === 'verifyBusinessRelationship') {
+				const username = this.getNodeParameter('username', i) as string;
+				const password = this.getNodeParameter('password', i) as string;
+
+				const screenshot = await michiganLogin(username, password);
+
+				const binaryData = await this.helpers.prepareBinaryData(
+					screenshot,
+					'example.png',
+					'image/png',
 				);
 
-				returnData.push(...executionData);
+				items[i].binary = items[i].binary ?? {};
+				items[i].binary!.dataPropertyName = binaryData;
+			} else if (operation === 'createNewAccount') {
+				const screenshot = await georgiaLogin();
+
+				const binaryData = await this.helpers.prepareBinaryData(
+					screenshot,
+					'example.png',
+					'image/png',
+				);
+
+				items[i].binary = items[i].binary ?? {};
+				items[i].binary!.dataPropertyName = binaryData;
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return this.prepareOutputData(items);
 	}
 }

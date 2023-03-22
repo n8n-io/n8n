@@ -5,7 +5,7 @@ const MICHIGAN_LOGIN_URL = 'https://mto.treasury.michigan.gov/eai/mtologin/authe
 
 puppeteer.use(pluginStealth());
 
-export async function georgiaLogin(username: string, password: string) {
+export async function michiganLogin(username: string, password: string) {
 	const browser = await puppeteer.launch({ headless: false });
 
 	const page = await browser.newPage();
@@ -67,7 +67,7 @@ export async function georgiaLogin(username: string, password: string) {
 
 	await detailsSubmit.click();
 
-	await page.screenshot({ path: './example.png' });
+	const screenshot = await page.screenshot({ path: './example.png' });
 
 	// logout
 
@@ -88,4 +88,6 @@ export async function georgiaLogin(username: string, password: string) {
 	if (!_continue) throw new Error('Failed to find "Continue"');
 
 	await _continue.click();
+
+	return screenshot;
 }
