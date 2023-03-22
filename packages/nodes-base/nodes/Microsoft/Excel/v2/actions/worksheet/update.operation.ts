@@ -79,7 +79,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. [["Sara","1/2/2006","Berlin"],["George","5/3/2010","Paris"]]',
 		description:
-			'Raw values for the specified range as array of string arrays in JSON format. Should match specified range.',
+			'Raw values for the specified range as array of string arrays in JSON format. Should match the specified range: one array item for each row.',
 		displayOptions: {
 			show: {
 				dataMode: ['raw'],

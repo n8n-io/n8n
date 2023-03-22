@@ -23,22 +23,22 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Table',
-				value: 'addTable',
-				description: 'Add a table based on range',
-				action: 'Add a table',
-			},
-			{
 				name: 'Append',
 				value: 'append',
 				description: 'Add rows to the end of the table',
-				action: 'Add a row',
+				action: 'Append rows to table',
 			},
 			{
 				name: 'Convert to Range',
 				value: 'convertToRange',
 				description: 'Convert a table to a range',
 				action: 'Convert to range',
+			},
+			{
+				name: 'Create',
+				value: 'addTable',
+				description: 'Add a table based on range',
+				action: 'Create a table',
 			},
 			{
 				name: 'Delete',
@@ -61,8 +61,8 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Lookup',
 				value: 'lookup',
-				description: 'Look for a specific column value and then returns the matching row',
-				action: 'Look up a column',
+				description: 'Look for rows that match a given value in a column',
+				action: 'Lookup a column',
 			},
 		],
 		default: 'append',
