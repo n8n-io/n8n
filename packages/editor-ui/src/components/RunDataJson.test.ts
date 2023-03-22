@@ -54,7 +54,7 @@ describe('RunDataJson.vue', () => {
 	beforeEach(cleanup);
 
 	it('renders json values properly', () => {
-		const { container } = render(RunDataJson, DEFAULT_SETUP,  (vue) => {
+		const { container } = render(RunDataJson, DEFAULT_SETUP, (vue) => {
 			vue.use(PiniaVuePlugin);
 		});
 		expect(container).toMatchSnapshot();
