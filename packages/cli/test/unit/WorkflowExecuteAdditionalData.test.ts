@@ -23,5 +23,19 @@ describe('WorkflowExecuteAdditionalData', () => {
 		await saveExecutionMetadata(executionId, toSave);
 
 		expect(mocked(Db.collections.ExecutionMetadata.save)).toHaveBeenCalledTimes(1);
+		expect(mocked(Db.collections.ExecutionMetadata.save).mock.calls[0]).toEqual([
+			[
+				{
+					execution: { id: executionId },
+					key: 'test1',
+					value: 'value1',
+				},
+				{
+					execution: { id: executionId },
+					key: 'test2',
+					value: 'value2',
+				},
+			],
+		]);
 	});
 });
