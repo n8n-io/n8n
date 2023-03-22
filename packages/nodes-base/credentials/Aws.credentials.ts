@@ -9,6 +9,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 export const regions = [
 	{
@@ -285,44 +286,62 @@ export class Aws implements ICredentialType {
 		let body = requestOptions.body;
 		let region = credentials.region;
 		const query = requestOptions.qs?.query as IDataObject;
-		if (!requestOptions.baseURL && !requestOptions.url) {
-			let endpointString: string;
-			if (service === 'lambda' && credentials.lambdaEndpoint) {
-				endpointString = credentials.lambdaEndpoint as string;
-			} else if (service === 'sns' && credentials.snsEndpoint) {
-				endpointString = credentials.snsEndpoint as string;
-			} else if (service === 'sqs' && credentials.sqsEndpoint) {
-				endpointString = credentials.sqsEndpoint as string;
-			} else if (service === 's3' && credentials.s3Endpoint) {
-				endpointString = credentials.s3Endpoint as string;
-			} else if (service === 'ses' && credentials.sesEndpoint) {
-				endpointString = credentials.sesEndpoint as string;
-			} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
-				endpointString = credentials.rekognitionEndpoint as string;
-			} else if (service === 'sqs' && credentials.sqsEndpoint) {
-				endpointString = credentials.sqsEndpoint as string;
-			} else if (service) {
-				endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
-			}
-			endpoint = new URL(
-				endpointString!.replace('{region}', credentials.region as string) + (path as string),
-			);
-		} else {
-			// If no endpoint is set, we try to decompose the path and use the default endpoint
-			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);
-			service = customUrl.hostname.split('.')[0];
-			region = customUrl.hostname.split('.')[1];
+
+		// ! Workaround as we still use the OptionsWithUri interface which uses uri instead of url
+		// ! To change when we replace the interface with IHttpRequestOptions
+		const requestWithUri = requestOptions as unknown as OptionsWithUri;
+		if (requestWithUri.uri) {
+			requestOptions.url = requestWithUri.uri as string;
+			endpoint = new URL(requestOptions.url);
 			if (service === 'sts') {
 				try {
-					customUrl.searchParams.set('Action', 'GetCallerIdentity');
-					customUrl.searchParams.set('Version', '2011-06-15');
+					endpoint.searchParams.set('Action', 'GetCallerIdentity');
+					endpoint.searchParams.set('Version', '2011-06-15');
 				} catch (err) {
 					console.log(err);
 				}
 			}
-			endpoint = customUrl;
+			service = endpoint.hostname.split('.')[0];
+			region = endpoint.hostname.split('.')[1];
+		} else {
+			if (!requestOptions.baseURL && !requestOptions.url) {
+				let endpointString: string;
+				if (service === 'lambda' && credentials.lambdaEndpoint) {
+					endpointString = credentials.lambdaEndpoint as string;
+				} else if (service === 'sns' && credentials.snsEndpoint) {
+					endpointString = credentials.snsEndpoint as string;
+				} else if (service === 'sqs' && credentials.sqsEndpoint) {
+					endpointString = credentials.sqsEndpoint as string;
+				} else if (service === 's3' && credentials.s3Endpoint) {
+					endpointString = credentials.s3Endpoint as string;
+				} else if (service === 'ses' && credentials.sesEndpoint) {
+					endpointString = credentials.sesEndpoint as string;
+				} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
+					endpointString = credentials.rekognitionEndpoint as string;
+				} else if (service === 'sqs' && credentials.sqsEndpoint) {
+					endpointString = credentials.sqsEndpoint as string;
+				} else if (service) {
+					endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
+				}
+				endpoint = new URL(
+					endpointString!.replace('{region}', credentials.region as string) + (path as string),
+				);
+			} else {
+				// If no endpoint is set, we try to decompose the path and use the default endpoint
+				const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);
+				service = customUrl.hostname.split('.')[0];
+				region = customUrl.hostname.split('.')[1];
+				if (service === 'sts') {
+					try {
+						customUrl.searchParams.set('Action', 'GetCallerIdentity');
+						customUrl.searchParams.set('Version', '2011-06-15');
+					} catch (err) {
+						console.log(err);
+					}
+				}
+				endpoint = customUrl;
+			}
 		}
-
 		if (query && Object.keys(query).length !== 0) {
 			Object.keys(query).forEach((key) => {
 				endpoint.searchParams.append(key, query[key] as string);
