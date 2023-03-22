@@ -1,5 +1,3 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-
 import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
 
 import * as _transport from '../../../../v2/transport';
@@ -10,15 +8,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (
-			this: IExecuteFunctions,
-			method: string,
-			resource: string,
-			_body: any = {},
-			_qs: IDataObject = {},
-			uri?: string,
-			_headers: IDataObject = {},
-		) {
+		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
 			if (method === 'GET' && resource.includes('usedRange')) {
 				return Promise.resolve({
 					address: 'Sheet4!A1:D6',
@@ -32,7 +22,6 @@ jest.mock('../../../../v2/transport', () => {
 			}
 
 			if (method === 'PATCH' && resource.includes('{A0883CFE-D27E-4ECC-B94B-981830AAD55B}')) {
-				console.log('first');
 				return Promise.resolve({
 					values: [
 						['id', 'name', 'age', 'data'],
@@ -45,7 +34,6 @@ jest.mock('../../../../v2/transport', () => {
 			}
 
 			if (method === 'PATCH' && resource.includes('{426949D7-797F-43A9-A8A4-8FE283495A82}')) {
-				console.log('second');
 				return Promise.resolve({
 					values: [
 						['id', 'name', 'age', 'data'],

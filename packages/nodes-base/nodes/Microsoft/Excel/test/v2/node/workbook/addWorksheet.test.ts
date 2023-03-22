@@ -12,31 +12,29 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (method: string) {
-			if (method === 'GET') {
+		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
+			if (method === 'POST' && resource.includes('createSession')) {
 				return Promise.resolve({
-					value: [
-						{
-							id: '{00000000-0001-0000-0000-000000000000}',
-							name: 'Sheet1',
-						},
-						{
-							id: '{F7AF92FE-D42D-452F-8E4A-901B1D1EBF3F}',
-							name: 'Sheet2',
-						},
-						{
-							id: '{BF7BD843-4912-4B81-A0AC-4FBBC2783E20}',
-							name: 'foo2',
-						},
-					],
+					id: 12345,
 				});
+			}
+			if (method === 'POST' && resource.includes('add')) {
+				return Promise.resolve({
+					id: '{266ADAB7-25B6-4F28-A2D1-FD5BFBD7A4F0}',
+					name: 'Sheet42',
+					position: 8,
+					visibility: 'Visible',
+				});
+			}
+			if (method === 'POST' && resource.includes('closeSession')) {
+				return Promise.resolve();
 			}
 		}),
 	};
 });
 
-describe('Test MicrosoftExcelV2, worksheet => getAll', () => {
-	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/getAll.workflow.json'];
+describe('Test MicrosoftExcelV2, workbook => addWorksheet', () => {
+	const workflows = ['nodes/Microsoft/Excel/test/v2/node/workbook/addWorksheet.workflow.json'];
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
@@ -59,12 +57,27 @@ describe('Test MicrosoftExcelV2, worksheet => getAll', () => {
 			return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 		});
 
-		expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(3);
 		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
-			'GET',
-			'/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets',
+			'POST',
+			'/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/createSession',
+			{ persistChanges: true },
+		);
+		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/add',
+			{ name: 'Sheet42' },
 			{},
-			{ $select: 'name', $top: 3 },
+			'',
+			{ 'workbook-session-id': 12345 },
+		);
+		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/closeSession',
+			{},
+			{},
+			'',
+			{ 'workbook-session-id': 12345 },
 		);
 
 		expect(result.finished).toEqual(true);

@@ -1,5 +1,3 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-
 import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
 
 import * as _transport from '../../../../v2/transport';
@@ -10,15 +8,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (
-			this: IExecuteFunctions,
-			method: string,
-			resource: string,
-			_body: any = {},
-			_qs: IDataObject = {},
-			uri?: string,
-			_headers: IDataObject = {},
-		) {
+		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
 			{
 				if (method === 'GET' && resource.includes('usedRange')) {
 					return Promise.resolve({

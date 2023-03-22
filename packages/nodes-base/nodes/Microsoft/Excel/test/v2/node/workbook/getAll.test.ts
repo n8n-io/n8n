@@ -17,17 +17,15 @@ jest.mock('../../../../v2/transport', () => {
 				return Promise.resolve({
 					value: [
 						{
-							id: '{00000000-0001-0000-0000-000000000000}',
-							name: 'Sheet1',
+							'@odata.type': '#microsoft.graph.driveItem',
+							name: 'ПРРО копія.xlsx',
 						},
+						,
 						{
-							id: '{F7AF92FE-D42D-452F-8E4A-901B1D1EBF3F}',
-							name: 'Sheet2',
+							'@odata.type': '#microsoft.graph.driveItem',
+							name: 'Book 3.xlsx',
 						},
-						{
-							id: '{BF7BD843-4912-4B81-A0AC-4FBBC2783E20}',
-							name: 'foo2',
-						},
+						,
 					],
 				});
 			}
@@ -35,8 +33,8 @@ jest.mock('../../../../v2/transport', () => {
 	};
 });
 
-describe('Test MicrosoftExcelV2, worksheet => getAll', () => {
-	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/getAll.workflow.json'];
+describe('Test MicrosoftExcelV2, workbook => getAll', () => {
+	const workflows = ['nodes/Microsoft/Excel/test/v2/node/workbook/getAll.workflow.json'];
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
@@ -62,9 +60,9 @@ describe('Test MicrosoftExcelV2, worksheet => getAll', () => {
 		expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets',
+			"/drive/root/search(q='.xlsx')",
 			{},
-			{ $select: 'name', $top: 3 },
+			{ $select: 'name', $top: 2 },
 		);
 
 		expect(result.finished).toEqual(true);

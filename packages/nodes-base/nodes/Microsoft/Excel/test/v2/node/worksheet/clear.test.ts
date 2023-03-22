@@ -1,4 +1,4 @@
-import type { IDataObject, IExecuteFunctions, INodeTypes } from 'n8n-workflow';
+import type { INodeTypes } from 'n8n-workflow';
 
 import { getResultNodeData, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
 import type { WorkflowTestData } from '../../../../../../../test/nodes/types';
@@ -12,15 +12,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (
-			this: IExecuteFunctions,
-			method: string,
-			resource: string,
-			_body: any = {},
-			_qs: IDataObject = {},
-			uri?: string,
-			_headers: IDataObject = {},
-		) {
+		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'POST') {
 				return Promise.resolve({
 					values: [

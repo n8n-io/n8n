@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
@@ -11,13 +12,12 @@ jest.mock('../../../../v2/transport', () => {
 	return {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (
-			this: IExecuteFunctions,
 			method: string,
 			resource: string,
-			_body: any = {},
-			_qs: IDataObject = {},
+			body?: IDataObject,
+			qs?: IDataObject,
 			uri?: string,
-			_headers: IDataObject = {},
+			headers?: IDataObject,
 		) {
 			if (method === 'GET' && resource.includes('usedRange')) {
 				return Promise.resolve({
