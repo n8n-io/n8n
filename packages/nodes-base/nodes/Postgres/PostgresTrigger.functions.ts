@@ -26,6 +26,9 @@ export async function pgTriggerFunction(
 	}
 	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${nodeId}`;
+	if (channelName.includes('-')) {
+		throw new Error('Channel name cannot contain hyphens (-)');
+	}
 	const replaceIfExists = additionalFields.replaceIfExists || false;
 	try {
 		if (replaceIfExists || !(additionalFields.triggerName || additionalFields.functionName)) {
@@ -49,6 +52,9 @@ export async function pgTriggerFunction(
 			);
 		}
 	} catch (err) {
+		if (err.message.includes('near "-"')) {
+			throw new Error('Names cannot contain hyphens (-)');
+		}
 		throw new Error(err as string);
 	}
 }
