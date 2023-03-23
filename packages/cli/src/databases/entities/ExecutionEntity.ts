@@ -1,9 +1,10 @@
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import { Column, Entity, Generated, Index, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn } from 'typeorm';
 import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
 import { IWorkflowDb } from '@/Interfaces';
 import type { IExecutionFlattedDb } from '@/Interfaces';
 import { idStringifier } from '../utils/transformers';
+import type { ExecutionMetadata } from './ExecutionMetadata';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -49,4 +50,7 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 
 	@Column({ type: datetimeColumnType, nullable: true })
 	waitTill: Date;
+
+	@OneToMany('ExecutionMetadata', 'execution')
+	metadata: ExecutionMetadata[];
 }
