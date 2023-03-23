@@ -8,12 +8,20 @@ puppeteer.use(pluginStealth());
 const nextSelector =
 	'.ActionButton.ActionButtonNext.ActionButtonPosStep.ActionButtonStepNext.FastEvtExecuteAction';
 
-export async function georgiaLogin() {
-	const browser = await puppeteer.launch({ headless: true });
+let browserPromise: any;
 
+try {
+	browserPromise = puppeteer.launch({ headless: true });
+} catch (e) {
+	console.error(`failed to start pptr ${e}`);
+}
+
+export async function georgiaLogin() {
+	const browser = await browserPromise;
 	const page = await browser.newPage();
 
 	await page.setRequestInterception(true);
+	// @ts-ignore
 	page.on('request', async (request) => {
 		// Block All Images
 		if (request.url().endsWith('.png') || request.url().endsWith('.jpg')) {
