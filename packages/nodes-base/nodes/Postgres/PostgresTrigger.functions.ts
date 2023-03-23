@@ -138,8 +138,8 @@ export async function dropTriggerFunction(
 	}
 	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
 	try {
-		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
-		await db.any('DROP FUNCTION IF EXISTS $1:raw', [functionName]);
+		await db.any('DROP FUNCTION IF EXISTS $1:raw CASCADE', [functionName]);
+		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw CASCADE', [triggerName, target]);
 	} catch (error) {
 		throw new Error(error as string);
 	}
