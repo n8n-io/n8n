@@ -603,7 +603,7 @@ export class Ftp implements INodeType {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const filePathDownload = this.getNodeParameter('path', i) as string;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
 								filePathDownload,
 							);
@@ -699,7 +699,7 @@ export class Ftp implements INodeType {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const filePathDownload = this.getNodeParameter('path', i) as string;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
 								filePathDownload,
 							);
