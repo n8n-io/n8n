@@ -235,7 +235,7 @@ export class PostgresTrigger implements INodeType {
 		}
 		const channelName =
 			triggerMode === 'createTrigger'
-				? additionalFields.channelName || `n8n_channel_${this.getNode().id.replace('-', '_')}`
+				? additionalFields.channelName || `n8n_channel_${this.getNode().id.replace(/-/g, '_')}`
 				: (this.getNodeParameter('channelName', 0) as string);
 
 		db.connect({ direct: true })
