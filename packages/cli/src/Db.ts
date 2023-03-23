@@ -19,6 +19,7 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
+import { inTest } from './constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { DatabaseType, Migration } from '@db/types';
 import {
@@ -43,7 +44,9 @@ import {
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 
-export let isInitialized = false;
+type ConnectionState = undefined | 'connected' | 'ready';
+export let connectionState: ConnectionState;
+
 export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
@@ -94,10 +97,8 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	}
 }
 
-export async function init(
-	testConnectionOptions?: ConnectionOptions,
-): Promise<IDatabaseCollections> {
-	if (isInitialized) return collections;
+export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
+	if (connectionState) return;
 
 	const dbType = config.getEnv('database.type');
 	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
@@ -125,8 +126,8 @@ export async function init(
 	});
 
 	connection = new Connection(connectionOptions);
-	Container.set(Connection, connection);
 	await connection.initialize();
+	Container.set(Connection, connection);
 
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
@@ -138,9 +139,13 @@ export async function init(
 		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
 	}
 
-	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
+	connectionState = 'connected';
+}
 
-	if (!testConnectionOptions && dbType === 'sqlite') {
+export async function migrate() {
+	(connection.options.migrations as Migration[]).forEach(wrapMigration);
+
+	if (!inTest && connection.options.type === 'sqlite') {
 		// This specific migration changes database metadata.
 		// A field is now nullable. We need to reconnect so that
 		// n8n knows it has changed. Happens only on sqlite.
@@ -161,13 +166,15 @@ export async function init(
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
 			await connection.destroy();
-			connection = new Connection(connectionOptions);
-			Container.set(Connection, connection);
+			connection = new Connection(connection.options);
 			await connection.initialize();
+			Container.set(Connection, connection);
 		}
 	} else {
 		await connection.runMigrations({ transaction: 'each' });
 	}
+
+	connectionState = 'ready';
 
 	collections.AuthIdentity = Container.get(AuthIdentityRepository);
 	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
@@ -188,8 +195,4 @@ export async function init(
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
-
-	isInitialized = true;
-
-	return collections;
 }

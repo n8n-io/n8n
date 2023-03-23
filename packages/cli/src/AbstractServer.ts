@@ -160,9 +160,9 @@ export abstract class AbstractServer {
 
 	private async setupHealthCheck() {
 		this.app.use((req, res, next) => {
-			if (!Db.isInitialized) {
-				sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
-			} else next();
+			if (Db.connectionState === 'ready') next();
+			else if (Db.connectionState === 'connected') res.send('n8n is starting');
+			else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
 		});
 
 		// Does very basic health check
@@ -400,8 +400,8 @@ export abstract class AbstractServer {
 		);
 	}
 
-	async start(): Promise<void> {
-		const { app, externalHooks, protocol, sslKey, sslCert } = this;
+	async init(): Promise<void> {
+		const { app, protocol, sslKey, sslCert } = this;
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -431,6 +431,12 @@ export abstract class AbstractServer {
 
 		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
 
+		await this.setupHealthCheck();
+
+		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
+	}
+
+	async start(): Promise<void> {
 		await this.setupErrorHandlers();
 		this.setupPushServer();
 		await this.setupCommonMiddlewares();
@@ -438,11 +444,7 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
-		await this.setupHealthCheck();
-
 		await this.configure();
-
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${N8N_VERSION}`);
 
 		const defaultLocale = config.getEnv('defaultLocale');
@@ -450,7 +452,7 @@ export abstract class AbstractServer {
 			console.log(`Locale: ${defaultLocale}`);
 		}
 
-		await externalHooks.run('n8n.ready', [this, config]);
+		await this.externalHooks.run('n8n.ready', [this, config]);
 	}
 }
 
