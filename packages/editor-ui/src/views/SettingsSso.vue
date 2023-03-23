@@ -24,10 +24,18 @@ const metadataSanitized = computed(() => {
 	return dompurify.sanitize(metadata.value, {PARSER_MEDIA_TYPE: 'application/xhtml+xml'});
 });
 
+const getSamlConfig = async () => {
+	const config = await ssoStore.getSamlConfig();
+	entityId.value = config.entityID;
+	redirectUrl.value = config.returnUrl;
+	metadata.value = config.metadata;
+	ssoSettingsSaved.value = !!config.metadata;
+};
+
 const onSave = async () => {
 	try {
 		await ssoStore.saveSamlConfig({ metadata: metadataSanitized.value });
-		ssoSettingsSaved.value = true;
+		await getSamlConfig();
 	} catch (error) {
 		Notification.error({
 			title: 'Error',
@@ -52,11 +60,7 @@ const onTest = async () => {
 
 onBeforeMount(async () => {
 	try {
-		const config = await ssoStore.getSamlConfig();
-		entityId.value = config.entityID;
-		redirectUrl.value = config.returnUrl;
-		metadata.value = config.metadata;
-		ssoSettingsSaved.value = !!config.metadata;
+		await getSamlConfig();
 	} catch (error) {
 		Notification.error({
 			title: 'Error',
@@ -121,10 +125,10 @@ onBeforeMount(async () => {
 			<small>{{ locale.baseText('settings.sso.settings.ips.help') }}</small>
 		</div>
 		<div :class="$style.buttons">
-			<n8n-button type="tertiary" @click="onTest">
+			<n8n-button :disabled="!ssoSettingsSaved" type="tertiary" @click="onTest">
 				{{ locale.baseText('settings.sso.settings.test') }}
 			</n8n-button>
-			<n8n-button @click="onSave">
+			<n8n-button :disabled="!metadata" @click="onSave">
 				{{ locale.baseText('settings.sso.settings.save') }}
 			</n8n-button>
 		</div>
