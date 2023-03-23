@@ -24,15 +24,11 @@ export class NodeCreator extends BasePage {
 	};
 	actions = {
 		openNodeCreator: () => {
-			cy.waitForLoad();
 			this.getters.plusButton().click();
 			this.getters.nodeCreator().should('be.visible');
 		},
 		selectNode: (displayName: string) => {
 			this.getters.getCreatorItem(displayName).click();
-		},
-		selectTab: (tab: string) => {
-			this.getters.nodeCreatorTabs().contains(tab).click();
 		},
 		toggleCategory: (category: string) => {
 			this.getters.getCreatorItem(category).click();

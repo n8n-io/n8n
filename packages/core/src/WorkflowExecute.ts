@@ -13,6 +13,7 @@ import PCancelable from 'p-cancelable';
 
 import type {
 	ExecutionError,
+	ExecutionStatus,
 	IConnection,
 	IDataObject,
 	IExecuteData,
@@ -46,6 +47,8 @@ export class WorkflowExecute {
 
 	private mode: WorkflowExecuteMode;
 
+	private status: ExecutionStatus;
+
 	constructor(
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
@@ -53,6 +56,7 @@ export class WorkflowExecute {
 	) {
 		this.additionalData = additionalData;
 		this.mode = mode;
+		this.status = 'new';
 		this.runExecutionData = runExecutionData || {
 			startData: {},
 			resultData: {
@@ -85,6 +89,8 @@ export class WorkflowExecute {
 		destinationNode?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
+		this.status = 'running';
+
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -156,6 +162,8 @@ export class WorkflowExecute {
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
+
+		this.status = 'running';
 
 		const runIndex = 0;
 
@@ -682,6 +690,8 @@ export class WorkflowExecute {
 
 		const startedAt = new Date();
 
+		this.status = 'running';
+
 		const startNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
 
 		let destinationNode: string | undefined;
@@ -758,6 +768,7 @@ export class WorkflowExecute {
 										main: executionData.data.main,
 									} as ITaskDataConnections,
 									source: [],
+									executionStatus: 'error',
 								},
 							],
 						},
@@ -1048,10 +1059,12 @@ export class WorkflowExecute {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
+						executionStatus: 'success',
 					};
 
 					if (executionError !== undefined) {
 						taskData.error = executionError;
+						taskData.executionStatus = 'error';
 
 						if (executionData.node.continueOnFail === true) {
 							// Workflow should continue running even if node errors
@@ -1317,6 +1330,7 @@ export class WorkflowExecute {
 			mode: this.mode,
 			startedAt,
 			stoppedAt: new Date(),
+			status: this.status,
 		};
 
 		return fullRunData;

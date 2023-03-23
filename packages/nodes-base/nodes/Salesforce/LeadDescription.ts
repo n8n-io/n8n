@@ -236,6 +236,14 @@ export const leadFields: INodeProperties[] = [
 				description: 'First name of the lead. Limited to 40 characters.',
 			},
 			{
+				displayName: 'Has Opted Out of Email',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
+			},
+			{
 				displayName: 'Industry',
 				name: 'industry',
 				type: 'string',
@@ -495,6 +503,14 @@ export const leadFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'First name of the lead. Limited to 40 characters.',
+			},
+			{
+				displayName: 'Has Opted Out of Email',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
 			},
 			{
 				displayName: 'Industry',

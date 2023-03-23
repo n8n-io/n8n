@@ -207,6 +207,15 @@ export const useUIStore = defineStore(STORES.UI, {
 						},
 					},
 				},
+				users: {
+					settings: {
+						unavailable: {
+							title: `contextual.users.settings.unavailable.title${contextKey}`,
+							description: `contextual.users.settings.unavailable.description${contextKey}`,
+							button: `contextual.users.settings.unavailable.button${contextKey}`,
+						},
+					},
+				},
 			};
 		},
 		getLastSelectedNode(): INodeUi | null {

@@ -2,7 +2,7 @@ import jp from 'jsonpath';
 import { isEmpty, intersection, mergeDeep, getSchema, isValidDate } from '@/utils';
 import { Schema } from '@/Interface';
 
-describe('Utils', () => {
+describe('Types Utils', () => {
 	describe('isEmpty', () => {
 		test.each([
 			[undefined, true],

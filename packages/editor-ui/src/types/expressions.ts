@@ -1,6 +1,6 @@
 type Range = { from: number; to: number };
 
-export type RawSegment = { text: string; type: string } & Range;
+export type RawSegment = { text: string; token: string } & Range;
 
 export type Segment = Plaintext | Resolvable;
 

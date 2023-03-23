@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,7 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { isEmpty, omit } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import omit from 'lodash.omit';
 
 import { raindropApiRequest } from './GenericFunctions';
 
@@ -314,23 +314,8 @@ export class Raindrop implements INodeType {
 						// cover-specific endpoint
 
 						if (updateFields.cover) {
-							if (!items[i].binary) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							if (!updateFields.cover) {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Please enter a binary property to upload a cover image.',
-									{ itemIndex: i },
-								);
-							}
-
 							const binaryPropertyName = updateFields.cover as string;
-
-							const binaryData = items[i].binary![binaryPropertyName];
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const formData = {
@@ -429,8 +414,8 @@ export class Raindrop implements INodeType {
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+					? returnData.push(...(responseData as IDataObject[]))
+					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

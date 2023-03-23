@@ -1,14 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
@@ -16,7 +16,7 @@ import { createHash } from 'crypto';
 
 import { snakeCase } from 'change-case';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export async function woocommerceApiRequest(
 	this:
@@ -43,7 +43,7 @@ export async function woocommerceApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
@@ -72,7 +72,7 @@ export async function woocommerceApiRequestAllItems(
 		if (nextLink) {
 			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
 		}
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 
 	return returnData;

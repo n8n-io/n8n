@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.container">
+	<span :class="$style.container" data-test-id="action-toggle">
 		<el-dropdown
 			:placement="placement"
 			:size="size"

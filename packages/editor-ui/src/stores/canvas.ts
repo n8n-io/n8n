@@ -8,7 +8,7 @@ import { useUIStore } from '@/stores/ui';
 import { useHistoryStore } from '@/stores/history';
 import { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
-import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
 	BrowserJsPlumbInstance,
@@ -28,6 +28,9 @@ import {
 	PLACEHOLDER_TRIGGER_NODE_SIZE,
 	CONNECTOR_FLOWCHART_TYPE,
 	GRID_SIZE,
+	CONNECTOR_PAINT_STYLE_DEFAULT,
+	CONNECTOR_PAINT_STYLE_PRIMARY,
+	CONNECTOR_ARROW_OVERLAYS,
 } from '@/utils/nodeViewUtils';
 import { PointXY } from '@jsplumb/util';
 
@@ -37,7 +40,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 
-	const jsPlumbInstance = ref<BrowserJsPlumbInstance>();
+	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -78,7 +81,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
-		jsPlumbInstance.value?.setZoom(zoomLevel);
+		jsPlumbInstanceRef.value?.setZoom(zoomLevel);
 		uiStore.nodeViewOffsetPosition = offset;
 	};
 
@@ -143,16 +146,23 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	function initInstance(container: Element) {
 		// Make sure to clean-up previous instance if it exists
-		if (jsPlumbInstance.value) {
-			jsPlumbInstance.value.destroy();
-			jsPlumbInstance.value.reset();
-			jsPlumbInstance.value = undefined;
+		if (jsPlumbInstanceRef.value) {
+			jsPlumbInstanceRef.value.destroy();
+			jsPlumbInstanceRef.value.reset();
+			jsPlumbInstanceRef.value = undefined;
 		}
 
-		jsPlumbInstance.value = newInstance({
+		jsPlumbInstanceRef.value = newInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
+			endpoint: {
+				type: 'Dot',
+				options: { radius: 5 },
+			},
+			paintStyle: CONNECTOR_PAINT_STYLE_DEFAULT,
+			hoverPaintStyle: CONNECTOR_PAINT_STYLE_PRIMARY,
+			connectionOverlays: CONNECTOR_ARROW_OVERLAYS,
 			dragOptions: {
 				cursor: 'pointer',
 				grid: { w: GRID_SIZE, h: GRID_SIZE },
@@ -168,7 +178,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						// Only the node which gets dragged directly gets an event, for all others it is
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.
-						jsPlumbInstance.value?.clearDragSelection();
+						jsPlumbInstanceRef.value?.clearDragSelection();
 						uiStore.resetSelectedNodes();
 					}
 
@@ -231,7 +241,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			},
 		});
-		jsPlumbInstance.value?.setDragConstrainFunction((pos: PointXY) => {
+		jsPlumbInstanceRef.value?.setDragConstrainFunction((pos: PointXY) => {
 			const isReadOnly = uiStore.isReadOnlyView;
 			if (isReadOnly) {
 				// Do not allow to move nodes in readOnly mode
@@ -240,6 +250,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 			return pos;
 		});
 	}
+
+	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value as BrowserJsPlumbInstance);
 	return {
 		isDemo,
 		nodeViewScale,

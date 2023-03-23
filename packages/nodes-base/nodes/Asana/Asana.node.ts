@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
@@ -8,6 +7,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -1691,7 +1691,9 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+						message: 'No data got returned',
+					});
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1730,7 +1732,9 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+						message: 'No data got returned',
+					});
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1818,7 +1822,7 @@ export class Asana implements INodeType {
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
 						message: `Could not find task with id "${taskId}" so tags could not be loaded.`,
 					});
 				}
@@ -1827,7 +1831,9 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
 
 				if (responseData.data === undefined) {
-					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+						message: 'No data got returned',
+					});
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1863,7 +1869,9 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+						message: 'No data got returned',
+					});
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -2400,9 +2408,12 @@ export class Asana implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-						itemData: { item: i },
-					}),
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: { item: i },
+						},
+					),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

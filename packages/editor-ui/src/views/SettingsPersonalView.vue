@@ -1,11 +1,11 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="personal-settings-container">
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">{{
 				$locale.baseText('settings.personal.personalSettings')
 			}}</n8n-heading>
 			<div class="ph-no-capture" :class="$style.user">
-				<span :class="$style.username">
+				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>
 				<n8n-avatar
@@ -21,7 +21,7 @@
 					$locale.baseText('settings.personal.basicInformation')
 				}}</n8n-heading>
 			</div>
-			<div>
+			<div data-test-id="personal-data-form">
 				<n8n-form-inputs
 					v-if="formInputs"
 					:inputs="formInputs"
@@ -38,7 +38,7 @@
 			</div>
 			<div>
 				<n8n-input-label :label="$locale.baseText('auth.password')">
-					<n8n-link @click="openPasswordModal">{{
+					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
 						$locale.baseText('auth.changePassword')
 					}}</n8n-link>
 				</n8n-input-label>
@@ -50,6 +50,7 @@
 				:label="$locale.baseText('settings.personal.save')"
 				size="large"
 				:disabled="!hasAnyChanges || !readyToSubmit"
+				data-test-id="save-settings-button"
 				@click="onSaveClick"
 			/>
 		</div>

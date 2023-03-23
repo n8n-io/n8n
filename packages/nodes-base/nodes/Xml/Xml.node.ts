@@ -1,6 +1,10 @@
 import { Builder, Parser } from 'xml2js';
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 export class Xml implements INodeType {
@@ -239,13 +243,12 @@ export class Xml implements INodeType {
 					if (item.json[dataPropertyName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No json property "${dataPropertyName}" does not exists on item!`,
+							`Item has no JSON property called "${dataPropertyName}"`,
 							{ itemIndex },
 						);
 					}
 
-					// @ts-ignore
-					const json = await parser.parseStringPromise(item.json[dataPropertyName]);
+					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
 					returnData.push({ json });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);

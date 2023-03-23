@@ -1,0 +1,238 @@
+{
+	"name": "review node unit tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "78f64c0f-d6a7-47fb-920d-5471fcd8caa1",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				-2640,
+				4140
+			]
+		},
+		{
+			"parameters": {
+				"value": "=test"
+			},
+			"id": "90831322-8a73-40ac-ae52-84a6504d3d95",
+			"name": "Crypto Hash into Hex",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [
+				-2120,
+				4140
+			]
+		},
+		{
+			"parameters": {
+				"value": "=test"
+			},
+			"id": "9836f128-6798-498e-8752-ba447218ce21",
+			"name": "Crypto Hash into MD5",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [
+				-2120,
+				3980
+			]
+		},
+		{
+			"parameters": {
+				"action": "sign",
+				"value": "=test",
+				"algorithm": "RSA-MD4",
+				"encoding": "base64",
+				"privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu\nKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEm\no3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2k\nTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBCUEaRQnMnbp7\n9mxDXDf6AU0cN/RPBjb9qSHDcWZHGzUCIG2Es59z8ugGrDY+pxLQnwfotadxd+Uy\nv/Ow5T0q5gIJAiEAyS4RaI9YG8EWx/2w0T67ZUVAw8eOMB6BIUg0Xcu+3okCIBOs\n/5OiPgoTdSy7bcF9IGpSE8ZgGKzgYQVZeN97YE00\n-----END RSA PRIVATE KEY-----"
+			},
+			"id": "4ec3781a-433d-4b68-bc94-3fbe6ed55a0e",
+			"name": "Crypto Sign data with RSA-MDA4",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [
+				-2120,
+				3800
+			]
+		},
+		{
+			"parameters": {
+				"action": "hmac",
+				"value": "=test",
+				"secret": "-----BEGIN RSA PRIVATE KEY-----|MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8QuKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEmo3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2kTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBCUEaRQnMnbp79mxDXDf6AU0cN/RPBjb9qSHDcWZHGzUCIG2Es59z8ugGrDY+pxLQnwfotadxd+Uyv/Ow5T0q5gIJAiEAyS4RaI9YG8EWx/2w0T67ZUVAw8eOMB6BIUg0Xcu+3okCIBOs/5OiPgoTdSy7bcF9IGpSE8ZgGKzgYQVZeN97YE00-----END RSA PRIVATE KEY-----",
+				"encoding": "base64"
+			},
+			"id": "797ba0d9-28e0-4494-bafd-d0603e85c303",
+			"name": "Crypto Hmac data with MD5",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [
+				-2120,
+				3620
+			]
+		},
+		{
+			"parameters": {
+				"action": "generate"
+			},
+			"id": "a6682d88-0842-4884-9869-220597ac3d2a",
+			"name": "Crypto Generate UUID",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [
+				-2120,
+				4320
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.data }}",
+							"operation": "regex",
+							"value2": "^[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}$"
+						}
+					]
+				}
+			},
+			"id": "89297cfb-e119-45b8-87b4-021a8272534b",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-1900,
+				4320
+			]
+		},
+		{
+			"parameters": {},
+			"id": "1954d932-2878-403d-ad16-373585dbe9cd",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-1680,
+				4300
+			]
+		},
+		{
+			"parameters": {
+				"errorMessage": "Not a valid uuid"
+			},
+			"id": "b1154e93-9d39-40c6-8ca6-aadc8103cfbd",
+			"name": "Stop and Error",
+			"type": "n8n-nodes-base.stopAndError",
+			"typeVersion": 1,
+			"position": [
+				-1680,
+				4500
+			]
+		}
+	],
+	"pinData": {
+		"Crypto Sign data with RSA-MDA4": [
+			{
+				"json": {
+					"data": "SmzCKZlC8g0EnB8cXbRJIdwsN8sDWIxtUEeMvwEJNfrrJynahyNkdIbdcTO/ciwH7aBFN+roa47J8QEYWDc6Dg=="
+				}
+			}
+		],
+		"Crypto Hash into MD5": [
+			{
+				"json": {
+					"data": "098f6bcd4621d373cade4e832627b4f6"
+				}
+			}
+		],
+		"Crypto Hash into Hex": [
+			{
+				"json": {
+					"data": "098f6bcd4621d373cade4e832627b4f6"
+				}
+			}
+		],
+		"Crypto Hmac data with MD5": [
+			{
+				"json": {
+					"data": "BBXLTeT2o/R6oy5H69Yh7w=="
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Crypto Hash into Hex",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crypto Hash into MD5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crypto Sign data with RSA-MDA4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crypto Hmac data with MD5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crypto Generate UUID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crypto Generate UUID": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Stop and Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing": {
+			"main": [
+				[]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "399353bc-5707-41b2-8046-a55cdc69300d",
+	"id": "182",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

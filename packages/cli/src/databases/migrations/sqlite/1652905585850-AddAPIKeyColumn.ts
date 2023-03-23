@@ -1,8 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import config from '@/config';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+
 export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 	name = 'AddAPIKeyColumn1652905585850';
+
+	transaction = false;
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);

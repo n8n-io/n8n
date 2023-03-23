@@ -34,6 +34,7 @@ process.env.OCLIF_TS_NODE = '0';
 
 require('express-async-errors');
 require('source-map-support').install();
+require('reflect-metadata');
 
 require('@oclif/command')
 	.run()

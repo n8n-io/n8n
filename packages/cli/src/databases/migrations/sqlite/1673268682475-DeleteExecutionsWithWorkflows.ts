@@ -3,6 +3,9 @@ import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/mi
 
 export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInterface {
 	name = 'DeleteExecutionsWithWorkflows1673268682475';
+
+	transaction = false;
+
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 		const tablePrefix = getTablePrefix();

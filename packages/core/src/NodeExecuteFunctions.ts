@@ -62,6 +62,7 @@ import type {
 	FileSystemHelperFunctions,
 } from 'n8n-workflow';
 import {
+	createDeferredPromise,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -73,6 +74,7 @@ import {
 	ExpressionError,
 } from 'n8n-workflow';
 
+import pick from 'lodash.pick';
 import { Agent } from 'https';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
@@ -99,7 +101,7 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
@@ -108,6 +110,7 @@ import type { IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import { binaryToBuffer } from './BinaryDataManager/utils';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -149,7 +152,6 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
 		return undefined;
@@ -667,46 +669,46 @@ async function proxyRequestToAxios(
 			return body;
 		}
 	} catch (error) {
-		const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
-		if (configObject.simple === false && response) {
-			if (configObject.resolveWithFullResponse) {
-				return {
-					body: response.data,
-					headers: response.headers,
-					statusCode: response.status,
-					statusMessage: response.statusText,
-				};
-			} else {
-				return response.data;
-			}
-		}
+		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
 		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
-		if (response) {
-			Logger.debug('Request proxied to Axios failed', { status: response.status });
-			let responseData = response.data;
-			if (Buffer.isBuffer(responseData)) {
-				responseData = responseData.toString('utf-8');
+		if (error.isAxiosError) {
+			if (response) {
+				Logger.debug('Request proxied to Axios failed', { status: response.status });
+				let responseData = response.data;
+
+				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
+					responseData = await binaryToBuffer(responseData).then((buffer) =>
+						buffer.toString('utf-8'),
+					);
+				}
+
+				if (configObject.simple === false) {
+					if (configObject.resolveWithFullResponse) {
+						return {
+							body: responseData,
+							headers: response.headers,
+							statusCode: response.status,
+							statusMessage: response.statusText,
+						};
+					} else {
+						return responseData;
+					}
+				}
+
+				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+				throw Object.assign(new Error(message, { cause: error }), {
+					status: response.status,
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			} else {
+				throw Object.assign(new Error(error.message, { cause: error }), {
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
 			}
-			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 		}
-
-		error.cause = errorData;
-		error.error = error.response?.data || errorData;
-		error.statusCode = error.response?.status;
-		error.options = config || {};
-
-		// Remove not needed data and so also remove circular references
-		error.request = undefined;
-		error.config = undefined;
-		error.options.adapter = undefined;
-		error.options.httpsAgent = undefined;
-		error.options.paramsSerializer = undefined;
-		error.options.transformRequest = undefined;
-		error.options.transformResponse = undefined;
-		error.options.validateStatus = undefined;
 
 		throw error;
 	}
@@ -842,6 +844,30 @@ export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMet
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
 	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+}
+
+export function assertBinaryData(
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): IBinaryData {
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(node, 'No binary data exists on item!', {
+			itemIndex,
+		});
+	}
+
+	const binaryPropertyData = binaryKeyData[propertyName];
+	if (binaryPropertyData === undefined) {
+		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+			itemIndex,
+		});
+	}
+
+	return binaryPropertyData;
 }
 
 /**
@@ -1029,7 +1055,10 @@ export async function requestOAuth2(
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
 	// if it's the first time using the credentials, get the access token and save it into the DB.
-	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
+	if (
+		credentials.grantType === OAuth2GrantType.clientCredentials &&
+		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+	) {
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
 
 		// Find the credentials
@@ -1928,6 +1957,7 @@ const getCommonWorkflowFunctions = (
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
+	logger: Logger,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -2029,6 +2059,7 @@ const getBinaryHelperFunctions = ({
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
 	getBinaryStream,
 	getBinaryMetadata,
+	binaryToBuffer,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -2089,6 +2120,7 @@ export function getExecutePollFunctions(
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2147,6 +2179,7 @@ export function getExecuteTriggerFunctions(
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2287,8 +2320,12 @@ export function getExecuteFunctions(
 				return dataProxy.getDataProxy();
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
+			binaryToBuffer,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
+				if (additionalData.setExecutionStatus) {
+					additionalData.setExecutionStatus('waiting');
+				}
 			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
@@ -2318,11 +2355,15 @@ export function getExecuteFunctions(
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				assertBinaryData: (itemIndex, propertyName) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				getBinaryDataBuffer: async (itemIndex, propertyName) =>
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
@@ -2456,9 +2497,12 @@ export function getExecuteSingleFunctions(
 				return dataProxy.getDataProxy();
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
+				assertBinaryData: (propertyName, inputIndex = 0) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
@@ -2709,6 +2753,7 @@ export function getExecuteWebhookFunctions(
 			getWebhookName: () => webhookData.webhookDescription.name,
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,

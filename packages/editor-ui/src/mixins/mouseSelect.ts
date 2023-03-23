@@ -141,8 +141,8 @@ export const mouseSelect = mixins(deviceSupportHelpers).extend({
 
 			return returnNodes;
 		},
-		mouseDownMouseSelect(e: MouseEvent) {
-			if (this.isCtrlKeyPressed(e) === true) {
+		mouseDownMouseSelect(e: MouseEvent, moveButtonPressed: boolean) {
+			if (this.isCtrlKeyPressed(e) === true || moveButtonPressed) {
 				// We only care about it when the ctrl key is not pressed at the same time.
 				// So we exit when it is pressed.
 				return;
@@ -203,12 +203,12 @@ export const mouseSelect = mixins(deviceSupportHelpers).extend({
 		nodeDeselected(node: INodeUi) {
 			this.uiStore.removeNodeFromSelection(node);
 			// @ts-ignore
-			this.instance.removeFromDragSelection(this.$refs[`node-${node.id}`][0].$el);
+			this.instance.removeFromDragSelection(this.instance.getManagedElement(node?.id));
 		},
 		nodeSelected(node: INodeUi) {
 			this.uiStore.addSelectedNode(node);
 			// @ts-ignore
-			this.instance.addToDragSelection(this.$refs[`node-${node.id}`][0].$el);
+			this.instance.addToDragSelection(this.instance.getManagedElement(node?.id));
 		},
 		deselectAllNodes() {
 			// @ts-ignore

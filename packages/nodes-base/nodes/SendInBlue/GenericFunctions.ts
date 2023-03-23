@@ -84,20 +84,8 @@ export namespace SendInBlueNode {
 				const { binaryPropertyName } = dataPropertyList;
 				const dataMappingList = (binaryPropertyName as string).split(',');
 				for (const attachmentDataName of dataMappingList) {
-					const binaryPropertyAttachmentName = attachmentDataName;
-
-					const item = this.getInputData();
-
-					if (item.binary![binaryPropertyAttachmentName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
-						);
-					}
-
-					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(
-						binaryPropertyAttachmentName,
-					);
+					const binaryData = this.helpers.assertBinaryData(attachmentDataName);
+					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(attachmentDataName);
 
 					const {
 						data: content,
@@ -111,7 +99,7 @@ export namespace SendInBlueNode {
 						itemIndex,
 						mimeType,
 						fileExtension!,
-						fileName || item.binary!.data.fileName!,
+						fileName ?? binaryData.fileName!,
 					);
 
 					attachment.push({ content, name });
@@ -121,7 +109,7 @@ export namespace SendInBlueNode {
 
 				return requestOptions;
 			} catch (err) {
-				throw new NodeOperationError(this.getNode(), err);
+				throw new NodeOperationError(this.getNode(), err as Error);
 			}
 		}
 
@@ -266,8 +254,8 @@ export namespace SendInBlueNode {
 				'additionalFields.templateParameters.parameterValues',
 			);
 			const { body } = requestOptions;
-			const { parmeters } = parameterData as JsonObject;
-			const params = (parmeters as string)
+			const { parameters } = parameterData as JsonObject;
+			const params = (parameters as string)
 				.split(',')
 				.filter((parameter) => {
 					return parameter.split('=').length === 2;
@@ -367,7 +355,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return jsonParse(webhookId);
+		return jsonParse(webhookId as string);
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {

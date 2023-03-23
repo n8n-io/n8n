@@ -15,7 +15,6 @@ import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
 import type { WorkflowRequest } from '@/requests';
@@ -24,6 +23,8 @@ import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export const workflowsController = express.Router();
 
@@ -57,7 +58,7 @@ workflowsController.post(
 
 		await validateEntity(newWorkflow);
 
-		await ExternalHooks().run('workflow.create', [newWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -106,8 +107,8 @@ workflowsController.post(
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
+		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
+		void Container.get(InternalHooks).onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;
 	}),
