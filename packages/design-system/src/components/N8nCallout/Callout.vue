@@ -1,7 +1,7 @@
 <template>
 	<div :class="classes" role="alert">
 		<div :class="$style['message-section']">
-			<div :class="$style.icon">
+			<div :class="$style.icon" v-if="!iconless">
 				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
 			</div>
 			<n8n-text size="small">
@@ -44,6 +44,9 @@ export default Vue.extend({
 			type: String,
 			default: 'info-circle',
 		},
+		iconless: {
+			type: Boolean,
+		},
 	},
 	computed: {
 		classes(): string[] {
@@ -79,9 +82,9 @@ export default Vue.extend({
 
 .info,
 .custom {
-	border-color: var(--color-foreground-base);
-	background-color: var(--color-background-light);
-	color: var(--color-info);
+	border-color: var(--callout-border-color, var(--color-foreground-base));
+	background-color: var(--callout-background-color, var(--color-background-light));
+	color: var(--callout-color, var(--color-info));
 }
 
 .warning {

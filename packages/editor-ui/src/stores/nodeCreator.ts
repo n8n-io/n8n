@@ -150,7 +150,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActio
 				...getNodeTypeBase(
 					nodeTypeDescription,
 					i18n.baseText('nodeCreator.actionsCategory.triggers'),
-					'Triggers',
+					i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				),
 				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
@@ -231,7 +231,11 @@ function resourceCategories(
 							: operations?.displayOptions;
 
 						return {
-							...getNodeTypeBase(nodeTypeDescription, resourceOption.name, 'Actions'),
+							...getNodeTypeBase(
+								nodeTypeDescription,
+								`${resourceOption.name} ${i18n.baseText('nodeCreator.actionsCategory.actions')}`,
+								i18n.baseText('nodeCreator.actionsCategory.actions'),
+							),
 							actionKey: operationOption.value as string,
 							description: operationOption?.description ?? '',
 							displayOptions,

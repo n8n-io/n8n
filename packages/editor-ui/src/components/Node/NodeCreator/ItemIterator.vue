@@ -20,8 +20,12 @@
 			ref="iteratorItems"
 			@click="wrappedEmit('selected', item)"
 		>
-			<category-item v-if="item.type === 'category'" :item="item.properties" />
-			<p v-if="item.type === 'label'" v-text="item.key" @click.prevent.stop :class="$style.label" />
+			<category-item
+				v-if="item.type === 'category'"
+				:item="item.properties"
+				:active="activeIndex === index"
+			/>
+			<label-item v-if="item.type === 'label'" :item="item" @click.prevent.stop />
 
 			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item.properties" />
 
@@ -62,6 +66,7 @@ import { INodeCreateElement, NodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
+import LabelItem from './LabelItem.vue';
 import ActionItem from './ActionItem.vue';
 import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
@@ -183,11 +188,11 @@ const { renderedItems } = toRefs(state);
 		bottom: 0;
 		border-left: 2px solid transparent;
 	}
-	&:not(.label):hover::before {
+	&:not(.label):not(.category):hover::before {
 		border-color: $node-creator-item-hover-border-color;
 	}
 
-	&.active::before {
+	&.active:not(.category)::before {
 		border-color: $color-primary !important;
 	}
 

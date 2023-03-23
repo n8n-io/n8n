@@ -142,6 +142,7 @@ export const getCategorizedList = (
 	categoryIsExpanded = false,
 ): INodeCreateElement[] => {
 	const categories = getCategories(categoriesWithNodes);
+	console.log('🚀 ~ file: nodeTypesUtils.ts:145 ~ categories:', categories);
 
 	const result = categories.reduce((accu: INodeCreateElement[], category: string) => {
 		if (!categoriesWithNodes[category]) {

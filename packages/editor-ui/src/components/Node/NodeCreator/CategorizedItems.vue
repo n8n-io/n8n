@@ -64,7 +64,7 @@
 
 			<div :class="$style.scrollable" ref="scrollableContainer">
 				<item-iterator
-					:elements="searchFilter.length === 0 ? renderedItems : mergedFilteredNodes"
+					:elements="renderedItems"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					:with-actions-getter="withActionsGetter"
 					:with-description-getter="withDescriptionGetter"
@@ -323,6 +323,8 @@ const filteredCategorizedItems = computed<INodeCreateElement[]>(() => {
 	return reducedItems;
 });
 
+const activeSubcategoryItem = computed(() => renderedItems.value[state.activeSubcategoryIndex]);
+
 function sortNodes(nodes: INodeCreateElement[]) {
 	return nodes.sort((a, b) => {
 		const labelA = a.label;
@@ -390,7 +392,9 @@ function addLabels(nodes: INodeCreateElement[]): INodeCreateElement[] {
 
 const renderedItems = computed<INodeCreateElement[]>(() => {
 	let items = [];
-	if (props.firstLevelItems.length > 0 && activeSubcategory.value === null) {
+	if (searchFilter.value.length > 0) {
+		items = mergedFilteredNodes.value;
+	} else if (props.firstLevelItems.length > 0 && activeSubcategory.value === null) {
 		items = props.firstLevelItems;
 	} else if (activeSubcategory.value?.key === '*') {
 		// If active subcategory is * then we show all items
@@ -454,9 +458,21 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 		if (e.key === 'ArrowDown' && activeSubcategory.value) {
 			state.activeSubcategoryIndex++;
 			state.activeSubcategoryIndex = Math.min(state.activeSubcategoryIndex, activeList.length - 1);
+
+			// Label is not selectable so we need to skip it
+			if (activeSubcategoryItem.value?.type === 'label') {
+				console.log('activeSubcategoryItem', activeSubcategoryItem.value);
+				nodeFilterKeyDown(e);
+			}
 		} else if (e.key === 'ArrowUp' && activeSubcategory.value) {
 			state.activeSubcategoryIndex--;
 			state.activeSubcategoryIndex = Math.max(state.activeSubcategoryIndex, 0);
+
+			// Label is not selectable so we need to skip it
+			if (activeSubcategoryItem.value?.type === 'label') {
+				console.log('activeSubcategoryItem', activeSubcategoryItem.value);
+				nodeFilterKeyDown(e);
+			}
 		} else if (e.key === 'Enter') {
 			selected(activeNodeType);
 		} else if (
