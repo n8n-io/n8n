@@ -714,7 +714,7 @@ export class Wait implements INodeType {
 							}
 
 							const fileJson = file.toJSON();
-							returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+							returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
 								file.path,
 								fileJson.name || fileJson.filename,
 								fileJson.type as string,
@@ -747,7 +747,7 @@ export class Wait implements INodeType {
 				};
 
 				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-				returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+				returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
 					binaryFile.path,
 					mimeType,
 				);
