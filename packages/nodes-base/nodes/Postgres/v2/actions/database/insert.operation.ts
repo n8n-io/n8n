@@ -40,6 +40,11 @@ const properties: INodeProperties[] = [
 		default: 'autoMapInputData',
 		description:
 			'Whether to map node input properties and the table data automatically or manually',
+		displayOptions: {
+			show: {
+				'@version': [2],
+			},
+		},
 	},
 	{
 		displayName: `
@@ -51,6 +56,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['autoMapInputData'],
+				'@version': [2],
 			},
 		},
 	},
@@ -66,6 +72,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
+				'@version': [2],
 			},
 		},
 		default: {},
@@ -96,6 +103,31 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		default: {},
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns,',
+				},
+				addAllFields: true,
+				noFieldsError: 'No columns found in the database',
+				multiKeyMatch: true,
+			},
+		},
+		displayOptions: {
+			show: {
+				'@version': [3],
+			},
+		},
 	},
 	optionsCollection,
 ];
