@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount } from 'vue';
+import dompurify from 'dompurify'
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { i18n as locale } from '@/plugins/i18n';
@@ -12,15 +13,20 @@ const ssoActivatedLabel = computed(() =>
 		? locale.baseText('settings.sso.activated')
 		: locale.baseText('settings.sso.deactivated'),
 );
-
 const ssoSettingsSaved = ref(false);
 const metadata = ref();
 const redirectUrl = ref();
 const entityId = ref();
+const metadataSanitized = computed(() => {
+	if (!metadata.value) {
+		return '';
+	}
+	return dompurify.sanitize(metadata.value, {PARSER_MEDIA_TYPE: 'application/xhtml+xml'});
+});
 
 const onSave = async () => {
 	try {
-		await ssoStore.saveSamlConfig({ metadata: metadata.value });
+		await ssoStore.saveSamlConfig({ metadata: metadataSanitized.value });
 		ssoSettingsSaved.value = true;
 	} catch (error) {
 		Notification.error({
@@ -47,6 +53,8 @@ const onTest = async () => {
 onBeforeMount(async () => {
 	try {
 		const config = await ssoStore.getSamlConfig();
+		entityId.value = config.entityID;
+		redirectUrl.value = config.returnUrl;
 		metadata.value = config.metadata;
 		ssoSettingsSaved.value = !!config.metadata;
 	} catch (error) {

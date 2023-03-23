@@ -1,15 +1,20 @@
 import { makeRestApiRequest } from '@/utils';
-import { IRestApiContext, SamlPreferencesLoginEnabled, SamlPreferences } from '@/Interface';
+import {
+	IRestApiContext,
+	SamlPreferencesLoginEnabled,
+	SamlPreferences,
+	SamlPreferencesExtractedData,
+} from '@/Interface';
 
 export const initSSO = (context: IRestApiContext): Promise<string> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/initsso');
 };
 
-export const getSamlMetadata = (context: IRestApiContext): Promise<string> => {
+export const getSamlMetadata = (context: IRestApiContext): Promise<SamlPreferences> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/metadata');
 };
 
-export const getSamlConfig = (context: IRestApiContext): Promise<SamlPreferences> => {
+export const getSamlConfig = (context: IRestApiContext): Promise<SamlPreferences & SamlPreferencesExtractedData> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/config');
 };
 

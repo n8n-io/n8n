@@ -1491,3 +1491,8 @@ export type SamlPreferences = {
 	wantMessageSigned?: boolean;
 	signatureConfig?: SamlSignatureConfig;
 } & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
+
+export type SamlPreferencesExtractedData = {
+	entityID: string;
+	returnUrl: string;
+};
