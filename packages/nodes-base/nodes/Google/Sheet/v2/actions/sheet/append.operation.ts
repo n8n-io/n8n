@@ -1,12 +1,7 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import {
-	autoMapInputData,
-	mapFields,
-	RESOURCE_MAPPING_MODES,
-	untilSheetSelected,
-} from '../../helpers/GoogleSheets.utils';
+import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -17,12 +12,12 @@ export const description: SheetProperties = [
 		options: [
 			{
 				name: 'Auto-Map Input Data to Columns',
-				value: RESOURCE_MAPPING_MODES.AUTO,
+				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
 				name: 'Map Each Column Below',
-				value: RESOURCE_MAPPING_MODES.MANUAL,//'defineBelow',
+				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
 			{
@@ -41,7 +36,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		default: RESOURCE_MAPPING_MODES.MANUAL.toString(),
+		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
@@ -53,7 +48,7 @@ export const description: SheetProperties = [
 		displayOptions: {
 			show: {
 				operation: ['append'],
-				dataMode: [RESOURCE_MAPPING_MODES.AUTO],
+				dataMode: ['autoMapInputData'],
 				'@version': [3],
 			},
 			hide: {
@@ -74,7 +69,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
-				dataMode: [RESOURCE_MAPPING_MODES.MANUAL],
+				dataMode: ['defineBelow'],
 				'@version': [3],
 			},
 			hide: {
@@ -212,7 +207,7 @@ export async function execute(
 
 	let setData: IDataObject[] = [];
 
-	if (dataMode === RESOURCE_MAPPING_MODES.AUTO) {
+	if (dataMode === 'autoMapInputData') {
 		setData = await autoMapInputData.call(this, sheetName, sheet, items, options);
 	} else {
 		setData = mapFields.call(this, items.length);

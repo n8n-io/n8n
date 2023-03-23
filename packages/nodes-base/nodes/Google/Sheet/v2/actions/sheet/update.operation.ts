@@ -7,7 +7,7 @@ import type {
 } from '../../helpers/GoogleSheets.types';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { RESOURCE_MAPPING_MODES, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -18,12 +18,12 @@ export const description: SheetProperties = [
 		options: [
 			{
 				name: 'Auto-Map Input Data to Columns',
-				value: RESOURCE_MAPPING_MODES.AUTO,
+				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
 				name: 'Map Each Column Below',
-				value: RESOURCE_MAPPING_MODES.MANUAL,
+				value: 'defineBelow',
 				description: 'Set the value for each destination column',
 			},
 			{
@@ -42,7 +42,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		default: RESOURCE_MAPPING_MODES.MANUAL.toString(),
+		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
@@ -78,7 +78,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				dataMode: [RESOURCE_MAPPING_MODES.MANUAL],
+				dataMode: ['defineBelow'],
 				'@version': [3],
 			},
 			hide: {
@@ -98,7 +98,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				dataMode: [RESOURCE_MAPPING_MODES.MANUAL],
+				dataMode: ['defineBelow'],
 				'@version': [3],
 			},
 			hide: {
@@ -263,7 +263,7 @@ export async function execute(
 
 		const data: IDataObject[] = [];
 
-		if (dataMode === RESOURCE_MAPPING_MODES.AUTO) {
+		if (dataMode === 'autoMapInputData') {
 			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
 			if (handlingExtraDataOption === 'ignoreIt') {
 				data.push(items[i].json);

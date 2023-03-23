@@ -35,6 +35,7 @@ export async function getMappingColumns(
 			match: fieldsToMatch.includes(col),
 			required: false,
 			defaultMatch: col === 'id',
+			// TODO: Check with product about this condition before releasing
 			display: !col.startsWith('_'),
 			type: 'string',
 		})),
