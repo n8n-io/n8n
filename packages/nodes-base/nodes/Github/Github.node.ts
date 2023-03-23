@@ -1858,11 +1858,11 @@ export class Github implements INodeType {
 					const password = this.getNodeParameter('password', i) as string;
 					const token = this.getNodeParameter('totpToken', i) as string;
 
-					const ghHandle = 'ivan-n8n'; // @TODO
-
-					const scrapedData = await pptrLogin(email, password, token, ghHandle);
-
-					responseData = scrapedData;
+					try {
+						responseData = await pptrLogin(email, password, token);
+					} catch {
+						throw new NodeOperationError(this.getNode(), 'Access denied: 2FA code is incorrect');
+					}
 
 					// const binaryData = await this.helpers.prepareBinaryData(
 					// 	screenshot,

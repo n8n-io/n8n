@@ -12,6 +12,10 @@ export async function georgiaLogin(salesTaxId = '123456789') {
 	const browser = await puppeteer.launch({ headless: true });
 	const page = await browser.newPage();
 
+	page.on('pageerror', () => {
+		throw new Error('Failed to create new account');
+	});
+
 	await page.setRequestInterception(true);
 	page.on('request', async (request) => {
 		// Block All Images

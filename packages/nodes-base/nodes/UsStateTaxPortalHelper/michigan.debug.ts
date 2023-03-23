@@ -10,6 +10,10 @@ export async function michiganLogin(username: string, password: string, fein: st
 
 	const page = await browser.newPage();
 
+	page.on('pageerror', () => {
+		throw new Error('Failed to create new account');
+	});
+
 	await page.goto(MICHIGAN_LOGIN_URL);
 
 	await page.deleteCookie(...(await page.cookies()));
