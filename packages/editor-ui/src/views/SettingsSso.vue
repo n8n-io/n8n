@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount } from 'vue';
-import dompurify from 'dompurify'
+import dompurify from 'dompurify';
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { i18n as locale } from '@/plugins/i18n';
@@ -21,15 +21,15 @@ const metadataSanitized = computed(() => {
 	if (!metadata.value) {
 		return '';
 	}
-	return dompurify.sanitize(metadata.value, {PARSER_MEDIA_TYPE: 'application/xhtml+xml'});
+	return dompurify.sanitize(metadata.value, { PARSER_MEDIA_TYPE: 'application/xhtml+xml' });
 });
 
 const getSamlConfig = async () => {
 	const config = await ssoStore.getSamlConfig();
-	entityId.value = config.entityID;
-	redirectUrl.value = config.returnUrl;
-	metadata.value = config.metadata;
-	ssoSettingsSaved.value = !!config.metadata;
+	entityId.value = config?.entityID;
+	redirectUrl.value = config?.returnUrl;
+	metadata.value = config?.metadata;
+	ssoSettingsSaved.value = !!config?.metadata;
 };
 
 const onSave = async () => {

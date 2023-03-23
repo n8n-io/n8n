@@ -14,7 +14,9 @@ export const getSamlMetadata = (context: IRestApiContext): Promise<SamlPreferenc
 	return makeRestApiRequest(context, 'GET', '/sso/saml/metadata');
 };
 
-export const getSamlConfig = (context: IRestApiContext): Promise<SamlPreferences & SamlPreferencesExtractedData> => {
+export const getSamlConfig = (
+	context: IRestApiContext,
+): Promise<SamlPreferences & SamlPreferencesExtractedData> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/config');
 };
 
