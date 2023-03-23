@@ -1,3 +1,12 @@
+## [0.221.1](https://github.com/n8n-io/n8n/compare/n8n@0.221.0...n8n@0.221.1) (2023-03-23)
+
+
+### Bug Fixes
+
+* **core:** Initialize queue in the webhook server as well ([163859b](https://github.com/n8n-io/n8n/commit/163859b87a19f3795e2689ce8eba2e2ce6766684))
+
+
+
 # [0.221.0](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.221.0) (2023-03-23)
 
 
