@@ -210,7 +210,7 @@ export class SamlService {
 			}
 			this._samlPreferences.metadata = prefs.metadata;
 		}
-		setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 		this.getIdentityProviderInstance(true);
 		const result = await this.saveSamlPreferencesToDb();
