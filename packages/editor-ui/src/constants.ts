@@ -445,6 +445,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  * Enterprise edition
  */
 export enum EnterpriseEditionFeature {
+	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
