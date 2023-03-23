@@ -47,11 +47,11 @@
 			</div>
 		</div>
 		<div v-else class="value clickable" @click="selectItem(item)">
-			<div class="item-title ph-no-capture" :title="item.key">
+			<div class="item-title" :title="item.key">
 				{{ item.name }}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value">
+			<div class="item-value ph-no-capture">
 				{{ item.value !== undefined ? item.value : $locale.baseText('variableSelectorItem.empty') }}
 			</div>
 		</div>
