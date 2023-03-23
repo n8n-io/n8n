@@ -1043,7 +1043,7 @@ export interface INodePropertyTypeOptions {
 
 export interface ResourceMapperTypeOptions {
 	resourceMapperMethod: string;
-	mode: 'add' | 'upsert';
+	mode: 'add' | 'update' | 'upsert';
 	fieldWords?: { singular: string; plural: string };
 	addAllFields?: boolean;
 	noFieldsError?: string;
