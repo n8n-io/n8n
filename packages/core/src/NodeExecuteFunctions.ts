@@ -49,6 +49,7 @@ import type {
 	IPairedItemData,
 	ICredentialTestFunctions,
 	BinaryHelperFunctions,
+	NodeHelperFunctions,
 	RequestHelperFunctions,
 	FunctionsBase,
 	IExecuteFunctions,
@@ -62,6 +63,7 @@ import type {
 	FileSystemHelperFunctions,
 } from 'n8n-workflow';
 import {
+	createDeferredPromise,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -1979,6 +1981,7 @@ const getCommonWorkflowFunctions = (
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
+	logger: Logger,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -2075,6 +2078,13 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	},
 });
 
+const getNodeHelperFunctions = ({
+	executionId,
+}: IWorkflowExecuteAdditionalData): NodeHelperFunctions => ({
+	copyBinaryFile: async (filePath, fileName, mimeType) =>
+		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+});
+
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
@@ -2085,8 +2095,9 @@ const getBinaryHelperFunctions = ({
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
 		setBinaryDataBuffer(data, binaryData, executionId!),
-	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+	copyBinaryFile: async () => {
+		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
+	},
 });
 
 /**
@@ -2141,6 +2152,7 @@ export function getExecutePollFunctions(
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2199,6 +2211,7 @@ export function getExecuteTriggerFunctions(
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2374,6 +2387,7 @@ export function getExecuteFunctions(
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
@@ -2386,6 +2400,7 @@ export function getExecuteFunctions(
 				normalizeItems,
 				constructExecutionMetaData,
 			},
+			nodeHelpers: getNodeHelperFunctions(additionalData),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -2515,6 +2530,7 @@ export function getExecuteSingleFunctions(
 				return dataProxy.getDataProxy();
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
@@ -2770,10 +2786,12 @@ export function getExecuteWebhookFunctions(
 			getWebhookName: () => webhookData.webhookDescription.name,
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
 			},
+			nodeHelpers: getNodeHelperFunctions(additionalData),
 		};
 	})(workflow, node);
 }
