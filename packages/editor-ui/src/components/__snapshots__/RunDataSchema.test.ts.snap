@@ -52,7 +52,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 </span>
               </div>
               <span
-                class="text"
+                class="ph-no-capture text"
               >
                 John
               </span>
@@ -90,7 +90,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 </span>
               </div>
               <span
-                class="text"
+                class="ph-no-capture text"
               >
                 22
               </span>
@@ -176,7 +176,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                     </span>
                   </div>
                   <span
-                    class="text"
+                    class="ph-no-capture text"
                   >
                     surfing
                   </span>
@@ -216,7 +216,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                     </span>
                   </div>
                   <span
-                    class="text"
+                    class="ph-no-capture text"
                   >
                     traveling
                   </span>
@@ -458,7 +458,7 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                             </span>
                           </div>
                           <span
-                            class="text"
+                            class="ph-no-capture text"
                           >
                             1
                           </span>
@@ -498,7 +498,7 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                         </span>
                       </div>
                       <span
-                        class="text"
+                        class="ph-no-capture text"
                       >
                         ignore
                       </span>
