@@ -8,20 +8,11 @@ puppeteer.use(pluginStealth());
 const nextSelector =
 	'.ActionButton.ActionButtonNext.ActionButtonPosStep.ActionButtonStepNext.FastEvtExecuteAction';
 
-let browserPromise: any;
-
-try {
-	browserPromise = puppeteer.launch({ headless: true });
-} catch (e) {
-	console.error(`failed to start pptr ${e}`);
-}
-
 export async function georgiaLogin(salesTaxId = '123456789') {
-	const browser = await browserPromise;
+	const browser = await puppeteer.launch({ headless: true });
 	const page = await browser.newPage();
 
 	await page.setRequestInterception(true);
-	// @ts-ignore
 	page.on('request', async (request) => {
 		// Block All Images
 		if (request.url().endsWith('.png') || request.url().endsWith('.jpg')) {
@@ -89,7 +80,7 @@ export async function georgiaLogin(salesTaxId = '123456789') {
 
 	if (!finalField) throw new Error('Failed to find "finalField"');
 
-	finalField?.type(salesTaxId);
+	await finalField?.type(salesTaxId);
 
 	await page.waitForTimeout(2000);
 
