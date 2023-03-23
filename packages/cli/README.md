@@ -71,8 +71,6 @@ docker run -it --rm \
   docker.n8n.io/n8nio/n8n
 ```
 
-n8n also offers a Docker image for Raspberry Pi: `n8nio/n8n:latest-rpi`.
-
 Refer to the [documentation](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/README.md) for more information on the Docker setup.
 
 ### Install with npm
