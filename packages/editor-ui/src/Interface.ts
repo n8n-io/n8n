@@ -1462,4 +1462,4 @@ export interface ResourceMapperReqParams {
 	methodName?: string;
 	currentNodeParameters: INodeParameters;
 	credentials?: INodeCredentials;
-};
+}

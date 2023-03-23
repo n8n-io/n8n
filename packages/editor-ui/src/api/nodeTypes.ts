@@ -3,7 +3,7 @@ import type {
 	INodeTranslationHeaders,
 	IResourceLocatorReqParams,
 	IRestApiContext,
-ResourceMapperReqParams,
+	ResourceMapperReqParams,
 } from '@/Interface';
 import type {
 	IDataObject,

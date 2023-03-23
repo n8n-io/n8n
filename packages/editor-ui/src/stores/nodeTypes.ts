@@ -12,7 +12,7 @@ import {
 	INodeCreateElement,
 	INodeTypesState,
 	IResourceLocatorReqParams,
-ResourceMapperReqParams,
+	ResourceMapperReqParams,
 } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit, getCategoriesWithNodes, getCategorizedList } from '@/utils';
