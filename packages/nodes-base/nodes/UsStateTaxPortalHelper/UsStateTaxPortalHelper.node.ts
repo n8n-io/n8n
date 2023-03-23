@@ -547,7 +547,9 @@ export class UsStateTaxPortalHelper implements INodeType {
 				items[i].binary = items[i].binary ?? {};
 				items[i].binary!.dataPropertyName = binaryData;
 			} else if (operation === 'createNewAccount') {
-				const screenshot = (await georgiaLogin()) as Buffer;
+				const salesTaxId = this.getNodeParameter('salesTaxNumber', i) as string;
+
+				const screenshot = (await georgiaLogin(salesTaxId)) as Buffer;
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					screenshot,

@@ -16,7 +16,7 @@ try {
 	console.error(`failed to start pptr ${e}`);
 }
 
-export async function georgiaLogin() {
+export async function georgiaLogin(salesTaxId = '123456789') {
 	const browser = await browserPromise;
 	const page = await browser.newPage();
 
@@ -59,58 +59,41 @@ export async function georgiaLogin() {
 
 	await next.click();
 
+	await page.waitForTimeout(2000);
+
 	const accountType = await page.waitForSelector('.FastSelect');
 
 	if (!accountType) throw new Error('Failed to find "accountType"');
 
 	await accountType.click();
 
-	await page.select('.DocControlCombobox', 'SLS'); // @TODO becomes deselected for some reason
+	await page.waitForTimeout(2000);
+
+	// IMPORTANT: page.select() does not work here, so pick option manually
+	await page.keyboard.press('s');
+	await page.keyboard.press('Enter');
+
+	// await page.select('.DocControlCombobox', 'SLS');
+
+	await page.waitForTimeout(2000);
+
+	const next2 = await page.waitForSelector(nextSelector);
+
+	if (!next2) throw new Error('Failed to find "Sign Up"');
+
+	await next2.click();
+
+	await page.waitForTimeout(2000);
+
+	const finalField = await page.waitForSelector('.DocControlMask');
+
+	if (!finalField) throw new Error('Failed to find "finalField"');
+
+	finalField?.type(salesTaxId);
 
 	await page.waitForTimeout(2000);
 
 	return page.screenshot({ path: './example.png' });
-
-	// ------------------
-
-	// await page.waitForTimeout(2000);
-
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Enter');
-
-	// await page.waitForTimeout(2000);
-
-	// const next2 = await page.waitForSelector(nextSelector);
-
-	// if (!next2) throw new Error('Failed to find "Sign Up"');
-
-	// await next2.click();
-
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Tab');
-	// await page.keyboard.press('Enter');
-
-	// await page.waitForTimeout(2000);
-
-	// const salesTaxNumber = await page.waitForSelector('.DFI');
-
-	// if (!salesTaxNumber) throw new Error('Failed to find "salesTaxNumber"');
-
-	// await salesTaxNumber.type('123456789');
-
-	// const next3 = await page.waitForSelector(nextSelector);
-
-	// if (!next3) throw new Error('Failed to find "Sign Up"');
-
-	// await next3.click();
-
-	// await page.screenshot({ path: './example.png' });
 }
 
 // void georgiaLogin();
