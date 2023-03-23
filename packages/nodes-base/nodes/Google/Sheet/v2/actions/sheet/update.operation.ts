@@ -36,6 +36,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -61,6 +62,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -77,6 +79,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['update'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -96,6 +99,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['update'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -142,6 +146,36 @@ export const description: SheetProperties = [
 		],
 	},
 	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		default: {},
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns,',
+				},
+				addAllFields: true,
+				noFieldsError: 'No columns found in sheet',
+				multiKeyMatch: true,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['update'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -175,6 +209,8 @@ export async function execute(
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 
+	const nodeVersion = this.getNode().typeVersion;
+
 	let headerRow = 0;
 	let firstDataRow = 1;
 
@@ -201,7 +237,10 @@ export async function execute(
 	columnNames = sheetData[headerRow];
 	const newColumns = new Set<string>();
 
-	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+	const columnToMatchOn =
+		nodeVersion === 3
+			? (this.getNodeParameter('columnToMatchOn', 0) as string)
+			: (this.getNodeParameter('columns.match', 0) as string);
 	const keyIndex = columnNames.indexOf(columnToMatchOn);
 
 	const columnValues = await sheet.getColumnValues(
@@ -215,10 +254,10 @@ export async function execute(
 	const updateData: ISheetUpdateData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const dataMode = this.getNodeParameter('dataMode', i) as
-			| 'defineBelow'
-			| 'autoMapInputData'
-			| 'nothing';
+		const dataMode =
+			nodeVersion === 3
+				? (this.getNodeParameter('dataMode', 0) as string)
+				: (this.getNodeParameter('columns.mode', 0) as string);
 
 		if (dataMode === 'nothing') continue;
 

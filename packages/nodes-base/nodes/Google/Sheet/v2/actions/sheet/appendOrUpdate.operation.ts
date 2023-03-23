@@ -36,6 +36,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -61,6 +62,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -77,6 +79,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -96,6 +99,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -140,6 +144,36 @@ export const description: SheetProperties = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		default: {},
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns,',
+				},
+				addAllFields: true,
+				noFieldsError: 'No columns found in sheet',
+				multiKeyMatch: true,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['appendOrUpdate'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -215,12 +249,13 @@ export async function execute(
 
 	const updateData: ISheetUpdateData[] = [];
 	const appendData: IDataObject[] = [];
+	const nodeVersion = this.getNode().typeVersion;
 
 	for (let i = 0; i < items.length; i++) {
-		const dataMode = this.getNodeParameter('dataMode', i) as
-			| 'defineBelow'
-			| 'autoMapInputData'
-			| 'nothing';
+		const dataMode =
+			nodeVersion === 3
+				? (this.getNodeParameter('dataMode', 0) as string)
+				: (this.getNodeParameter('columns.mode', 0) as string);
 
 		if (dataMode === 'nothing') continue;
 

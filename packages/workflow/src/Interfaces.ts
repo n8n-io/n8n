@@ -1005,7 +1005,8 @@ export type NodePropertyTypes =
 	| 'string'
 	| 'credentialsSelect'
 	| 'resourceLocator'
-	| 'curlImport';
+	| 'curlImport'
+	| 'resourceMapper';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1036,7 +1037,17 @@ export interface INodePropertyTypeOptions {
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
+	resourceMapper?: ResourceMapperTypeOptions;
 	[key: string]: any;
+}
+
+export interface ResourceMapperTypeOptions {
+	resourceMapperMethod: string;
+	mode: 'add' | 'update' | 'upsert';
+	fieldWords?: { singular: string; plural: string };
+	addAllFields?: boolean;
+	noFieldsError?: string;
+	multiKeyMatch?: boolean;
 }
 
 export interface IDisplayOptions {
@@ -1204,6 +1215,9 @@ export interface INodeType {
 		credentialTest?: {
 			// Contains a group of functions that test credentials.
 			[functionName: string]: ICredentialTestFunction;
+		};
+		resourceMapping?: {
+			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 		};
 	};
 	webhookMethods?: {
@@ -1896,5 +1910,17 @@ export interface IExceutionSummaryNodeExecutionResult {
 		name?: string;
 		message?: string;
 		description?: string;
+	}>;
+}
+
+export interface ResourceMapperFields {
+	fields: Array<{
+		id: string;
+		displayName: string;
+		match: boolean;
+		defaultMatch: boolean;
+		required: boolean;
+		display: boolean;
+		type?: string;
 	}>;
 }

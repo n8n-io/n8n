@@ -30,6 +30,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -48,6 +49,7 @@ export const description: SheetProperties = [
 			show: {
 				operation: ['append'],
 				dataMode: ['autoMapInputData'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -68,6 +70,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['append'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -100,6 +103,36 @@ export const description: SheetProperties = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		default: {},
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns,',
+				},
+				addAllFields: true,
+				noFieldsError: 'No columns found in sheet',
+				multiKeyMatch: true,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['append'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -156,7 +189,11 @@ export async function execute(
 	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const dataMode =
+		nodeVersion === 3
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mode', 0) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 
