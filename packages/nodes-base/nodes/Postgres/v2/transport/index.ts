@@ -141,7 +141,34 @@ export async function configurePostgres(
 		}).catch((err) => {
 			if (proxy) proxy.close();
 			if (sshClient) sshClient.end();
-			throw new Error(`Connection by SSH Tunnel failed: ${err.message}`);
+
+			let message = err.message;
+			let description = err.description;
+
+			if (err.message.includes('ECONNREFUSED')) {
+				message = 'Connection refused';
+				try {
+					description = err.message.split('ECONNREFUSED ')[1].trim();
+				} catch (e) {}
+			}
+
+			if (err.message.includes('ENOTFOUND')) {
+				message = 'Host not found';
+				try {
+					description = err.message.split('ENOTFOUND ')[1].trim();
+				} catch (e) {}
+			}
+
+			if (err.message.includes('ETIMEDOUT')) {
+				message = 'Connection timed out';
+				try {
+					description = err.message.split('ETIMEDOUT ')[1].trim();
+				} catch (e) {}
+			}
+
+			err.message = message;
+			err.description = description;
+			throw err;
 		});
 
 		return { db, pgp, sshClient };

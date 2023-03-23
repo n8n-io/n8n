@@ -44,13 +44,13 @@ export const optionsCollection: INodeProperties = {
 				{
 					name: 'Independently',
 					value: 'independently',
-					description: 'Execute one query per incoming item',
+					description: 'Execute one query per incoming item of the run',
 				},
 				{
 					name: 'Transaction',
 					value: 'transaction',
 					description:
-						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
+						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back of the run',
 				},
 			],
 			default: 'single',

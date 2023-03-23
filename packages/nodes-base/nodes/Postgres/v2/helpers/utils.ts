@@ -65,8 +65,25 @@ export function parsePostgresError(
 		description = `Failed query: ${queries[itemIndex || 0].query}`;
 	}
 
-	if ((error?.message as string).includes('ECONNREFUSED')) {
+	if (error.message.includes('ECONNREFUSED')) {
 		message = 'Connection refused';
+		try {
+			description = error.message.split('ECONNREFUSED ')[1].trim();
+		} catch (e) {}
+	}
+
+	if (error.message.includes('ENOTFOUND')) {
+		message = 'Host not found';
+		try {
+			description = error.message.split('ENOTFOUND ')[1].trim();
+		} catch (e) {}
+	}
+
+	if (error.message.includes('ETIMEDOUT')) {
+		message = 'Connection timed out';
+		try {
+			description = error.message.split('ETIMEDOUT ')[1].trim();
+		} catch (e) {}
 	}
 
 	return new NodeOperationError(node, error as Error, {

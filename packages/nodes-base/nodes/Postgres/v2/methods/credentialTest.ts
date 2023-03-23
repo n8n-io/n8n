@@ -27,12 +27,16 @@ export async function postgresConnectionTest(
 	} catch (error) {
 		let message = error.message as string;
 
-		if (error.code === 'ECONNREFUSED') {
-			message = 'Connection refused, please check your credentials';
+		if (error.message.includes('ECONNREFUSED')) {
+			message = 'Connection refused';
 		}
 
-		if (error.code === 'ENOTFOUND') {
+		if (error.message.includes('ENOTFOUND')) {
 			message = 'Host not found, please check your host name';
+		}
+
+		if (error.message.includes('ETIMEDOUT')) {
+			message = 'Connection timed out';
 		}
 
 		return {
