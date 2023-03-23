@@ -127,6 +127,7 @@
 					</n8n-recycle-scroller>
 					<n8n-datatable
 						v-if="typeProps.columns"
+						data-test-id="resources-table"
 						:columns="typeProps.columns"
 						:rows="filteredAndSortedSubviewResources"
 					>

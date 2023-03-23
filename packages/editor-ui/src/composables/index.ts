@@ -1,3 +1,4 @@
+export * from './useCopyToClipboard';
 export * from './useExternalHooks';
 export * from './useGlobalLinkActions';
 export * from './useI18n';

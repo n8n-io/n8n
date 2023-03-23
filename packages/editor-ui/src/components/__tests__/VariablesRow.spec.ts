@@ -1,8 +1,15 @@
 import VariablesRow from '../VariablesRow.vue';
 import { EnvironmentVariable } from '@/Interface';
-import { fireEvent, getByTestId, render } from '@testing-library/vue';
+import { fireEvent, render } from '@testing-library/vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 describe('VariablesRow', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	const stubs = ['n8n-tooltip'];
+
 	const environmentVariable: EnvironmentVariable = {
 		id: 1,
 		key: 'key',
@@ -14,10 +21,11 @@ describe('VariablesRow', () => {
 			props: {
 				data: environmentVariable,
 			},
+			stubs,
 		});
 
 		expect(wrapper.html()).toMatchSnapshot();
-		expect(wrapper.container.querySelectorAll('td')).toHaveLength(3);
+		expect(wrapper.container.querySelectorAll('td')).toHaveLength(4);
 	});
 
 	it('should show edit and delete buttons on hover', async () => {
@@ -25,6 +33,7 @@ describe('VariablesRow', () => {
 			props: {
 				data: environmentVariable,
 			},
+			stubs,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -39,6 +48,7 @@ describe('VariablesRow', () => {
 				data: environmentVariable,
 				editing: true,
 			},
+			stubs,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -59,6 +69,7 @@ describe('VariablesRow', () => {
 				data: environmentVariable,
 				editing: true,
 			},
+			stubs,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);

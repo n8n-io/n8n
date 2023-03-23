@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, h, ref } from 'vue';
 import { useEnvironmentsStore, useUIStore, useSettingsStore } from '@/stores';
 import { useI18n, useTelemetry, useToast, useUpgradeLink, useMessage } from '@/composables';
 
@@ -7,7 +7,12 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature } from '@/constants';
-import { DatatableColumn, EnvironmentVariable, TemporaryEnvironmentVariable } from '@/Interface';
+import {
+	DatatableColumn,
+	DatatableRow,
+	EnvironmentVariable,
+	TemporaryEnvironmentVariable,
+} from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
 
 const settingsStore = useSettingsStore();
@@ -21,22 +26,27 @@ const { showError } = useToast();
 
 const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 
-const allVariables = ref<(EnvironmentVariable | TemporaryEnvironmentVariable)[]>([]);
+const allVariables = ref<Array<EnvironmentVariable | TemporaryEnvironmentVariable>>([]);
 const editMode = ref<Record<string, boolean>>({});
 
 const datatableColumns = ref<DatatableColumn[]>([
 	{
 		id: 0,
 		path: 'name',
-		label: 'Name',
+		label: i18n.baseText('variables.table.key'),
 	},
 	{
 		id: 1,
 		path: 'value',
-		label: 'Value',
+		label: i18n.baseText('variables.table.value'),
 	},
 	{
 		id: 2,
+		path: 'usage',
+		label: i18n.baseText('variables.table.usage'),
+	},
+	{
+		id: 3,
 		path: 'actions',
 		label: '',
 	},
@@ -84,18 +94,26 @@ async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVari
 			allVariables.value = allVariables.value.map((variable) =>
 				variable.id === data.id ? updatedVariable : variable,
 			);
-			toggleEditingVariable(updatedVariable);
+			toggleEditing(updatedVariable);
 		}
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.save'));
 	}
 }
 
-function toggleEditingVariable(data: EnvironmentVariable) {
+function toggleEditing(data: EnvironmentVariable) {
 	editMode.value = {
 		...editMode.value,
 		[data.id]: !editMode.value[data.id],
 	};
+}
+
+function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable) {
+	if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+	} else {
+		toggleEditing(data as EnvironmentVariable);
+	}
 }
 
 async function deleteVariable(data: EnvironmentVariable) {
@@ -163,8 +181,8 @@ function displayName(resource: EnvironmentVariable) {
 				:editing="editMode[data.id]"
 				:data="data"
 				@save="saveVariable"
-				@edit="toggleEditingVariable"
-				@cancel="toggleEditingVariable"
+				@edit="toggleEditing"
+				@cancel="cancelEditing"
 				@delete="deleteVariable"
 			/>
 		</template>
