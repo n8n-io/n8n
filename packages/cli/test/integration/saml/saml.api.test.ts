@@ -10,9 +10,8 @@ import * as utils from '../shared/utils';
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
-function enableSaml(enable: boolean) {
-	setSamlLoginEnabled(enable);
-	setCurrentAuthenticationMethod(enable ? 'saml' : 'email');
+async function enableSaml(enable: boolean) {
+	await setSamlLoginEnabled(enable);
 	config.set('enterprise.features.saml', enable);
 }
 
@@ -22,10 +21,6 @@ beforeAll(async () => {
 	authOwnerAgent = utils.createAuthAgent(app)(owner);
 });
 
-// beforeEach(async () => {
-// 	await testDb.truncate(['User']);
-// });
-
 afterAll(async () => {
 	await testDb.terminate();
 });
@@ -33,7 +28,7 @@ afterAll(async () => {
 describe('Instance owner', () => {
 	describe('PATCH /me', () => {
 		test('should succeed with valid inputs', async () => {
-			enableSaml(false);
+			await enableSaml(false);
 			await authOwnerAgent
 				.patch('/me')
 				.send({
@@ -46,7 +41,7 @@ describe('Instance owner', () => {
 		});
 
 		test('should throw BadRequestError if email is changed when SAML is enabled', async () => {
-			enableSaml(true);
+			await enableSaml(true);
 			await authOwnerAgent
 				.patch('/me')
 				.send({
@@ -60,7 +55,7 @@ describe('Instance owner', () => {
 
 	describe('PATCH /password', () => {
 		test('should throw BadRequestError if password is changed when SAML is enabled', async () => {
-			enableSaml(true);
+			await enableSaml(true);
 			await authOwnerAgent
 				.patch('/me/password')
 				.send({
