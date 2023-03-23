@@ -9,6 +9,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { NodeApiError } from 'n8n-workflow';
@@ -210,7 +211,7 @@ export class GoogleBigQueryV1 implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: 0 } },
 					);
 					returnData.push(...executionData);
@@ -222,7 +223,7 @@ export class GoogleBigQueryV1 implements INodeType {
 						);
 						returnData.push(...executionErrorData);
 					}
-					throw new NodeApiError(this.getNode(), error, { itemIndex: 0 });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: 0 });
 				}
 			} else if (operation === 'getAll') {
 				// ----------------------------------
@@ -280,10 +281,12 @@ export class GoogleBigQueryV1 implements INodeType {
 						if (!returnAll) {
 							responseData = responseData.rows;
 						}
-						responseData = simple ? simplify(responseData, fields) : responseData;
+						responseData = simple
+							? simplify(responseData as IDataObject[], fields as string[])
+							: responseData;
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -296,7 +299,7 @@ export class GoogleBigQueryV1 implements INodeType {
 							returnData.push(...executionErrorData);
 							continue;
 						}
-						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
 			}

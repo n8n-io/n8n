@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { TableSchema } from '../../helpers/BigQuery.types';
+import type { TableRawData, TableSchema } from '../../helpers/BigQuery.types';
 import { simplify } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
@@ -177,7 +177,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					const fields = (schema as TableSchema).fields;
 					responseData = rows;
 
-					responseData = simplify(responseData, fields);
+					responseData = simplify(responseData as TableRawData[], fields);
 				} else if (schema && !rows?.length) {
 					responseData = [];
 				} else {
@@ -186,7 +186,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
@@ -200,7 +200,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error.message, {
+			throw new NodeOperationError(this.getNode(), error.message as string, {
 				itemIndex: i,
 				description: error?.description,
 			});

@@ -238,7 +238,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error.message, {
+			throw new NodeOperationError(this.getNode(), error.message as string, {
 				itemIndex: i,
 				description: error?.description,
 			});
@@ -300,7 +300,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 
 		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(responseData),
+			this.helpers.returnJsonArray(responseData as IDataObject[]),
 			{ itemData: { item: 0 } },
 		);
 

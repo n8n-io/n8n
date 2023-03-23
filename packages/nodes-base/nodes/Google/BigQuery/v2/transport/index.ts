@@ -3,7 +3,7 @@ import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
 import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 async function getAccessToken(
@@ -107,7 +107,7 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error, {
+		throw new NodeApiError(this.getNode(), error as JsonObject, {
 			message: error?.error?.error?.message || error.message,
 		});
 	}
@@ -130,7 +130,7 @@ export async function googleApiRequestAllItems(
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 
 		query.pageToken = responseData.pageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
 
 	return returnData;
