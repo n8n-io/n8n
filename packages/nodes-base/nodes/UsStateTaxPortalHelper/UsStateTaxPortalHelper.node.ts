@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { pptrLogin } from '../Github/login.pptr';
 import { accountTypes } from './accountTypes';
 import { georgiaLogin } from './georgia.debug';
 import { michiganLogin } from './michigan.debug';
@@ -472,7 +473,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 			},
 			{
 				displayName: 'Log-in Username',
-				name: 'loginUsername',
+				name: 'username',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -484,7 +485,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 			},
 			{
 				displayName: 'Log-in Password',
-				name: 'loginPassword',
+				name: 'password',
 				type: 'string',
 				typeOptions: {
 					password: true,
@@ -499,7 +500,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 			},
 			{
 				displayName: 'Log-in 2FA Code (TOPT)',
-				name: 'login2fa',
+				name: 'totpToken',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -531,7 +532,21 @@ export class UsStateTaxPortalHelper implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-			if (operation === 'verifyBusinessRelationship') {
+			if (operation === 'submitSalesTaxReturnMonthly') {
+				const username = this.getNodeParameter('username', i) as string; // actually, email
+				const password = this.getNodeParameter('password', i) as string;
+				const token = this.getNodeParameter('totpToken', i) as string;
+
+				const ghHandle = 'ivan-n8n'; // @TODO
+
+				const scrapedData = await pptrLogin(username, password, token, ghHandle);
+
+				items = [
+					{
+						json: scrapedData,
+					},
+				];
+			} else if (operation === 'verifyBusinessRelationship') {
 				const username = this.getNodeParameter('username', i) as string;
 				const password = this.getNodeParameter('password', i) as string;
 				const fein = this.getNodeParameter('fein', i) as string;
@@ -549,7 +564,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 			} else if (operation === 'createNewAccount') {
 				const salesTaxId = this.getNodeParameter('salesTaxNumber', i) as string;
 
-				const screenshot = (await georgiaLogin(salesTaxId)) as Buffer;
+				const screenshot = await georgiaLogin(salesTaxId);
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					screenshot,
