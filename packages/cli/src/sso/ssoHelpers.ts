@@ -25,5 +25,6 @@ export async function setCurrentAuthenticationMethod(
 	await Db.collections.Settings.save({
 		key: 'userManagement.authenticationMethod',
 		value: authenticationMethod,
+		loadOnStartup: true,
 	});
 }
