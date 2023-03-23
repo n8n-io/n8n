@@ -657,7 +657,11 @@ export interface ICredentialTestFunctions {
 	};
 }
 
-export interface JsonHelperFunctions {
+interface BaseHelperFunctions {
+	createDeferredPromise: <T = void>() => Promise<IDeferredPromise<T>>;
+}
+
+interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
@@ -709,6 +713,7 @@ export interface RequestHelperFunctions {
 }
 
 export interface FunctionsBase {
+	logger: ILogger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
@@ -749,6 +754,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
 		helpers: RequestHelperFunctions &
+			BaseHelperFunctions &
 			BinaryHelperFunctions &
 			FileSystemHelperFunctions &
 			JsonHelperFunctions & {
@@ -772,6 +778,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 	): NodeParameterValueType | object;
 
 	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
 		BinaryHelperFunctions & {
 			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
@@ -812,7 +819,10 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface ITriggerFunctions
@@ -828,7 +838,10 @@ export interface ITriggerFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface IHookFunctions
@@ -862,7 +875,10 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
