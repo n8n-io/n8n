@@ -58,7 +58,7 @@ To play around with n8n, you can also start it using Docker:
 docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
-  n8nio/n8n
+  docker.n8n.io/n8nio/n8n
 ```
 
 Be aware that all the data will be lost once the Docker container gets removed. To persist the data mount the `~/.n8n` folder:
@@ -68,7 +68,7 @@ docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
   -v ~/.n8n:/home/node/.n8n \
-  n8nio/n8n
+  docker.n8n.io/n8nio/n8n
 ```
 
 n8n also offers a Docker image for Raspberry Pi: `n8nio/n8n:latest-rpi`.
