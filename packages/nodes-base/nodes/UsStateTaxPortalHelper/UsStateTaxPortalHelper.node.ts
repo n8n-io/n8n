@@ -17,7 +17,8 @@ export class UsStateTaxPortalHelper implements INodeType {
 		icon: 'file:tax.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{ $parameter["operation"] }}',
+		subtitle:
+			'={{ $parameter["resource"].replace(/TreasuryOnline|StateTaxCenter/, "") + ": " + $parameter["operation"] }}',
 		description:
 			'Internal Stripe Tax tool to interact with State tax portals that don’t have an API',
 		defaults: {
@@ -537,9 +538,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 				const password = this.getNodeParameter('password', i) as string;
 				const token = this.getNodeParameter('totpToken', i) as string;
 
-				const ghHandle = 'ivan-n8n'; // @TODO
-
-				const scrapedData = await pptrLogin(username, password, token, ghHandle);
+				const scrapedData = await pptrLogin(username, password, token);
 
 				items = [
 					{

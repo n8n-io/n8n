@@ -1,12 +1,12 @@
 import puppeteer from 'puppeteer-extra';
 import pluginStealth from 'puppeteer-extra-plugin-stealth';
-
+// import OTPAuth from 'otpauth';
 const LOGIN_URL = 'https://github.com/login';
 
 puppeteer.use(pluginStealth());
 
-export async function pptrLogin(email: string, password: string, token: string, ghHandle: string) {
-	const browser = await puppeteer.launch();
+export async function pptrLogin(email: string, password: string, token: string) {
+	const browser = await puppeteer.launch({ headless: true });
 
 	const page = await browser.newPage();
 
@@ -36,10 +36,18 @@ export async function pptrLogin(email: string, password: string, token: string, 
 
 	await totpField.type(token);
 
+	await page.waitForTimeout(2000);
+
+	const _ghHandle = await page.evaluate(() => {
+		return Array.from(document.getElementsByTagName('meta'))
+			.find((m) => m.getAttribute('name') === 'octolytics-actor-login')
+			?.getAttribute('content');
+	});
+
 	// @TODO: Check for 2fa error
 	// throw new Error('Access denied: 2FA code is incorrect');
 
-	await page.goto(`https://github.com/${ghHandle}`);
+	await page.goto(`https://github.com/${_ghHandle}`);
 
 	const [handle, description, followers, location] = await Promise.all(
 		[
