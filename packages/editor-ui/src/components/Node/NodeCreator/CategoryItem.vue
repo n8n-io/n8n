@@ -5,13 +5,19 @@
 			<font-awesome-icon v-if="item.expanded" icon="chevron-down" :class="$style.arrow" />
 			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 		</div>
-		<n8n-callout theme="custom" iconless :class="$style.callout" v-if="item.expanded">
-			Triggers start your workflow. Actions perform steps in your workflow. Learn more
-		</n8n-callout>
+		<!-- <n8n-callout
+			theme="custom"
+			iconless
+			:class="$style.callout"
+			v-if="categoryCallout && item.expanded"
+		>
+			{{ categoryCallout }}
+		</n8n-callout> -->
 	</div>
 </template>
 
 <script lang="ts" setup>
+import useCategoryCallouts from './useCategoryCallouts';
 import { ICategoryItemProps } from '@/Interface';
 
 export interface Props {
@@ -19,6 +25,7 @@ export interface Props {
 	active: boolean;
 }
 const props = defineProps<Props>();
+const { categoryCallout } = useCategoryCallouts(props.item.name);
 </script>
 
 <style lang="scss" module>
@@ -31,7 +38,6 @@ const props = defineProps<Props>();
 	display: flex;
 	cursor: pointer;
 
-	margin-left: 1px;
 	position: relative;
 	&::before {
 		content: '';
@@ -48,15 +54,15 @@ const props = defineProps<Props>();
 		border-color: $color-primary;
 	}
 }
-.category .categoryWrapper {
-	margin-bottom: var(--spacing-2xs);
+.categoryWrapper {
+	outline: 0;
 }
 
 .callout {
 	--callout-border-color: var(--color-foreground-base);
 	--callout-background-color: var(--color-background-light);
 	--callout-color: var(--color-text-base);
-	margin: var(--spacing-2xs) var(--spacing-s);
+	margin: var(--spacing-xs) var(--spacing-s) 0;
 }
 .name {
 	flex-grow: 1;
@@ -67,5 +73,11 @@ const props = defineProps<Props>();
 	font-size: var(--font-size-2xs);
 	width: 12px;
 	color: $node-creator-arrow-color;
+}
+
+:global(
+		[class*='_iteratorItem'][class*='_action_'] + [class*='_category_'] [class*='_categoryWrapper']
+	) {
+	margin-top: var(--spacing-l);
 }
 </style>

@@ -1,4 +1,4 @@
-import { getCurrentInstance, computed } from 'vue';
+import { getCurrentInstance, computed, reactive } from 'vue';
 import {
 	CORE_NODES_CATEGORY,
 	WEBHOOK_NODE_TYPE,
@@ -13,9 +13,26 @@ import {
 	HELPERS_SUBCATEGORY,
 	TRIGGER_NODE_FILTER,
 } from '@/constants';
+import {
+	INodeTypeDescription,
+	INodeActionTypeDescription,
+	INodeTypeNameVersion,
+} from 'n8n-workflow';
+import {
+	INodeCreateElement,
+	NodeCreateElement,
+	IActionItemProps,
+	SubcategoryCreateElement,
+	IUpdateInformation,
+} from '@/Interface';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default () => {
+	const state = reactive({
+		isRoot: true,
+		selectedSubcategory: '',
+	});
+
 	const instance = getCurrentInstance();
 	const nodeCreatorStore = useNodeCreatorStore();
 
@@ -192,7 +209,56 @@ export default () => {
 		return VIEWS.find((v) => v.value === nodeCreatorStore.selectedView) || VIEWS[0];
 	});
 
+	const isRoot = computed(() => state.isRoot);
+	const selectedSubcategory = computed(() => state.selectedSubcategory);
+
+	function setSelectedSubcategory(subcategory: string) {
+		state.selectedSubcategory = subcategory;
+	}
+
+	function setIsRoot(isRoot: boolean) {
+		state.isRoot = isRoot;
+	}
+
+	function transformCreateElements(
+		createElements: Array<INodeTypeDescription | INodeActionTypeDescription>,
+		type: 'node' | 'action' = 'node',
+		activeNodeActions?: INodeActionTypeDescription,
+	): INodeCreateElement[] {
+		const sorted = [...createElements];
+
+		sorted.sort((a, b) => {
+			const textA = a.displayName.toLowerCase();
+			const textB = b.displayName.toLowerCase();
+			return textA < textB ? -1 : textA > textB ? 1 : 0;
+		});
+
+		return sorted.map((nodeType) => {
+			const hasTriggerActions = nodeType.actions?.find((action) => action.name.includes('trigger'));
+			const hasRegularActions = nodeType.actions?.find(
+				(action) => !action.name.includes('trigger'),
+			);
+
+			return {
+				type,
+				category: nodeType.codex?.categories,
+				key: nodeType.name,
+				properties: {
+					nodeType,
+					subcategory: activeNodeActions?.displayName ?? '',
+				},
+				includedByTrigger: hasTriggerActions || nodeType.group.includes('trigger'),
+				includedByRegular: hasRegularActions || !nodeType.group.includes('trigger'),
+			} as INodeCreateElement;
+		});
+	}
+
 	return {
+		isRoot,
+		selectedSubcategory,
 		activeView,
+		transformCreateElements,
+		setSelectedSubcategory,
+		setIsRoot,
 	};
 };

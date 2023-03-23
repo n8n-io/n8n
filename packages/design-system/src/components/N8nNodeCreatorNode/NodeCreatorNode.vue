@@ -101,7 +101,7 @@ defineEmits<{
 }
 .name {
 	font-weight: var(--node-creator-name-weight, var(--font-weight-bold));
-	font-size: var(--font-size-s);
+	font-size: var(--node-creator-name-size, var(--font-size-s));
 	line-height: 1.115rem;
 }
 .description {

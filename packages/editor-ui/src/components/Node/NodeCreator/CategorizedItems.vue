@@ -97,7 +97,7 @@ import {
 } from 'vue';
 import { camelCase } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { INodeActionTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
 import SearchBar from './SearchBar.vue';
 import {
@@ -144,7 +144,7 @@ const emit = defineEmits<{
 	(event: 'nodeTypeSelected', value: string[]): void;
 
 	(event: 'actionSelected', value: INodeCreateElement): void;
-	(event: 'actionsOpen', value: INodeTypeDescription): void;
+	(event: 'actionsOpen', value: INodeActionTypeDescription): void;
 }>();
 
 const instance = getCurrentInstance();
@@ -349,11 +349,15 @@ function sortNodes(nodes: INodeCreateElement[]) {
 }
 
 function addLabels(nodes: INodeCreateElement[]): INodeCreateElement[] {
-	const labeledNodes = nodes.filter((el) => el.label !== undefined);
+	const labeledNodes = [...new Set(nodes.map((el) => el.label || ''))];
+	console.log('🚀 ~ file: CategorizedItems.vue:353 ~ addLabels ~ labeledNodes:', labeledNodes);
 	const categories = nodes.filter((el) => el.type === 'category');
-	const categoriesChunk = categories.map((el) => nodes.filter((node) => node.category === el.key));
+	const categoriesChunk =
+		categories.length > 0
+			? categories.map((el) => nodes.filter((node) => node.category === el.key))
+			: [nodes];
 
-	if (labeledNodes.length === 0) return nodes;
+	if (labeledNodes.length <= 1) return nodes;
 
 	const injectedLabelsChunks = categoriesChunk.map((chunk) => {
 		const labelsSet = new Set<string>();
@@ -407,6 +411,7 @@ const renderedItems = computed<INodeCreateElement[]>(() => {
 		items = filteredCategorizedItems.value;
 	}
 
+	console.log('🚀 ~ file: CategorizedItems.vue:413 ~ renderedItems ~ items:', items);
 	return addLabels(items);
 });
 
@@ -551,7 +556,7 @@ function onViewSelected(view: Record<string, any>) {
 function onNodeSelected(element: NodeCreateElement) {
 	const hasActions = (element.properties.nodeType?.actions?.length || 0) > 0;
 	if (props.withActionsGetter && props.withActionsGetter(element) === true && hasActions) {
-		emit('actionsOpen', element.properties.nodeType);
+		emit('actionsOpen', element.properties.nodeType as INodeActionTypeDescription);
 		return;
 	}
 	emit('nodeTypeSelected', [element.key]);

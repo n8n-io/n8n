@@ -121,18 +121,18 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 
 <style lang="scss" module>
 .action {
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
-	padding: var(--spacing-2xs) 0;
-	font-size: var(--font-size-2xs);
-	// line-height: 16px ;
-
+	--node-creator-name-size: var(--font-size-2xs);
 	--node-creator-name-weight: 400;
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--node-icon-size: 20px;
+
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-s);
+	padding: var(--spacing-2xs) 0;
 }
 .nodeIcon {
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing-xs);
 }
 
 .apiHint {
@@ -163,5 +163,9 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 .draggableDataTransfer {
 	width: 1px;
 	height: 1px;
+}
+
+:global([class*='_iteratorItem'][class*='_category_'] + [class*='_action_'] [class*='_action']) {
+	margin-top: var(--spacing-2xs);
 }
 </style>

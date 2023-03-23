@@ -1,7 +1,7 @@
 <template>
 	<div :class="{ [$style.mainPanel]: true, [$style.isRoot]: isRoot }">
 		<CategorizedItems
-			:subcategoryOverride="nodeAppSubcategory"
+			:subcategoryOverride="nodeAppActionsSubcategory"
 			:alwaysShowSearch="isActionsActive"
 			:hideOtherCategoryItems="isActionsActive"
 			:categorizedItems="computedCategorizedItems"
@@ -15,7 +15,7 @@
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
 			@nodeTypeSelected="onNodeTypeSelected"
-			@actionsOpen="setActiveActionsNodeType"
+			@actionsOpen="setActiveActions"
 			@actionSelected="onActionSelected"
 		>
 			<template #noResults>
@@ -44,7 +44,7 @@
 							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 						</n8n-link>
 
-						<n8n-link v-if="[TRIGGER_NODE_FILTER].includes(selectedView)" @click="addWebHookNode()">
+						<n8n-link v-if="[TRIGGER_NODE_FILTER].includes(selectedView)" @click="addWebHookNode">
 							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 						</n8n-link>
 						{{ $locale.baseText('nodeCreator.noResults.node') }}
@@ -66,7 +66,7 @@
 					:class="$style.description"
 				/>
 			</template>
-			<template #footer v-if="activeNodeActions && containsAPIAction">
+			<template #footer v-if="isActionsActive && containsAPIAction">
 				<span
 					v-html="getCustomAPICallHintLocale('apiCall')"
 					class="clickable"
@@ -111,6 +111,7 @@ import { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
 import useMainPanelView from './useMainPanelView';
+import useActions from './useActions';
 
 const instance = getCurrentInstance();
 
@@ -118,65 +119,51 @@ const emit = defineEmits({
 	nodeTypeSelected: (nodeTypes: string[]) => true,
 });
 
-const state = reactive({
-	isRoot: true,
-	selectedSubcategory: '',
-	activeNodeActions: null as INodeTypeDescription | null,
-});
-const { baseUrl } = useRootStore();
 const { $externalHooks } = new externalHooks();
+const { mergedAppNodes, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
+	useNodeCreatorStore();
+
 const {
-	mergedAppNodes,
-	getActionData,
-	getNodeTypesWithManualTrigger,
-	setAddedNodeActionParameters,
-} = useNodeCreatorStore();
-const { activeView } = useMainPanelView();
+	activeView,
+	transformCreateElements,
+	isRoot,
+	selectedSubcategory,
+	setIsRoot,
+	setSelectedSubcategory,
+} = useMainPanelView();
 const telemetry = instance?.proxy.$telemetry;
 const { isTriggerNode } = useNodeTypesStore();
-const containsAPIAction = computed(
-	() =>
-		state.activeNodeActions?.properties.some((p) =>
-			p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
-		) === true,
-);
+const {
+	categorizedActions,
+	containsAPIAction,
+	searchableActions,
+	isActionsActive,
+	actionsSearchPlaceholder,
+	categoriesWithActions,
+	nodeAppActionsSubcategory,
+	getCustomAPICallHintLocale,
+	setActiveActions,
+	onActionSelected,
+	shouldShowNodeActions,
+} = useActions();
+
+const wrappedActionsComputed = ({
+	ifActions,
+	ifNotActions,
+}: {
+	ifActions: Function;
+	ifNotActions: Function;
+}) => computed(() => (isActionsActive.value ? ifActions() : ifNotActions()));
 
 const selectedView = computed(() => useNodeCreatorStore().selectedView);
 const computedCategorizedItems = computed(() => {
-	if (isActionsActive.value) {
-		return sortActions(getCategorizedList(computedCategoriesWithNodes.value, true));
-	}
-
-	return getCategorizedList(computedCategoriesWithNodes.value, true);
+	return isActionsActive.value
+		? categorizedActions.value
+		: getCategorizedList(computedCategoriesWithNodes.value, true);
 });
 
-const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
-	if (!state.activeNodeActions) return undefined;
-
-	const icon = state.activeNodeActions.iconUrl
-		? `${baseUrl}${state.activeNodeActions.iconUrl}`
-		: state.activeNodeActions.icon?.split(':')[1];
-
-	return {
-		type: 'subcategory',
-		key: state.activeNodeActions.name,
-		properties: {
-			subcategory: state.activeNodeActions.displayName,
-			description: '',
-			iconType: state.activeNodeActions.iconUrl ? 'file' : 'icon',
-			icon,
-			color: state.activeNodeActions.defaults.color,
-		},
-	};
-});
 const searchPlaceholder = computed(() => {
-	const nodeNameTitle = state.activeNodeActions?.displayName?.trim() as string;
-	const actionsSearchPlaceholder = instance?.proxy.$locale.baseText(
-		'nodeCreator.actionsCategory.searchActions',
-		{ interpolate: { nodeNameTitle } },
-	);
-
-	return isActionsActive.value ? actionsSearchPlaceholder : undefined;
+	return isActionsActive.value ? actionsSearchPlaceholder.value : undefined;
 });
 
 const filteredMergedAppNodes = computed(() => {
@@ -209,75 +196,19 @@ const filteredMergedAppNodes = computed(() => {
 });
 
 const computedCategoriesWithNodes = computed(() => {
-	if (!state.activeNodeActions) return getCategoriesWithNodes(filteredMergedAppNodes.value);
+	if (!isActionsActive.value) return getCategoriesWithNodes(filteredMergedAppNodes.value);
 
-	return getCategoriesWithNodes(selectedNodeActions.value, state.activeNodeActions.displayName);
+	return categoriesWithActions.value;
 });
 
-const selectedNodeActions = computed<INodeActionTypeDescription[]>(
-	() => state.activeNodeActions?.actions ?? [],
-);
-const isAppEventSubcategory = computed(() => state.selectedSubcategory === '*');
-const isActionsActive = computed(() => state.activeNodeActions !== null);
+const isAppEventSubcategory = computed(() => selectedSubcategory.value === '*');
 const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : []));
 
 const searchItems = computed<INodeCreateElement[]>(() => {
-	return state.activeNodeActions
-		? transformCreateElements(selectedNodeActions.value, 'action')
+	return isActionsActive.value
+		? searchableActions.value
 		: transformCreateElements(filteredMergedAppNodes.value);
 });
-
-// If the user is in the root view, we want to show trigger nodes first
-// otherwise we want to show them last
-function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateElement[] {
-	const elements = {
-		trigger: [] as INodeCreateElement[],
-		regular: [] as INodeCreateElement[],
-	};
-
-	nodeCreateElements.forEach((el) => {
-		const isTriggersCategory = el.type === 'category' && el.key === 'Triggers';
-		const isTriggerAction = el.type === 'action' && el.category === 'Triggers';
-
-		elements[isTriggersCategory || isTriggerAction ? 'trigger' : 'regular'].push(el);
-	});
-
-	if (selectedView.value === TRIGGER_NODE_FILTER) {
-		return [...elements.trigger, ...elements.regular];
-	}
-
-	return [...elements.regular, ...elements.trigger];
-}
-
-function transformCreateElements(
-	createElements: Array<INodeTypeDescription | INodeActionTypeDescription>,
-	type: 'node' | 'action' = 'node',
-): INodeCreateElement[] {
-	const sorted = [...createElements];
-
-	sorted.sort((a, b) => {
-		const textA = a.displayName.toLowerCase();
-		const textB = b.displayName.toLowerCase();
-		return textA < textB ? -1 : textA > textB ? 1 : 0;
-	});
-
-	return sorted.map((nodeType) => {
-		const hasTriggerActions = nodeType.actions?.find((action) => action.name.includes('trigger'));
-		const hasRgeularActions = nodeType.actions?.find((action) => !action.name.includes('trigger'));
-
-		return {
-			type,
-			category: nodeType.codex?.categories,
-			key: nodeType.name,
-			properties: {
-				nodeType,
-				subcategory: state.activeNodeActions?.displayName ?? '',
-			},
-			includedByTrigger: hasTriggerActions || nodeType.group.includes('trigger'),
-			includedByRegular: hasRgeularActions || !nodeType.group.includes('trigger'),
-		} as INodeCreateElement;
-	});
-}
 
 function onNodeTypeSelected(nodeTypes: string[]) {
 	emit(
@@ -285,27 +216,7 @@ function onNodeTypeSelected(nodeTypes: string[]) {
 		nodeTypes.length === 1 ? getNodeTypesWithManualTrigger(nodeTypes[0]) : nodeTypes,
 	);
 }
-function getCustomAPICallHintLocale(key: string) {
-	if (!state.activeNodeActions) return '';
 
-	const nodeNameTitle = state.activeNodeActions.displayName;
-	return instance?.proxy.$locale.baseText(`nodeCreator.actionsList.${key}` as BaseTextKey, {
-		interpolate: { nodeNameTitle },
-	});
-}
-
-function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
-	state.activeNodeActions = nodeType;
-
-	if (nodeType) trackActionsView();
-}
-
-function onActionSelected(actionCreateElement: INodeCreateElement) {
-	const action = (actionCreateElement.properties as IActionItemProps).nodeType;
-	const actionUpdateData = getActionData(action);
-	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
-	setAddedNodeActionParameters(actionUpdateData, telemetry);
-}
 function addWebHookNode() {
 	emit('nodeTypeSelected', [WEBHOOK_NODE_TYPE]);
 }
@@ -323,53 +234,30 @@ function addHttpNode(isAction: boolean) {
 	if (isAction) {
 		setAddedNodeActionParameters(updateData, telemetry, false);
 
-		const app_identifier = state.activeNodeActions?.name;
+		const app_identifier = selectedSubcategory.value;
 		$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 		telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 	}
 }
 
 function onSubcategorySelected(subcategory: INodeCreateElement) {
-	state.isRoot = false;
-	state.selectedSubcategory = subcategory.key;
+	setIsRoot(false);
+	setSelectedSubcategory(subcategory.key);
 }
 function onSubcategoryClose(activeSubcategories: INodeCreateElement[]) {
-	if (isActionsActive.value === true) setActiveActionsNodeType(null);
+	if (isActionsActive.value === true) setActiveActions(null);
 
-	state.isRoot = activeSubcategories.length === 0;
-	state.selectedSubcategory = activeSubcategories[activeSubcategories.length - 1]?.key ?? '';
+	setIsRoot(activeSubcategories.length === 0);
+	setSelectedSubcategory(activeSubcategories[activeSubcategories.length - 1]?.key ?? '');
 }
 
 function shouldShowNodeDescription(node: NodeCreateElement) {
 	return (node.category || []).includes(CORE_NODES_CATEGORY);
 }
 
-function shouldShowNodeActions(node: INodeCreateElement) {
-	if (state.isRoot && useNodeCreatorStore().itemsFilter === '') return false;
-
-	return true;
-}
-
-function trackActionsView() {
-	const trigger_action_count = selectedNodeActions.value.filter((action) =>
-		action.name.toLowerCase().includes('trigger'),
-	).length;
-
-	const trackingPayload = {
-		app_identifier: state.activeNodeActions?.name,
-		actions: selectedNodeActions.value.map((action) => action.displayName),
-		regular_action_count: selectedNodeActions.value.length - trigger_action_count,
-		trigger_action_count,
-	};
-
-	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
-}
-
 onUnmounted(() => {
 	useNodeCreatorStore().resetRootViewHistory();
 });
-const { isRoot, activeNodeActions } = toRefs(state);
 </script>
 
 <style lang="scss" module>
