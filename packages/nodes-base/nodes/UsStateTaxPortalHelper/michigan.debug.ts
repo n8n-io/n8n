@@ -5,7 +5,7 @@ const MICHIGAN_LOGIN_URL = 'https://mto.treasury.michigan.gov/eai/mtologin/authe
 
 puppeteer.use(pluginStealth());
 
-export async function michiganLogin(username: string, password: string) {
+export async function michiganLogin(username: string, password: string, fein: string) {
 	const browser = await puppeteer.launch({ headless: true });
 
 	const page = await browser.newPage();
@@ -57,7 +57,7 @@ export async function michiganLogin(username: string, password: string) {
 
 	if (!numberInput) throw new Error('Failed to find placeholder "__-_______"');
 
-	await numberInput.type('111111111');
+	await numberInput.type(fein); // 111111111
 
 	// btnBasicBusinessDetailsSubmit
 

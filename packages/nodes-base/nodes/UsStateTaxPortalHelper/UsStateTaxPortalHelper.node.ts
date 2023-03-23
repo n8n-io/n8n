@@ -84,9 +84,9 @@ export class UsStateTaxPortalHelper implements INodeType {
 							'Link a business entity to a Michigan Treasury Online User Profile. Also labeled "Create a New Relationship" in MTO portal.',
 					},
 					{
-						name: 'Submit Sales, Use, and Withholding Tax Return',
-						value: 'submitSalesUseAndWithholdingTaxReturn',
-						action: 'Submit Sales, Use, and Withholding Tax Return',
+						name: 'File & Pay a Tax Return',
+						value: 'filePayTaxReturn',
+						action: 'File & Pay a Tax Return',
 					},
 				],
 				default: 'verifyBusinessRelationship',
@@ -95,6 +95,20 @@ export class UsStateTaxPortalHelper implements INodeType {
 						resource: ['michiganTreasuryOnline'],
 					},
 				},
+			},
+
+			{
+				displayName: 'FEIN or Treasury Number',
+				name: 'fein',
+				hint: 'Use SSN for sole proprietors',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['verifyBusinessRelationship'],
+					},
+				},
+				default: '',
 			},
 
 			{
@@ -122,6 +136,257 @@ export class UsStateTaxPortalHelper implements INodeType {
 				},
 				default: '',
 			},
+
+			{
+				displayName:
+					'Stripe team, "Submit Tax Return" is a placeholder operation (we did not have a Michigan business entity to test with). We added it to better illustrate how your custom nodes can turn multi-step portal flows into a simple form.',
+				name: 'notice9',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+					},
+				},
+			},
+
+			{
+				displayName: 'Username',
+				name: 'username',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: { password: true },
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Return Period',
+				name: 'returnPeriod',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+					},
+				},
+				default: 'a',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+				options: [
+					{
+						name: 'Monthly - March 2023',
+						value: 'a',
+					},
+					{
+						name: 'Monthly - February 2023',
+						value: 'b',
+					},
+					{
+						name: 'Monthly - January 2023',
+						value: 'c',
+					},
+					{
+						name: 'Monthly - December 2023',
+						value: 'd',
+					},
+					{
+						name: 'Monthly - November 2023',
+						value: 'e',
+					},
+					{
+						name: 'Monthly - October 2023',
+						value: 'f',
+					},
+				],
+			},
+
+			{
+				displayName: 'Tax Types Being Submitted',
+				name: 'typesBeingSubmitted',
+				type: 'multiOptions',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+					},
+				},
+				default: [],
+				hint: 'Check all that apply',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+				options: [
+					{
+						name: 'Sales Tax',
+						value: 'salesTax',
+					},
+					{
+						name: 'Use Tax',
+						value: 'useTax',
+					},
+					{
+						name: 'Withholding Tax',
+						value: 'withholdingTax',
+					},
+				],
+			},
+
+			// sales tax options
+
+			{
+				displayName: 'Gross Sales Tax',
+				name: 'grossSalesTax',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['salesTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Total Sales Tax',
+				name: 'totalSalesTax',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['salesTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Total Discounts Allowed',
+				name: 'totalDiscountsAllowed',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['salesTax'],
+					},
+				},
+				default: 0,
+			},
+
+			// use tax options
+
+			{
+				displayName: 'Gross Sales, Rentals, Accommodations and Telecommunications Services',
+				name: 'grossSalesRentals',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['useTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Total Use Tax',
+				name: 'totalUseTax',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['useTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Total Discounts Allowed',
+				name: 'totalDiscountsAllowed',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['useTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Total Use Tax Due',
+				name: 'totalUseTaxDue',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['useTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Purchases for Which No Tax was Paid or Inventory...',
+				description:
+					'Purchases for Which No Tax was Paid or Inventory Purchased or Withdrawn for Business or Personal Use',
+				name: 'purchasesForWhich',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['useTax'],
+					},
+				},
+				default: 0,
+			},
+			{
+				displayName: 'Total Use Tax on Purchases Due',
+				name: 'totalUseTaxOnPurchasesDue',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['useTax'],
+					},
+				},
+				default: 0,
+			},
+
+			{
+				displayName: 'Total Amount of Michigan Income Tax Withheld',
+				name: 'totalAmountOfMichiganIncomeTaxWithheld',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['filePayTaxReturn'],
+						typesBeingSubmitted: ['withholdingTax'],
+					},
+				},
+				default: 0,
+			},
+
+			// ---------------
 
 			{
 				displayName:
@@ -261,7 +526,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+		let items = this.getInputData();
 
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -269,8 +534,9 @@ export class UsStateTaxPortalHelper implements INodeType {
 			if (operation === 'verifyBusinessRelationship') {
 				const username = this.getNodeParameter('username', i) as string;
 				const password = this.getNodeParameter('password', i) as string;
+				const fein = this.getNodeParameter('fein', i) as string;
 
-				const screenshot = await michiganLogin(username, password);
+				const screenshot = await michiganLogin(username, password, fein);
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					screenshot,
@@ -281,7 +547,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 				items[i].binary = items[i].binary ?? {};
 				items[i].binary!.dataPropertyName = binaryData;
 			} else if (operation === 'createNewAccount') {
-				const screenshot = await georgiaLogin();
+				const screenshot = (await georgiaLogin()) as Buffer;
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					screenshot,
@@ -291,6 +557,15 @@ export class UsStateTaxPortalHelper implements INodeType {
 
 				items[i].binary = items[i].binary ?? {};
 				items[i].binary!.dataPropertyName = binaryData;
+			} else if (operation === 'filePayTaxReturn') {
+				items = [
+					{
+						json: {
+							message:
+								"This operation is an example. Here you'd see a JSON representation of confirmation data (like a submission ID) or a screenshot of the success screen - whichever you prefer",
+						},
+					},
+				];
 			}
 		}
 
