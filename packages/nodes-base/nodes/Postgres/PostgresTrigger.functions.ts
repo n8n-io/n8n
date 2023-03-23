@@ -28,7 +28,7 @@ export async function pgTriggerFunction(
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${nodeId}`;
 	const replaceIfExists = additionalFields.replaceIfExists || false;
 	try {
-		if (replaceIfExists) {
+		if (replaceIfExists || !(additionalFields.triggerName || additionalFields.functionName)) {
 			await db.any(
 				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
 				[functionName, channelName],
