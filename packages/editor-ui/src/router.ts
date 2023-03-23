@@ -588,8 +588,9 @@ const router = new Router({
 							deny: {
 								role: [ROLE.Default],
 								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
 									const ssoStore = useSSOStore();
-									return !ssoStore.isEnterpriseSamlEnabled;
+									return !ssoStore.isEnterpriseSamlEnabled || settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment;
 								},
 							},
 						},
