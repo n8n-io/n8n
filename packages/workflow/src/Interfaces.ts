@@ -676,10 +676,14 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+}
+
+export interface NodeHelperFunctions {
+	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
 export interface RequestHelperFunctions {
@@ -753,6 +757,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
+		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
@@ -875,6 +880,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
+	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &

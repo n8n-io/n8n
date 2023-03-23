@@ -13,7 +13,6 @@ import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	isUserManagementEnabled,
 	sanitizeUser,
 	validatePassword,
 	withFeatureFlags,
@@ -35,6 +34,8 @@ import type {
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
+import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
+import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 
 @RestController('/users')
 export class UsersController {
@@ -98,14 +99,15 @@ export class UsersController {
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post('/')
+	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
 	async sendEmailInvites(req: UserRequest.Invite) {
-		// TODO: this should be checked in the middleware rather than here
-		if (!isUserManagementEnabled()) {
+		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because user management is disabled',
+				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
-			throw new BadRequestError('User management is disabled');
+			throw new BadRequestError(
+				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+			);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {

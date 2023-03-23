@@ -329,7 +329,7 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								path,
 								parameterPath,
 							);
