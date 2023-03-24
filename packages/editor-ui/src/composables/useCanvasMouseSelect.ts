@@ -10,7 +10,7 @@ import {
 	SIDEBAR_WIDTH,
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
-import { ref, watchEffect, onMounted, computed } from 'vue';
+import { ref, watchEffect, onMounted, computed, onUnmounted } from 'vue';
 import { useCanvasStore } from '@/stores/canvas';
 
 interface ExtendedHTMLSpanElement extends HTMLSpanElement {
@@ -144,7 +144,6 @@ export default function useCanvasMouseSelect() {
 			// Else normal node dragging will not work.
 			return;
 		}
-
 		document.removeEventListener('mousemove', _mouseMoveSelect);
 
 		// Deselect all nodes
@@ -219,16 +218,6 @@ export default function useCanvasMouseSelect() {
 	}
 
 	const instance = computed(() => canvasStore.jsPlumbInstance);
-	// Watchers
-	watchEffect(() => {
-		selectBox.value.addEventListener('mouseup', mouseUpMouseSelect);
-		document.addEventListener('mousedown', mouseDownMouseSelect as EventListener);
-
-		return () => {
-			selectBox.value.removeEventListener('mouseup', mouseUpMouseSelect);
-			document.removeEventListener('mousedown', mouseDownMouseSelect as EventListener);
-		};
-	});
 
 	onMounted(() => {
 		_createSelectBox();
