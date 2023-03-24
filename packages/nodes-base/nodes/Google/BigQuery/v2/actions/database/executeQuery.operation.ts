@@ -1,20 +1,17 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { TableRawData, TableSchema } from '../../helpers/BigQuery.types';
 import { simplify } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
-export const description: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
 		displayOptions: {
-			show: {
-				operation: ['executeQuery'],
-				resource: ['query'],
-			},
 			hide: {
 				'/options.useLegacySql': [true],
 			},
@@ -31,8 +28,6 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['executeQuery'],
-				resource: ['query'],
 				'/options.useLegacySql': [true],
 			},
 		},
@@ -48,12 +43,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Options',
 		default: {},
-		displayOptions: {
-			show: {
-				operation: ['executeQuery'],
-				resource: ['query'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Default Dataset Name or ID',
@@ -119,6 +108,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['database'],
+		operation: ['executeQuery'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query

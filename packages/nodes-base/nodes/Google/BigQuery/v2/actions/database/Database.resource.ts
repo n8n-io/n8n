@@ -2,8 +2,9 @@ import type { INodeProperties } from 'n8n-workflow';
 import { datasetRLC, projectRLC, tableRLC } from '../commonDescriptions/RLC.description';
 import * as create from './create.operation';
 import * as getAll from './getAll.operation';
+import * as executeQuery from './executeQuery.operation';
 
-export { create, getAll };
+export { executeQuery, create, getAll };
 
 export const description: INodeProperties[] = [
 	{
@@ -13,10 +14,16 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['record'],
+				resource: ['database'],
 			},
 		},
 		options: [
+			{
+				name: 'Execute',
+				value: 'executeQuery',
+				description: 'Execute a SQL query',
+				action: 'Execute a SQL query',
+			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -36,7 +43,8 @@ export const description: INodeProperties[] = [
 		...projectRLC,
 		displayOptions: {
 			show: {
-				resource: ['record'],
+				resource: ['database'],
+				operation: ['executeQuery', 'create', 'getAll'],
 			},
 		},
 	},
@@ -44,7 +52,8 @@ export const description: INodeProperties[] = [
 		...datasetRLC,
 		displayOptions: {
 			show: {
-				resource: ['record'],
+				resource: ['database'],
+				operation: ['create', 'getAll'],
 			},
 		},
 	},
@@ -52,10 +61,12 @@ export const description: INodeProperties[] = [
 		...tableRLC,
 		displayOptions: {
 			show: {
-				resource: ['record'],
+				resource: ['database'],
+				operation: ['create', 'getAll'],
 			},
 		},
 	},
+	...executeQuery.description,
 	...create.description,
 	...getAll.description,
 ];

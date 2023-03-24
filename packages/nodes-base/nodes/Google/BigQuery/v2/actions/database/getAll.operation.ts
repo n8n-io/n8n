@@ -1,21 +1,16 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { SchemaField, TableRawData, TableSchema } from '../../helpers/BigQuery.types';
 import { getSchemaForSelectedFields, selectedFieldsToObject, simplify } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['record'],
-			},
-		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
 	},
@@ -25,8 +20,6 @@ export const description: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['record'],
 				returnAll: [false],
 			},
 		},
@@ -43,12 +36,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Options',
 		default: {},
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['record'],
-			},
-		},
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
@@ -84,6 +71,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['database'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/get

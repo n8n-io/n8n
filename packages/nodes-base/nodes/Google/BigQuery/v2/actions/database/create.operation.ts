@@ -2,11 +2,12 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { TableSchema } from '../../helpers/BigQuery.types';
 import { checkSchema } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
-export const description: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Data Mode',
 		name: 'dataMode',
@@ -28,12 +29,6 @@ export const description: INodeProperties[] = [
 				description: 'Set list of the item properties to use as fields',
 			},
 		],
-		displayOptions: {
-			show: {
-				resource: ['record'],
-				operation: ['create'],
-			},
-		},
 		default: 'autoMap',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
@@ -43,8 +38,6 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['record'],
-				operation: ['create'],
 				dataMode: ['list'],
 			},
 		},
@@ -91,8 +84,6 @@ export const description: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: ['record'],
-				operation: ['create'],
 				dataMode: ['define'],
 			},
 		},
@@ -103,12 +94,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Options',
 		default: {},
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['record'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Batch Size',
@@ -152,6 +137,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['database'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll

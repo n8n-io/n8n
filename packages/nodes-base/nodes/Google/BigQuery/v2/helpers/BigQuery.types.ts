@@ -11,8 +11,6 @@ export type TableSchema = {
 	fields: SchemaField[];
 };
 
-//=============================
-
 export type TableRawData = {
 	f: Array<{ v: IDataObject | TableRawData }>;
 };

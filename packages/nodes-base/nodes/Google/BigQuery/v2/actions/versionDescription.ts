@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
-import * as record from './record/Record.resource';
-import * as query from './query/Query.resource';
+import * as database from './database/Database.resource';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',
@@ -9,7 +8,7 @@ export const versionDescription: INodeTypeDescription = {
 	icon: 'file:googleBigQuery.svg',
 	group: ['input'],
 	version: 2,
-	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+	subtitle: '={{$parameter["operation"]}}',
 	description: 'Consume Google BigQuery API',
 	defaults: {
 		name: 'Google BigQuery',
@@ -58,21 +57,16 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Resource',
 			name: 'resource',
-			type: 'options',
+			type: 'hidden',
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Record',
-					value: 'record',
-				},
-				{
-					name: 'Query',
-					value: 'query',
+					name: 'Database',
+					value: 'database',
 				},
 			],
-			default: 'record',
+			default: 'database',
 		},
-		...record.description,
-		...query.description,
+		...database.description,
 	],
 };
