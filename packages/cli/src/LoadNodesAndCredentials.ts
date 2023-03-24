@@ -30,7 +30,6 @@ import {
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
 	inTest,
-	NODES_BASE_DIR,
 	CLI_DIR,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
