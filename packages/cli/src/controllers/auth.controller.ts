@@ -23,7 +23,6 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { SamlUrls } from '@/sso/saml/constants';
 
 @RestController()
 export class AuthController {
