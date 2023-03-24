@@ -348,7 +348,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 			this.$data.tagsSaving = true;
 
-			const saved = await this.saveCurrentWorkflow({ tags });
+			const saved = await this.saveCurrentWorkflow({ tags, name: this.workflowName });
 			this.$telemetry.track('User edited workflow tags', {
 				workflow_id: this.currentWorkflowId as string,
 				new_tag_count: tags.length,

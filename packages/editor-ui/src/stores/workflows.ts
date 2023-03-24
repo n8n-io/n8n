@@ -506,7 +506,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				isJsonKeyObject(item) ? item : { json: item },
 			);
 
-			this.workflow.pinData[payload.node.name] = storedPinData;
+			Vue.set(this.workflow.pinData, payload.node.name, storedPinData);
 
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
