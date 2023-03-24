@@ -89,6 +89,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 						name: 'File & Pay a Tax Return',
 						value: 'filePayTaxReturn',
 						action: 'File & Pay a Tax Return',
+						description: 'File a monthly Sales, Use, and Withholding tax return',
 					},
 					{
 						name: 'Get Recent Returns',
@@ -182,7 +183,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 
 			{
 				displayName:
-					'Stripe team, "Submit Tax Return" is a placeholder operation (we did not have a Michigan business entity to test with). We added it to better illustrate how your custom nodes can turn multi-step portal flows into a simple form.',
+					'Stripe team, we mocked this operation (it won\'t run). We added it to better illustrate how your custom nodes can turn multi-step portal flows into a simple form. Depending on options selected in "Tax types being submitted", relevant form fields will be added.',
 				name: 'notice9',
 				type: 'notice',
 				default: '',
@@ -433,7 +434,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 
 			{
 				displayName:
-					'Hey Stripe team 👋 This "Create new account" operation is partially implemented. It will get through to the "Provide Account Information" step of the signup flow, enter the Sales Tax ID, click "next" then take a screenshot of the result (will be "Invalid Sales Tax #" message). The parameters below are shown to illustrate how you could create usecase specific workflow steps, that have simple form-like structures. Check out the "Michigan Treasury Online" resource for a working example of signing into a Govt Portal, or "Submit sales tax return (monthly)" operation to see a working 2FA (TOPT) login example.',
+					'Hey Stripe team 👋 This "Create new account" operation is partially implemented. It will get through to the "Provide Account Information" step of the signup flow, enter the Sales Tax ID, then take a screenshot of the result.',
 				name: 'notice1',
 				type: 'notice',
 				default: '',
@@ -488,7 +489,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 			},
 			{
 				displayName:
-					'You could continue to list other form fields required in Georgia\'s account setup flow, we just couldn\'t get further in the UI flow since we don\'t have a Georgia Tax ID. n8n can handle an abitrary number of various <a target="_blank" href="https://docs.n8n.io/integrations/creating-nodes/build/reference/ui-elements/">form field types</a>.',
+					'You could continue to list other form fields required in Georgia\'s account setup flow, we just couldn\'t get further in the UI flow since we don\'t have a Georgia Tax ID. n8n can handle an arbitrary number of various <a target="_blank" href="https://docs.n8n.io/integrations/creating-nodes/build/reference/ui-elements/">form field types</a>.',
 				name: 'notice3',
 				type: 'notice',
 				default: '',
