@@ -138,7 +138,7 @@ export default mixins(pushConnection, workflowHelpers).extend({
 					} else {
 						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
 					}
-					// this.modalBus.$emit('closeAll');
+					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 					break;
 				default:

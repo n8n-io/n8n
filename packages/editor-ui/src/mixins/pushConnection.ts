@@ -25,7 +25,7 @@ import {
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -335,7 +335,7 @@ export const pushConnection = mixins(
 					runDataExecuted.data.resultData.error &&
 					runDataExecuted.data.resultData.error.lineNumber;
 
-				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {

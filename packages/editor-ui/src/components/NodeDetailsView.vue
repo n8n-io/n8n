@@ -136,7 +136,6 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
 import mixins from 'vue-typed-mixins';
-import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -149,7 +148,7 @@ import {
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { createEventBus, dataPinningEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
@@ -186,7 +185,7 @@ export default mixins(
 	},
 	data() {
 		return {
-			settingsEventBus: new Vue(),
+			settingsEventBus: createEventBus(),
 			runInputIndex: -1,
 			runOutputIndex: -1,
 			isLinkingEnabled: true,
@@ -200,7 +199,7 @@ export default mixins(
 		};
 	},
 	mounted() {
-		dataPinningEventBus.$on(
+		dataPinningEventBus.on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
 				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
@@ -208,7 +207,7 @@ export default mixins(
 		);
 	},
 	destroyed() {
-		dataPinningEventBus.$off('data-pinning-discovery');
+		dataPinningEventBus.off('data-pinning-discovery');
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
@@ -574,7 +573,7 @@ export default mixins(
 			}, 1000);
 		},
 		openSettings() {
-			this.settingsEventBus.$emit('openSettings');
+			this.settingsEventBus.emit('openSettings');
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
@@ -600,7 +599,7 @@ export default mixins(
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'data-too-large',
 							source: 'on-ndv-close-modal',
 						});
@@ -608,7 +607,7 @@ export default mixins(
 					}
 
 					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'invalid-json',
 							source: 'on-ndv-close-modal',
 						});
