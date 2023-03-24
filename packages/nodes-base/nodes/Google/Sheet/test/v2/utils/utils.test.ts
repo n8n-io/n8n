@@ -1,5 +1,8 @@
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import {
 	addRowNumber,
+	autoMapInputData,
 	prepareSheetData,
 	removeEmptyColumns,
 	removeEmptyRows,
@@ -190,5 +193,92 @@ describe('Test Google Sheets, prepareSheetData', () => {
 			firstDataRow: 1,
 			headerRow: 0,
 		});
+	});
+});
+
+describe('Test Google Sheets, autoMapInputData', () => {
+	it('should autoMapInputData', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Postgres node',
+			typeVersion: 2,
+			type: 'n8n-nodes-base.postgres',
+			position: [60, 760],
+			parameters: {
+				operation: 'executeQuery',
+			},
+		};
+
+		const items = [
+			{
+				json: {
+					id: 1,
+					name: 'Jon',
+					data: 'A',
+				},
+			},
+			{
+				json: {
+					id: 2,
+					name: 'Sam',
+					data: 'B',
+				},
+			},
+			{
+				json: {
+					id: 3,
+					name: 'Ron',
+					data: 'C',
+					info: 'some info',
+				},
+			},
+		];
+
+		const fakeExecuteFunction = {
+			getNode() {
+				return node;
+			},
+		} as unknown as IExecuteFunctions;
+
+		const getData = (GoogleSheet.prototype.getData = jest.fn().mockResolvedValue([[]]));
+
+		const updateRows = (GoogleSheet.prototype.updateRows = jest.fn().mockResolvedValue(true));
+
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		const result = await autoMapInputData.call(
+			fakeExecuteFunction,
+			'foo 1',
+			googleSheet,
+			items,
+			{},
+		);
+
+		expect(getData).toHaveBeenCalledTimes(1);
+		expect(getData).toHaveBeenCalledWith('foo 1!1:1', 'FORMATTED_VALUE');
+
+		expect(updateRows).toHaveBeenCalledTimes(2);
+		expect(updateRows).toHaveBeenCalledWith('foo 1', [['id', 'name', 'data']], 'RAW', 1);
+		expect(updateRows).toHaveBeenCalledWith('foo 1', [['id', 'name', 'data', 'info']], 'RAW', 1);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([
+			{
+				id: 1,
+				name: 'Jon',
+				data: 'A',
+			},
+			{
+				id: 2,
+				name: 'Sam',
+				data: 'B',
+			},
+			{
+				id: 3,
+				name: 'Ron',
+				data: 'C',
+				info: 'some info',
+			},
+		]);
 	});
 });
