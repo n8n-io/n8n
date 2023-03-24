@@ -24,6 +24,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
+import { Container } from 'typedi';
 
 export class CredentialsService {
 	static async get(
@@ -205,7 +206,7 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 	): Promise<ICredentialsDb | null> {
-		await ExternalHooks().run('credentials.update', [newCredentialData]);
+		await Container.get(ExternalHooks).run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(credentialId, newCredentialData);
@@ -224,7 +225,7 @@ export class CredentialsService {
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await ExternalHooks().run('credentials.create', [encryptedData]);
+		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
 		const role = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
@@ -256,7 +257,7 @@ export class CredentialsService {
 	}
 
 	static async delete(credentials: CredentialsEntity): Promise<void> {
-		await ExternalHooks().run('credentials.delete', [credentials.id]);
+		await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 
 		await Db.collections.Credentials.remove(credentials);
 	}
@@ -279,7 +280,7 @@ export class CredentialsService {
 	): ICredentialDataDecryptedObject {
 		const copiedData = deepCopy(data);
 
-		const credTypes = CredentialTypes();
+		const credTypes = Container.get(CredentialTypes);
 		let credType: ICredentialType;
 		try {
 			credType = credTypes.getByName(credential.type);

@@ -26,20 +26,20 @@ import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue
 import {
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRMED,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
+	ExecutionFilterType,
 	IExecutionsListResponse,
-	IExecutionsSummary,
 	INodeUi,
 	ITag,
 	IWorkflowDb,
 } from '@/Interface';
 import {
+	IExecutionsSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -53,9 +53,9 @@ import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range as _range } from 'lodash';
+import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
+import { getNodeViewTab, isEmpty, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -63,6 +63,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(
 	restApi,
@@ -71,7 +72,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-view',
+	name: 'executions-list',
 	components: {
 		ExecutionsSidebar,
 	},
@@ -79,7 +80,7 @@ export default mixins(
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: { finished: true, status: '' },
+			filter: {} as ExecutionFilterType,
 		};
 	},
 	computed: {
@@ -87,13 +88,11 @@ export default mixins(
 		hidePreview(): boolean {
 			const activeNotPresent =
 				this.filterApplied &&
-				(this.executions as IExecutionsSummary[]).find(
-					(ex) => ex.id === this.activeExecution.id,
-				) === undefined;
+				!(this.executions as IExecutionsSummary[]).find((ex) => ex.id === this.activeExecution?.id);
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
-			return this.filter.status !== '';
+			return this.filter.status !== 'all';
 		},
 		workflowDataNotLoaded(): boolean {
 			return (
@@ -106,6 +105,12 @@ export default mixins(
 		},
 		totalFinishedExecutionsCount(): number {
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
+		},
+		requestFilter(): IDataObject {
+			return executionFilterToQueryFilter({
+				...this.filter,
+				workflowId: this.currentWorkflow,
+			});
 		},
 	},
 	watch: {
@@ -179,7 +184,7 @@ export default mixins(
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
 				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
-					this.setExecutions();
+					await this.setExecutions();
 				}
 				if (this.activeExecution) {
 					this.$router
@@ -193,7 +198,7 @@ export default mixins(
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced('loadMore', { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {
@@ -211,15 +216,9 @@ export default mixins(
 				lastId = lastItem.id;
 			}
 
-			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
-			if (this.filter.status === 'waiting') {
-				requestFilter.waitTill = true;
-			} else if (this.filter.status !== '') {
-				requestFilter.finished = this.filter.status === 'success';
-			}
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(requestFilter, limit, lastId);
+				data = await this.restApi().getPastExecutions(this.requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
 				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
@@ -305,8 +304,8 @@ export default mixins(
 				);
 			}
 		},
-		onFilterUpdated(newFilter: { finished: boolean; status: string }): void {
-			this.filter = newFilter;
+		onFilterUpdated(filter: ExecutionFilterType): void {
+			this.filter = filter;
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
@@ -344,7 +343,7 @@ export default mixins(
 
 					if (existingStillRunning && currentFinished) {
 						existingExecutions[executionIndex] = currentItem;
-						if (currentItem.id === this.activeExecution.id) {
+						if (currentItem.id === this.activeExecution?.id) {
 							updatedActiveExecution = currentItem;
 						}
 					}
@@ -371,7 +370,7 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
 				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
@@ -390,7 +389,7 @@ export default mixins(
 				return [];
 			}
 			try {
-				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
 				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 					this.$showMessage(
@@ -452,7 +451,10 @@ export default mixins(
 			}
 
 			// stop if the execution wasn't found in the first 1000 lookups
-			if (attemptCount >= 10) return;
+			if (attemptCount >= 10) {
+				this.workflowsStore.activeWorkflowExecution = null;
+				return;
+			}
 
 			// Fetch next batch of executions
 			await this.loadMore(100);
@@ -619,8 +621,7 @@ export default mixins(
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			this.workflowsStore.activeWorkflows = await this.restApi().getActiveWorkflows();
 		},
 		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';

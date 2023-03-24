@@ -1,10 +1,10 @@
 import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
+import type { FindOptionsWhere } from 'typeorm';
 import { Credentials, UserSettings } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
 import * as Db from '@/Db';
-import type { ICredentialsDecryptedDb } from '@/Interfaces';
+import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../BaseCommand';
 
 export class ExportCredentialsCommand extends BaseCommand {
@@ -105,13 +105,12 @@ export class ExportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: IDataObject = {};
+		const findQuery: FindOptionsWhere<ICredentialsDb> = {};
 		if (flags.id) {
 			findQuery.id = flags.id;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const credentials = await Db.collections.Credentials.find(findQuery);
+		const credentials = await Db.collections.Credentials.findBy(findQuery);
 
 		if (flags.decrypted) {
 			const encryptionKey = await UserSettings.getEncryptionKey();

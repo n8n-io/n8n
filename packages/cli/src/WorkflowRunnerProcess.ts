@@ -7,6 +7,8 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
+import 'reflect-metadata';
+import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
@@ -49,11 +51,12 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { getLogger } from '@/Logger';
 
 import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { getLicense } from './License';
+import { License } from '@/License';
+import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -103,19 +106,20 @@ class WorkflowRunnerProcess {
 
 		const userSettings = await UserSettings.prepareUserSettings();
 
-		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.init();
 
-		const nodeTypes = NodeTypes(loadNodesAndCredentials);
-		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+		const nodeTypes = Container.get(NodeTypes);
+		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
 		const instanceId = userSettings.instanceId ?? '';
-		await InternalHooksManager.init(instanceId, nodeTypes);
+		await Container.get(PostHogClient).init(instanceId);
+		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
@@ -123,16 +127,13 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const license = getLicense();
+		const license = Container.get(License);
 		await license.init(instanceId);
 
-		// Start timeout for the execution
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
-			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
+		const workflowSettings = this.data.workflowData.settings ?? {};
 
+		// Start timeout for the execution
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
@@ -181,6 +182,9 @@ class WorkflowRunnerProcess {
 
 		additionalData.executionId = inputData.executionId;
 
+		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+			executionId: inputData.executionId,
+		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		additionalData.sendMessageToUI = async (source: string, message: any) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
@@ -226,7 +230,7 @@ class WorkflowRunnerProcess {
 				};
 			});
 
-			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId || '', runData);
 
 			let result: IRun;
 			try {
@@ -247,7 +251,7 @@ class WorkflowRunnerProcess {
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
 				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId,
 					workflowData,
 					result,
@@ -487,6 +491,7 @@ process.on('message', async (message: IProcessMessage) => {
 						: ('own' as WorkflowExecuteMode),
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
+					status: 'canceled',
 				};
 
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -504,6 +509,8 @@ process.on('message', async (message: IProcessMessage) => {
 			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
+		workflowRunner.logger.error(error.message);
+
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
 			...error,

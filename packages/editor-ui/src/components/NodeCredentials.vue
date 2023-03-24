@@ -20,6 +20,7 @@
 						:value="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
+						data-test-id="node-credentials-select"
 					/>
 				</div>
 				<div

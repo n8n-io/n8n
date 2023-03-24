@@ -168,7 +168,6 @@ export default mixins(showMessage, copyPaste).extend({
 			return this.emailsCount >= 1;
 		},
 		invitedUsers(): IUser[] {
-			console.log(this.usersStore.allUsers, this.showInviteUrls);
 			return this.showInviteUrls
 				? this.usersStore.allUsers.filter((user) =>
 						this.showInviteUrls!.find((invite) => invite.user.id === user.id),

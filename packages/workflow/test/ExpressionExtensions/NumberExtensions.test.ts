@@ -38,14 +38,22 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ (9).isOdd() }}')).toEqual(true);
 			expect(evaluate('={{ (8).isOdd() }}')).toEqual(false);
 			expect(evaluate('={{ (0).isOdd() }}')).toEqual(false);
-			expect(evaluate('={{ (NaN).isOdd() }}')).toEqual(false);
+		});
+
+		test('.isOdd() should not work on a float or NaN', () => {
+			expect(() => evaluate('={{ (NaN).isOdd() }}')).toThrow();
+			expect(() => evaluate('={{ (9.2).isOdd() }}')).toThrow();
 		});
 
 		test('.isEven() should work on a number', () => {
 			expect(evaluate('={{ (9).isEven() }}')).toEqual(false);
 			expect(evaluate('={{ (8).isEven() }}')).toEqual(true);
 			expect(evaluate('={{ (0).isEven() }}')).toEqual(true);
-			expect(evaluate('={{ (NaN).isEven() }}')).toEqual(false);
+		});
+
+		test('.isEven() should not work on a float or NaN', () => {
+			expect(() => evaluate('={{ (NaN).isEven() }}')).toThrow();
+			expect(() => evaluate('={{ (9.2).isEven() }}')).toThrow();
 		});
 	});
 

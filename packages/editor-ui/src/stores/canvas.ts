@@ -28,6 +28,9 @@ import {
 	PLACEHOLDER_TRIGGER_NODE_SIZE,
 	CONNECTOR_FLOWCHART_TYPE,
 	GRID_SIZE,
+	CONNECTOR_PAINT_STYLE_DEFAULT,
+	CONNECTOR_PAINT_STYLE_PRIMARY,
+	CONNECTOR_ARROW_OVERLAYS,
 } from '@/utils/nodeViewUtils';
 import { PointXY } from '@jsplumb/util';
 
@@ -153,6 +156,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
+			endpoint: {
+				type: 'Dot',
+				options: { radius: 5 },
+			},
+			paintStyle: CONNECTOR_PAINT_STYLE_DEFAULT,
+			hoverPaintStyle: CONNECTOR_PAINT_STYLE_PRIMARY,
+			connectionOverlays: CONNECTOR_ARROW_OVERLAYS,
 			dragOptions: {
 				cursor: 'pointer',
 				grid: { w: GRID_SIZE, h: GRID_SIZE },

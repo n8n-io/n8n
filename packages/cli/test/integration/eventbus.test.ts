@@ -2,6 +2,8 @@ import express from 'express';
 import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
+import { v4 as uuid } from 'uuid';
+import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { Role } from '@db/entities/Role';
@@ -15,13 +17,12 @@ import {
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
-import { SuperAgentTest } from 'supertest';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
-import { v4 as uuid } from 'uuid';
+import { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -53,6 +54,7 @@ const testWebhookDestination: MessageEventBusDestinationWebhookOptions = {
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
+
 const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	...defaultMessageEventBusDestinationSentryOptions,
 	id: '450ca04b-87dd-4837-a052-ab3a347a00e9',
@@ -61,12 +63,6 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
-
-async function cleanLogs() {
-	eventBus.logWriter.cleanAllLogs();
-	const allMessages = await eventBus.getEventsAll();
-	expect(allMessages.length).toBe(0);
-}
 
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
@@ -106,13 +102,10 @@ beforeAll(async () => {
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', '1');
 	config.set('enterprise.features.logStreaming', true);
-	await eventBus.initialize();
-});
-
-beforeEach(async () => {
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('enterprise.features.logStreaming', false);
+
+	await eventBus.initialize();
 });
 
 afterAll(async () => {
@@ -127,7 +120,10 @@ test('should have a running logwriter process', () => {
 });
 
 test('should have logwriter log messages', async () => {
-	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
+	const testMessage = new EventMessageGeneric({
+		eventName: 'n8n.test.message' as EventNamesTypes,
+		id: uuid(),
+	});
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
 		eventBus.logWriter.worker?.once('message', async (msg: { command: string; data: any }) => {
@@ -176,10 +172,13 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 	}
 });
 
+// this test (presumably the mocking) is causing the test suite to randomly fail
 test.skip('should send message to syslog', async () => {
-	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
+	const testMessage = new EventMessageGeneric({
+		eventName: 'n8n.test.message' as EventNamesTypes,
+		id: uuid(),
+	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -217,22 +216,16 @@ test.skip('should send message to syslog', async () => {
 
 test.skip('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
-		eventName: 'n8n.test.unsub',
+		eventName: 'n8n.test.unsub' as EventNamesTypes,
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
 	] as MessageEventBusDestinationSyslog;
 
 	syslogDestination.enable();
-
-	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
-	mockedSyslogClientLog.mockImplementation((_m, _options, _cb) => {
-		return syslogDestination.client;
-	});
 
 	await eventBus.send(testMessageUnsubscribed);
 
@@ -244,7 +237,6 @@ test.skip('should confirm send message if there are no subscribers', async () =>
 					await confirmIdInAll(testMessageUnsubscribed.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessageUnsubscribed.id);
-					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();
 					eventBus.logWriter.worker?.removeListener('message', handler002);
 					resolve(true);
@@ -264,7 +256,6 @@ test('should anonymize audit message to syslog ', async () => {
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -322,9 +313,11 @@ test('should anonymize audit message to syslog ', async () => {
 });
 
 test('should send message to webhook ', async () => {
-	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
+	const testMessage = new EventMessageGeneric({
+		eventName: 'n8n.test.message' as EventNamesTypes,
+		id: uuid(),
+	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const webhookDestination = eventBus.destinations[
 		testWebhookDestination.id!
@@ -355,9 +348,11 @@ test('should send message to webhook ', async () => {
 });
 
 test('should send message to sentry ', async () => {
-	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
+	const testMessage = new EventMessageGeneric({
+		eventName: 'n8n.test.message' as EventNamesTypes,
+		id: uuid(),
+	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const sentryDestination = eventBus.destinations[
 		testSentryDestination.id!

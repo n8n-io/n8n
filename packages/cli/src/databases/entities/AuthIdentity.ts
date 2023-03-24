@@ -2,7 +2,7 @@ import { Column, Entity, ManyToOne, PrimaryColumn, Unique } from 'typeorm';
 import { AbstractEntity } from './AbstractEntity';
 import { User } from './User';
 
-export type AuthProviderType = 'ldap' | 'email'; //| 'saml' | 'google';
+export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 @Entity()
 @Unique(['providerId', 'providerType'])

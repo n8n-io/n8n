@@ -4,15 +4,19 @@ const wf = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data transformation expressions', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		wf.actions.visit();
-		cy.waitForLoad();
 
 		cy.window()
 			// @ts-ignore
-			.then(win => win.onBeforeUnload && win.removeEventListener('beforeunload', win.onBeforeUnload));
+			.then(
+				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
+			);
 	});
 
 	it('$json + native string methods', () => {
@@ -26,7 +30,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + n8n string methods', () => {
@@ -40,7 +45,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + native numeric methods', () => {
@@ -54,7 +60,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
 	it('$json + n8n numeric methods', () => {
@@ -68,21 +75,22 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputDataContainer().contains(output);
 	});
 
-	it('$json + native array methods', () => {
+	it('$json + native array access', () => {
 		wf.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.actions.setPinnedData([{ myArr: [1, 2, 3] }]);
 		ndv.actions.close();
 		addSet();
-
-		const input = '{{$json.myArr.includes(1) + " " + $json.myArr.at(2)';
+		const input = '{{$json.myArr.includes(1) + " " + $json.myArr[2]';
 		const output = 'true 3';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
 	});
 
 	it('$json + n8n array methods', () => {
@@ -96,7 +104,8 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().should('be.visible').contains(output);
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
 	});
 });
 

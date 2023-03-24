@@ -1,72 +1,36 @@
 <template>
-	<div :class="['executions-sidebar', $style.container]" ref="container">
+	<div
+		:class="['executions-sidebar', $style.container]"
+		ref="container"
+		data-test-id="executions-sidebar"
+	>
 		<div :class="$style.heading">
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
 		</div>
 		<div :class="$style.controls">
-			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{
-				$locale.baseText('executionsList.autoRefresh')
-			}}</el-checkbox>
-			<n8n-popover trigger="click">
-				<template #reference>
-					<div :class="$style.filterButton">
-						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
-							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
-							{{ $locale.baseText('executionsList.filters') }}
-						</n8n-button>
-					</div>
-				</template>
-				<div :class="$style['filters-dropdown']">
-					<div class="mb-s">
-						<n8n-input-label
-							:label="$locale.baseText('executions.ExecutionStatus')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs"
-						/>
-						<n8n-select
-							v-model="filter.status"
-							size="small"
-							ref="typeInput"
-							:class="$style['type-input']"
-							:placeholder="$locale.baseText('generic.any')"
-							@change="onFilterChange"
-						>
-							<n8n-option
-								v-for="item in executionStatuses"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id"
-							>
-							</n8n-option>
-						</n8n-select>
-					</div>
-					<div :class="[$style.filterMessage, 'mt-s']" v-if="statusFilterApplied">
-						<n8n-link @click="resetFilters">
-							{{ $locale.baseText('generic.reset') }}
-						</n8n-link>
-					</div>
-				</div>
-			</n8n-popover>
+			<el-checkbox
+				v-model="autoRefresh"
+				@change="onAutoRefreshToggle"
+				data-test-id="auto-refresh-checkbox"
+			>
+				{{ $locale.baseText('executionsList.autoRefresh') }}
+			</el-checkbox>
+			<execution-filter popover-placement="left-start" @filterChanged="onFilterChanged" />
 		</div>
-		<div v-show="statusFilterApplied" class="mb-xs">
-			<n8n-info-tip :bold="false">
-				{{ $locale.baseText('generic.filtersApplied') }}
-				<n8n-link @click="resetFilters" size="small">
-					{{ $locale.baseText('generic.resetAllFilters') }}
-				</n8n-link>
-			</n8n-info-tip>
-		</div>
-		<div :class="$style.executionList" ref="executionList" @scroll="loadMore(20)">
+		<div
+			:class="$style.executionList"
+			ref="executionList"
+			data-test-id="current-executions-list"
+			@scroll="loadMore(20)"
+		>
 			<div v-if="loading" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			</div>
-			<div v-if="executions.length === 0 && statusFilterApplied" :class="$style.noResultsContainer">
+			<div v-if="executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
@@ -77,6 +41,7 @@
 				:key="execution.id"
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
+				:data-test-id="`execution-details-${execution.id}`"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
@@ -93,21 +58,23 @@
 <script lang="ts">
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
-import { VIEWS } from '../../constants';
-import { range as _range } from 'lodash';
-import { IExecutionsSummary } from '@/Interface';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
+import { VIEWS } from '@/constants';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { Route } from 'vue-router';
 import Vue from 'vue';
 import { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { ExecutionFilterType } from '@/Interface';
 
 export default Vue.extend({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
 		ExecutionsInfoAccordion,
+		ExecutionFilter,
 	},
 	props: {
 		executions: {
@@ -126,26 +93,13 @@ export default Vue.extend({
 	data() {
 		return {
 			VIEWS,
-			filter: {
-				status: '',
-			},
+			filter: {} as ExecutionFilterType,
 			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 		};
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		statusFilterApplied(): boolean {
-			return this.filter.status !== '';
-		},
-		executionStatuses(): Array<{ id: string; name: string }> {
-			return [
-				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
-				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
-				{ id: 'success', name: this.$locale.baseText('executionsList.success') },
-				{ id: 'waiting', name: this.$locale.baseText('executionsList.waiting') },
-			];
-		},
 	},
 	watch: {
 		$route(to: Route, from: Route) {
@@ -194,8 +148,8 @@ export default Vue.extend({
 		onRefresh(): void {
 			this.$emit('refresh');
 		},
-		onFilterChange(): void {
-			this.$emit('filterUpdated', this.prepareFilter());
+		onFilterChanged(filter: ExecutionFilterType) {
+			this.$emit('filterUpdated', filter);
 		},
 		reloadExecutions(): void {
 			this.$emit('reloadExecutions');
@@ -210,16 +164,6 @@ export default Vue.extend({
 			if (this.autoRefresh) {
 				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
-		},
-		async resetFilters(): Promise<void> {
-			this.filter.status = '';
-			this.$emit('filterUpdated', this.prepareFilter());
-		},
-		prepareFilter(): object {
-			return {
-				finished: this.filter.status !== 'running',
-				status: this.filter.status,
-			};
 		},
 		checkListSize(): void {
 			const sidebarContainer = this.$refs.container as HTMLElement;
@@ -283,7 +227,7 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-l);
+	padding-right: var(--spacing-m);
 
 	button {
 		display: flex;

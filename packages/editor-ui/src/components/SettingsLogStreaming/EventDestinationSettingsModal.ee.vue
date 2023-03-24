@@ -172,7 +172,7 @@
 </template>
 
 <script lang="ts">
-import { get, set, unset } from 'lodash';
+import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';

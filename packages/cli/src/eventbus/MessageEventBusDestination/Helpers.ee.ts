@@ -1,5 +1,4 @@
-/* eslint-disable import/no-cycle */
-import type { EventDestinations } from '@db/entities/MessageEventBusDestinationEntity';
+import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
 import { promClient } from '@/metrics';
 import {
 	EventMessageTypeNames,
@@ -12,21 +11,23 @@ import type { MessageEventBusDestination } from './MessageEventBusDestination.ee
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry.ee';
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationWebhook.ee';
+import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 
 export function messageEventBusDestinationFromDb(
+	eventBusInstance: MessageEventBus,
 	dbData: EventDestinations,
 ): MessageEventBusDestination | null {
 	const destinationData = dbData.destination;
 	if ('__type' in destinationData) {
 		switch (destinationData.__type) {
 			case MessageEventBusDestinationTypeNames.sentry:
-				return MessageEventBusDestinationSentry.deserialize(destinationData);
+				return MessageEventBusDestinationSentry.deserialize(eventBusInstance, destinationData);
 			case MessageEventBusDestinationTypeNames.syslog:
-				return MessageEventBusDestinationSyslog.deserialize(destinationData);
+				return MessageEventBusDestinationSyslog.deserialize(eventBusInstance, destinationData);
 			case MessageEventBusDestinationTypeNames.webhook:
-				return MessageEventBusDestinationWebhook.deserialize(destinationData);
+				return MessageEventBusDestinationWebhook.deserialize(eventBusInstance, destinationData);
 			default:
-				console.log('MessageEventBusDestination __type unknown');
+				LoggerProxy.debug('MessageEventBusDestination __type unknown');
 		}
 	}
 	return null;

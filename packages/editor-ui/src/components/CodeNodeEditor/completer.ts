@@ -84,7 +84,7 @@ export const completerExtension = mixins(
 
 			try {
 				variablesToValues = this.variablesToValues();
-			} catch (_) {
+			} catch {
 				return null;
 			}
 

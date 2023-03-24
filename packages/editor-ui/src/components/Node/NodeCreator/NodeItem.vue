@@ -6,7 +6,7 @@
 		@dragend="onDragEnd"
 		@click.stop="onClick"
 		:class="$style.nodeItem"
-		:description="allowActions ? undefined : description"
+		:description="allowDescription ? description : ''"
 		:title="displayName"
 		:isTrigger="!allowActions && isTriggerNode"
 		:show-action-arrow="showActionArrow"
@@ -53,11 +53,13 @@ export interface Props {
 	nodeType: INodeTypeDescription;
 	active?: boolean;
 	allowActions?: boolean;
+	allowDescription?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	active: false,
 	allowActions: false,
+	allowDescription: false,
 });
 
 const emit = defineEmits<{
@@ -103,7 +105,10 @@ const displayName = computed<any>(() => {
 
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType}.displayName`,
-		fallback: props.allowActions ? displayName.replace('Trigger', '') : displayName,
+		fallback:
+			props.allowActions && props.nodeType.actions?.length
+				? displayName.replace('Trigger', '')
+				: displayName,
 	});
 });
 

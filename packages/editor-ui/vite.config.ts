@@ -7,7 +7,7 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 import packageJSON from './package.json';
 
-const isCI = process.env.CI === 'true';
+const { coverageReporters } = require('../../jest.config.js');
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -18,11 +18,6 @@ const ignoreChunks = [
 	'@fontsource/open-sans',
 	'normalize-wheel',
 	'stream-browserify',
-	'lodash.camelcase',
-	'lodash.debounce',
-	'lodash.get',
-	'lodash.orderby',
-	'lodash.set',
 ];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
@@ -46,32 +41,26 @@ function renderChunks() {
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
-	find: new RegExp(`^lodash.${name}$`, 'i'),
-	replacement: require.resolve(`lodash-es/${name}`),
-}));
+const { NODE_ENV } = process.env;
 
 export default mergeConfig(
 	defineConfig({
 		define: {
 			// This causes test to fail but is required for actually running it
-			...(process.env.NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+			...(NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins: [
 			vue(),
-			...(!isCI
-				? [
-						legacy({
-							targets: ['defaults', 'not IE 11'],
-						}),
-						monacoEditorPlugin({
-							publicPath: 'assets/monaco-editor',
-							customDistPath: (root: string, buildOutDir: string, base: string) =>
-								`${root}/${buildOutDir}/assets/monaco-editor`,
-						}),
-				  ]
-				: []),
+			legacy({
+				targets: ['defaults', 'not IE 11'],
+			}),
+			monacoEditorPlugin({
+				publicPath: 'assets/monaco-editor',
+				customDistPath: (root: string, buildOutDir: string, base: string) =>
+					`${root}/${buildOutDir}/assets/monaco-editor`,
+			}),
 		],
 		resolve: {
 			alias: [
@@ -81,9 +70,12 @@ export default mergeConfig(
 					find: /^n8n-design-system\//,
 					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 				},
-				...lodashAliases,
+				...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
+					find: new RegExp(`^lodash.${name}$`, 'i'),
+					replacement: require.resolve(`lodash-es/${name}`),
+				})),
 				{
-					find: /^lodash.(.+)$/,
+					find: /^lodash\.(.+)$/,
 					replacement: 'lodash-es/$1',
 				},
 				{
@@ -110,11 +102,9 @@ export default mergeConfig(
 			},
 		},
 		build: {
-			minify: !isCI,
 			assetsInlineLimit: 0,
 			sourcemap: false,
 			rollupOptions: {
-				treeshake: !isCI,
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
@@ -130,6 +120,12 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			coverage: {
+				provider: 'c8',
+				reporter: coverageReporters,
+				include: ['src/**/*.ts'],
+				all: true,
+			},
 			css: {
 				modules: {
 					classNameStrategy: 'non-scoped',

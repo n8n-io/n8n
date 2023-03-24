@@ -1,9 +1,10 @@
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { QueryFailedError } from 'typeorm';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export async function workflowExecutionCompleted(
 	workflowData: IWorkflowBase,
@@ -46,7 +47,7 @@ export async function workflowExecutionCompleted(
 		};
 
 		// Send the metrics
-		await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
+		await Container.get(InternalHooks).onFirstProductionWorkflowSuccess(metrics);
 	} catch (error) {
 		if (!(error instanceof QueryFailedError)) {
 			throw error;
@@ -101,5 +102,5 @@ export async function nodeFetchedData(
 	}
 
 	// Send metrics to posthog
-	await InternalHooksManager.getInstance().onFirstWorkflowDataLoad(metrics);
+	await Container.get(InternalHooks).onFirstWorkflowDataLoad(metrics);
 }

@@ -1,6 +1,7 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { imageFields, imageOperations } from './ImageDescription';
 import { textFields, textOperations } from './TextDescription';
+import { chatFields, chatOperations } from './ChatDescription';
 
 export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,6 +34,10 @@ export class OpenAi implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Chat',
+						value: 'chat',
+					},
+					{
 						name: 'Image',
 						value: 'image',
 					},
@@ -43,6 +48,9 @@ export class OpenAi implements INodeType {
 				],
 				default: 'text',
 			},
+
+			...chatOperations,
+			...chatFields,
 
 			...imageOperations,
 			...imageFields,
