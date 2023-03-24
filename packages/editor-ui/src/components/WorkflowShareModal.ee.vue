@@ -159,17 +159,11 @@ export default mixins(showMessage).extend({
 		},
 	},
 	data() {
-		const workflowsStore = useWorkflowsStore();
-		const workflow =
-			this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? workflowsStore.workflow
-				: workflowsStore.workflowsById[this.data.id];
-
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: true,
 			modalBus: new Vue(),
-			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
+			sharedWith: [] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
 	},
@@ -227,9 +221,7 @@ export default mixins(showMessage).extend({
 			).concat(this.sharedWith || []);
 		},
 		workflow(): IWorkflowDb {
-			return this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? this.workflowsStore.workflow
-				: this.workflowsStore.workflowsById[this.data.id];
+			return this.workflowsStore.workflow;
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -453,6 +445,7 @@ export default mixins(showMessage).extend({
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {
+				this.sharedWith = this.workflow.sharedWith || [];
 				await this.loadUsers();
 
 				if (
@@ -468,11 +461,6 @@ export default mixins(showMessage).extend({
 	},
 	mounted() {
 		this.initialize();
-	},
-	watch: {
-		workflow(workflow) {
-			this.sharedWith = workflow.sharedWith;
-		},
 	},
 });
 </script>
