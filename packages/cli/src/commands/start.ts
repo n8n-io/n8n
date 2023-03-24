@@ -60,7 +60,7 @@ export class Start extends BaseCommand {
 		}),
 	};
 
-	protected activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	/**
 	 * Opens the UI in browser
@@ -200,6 +200,7 @@ export class Start extends BaseCommand {
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
 		await this.initBinaryManager();
