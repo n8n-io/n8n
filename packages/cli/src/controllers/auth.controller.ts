@@ -76,9 +76,7 @@ export class AuthController {
 			if (preliminaryUser?.globalRole?.name === 'owner') {
 				user = preliminaryUser;
 			} else {
-				// TODO:SAML - implement option doRedirectUsersFromLoginToSsoFlow()
-				res.redirect(SamlUrls.restInitSSO);
-				return;
+				throw new AuthError('SAML is enabled, please log in with SAML');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			user = await handleLdapLogin(email, password);
