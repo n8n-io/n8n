@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.categoryWrapper">
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
-			<span :class="$style.name" v-text="item.name" />
+			<span :class="$style.name" v-text="`${item.name} (${item.count})`" />
 			<font-awesome-icon v-if="item.expanded" icon="chevron-down" :class="$style.arrow" />
 			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 		</div>
@@ -17,8 +17,9 @@
 </template>
 
 <script lang="ts" setup>
-import useCategoryCallouts from './useCategoryCallouts';
+import useCategoryCallouts from './composables/useCategoryCallouts';
 import { ICategoryItemProps } from '@/Interface';
+import { computed } from 'vue';
 
 export interface Props {
 	item: ICategoryItemProps;
@@ -26,6 +27,11 @@ export interface Props {
 }
 const props = defineProps<Props>();
 const { categoryCallout } = useCategoryCallouts(props.item.name);
+
+const categoryName = computed(() => {
+	const itemsCount = props.item.count || 0;
+	return itemsCount > 0 ? `${props.item.name} (${itemsCount})` : props.item.name;
+});
 </script>
 
 <style lang="scss" module>

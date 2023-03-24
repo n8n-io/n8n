@@ -89,6 +89,7 @@ const addNodeToCategory = (
 export const getCategoriesWithNodes = (
 	nodeTypes: INodeTypeDescription[],
 	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
+	requiredCategories: string[] = [],
 ): ICategoriesWithNodes => {
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
 		a.displayName > b.displayName ? 1 : -1,
@@ -114,17 +115,29 @@ export const getCategoriesWithNodes = (
 		});
 		return accu;
 	}, {});
+
+	// Make sure that the required categories are included even if they are empty
+	// inject them into the result otherwise
+	requiredCategories.forEach((category) => {
+		if (!result[category]) {
+			result[category] = {};
+		}
+	});
 	return result;
 };
 
-const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
+const getCategories = (
+	categoriesWithNodes: ICategoriesWithNodes,
+	requiredCategories: string[] = [],
+): string[] => {
 	const excludeFromSort = [
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
 		UNCATEGORIZED_CATEGORY,
 		PERSONALIZED_CATEGORY,
 	];
-	const categories = Object.keys(categoriesWithNodes);
+	const categories = [...new Set([...Object.keys(categoriesWithNodes), ...requiredCategories])];
+
 	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
 	sorted.sort();
 
@@ -140,12 +153,14 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 export const getCategorizedList = (
 	categoriesWithNodes: ICategoriesWithNodes,
 	categoryIsExpanded = false,
+	requiredCategories: string[] = [],
 ): INodeCreateElement[] => {
-	const categories = getCategories(categoriesWithNodes);
-	console.log('🚀 ~ file: nodeTypesUtils.ts:145 ~ categories:', categories);
+	const categories = getCategories(categoriesWithNodes, requiredCategories);
+	console.log('🚀 ~ file: nodeTypesUtils.ts:150 ~ categories:', categories);
+	// console.log('🚀 ~ file: nodeTypesUtils.ts:145 ~ categories:', categories);
 
 	const result = categories.reduce((accu: INodeCreateElement[], category: string) => {
-		if (!categoriesWithNodes[category]) {
+		if (!categoriesWithNodes[category] && !requiredCategories.includes(category)) {
 			return accu;
 		}
 
@@ -548,7 +563,7 @@ export const getCredentialsRelatedFields = (
 		credentialType.displayOptions.show
 	) {
 		Object.keys(credentialType.displayOptions.show).forEach((option) => {
-			console.log(option);
+			// console.log(option);
 			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
 		});
 	}

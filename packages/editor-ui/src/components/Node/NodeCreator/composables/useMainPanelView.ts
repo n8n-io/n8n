@@ -224,6 +224,8 @@ export default () => {
 		createElements: Array<INodeTypeDescription | INodeActionTypeDescription>,
 		type: 'node' | 'action' = 'node',
 		activeNodeActions?: INodeActionTypeDescription,
+		categoryOverride?: string,
+		labelOverride?: string,
 	): INodeCreateElement[] {
 		const sorted = [...createElements];
 
@@ -241,7 +243,8 @@ export default () => {
 
 			return {
 				type,
-				category: nodeType.codex?.categories,
+				category: categoryOverride ?? nodeType.codex?.categories,
+				label: labelOverride ?? nodeType.codex?.label,
 				key: nodeType.name,
 				properties: {
 					nodeType,

@@ -1,7 +1,6 @@
 <template>
 	<div>
 		<aside :class="{ 'node-creator-scrim': true, active: nodeCreatorStore.showScrim }" />
-
 		<slide-transition>
 			<div
 				v-if="active"

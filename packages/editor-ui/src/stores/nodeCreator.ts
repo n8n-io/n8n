@@ -267,6 +267,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		openSource: '',
 	}),
 	actions: {
+		getNodeTypeBase,
 		setShowScrim(isVisible: boolean) {
 			this.showScrim = isVisible;
 		},

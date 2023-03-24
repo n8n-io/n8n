@@ -2,6 +2,8 @@
 	Constants and utility functions used for searching for node types in node creator component
 */
 
+import { add } from '@jsplumb/util';
+
 // based on https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.js
 
 const SEQUENTIAL_BONUS = 30; // bonus for adjacent matches
@@ -216,9 +218,15 @@ export function sublimeSearch<T extends object>(
 	filter: string,
 	data: Readonly<T[]>,
 	keys: Array<{ key: string; weight: number }>,
+	isExcluded?: (item: T) => boolean,
 ): Array<{ score: number; item: T }> {
 	const results = data.reduce((accu: Array<{ score: number; item: T }>, item: T) => {
 		let values: Array<{ value: string; weight: number }> = [];
+		if (isExcluded && isExcluded(item)) {
+			console.log('🚀 ~ file: sortUtils.ts:226 ~ results ~ isExcluded:', isExcluded);
+			accu.push({ score: 0, item });
+			return accu;
+		}
 		keys.forEach(({ key, weight }) => {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {

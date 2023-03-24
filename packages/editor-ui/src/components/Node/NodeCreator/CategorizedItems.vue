@@ -119,7 +119,6 @@ export interface Props {
 	showSubcategoryIcon?: boolean;
 	alwaysShowSearch?: boolean;
 	hideOtherCategoryItems?: boolean;
-
 	lazyRender?: boolean;
 	searchPlaceholder?: string;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
@@ -210,9 +209,10 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 	if (defaultLocale !== 'en') {
 		returnItems = props.searchItems.filter((el: INodeCreateElement) => {
 			return (
-				filter &&
-				matchesSelectType(el, nodeCreatorStore.selectedView) &&
-				matchesNodeType(el, filter)
+				el.type === 'category' ||
+				(filter &&
+					matchesSelectType(el, nodeCreatorStore.selectedView) &&
+					matchesNodeType(el, filter))
 			);
 		});
 	} else {
@@ -350,7 +350,6 @@ function sortNodes(nodes: INodeCreateElement[]) {
 
 function addLabels(nodes: INodeCreateElement[]): INodeCreateElement[] {
 	const labeledNodes = [...new Set(nodes.map((el) => el.label || ''))];
-	console.log('🚀 ~ file: CategorizedItems.vue:353 ~ addLabels ~ labeledNodes:', labeledNodes);
 	const categories = nodes.filter((el) => el.type === 'category');
 	const categoriesChunk =
 		categories.length > 0
@@ -390,29 +389,46 @@ function addLabels(nodes: INodeCreateElement[]): INodeCreateElement[] {
 	});
 
 	const result = categories.flatMap((el, index) => [el, ...injectedLabelsChunks[index]]);
-	console.log('🚀 ~ file: MainPanel.vue:265 ~ addLabels ~ clonedNodes:', result);
 	return result;
+}
+
+function addCategoriesCount(nodes: INodeCreateElement[]): INodeCreateElement[] {
+	const baseNodes =
+		searchFilter.value.length > 0 ? mergedFilteredNodes.value : props.categorizedItems;
+
+	for (const node of nodes) {
+		if (node.type === 'category') {
+			const category = node as CategoryCreateElement;
+			const categoryItems = baseNodes.filter((el) => el.category === category.key);
+			category.properties.count = categoryItems.length;
+		}
+	}
+	return nodes;
 }
 
 const renderedItems = computed<INodeCreateElement[]>(() => {
 	let items = [];
 	if (searchFilter.value.length > 0) {
+		console.log('__DEBUG: mergedFilteredNodes.value', mergedFilteredNodes.value);
 		items = mergedFilteredNodes.value;
 	} else if (props.firstLevelItems.length > 0 && activeSubcategory.value === null) {
+		console.log('__DEBUG: props.firstLevelItems', props.firstLevelItems);
 		items = props.firstLevelItems;
 	} else if (activeSubcategory.value?.key === '*') {
+		console.log('__DEBUG: activeSubcategory.value?.key', activeSubcategory.value?.key);
 		// If active subcategory is * then we show all items
 		items = props.searchItems;
 	} else if (subcategorizedItems.value.length > 0) {
+		console.log('__DEBUG: subcategorizedItems', subcategorizedItems);
 		// Otherwise we show only items that match the subcategory
 		items = subcategorizedItems.value;
 	} else {
+		console.log('__DEBUG: filteredCategorizedItems', filteredCategorizedItems);
 		// Finally if none of the above is true we show the categorized items
-		items = filteredCategorizedItems.value;
+		items = addLabels(filteredCategorizedItems.value);
 	}
 
-	console.log('🚀 ~ file: CategorizedItems.vue:413 ~ renderedItems ~ items:', items);
-	return addLabels(items);
+	return addCategoriesCount(items);
 });
 
 const isSearchVisible = computed<boolean>(() => {
@@ -426,13 +442,19 @@ function trimTriggerNodeName(nodeName: string) {
 	return nodeName.toLowerCase().replace('trigger', '');
 }
 function getFilteredNodes(items: INodeCreateElement[]) {
+	console.log('🚀 ~ file: CategorizedItems.vue:445 ~ getFilteredNodes ~ items:', items);
 	// In order to support the old search we need to remove the 'trigger' part
 	const trimmedFilter = searchFilter.value.toLowerCase().replace('trigger', '');
 	return (
-		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.nodeType.displayName', weight: 2 },
-			{ key: 'properties.nodeType.codex.alias', weight: 1 },
-		]) || []
+		sublimeSearch<INodeCreateElement>(
+			trimmedFilter,
+			items,
+			[
+				{ key: 'properties.nodeType.displayName', weight: 2 },
+				{ key: 'properties.nodeType.codex.alias', weight: 1 },
+			],
+			(item) => item.type === 'category',
+		) || []
 	).map(({ item }) => item);
 }
 function getScrollTop() {
@@ -446,6 +468,7 @@ function setScrollTop(scrollTop: number) {
 function onNodeFilterChange(filter: string) {
 	nodeCreatorStore.setFilter(filter);
 }
+// How to filter node items that only categories are shown?
 
 function nodeFilterKeyDown(e: KeyboardEvent) {
 	// We only want to propagate 'Escape' as it closes the node-creator and
@@ -466,7 +489,6 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 
 			// Label is not selectable so we need to skip it
 			if (activeSubcategoryItem.value?.type === 'label') {
-				console.log('activeSubcategoryItem', activeSubcategoryItem.value);
 				nodeFilterKeyDown(e);
 			}
 		} else if (e.key === 'ArrowUp' && activeSubcategory.value) {
@@ -475,7 +497,6 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 
 			// Label is not selectable so we need to skip it
 			if (activeSubcategoryItem.value?.type === 'label') {
-				console.log('activeSubcategoryItem', activeSubcategoryItem.value);
 				nodeFilterKeyDown(e);
 			}
 		} else if (e.key === 'Enter') {

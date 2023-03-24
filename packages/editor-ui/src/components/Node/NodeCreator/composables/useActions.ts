@@ -1,39 +1,28 @@
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
-import {
-	INodeTypeDescription,
-	INodeActionTypeDescription,
-	INodeTypeNameVersion,
-} from 'n8n-workflow';
+import { INodeActionTypeDescription } from 'n8n-workflow';
 import {
 	INodeCreateElement,
-	NodeCreateElement,
 	IActionItemProps,
 	SubcategoryCreateElement,
-	IUpdateInformation,
+	ActionCreateElement,
 } from '@/Interface';
-import {
-	CORE_NODES_CATEGORY,
-	WEBHOOK_NODE_TYPE,
-	EMAIL_IMAP_NODE_TYPE,
-	CUSTOM_API_CALL_NAME,
-	HTTP_REQUEST_NODE_TYPE,
-	STICKY_NODE_TYPE,
-	REGULAR_NODE_FILTER,
-	TRIGGER_NODE_FILTER,
-	N8N_NODE_TYPE,
-} from '@/constants';
-import CategorizedItems from './CategorizedItems.vue';
+import { CUSTOM_API_CALL_NAME, TRIGGER_NODE_FILTER } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRootStore';
 import useMainPanelView from './useMainPanelView';
+import { isEmpty } from '@/utils';
 
 export default () => {
-	const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
-		useNodeCreatorStore();
+	const {
+		getActionData,
+		getNodeTypesWithManualTrigger,
+		setAddedNodeActionParameters,
+		getNodeTypeBase,
+		visibleNodesWithActions,
+	} = useNodeCreatorStore();
 	const instance = getCurrentInstance();
 	const { baseUrl } = useRootStore();
 	const { $externalHooks } = new externalHooks();
@@ -44,7 +33,9 @@ export default () => {
 	});
 
 	const { transformCreateElements, isRoot } = useMainPanelView();
+
 	const activeNodeActions = computed(() => state.activeNodeActions || null);
+
 	const containsAPIAction = computed(
 		() =>
 			activeNodeActions.value?.properties.some((p) =>
@@ -54,12 +45,67 @@ export default () => {
 
 	const selectedView = computed(() => useNodeCreatorStore().selectedView);
 
+	const placeholderTriggerActions = computed(() => {
+		const nodes = [
+			{
+				name: 'n8n-nodes-base.webhook',
+				displayName: 'On Webhook Call',
+			},
+			{
+				name: 'n8n-nodes-base.scheduleTrigger',
+				displayName: 'On a Schedule',
+			},
+		];
+		console.log('🚀 ~ file: useActions.ts:76 ~ placeholderTriggerActions ~ nodes:', nodes);
+
+		const matchedNodeTypes = visibleNodesWithActions
+			.filter((node) => nodes.some((n) => n.name === node.name))
+			.map((node) => {
+				const [transformed] = transformCreateElements(
+					[node],
+					'action',
+					nodeAppActionsSubcategory.value,
+					'Triggers',
+					'PLACEHOLDER',
+				) as ActionCreateElement[];
+
+				const overwriteNode = nodes.find((n) => n.name === node.name);
+				const newObj = Object.assign(transformed.properties.nodeType, overwriteNode);
+				console.log('🚀 ~ file: useActions.ts:91 ~ .map ~ newObj:', newObj);
+				return transformed;
+			});
+		console.log(
+			'🚀 ~ file: useActions.ts:80 ~ matchedNodeTypes ~ matchedNodeTypes:',
+			matchedNodeTypes,
+		);
+
+		return matchedNodeTypes;
+	});
 	const categoriesWithActions = computed(() => {
-		return getCategoriesWithNodes(selectedNodeActions.value, activeNodeActions.value?.displayName);
+		const actions = getCategoriesWithNodes(
+			selectedNodeActions.value,
+			activeNodeActions.value?.displayName,
+			['Actions', 'Triggers'],
+		);
+		console.log('🚀 ~ file: useActions.ts:95 ~ categoriesWithActions ~ actions:', actions);
+
+		if (isEmpty(actions['Triggers'])) {
+			actions['Triggers'][nodeAppActionsSubcategory.value?.properties.subcategory] = {
+				nodes: [...placeholderTriggerActions.value],
+				regularCount: 0,
+				triggerCount: placeholderTriggerActions.value.length,
+			};
+		}
+		console.log('🚀 ~ file: useActions.ts:64 ~ categoriesWithActions ~ actions:', actions);
+
+		return actions;
 	});
 
 	const categorizedActions = computed(() => {
-		return sortActions(getCategorizedList(categoriesWithActions.value, true));
+
+		return sortActions(
+			getCategorizedList(categoriesWithActions.value, true, ['Actions', 'Triggers']),
+		);
 	});
 
 	const selectedNodeActions = computed<INodeActionTypeDescription[]>(
@@ -160,7 +206,7 @@ export default () => {
 	}
 
 	function shouldShowNodeActions(node: INodeCreateElement) {
-		if (isRoot.value && useNodeCreatorStore().itemsFilter === '') return false;
+		if (!isRoot.value && useNodeCreatorStore().itemsFilter === '') return false;
 
 		return true;
 	}

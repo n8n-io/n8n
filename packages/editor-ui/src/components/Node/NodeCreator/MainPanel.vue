@@ -110,8 +110,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
-import useMainPanelView from './useMainPanelView';
-import useActions from './useActions';
+import useMainPanelView from './composables/useMainPanelView';
+import useActions from './composables/useActions';
 
 const instance = getCurrentInstance();
 
@@ -147,29 +147,13 @@ const {
 	shouldShowNodeActions,
 } = useActions();
 
-const wrappedActionsComputed = ({
-	ifActions,
-	ifNotActions,
-}: {
-	ifActions: Function;
-	ifNotActions: Function;
-}) => computed(() => (isActionsActive.value ? ifActions() : ifNotActions()));
-
 const selectedView = computed(() => useNodeCreatorStore().selectedView);
-const computedCategorizedItems = computed(() => {
-	return isActionsActive.value
-		? categorizedActions.value
-		: getCategorizedList(computedCategoriesWithNodes.value, true);
-});
-
-const searchPlaceholder = computed(() => {
-	return isActionsActive.value ? actionsSearchPlaceholder.value : undefined;
-});
 
 const filteredMergedAppNodes = computed(() => {
 	const WHITELISTED_APP_CORE_NODES = [EMAIL_IMAP_NODE_TYPE, WEBHOOK_NODE_TYPE];
+	const isAppEventSubcategory = selectedSubcategory.value === '*';
 
-	if (isAppEventSubcategory.value)
+	if (isAppEventSubcategory)
 		return mergedAppNodes.filter((node) => {
 			const isTrigger = isTriggerNode(node.name);
 			const isRegularNode = !isTrigger;
@@ -195,14 +179,23 @@ const filteredMergedAppNodes = computed(() => {
 	return mergedAppNodes;
 });
 
-const computedCategoriesWithNodes = computed(() => {
-	if (!isActionsActive.value) return getCategoriesWithNodes(filteredMergedAppNodes.value);
+const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : []));
 
-	return categoriesWithActions.value;
+const computedCategorizedItems = computed(() => {
+	return isActionsActive.value
+		? categorizedActions.value
+		: getCategorizedList(computedCategoriesWithNodes.value, true);
 });
 
-const isAppEventSubcategory = computed(() => selectedSubcategory.value === '*');
-const firstLevelItems = computed(() => (isRoot.value ? activeView.value.items : []));
+const searchPlaceholder = computed(() => {
+	return isActionsActive.value ? actionsSearchPlaceholder.value : undefined;
+});
+
+const computedCategoriesWithNodes = computed(() => {
+	return isActionsActive.value
+		? categoriesWithActions.value
+		: getCategoriesWithNodes(filteredMergedAppNodes.value);
+});
 
 const searchItems = computed<INodeCreateElement[]>(() => {
 	return isActionsActive.value
