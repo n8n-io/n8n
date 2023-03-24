@@ -46,19 +46,35 @@ export async function pptrLogin(email: string, password: string, token: string) 
 
 	await page.goto(`https://github.com/${_ghHandle}`);
 
-	const [handle, description, followers, location] = await Promise.all(
+	// const bio =
+	// 	(await page.waitForSelector('.user-profile-bio'))?.evaluate((el) => el.textContent?.trim()) ??
+	// 	'n/a';
+
+	// const followers =
+	// 	(await page.waitForSelector('span.text-bold.color-fg-default'))?.evaluate((el) =>
+	// 		el.textContent?.trim(),
+	// 	) ?? '0';
+
+	// const location =
+	// 	(await page.waitForSelector('[itemProp="homeLocation"]'))?.evaluate((el) =>
+	// 		el.textContent?.trim(),
+	// 	) ?? 'n/a';
+
+	const [description, followers, location] = await Promise.all(
 		[
-			'.p-nickname',
+			// '.p-nickname',
 			'.user-profile-bio',
 			'span.text-bold.color-fg-default',
 			'[itemProp="homeLocation"]',
 		].map(async (selector) => {
-			return (await page.waitForSelector(selector))?.evaluate((el) => el.textContent?.trim());
+			return (
+				(await page.waitForSelector(selector))?.evaluate((el) => el.textContent?.trim()) ?? 'n/a'
+			);
 		}),
 	);
 
 	return {
-		'GitHub User Handle': handle,
+		'GitHub User Handle': _ghHandle,
 		'GitHub User Description': description,
 		'GitHub User Follower Count': followers,
 		'GitHub User Location': location,
