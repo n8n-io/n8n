@@ -17,7 +17,7 @@ import {
 	MessageEventBusDestinationSyslog,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import type { EventMessageTypes } from './EventMessageClasses';
+import type { EventMessageTypes, FailedEventSummary } from './EventMessageClasses';
 import { eventNamesAll } from './EventMessageClasses';
 import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
 import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
@@ -102,6 +102,19 @@ export class EventBusController {
 		} else {
 			result = await eventBus.getEventsAll();
 		}
+		return res.send({
+			data: result,
+		});
+	}
+
+	@Get('/failed')
+	async getFailedEvents(req: express.Request, res: express.Response): Promise<any> {
+		let result: FailedEventSummary[] = [];
+		let amount = 5;
+		try {
+			amount = parseInt(req.query?.amount as string);
+		} catch {}
+		result = await eventBus.getEventsFailed(amount);
 		return res.send({
 			data: result,
 		});

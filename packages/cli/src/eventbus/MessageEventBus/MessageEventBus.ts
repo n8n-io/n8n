@@ -1,7 +1,11 @@
 import { LoggerProxy } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
-import type { EventMessageTypes } from '../EventMessageClasses/';
+import type {
+	EventMessageTypes,
+	EventNamesTypes,
+	FailedEventSummary,
+} from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'events';
@@ -247,6 +251,48 @@ export class MessageEventBus extends EventEmitter {
 			Object.keys(this.destinations).length > 0 &&
 			this.hasAnyDestinationSubscribedToEvent(msg)
 		);
+	}
+
+	async getEventsFailed(amount = 5): Promise<FailedEventSummary[]> {
+		const result: FailedEventSummary[] = [];
+		try {
+			const queryResult = await this.logWriter?.getMessagesAll();
+			const uniques = uniqby(queryResult, 'id');
+			const filteredExecutionIds = uniques
+				.filter((e) =>
+					(['n8n.workflow.crashed', 'n8n.workflow.failed'] as EventNamesTypes[]).includes(
+						e.eventName,
+					),
+				)
+				.map((e) => ({
+					executionId: e.payload.executionId as string,
+					name: e.payload.workflowName,
+					timestamp: e.ts,
+					event: e.eventName,
+				}))
+				.filter((e) => e)
+				.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))
+				.slice(-amount);
+
+			for (const execution of filteredExecutionIds) {
+				const data = await recoverExecutionDataFromEventLogMessages(
+					execution.executionId,
+					queryResult,
+					false,
+				);
+				if (data) {
+					const lastNodeExecuted = data.resultData.lastNodeExecuted;
+					result.push({
+						lastNodeExecuted: lastNodeExecuted ?? '',
+						executionId: execution.executionId,
+						name: execution.name as string,
+						event: execution.event,
+						timestamp: execution.timestamp.toISO(),
+					});
+				}
+			}
+		} catch {}
+		return result;
 	}
 
 	async getEventsAll(): Promise<EventMessageTypes[]> {
