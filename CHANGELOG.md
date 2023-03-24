@@ -1,3 +1,39 @@
+# [0.221.0](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.221.0) (2023-03-23)
+
+
+### Bug Fixes
+
+* **core:** Fix calling error workflows in main mode recovery ([#5698](https://github.com/n8n-io/n8n/issues/5698)) ([e0ea97a](https://github.com/n8n-io/n8n/commit/e0ea97af8d7aaa014680f5f9d5702d1cafd49757))
+* **core:** Fix telemetry execution status for manual workflows executions ([#5712](https://github.com/n8n-io/n8n/issues/5712)) ([a28396e](https://github.com/n8n-io/n8n/commit/a28396ee91bfbccc6596812606c237a8e2c34088))
+* **core:** Return saml attributes after connection test ([#5717](https://github.com/n8n-io/n8n/issues/5717)) ([be172cb](https://github.com/n8n-io/n8n/commit/be172cb720c8a44ebd1f0b86dddab321e1e3c9fd))
+* **editor:** Disable tooltip for display modes that don't support mapping ([#5715](https://github.com/n8n-io/n8n/issues/5715)) ([fb8755e](https://github.com/n8n-io/n8n/commit/fb8755ea3c720c98f002a6756c39b8fed11482c0))
+* **editor:** Fix execution list item selection ([#5606](https://github.com/n8n-io/n8n/issues/5606)) ([7a352ef](https://github.com/n8n-io/n8n/commit/7a352efff944c52062412e53ea2c1a034a25f908))
+* **editor:** Fix for large notifications being cut off ([#5705](https://github.com/n8n-io/n8n/issues/5705)) ([c07f838](https://github.com/n8n-io/n8n/commit/c07f838ce60dc33261fe3e1b5e7dd6fe05f1d63b))
+* **editor:** Fix redo in code and expression editor ([#5708](https://github.com/n8n-io/n8n/issues/5708)) ([cd7a55b](https://github.com/n8n-io/n8n/commit/cd7a55ba5aeb83d1e540a65b5c6b2c74fd742461))
+* **editor:** Fix the canvas node distance when automatically injecting manual trigger ([#5716](https://github.com/n8n-io/n8n/issues/5716)) ([cb2ba97](https://github.com/n8n-io/n8n/commit/cb2ba97f3837b572e237da1256b9f2ee376767a9))
+* **HTTP Request Node:** Fix AWS credentials to automatically deconstruct the url ([#5751](https://github.com/n8n-io/n8n/issues/5751)) ([4ac944a](https://github.com/n8n-io/n8n/commit/4ac944af3028b70ae600000300c16de77c1af1d5))
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([cefec77](https://github.com/n8n-io/n8n/commit/cefec7739b6da820d64f9476476e1901d4f386bf))
+
+
+### Features
+
+* **core:** Augment data instead of copying it ([#5487](https://github.com/n8n-io/n8n/issues/5487)) ([0876c38](https://github.com/n8n-io/n8n/commit/0876c38aaeb8355141fecbc14e84cdda0b2c737b))
+* **editor:** Move canvas by holding Space or Middle mouse button ([#5719](https://github.com/n8n-io/n8n/issues/5719)) ([19dded1](https://github.com/n8n-io/n8n/commit/19dded18c9a588a30b9ac1fc274dcd967e9b7b6b))
+* **editor:** Recommend and pre-select auth type with overrides ([#5684](https://github.com/n8n-io/n8n/issues/5684)) ([f59b591](https://github.com/n8n-io/n8n/commit/f59b591c93ecd7cbd279668abe6494ef2b88c831))
+* **editor:** SSO login button ([#5615](https://github.com/n8n-io/n8n/issues/5615)) ([6916628](https://github.com/n8n-io/n8n/commit/6916628a9f11e07cbcdf390f747f396fb0ef9e3c))
+* **QuickChart Node:** Add QuickChart node ([#3572](https://github.com/n8n-io/n8n/issues/3572)) ([233f1fa](https://github.com/n8n-io/n8n/commit/233f1fa7ec230e92e868de0247e315aa6a705ead))
+
+
+
+## [0.220.1](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.220.1) (2023-03-22)
+
+
+### Bug Fixes
+
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([6d1c88e](https://github.com/n8n-io/n8n/commit/6d1c88ea8c2e5dc72c6e6edeeeef52dc1fba4075))
+
+
+
 # [0.220.0](https://github.com/n8n-io/n8n/compare/n8n@0.219.1...n8n@0.220.0) (2023-03-16)
 
 
