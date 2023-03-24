@@ -44,16 +44,13 @@ export async function pptrLogin(email: string, password: string, token: string) 
 			?.getAttribute('content');
 	});
 
-	// @TODO: Check for 2fa error
-	// throw new Error('Access denied: 2FA code is incorrect');
-
 	await page.goto(`https://github.com/${_ghHandle}`);
 
 	const [handle, description, followers, location] = await Promise.all(
 		[
 			'.p-nickname',
 			'.user-profile-bio',
-			'.text-bold.color-fg-default',
+			'span.text-bold.color-fg-default',
 			'[itemProp="homeLocation"]',
 		].map(async (selector) => {
 			return (await page.waitForSelector(selector))?.evaluate((el) => el.textContent?.trim());
