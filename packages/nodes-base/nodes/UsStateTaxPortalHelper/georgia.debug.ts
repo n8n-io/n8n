@@ -9,7 +9,7 @@ const nextSelector =
 	'.ActionButton.ActionButtonNext.ActionButtonPosStep.ActionButtonStepNext.FastEvtExecuteAction';
 
 export async function georgiaLogin(salesTaxId = '123456789') {
-	const browser = await puppeteer.launch({ headless: true });
+	const browser = await puppeteer.launch({ headless: false });
 	const page = await browser.newPage();
 
 	page.on('pageerror', () => {
