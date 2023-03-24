@@ -29,13 +29,6 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const overrides: Ref<Record<string, string | boolean>> = ref({});
 
-	const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
-	if (cachedOverrdies) {
-		try {
-			overrides.value = JSON.parse(cachedOverrdies);
-		} catch (e) {}
-	}
-
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
@@ -52,6 +45,13 @@ export const usePostHog = defineStore('posthog', () => {
 
 	if (!window.featureFlags) {
 		// for testing
+		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
+		if (cachedOverrdies) {
+			try {
+				overrides.value = JSON.parse(cachedOverrdies);
+			} catch (e) {}
+		}
+
 		window.featureFlags = {
 			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
 			override: (name: string, value: string | boolean) => {
