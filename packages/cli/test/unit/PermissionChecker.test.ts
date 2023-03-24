@@ -1,46 +1,47 @@
 import { v4 as uuid } from 'uuid';
-import {
-	ICredentialTypes,
-	INodeTypeData,
-	INodeTypes,
-	SubworkflowOperationError,
-	Workflow,
-} from 'n8n-workflow';
+import { Container } from 'typedi';
+import { ICredentialTypes, INodeTypes, SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import * as testDb from '../integration/shared/testDb';
-import { mockNodeTypesData, NodeTypes as MockNodeTypes } from './Helpers';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
 import { UserService } from '@/user/user.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
+
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
 } from '../integration/shared/random';
-
-import { Role } from '@db/entities/Role';
+import * as testDb from '../integration/shared/testDb';
+import { mockNodeTypesData } from './Helpers';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { User } from '@db/entities/User';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { mockInstance } from '../integration/shared/utils';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
+const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);
+mockInstance(LoadNodesAndCredentials, {
+	loaded: {
+		nodes: MOCK_NODE_TYPES_DATA,
+		credentials: {},
+	},
+	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
+});
+
 beforeAll(async () => {
 	await testDb.init();
 
-	mockNodeTypes = MockNodeTypes({
-		loaded: {
-			nodes: MOCK_NODE_TYPES_DATA,
-			credentials: {},
-		},
-		known: { nodes: {}, credentials: {} },
-		credentialTypes: {} as ICredentialTypes,
-	});
+	mockNodeTypes = Container.get(NodeTypes);
 
 	credentialOwnerRole = await testDb.getCredentialOwnerRole();
 	workflowOwnerRole = await testDb.getWorkflowOwnerRole();
@@ -241,7 +242,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 		});
 		await expect(
@@ -263,7 +264,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 		});
 		await expect(
@@ -301,7 +302,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 			settings: {
 				callerPolicy: 'workflowsFromAList',
@@ -327,7 +328,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 		});
 		await expect(
@@ -350,7 +351,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 			settings: {
 				callerPolicy: 'workflowsFromAList',
@@ -376,7 +377,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 			settings: {
 				callerPolicy: 'any',
@@ -387,5 +388,3 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		).resolves.not.toThrow();
 	});
 });
-
-const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);

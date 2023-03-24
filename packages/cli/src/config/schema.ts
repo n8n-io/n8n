@@ -1008,7 +1008,7 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
-			advancedFilters: {
+			advancedExecutionFilters: {
 				format: Boolean,
 				default: false,
 			},

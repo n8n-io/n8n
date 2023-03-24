@@ -1,4 +1,5 @@
 import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,8 +10,6 @@ import type {
 } from 'n8n-workflow';
 
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
-
-import type { IExecuteFunctions } from 'n8n-core';
 
 import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
 

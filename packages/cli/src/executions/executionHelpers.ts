@@ -1,6 +1,7 @@
+import { Container } from 'typedi';
 import type { IExecutionFlattedDb } from '@/Interfaces';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 import config from '@/config';
 
 export function getStatusUsingPreviousExecutionStatusMethod(
@@ -19,7 +20,10 @@ export function getStatusUsingPreviousExecutionStatusMethod(
 	}
 }
 
-export function isAdvancedFiltersEnabled(): boolean {
-	const license = getLicense();
-	return config.getEnv('enterprise.features.advancedFilters') || license.isAdvancedFiltersEnabled();
+export function isAdvancedExecutionFiltersEnabled(): boolean {
+	const license = Container.get(License);
+	return (
+		config.getEnv('enterprise.features.advancedExecutionFilters') ||
+		license.isAdvancedExecutionFiltersEnabled()
+	);
 }
