@@ -519,6 +519,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 				name: 'username',
 				type: 'string',
 				default: '',
+				required: true,
 				displayOptions: {
 					show: {
 						resource: ['georgiaStateTaxCenter'],
@@ -530,6 +531,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 				displayName: 'Log-in Password',
 				name: 'password',
 				type: 'string',
+				required: true,
 				typeOptions: {
 					password: true,
 				},
@@ -545,6 +547,7 @@ export class UsStateTaxPortalHelper implements INodeType {
 				displayName: 'Log-in 2FA Code (TOPT)',
 				name: 'totpToken',
 				type: 'string',
+				required: true,
 				default: '',
 				displayOptions: {
 					show: {
@@ -575,55 +578,63 @@ export class UsStateTaxPortalHelper implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-			if (operation === 'submitSalesTaxReturnMonthly') {
-				const username = this.getNodeParameter('username', i) as string; // actually, email
-				const password = this.getNodeParameter('password', i) as string;
-				const token = this.getNodeParameter('totpToken', i) as string;
+			try {
+				if (operation === 'submitSalesTaxReturnMonthly') {
+					const username = this.getNodeParameter('username', i) as string; // actually, email
+					const password = this.getNodeParameter('password', i) as string;
+					const token = this.getNodeParameter('totpToken', i) as string;
 
-				const scrapedData = await pptrLogin(username, password, token);
+					const scrapedData = await pptrLogin(username, password, token);
 
-				items = [
-					{
-						json: scrapedData,
-					},
-				];
-			} else if (operation === 'verifyBusinessRelationship') {
-				const username = this.getNodeParameter('username', i) as string;
-				const password = this.getNodeParameter('password', i) as string;
-				const fein = this.getNodeParameter('fein', i) as string;
-
-				const screenshot = await michiganLogin(username, password, fein);
-
-				const binaryData = await this.helpers.prepareBinaryData(
-					screenshot,
-					'example.png',
-					'image/png',
-				);
-
-				items[i].binary = items[i].binary ?? {};
-				items[i].binary!.dataPropertyName = binaryData;
-			} else if (operation === 'createNewAccount') {
-				const salesTaxId = this.getNodeParameter('salesTaxNumber', i) as string;
-
-				const screenshot = await georgiaLogin(salesTaxId);
-
-				const binaryData = await this.helpers.prepareBinaryData(
-					screenshot,
-					'example.png',
-					'image/png',
-				);
-
-				items[i].binary = items[i].binary ?? {};
-				items[i].binary!.dataPropertyName = binaryData;
-			} else if (operation === 'filePayTaxReturn') {
-				items = [
-					{
-						json: {
-							message:
-								"This operation is an example. Here you'd see a JSON representation of confirmation data (like a submission ID) or a screenshot of the success screen - whichever you prefer",
+					items = [
+						{
+							json: scrapedData,
 						},
-					},
-				];
+					];
+				} else if (operation === 'verifyBusinessRelationship') {
+					const username = this.getNodeParameter('username', i) as string;
+					const password = this.getNodeParameter('password', i) as string;
+					const fein = this.getNodeParameter('fein', i) as string;
+
+					const screenshot = await michiganLogin(username, password, fein);
+
+					const binaryData = await this.helpers.prepareBinaryData(
+						screenshot,
+						'example.png',
+						'image/png',
+					);
+
+					items[i].binary = items[i].binary ?? {};
+					items[i].binary!.dataPropertyName = binaryData;
+				} else if (operation === 'createNewAccount') {
+					const salesTaxId = this.getNodeParameter('salesTaxNumber', i) as string;
+
+					const screenshot = await georgiaLogin(salesTaxId);
+
+					const binaryData = await this.helpers.prepareBinaryData(
+						screenshot,
+						'example.png',
+						'image/png',
+					);
+
+					items[i].binary = items[i].binary ?? {};
+					items[i].binary!.dataPropertyName = binaryData;
+				} else if (operation === 'filePayTaxReturn') {
+					items = [
+						{
+							json: {
+								message:
+									"This operation is an example. Here you'd see a JSON representation of confirmation data (like a submission ID) or a screenshot of the success screen - whichever you prefer",
+							},
+						},
+					];
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					items[i].json = { error: error.message };
+					continue;
+				}
+				throw error;
 			}
 		}
 
