@@ -144,12 +144,17 @@ export class ExecuteBatch extends BaseCommand {
 			'econnrefused',
 			'missing a required parameter',
 			'insufficient credit balance',
+			'internal server error',
+			'503',
+			'502',
+			'504',
+			'insufficient balance',
 			'request timed out',
 			'status code 401',
 		];
 
 		errorMessage = errorMessage.toLowerCase();
-
+		console.log(errorMessage);
 		for (let i = 0; i < warningStrings.length; i++) {
 			if (errorMessage.includes(warningStrings[i])) {
 				return true;
