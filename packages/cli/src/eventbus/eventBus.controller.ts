@@ -82,7 +82,7 @@ export class EventBusController {
 	// Events
 	// ----------------------------------------
 	@Get('/event', { middlewares: [isOwnerMiddleware] })
-	async getEvents(req: express.Request, res: express.Response): Promise<any> {
+	async getEvents(req: express.Request): Promise<any> {
 		let result: EventMessageTypes[] | Record<string, EventMessageTypes[]> = [];
 		if (isWithQueryString(req.query)) {
 			switch (req.query.query as EventMessageReturnMode) {
@@ -102,9 +102,7 @@ export class EventBusController {
 		} else {
 			result = await eventBus.getEventsAll();
 		}
-		return res.send({
-			data: result,
-		});
+		return result;
 	}
 
 	@Get('/failed')
