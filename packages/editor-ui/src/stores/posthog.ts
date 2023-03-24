@@ -17,14 +17,6 @@ const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
 
-let overrides: Record<string, string | boolean> = {};
-const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
-if (cachedOverrdies) {
-	try {
-		overrides = JSON.parse(cachedOverrdies);
-	} catch (e) {}
-}
-
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
@@ -34,6 +26,15 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+
+	const overrides: Ref<Record<string, string | boolean>> = ref({});
+
+	const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
+	if (cachedOverrdies) {
+		try {
+			overrides.value = JSON.parse(cachedOverrdies);
+		} catch (e) {}
+	}
 
 	const reset = () => {
 		window.posthog?.reset?.();
@@ -53,13 +54,13 @@ export const usePostHog = defineStore('posthog', () => {
 	window.featureFlags = {
 		// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
 		override: (name: string, value: string | boolean) => {
-			overrides[name] = value;
+			overrides.value[name] = value;
 			featureFlags.value = {
 				...featureFlags.value,
 				[name]: value,
 			};
 			try {
-				localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides));
+				localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
 			} catch (e) {}
 		},
 
@@ -84,7 +85,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const addExperimentOverrides = () => {
 		featureFlags.value = {
 			...featureFlags.value,
-			...overrides,
+			...overrides.value,
 		};
 	};
 
@@ -140,6 +141,10 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
 		const variant = featureFlags[name];
+		if (!variant || trackedDemoExp.value[name] === variant) {
+			return;
+		}
+
 		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,

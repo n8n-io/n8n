@@ -584,6 +584,7 @@ export interface IUserResponse {
 	firstName?: string;
 	lastName?: string;
 	email?: string;
+	createdAt?: string;
 	globalRole?: {
 		name: IRole;
 		id: string;
@@ -604,7 +605,6 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: string;
 }
 
 export interface IVersionNotificationSettings {
