@@ -18,6 +18,7 @@ describe('Canvas Actions', () => {
 		workflowPage.getters.addStickyButton().should('not.be.visible');
 
 		addDefaultSticky()
+		workflowPage.getters.stickies().eq(0)
 			.should('have.text', 'I’m a note\nDouble click to edit me. Guide\n')
 			.find('a').contains('Guide').should('have.attr', 'href');
 	});
@@ -250,28 +251,19 @@ function dragRightEdge(curr: BoundingBox, move: number) {
 	});
 }
 
-function dragLeftEdge(curr: BoundingBox, move: number) {
-	workflowPage.getters.stickies().first().then(($el) => {
-		const {left, top, height, width} = curr;
-		cy.drag(`[data-test-id="sticky"] [data-dir="left"]`, [left + move, 0], {abs: true});
-		stickyShouldBePositionedCorrectly({top, left: left + move});
-		stickyShouldHaveCorrectSize([height, width * 1.5 + move]);
-	});
+function shouldHaveOneSticky() {
+	workflowPage.getters.stickies().should('have.length', 1);
 }
 
-function shouldHaveOneSticky(): Cypress.Chainable<JQuery<HTMLElement>> {
-	return workflowPage.getters.stickies().should('have.length', 1);
-}
-
-function shouldBeInDefaultLocation(sticky: Cypress.Chainable<JQuery<HTMLElement>>): Cypress.Chainable<JQuery<HTMLElement>> {
-	return sticky.should(($el) => {
+function shouldBeInDefaultLocation() {
+	workflowPage.getters.stickies().eq(0).should(($el) => {
 		expect($el).to.have.css('height', '160px');
 		expect($el).to.have.css('width', '240px');
 	})
 }
 
-function shouldHaveDefaultSize(sticky: Cypress.Chainable<JQuery<HTMLElement>>): Cypress.Chainable<JQuery<HTMLElement>> {
-	return sticky.should(($el) => {
+function shouldHaveDefaultSize() {
+	workflowPage.getters.stickies().should(($el) => {
 		expect($el).to.have.css('height', '160px');
 		expect($el).to.have.css('width', '240px');
 	})
@@ -279,7 +271,9 @@ function shouldHaveDefaultSize(sticky: Cypress.Chainable<JQuery<HTMLElement>>): 
 
 function addDefaultSticky() {
 	workflowPage.actions.addSticky();
-	return shouldHaveDefaultSize(shouldBeInDefaultLocation(shouldHaveOneSticky()));
+	shouldHaveOneSticky();
+	shouldHaveDefaultSize();
+	shouldBeInDefaultLocation();
 }
 
 function stickyShouldBePositionedCorrectly(position: Position) {
