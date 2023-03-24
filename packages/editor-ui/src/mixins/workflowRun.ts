@@ -193,7 +193,7 @@ export const workflowRun = mixins(
 				const isNewWorkflow = this.workflowsStore.isNewWorkflow;
 				const hasWebhookNode = this.workflowsStore.currentWorkflowHasWebhookNode;
 				if (isNewWorkflow && hasWebhookNode) {
-					await this.saveCurrentWorkflow();
+					await this.saveCurrentWorkflow({ name: this.workflowsStore.workflow.name });
 				}
 
 				const workflowData = await this.getWorkflowDataToSave();
