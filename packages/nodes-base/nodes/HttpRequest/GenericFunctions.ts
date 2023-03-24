@@ -1,5 +1,9 @@
-import type { IDataObject, INodeExecutionData, IOAuth2Options } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request-promise-native';
+import type {
+	IDataObject,
+	IHttpRequestOptions,
+	INodeExecutionData,
+	IOAuth2Options,
+} from 'n8n-workflow';
 
 export type IAuthDataSanitizeKeys = {
 	[key: string]: string[];
@@ -12,14 +16,19 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 	return item;
 };
 
-export function sanitizeUiMessage(request: OptionsWithUri, authDataKeys: IAuthDataSanitizeKeys) {
+export function sanitizeUiMessage(
+	request: IHttpRequestOptions,
+	authDataKeys: IAuthDataSanitizeKeys,
+) {
 	let sendRequest = request as unknown as IDataObject;
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 		sendRequest = {
 			...request,
-			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${request.body.length} byte.`,
+			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
+				(request.body as Buffer).length
+			} byte.`,
 		};
 	}
 

@@ -495,12 +495,13 @@ export interface IHttpRequestOptions {
 	baseURL?: string;
 	headers?: IDataObject;
 	method?: IHttpRequestMethods;
-	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
+	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams | string;
 	qs?: IDataObject;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
@@ -516,6 +517,8 @@ export interface IHttpRequestOptions {
 		};
 		protocol?: string;
 	};
+	maxRedirects?: number;
+	useStream?: boolean;
 	timeout?: number;
 	json?: boolean;
 }

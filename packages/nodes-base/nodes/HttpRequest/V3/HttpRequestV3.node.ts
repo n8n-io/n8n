@@ -4,6 +4,8 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -11,8 +13,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request-promise-native';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
@@ -933,9 +933,8 @@ export class HttpRequestV3 implements INodeType {
 			} catch {}
 		}
 
-		type RequestOptions = OptionsWithUri & { useStream?: boolean };
-		let requestOptions: RequestOptions = {
-			uri: '',
+		let requestOptions: IHttpRequestOptions = {
+			url: '',
 		};
 
 		let returnItems: INodeExecutionData[] = [];
@@ -946,7 +945,7 @@ export class HttpRequestV3 implements INodeType {
 		let autoDetectResponseFormat = false;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
+			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
 
 			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 			const queryParameters = this.getNodeParameter(
@@ -1020,22 +1019,20 @@ export class HttpRequestV3 implements INodeType {
 			requestOptions = {
 				headers: {},
 				method: requestMethod,
-				uri: url,
-				gzip: true,
-				rejectUnauthorized: !allowUnauthorizedCerts || false,
-				followRedirect: false,
+				url,
+				skipSslCertificateValidation: !allowUnauthorizedCerts || false,
+				disableFollowRedirect: true,
 			};
 
 			// When response format is set to auto-detect,
 			// we need to access to response header content-type
 			// and the only way is using "resolveWithFullResponse"
 			if (autoDetectResponseFormat || fullResponse) {
-				requestOptions.resolveWithFullResponse = true;
+				requestOptions.returnFullResponse = true;
 			}
 
 			if (redirect?.redirect?.followRedirects) {
-				requestOptions.followRedirect = true;
-				requestOptions.followAllRedirects = true;
+				requestOptions.disableFollowRedirect = false;
 			}
 
 			if (redirect?.redirect?.maxRedirects) {
@@ -1043,11 +1040,17 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (response?.response?.neverError) {
-				requestOptions.simple = false;
+				requestOptions.ignoreHttpStatusErrors = true;
 			}
 
 			if (proxy) {
-				requestOptions.proxy = proxy;
+				const proxyUrl = new URL(proxy);
+				requestOptions.proxy = {
+					host: proxyUrl.hostname,
+					port: proxyUrl.port as unknown as number,
+					auth: { username: proxyUrl.username, password: proxyUrl.password },
+					protocol: proxyUrl.protocol,
+				};
 			}
 
 			if (timeout) {
@@ -1077,7 +1080,6 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
-
 					accumulator[cur.name] = {
 						value: uploadData,
 						options: {
@@ -1122,13 +1124,7 @@ export class HttpRequestV3 implements INodeType {
 
 			// Change the way data get send in case a different content-type than JSON got selected
 			if (sendBody && ['PATCH', 'POST', 'PUT', 'GET'].includes(requestMethod)) {
-				if (bodyContentType === 'multipart-form-data') {
-					requestOptions.formData = requestOptions.body;
-					delete requestOptions.body;
-				} else if (bodyContentType === 'form-urlencoded') {
-					requestOptions.form = requestOptions.body;
-					delete requestOptions.body;
-				} else if (bodyContentType === 'binaryData') {
+				if (bodyContentType === 'binaryData') {
 					const inputDataFieldName = this.getNodeParameter(
 						'inputDataFieldName',
 						itemIndex,
@@ -1203,7 +1199,6 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
-				requestOptions.encoding = null;
 				requestOptions.json = false;
 				requestOptions.useStream = true;
 			} else if (bodyContentType === 'raw') {
@@ -1227,8 +1222,8 @@ export class HttpRequestV3 implements INodeType {
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
-					user: httpBasicAuth.user as string,
-					pass: httpBasicAuth.password as string,
+					username: httpBasicAuth.user as string,
+					password: httpBasicAuth.password as string,
 				};
 				authDataKeys.auth = ['pass'];
 			}
@@ -1245,8 +1240,8 @@ export class HttpRequestV3 implements INodeType {
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
-					user: httpDigestAuth.user as string,
-					pass: httpDigestAuth.password as string,
+					username: httpDigestAuth.user as string,
+					password: httpDigestAuth.password as string,
 					sendImmediately: false,
 				};
 				authDataKeys.auth = ['pass'];
@@ -1375,7 +1370,7 @@ export class HttpRequestV3 implements INodeType {
 				delete response.statusCode;
 				delete response.statusMessage;
 				response = response.body;
-				requestOptions.resolveWithFullResponse = false;
+				requestOptions.returnFullResponse = false;
 			}
 
 			if (responseFormat === 'file') {
@@ -1461,7 +1456,8 @@ export class HttpRequestV3 implements INodeType {
 				}
 			} else {
 				// responseFormat: 'json'
-				if (requestOptions.resolveWithFullResponse === true) {
+				// ? Might have to change behavior in NodeExecuteFunctions after the change from OptionsWithUri to Options
+				if (requestOptions.returnFullResponse === true) {
 					const returnItem: IDataObject = {};
 					for (const property of fullResponseProperties) {
 						returnItem[property] = response![property];
