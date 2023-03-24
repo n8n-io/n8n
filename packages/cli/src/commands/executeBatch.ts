@@ -154,7 +154,6 @@ export class ExecuteBatch extends BaseCommand {
 		];
 
 		errorMessage = errorMessage.toLowerCase();
-		console.log(errorMessage);
 		for (let i = 0; i < warningStrings.length; i++) {
 			if (errorMessage.includes(warningStrings[i])) {
 				return true;
