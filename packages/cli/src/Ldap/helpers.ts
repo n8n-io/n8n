@@ -23,7 +23,7 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse, LoggerProxy as Logger, LoggerProxy } from 'n8n-workflow';
+import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
@@ -69,7 +69,7 @@ export const setLdapLoginEnabled = async (value: boolean): Promise<void> => {
 		config.set(LDAP_LOGIN_ENABLED, false);
 		await setCurrentAuthenticationMethod('email');
 	} else {
-		LoggerProxy.warn(
+		Logger.warn(
 			'Cannot switch LDAP login enabled state when an authentication method other than email is active',
 		);
 	}
