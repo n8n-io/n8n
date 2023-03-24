@@ -1,4 +1,4 @@
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 
 import type {
 	IBinaryKeyData,
@@ -1345,10 +1345,12 @@ export class HttpRequestV3 implements INodeType {
 						0,
 						false,
 					) as boolean;
-
-					const data = await this.helpers
-						.binaryToBuffer(response.body as Buffer | Readable)
-						.then((body) => body.toString());
+					let data = '';
+					if (Buffer.isBuffer(response.body) || response.body instanceof Readable) {
+						data = await this.helpers
+							.binaryToBuffer(response.body as Buffer | Readable)
+							.then((body) => body.toString());
+					}
 					response.body = jsonParse(data, {
 						...(neverError
 							? { fallbackValue: {} }
@@ -1358,10 +1360,12 @@ export class HttpRequestV3 implements INodeType {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
-					const data = await this.helpers
-						.binaryToBuffer(response.body as Buffer | Readable)
-						.then((body) => body.toString());
-					response.body = !data ? undefined : data;
+					if (Buffer.isBuffer(response.body) || response.body instanceof Readable) {
+						const data = await this.helpers
+							.binaryToBuffer(response.body as Buffer | Readable)
+							.then((body) => body.toString());
+						response.body = !data ? undefined : data;
+					}
 				}
 			}
 
