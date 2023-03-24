@@ -109,7 +109,7 @@ export class NodesController {
 
 		let installedPackage: InstalledPackages;
 		try {
-			installedPackage = await this.loadNodesAndCredentials.loadNpmModule(
+			installedPackage = await this.loadNodesAndCredentials.installNpmModule(
 				parsed.packageName,
 				parsed.version,
 			);
@@ -125,7 +125,10 @@ export class NodesController {
 				failure_reason: errorMessage,
 			});
 
-			const message = [`Error loading package "${name}"`, errorMessage].join(':');
+			let message = [`Error loading package "${name}" `, errorMessage].join(':');
+			if (error instanceof Error && error.cause instanceof Error) {
+				message += `\nCause: ${error.cause.message}`;
+			}
 
 			const clientError = error instanceof Error ? isClientError(error) : false;
 			throw new (clientError ? BadRequestError : InternalServerError)(message);
