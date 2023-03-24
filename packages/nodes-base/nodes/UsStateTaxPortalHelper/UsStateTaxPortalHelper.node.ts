@@ -90,6 +90,19 @@ export class UsStateTaxPortalHelper implements INodeType {
 						value: 'filePayTaxReturn',
 						action: 'File & Pay a Tax Return',
 					},
+					{
+						name: 'Get Recent Returns',
+						value: 'getRecentReturns',
+						description:
+							'Returns a list of tax returns for the specified account, including due dates and filing status',
+						action: 'Get Recent Returns',
+					},
+					{
+						name: 'Amend and Pay a Tax Return',
+						value: 'amendAndPayTaxReturn',
+						description: 'Make changes and submit payment for an already filed return',
+						action: 'Amend and Pay a Tax Return',
+					},
 				],
 				default: 'verifyBusinessRelationship',
 				displayOptions: {
@@ -97,6 +110,34 @@ export class UsStateTaxPortalHelper implements INodeType {
 						resource: ['michiganTreasuryOnline'],
 					},
 				},
+			},
+
+			{
+				displayName:
+					'Stripe team, "Get recent Tax Returns" is a placeholder operation (we did not have a Michigan business entity to test with). We added it to show that you could make modular, generic actions like "Get all" and reduce maintenance burden in Puppeteer (by handling biz logic + transforms in n8n).',
+				name: 'notice99',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['getRecentReturns'],
+					},
+				},
+				default: '',
+			},
+
+			{
+				displayName:
+					'Stripe team, "Amend and Pay a Tax Return" is a placeholder operation (we did not have a Michigan business entity to test with). We added it to better illustrate how your custom nodes can turn multi-step portal flows into a simple form.',
+				name: 'notice999',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						resource: ['michiganTreasuryOnline'],
+						operation: ['amendAndPayTaxReturn'],
+					},
+				},
+				default: '',
 			},
 
 			{
