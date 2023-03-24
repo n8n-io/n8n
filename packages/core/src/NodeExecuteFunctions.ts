@@ -727,7 +727,7 @@ function isIterator(obj: unknown): boolean {
 
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
-	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
+	const { headers, method, timeout, auth, proxy, url, useStream } = n8nRequest;
 
 	const axiosRequest = {
 		headers: headers ?? {},
@@ -736,9 +736,14 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		auth,
 		proxy,
 		url,
+		useStream,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
+
+	if (n8nRequest.maxRedirects !== undefined) {
+		axiosRequest.maxRedirects = n8nRequest.maxRedirects;
+	}
 
 	if (n8nRequest.baseURL !== undefined) {
 		axiosRequest.baseURL = n8nRequest.baseURL;
