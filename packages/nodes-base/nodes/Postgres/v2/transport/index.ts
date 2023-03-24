@@ -40,7 +40,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-export async function configurePostgres(
+async function configurePostgres(
 	credentials: IDataObject,
 	options: IDataObject = {},
 	createdSshClient?: Client,
@@ -179,7 +179,18 @@ export const Connections = (function () {
 	let instance: { db: PgpDatabase; pgp: PgpClient; sshClient?: Client } | null = null;
 
 	return {
-		async getInstance(credentials: IDataObject = {}, options: IDataObject = {}, reload = false) {
+		async getInstance(
+			credentials: IDataObject = {},
+			options: IDataObject = {},
+			reload = false,
+			createdSshClient?: Client,
+			nulify = false,
+		) {
+			if (nulify) {
+				instance = null;
+				return instance;
+			}
+
 			if (instance !== null && reload) {
 				if (instance.sshClient) {
 					instance.sshClient.end();
@@ -188,8 +199,9 @@ export const Connections = (function () {
 
 				instance = null;
 			}
+
 			if (instance === null && Object.keys(credentials).length) {
-				instance = await configurePostgres(credentials, options);
+				instance = await configurePostgres(credentials, options, createdSshClient);
 			}
 			return instance;
 		},
