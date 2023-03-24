@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { getMappedResult } from '../mappingUtils';
+import { getMappedResult, getMappedExpression } from '../mappingUtils';
 
 const RLC_PARAM: INodeProperties = {
 	displayName: 'Base',
@@ -197,6 +197,61 @@ describe('Mapping Utils', () => {
 			expect(getMappedResult(RLC_PARAM, '{{ test }}', '')).toEqual('={{ test }}');
 			expect(getMappedResult(RLC_PARAM, '{{ test }}', '=')).toEqual('={{ test }}');
 			expect(getMappedResult(RLC_PARAM, '{{ test }}', '=test')).toEqual('=test {{ test }}');
+		});
+	});
+	describe('getMappedExpression', () => {
+		it('should generate a mapped expression with simple array path', () => {
+			const input = {
+				nodeName: 'nodeName',
+				distanceFromActive: 2,
+				path: ['sample', 'path'],
+			};
+			const result = getMappedExpression(input);
+			expect(result).toBe('{{ $node.nodeName.json.sample.path }}');
+		});
+
+		it('should generate a mapped expression with mixed array path', () => {
+			const input = {
+				nodeName: 'nodeName',
+				distanceFromActive: 2,
+				path: ['sample', 0, 'path'],
+			};
+			const result = getMappedExpression(input);
+			expect(result).toBe('{{ $node.nodeName.json.sample[0].path }}');
+		});
+
+		it('should generate a mapped expression with special characters in array path', () => {
+			const input = {
+				nodeName: 'nodeName',
+				distanceFromActive: 2,
+				path: ['sample', 'path with-space', 'path-with-hyphen'],
+			};
+			const result = getMappedExpression(input);
+			expect(result).toBe(
+				'{{ $node.nodeName.json.sample["path with-space"]["path-with-hyphen"] }}',
+			);
+		});
+
+		it('should generate a mapped expression with various path elements', () => {
+			const input = {
+				nodeName: 'nodeName',
+				distanceFromActive: 1,
+				path: ['propertyName', 'capitalizedName', 'hyphen-prop'],
+			};
+			const result = getMappedExpression(input);
+			expect(result).toBe('{{ $json.propertyName.capitalizedName["hyphen-prop"] }}');
+		});
+
+		it('should generate a mapped expression with a complex path', () => {
+			const input = {
+				nodeName: 'nodeName',
+				distanceFromActive: 1,
+				path: ['propertyName', 'capitalizedName', 'stringVal', 'some-value', 'capitalizedProp'],
+			};
+			const result = getMappedExpression(input);
+			expect(result).toBe(
+				'{{ $json.propertyName.capitalizedName.stringVal["some-value"].capitalizedProp }}',
+			);
 		});
 	});
 });

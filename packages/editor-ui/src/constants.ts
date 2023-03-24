@@ -445,9 +445,11 @@ export enum WORKFLOW_MENU_ACTIONS {
  * Enterprise edition
  */
 export enum EnterpriseEditionFeature {
+	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Saml = 'saml',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

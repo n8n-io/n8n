@@ -9,13 +9,11 @@ import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
-	ICredentialTypes,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -41,7 +39,7 @@ import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
 import { issueJWT } from '@/auth/jwt';
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -89,13 +87,6 @@ export const mockInstance = <T>(
 	Container.set(ctor, instance);
 	return instance;
 };
-
-const loadNodesAndCredentials: INodesAndCredentials = {
-	loaded: { nodes: {}, credentials: {} },
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
-};
-Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -177,7 +168,7 @@ export async function initTestServer({
 	if (functionEndpoints.length) {
 		const externalHooks = Container.get(ExternalHooks);
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = UserManagementMailer.getInstance();
+		const mailer = Container.get(UserManagementMailer);
 		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
@@ -226,6 +217,7 @@ export async function initTestServer({
 							logger,
 							externalHooks,
 							internalHooks,
+							mailer,
 							repositories,
 						}),
 					);
@@ -738,6 +730,15 @@ export async function isInstanceOwnerSetUp() {
 
 	return Boolean(value);
 }
+
+export const setInstanceOwnerSetUp = async (value: boolean) => {
+	config.set('userManagement.isInstanceOwnerSetUp', value);
+
+	await Db.collections.Settings.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: JSON.stringify(value) },
+	);
+};
 
 // ----------------------------------
 //              misc

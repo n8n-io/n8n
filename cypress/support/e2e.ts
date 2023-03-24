@@ -14,28 +14,17 @@
 // ***********************************************************
 
 import './commands';
-import CustomNodeFixture from '../fixtures/Custom_node.json';
-import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
-import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
-import CustomCredential from '../fixtures/Custom_credential.json';
 
 // Load custom nodes and credentials fixtures
 beforeEach(() => {
-	cy.intercept('GET', '/types/nodes.json', (req) => {
-		req.on('response', (res) => {
-			const nodes = res.body || [];
+	cy.intercept('GET', '/rest/settings').as('loadSettings');
+	cy.intercept('GET', '/rest/login').as('loadLogin');
 
-			res.headers['cache-control'] = 'no-cache, no-store';
-			nodes.push(CustomNodeFixture, CustomNodeWithN8nCredentialFixture, CustomNodeWithCustomCredentialFixture);
-		});
-	}).as('nodesIntercept');
-
-	cy.intercept('GET', '/types/credentials.json', (req) => {
-		req.on('response', (res) => {
-			const credentials = res.body || [];
-
-			res.headers['cache-control'] = 'no-cache, no-store';
-			credentials.push(CustomCredential);
-		})
-	}).as('credentialsIntercept');
+	// Always intercept the request to test credentials and return a success
+	cy.intercept('POST', '/rest/credentials/test', {
+		statusCode: 200,
+		body: {
+			data: { status: 'success', message: 'Tested successfully' },
+		}
+	});
 })
