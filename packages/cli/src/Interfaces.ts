@@ -48,6 +48,7 @@ import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import type { EventDestinations } from '@db/entities/MessageEventBusDestinationEntity';
+import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 export interface IActivationError {
 	time: number;
@@ -88,6 +89,7 @@ export interface IDatabaseCollections {
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 	EventDestinations: Repository<EventDestinations>;
+	ExecutionMetadata: Repository<ExecutionMetadata>;
 }
 
 // ----------------------------------
@@ -488,9 +490,15 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
@@ -518,6 +526,7 @@ export interface IN8nUISettings {
 		ldap: boolean;
 		saml: boolean;
 		logStreaming: boolean;
+		advancedExecutionFilters: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

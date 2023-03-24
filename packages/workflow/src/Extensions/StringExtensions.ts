@@ -288,52 +288,78 @@ function extractUrl(value: string) {
 
 removeMarkdown.doc = {
 	name: 'removeMarkdown',
-	description: 'Removes Markdown formatting from a string',
+	description: 'Removes Markdown formatting from a string.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-removeMarkdown',
 };
 
 removeTags.doc = {
 	name: 'removeTags',
-	description: 'Removes tags, such as HTML or XML, from a string',
+	description: 'Removes tags, such as HTML or XML, from a string.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-removeTags',
 };
 
 toDate.doc = {
 	name: 'toDate',
-	description: 'Converts a string to a date',
+	description: 'Converts a string to a date.',
 	returnType: 'Date',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toDate',
 };
 
 toFloat.doc = {
 	name: 'toFloat',
-	description: 'Converts a string to a decimal number',
+	description: 'Converts a string to a decimal number.',
 	returnType: 'number',
 	aliases: ['toDecimalNumber'],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toDecimalNumber',
 };
 
 toInt.doc = {
 	name: 'toInt',
-	description: 'Converts a string to an integer',
+	description: 'Converts a string to an integer.',
 	returnType: 'number',
+	args: [{ name: 'radix?', type: 'number' }],
 	aliases: ['toWholeNumber'],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toInt',
 };
 
 toSentenceCase.doc = {
 	name: 'toSentenceCase',
-	description: 'Formats a string to sentence case. Example: "This is a sentence"',
+	description: 'Formats a string to sentence case. Example: "This is a sentence".',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toSentenceCase',
 };
 
 toSnakeCase.doc = {
 	name: 'toSnakeCase',
-	description: 'Formats a string to snake case. Example: "this_is_snake_case"',
+	description: 'Formats a string to snake case. Example: "this_is_snake_case".',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toSnakeCase',
 };
 
 toTitleCase.doc = {
 	name: 'toTitleCase',
-	description: 'Formats a string to title case. Example: "This Is a Title"',
+	description: 'Formats a string to title case. Example: "This Is a Title".',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-toTitleCase',
+};
+
+urlEncode.doc = {
+	name: 'urlEncode',
+	description: 'Encodes a string to be used/included in a URL.',
+	args: [{ name: 'entireString?', type: 'boolean' }],
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-urlEncode',
 };
 
 urlDecode.doc = {
@@ -341,60 +367,79 @@ urlDecode.doc = {
 	description:
 		'Decodes a URL-encoded string. It decodes any percent-encoded characters in the input string, and replaces them with their original characters.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-urlDecode',
 };
 
 replaceSpecialChars.doc = {
 	name: 'replaceSpecialChars',
-	description: 'Replaces non-ASCII characters in a string with an ASCII representation',
+	description: 'Replaces non-ASCII characters in a string with an ASCII representation.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-replaceSpecialChars',
 };
 
 length.doc = {
 	name: 'length',
-	description: 'Returns the character count of a string',
+	description: 'Returns the character count of a string.',
 	returnType: 'number',
+	docURL: 'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings',
 };
 
 isDomain.doc = {
 	name: 'isDomain',
-	description: 'Checks if a string is a domain',
+	description: 'Checks if a string is a domain.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-isDomain',
 };
 
 isEmail.doc = {
 	name: 'isEmail',
-	description: 'Checks if a string is an email',
+	description: 'Checks if a string is an email.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-isEmail',
 };
 
 isNumeric.doc = {
 	name: 'isEmail',
-	description: 'Checks if a string only contains digits',
+	description: 'Checks if a string only contains digits.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-isNumeric',
 };
 
 isUrl.doc = {
 	name: 'isUrl',
-	description: 'Checks if a string is a valid URL',
+	description: 'Checks if a string is a valid URL.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-isUrl',
 };
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Checks if a string is empty',
+	description: 'Checks if a string is empty.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
-	description: 'Checks if a string has content',
+	description: 'Checks if a string has content.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-isNotEmpty',
 };
 
 extractEmail.doc = {
 	name: 'extractEmail',
 	description: 'Extracts an email from a string. Returns undefined if none is found.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-extractEmail',
 };
 
 extractDomain.doc = {
@@ -402,29 +447,34 @@ extractDomain.doc = {
 	description:
 		'Extracts a domain from a string containing a valid URL. Returns undefined if none is found.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-extractDomain',
 };
 
 extractUrl.doc = {
 	name: 'extractUrl',
 	description: 'Extracts a URL from a string. Returns undefined if none is found.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-extractUrl',
 };
-
-// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 hash.doc = {
 	name: 'hash',
+	description: 'Returns a string hashed with the given algorithm. Default algorithm is `md5`.',
 	returnType: 'string',
-};
-
-urlEncode.doc = {
-	name: 'urlEncode',
-	returnType: 'string',
+	args: [{ name: 'algo?', type: 'Algorithm' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-hash',
 };
 
 quote.doc = {
 	name: 'quote',
+	description: 'Returns a string wrapped in the quotation marks. Default quotation is `"`.',
 	returnType: 'string',
+	args: [{ name: 'mark?', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/strings/#string-quote',
 };
 
 export const stringExtensions: ExtensionMap = {

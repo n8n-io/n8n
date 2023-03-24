@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -318,7 +317,7 @@ export class Beeminder implements INodeType {
 						}
 						results = await createDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -336,7 +335,7 @@ export class Beeminder implements INodeType {
 
 						results = await getAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -353,7 +352,7 @@ export class Beeminder implements INodeType {
 						}
 						results = await updateDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -365,7 +364,7 @@ export class Beeminder implements INodeType {
 						};
 						results = await deleteDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -341,7 +340,7 @@ export class Ghost implements INodeType {
 					}
 				}
 
-				responseData = this.helpers.returnJsonArray(responseData);
+				responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },

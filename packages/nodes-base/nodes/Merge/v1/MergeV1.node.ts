@@ -1,9 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import get from 'lodash.get';
 
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	GenericValue,
 	INodeExecutionData,
 	INodeType,

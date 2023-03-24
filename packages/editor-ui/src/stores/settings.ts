@@ -15,16 +15,17 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 } from '@/constants';
 import {
+	ILdapConfig,
 	ILogLevel,
 	IN8nPromptResponse,
 	IN8nPrompts,
 	IN8nUISettings,
 	IN8nValueSurveyData,
 	ISettingsState,
+	UserManagementAuthenticationMethod,
 	WorkflowCallerPolicyDefaultOption,
-	ILdapConfig,
 } from '@/Interface';
-import { ITelemetrySettings } from 'n8n-workflow';
+import { IDataObject, ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';
@@ -40,6 +41,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			enabled: false,
 			showSetupOnFirstLoad: false,
 			smtpSetup: false,
+			authenticationMethod: UserManagementAuthenticationMethod.Email,
 		},
 		templatesEndpointHealthy: false,
 		api: {
@@ -51,6 +53,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			},
 		},
 		ldap: {
+			loginLabel: '',
+			loginEnabled: false,
+		},
+		saml: {
 			loginLabel: '',
 			loginEnabled: false,
 		},
@@ -86,6 +92,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		ldapLoginLabel(): string {
 			return this.ldap.loginLabel;
+		},
+		isSamlLoginEnabled(): boolean {
+			return this.saml.loginEnabled;
+		},
+		samlLoginLabel(): string {
+			return this.saml.loginLabel;
 		},
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;
@@ -159,17 +171,21 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		workflowCallerPolicyDefaultOption(): WorkflowCallerPolicyDefaultOption {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
+		isDefaultAuthenticationSaml(): boolean {
+			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
+		},
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
 			this.settings = settings;
-			this.userManagement.enabled = settings.userManagement.enabled;
+			this.userManagement = settings.userManagement;
 			this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
-			this.userManagement.smtpSetup = settings.userManagement.smtpSetup;
 			this.api = settings.publicApi;
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
-			this.ldap.loginEnabled = settings.ldap.loginEnabled;
-			this.ldap.loginLabel = settings.ldap.loginLabel;
+			this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
+			this.ldap.loginLabel = settings.sso.ldap.loginLabel;
+			this.saml.loginEnabled = settings.sso.saml.loginEnabled;
+			this.saml.loginLabel = settings.sso.saml.loginLabel;
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();

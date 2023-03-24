@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { SortData } from '../GenericFunctions';
 import {
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
@@ -51,7 +51,7 @@ export class NotionV1 implements INodeType {
 					extractValue: true,
 				}) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					//remove parameters that cannot be set from the API.
 					if (
 						![
@@ -62,7 +62,7 @@ export class NotionV1 implements INodeType {
 							'formula',
 							'files',
 							'rollup',
-						].includes(properties[key].type)
+						].includes(properties[key].type as string)
 					) {
 						returnData.push({
 							name: `${key} - (${properties[key].type})`,
@@ -87,7 +87,7 @@ export class NotionV1 implements INodeType {
 					extractValue: true,
 				}) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					returnData.push({
 						name: `${key} - (${properties[key].type})`,
 						value: `${key}|${properties[key].type}`,
@@ -155,7 +155,7 @@ export class NotionV1 implements INodeType {
 					parent: { database_id: databaseId },
 				} = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					//remove parameters that cannot be set from the API.
 					if (
 						![
@@ -165,7 +165,7 @@ export class NotionV1 implements INodeType {
 							'last_edited_by',
 							'formula',
 							'files',
-						].includes(properties[key].type)
+						].includes(properties[key].type as string)
 					) {
 						returnData.push({
 							name: `${key} - (${properties[key].type})`,
@@ -254,7 +254,7 @@ export class NotionV1 implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(block),
+						this.helpers.returnJsonArray(block as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -288,7 +288,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -305,7 +305,7 @@ export class NotionV1 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -333,7 +333,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -379,7 +379,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -394,7 +394,7 @@ export class NotionV1 implements INodeType {
 					}) as string;
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('options.filter', i, {}) as IDataObject;
-					const sort = this.getNodeParameter('options.sort.sortValue', i, []) as IDataObject[];
+					const sort = this.getNodeParameter('options.sort.sortValue', i, []) as SortData[];
 					const body: IDataObject = {
 						filter: {},
 					};
@@ -418,7 +418,6 @@ export class NotionV1 implements INodeType {
 						delete body.filter;
 					}
 					if (sort) {
-						//@ts-expect-error
 						body.sorts = mapSorting(sort);
 					}
 					if (returnAll) {
@@ -446,7 +445,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -477,7 +476,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -492,7 +491,7 @@ export class NotionV1 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'GET', `/users/${userId}`);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -510,7 +509,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -549,7 +548,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -566,7 +565,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -619,7 +618,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
@@ -121,7 +120,7 @@ export async function execute(
 
 		existingSheetNames.push(sheetTitle);
 
-		returnData.push(responseData);
+		returnData.push(responseData as IDataObject);
 	}
 	return this.helpers.returnJsonArray(returnData);
 }

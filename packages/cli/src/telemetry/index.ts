@@ -7,7 +7,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
 import { Service } from 'typedi';
@@ -39,7 +39,7 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private postHog: PostHogClient) {}
+	constructor(private postHog: PostHogClient, private license: License) {}
 
 	setInstanceId(instanceId: string) {
 		this.instanceId = instanceId;
@@ -97,8 +97,8 @@ export class Telemetry {
 
 		// License info
 		const pulsePacket = {
-			plan_name_current: getLicense().getPlanName(),
-			quota: getLicense().getTriggerLimit(),
+			plan_name_current: this.license.getPlanName(),
+			quota: this.license.getTriggerLimit(),
 			usage: await LicenseService.getActiveTriggerCount(),
 		};
 		allPromises.push(this.track('pulse', pulsePacket));

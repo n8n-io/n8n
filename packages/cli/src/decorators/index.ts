@@ -1,3 +1,4 @@
 export { RestController } from './RestController';
-export { Get, Post, Patch, Delete } from './Route';
+export { Get, Post, Put, Patch, Delete } from './Route';
+export { Middleware } from './Middleware';
 export { registerController } from './registerController';

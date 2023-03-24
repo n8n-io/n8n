@@ -1,11 +1,11 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
@@ -50,7 +50,7 @@ export async function calendlyApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {

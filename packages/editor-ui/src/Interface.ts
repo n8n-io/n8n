@@ -32,6 +32,7 @@ import {
 	IAbstractEventMessage,
 	FeatureFlags,
 	ExecutionStatus,
+	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
@@ -66,6 +67,9 @@ declare global {
 			reset?(resetDeviceId?: boolean): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
+		};
+		analytics?: {
+			track(event: string, proeprties?: ITelemetryTrackProperties): void;
 		};
 	}
 }
@@ -133,9 +137,9 @@ export interface IExternalHooks {
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]>;
+	getCurrentExecutions(filter: ExecutionsQueryFilter): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
-		filter: IDataObject,
+		filter: ExecutionsQueryFilter,
 		limit: number,
 		lastId?: string,
 		firstId?: string,
@@ -389,7 +393,7 @@ export interface IExecutionsStopData {
 
 export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
-	filters?: IDataObject;
+	filters?: ExecutionsQueryFilter;
 	ids?: string[];
 }
 
@@ -619,10 +623,17 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export enum UserManagementAuthenticationMethod {
+	Email = 'email',
+	Ldap = 'ldap',
+	Saml = 'saml',
+}
+
 export interface IUserManagementConfig {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+	authenticationMethod: UserManagementAuthenticationMethod;
 }
 
 export interface IPermissionGroup {
@@ -762,9 +773,15 @@ export interface IN8nUISettings {
 			enabled: boolean;
 		};
 	};
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1115,6 +1132,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
@@ -1168,11 +1186,22 @@ export type IFakeDoorLocation =
 
 export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
 
+export type NodeCreatorOpenSource =
+	| ''
+	| 'no_trigger_execution_tooltip'
+	| 'plus_endpoint'
+	| 'trigger_placeholder_button'
+	| 'tab'
+	| 'node_connection_action'
+	| 'node_connection_drop'
+	| 'add_node_button';
+
 export interface INodeCreatorState {
 	itemsFilter: string;
 	showScrim: boolean;
 	rootViewHistory: INodeFilterType[];
 	selectedView: INodeFilterType;
+	openSource: NodeCreatorOpenSource;
 }
 
 export interface ISettingsState {
@@ -1189,6 +1218,10 @@ export interface ISettingsState {
 		};
 	};
 	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
 	};
@@ -1421,4 +1454,28 @@ export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
 	displayOptions?: IDisplayOptions;
+};
+
+export type ExecutionFilterMetadata = {
+	key: string;
+	value: string;
+};
+
+export type ExecutionFilterType = {
+	status: string;
+	workflowId: string;
+	startDate: string | Date;
+	endDate: string | Date;
+	tags: string[];
+	metadata: ExecutionFilterMetadata[];
+};
+
+export type ExecutionsQueryFilter = {
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	finished?: boolean;
+	waitTill?: boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
 };

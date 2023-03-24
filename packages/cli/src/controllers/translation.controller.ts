@@ -44,7 +44,7 @@ export class TranslationController {
 	async getNodeTranslationHeaders() {
 		try {
 			await access(`${NODE_HEADERS_PATH}.js`);
-		} catch (_) {
+		} catch {
 			return; // no headers available
 		}
 

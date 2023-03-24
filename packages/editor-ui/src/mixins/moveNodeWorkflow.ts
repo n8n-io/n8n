@@ -27,8 +27,8 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 			this.moveLastPosition[0] = x;
 			this.moveLastPosition[1] = y;
 		},
-		mouseDownMoveWorkflow(e: MouseEvent) {
-			if (this.isCtrlKeyPressed(e) === false) {
+		mouseDownMoveWorkflow(e: MouseEvent, moveButtonPressed: boolean) {
+			if (this.isCtrlKeyPressed(e) === false && !moveButtonPressed) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
@@ -39,7 +39,10 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 
-			this.uiStore.nodeViewMoveInProgress = true;
+			// Don't indicate move start just yet if middle button is pressed
+			if (e.button !== 1) {
+				this.uiStore.nodeViewMoveInProgress = true;
+			}
 
 			const [x, y] = getMousePosition(e);
 
@@ -71,6 +74,11 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 
 			if (this.uiStore.isActionActive('dragActive')) {
 				return;
+			}
+
+			// Signal that moving canvas is active if middle button is pressed and mouse is moved
+			if (e.button === 1) {
+				this.uiStore.nodeViewMoveInProgress = true;
 			}
 
 			if (e.buttons === 0) {

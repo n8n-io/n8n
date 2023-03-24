@@ -1,3 +1,18 @@
+.cm-tooltip-autocomplete:after {
+	display: block;
+	content: 'n8n supports all JavaScript functions, including those not listed.';
+	padding: var(--spacing-2xs) var(--spacing-s);
+	border-top: 1px solid var(--color-foreground-dark);
+}
+
+// Custom autocomplete item type icons
+// 1. Native and n8n extension functions:
+.cm-completionIcon-extension-function, .cm-completionIcon-native-function {
+	&::after {
+		content: 'ƒ';
+	}
+}
+
 .cm-tooltip-autocomplete {
 	background-color: var(--color-background-xlight) !important;
 

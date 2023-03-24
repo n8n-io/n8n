@@ -217,7 +217,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			const removeCommand = `npm remove ${packageName}`;
 			try {
 				await executeCommand(removeCommand);
-			} catch (_) {}
+			} catch {}
 
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
@@ -284,7 +284,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			const removeCommand = `npm remove ${packageName}`;
 			try {
 				await executeCommand(removeCommand);
-			} catch (_) {}
+			} catch {}
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
@@ -418,7 +418,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				await fsAccess(checkPath);
 				// Folder exists, so use it.
 				return path.dirname(checkPath);
-			} catch (_) {} // Folder does not exist so get next one
+			} catch {} // Folder does not exist so get next one
 		}
 		throw new Error('Could not find "node_modules" folder!');
 	}

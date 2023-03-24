@@ -49,6 +49,7 @@ import type {
 	IPairedItemData,
 	ICredentialTestFunctions,
 	BinaryHelperFunctions,
+	NodeHelperFunctions,
 	RequestHelperFunctions,
 	FunctionsBase,
 	IExecuteFunctions,
@@ -62,6 +63,7 @@ import type {
 	FileSystemHelperFunctions,
 } from 'n8n-workflow';
 import {
+	createDeferredPromise,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -73,6 +75,7 @@ import {
 	ExpressionError,
 } from 'n8n-workflow';
 
+import pick from 'lodash.pick';
 import { Agent } from 'https';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
@@ -99,7 +102,7 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
@@ -108,6 +111,13 @@ import type { IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import { binaryToBuffer } from './BinaryDataManager/utils';
+import {
+	getAllWorkflowExecutionMetadata,
+	getWorkflowExecutionMetadata,
+	setAllWorkflowExecutionMetadata,
+	setWorkflowExecutionMetadata,
+} from './WorkflowExecutionMetadata';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -149,7 +159,6 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
 		return undefined;
@@ -667,46 +676,46 @@ async function proxyRequestToAxios(
 			return body;
 		}
 	} catch (error) {
-		const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
-		if (configObject.simple === false && response) {
-			if (configObject.resolveWithFullResponse) {
-				return {
-					body: response.data,
-					headers: response.headers,
-					statusCode: response.status,
-					statusMessage: response.statusText,
-				};
-			} else {
-				return response.data;
-			}
-		}
+		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
 		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
-		if (response) {
-			Logger.debug('Request proxied to Axios failed', { status: response.status });
-			let responseData = response.data;
-			if (Buffer.isBuffer(responseData)) {
-				responseData = responseData.toString('utf-8');
+		if (error.isAxiosError) {
+			if (response) {
+				Logger.debug('Request proxied to Axios failed', { status: response.status });
+				let responseData = response.data;
+
+				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
+					responseData = await binaryToBuffer(responseData).then((buffer) =>
+						buffer.toString('utf-8'),
+					);
+				}
+
+				if (configObject.simple === false) {
+					if (configObject.resolveWithFullResponse) {
+						return {
+							body: responseData,
+							headers: response.headers,
+							statusCode: response.status,
+							statusMessage: response.statusText,
+						};
+					} else {
+						return responseData;
+					}
+				}
+
+				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+				throw Object.assign(new Error(message, { cause: error }), {
+					status: response.status,
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			} else {
+				throw Object.assign(new Error(error.message, { cause: error }), {
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
 			}
-			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 		}
-
-		error.cause = errorData;
-		error.error = error.response?.data || errorData;
-		error.statusCode = error.response?.status;
-		error.options = config || {};
-
-		// Remove not needed data and so also remove circular references
-		error.request = undefined;
-		error.config = undefined;
-		error.options.adapter = undefined;
-		error.options.httpsAgent = undefined;
-		error.options.paramsSerializer = undefined;
-		error.options.transformRequest = undefined;
-		error.options.transformResponse = undefined;
-		error.options.validateStatus = undefined;
 
 		throw error;
 	}
@@ -842,6 +851,30 @@ export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMet
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
 	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+}
+
+export function assertBinaryData(
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): IBinaryData {
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(node, 'No binary data exists on item!', {
+			itemIndex,
+		});
+	}
+
+	const binaryPropertyData = binaryKeyData[propertyName];
+	if (binaryPropertyData === undefined) {
+		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+			itemIndex,
+		});
+	}
+
+	return binaryPropertyData;
 }
 
 /**
@@ -1589,6 +1622,7 @@ export async function requestWithAuthentication(
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	runExecutionData: IRunExecutionData | null,
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
@@ -1597,6 +1631,22 @@ export function getAdditionalKeys(
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			customData: runExecutionData
+				? {
+						set(key: string, value: string): void {
+							setWorkflowExecutionMetadata(runExecutionData, key, value);
+						},
+						setAll(obj: Record<string, string>): void {
+							setAllWorkflowExecutionMetadata(runExecutionData, obj);
+						},
+						get(key: string): string {
+							return getWorkflowExecutionMetadata(runExecutionData, key);
+						},
+						getAll(): Record<string, string> {
+							return getAllWorkflowExecutionMetadata(runExecutionData);
+						},
+				  }
+				: undefined,
 		},
 
 		// deprecated
@@ -1931,6 +1981,7 @@ const getCommonWorkflowFunctions = (
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
+	logger: Logger,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -2027,17 +2078,26 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	},
 });
 
+const getNodeHelperFunctions = ({
+	executionId,
+}: IWorkflowExecuteAdditionalData): NodeHelperFunctions => ({
+	copyBinaryFile: async (filePath, fileName, mimeType) =>
+		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+});
+
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
 	getBinaryStream,
 	getBinaryMetadata,
+	binaryToBuffer,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
 		setBinaryDataBuffer(data, binaryData, executionId!),
-	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+	copyBinaryFile: async () => {
+		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
+	},
 });
 
 /**
@@ -2085,13 +2145,14 @@ export function getExecutePollFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2143,13 +2204,14 @@ export function getExecuteTriggerFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2201,7 +2263,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 			},
@@ -2267,7 +2329,7 @@ export function getExecuteFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
 					options,
@@ -2284,12 +2346,13 @@ export function getExecuteFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
+			binaryToBuffer,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
@@ -2324,15 +2387,20 @@ export function getExecuteFunctions(
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				assertBinaryData: (itemIndex, propertyName) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				getBinaryDataBuffer: async (itemIndex, propertyName) =>
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
 			},
+			nodeHelpers: getNodeHelperFunctions(additionalData),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -2368,7 +2436,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 			},
@@ -2439,7 +2507,7 @@ export function getExecuteSingleFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
 					options,
@@ -2456,15 +2524,18 @@ export function getExecuteSingleFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
+				assertBinaryData: (propertyName, inputIndex = 0) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
@@ -2546,7 +2617,7 @@ export function getLoadOptionsFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2595,7 +2666,7 @@ export function getExecuteHookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2609,7 +2680,7 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 					isTest,
 				);
 			},
@@ -2672,7 +2743,7 @@ export function getExecuteWebhookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 					undefined,
 					fallbackValue,
 					options,
@@ -2710,15 +2781,17 @@ export function getExecuteWebhookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 				),
 			getWebhookName: () => webhookData.webhookDescription.name,
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
 			},
+			nodeHelpers: getNodeHelperFunctions(additionalData),
 		};
 	})(workflow, node);
 }

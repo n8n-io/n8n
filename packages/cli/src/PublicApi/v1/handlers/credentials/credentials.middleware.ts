@@ -16,7 +16,7 @@ export const validCredentialType = (
 ): express.Response | void => {
 	try {
 		Container.get(CredentialTypes).getByName(req.body.type);
-	} catch (_) {
+	} catch {
 		return res.status(400).json({ message: 'req.body.type is not a known type' });
 	}
 

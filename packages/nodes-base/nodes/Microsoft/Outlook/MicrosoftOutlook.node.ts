@@ -1,13 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -188,7 +187,11 @@ export class MicrosoftOutlook implements INodeType {
 
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
 							const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
-							const data = await downloadAttachments.call(this, responseData, prefix);
+							const data = await downloadAttachments.call(
+								this,
+								responseData as IDataObject,
+								prefix,
+							);
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(data),
 								{ itemData: { item: i } },
@@ -196,7 +199,7 @@ export class MicrosoftOutlook implements INodeType {
 							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
@@ -237,7 +240,7 @@ export class MicrosoftOutlook implements INodeType {
 							{},
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -284,7 +287,7 @@ export class MicrosoftOutlook implements INodeType {
 						responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -397,7 +400,7 @@ export class MicrosoftOutlook implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -501,7 +504,11 @@ export class MicrosoftOutlook implements INodeType {
 
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
 							const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
-							const data = await downloadAttachments.call(this, responseData, prefix);
+							const data = await downloadAttachments.call(
+								this,
+								responseData as IDataObject,
+								prefix,
+							);
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(data),
 								{ itemData: { item: i } },
@@ -509,7 +516,7 @@ export class MicrosoftOutlook implements INodeType {
 							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
@@ -634,19 +641,7 @@ export class MicrosoftOutlook implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-								{ itemIndex: i },
-							);
-						}
-
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						const fileName =
@@ -684,7 +679,7 @@ export class MicrosoftOutlook implements INodeType {
 							const uploadUrl = responseData.uploadUrl;
 
 							if (uploadUrl === undefined) {
-								throw new NodeApiError(this.getNode(), responseData, {
+								throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 									message: 'Failed to get upload session',
 								});
 							}
@@ -793,7 +788,7 @@ export class MicrosoftOutlook implements INodeType {
 						const data = Buffer.from(response.body as string, 'utf8');
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							data as unknown as Buffer,
-							fileName,
+							fileName as string,
 							mimeType,
 						);
 					} catch (error) {
@@ -827,7 +822,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -878,7 +873,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -924,7 +919,7 @@ export class MicrosoftOutlook implements INodeType {
 
 						responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -991,7 +986,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1038,7 +1033,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1091,7 +1086,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1126,7 +1121,7 @@ export class MicrosoftOutlook implements INodeType {
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -1176,7 +1171,7 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = responseData.value;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

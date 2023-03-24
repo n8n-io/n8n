@@ -450,7 +450,7 @@ export class I18nClass {
 		toJSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJSON'),
 		toBSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toBSON'),
 		toObject: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toObject'),
-		toJsDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
+		toJSDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
 		diff: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diff'),
 		diffNow: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diffNow'),
 		until: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.until'),
@@ -462,6 +462,10 @@ export class I18nClass {
 		),
 		min: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.min'),
 		max: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.max'),
+		reconfigure: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.reconfigure'),
+		resolvedLocaleOptions: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.resolvedLocaleOptions',
+		),
 	};
 
 	luxonStatic: Record<string, string | undefined> = {
@@ -479,6 +483,21 @@ export class I18nClass {
 		fromSQL: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSQL'),
 		invalid: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid'),
 		isDateTime: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime'),
+		expandFormat: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.expandFormat',
+		),
+		fromFormatExplain: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormatExplain',
+		),
+		fromString: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromString'),
+		fromStringExplain: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromStringExplain',
+		),
+		max: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.max'),
+		min: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.min'),
+		parseFormatForOpts: this.baseText(
+			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.parseFormatForOpts',
+		),
 	};
 
 	autocompleteUIValues: Record<string, string | undefined> = {

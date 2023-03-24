@@ -484,7 +484,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					});
 
 					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
-				} catch (_) {}
+				} catch {}
 			}
 		},
 	},

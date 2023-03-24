@@ -233,7 +233,7 @@ export abstract class DirectoryLoader {
 			}
 
 			node.description.codex = codex;
-		} catch (_) {
+		} catch {
 			Logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {

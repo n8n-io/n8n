@@ -11,7 +11,6 @@
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="!readOnly"
-		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
@@ -46,7 +45,7 @@
 						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
 						data-test-id="ndv-input-option"
 					>
-						{{ truncate(node.name) }}&nbsp;
+						<span class="ph-no-capture">{{ truncate(node.name) }}&nbsp;</span>
 						<span v-if="getMultipleNodesText(node.name)">{{
 							getMultipleNodesText(node.name)
 						}}</span>
@@ -142,9 +141,7 @@ import WireMeUp from './WireMeUp.vue';
 import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
-	LOCAL_STORAGE_MAPPING_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 } from '@/constants';
 import { mapStores } from 'pinia';
@@ -192,7 +189,7 @@ export default mixins(workflowHelpers).extend({
 			return this.ndvStore.focusedMappableInput;
 		},
 		isUserOnboarded(): boolean {
-			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
+			return this.ndvStore.isMappingOnboarded;
 		},
 		showDraggableHint(): boolean {
 			const toIgnore = [

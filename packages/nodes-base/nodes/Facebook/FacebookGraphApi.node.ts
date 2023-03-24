@@ -1,9 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -366,13 +367,6 @@ export class FacebookGraphApi implements INodeType {
 
 			const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 			if (sendBinaryData) {
-				const item = items[itemIndex];
-				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-						itemIndex,
-					});
-				}
-
 				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex);
 
 				let propertyName = 'file';
@@ -383,16 +377,7 @@ export class FacebookGraphApi implements INodeType {
 					binaryPropertyName = binaryPropertyNameParts[1];
 				}
 
-				if (item.binary[binaryPropertyName] === undefined) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Item has no binary property called "${binaryPropertyName}"`,
-						{ itemIndex },
-					);
-				}
-
-				const binaryProperty = item.binary[binaryPropertyName];
-
+				const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 					itemIndex,
 					binaryPropertyName,
@@ -401,8 +386,8 @@ export class FacebookGraphApi implements INodeType {
 					[propertyName]: {
 						value: binaryDataBuffer,
 						options: {
-							filename: binaryProperty.fileName,
-							contentType: binaryProperty.mimeType,
+							filename: binaryData.fileName,
+							contentType: binaryData.mimeType,
 						},
 					},
 				};
@@ -413,7 +398,7 @@ export class FacebookGraphApi implements INodeType {
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let errorItem;

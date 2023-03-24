@@ -31,9 +31,14 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { IExecutionsListResponse, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import {
-	ExecutionStatus,
+	ExecutionFilterType,
+	IExecutionsListResponse,
+	INodeUi,
+	ITag,
+	IWorkflowDb,
+} from '@/Interface';
+import {
 	IExecutionsSummary,
 	IConnection,
 	IConnections,
@@ -50,7 +55,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
+import { getNodeViewTab, isEmpty, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -58,6 +63,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(
 	restApi,
@@ -74,7 +80,7 @@ export default mixins(
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: { finished: true, status: '' },
+			filter: {} as ExecutionFilterType,
 		};
 	},
 	computed: {
@@ -86,7 +92,7 @@ export default mixins(
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
-			return this.filter.status !== '';
+			return this.filter.status !== 'all';
 		},
 		workflowDataNotLoaded(): boolean {
 			return (
@@ -101,29 +107,10 @@ export default mixins(
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
 		},
 		requestFilter(): IDataObject {
-			const rFilter: IDataObject = { workflowId: this.currentWorkflow };
-			if (this.filter.status === 'waiting') {
-				rFilter.waitTill = true;
-			} else if (this.filter.status !== '') {
-				rFilter.finished = this.filter.status === 'success';
-			}
-
-			switch (this.filter.status as ExecutionStatus) {
-				case 'waiting':
-					rFilter.status = ['waiting'];
-					break;
-				case 'error':
-					rFilter.status = ['failed', 'crashed'];
-					break;
-				case 'success':
-					rFilter.status = ['success'];
-					break;
-				case 'running':
-					rFilter.status = ['running'];
-					break;
-			}
-
-			return rFilter;
+			return executionFilterToQueryFilter({
+				...this.filter,
+				workflowId: this.currentWorkflow,
+			});
 		},
 	},
 	watch: {
@@ -317,8 +304,8 @@ export default mixins(
 				);
 			}
 		},
-		onFilterUpdated(newFilter: { finished: boolean; status: string }): void {
-			this.filter = newFilter;
+		onFilterUpdated(filter: ExecutionFilterType): void {
+			this.filter = filter;
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {

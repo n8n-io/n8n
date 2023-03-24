@@ -44,7 +44,7 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
-		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
+		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
@@ -84,7 +84,7 @@ export class WorkflowPage extends BasePage {
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
@@ -174,6 +174,10 @@ export class WorkflowPage extends BasePage {
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
 		},
+		deleteNode: (name: string) => {
+			this.getters.canvasNodeByName(name).first().click();
+			cy.get('body').type('{del}');
+		},
 		setWorkflowName: (name: string) => {
 			this.getters.workflowNameInput().should('be.disabled');
 			this.getters.workflowNameInput().parent().click();
@@ -181,8 +185,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.workflowNameInput().clear().type(name).type('{enter}');
 		},
 		activateWorkflow: () => {
+			cy.intercept('PATCH', '/rest/workflows/*').as('activateWorkflow');
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
 			this.getters.activatorSwitch().click();
+			cy.wait('@activateWorkflow');
 			cy.get('body').type('{esc}');
 		},
 		renameWorkflow: (newName: string) => {
@@ -254,12 +260,20 @@ export class WorkflowPage extends BasePage {
 		turnOnManualExecutionSaving: () => {
 			this.getters.workflowMenu().click();
 			this.getters.workflowMenuItemSettings().click();
+			cy.get('.el-loading-mask').should('not.be.visible');
 			this.getters
 				.workflowSettingsSaveManualExecutionsSelect()
 				.find('li:contains("Yes")')
 				.click({ force: true });
+
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
 			this.getters.workflowSettingsSaveButton().click();
 			this.getters.successToast().should('exist');
+
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
+			this.getters.workflowSettingsSaveButton().click();
 		},
 	};
 }

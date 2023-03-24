@@ -12,9 +12,7 @@ export class CredentialsModal extends BasePage {
 		connectionParameter: (fieldName: string) =>
 			this.getters
 				.connectionParameters()
-				.contains(fieldName)
-				.parents('[data-test-id="credential-connection-parameter"]')
-				.find('.n8n-input input'),
+				.find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		// Saving of the credentials takes a while on the CI so we need to increase the timeout
@@ -45,10 +43,6 @@ export class CredentialsModal extends BasePage {
 		},
 		save: (test = false) => {
 			cy.intercept('POST', '/rest/credentials').as('saveCredential');
-			if (test) {
-				cy.intercept('POST', '/rest/credentials/test').as('testCredential');
-			}
-
 			this.getters.saveButton().click();
 
 			cy.wait('@saveCredential');
