@@ -71,7 +71,12 @@ describe('Top-level completions', () => {
 	});
 
 	test('should return node selector completions for: {{ $(| }}', () => {
-		const initialState = { workflows: { workflow: { nodes: mockNodes } } };
+		const initialState = {
+			workflows: {
+				currentWorkflowId: '1',
+				workflowsById: { '1': { nodes: mockNodes } },
+			},
+		};
 
 		setActivePinia(createTestingPinia({ initialState }));
 
@@ -182,7 +187,12 @@ describe('Resolution-based completions', () => {
 		});
 
 		test('should return completions when node reference is used as a function parameter', () => {
-			const initialState = { workflows: { workflow: { nodes: mockNodes } } };
+			const initialState = {
+				workflows: {
+					currentWorkflowId: '1',
+					workflowsById: { '1': { nodes: mockNodes } },
+				},
+			};
 
 			setActivePinia(createTestingPinia({ initialState }));
 
