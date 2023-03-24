@@ -288,6 +288,7 @@ export default mixins(showMessage).extend({
 					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
 					type: 'success',
 				});
+				this.uiStore.stateIsDirty = false;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
 			} finally {
@@ -447,13 +448,6 @@ export default mixins(showMessage).extend({
 			if (this.isSharingEnabled) {
 				this.sharedWith = this.workflow.sharedWith || [];
 				await this.loadUsers();
-
-				if (
-					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-					!this.workflow.sharedWith?.length // Sharing info already loaded
-				) {
-					await this.workflowsStore.fetchWorkflow(this.workflow.id);
-				}
 			}
 
 			this.loading = false;

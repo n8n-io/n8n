@@ -3804,7 +3804,9 @@ export default mixins(
 			});
 		},
 		async saveCurrentWorkflowExternal(callback: () => void) {
-			await this.saveCurrentWorkflow({ name: this.workflowsStore.workflow.name });
+			await this.saveCurrentWorkflow({
+				name: this.workflowsStore.workflow.name,
+			});
 			callback?.();
 		},
 		setSuspendRecordingDetachedConnections(suspend: boolean) {
