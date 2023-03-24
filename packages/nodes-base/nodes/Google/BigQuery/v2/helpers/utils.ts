@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
 
@@ -16,7 +16,6 @@ function getFieldValue(schemaField: SchemaField, field: IDataObject) {
 
 export function simplify(data: TableRawData[], schema: SchemaField[]) {
 	const returnData: IDataObject[] = [];
-
 	for (const entry of data) {
 		const record: IDataObject = {};
 
@@ -105,4 +104,13 @@ export function checkSchema(
 	});
 
 	return returnData;
+}
+
+export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
 }

@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { TableSchema } from '../../helpers/BigQuery.types';
-import { checkSchema } from '../../helpers/utils';
+import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -294,7 +294,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 
 		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(responseData as IDataObject[]),
+			wrapData(responseData as IDataObject[]),
 			{ itemData: { item: 0 } },
 		);
 
