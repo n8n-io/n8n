@@ -71,7 +71,7 @@ export async function michiganLogin(username: string, password: string, fein: st
 
 	await detailsSubmit.click();
 
-	const screenshot = await page.screenshot({ path: './example.png' });
+	const screenshot = await page.screenshot({ fullPage: true });
 
 	// logout
 

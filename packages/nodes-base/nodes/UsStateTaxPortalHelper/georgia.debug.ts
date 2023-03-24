@@ -88,7 +88,7 @@ export async function georgiaLogin(salesTaxId = '123456789') {
 
 	await page.waitForTimeout(2000);
 
-	return page.screenshot({ path: './example.png' });
+	return page.screenshot({ fullPage: true });
 }
 
 // void georgiaLogin();
