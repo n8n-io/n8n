@@ -24,8 +24,7 @@ describe('Canvas Actions', () => {
 	});
 
 	it('drags sticky around to top left corner', () => {
-		// used to caliberate rest of tests
-		// if this does not pass, rest would fail
+		// used to caliberate move sticky function
 		addDefaultSticky();
 		moveSticky({top: 0, left: 0});
 	});
