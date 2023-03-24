@@ -393,8 +393,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (expressionResolveValues) {
-			const timezone =
-				(expressionResolveValues.workflow.settings.timezone as string) || defaultTimezone;
+			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
 
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
