@@ -19,8 +19,11 @@ import type {
 } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
-import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
-import { SamlUrls } from '../sso/saml/constants';
+import {
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso/ssoHelpers';
+import { SamlUrls } from '@/sso/saml/constants';
 
 @RestController()
 export class AuthController {
@@ -73,19 +76,14 @@ export class AuthController {
 			if (preliminaryUser?.globalRole?.name === 'owner') {
 				user = preliminaryUser;
 			} else {
-				// TODO:SAML - uncomment this block when we have a way to redirect users to the SSO flow
-				// if (doRedirectUsersFromLoginToSsoFlow()) {
+				// TODO:SAML - implement option doRedirectUsersFromLoginToSsoFlow()
 				res.redirect(SamlUrls.restInitSSO);
 				return;
-				// return withFeatureFlags(this.postHog, sanitizeUser(preliminaryUser));
-				// } else {
-				// throw new AuthError(
-				// 	'Login with username and password is disabled due to SAML being the default authentication method. Please use SAML to log in.',
-				// );
-				// }
 			}
+		} else if (isLdapCurrentAuthenticationMethod()) {
+			user = await handleLdapLogin(email, password);
 		} else {
-			user = (await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+			user = await handleEmailLogin(email, password);
 		}
 		if (user) {
 			await issueCookie(res, user);
