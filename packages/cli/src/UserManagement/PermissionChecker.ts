@@ -116,7 +116,7 @@ export class PermissionChecker {
 			if (parentWorkflowId === undefined) {
 				throw errorToThrow;
 			}
-			const allowedCallerIds = (subworkflow.settings.callerIds as string | undefined)
+			const allowedCallerIds = subworkflow.settings.callerIds
 				?.split(',')
 				.map((id) => id.trim())
 				.filter((id) => id !== '');
