@@ -31,6 +31,7 @@ import {
 	CUSTOM_API_CALL_NAME,
 	inTest,
 	NODES_BASE_DIR,
+	CLI_DIR,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { Service } from 'typedi';
@@ -66,8 +67,11 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
-		await this.loadNodesFromBasePackages();
-		await this.loadNodesFromInstalledPackages();
+		// Load nodes from `n8n-nodes-base` and any other `n8n-nodes-*` package in the main `node_modules`
+		await this.loadNodesFromNodeModules(CLI_DIR);
+		// Load nodes from installed community packages
+		await this.loadNodesFromNodeModules(this.downloadFolder);
+
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
 		this.injectCustomApiCallOptions();
@@ -114,12 +118,8 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	private async loadNodesFromBasePackages() {
-		await this.runDirectoryLoader(LazyPackageDirectoryLoader, NODES_BASE_DIR);
-	}
-
-	private async loadNodesFromInstalledPackages(): Promise<void> {
-		const nodeModulesDir = path.join(this.downloadFolder, 'node_modules');
+	private async loadNodesFromNodeModules(scanDir: string): Promise<void> {
+		const nodeModulesDir = path.join(scanDir, 'node_modules');
 		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
 		const installedPackagePaths = [
 			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
@@ -129,7 +129,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		for (const packagePath of installedPackagePaths) {
 			try {
 				await this.runDirectoryLoader(
-					PackageDirectoryLoader,
+					LazyPackageDirectoryLoader,
 					path.join(nodeModulesDir, packagePath),
 				);
 			} catch (error) {
