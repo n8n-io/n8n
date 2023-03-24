@@ -166,7 +166,7 @@ export default mixins(workflowHelpers).extend({
 			);
 		},
 		workflowName(): string {
-			return this.workflowsStore.workflowName;
+			return this.workflowsStore.workflow.name;
 		},
 		currentWorkflowTagIds(): string[] {
 			return this.workflowsStore.workflowTags;

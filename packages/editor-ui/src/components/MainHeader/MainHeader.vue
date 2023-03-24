@@ -60,7 +60,7 @@ export default mixins(pushConnection, workflowHelpers).extend({
 			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 		},
 		workflowName(): string {
-			return this.workflowsStore.workflowName;
+			return this.workflowsStore.workflow.name;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name || this.workflowsStore.workflowId;

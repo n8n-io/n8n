@@ -431,7 +431,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 						name: DUPLICATE_MODAL_KEY,
 						data: {
 							id: this.workflowsStore.workflowId,
-							name: this.workflowsStore.workflowName,
+							name: this.workflowsStore.workflow.name,
 							tags: this.workflowsStore.workflowTags,
 						},
 					});

@@ -351,10 +351,10 @@ export default mixins(
 			return issues;
 		},
 		nodeDisabledIcon(): string {
-			if (this.data.disabled === false) {
-				return 'pause';
-			} else {
+			if (this.data && this.data.disabled === true) {
 				return 'play';
+			} else {
+				return 'pause';
 			}
 		},
 		position(): XYPosition {

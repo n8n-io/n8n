@@ -255,7 +255,6 @@ export default mixins(showMessage).extend({
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
-							this.uiStore.stateIsDirty = false;
 							resolve(this.workflow.id);
 						});
 					} else {
