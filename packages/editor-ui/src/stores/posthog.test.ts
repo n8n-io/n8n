@@ -144,6 +144,7 @@ describe('Posthog store', () => {
 		afterEach(() => {
 			resetStores();
 			window.localStorage.clear();
+			window.featureFlags = undefined;
 		});
 	});
 });
