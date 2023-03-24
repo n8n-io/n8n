@@ -255,6 +255,7 @@ export default mixins(showMessage).extend({
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
+							this.uiStore.stateIsDirty = false;
 							resolve(this.workflow.id);
 						});
 					} else {
@@ -288,7 +289,6 @@ export default mixins(showMessage).extend({
 					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
 					type: 'success',
 				});
-				this.uiStore.stateIsDirty = false;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
 			} finally {
