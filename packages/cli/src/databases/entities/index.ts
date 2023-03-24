@@ -15,6 +15,7 @@ import { User } from './User';
 import { WebhookEntity } from './WebhookEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 import { WorkflowStatistics } from './WorkflowStatistics';
+import { ExecutionMetadata } from './ExecutionMetadata';
 
 export const entities = {
 	AuthIdentity,
@@ -33,4 +34,5 @@ export const entities = {
 	WebhookEntity,
 	WorkflowEntity,
 	WorkflowStatistics,
+	ExecutionMetadata,
 };

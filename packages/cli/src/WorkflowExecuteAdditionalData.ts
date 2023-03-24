@@ -71,6 +71,7 @@ import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -262,6 +263,22 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			);
 		}
 	}
+}
+
+export async function saveExecutionMetadata(
+	executionId: string,
+	executionMetadata: Record<string, string>,
+): Promise<ExecutionMetadata[]> {
+	const metadataRows = [];
+	for (const [key, value] of Object.entries(executionMetadata)) {
+		metadataRows.push({
+			execution: { id: executionId },
+			key,
+			value,
+		});
+	}
+
+	return Db.collections.ExecutionMetadata.save(metadataRows);
 }
 
 /**
@@ -657,6 +674,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						executionData as IExecutionFlattedDb,
 					);
 
+					try {
+						if (fullRunData.data.resultData.metadata) {
+							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+						}
+					} catch (e) {
+						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
+					}
+
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution.save(executionData as IExecutionFlattedDb);
@@ -788,6 +813,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					await Db.collections.Execution.update(this.executionId, {
 						status: executionData.status,
 					});
+
+					try {
+						if (fullRunData.data.resultData.metadata) {
+							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+						}
+					} catch (e) {
+						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
+					}
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
