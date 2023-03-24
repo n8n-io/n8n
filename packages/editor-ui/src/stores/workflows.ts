@@ -296,11 +296,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
-			this.currentWorkflowId = 'new';
-			this.workflowsById['new'] = {
+			this.currentWorkflowId = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			Vue.set(this.workflowsById, PLACEHOLDER_EMPTY_WORKFLOW_ID, {
 				...createEmptyWorkflow(),
 				name: workflowData.name,
-			};
+			});
 
 			return workflowData;
 		},
@@ -320,7 +320,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		setWorkflowId(id: string): void {
-			this.currentWorkflowId = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+			this.currentWorkflowId = id;
 		},
 
 		setUsedCredentials(data: IUsedCredential[]) {

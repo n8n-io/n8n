@@ -425,8 +425,6 @@ export default mixins(
 				true,
 			);
 			if (confirmModal === MODAL_CONFIRMED) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
@@ -757,7 +755,7 @@ export default mixins(
 			return uniqueName;
 		},
 		async onSaveKeyboardShortcut() {
-			const saved = await this.saveCurrentWorkflow();
+			const saved = await this.saveCurrentWorkflow({ name: this.workflowsStore.workflow.name });
 			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {

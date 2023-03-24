@@ -952,7 +952,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				}
 
 				this.workflowsStore.currentWorkflowId = workflowData.id;
-				delete this.workflowsStore.workflowsById['new'];
+				delete this.workflowsStore.workflowsById[PLACEHOLDER_EMPTY_WORKFLOW_ID];
 				this.uiStore.stateIsDirty = false;
 				Object.keys(changedNodes).forEach((nodeName) => {
 					const changes = {
