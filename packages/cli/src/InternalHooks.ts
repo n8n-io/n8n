@@ -284,6 +284,8 @@ export class InternalHooks implements IInternalHooksClass {
 			properties.user_id = userId;
 		}
 
+		properties.success = !!runData?.finished;
+
 		let executionStatus: ExecutionStatus;
 		if (runData?.status === 'crashed') {
 			executionStatus = 'crashed';
@@ -295,7 +297,6 @@ export class InternalHooks implements IInternalHooksClass {
 
 		if (runData !== undefined) {
 			properties.execution_mode = runData.mode;
-			properties.success = !!runData.finished;
 			properties.is_manual = runData.mode === 'manual';
 
 			let nodeGraphResult: INodesGraphResult | null = null;
