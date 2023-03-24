@@ -16,6 +16,7 @@ import {
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../ssoHelpers';
+import { LoggerProxy } from 'n8n-workflow';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -29,14 +30,19 @@ export function getSamlLoginLabel(): string {
 
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
-	if (enabled) {
-		if (isEmailCurrentAuthenticationMethod()) {
-			config.set(SAML_LOGIN_ENABLED, true);
-			await setCurrentAuthenticationMethod('saml');
-		}
-	} else {
+	if (config.get(SAML_LOGIN_ENABLED) === enabled) {
+		return;
+	}
+	if (enabled && isEmailCurrentAuthenticationMethod()) {
+		config.set(SAML_LOGIN_ENABLED, true);
+		await setCurrentAuthenticationMethod('saml');
+	} else if (!enabled && isSamlCurrentAuthenticationMethod()) {
 		config.set(SAML_LOGIN_ENABLED, false);
 		await setCurrentAuthenticationMethod('email');
+	} else {
+		LoggerProxy.warn(
+			'Cannot switch SAML login enabled state when an authentication method other than email is active',
+		);
 	}
 }
 
