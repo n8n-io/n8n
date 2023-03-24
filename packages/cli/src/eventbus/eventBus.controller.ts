@@ -28,7 +28,7 @@ import type {
 	IRunExecutionData,
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames, EventMessageTypeNames } from 'n8n-workflow';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
@@ -37,8 +37,6 @@ import { RestController, Get, Post, Delete } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
 import { isOwnerMiddleware } from '../middlewares/isOwner';
 import type { DeleteResult } from 'typeorm';
-
-export const eventBusRouter = express.Router();
 
 // ----------------------------------------
 // TypeGuards
@@ -82,72 +80,56 @@ export class EventBusController {
 	// Events
 	// ----------------------------------------
 	@Get('/event', { middlewares: [isOwnerMiddleware] })
-	async getEvents(req: express.Request): Promise<any> {
-		let result: EventMessageTypes[] | Record<string, EventMessageTypes[]> = [];
+	async getEvents(
+		req: express.Request,
+	): Promise<EventMessageTypes[] | Record<string, EventMessageTypes[]>> {
 		if (isWithQueryString(req.query)) {
 			switch (req.query.query as EventMessageReturnMode) {
 				case 'sent':
-					result = await eventBus.getEventsSent();
-					break;
+					return eventBus.getEventsSent();
 				case 'unsent':
-					result = await eventBus.getEventsUnsent();
-					break;
+					return eventBus.getEventsUnsent();
 				case 'unfinished':
-					result = await eventBus.getUnfinishedExecutions();
-					break;
+					return eventBus.getUnfinishedExecutions();
 				case 'all':
 				default:
-					result = await eventBus.getEventsAll();
+					return eventBus.getEventsAll();
 			}
 		} else {
-			result = await eventBus.getEventsAll();
+			return eventBus.getEventsAll();
 		}
-		return result;
 	}
 
 	@Get('/failed')
 	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
-		let result: FailedEventSummary[] = [];
-		let amount = 5;
-		try {
-			amount = parseInt(req.query?.amount as string);
-		} catch {}
-		result = await eventBus.getEventsFailed(amount);
-		return result;
+		const amount = parseInt(req.query?.amount as string) ?? 5;
+		return eventBus.getEventsFailed(amount);
 	}
 
 	@Get('/execution/:id')
-	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[]> {
-		let result: EventMessageTypes[] = [];
+	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[] | undefined> {
 		if (req.params?.id) {
 			let logHistory;
 			if (req.query?.logHistory) {
 				logHistory = parseInt(req.query.logHistory as string, 10);
 			}
-			result = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
+			return eventBus.getEventsByExecutionId(req.params.id, logHistory);
 		}
-		return result;
+		return;
 	}
 
 	@Get('/execution-recover/:id')
 	async getRecoveryForExecutionId(req: express.Request): Promise<IRunExecutionData | undefined> {
-		let result: IRunExecutionData | undefined;
+		const { id } = req.params;
 		if (req.params?.id) {
-			let logHistory;
-			let applyToDb = true;
-			if (req.query?.logHistory) {
-				logHistory = parseInt(req.query.logHistory as string, 10);
-			}
-			if (req.query?.applyToDb) {
-				applyToDb = !!req.query.applyToDb;
-			}
-			const messages = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
+			const logHistory = parseInt(req.query.logHistory as string, 10) || undefined;
+			const applyToDb = req.query.applyToDb !== undefined ? !!req.query.applyToDb : true;
+			const messages = await eventBus.getEventsByExecutionId(id, logHistory);
 			if (messages.length > 0) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				result = await recoverExecutionDataFromEventLogMessages(req.params.id, messages, applyToDb);
+				return recoverExecutionDataFromEventLogMessages(id, messages, applyToDb);
 			}
 		}
-		return result;
+		return;
 	}
 
 	@Post('/event', { middlewares: [isOwnerMiddleware] })
@@ -183,13 +165,11 @@ export class EventBusController {
 
 	@Get('/destination')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
-		let result: MessageEventBusDestinationOptions[] = [];
 		if (isWithIdString(req.query)) {
-			result = await eventBus.findDestination(req.query.id);
+			return eventBus.findDestination(req.query.id);
 		} else {
-			result = await eventBus.findDestination();
+			return eventBus.findDestination();
 		}
-		return result;
 	}
 
 	@Post('/destination', { middlewares: [isOwnerMiddleware] })
@@ -242,11 +222,10 @@ export class EventBusController {
 
 	@Get('/testmessage')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
-		let result = false;
 		if (isWithIdString(req.query)) {
-			result = await eventBus.testDestination(req.query.id);
+			return eventBus.testDestination(req.query.id);
 		}
-		return result;
+		return false;
 	}
 
 	@Delete('/destination', { middlewares: [isOwnerMiddleware] })
@@ -255,14 +234,10 @@ export class EventBusController {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}
 		if (isWithIdString(req.query)) {
-			const result = await eventBus.removeDestination(req.query.id);
-			if (result) {
-				return result;
-			}
+			return eventBus.removeDestination(req.query.id);
 		} else {
 			throw new BadRequestError('Query is missing id');
 		}
-		return;
 	}
 
 	// ----------------------------------------
