@@ -36,6 +36,7 @@ import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/reco
 import { RestController, Get, Post, Delete } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
 import { isOwnerMiddleware } from '../middlewares/isOwner';
+import type { DeleteResult } from 'typeorm';
 
 export const eventBusRouter = express.Router();
 
@@ -55,7 +56,6 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 	return o.query !== undefined;
 };
 
-// TODO: add credentials
 const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationWebhookOptions => {
@@ -108,20 +108,18 @@ export class EventBusController {
 	}
 
 	@Get('/failed')
-	async getFailedEvents(req: express.Request, res: express.Response): Promise<any> {
+	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
 		let result: FailedEventSummary[] = [];
 		let amount = 5;
 		try {
 			amount = parseInt(req.query?.amount as string);
 		} catch {}
 		result = await eventBus.getEventsFailed(amount);
-		return res.send({
-			data: result,
-		});
+		return result;
 	}
 
 	@Get('/execution/:id')
-	async getEventForExecutionId(req: express.Request, res: express.Response): Promise<any> {
+	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[]> {
 		let result: EventMessageTypes[] = [];
 		if (req.params?.id) {
 			let logHistory;
@@ -130,13 +128,11 @@ export class EventBusController {
 			}
 			result = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
 		}
-		return res.send({
-			data: result,
-		});
+		return result;
 	}
 
 	@Get('/execution-recover/:id')
-	async getRecoveryForExecutionId(req: express.Request, res: express.Response): Promise<any> {
+	async getRecoveryForExecutionId(req: express.Request): Promise<IRunExecutionData | undefined> {
 		let result: IRunExecutionData | undefined;
 		if (req.params?.id) {
 			let logHistory;
@@ -153,13 +149,11 @@ export class EventBusController {
 				result = await recoverExecutionDataFromEventLogMessages(req.params.id, messages, applyToDb);
 			}
 		}
-		return res.send({
-			data: result,
-		});
+		return result;
 	}
 
 	@Post('/event', { middlewares: [isOwnerMiddleware] })
-	async postEvent(req: express.Request, res: express.Response): Promise<any> {
+	async postEvent(req: express.Request): Promise<EventMessageTypes | undefined> {
 		let msg: EventMessageTypes | undefined;
 		if (isEventMessageOptions(req.body)) {
 			switch (req.body.__type) {
@@ -182,9 +176,7 @@ export class EventBusController {
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
 			);
 		}
-		return res.send({
-			data: msg,
-		});
+		return msg;
 	}
 
 	// ----------------------------------------
@@ -192,20 +184,18 @@ export class EventBusController {
 	// ----------------------------------------
 
 	@Get('/destination')
-	async getDestination(req: express.Request, res: express.Response): Promise<any> {
+	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		let result: MessageEventBusDestinationOptions[] = [];
 		if (isWithIdString(req.query)) {
 			result = await eventBus.findDestination(req.query.id);
 		} else {
 			result = await eventBus.findDestination();
 		}
-		return res.send({
-			data: result,
-		});
+		return result;
 	}
 
 	@Post('/destination', { middlewares: [isOwnerMiddleware] })
-	async postDestination(req: express.Request, res: express.Response): Promise<any> {
+	async postDestination(req: express.Request): Promise<any> {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}
@@ -242,12 +232,10 @@ export class EventBusController {
 			}
 			if (result) {
 				await result.saveToDb();
-				return res.send({
-					data: {
-						...result.serialize(),
-						eventBusInstance: undefined,
-					},
-				});
+				return {
+					...result.serialize(),
+					eventBusInstance: undefined,
+				};
 			}
 			throw new BadRequestError('There was an error adding the destination');
 		}
@@ -255,31 +243,28 @@ export class EventBusController {
 	}
 
 	@Get('/testmessage')
-	async sendTestMessage(req: express.Request, res: express.Response): Promise<any> {
+	async sendTestMessage(req: express.Request): Promise<boolean> {
 		let result = false;
 		if (isWithIdString(req.query)) {
 			result = await eventBus.testDestination(req.query.id);
 		}
-		return res.send({
-			data: result,
-		});
+		return result;
 	}
 
 	@Delete('/destination', { middlewares: [isOwnerMiddleware] })
-	async deleteDestination(req: express.Request, res: express.Response): Promise<any> {
+	async deleteDestination(req: express.Request): Promise<DeleteResult | undefined> {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}
 		if (isWithIdString(req.query)) {
 			const result = await eventBus.removeDestination(req.query.id);
 			if (result) {
-				return res.send({
-					data: result,
-				});
+				return result;
 			}
 		} else {
 			throw new BadRequestError('Query is missing id');
 		}
+		return;
 	}
 
 	// ----------------------------------------
@@ -287,7 +272,7 @@ export class EventBusController {
 	// ----------------------------------------
 
 	@Get('/eventnames')
-	async getEventNames(): Promise<any> {
+	async getEventNames(): Promise<string[]> {
 		return eventNamesAll;
 	}
 }
