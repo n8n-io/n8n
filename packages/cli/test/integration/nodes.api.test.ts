@@ -191,7 +191,7 @@ describe('POST /nodes', () => {
 		mocked(hasPackageLoaded).mockReturnValueOnce(false);
 		mocked(checkNpmPackageStatus).mockResolvedValueOnce({ status: 'OK' });
 
-		mockLoadNodesAndCredentials.loadNpmModule.mockImplementationOnce(mockedEmptyPackage);
+		mockLoadNodesAndCredentials.installNpmModule.mockImplementationOnce(mockedEmptyPackage);
 
 		const { statusCode } = await authOwnerShellAgent.post('/nodes').send({
 			name: utils.installedPackagePayload().packageName,
