@@ -451,7 +451,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		if (!Db.isInitialized) {
