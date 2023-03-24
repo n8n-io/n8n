@@ -50,23 +50,25 @@ export const usePostHog = defineStore('posthog', () => {
 		return getVariant(experiment) === variant;
 	};
 
-	// for testing
-	window.featureFlags = {
-		// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
-		override: (name: string, value: string | boolean) => {
-			overrides.value[name] = value;
-			featureFlags.value = {
-				...featureFlags.value,
-				[name]: value,
-			};
-			try {
-				localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
-			} catch (e) {}
-		},
+	if (!window.featureFlags) {
+		// for testing
+		window.featureFlags = {
+			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
+			override: (name: string, value: string | boolean) => {
+				overrides.value[name] = value;
+				featureFlags.value = {
+					...featureFlags.value,
+					[name]: value,
+				};
+				try {
+					localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
+				} catch (e) {}
+			},
 
-		getVariant,
-		getAll: () => featureFlags.value || {},
-	};
+			getVariant,
+			getAll: () => featureFlags.value || {},
+		};
+	}
 
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
