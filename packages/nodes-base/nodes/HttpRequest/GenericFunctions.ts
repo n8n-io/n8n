@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	IOAuth2Options,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 
 export type IAuthDataSanitizeKeys = {
 	[key: string]: string[];
@@ -17,7 +18,7 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 };
 
 export function sanitizeUiMessage(
-	request: IHttpRequestOptions,
+	request: IHttpRequestOptions | OptionsWithUri,
 	authDataKeys: IAuthDataSanitizeKeys,
 ) {
 	let sendRequest = request as unknown as IDataObject;
