@@ -233,11 +233,12 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 });
 
 Cypress.Commands.add('drag', (selector, pos, options) => {
+	const index = options?.index || 0;
 	const [xDiff, yDiff] = pos;
-	const element = cy.get(selector);
+	const element = cy.get(selector).eq(index);
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
 
 	element.trigger('mousedown');
 	element.trigger('mousemove', {

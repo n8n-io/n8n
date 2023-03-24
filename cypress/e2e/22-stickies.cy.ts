@@ -227,6 +227,48 @@ describe('Canvas Actions', () => {
 				expect($el).to.have.css('width', '294px');
 			});
 	});
+
+	it('sets sticky behind node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		addDefaultSticky();
+
+		cy.drag('[data-test-id="sticky"] [data-dir="topLeft"]', [-150, -150]);
+		workflowPage.getters.stickies()
+			.should(($el) => {
+				expect($el).to.have.css('top', '184px');
+				expect($el).to.have.css('left', '256px');
+				expect($el).to.have.css('height', '316px');
+				expect($el).to.have.css('width', '384px');
+				expect($el).to.have.css('z-index', '-121');
+			});
+
+		workflowPage.getters.canvasNodes().eq(0)
+			.should(($el) => {
+				expect($el).to.have.css('z-index', 'auto');
+			});
+
+		workflowPage.actions.addSticky();
+		workflowPage.getters.stickies().eq(0)
+			.should(($el) => {
+				expect($el).to.have.css('z-index', '-121');
+			});
+		workflowPage.getters.stickies().eq(1)
+			.should(($el) => {
+				expect($el).to.have.css('z-index', '-38');
+			});
+
+		cy.drag('[data-test-id="sticky"] [data-dir="topLeft"]', [-200, -200], { index: 1});
+		workflowPage.getters.stickies().eq(0)
+		.should(($el) => {
+			expect($el).to.have.css('z-index', '-121');
+		});
+
+		workflowPage.getters.stickies().eq(1)
+		.should(($el) => {
+			expect($el).to.have.css('z-index', '-158');
+		});
+
+	});
 });
 
 type Position = {
