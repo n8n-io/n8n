@@ -6,7 +6,7 @@
 import mixins from 'vue-typed-mixins';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
-import { history } from '@codemirror/commands';
+import { history, redo } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -54,6 +54,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 							return false;
 						},
 					},
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			n8nLang(),

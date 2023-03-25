@@ -11,7 +11,6 @@ describe('Data pinning', () => {
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('Should be able to pin node output', () => {

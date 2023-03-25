@@ -1008,6 +1008,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			advancedExecutionFilters: {
+				format: Boolean,
+				default: false,
+			},
 		},
 	},
 

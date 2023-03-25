@@ -45,7 +45,9 @@
 						>
 					</template>
 					<template #nodeValue="{ node }">
-						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+						<span v-if="isNaN(node.index)" class="ph-no-capture">{{
+							getContent(node.content)
+						}}</span>
 						<span
 							v-else
 							data-target="mappable"
@@ -57,6 +59,7 @@
 								[$style.mappable]: mappingEnabled,
 								[$style.dragged]: draggingPath === node.path,
 							}"
+							class="ph-no-capture"
 							>{{ getContent(node.content) }}</span
 						>
 					</template>

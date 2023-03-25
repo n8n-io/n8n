@@ -1,7 +1,7 @@
 import moment from 'moment-timezone';
 
-import type { IPollFunctions } from 'n8n-core';
 import type {
+	IPollFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,

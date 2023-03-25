@@ -14,13 +14,14 @@ import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { VIEWS, ASSUMPTION_EXPERIMENT } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useCredentialsStore } from '@/stores/credentials';
+import { usePostHog } from '@/stores/posthog';
 
 export default mixins(showMessage, restApi).extend({
 	name: 'SetupView',
@@ -100,6 +101,9 @@ export default mixins(showMessage, restApi).extend({
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
+		isDemoTest(): boolean {
+			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
+		},
 	},
 	methods: {
 		async confirmSetupOrGoBack(): Promise<boolean> {
@@ -159,7 +163,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.HOMEPAGE });
+					await this.$router.push({ name: this.isDemoTest ? VIEWS.HOMEPAGE : VIEWS.NEW_WORKFLOW });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
@@ -183,7 +187,7 @@ export default mixins(showMessage, restApi).extend({
 		onSkip() {
 			this.usersStore.skipOwnerSetup();
 			this.$router.push({
-				name: VIEWS.HOMEPAGE,
+				name: this.isDemoTest ? VIEWS.HOMEPAGE : VIEWS.NEW_WORKFLOW,
 			});
 		},
 	},

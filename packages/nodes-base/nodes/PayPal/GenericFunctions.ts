@@ -1,16 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	JsonObject,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
-
-import type { JsonObject, IDataObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 function getEnvironment(env: string) {
 	return {
