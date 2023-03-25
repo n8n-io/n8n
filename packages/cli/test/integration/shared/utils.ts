@@ -77,6 +77,9 @@ import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LDAP_ENABLED } from '@/Ldap/constants';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
+import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
+import { SamlService } from '@/sso/saml/saml.service.ee';
+import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 
 export const mockInstance = <T>(
@@ -191,6 +194,11 @@ export async function initTestServer({
 						config,
 						new LdapController(service, sync, internalHooks),
 					);
+					break;
+				case 'saml':
+					await setSamlLoginEnabled(true);
+					const samlService = Container.get(SamlService);
+					registerController(testServer.app, config, new SamlController(samlService));
 					break;
 				case 'nodes':
 					registerController(
