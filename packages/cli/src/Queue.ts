@@ -2,6 +2,7 @@ import type Bull from 'bull';
 import type { RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import fs from 'fs';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -24,6 +25,18 @@ export interface WebhookResponse {
 	response: IExecuteResponsePromiseData;
 }
 
+interface SecureRedisConfig {
+	secure: boolean;
+	tls?: {
+		cert?: string | Buffer;
+		cert_file?: string;
+		key?: string | Buffer;
+		key_file?: string;
+		ca?: string | Buffer;
+		ca_file?: string;
+	};
+}
+
 @Service()
 export class Queue {
 	private jobQueue: JobQueue;
@@ -32,7 +45,27 @@ export class Queue {
 
 	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+		const redisOptions = config.getEnv('queue.bull.redis') as SecureRedisConfig;
+		if (!redisOptions.secure) {
+			delete redisOptions.tls;
+		} else {
+			if (!redisOptions.tls) redisOptions.tls = {};
+			if (!redisOptions.tls.ca) {
+				if (redisOptions.tls.ca_file) {
+					redisOptions.tls.ca = fs.readFileSync(redisOptions.tls.ca_file);
+				}
+			}
+			if (!redisOptions.tls?.key) {
+				if (redisOptions.tls?.key_file) {
+					redisOptions.tls.key = fs.readFileSync(redisOptions.tls.key_file);
+				}
+			}
+			if (!redisOptions.tls?.cert) {
+				if (redisOptions.tls?.cert_file) {
+					redisOptions.tls.cert = fs.readFileSync(redisOptions.tls.cert_file);
+				}
+			}
+		}
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
