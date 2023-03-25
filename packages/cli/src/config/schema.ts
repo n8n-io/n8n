@@ -396,6 +396,56 @@ export const schema = {
 					default: '',
 					env: 'QUEUE_BULL_REDIS_USERNAME',
 				},
+				secure: {
+					doc: 'Redis secure (TLS) flag',
+					format: Boolean,
+					default: false,
+					env: 'QUEUE_BULL_REDIS_SECURE',
+				},
+				tls: {
+					rejectUnauthorized: {
+						doc: 'Reject uanathorized certificate',
+						format: Boolean,
+						default: true,
+						env: 'QUEUE_BULL_REDIS_TLS_REJECTANUTHORIZEDT',
+					},
+					cert: {
+						doc: 'Cert in PEM format',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_CERT',
+					},
+					cert_file: {
+						doc: 'Cert file in PEM format, used only if "cert" value is not specified',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_CERT_FILE',
+					},
+					key: {
+						doc: 'Private key',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_KEY',
+					},
+					key_file: {
+						doc: 'Private key file',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_KEY_FILE',
+					},
+					ca: {
+						doc: 'Trusted CA certificates',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_CA',
+					},
+					ca_file: {
+						doc: 'Trusted CA certificates',
+						format: String,
+						default: '',
+						env: 'QUEUE_BULL_REDIS_TLS_CA_FILE',
+					},
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
