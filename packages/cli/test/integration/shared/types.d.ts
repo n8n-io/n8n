@@ -22,6 +22,7 @@ type EndpointGroup =
 	| 'publicApi'
 	| 'nodes'
 	| 'ldap'
+	| 'saml'
 	| 'eventBus'
 	| 'license';
 

@@ -2,10 +2,11 @@ import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
-import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
+import { sampleConfig } from './sampleMetadata';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -16,7 +17,7 @@ async function enableSaml(enable: boolean) {
 }
 
 beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['me'] });
+	const app = await utils.initTestServer({ endpointGroups: ['me', 'saml'] });
 	owner = await testDb.createOwner();
 	authOwnerAgent = utils.createAuthAgent(app)(owner);
 });
@@ -65,6 +66,68 @@ describe('Instance owner', () => {
 					code: 400,
 					message: 'With SAML enabled, users need to use their SAML provider to change passwords',
 				});
+		});
+	});
+
+	describe('POST /sso/saml/config', () => {
+		test('should post saml config', async () => {
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					loginEnabled: true,
+				})
+				.expect(200);
+			expect(getCurrentAuthenticationMethod()).toBe('saml');
+		});
+	});
+
+	describe('POST /sso/saml/config/toggle', () => {
+		test('should toggle saml as default authentication method', async () => {
+			await enableSaml(true);
+			expect(getCurrentAuthenticationMethod()).toBe('saml');
+
+			await authOwnerAgent
+				.post('/sso/saml/config/toggle')
+				.send({
+					loginEnabled: false,
+				})
+				.expect(200);
+			expect(getCurrentAuthenticationMethod()).toBe('email');
+
+			await authOwnerAgent
+				.post('/sso/saml/config/toggle')
+				.send({
+					loginEnabled: true,
+				})
+				.expect(200);
+			expect(getCurrentAuthenticationMethod()).toBe('saml');
+		});
+	});
+
+	describe('POST /sso/saml/config/toggle', () => {
+		test('should fail enable saml if default authentication is not email', async () => {
+			await enableSaml(true);
+
+			await authOwnerAgent
+				.post('/sso/saml/config/toggle')
+				.send({
+					loginEnabled: false,
+				})
+				.expect(200);
+			expect(getCurrentAuthenticationMethod()).toBe('email');
+
+			await setCurrentAuthenticationMethod('ldap');
+			expect(getCurrentAuthenticationMethod()).toBe('ldap');
+
+			await authOwnerAgent
+				.post('/sso/saml/config/toggle')
+				.send({
+					loginEnabled: true,
+				})
+				.expect(200);
+
+			expect(getCurrentAuthenticationMethod()).toBe('ldap');
 		});
 	});
 });
