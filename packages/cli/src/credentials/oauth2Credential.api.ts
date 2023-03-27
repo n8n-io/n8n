@@ -326,7 +326,7 @@ oauth2CredentialController.get(
 
 			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 		} catch (error) {
-			return renderCallbackError(res, (error as Error).message);
+			return renderCallbackError(res, error?.body ? Object.keys(error.body).map(key => error.body[key]).join(': ') : (error as Error).message);
 		}
 	},
 );
