@@ -1,6 +1,41 @@
-import type { ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	ResourceMapperFields,
+	ResourceMapperFieldType,
+} from 'n8n-workflow';
 import { getTableSchema } from '../helpers/utils';
 import { configurePostgres } from '../transport';
+
+const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
+	string: ['text', 'varchar', 'character varying', 'character', 'char'],
+	number: [
+		'integer',
+		'smallint',
+		'bigint',
+		'decimal',
+		'numeric',
+		'real',
+		'double precision',
+		'smallserial',
+		'serial',
+		'bigserial',
+	],
+	boolean: ['boolean'],
+	datetime: ['timestamp', 'date', 'time'],
+};
+
+function mapPostgresType(postgresType: string): ResourceMapperFieldType {
+	let mappedType: ResourceMapperFieldType = 'string';
+
+	for (const t of Object.keys(fieldTypeMapping)) {
+		const postgresTypes = fieldTypeMapping[t as ResourceMapperFieldType];
+		if (postgresTypes.includes(postgresType)) {
+			mappedType = t as ResourceMapperFieldType;
+		}
+	}
+
+	return mappedType;
+}
 
 export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
@@ -26,10 +61,10 @@ export async function getMappingColumns(
 				id: col.column_name,
 				displayName: col.column_name,
 				match: fieldsToMatch.includes(col.column_name),
-				required: col.is_nullable !== 'NO',
+				required: col.is_nullable !== 'YES',
 				defaultMatch: col.column_name === 'id',
 				display: true,
-				type: col.data_type,
+				type: mapPostgresType(col.data_type),
 			})),
 		};
 		return columnData;
