@@ -26,6 +26,11 @@ import type { ConnectionSecurity, LdapConfig } from './types';
 import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
+import {
+	isEmailCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso/ssoHelpers';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -50,8 +55,24 @@ export const setLdapLoginLabel = (value: string): void => {
 /**
  * Set the LDAP login enabled to the configuration object
  */
-export const setLdapLoginEnabled = (value: boolean): void => {
-	config.set(LDAP_LOGIN_ENABLED, value);
+export const setLdapLoginEnabled = async (value: boolean): Promise<void> => {
+	if (config.get(LDAP_LOGIN_ENABLED) === value) {
+		return;
+	}
+	// only one auth method can be active at a time, with email being the default
+	if (value && isEmailCurrentAuthenticationMethod()) {
+		// enable ldap login and disable email login, but only if email is the current auth method
+		config.set(LDAP_LOGIN_ENABLED, true);
+		await setCurrentAuthenticationMethod('ldap');
+	} else if (!value && isLdapCurrentAuthenticationMethod()) {
+		// disable ldap login, but only if ldap is the current auth method
+		config.set(LDAP_LOGIN_ENABLED, false);
+		await setCurrentAuthenticationMethod('email');
+	} else {
+		Logger.warn(
+			'Cannot switch LDAP login enabled state when an authentication method other than email is active',
+		);
+	}
 };
 
 /**
@@ -126,8 +147,8 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 /**
  * Take the LDAP configuration and set login enabled and login label to the config object
  */
-export const setGlobalLdapConfigVariables = (ldapConfig: LdapConfig): void => {
-	setLdapLoginEnabled(ldapConfig.loginEnabled);
+export const setGlobalLdapConfigVariables = async (ldapConfig: LdapConfig): Promise<void> => {
+	await setLdapLoginEnabled(ldapConfig.loginEnabled);
 	setLdapLoginLabel(ldapConfig.loginLabel);
 };
 
@@ -175,7 +196,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 		{ key: LDAP_FEATURE_NAME },
 		{ value: JSON.stringify(ldapConfig), loadOnStartup: true },
 	);
-	setGlobalLdapConfigVariables(ldapConfig);
+	await setGlobalLdapConfigVariables(ldapConfig);
 };
 
 /**
@@ -197,7 +218,7 @@ export const handleLdapInit = async (): Promise<void> => {
 
 	const ldapConfig = await getLdapConfig();
 
-	setGlobalLdapConfigVariables(ldapConfig);
+	await setGlobalLdapConfigVariables(ldapConfig);
 
 	// init LDAP manager with the current
 	// configuration
