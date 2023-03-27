@@ -6,8 +6,8 @@ import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessag
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import type { EventMessageWorkflowOptions } from './EventMessageClasses/EventMessageWorkflow';
 import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
+import { MessageEventBus } from './MessageEventBus/MessageEventBus';
 import type { EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
-import { eventBus } from './MessageEventBus/MessageEventBus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
@@ -76,6 +76,8 @@ const isMessageEventBusDestinationOptions = (
 
 @RestController('/eventbus')
 export class EventBusController {
+	constructor(private eventBus: MessageEventBus) {}
+
 	// ----------------------------------------
 	// Events
 	// ----------------------------------------
@@ -86,24 +88,24 @@ export class EventBusController {
 		if (isWithQueryString(req.query)) {
 			switch (req.query.query as EventMessageReturnMode) {
 				case 'sent':
-					return eventBus.getEventsSent();
+					return this.eventBus.getEventsSent();
 				case 'unsent':
-					return eventBus.getEventsUnsent();
+					return this.eventBus.getEventsUnsent();
 				case 'unfinished':
-					return eventBus.getUnfinishedExecutions();
+					return this.eventBus.getUnfinishedExecutions();
 				case 'all':
 				default:
-					return eventBus.getEventsAll();
+					return this.eventBus.getEventsAll();
 			}
 		} else {
-			return eventBus.getEventsAll();
+			return this.eventBus.getEventsAll();
 		}
 	}
 
 	@Get('/failed')
 	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
 		const amount = parseInt(req.query?.amount as string) ?? 5;
-		return eventBus.getEventsFailed(amount);
+		return this.eventBus.getEventsFailed(amount);
 	}
 
 	@Get('/execution/:id')
@@ -113,7 +115,7 @@ export class EventBusController {
 			if (req.query?.logHistory) {
 				logHistory = parseInt(req.query.logHistory as string, 10);
 			}
-			return eventBus.getEventsByExecutionId(req.params.id, logHistory);
+			return this.eventBus.getEventsByExecutionId(req.params.id, logHistory);
 		}
 		return;
 	}
@@ -124,7 +126,7 @@ export class EventBusController {
 		if (req.params?.id) {
 			const logHistory = parseInt(req.query.logHistory as string, 10) || undefined;
 			const applyToDb = req.query.applyToDb !== undefined ? !!req.query.applyToDb : true;
-			const messages = await eventBus.getEventsByExecutionId(id, logHistory);
+			const messages = await this.eventBus.getEventsByExecutionId(id, logHistory);
 			if (messages.length > 0) {
 				return recoverExecutionDataFromEventLogMessages(id, messages, applyToDb);
 			}
@@ -150,7 +152,7 @@ export class EventBusController {
 				default:
 					msg = new EventMessageGeneric(req.body);
 			}
-			await eventBus.send(msg);
+			await this.eventBus.send(msg);
 		} else {
 			throw new BadRequestError(
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
@@ -166,9 +168,9 @@ export class EventBusController {
 	@Get('/destination')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
-			return eventBus.findDestination(req.query.id);
+			return this.eventBus.findDestination(req.query.id);
 		} else {
-			return eventBus.findDestination();
+			return this.eventBus.findDestination();
 		}
 	}
 
@@ -183,22 +185,22 @@ export class EventBusController {
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:
 					if (isMessageEventBusDestinationSentryOptions(req.body)) {
-						result = await eventBus.addDestination(
-							new MessageEventBusDestinationSentry(eventBus, req.body),
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationSentry(this.eventBus, req.body),
 						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.webhook:
 					if (isMessageEventBusDestinationWebhookOptions(req.body)) {
-						result = await eventBus.addDestination(
-							new MessageEventBusDestinationWebhook(eventBus, req.body),
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationWebhook(this.eventBus, req.body),
 						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.syslog:
 					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
-						result = await eventBus.addDestination(
-							new MessageEventBusDestinationSyslog(eventBus, req.body),
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationSyslog(this.eventBus, req.body),
 						);
 					}
 					break;
@@ -223,7 +225,7 @@ export class EventBusController {
 	@Get('/testmessage')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
-			return eventBus.testDestination(req.query.id);
+			return this.eventBus.testDestination(req.query.id);
 		}
 		return false;
 	}
@@ -234,7 +236,7 @@ export class EventBusController {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}
 		if (isWithIdString(req.query)) {
-			return eventBus.removeDestination(req.query.id);
+			return this.eventBus.removeDestination(req.query.id);
 		} else {
 			throw new BadRequestError('Query is missing id');
 		}
