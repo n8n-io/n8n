@@ -75,7 +75,7 @@
       "vue-demi"
     ],
     "overrides": {
-      "@types/node": "^16.18.12",
+      "@types/node": "^18.16.16",
       "browserslist": "^4.21.4",
       "chokidar": "3.5.2",
       "decode-uri-component": "0.2.2",
