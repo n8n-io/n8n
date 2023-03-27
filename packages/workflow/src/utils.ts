@@ -64,27 +64,24 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 
 type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
-	circularRefReplacement?: string;
 };
 
-const getReplaceCircularReferencesFn = (options: JSONStringifyOptions) => {
-	const knownObjects = new WeakSet();
-	return (key: any, value: any) => {
-		if (typeof value === 'object' && value !== null) {
-			if (knownObjects.has(value)) {
-				return options?.circularRefReplacement ?? '[Circular Reference]';
-			}
-			knownObjects.add(value);
+const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+	if (value && typeof value === 'object') {
+		if (knownObjects.has(value)) return '[Circular Reference]' as T;
+		knownObjects.add(value);
+		const copy = (Array.isArray(value) ? [] : {}) as T;
+		for (const key in value) {
+			copy[key] = replaceCircularReferences(value[key], knownObjects);
 		}
-		return value;
-	};
+		knownObjects.delete(value);
+		return copy;
+	}
+	return value;
 };
 
 export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}): string => {
-	const replacer = options?.replaceCircularRefs
-		? getReplaceCircularReferencesFn(options)
-		: undefined;
-	return JSON.stringify(obj, replacer);
+	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
 };
 
 export const sleep = async (ms: number): Promise<void> =>
