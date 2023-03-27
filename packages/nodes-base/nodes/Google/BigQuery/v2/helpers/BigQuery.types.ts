@@ -14,3 +14,18 @@ export type TableSchema = {
 export type TableRawData = {
 	f: Array<{ v: IDataObject | TableRawData }>;
 };
+
+export type JobReference = {
+	projectId: string;
+	jobId: string;
+	location: string;
+};
+
+export type JobInsertResponse = {
+	kind: string;
+	id: string;
+	jobReference: JobReference;
+	status: {
+		state: 'PENDING' | 'RUNNING' | 'DONE';
+	};
+};

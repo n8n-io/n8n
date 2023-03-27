@@ -1,9 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-core';
+
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import type { TableRawData, TableSchema } from '../../helpers/BigQuery.types';
-import { simplify, wrapData } from '../../helpers/utils';
+import type { JobInsertResponse } from '../../helpers/BigQuery.types';
+
+import { prepareOutput } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -18,7 +20,6 @@ const properties: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'SELECT * FROM dataset.table LIMIT 100',
-		hint: 'Standard SQL syntax',
 		description:
 			'SQL query to execute, you can find more information <a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank">here</a>. Standard SQL syntax used by default, but you can also use Legacy SQL syntax by using optinon \'Use Legacy SQL\'.',
 	},
@@ -63,6 +64,23 @@ const properties: INodeProperties[] = [
 				default: false,
 				description:
 					"Whether set to true BigQuery doesn't run the job. Instead, if the query is valid, BigQuery returns statistics about the job such as how many bytes would be processed. If the query is invalid, an error returns.",
+			},
+			{
+				displayName: 'Include Schema in Output',
+				name: 'includeSchema',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to include the schema in the output. If set to true, the output will contain key '_schema' with the schema of the table.",
+			},
+			{
+				displayName: 'Location',
+				name: 'location',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. europe-west3',
+				description:
+					'Location or the region where data would be stored and processed. Pricing for storage and analysis is also defined by location of data and reservations, more information <a href="https://cloud.google.com/bigquery/docs/locations" target="_blank">here</a>.',
 			},
 			{
 				displayName: 'Maximum Bytes Billed',
@@ -126,26 +144,31 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	const returnData: INodeExecutionData[] = [];
 
+	let jobs = [];
+
 	for (let i = 0; i < length; i++) {
 		try {
-			let responseData;
-
+			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
+			const options = this.getNodeParameter('options', i);
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			});
 
-			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
-
-			const options = this.getNodeParameter('options', i);
-
 			let rawOutput = false;
+			let includeSchema = false;
 
 			if (options.rawOutput !== undefined) {
 				rawOutput = options.rawOutput as boolean;
 				delete options.rawOutput;
 			}
 
-			const body: IDataObject = options;
+			if (options.includeSchema !== undefined) {
+				includeSchema = options.includeSchema as boolean;
+				delete options.includeSchema;
+			}
+
+			const body: IDataObject = { ...options };
+
 			body.query = sqlQuery;
 
 			if (body.defaultDataset) {
@@ -159,36 +182,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.useLegacySql = false;
 			}
 
-			const response = await googleApiRequest.call(
+			const response: JobInsertResponse = await googleApiRequest.call(
 				this,
 				'POST',
-				`/v2/projects/${projectId}/queries`,
-				body,
+				`/v2/projects/${projectId}/jobs`,
+				{
+					configuration: {
+						query: body,
+					},
+				},
 			);
 
-			if (rawOutput || body.dryRun) {
-				responseData = response;
-			} else {
-				const { rows, schema } = response;
+			const jobId = response?.jobReference?.jobId;
+			const raw = rawOutput || (options.dryRun as boolean) || false;
 
-				if (rows !== undefined && schema !== undefined) {
-					const fields = (schema as TableSchema).fields;
-					responseData = rows;
-
-					responseData = simplify(responseData as TableRawData[], fields);
-				} else if (schema && !rows?.length) {
-					responseData = [];
-				} else {
-					responseData = { success: true };
-				}
-			}
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(responseData as IDataObject[]),
-				{ itemData: { item: i } },
-			);
-
-			returnData.push(...executionData);
+			jobs.push({ jobId, projectId, i, raw, includeSchema });
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -204,5 +212,47 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			});
 		}
 	}
+
+	let attempts = 0;
+	while (jobs.length > 0 && attempts < 5) {
+		const completedJobs: string[] = [];
+
+		for (const job of jobs) {
+			try {
+				const response: IDataObject = await googleApiRequest.call(
+					this,
+					'GET',
+					`/v2/projects/${job.projectId}/queries/${job.jobId}`,
+				);
+
+				if (response.jobComplete) {
+					completedJobs.push(job.jobId);
+
+					returnData.push(...prepareOutput(response, job.i, job.raw, job.includeSchema));
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: job.i } },
+					);
+					returnData.push(...executionErrorData);
+					continue;
+				}
+				throw new NodeOperationError(this.getNode(), error.message as string, {
+					itemIndex: job.i,
+					description: error?.description,
+				});
+			}
+		}
+
+		jobs = jobs.filter((job) => !completedJobs.includes(job.jobId));
+
+		if (jobs.length > 0) {
+			await new Promise((resolve) => setTimeout(resolve, 5000));
+			attempts++;
+		}
+	}
+
 	return returnData;
 }

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
+import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
@@ -14,7 +15,16 @@ function getFieldValue(schemaField: SchemaField, field: IDataObject) {
 	}
 }
 
-export function simplify(data: TableRawData[], schema: SchemaField[]) {
+export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
+}
+
+export function simplify(data: TableRawData[], schema: SchemaField[], includeSchema = false) {
 	const returnData: IDataObject[] = [];
 	for (const entry of data) {
 		const record: IDataObject = {};
@@ -31,10 +41,46 @@ export function simplify(data: TableRawData[], schema: SchemaField[]) {
 			}
 		}
 
+		if (includeSchema) {
+			record._schema = schema;
+		}
+
 		returnData.push(record);
 	}
 
 	return returnData;
+}
+
+export function prepareOutput(
+	response: IDataObject,
+	itemIndex: number,
+	rawOutput: boolean,
+	includeSchema = false,
+) {
+	let responseData;
+
+	if (rawOutput) {
+		responseData = response;
+	} else {
+		const { rows, schema } = response;
+
+		if (rows !== undefined && schema !== undefined) {
+			const fields = (schema as TableSchema).fields;
+			responseData = rows;
+
+			responseData = simplify(responseData as TableRawData[], fields, includeSchema);
+		} else if (schema && !(rows as IDataObject[])?.length) {
+			responseData = [];
+		} else {
+			responseData = { success: true };
+		}
+	}
+
+	const executionData = constructExecutionMetaData(wrapData(responseData as IDataObject[]), {
+		itemData: { item: itemIndex },
+	});
+
+	return executionData;
 }
 
 export function selectedFieldsToObject(selected: string) {
@@ -104,13 +150,4 @@ export function checkSchema(
 	});
 
 	return returnData;
-}
-
-export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
-	if (!Array.isArray(data)) {
-		return [{ json: data }];
-	}
-	return data.map((item) => ({
-		json: item,
-	}));
 }
