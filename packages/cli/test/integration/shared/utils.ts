@@ -56,7 +56,6 @@ import type {
 	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { registerController } from '@/decorators';
 import {
 	AuthController,
@@ -81,6 +80,7 @@ import { Push } from '@/push';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
+import { EventBusController } from '@/eventbus/eventBus.controller';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -151,7 +151,6 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			license: { controller: licenseController, path: 'license' },
-			eventBus: { controller: eventBusRouter, path: 'eventbus' },
 		};
 
 		if (enablePublicAPI) {
@@ -176,6 +175,9 @@ export async function initTestServer({
 
 		for (const group of functionEndpoints) {
 			switch (group) {
+				case 'eventBus':
+					registerController(testServer.app, config, new EventBusController());
+					break;
 				case 'auth':
 					registerController(
 						testServer.app,
@@ -266,7 +268,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'eventBus', 'license'];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
