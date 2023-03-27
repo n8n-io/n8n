@@ -12,9 +12,7 @@ function isTraversable(maybe: unknown): maybe is IDataObject {
  * Stringify any non-standard JS objects (e.g. `Date`, `RegExp`) inside output items at any depth.
  */
 export function standardizeOutput(output: IDataObject) {
-	const knownObjects = new WeakSet();
-
-	function standardizeOutputRecursive(obj: IDataObject): IDataObject {
+	function standardizeOutputRecursive(obj: IDataObject, knownObjects = new WeakSet()): IDataObject {
 		for (const [key, value] of Object.entries(obj)) {
 			if (!isTraversable(value)) continue;
 
@@ -29,7 +27,7 @@ export function standardizeOutput(output: IDataObject) {
 			obj[key] =
 				value.constructor.name !== 'Object'
 					? JSON.stringify(value) // Date, RegExp, etc.
-					: standardizeOutputRecursive(value);
+					: standardizeOutputRecursive(value, knownObjects);
 		}
 		return obj;
 	}

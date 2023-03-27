@@ -129,7 +129,7 @@ import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { EventBusController } from '@/eventbus/eventBus.controller';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
@@ -377,6 +377,7 @@ class Server extends AbstractServer {
 		const samlService = Container.get(SamlService);
 
 		const controllers: object[] = [
+			new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
@@ -1229,8 +1230,6 @@ class Server extends AbstractServer {
 		if (!eventBus.isInitialized) {
 			await eventBus.initialize();
 		}
-		// add Event Bus REST endpoints
-		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 		// ----------------------------------------
 		// Webhooks
