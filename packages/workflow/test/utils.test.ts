@@ -30,6 +30,14 @@ describe('jsonStringify', () => {
 			'{"a":1,"b":2,"c":"[Circular Reference]"}',
 		);
 	});
+
+	it('should not detect duplicates as circular references', () => {
+		const y = { z: 5 };
+		const x = [y, y, { y }];
+		expect(jsonStringify(x, { replaceCircularRefs: true })).toEqual(
+			'[{"z":5},{"z":5},{"y":{"z":5}}]',
+		);
+	});
 });
 
 describe('deepCopy', () => {
