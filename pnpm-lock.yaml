@@ -6621,7 +6621,7 @@ packages:
       vite: ^3.0.0 || ^4.0.0
       vue: ^2.7.0-0
     dependencies:
-      vite: 4.0.4_sass@1.58.0
+      vite: 4.0.4_sass@1.55.0+terser@5.16.1
       vue: 2.7.14
     dev: true
 

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { INodeUi, Schema } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
@@ -69,6 +69,10 @@ const onDragEnd = (el: HTMLElement) => {
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 };
+
+onMounted(() => {
+	window.__schema = schema.value;
+});
 </script>
 
 <template>
