@@ -73,11 +73,11 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
-// export interface Form {
-// 	id: string;
-// 	title: string;
-// 	schema: object[];
-// }
+export interface Form {
+	id: string;
+	title: string;
+	schema: object[];
+}
 
 export interface IDatabaseCollections {
 	AuthIdentity: Repository<AuthIdentity>;

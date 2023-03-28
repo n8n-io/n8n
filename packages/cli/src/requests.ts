@@ -12,7 +12,7 @@ import type {
 
 import { IsEmail, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
-import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
+import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb, Form } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
@@ -335,6 +335,17 @@ export declare namespace TagsRequest {
 	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
 	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//             /forms
+// ----------------------------------
+
+export declare namespace FormsRequest {
+	type Get = AuthenticatedRequest<{ id: string }>;
+	type Create = AuthenticatedRequest<{}, {}, Omit<Form, 'id'>>;
+	// type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
+	// type Delete = AuthenticatedRequest<{ id: string }>;
 }
 
 // ----------------------------------
