@@ -87,7 +87,7 @@
 				"
 			/>
 			<div v-show="openPanel === 'params'">
-				<node-webhooks :node="node" :nodeType="nodeType" />
+				<!-- <node-webhooks :node="node" :nodeType="nodeType" /> -->
 
 				<parameter-input-list
 					:parameters="parametersNoneSetting"
