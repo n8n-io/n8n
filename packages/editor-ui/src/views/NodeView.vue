@@ -240,7 +240,7 @@ import {
 	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
-import {
+import type {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -277,7 +277,8 @@ import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useEnvironmentsStore } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
@@ -472,6 +473,7 @@ export default mixins(
 			useWorkflowsStore,
 			useUsersStore,
 			useNodeCreatorStore,
+			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
 		),
@@ -3600,6 +3602,9 @@ export default mixins(
 		async loadCredentials(): Promise<void> {
 			await this.credentialsStore.fetchAllCredentials();
 		},
+		async loadVariables(): Promise<void> {
+			await this.environmentsStore.fetchAllVariables();
+		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
@@ -3853,6 +3858,7 @@ export default mixins(
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
 		];
+		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());

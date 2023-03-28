@@ -1,0 +1,16 @@
+// Vitest Snapshot v1
+
+exports[`VariablesRow > should render correctly 1`] = `
+"<tr class=\\"variablesRow\\">
+  <td><span>key</span></td>
+  <td><span>value</span></td>
+  <td>
+    <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"usageSyntax\\">$vars.key</span></n8n-tooltip-stub>
+  </td>
+  <td class=\\"text-right\\">
+    <div class=\\"hoverButtons\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-edit-button\\">
+        <!----><span> Edit </span></button><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-delete-button\\">
+        <!----><span> Delete </span></button></div>
+  </td>
+</tr>"
+`;

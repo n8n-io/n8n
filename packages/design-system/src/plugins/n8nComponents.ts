@@ -10,6 +10,7 @@ import N8nButton from '../components/N8nButton';
 import { N8nElButton } from '../components/N8nButton/overrides';
 import N8nCallout from '../components/N8nCallout';
 import N8nCard from '../components/N8nCard';
+import N8nDatatable from '../components/N8nDatatable';
 import N8nFormBox from '../components/N8nFormBox';
 import N8nFormInputs from '../components/N8nFormInputs';
 import N8nHeading from '../components/N8nHeading';
@@ -61,6 +62,7 @@ export default {
 		app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);
 		app.component('n8n-card', N8nCard);
+		app.component('n8n-datatable', N8nDatatable);
 		app.component('n8n-form-box', N8nFormBox);
 		app.component('n8n-form-inputs', N8nFormInputs);
 		app.component('n8n-icon', N8nIcon);

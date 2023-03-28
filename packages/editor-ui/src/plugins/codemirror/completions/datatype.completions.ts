@@ -20,6 +20,7 @@ import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
 import { isFunctionOption } from './typeGuards';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
+import { useEnvironmentsStore } from '@/stores';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -31,7 +32,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	const [base, tail] = splitBaseTail(word.text);
+	// eslint-disable-next-line prefer-const
+	let [base, tail] = splitBaseTail(word.text);
 
 	let options: Completion[] = [];
 
@@ -41,6 +43,12 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else {
 		let resolved: Resolved;
+
+		if (base === '$vars') {
+			const environmentsStore = useEnvironmentsStore();
+			const variables = environmentsStore.variablesAsObject;
+			base = JSON.stringify(variables);
+		}
 
 		try {
 			resolved = resolveParameter(`={{ ${base} }}`);

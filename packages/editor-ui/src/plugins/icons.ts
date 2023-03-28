@@ -15,6 +15,7 @@ import {
 	faBook,
 	faBoxOpen,
 	faBug,
+	faBracketsCurly,
 	faCalculator,
 	faCalendar,
 	faChartBar,
