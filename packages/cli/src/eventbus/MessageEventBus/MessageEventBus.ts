@@ -40,9 +40,7 @@ export interface MessageWithCallback {
 
 @Service()
 export class MessageEventBus extends EventEmitter {
-	isInitialized: boolean;
-
-	logWriter: MessageEventBusLogWriter;
+	private isInitialized = false;
 
 	destinations: {
 		[key: string]: MessageEventBusDestination;
@@ -50,10 +48,8 @@ export class MessageEventBus extends EventEmitter {
 
 	private pushIntervalTimer: NodeJS.Timer;
 
-	constructor() {
+	constructor(private logWriter: MessageEventBusLogWriter) {
 		super();
-		this.isInitialized = false;
-		this.logWriter = new MessageEventBusLogWriter();
 	}
 
 	/**
