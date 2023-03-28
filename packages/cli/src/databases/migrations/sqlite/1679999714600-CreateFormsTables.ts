@@ -13,7 +13,7 @@ export class CreateForms1679999714600 implements MigrationInterface {
 			`CREATE TABLE IF NOT EXISTS "${tablePrefix}forms" (
 				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 				title TEXT NOT NULL,
-				form JSON NOT NULL,
+				schema JSON NOT NULL,
 			)`,
 		);
 
