@@ -156,7 +156,7 @@ export class Odoo implements INodeType {
 							'ir.model',
 							'search_read',
 							[],
-							['name', 'model', 'modules'],
+							['name', 'model'],
 						],
 					},
 					id: Math.floor(Math.random() * 100),
