@@ -94,8 +94,8 @@ if (!isMainThread) {
 						data as MessageEventBusLogWriterOptions;
 					const settings: MessageEventBusLogWriterOptions = {
 						logFullBasePath: logFullBasePath ?? '',
-						keepNumberOfFiles: keepNumberOfFiles ?? 10,
-						maxFileSizeInKB: maxFileSizeInKB ?? 102400,
+						keepNumberOfFiles: keepNumberOfFiles ?? 3,
+						maxFileSizeInKB: maxFileSizeInKB ?? 1024,
 					};
 					setLogFileBasePath(settings.logFullBasePath);
 					setKeepFiles(settings.keepNumberOfFiles);
