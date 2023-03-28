@@ -39,7 +39,10 @@ export default defineComponent({
 			const form = await formsStore.fetchForm({ id: route.params.id });
 			title.value = form.title;
 			loading.value = false;
-			editorRef.value!.editor.import(form.schema);
+
+			if (form.schema) {
+				editorRef.value!.editor.import(form.schema);
+			}
 		});
 
 		const resolverMap = ref({
@@ -123,9 +126,6 @@ export default defineComponent({
 						<FormSubmit />
 					</template>
 				</Blueprint>
-				<div>
-					<ExportsPanel />
-				</div>
 			</div>
 			<Frame component="div" :class="$style.preview">
 				<Canvas component="Container">
