@@ -245,30 +245,25 @@ export class WorkflowsService {
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
-		if (workflow.settings) {
-			if (workflow.settings.timezone === 'DEFAULT') {
-				// Do not save the default timezone
-				delete workflow.settings.timezone;
+		const workflowSettings = workflow.settings ?? {};
+
+		const keysAllowingDefault = [
+			'timezone',
+			'saveDataErrorExecution',
+			'saveDataSuccessExecution',
+			'saveManualExecutions',
+			'saveExecutionProgress',
+		] as const;
+		for (const key of keysAllowingDefault) {
+			// Do not save the default value
+			if (workflowSettings[key] === 'DEFAULT') {
+				delete workflowSettings[key];
 			}
-			if (workflow.settings.saveDataErrorExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveDataErrorExecution;
-			}
-			if (workflow.settings.saveDataSuccessExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveDataSuccessExecution;
-			}
-			if (workflow.settings.saveManualExecutions === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveManualExecutions;
-			}
-			if (
-				parseInt(workflow.settings.executionTimeout as string, 10) ===
-				config.get('executions.timeout')
-			) {
-				// Do not save when default got set
-				delete workflow.settings.executionTimeout;
-			}
+		}
+
+		if (workflowSettings.executionTimeout === config.get('executions.timeout')) {
+			// Do not save when default got set
+			delete workflowSettings.executionTimeout;
 		}
 
 		if (workflow.name) {

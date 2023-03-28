@@ -100,7 +100,7 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', '1');
+	config.set('eventBus.logWriter.keepLogCount', 1);
 	config.set('enterprise.features.logStreaming', true);
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
