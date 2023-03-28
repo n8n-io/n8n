@@ -27,7 +27,7 @@
 				</div>
 			</template>
 			<template #menuSuffix>
-				<div>
+				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
 					<div :class="$style.updates" @click="openUpdatesPanel" v-if="hasVersionUpdates">
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
@@ -41,12 +41,23 @@
 							}}
 						</n8n-text>
 					</div>
-					<div :class="$style.sync">
+					<div :class="$style.sync" v-if="versionControlStore.state.currentBranch">
 						<span>
 							<n8n-icon icon="code-branch" class="mr-xs" />
 							{{ currentBranch }}
 						</span>
-						<n8n-button icon="sync" type="tertiary" size="small" square @click="sync" />
+						<n8n-button
+							:title="
+								$locale.baseText('settings.versionControl.sync.prompt.title', {
+									interpolate: { branch: currentBranch },
+								})
+							"
+							icon="sync"
+							type="tertiary"
+							:size="isCollapsed ? 'mini' : 'small'"
+							square
+							@click="sync"
+						/>
 					</div>
 				</div>
 			</template>
@@ -636,6 +647,14 @@ export default mixins(
 
 	span {
 		color: var(--color-text-light);
+	}
+
+	.sideMenuCollapsed & {
+		justify-content: center;
+		margin-left: calc(var(--spacing-xl) * -1);
+		> span {
+			display: none;
+		}
 	}
 }
 </style>
