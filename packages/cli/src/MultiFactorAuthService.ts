@@ -23,7 +23,7 @@ export class MultiFactorAuthService {
 		};
 	}
 
-	verifySecret({ secret, token, window = 0 }: { secret: string; token: string; window: number }) {
+	verifySecret({ secret, token, window = 0 }: { secret: string; token: string; window?: number }) {
 		return speakeasy.totp.verify({
 			secret,
 			token,
