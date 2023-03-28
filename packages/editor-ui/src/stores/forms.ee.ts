@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 import * as formsApi from '@/api/forms.ee';
-import { computed, ref } from 'vue';
+import { computed, ComputedRef, ref } from 'vue';
 import { IForm } from '@/Interface';
 
 export const useFormsStore = defineStore('forms', () => {
 	const rootStore = useRootStore();
 	const forms = ref<IForm[]>([]);
 
-	function formById(id: IForm['id']) {
+	function formById(id: IForm['id']): ComputedRef<IForm | undefined> {
 		return computed(() => forms.value.find((form) => form.id === id));
 	}
 

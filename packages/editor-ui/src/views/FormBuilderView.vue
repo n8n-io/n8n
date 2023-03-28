@@ -26,6 +26,7 @@ export default defineComponent({
 		Paragraph,
 	},
 	setup() {
+		const editorRef = ref(null);
 		const formsStore = useFormsStore();
 		const route = useRoute();
 		const form = formsStore.formById(route.params.id);
@@ -42,9 +43,17 @@ export default defineComponent({
 			Paragraph,
 		});
 
+		function onSave() {
+			const schema = editorRef.value!.editor.export();
+
+			formsStore.updateForm({ ...form.value!, schema });
+		}
+
 		return {
 			resolverMap,
 			form,
+			editorRef,
+			onSave,
 		};
 	},
 });
@@ -54,8 +63,9 @@ export default defineComponent({
 	<div :class="$style.formBuilder">
 		<div :class="$style.header" v-if="form">
 			<n8n-input :value="form.title" />
+			<n8n-button class="ml-s" @click="onSave">Save</n8n-button>
 		</div>
-		<Editor component="main" :class="$style.container" :resolverMap="resolverMap">
+		<Editor component="main" :class="$style.container" :resolverMap="resolverMap" ref="editorRef">
 			<div :class="$style.aside">
 				<SettingsPanel />
 
@@ -117,6 +127,8 @@ export default defineComponent({
 
 .header {
 	width: 100%;
+	display: flex;
+	flex-direction: row;
 	background: var(--color-background-xlight);
 	padding: var(--spacing-s);
 	border-bottom: 1px solid var(--color-foreground-base);
