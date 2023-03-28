@@ -36,8 +36,7 @@ importers:
       '@types/jest': ^29.5.0
       '@types/supertest': ^2.0.12
       cross-env: ^7.0.3
-      cypress: ^12.7.0
-      cypress-otp: ^1.0.3
+      cypress: ^12.8.1
       cypress-real-events: ^1.7.6
       jest: ^29.5.0
       jest-environment-jsdom: ^29.5.0
@@ -64,8 +63,8 @@ importers:
       '@types/jest': 29.5.0
       '@types/supertest': 2.0.12
       cross-env: 7.0.3
-      cypress: 12.7.0
-      cypress-real-events: 1.7.6_cypress@12.7.0
+      cypress: 12.8.1
+      cypress-real-events: 1.7.6_cypress@12.8.1
       jest: 29.5.0
       jest-environment-jsdom: 29.5.0
       jest-mock: 29.5.0
@@ -185,6 +184,7 @@ importers:
       dotenv: ^8.0.0
       express: ^4.18.2
       express-async-errors: ^3.1.1
+      express-handlebars: ^7.0.2
       express-openapi-validator: ^4.13.6
       express-prom-bundle: ^6.6.0
       fast-glob: ^3.2.5
@@ -288,6 +288,7 @@ importers:
       dotenv: 8.6.0
       express: 4.18.2
       express-async-errors: 3.1.1_express@4.18.2
+      express-handlebars: 7.0.2
       express-openapi-validator: 4.13.8
       express-prom-bundle: 6.6.0_prom-client@13.2.0
       fast-glob: 3.2.12
@@ -9605,22 +9606,16 @@ packages:
       nub: 0.0.0
     dev: false
 
-  /cypress-otp/1.0.3:
-    resolution: {integrity: sha512-o7LssfI0HRHa+TkaOE5/Aukv6M9vsoZAtYESr9m7Ky2i+HRNb2p/IRelE7Z0wJ/UK2f+nXAGZIfXqraf9EPDqw==}
-    dependencies:
-      otplib: 12.0.1
-    dev: false
-
-  /cypress-real-events/1.7.6_cypress@12.7.0:
+  /cypress-real-events/1.7.6_cypress@12.8.1:
     resolution: {integrity: sha512-yP6GnRrbm6HK5q4DH6Nnupz37nOfZu/xn1xFYqsE2o4G73giPWQOdu6375QYpwfU1cvHNCgyD2bQ2hPH9D7NMw==}
     peerDependencies:
       cypress: ^4.x || ^5.x || ^6.x || ^7.x || ^8.x || ^9.x || ^10.x || ^11.x || ^12.x
     dependencies:
-      cypress: 12.7.0
+      cypress: 12.8.1
     dev: true
 
-  /cypress/12.7.0:
-    resolution: {integrity: sha512-7rq+nmhzz0u6yabCFyPtADU2OOrYt6pvUau9qV7xyifJ/hnsaw/vkr0tnLlcuuQKUAOC1v1M1e4Z0zG7S0IAvA==}
+  /cypress/12.8.1:
+    resolution: {integrity: sha512-lIFbKdaSYAOarNLHNFa2aPZu6YSF+8UY4VRXMxJrFUnk6RvfG0AWsZ7/qle/aIz30TNUD4aOihz2ZgS4vuQVSA==}
     engines: {node: ^14.0.0 || ^16.0.0 || >=18.0.0}
     hasBin: true
     dependencies:
@@ -11152,6 +11147,15 @@ packages:
       express: 4.18.2
     dev: false
 
+  /express-handlebars/7.0.2:
+    resolution: {integrity: sha512-W7QuI8i4jjxGNqZJebXzugHuJV32uGTMWqSzqTKsgBTPVsWR3oYR2b9VNQ53vmWbUH1G8r/9GIO3WCqa1Myf1w==}
+    engines: {node: '>=v16'}
+    dependencies:
+      glob: 9.3.1
+      graceful-fs: 4.2.10
+      handlebars: 4.7.7
+    dev: false
+
   /express-openapi-validator/4.13.8:
     resolution: {integrity: sha512-89/sdkq+BKBuIyykaMl/vR9grFc3WFUPTjFo0THHbu+5g+q8rA7fKeoMfz+h84yOQIBcztmJ5ZJdk5uhEls31A==}
     dependencies:
@@ -12082,6 +12086,16 @@ packages:
       inherits: 2.0.4
       minimatch: 5.1.5
       once: 1.4.0
+
+  /glob/9.3.1:
+    resolution: {integrity: sha512-qERvJb7IGsnkx6YYmaaGvDpf77c951hICMdWaFXyH3PlVob8sbPJJyJX0kWkiCWyXUzoy9UOTNjGg0RbD8bYIw==}
+    engines: {node: '>=16 || 14 >=14.17'}
+    dependencies:
+      fs.realpath: 1.0.0
+      minimatch: 7.4.2
+      minipass: 4.2.5
+      path-scurry: 1.6.2
+    dev: false
 
   /global-dirs/3.0.0:
     resolution: {integrity: sha512-v8ho2DS5RiCjftj1nD9NmnfaOzTdud7RRnVd9kFNOjqZbISlx5DQ+OrTkywgd0dIt7oFCvKetZSHoHcP3sDdiA==}
@@ -15025,6 +15039,11 @@ packages:
     dependencies:
       yallist: 4.0.0
 
+  /lru-cache/7.18.3:
+    resolution: {integrity: sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==}
+    engines: {node: '>=12'}
+    dev: false
+
   /lru-memoizer/2.1.4:
     resolution: {integrity: sha512-IXAq50s4qwrOBrXJklY+KhgZF+5y98PDaNo0gi/v2KQBFLyWr+JyFvijZXkGKjQj/h9c0OwoE+JZbwUXce76hQ==}
     dependencies:
@@ -15369,6 +15388,13 @@ packages:
     dependencies:
       brace-expansion: 2.0.1
 
+  /minimatch/7.4.2:
+    resolution: {integrity: sha512-xy4q7wou3vUoC9k1xGTXc+awNdGaGVHtFUaey8tiX4H1QRc04DZ/rmDFwNm2EBsuYEhAZ6SgMmYf3InGY6OauA==}
+    engines: {node: '>=10'}
+    dependencies:
+      brace-expansion: 2.0.1
+    dev: false
+
   /minimist/1.2.7:
     resolution: {integrity: sha512-bzfL1YUZsP41gmu/qjrEk0Q6i2ix/cVeAhbCbqH9u3zYutS1cLg00qhrD0M2MVdCcx4Sc0UpP2eBWo9rotpq6g==}
 
@@ -15422,11 +15448,9 @@ packages:
     dependencies:
       yallist: 4.0.0
 
-  /minipass/4.0.0:
-    resolution: {integrity: sha512-g2Uuh2jEKoht+zvO6vJqXmYpflPqzRBT+Th2h01DKh5z7wbY/AZ2gCQ78cP70YoHPyFdY30YBV5WxgLOEwOykw==}
+  /minipass/4.2.5:
+    resolution: {integrity: sha512-+yQl7SX3bIT83Lhb4BVorMAHVuqsskxRdlmO9kTpyukp8vsm2Sn/fUOV9xlnG8/a5JsypJzap21lz/y3FBMJ8Q==}
     engines: {node: '>=8'}
-    dependencies:
-      yallist: 4.0.0
 
   /minizlib/2.1.2:
     resolution: {integrity: sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg==}
@@ -16661,6 +16685,14 @@ packages:
     dependencies:
       path-root-regex: 0.1.2
     dev: true
+
+  /path-scurry/1.6.2:
+    resolution: {integrity: sha512-J6MQNh56h6eHFY3vsQ+Lq+zKPwn71POieutmVt2leU8W+zz8HVIdJyn3I3Zs6IKbIQtuKXirVjTBFNBcbFO44Q==}
+    engines: {node: '>=16 || 14 >=14.17'}
+    dependencies:
+      lru-cache: 7.18.3
+      minipass: 4.2.5
+    dev: false
 
   /path-to-regexp/0.1.7:
     resolution: {integrity: sha512-5DFkuoqlv1uYQKxy8omFBeJPQcdoE07Kv2sferDCrAq1ohOU+MSDswDIbnx3YAM60qIOnYa53wBhXW0EbMonrQ==}
@@ -19603,7 +19635,7 @@ packages:
     dependencies:
       chownr: 2.0.0
       fs-minipass: 2.1.0
-      minipass: 4.0.0
+      minipass: 4.2.5
       minizlib: 2.1.2
       mkdirp: 1.0.4
       yallist: 4.0.0

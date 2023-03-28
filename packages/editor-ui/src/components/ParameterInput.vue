@@ -787,10 +787,13 @@ export default mixins(
 		isSecretParameter(): boolean {
 			return this.getArgument('password') === true;
 		},
+		remoteParameterOptionsKeys(): string[] {
+			return (this.remoteParameterOptions || []).map((o) => o.name);
+		},
 	},
 	methods: {
 		isRemoteParameterOption(option: INodePropertyOptions) {
-			return this.remoteParameterOptions.map((o) => o.name).includes(option.name);
+			return this.remoteParameterOptionsKeys.includes(option.name);
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node

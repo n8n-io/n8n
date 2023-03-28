@@ -127,14 +127,9 @@ export class Worker extends BaseCommand {
 			staticData = workflowData.staticData;
 		}
 
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		if (
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-			currentExecutionDb.workflowData.settings &&
-			currentExecutionDb.workflowData.settings.executionTimeout
-		) {
-			workflowTimeout = currentExecutionDb.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
+		const workflowSettings = currentExecutionDb.workflowData.settings ?? {};
+
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 
 		let executionTimeoutTimestamp: number | undefined;
 		if (workflowTimeout > 0) {

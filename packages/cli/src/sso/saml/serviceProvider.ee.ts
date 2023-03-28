@@ -7,11 +7,19 @@ import type { SamlPreferences } from './types/samlPreferences';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;
 
+export function getServiceProviderEntityId(): string {
+	return getInstanceBaseUrl() + SamlUrls.restMetadata;
+}
+
+export function getServiceProviderReturnUrl(): string {
+	return getInstanceBaseUrl() + SamlUrls.restAcs;
+}
+
 // TODO:SAML: make these configurable for the end user
 export function getServiceProviderInstance(prefs: SamlPreferences): ServiceProviderInstance {
 	if (serviceProviderInstance === undefined) {
 		serviceProviderInstance = ServiceProvider({
-			entityID: getInstanceBaseUrl() + SamlUrls.restMetadata,
+			entityID: getServiceProviderEntityId(),
 			authnRequestsSigned: prefs.authnRequestsSigned,
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
 			wantMessageSigned: prefs.wantMessageSigned,
@@ -21,12 +29,12 @@ export function getServiceProviderInstance(prefs: SamlPreferences): ServiceProvi
 				{
 					isDefault: prefs.acsBinding === 'post',
 					Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-					Location: getInstanceBaseUrl() + SamlUrls.restAcs,
+					Location: getServiceProviderReturnUrl(),
 				},
 				{
 					isDefault: prefs.acsBinding === 'redirect',
 					Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-REDIRECT',
-					Location: getInstanceBaseUrl() + SamlUrls.restAcs,
+					Location: getServiceProviderReturnUrl(),
 				},
 			],
 		});
