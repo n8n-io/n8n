@@ -83,6 +83,7 @@ import type {
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	EnvironmentController,
 	LdapController,
 	MeController,
 	NodesController,
@@ -141,6 +142,7 @@ import {
 	isLdapEnabled,
 	isLdapLoginEnabled,
 } from './Ldap/helpers';
+import { handleEnvironmentInit } from './Environment/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
@@ -157,6 +159,7 @@ import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/sam
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { EnvironmentManager } from './Environment/EnvironmentManager.ee';
 
 const exec = promisify(callbackExec);
 
@@ -410,6 +413,14 @@ class Server extends AbstractServer {
 			controllers.push(new LdapController(service, sync, internalHooks));
 		}
 
+		// TODO: Make it possible to enable with license
+		// if (isEnvironmentEnabled()) {
+		if (true) {
+			const { service } = EnvironmentManager.getInstance();
+			// controllers.push(new EnvironmentController(service, sync, internalHooks));
+			controllers.push(new EnvironmentController(service));
+		}
+
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			controllers.push(
 				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
@@ -496,6 +507,7 @@ class Server extends AbstractServer {
 		}
 
 		await handleLdapInit();
+		await handleEnvironmentInit();
 
 		this.registerControllers(ignoredEndpoints);
 
