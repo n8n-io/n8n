@@ -49,6 +49,7 @@ import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import type { EventDestinations } from '@db/entities/MessageEventBusDestinationEntity';
+import type { Forms } from './databases/entities/Forms';
 
 export interface IActivationError {
 	time: number;
@@ -72,6 +73,12 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
+export interface Form {
+	id: string;
+	title: string;
+	schema: object[];
+}
+
 export interface IDatabaseCollections {
 	AuthIdentity: Repository<AuthIdentity>;
 	AuthProviderSyncHistory: Repository<AuthProviderSyncHistory>;
@@ -89,6 +96,7 @@ export interface IDatabaseCollections {
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 	EventDestinations: Repository<EventDestinations>;
+	Forms: Repository<Forms>;
 	Variables: Repository<Variables>;
 }
 
