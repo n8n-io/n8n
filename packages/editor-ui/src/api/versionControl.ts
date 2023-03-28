@@ -15,3 +15,9 @@ export const initRepository = (
 export const sync = (context: IRestApiContext, data: IDataObject): Promise<void> => {
 	return makeRestApiRequest(context, 'POST', '/environment/push', data);
 };
+
+export const getConfig = (
+	context: IRestApiContext,
+): Promise<{ remoteRepository: string; name: string; email: string; currentBranch: string }> => {
+	return makeRestApiRequest(context, 'GET', '/environment/config');
+};

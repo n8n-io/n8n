@@ -47,6 +47,7 @@ import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
 import { historyHelper } from '@/mixins/history';
 import { newVersions } from '@/mixins/newVersions';
+import { useVersionControlStore } from '@/stores/versionControl';
 
 export default mixins(newVersions, showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',
@@ -70,6 +71,7 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
+			useVersionControlStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -197,6 +199,8 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
+
+		this.versionControlStore.getConfig();
 	},
 	watch: {
 		$route(route) {

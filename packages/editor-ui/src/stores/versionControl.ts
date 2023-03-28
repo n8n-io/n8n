@@ -31,11 +31,21 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		state.commitMessage = data.commitMessage;
 		return vcApi.sync(rootStore.getRestApiContext, { message: data.commitMessage });
 	};
+	const getConfig = async () => {
+		const { remoteRepository, name, email, currentBranch } = await vcApi.getConfig(
+			rootStore.getRestApiContext,
+		);
+		state.repositoryUrl = remoteRepository;
+		state.authorName = name;
+		state.authorEmail = email;
+		state.currentBranch = currentBranch;
+	};
 
 	return {
 		initSsh,
 		initRepository,
 		sync,
+		getConfig,
 		state,
 	};
 });
