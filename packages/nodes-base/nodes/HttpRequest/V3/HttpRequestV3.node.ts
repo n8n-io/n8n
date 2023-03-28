@@ -1258,21 +1258,21 @@ export class HttpRequestV3 implements INodeType {
 				authDataKeys.auth = ['pass'];
 			}
 			if (httpCustomAuth !== undefined) {
-				const jsonAuth = jsonParse<IRequestOptionsSimplified>(
+				const customAuth = jsonParse<IRequestOptionsSimplified>(
 					(httpCustomAuth.json as string) || '{}',
 					{ errorMessage: 'Invalid Custom Auth JSON' },
 				);
-				if (jsonAuth.headers) {
-					requestOptions.headers = { ...requestOptions.headers, ...jsonAuth.headers };
-					authDataKeys.headers = Object.keys(jsonAuth.headers);
+				if (customAuth.headers) {
+					requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+					authDataKeys.headers = Object.keys(customAuth.headers);
 				}
-				if (jsonAuth.body) {
-					requestOptions.body = { ...requestOptions.body, ...jsonAuth.body };
-					authDataKeys.body = Object.keys(jsonAuth.body);
+				if (customAuth.body) {
+					requestOptions.body = { ...requestOptions.body, ...customAuth.body };
+					authDataKeys.body = Object.keys(customAuth.body);
 				}
-				if (jsonAuth.qs) {
-					requestOptions.qs = { ...requestOptions.qs, ...jsonAuth.qs };
-					authDataKeys.qs = Object.keys(jsonAuth.qs);
+				if (customAuth.qs) {
+					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+					authDataKeys.qs = Object.keys(customAuth.qs);
 				}
 			}
 
