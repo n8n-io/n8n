@@ -49,3 +49,11 @@ export type EventMessageTypes =
 	| EventMessageWorkflow
 	| EventMessageAudit
 	| EventMessageNode;
+
+export interface FailedEventSummary {
+	lastNodeExecuted: string;
+	executionId: string;
+	name: string;
+	event: string;
+	timestamp: string;
+}

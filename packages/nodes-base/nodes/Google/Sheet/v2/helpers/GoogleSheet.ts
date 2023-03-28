@@ -536,9 +536,15 @@ export class GoogleSheet {
 					columnNames.indexOf(name),
 				);
 
+				let updateValue = item[name] as string;
+				if (typeof updateValue === 'object') {
+					try {
+						updateValue = JSON.stringify(updateValue);
+					} catch (error) {}
+				}
 				updateData.push({
 					range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
-					values: [[item[name] as string]],
+					values: [[updateValue]],
 				});
 			}
 		}
