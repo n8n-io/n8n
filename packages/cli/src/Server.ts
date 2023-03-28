@@ -91,6 +91,7 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
+	FormsController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
@@ -158,6 +159,7 @@ import { SamlService } from './sso/saml/saml.service.ee';
 import { variablesController } from './environments/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
+import { FormsService } from './forms/forms.service';
 
 const exec = promisify(callbackExec);
 
@@ -381,12 +383,14 @@ class Server extends AbstractServer {
 		const mailer = getMailerInstance();
 		const postHog = this.postHog;
 		const samlService = SamlService.getInstance();
+		const formsService = new FormsService();
 
 		const controllers: object[] = [
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new NodeTypesController({ config, nodeTypes }),
+			new FormsController(formsService),
 			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
 			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
