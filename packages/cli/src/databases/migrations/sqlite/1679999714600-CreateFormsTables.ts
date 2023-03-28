@@ -17,7 +17,7 @@ export class CreateForms1679999714600 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE "${tablePrefix}form_workflow" (` +
+			`CREATE TABLE IF NOT EXISTS "${tablePrefix}form_workflow" (` +
 				`"workflowId"	integer NOT NULL,` +
 				`"formId"	integer NOT NULL,` +
 				`"createdAt"	datetime(3) NOT NULL DEFAULT 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')',` +
