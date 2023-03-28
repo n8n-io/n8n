@@ -26,19 +26,28 @@
 					/>
 				</div>
 			</template>
-			<template #menuSuffix v-if="hasVersionUpdates">
-				<div :class="$style.updates" @click="openUpdatesPanel">
-					<div :class="$style.giftContainer">
-						<GiftNotificationIcon />
+			<template #menuSuffix>
+				<div>
+					<div :class="$style.updates" @click="openUpdatesPanel" v-if="hasVersionUpdates">
+						<div :class="$style.giftContainer">
+							<GiftNotificationIcon />
+						</div>
+						<n8n-text
+							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
+							color="text-base"
+						>
+							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
+								nextVersions.length > 1 ? 's' : ''
+							}}
+						</n8n-text>
 					</div>
-					<n8n-text
-						:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-						color="text-base"
-					>
-						{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-							nextVersions.length > 1 ? 's' : ''
-						}}
-					</n8n-text>
+					<div :class="$style.sync">
+						<span>
+							<n8n-icon icon="code-branch" class="mr-xs" />
+							{{ currentBranch }}
+						</span>
+						<n8n-button icon="sync" type="tertiary" size="small" square @click="sync" />
+					</div>
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -115,7 +124,8 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useVersionsStore } from '@/stores/versions';
-import { isNavigationFailure, NavigationFailureType, Route } from 'vue-router';
+import { useVersionControlStore } from '@/stores/versionControl';
+import { isNavigationFailure } from 'vue-router';
 
 export default mixins(
 	genericHelpers,
@@ -147,7 +157,11 @@ export default mixins(
 			useUsersStore,
 			useVersionsStore,
 			useWorkflowsStore,
+			useVersionControlStore,
 		),
+		currentBranch(): string {
+			return this.versionControlStore.state.currentBranch;
+		},
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
 		},
@@ -448,6 +462,9 @@ export default mixins(
 				});
 			}
 		},
+		sync() {
+			this.versionControlStore.sync();
+		},
 	},
 });
 </script>
@@ -584,6 +601,21 @@ export default mixins(
 @media screen and (max-height: 470px) {
 	:global(#help) {
 		display: none;
+	}
+}
+
+.sync {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
+	margin: 0 calc(var(--spacing-l) * -1) calc(var(--spacing-m) * -1);
+	background: var(--color-background-light);
+	border-top: 1px solid var(--color-foreground-light);
+	font-size: var(--font-size-2xs);
+
+	span {
+		color: var(--color-text-light);
 	}
 }
 </style>

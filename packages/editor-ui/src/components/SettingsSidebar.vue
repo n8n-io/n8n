@@ -82,6 +82,14 @@ export default mixins(userHelpers, pushConnection).extend({
 					available: this.canAccessLdapSettings(),
 					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
 				},
+				{
+					id: 'settings-version-control',
+					icon: 'code-branch',
+					label: this.$locale.baseText('settings.versionControl.title'),
+					position: 'top',
+					available: this.canAccessVersionControl(),
+					activateOnRouteNames: [VIEWS.VERSION_CONTROL],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -143,6 +151,9 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
+		canAccessVersionControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
+		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
@@ -189,6 +200,10 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-usage-and-plan':
 					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
 						this.$router.push({ name: VIEWS.USAGE });
+					}
+				case 'settings-version-control':
+					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
+						this.$router.push({ name: VIEWS.VERSION_CONTROL });
 					}
 					break;
 				default:

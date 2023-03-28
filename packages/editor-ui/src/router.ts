@@ -35,6 +35,7 @@ import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
+import SettingsVersionControl from './views/SettingsVersionControl.vue';
 import SignoutView from '@/views/SignoutView.vue';
 
 Vue.use(Router);
@@ -639,6 +640,28 @@ const router = new Router({
 						permissions: {
 							allow: {
 								role: [ROLE.Owner],
+							},
+						},
+					},
+				},
+				{
+					path: 'version-control',
+					name: VIEWS.VERSION_CONTROL,
+					components: {
+						settingsView: SettingsVersionControl,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'vc',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
 							},
 						},
 					},
