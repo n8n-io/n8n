@@ -113,7 +113,7 @@
 					<div class="pb-xs" />
 				</template>
 
-				<div v-if="filteredAndSortedSubviewResources.length > 0">
+				<div :class="$style.listWrapper" v-if="filteredAndSortedSubviewResources.length > 0">
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
@@ -466,6 +466,10 @@ export default mixins(showMessage, debounceHelper).extend({
 
 .search {
 	max-width: 240px;
+}
+
+.listWrapper {
+	height: 100%;
 }
 
 .list {

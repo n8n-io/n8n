@@ -3,6 +3,7 @@ import { Editor, Frame, Canvas, Blueprint } from '@v-craft/core';
 import {
 	Container,
 	FormInput,
+	FormSubmit,
 	Heading,
 	Paragraph,
 	SettingsPanel,
@@ -22,6 +23,7 @@ export default defineComponent({
 		ExportsPanel,
 		Container,
 		FormInput,
+		FormSubmit,
 		Heading,
 		Paragraph,
 	},
@@ -36,6 +38,8 @@ export default defineComponent({
 		onMounted(async () => {
 			const form = await formsStore.fetchForm({ id: route.params.id });
 
+			console.log({ schema: form.schema });
+
 			editorRef.value!.editor.import(form.schema);
 
 			loading.value = false;
@@ -45,6 +49,7 @@ export default defineComponent({
 			Canvas,
 			Container,
 			FormInput,
+			FormSubmit,
 			Heading,
 			Paragraph,
 		});
@@ -84,6 +89,14 @@ export default defineComponent({
 	left: 0;
 	width: 100%;
 	height: 100%;
+
+	div {
+		outline: none !important;
+
+		> div {
+			padding-left: 0;
+		}
+	}
 }
 
 .header {

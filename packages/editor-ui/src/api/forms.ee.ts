@@ -22,7 +22,7 @@ export async function updateForm(
 	id: string,
 	data: Omit<IForm, 'id'>,
 ): Promise<IForm> {
-	return makeRestApiRequest(context, 'POST', '/forms', data as unknown as IDataObject);
+	return makeRestApiRequest(context, 'PATCH', `/forms/${id}`, data as unknown as IDataObject);
 }
 
 export async function deleteForm(context: IRestApiContext, id: string): Promise<IForm> {

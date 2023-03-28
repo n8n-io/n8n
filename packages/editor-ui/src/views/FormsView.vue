@@ -7,7 +7,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import FormCard from '@/components/FormCard.vue';
 
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { EnvironmentVariable, IForm } from '@/Interface';
+import { IForm } from '@/Interface';
 import { useRouter } from 'vue-router/composables';
 
 const settingsStore = useSettingsStore();
@@ -38,7 +38,6 @@ async function initialize() {
 async function createForm() {
 	const id = await formsStore.createForm({
 		title: 'My new form',
-		slug: '',
 		schema: '',
 	});
 
@@ -101,6 +100,7 @@ function displayName(resource: IForm) {
 		:resources="allForms"
 		:initialize="initialize"
 		:shareable="false"
+		:item-size="61"
 		:sortOptions="['nameAsc', 'nameDesc']"
 		:showFiltersDropdown="false"
 		:displayName="displayName"

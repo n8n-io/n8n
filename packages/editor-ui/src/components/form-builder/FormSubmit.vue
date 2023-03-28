@@ -1,5 +1,5 @@
 <template>
-	<n8n-button :type="color">{{ content }}</n8n-button>
+	<n8n-button :type="color" @click="onClick">{{ content }}</n8n-button>
 </template>
 
 <script lang="ts">
@@ -27,7 +27,19 @@ export default defineComponent({
 		},
 	},
 	setup(props) {
-		function onClick() {}
+		function onClick() {
+			fetch('http://localhost:5678/webhook-test/form/1', {
+				method: 'POST',
+				body: JSON.stringify({
+					myInput: 'foo',
+				}),
+				headers: {
+					'Content-type': 'application/json; charset=UTF-8',
+				},
+			})
+				.then((response) => response.json())
+				.then((json) => console.log(json));
+		}
 
 		return {
 			onClick,
