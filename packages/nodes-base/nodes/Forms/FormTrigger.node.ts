@@ -1,6 +1,8 @@
+import type { ILoadOptionsFunctions } from 'n8n-core';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -23,11 +25,25 @@ export class FormTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName:
-					"When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the 'execute workflow' node will be output by this node.",
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				displayName: 'Form',
+				name: 'formId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				placeholder: 'Select a form...',
+				modes: [
+					{
+						displayName: 'Form',
+						name: 'form',
+						type: 'list',
+						placeholder: 'Select a form...',
+						typeOptions: {
+							resource: 'form',
+							searchable: true,
+						},
+					},
+				],
+				required: true,
+				description: 'The form to listen to',
 			},
 			{
 				displayName: 'Events',
