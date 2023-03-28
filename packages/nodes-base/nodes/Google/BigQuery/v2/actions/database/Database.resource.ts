@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { datasetRLC, projectRLC, tableRLC } from '../commonDescriptions/RLC.description';
-import * as create from './create.operation';
+import * as insert from './insert.operation';
 import * as getAll from './getAll.operation';
 import * as executeQuery from './executeQuery.operation';
 
-export { executeQuery, create, getAll };
+export { executeQuery, insert, getAll };
 
 export const description: INodeProperties[] = [
 	{
@@ -19,32 +19,32 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Execute',
+				name: 'Execute Query',
 				value: 'executeQuery',
 				description: 'Execute a SQL query',
 				action: 'Execute a SQL query',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new record',
-				action: 'Create a record',
+				name: 'Insert',
+				value: 'insert',
+				description: 'Insert rows in a table',
+				action: 'Insert rows in a table',
 			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Retrieve records from table',
-				action: 'Get many records',
-			},
+			// {
+			// 	name: 'Get Many',
+			// 	value: 'getAll',
+			// 	description: 'Retrieve records from table',
+			// 	action: 'Get many records',
+			// },
 		],
-		default: 'create',
+		default: 'executeQuery',
 	},
 	{
 		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['database'],
-				operation: ['executeQuery', 'create', 'getAll'],
+				operation: ['executeQuery', 'insert', 'getAll'],
 			},
 		},
 	},
@@ -53,7 +53,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['database'],
-				operation: ['create', 'getAll'],
+				operation: ['insert', 'getAll'],
 			},
 		},
 	},
@@ -62,11 +62,11 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['database'],
-				operation: ['create', 'getAll'],
+				operation: ['insert', 'getAll'],
 			},
 		},
 	},
 	...executeQuery.description,
-	...create.description,
+	...insert.description,
 	...getAll.description,
 ];

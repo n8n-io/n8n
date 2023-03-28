@@ -1,7 +1,7 @@
 import type { AllEntities, Entity } from 'n8n-workflow';
 
 type GoogleBigQueryMap = {
-	database: 'executeQuery' | 'create' | 'getAll';
+	database: 'executeQuery' | 'insert' | 'getAll';
 };
 
 export type GoogleBigQuery = AllEntities<GoogleBigQueryMap>;

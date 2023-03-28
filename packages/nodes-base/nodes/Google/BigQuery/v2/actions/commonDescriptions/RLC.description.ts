@@ -13,6 +13,7 @@ export const projectRLC: INodeProperties = {
 			type: 'list',
 			typeOptions: {
 				searchListMethod: 'searchProjects',
+				searchable: true,
 			},
 		},
 		{
@@ -66,6 +67,7 @@ export const datasetRLC: INodeProperties = {
 			type: 'list',
 			typeOptions: {
 				searchListMethod: 'searchDatasets',
+				searchable: true,
 			},
 		},
 		{
@@ -98,6 +100,7 @@ export const tableRLC: INodeProperties = {
 			type: 'list',
 			typeOptions: {
 				searchListMethod: 'searchTables',
+				searchable: true,
 			},
 		},
 		{

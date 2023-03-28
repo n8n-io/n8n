@@ -3,6 +3,7 @@ import { googleApiRequest } from '../transport';
 
 export async function searchProjects(
 	this: ILoadOptionsFunctions,
+	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const qs = {
@@ -10,8 +11,19 @@ export async function searchProjects(
 	};
 
 	const response = await googleApiRequest.call(this, 'GET', '/v2/projects', undefined, qs);
+
+	let { projects } = response;
+
+	if (filter) {
+		projects = projects.filter(
+			(project: IDataObject) =>
+				(project.friendlyName as string).includes(filter) ||
+				(project.id as string).includes(filter),
+		);
+	}
+
 	return {
-		results: response.projects.map((project: IDataObject) => ({
+		results: projects.map((project: IDataObject) => ({
 			name: project.friendlyName as string,
 			value: project.id,
 			url: `https://console.cloud.google.com/bigquery?project=${project.id as string}`,
@@ -22,6 +34,7 @@ export async function searchProjects(
 
 export async function searchDatasets(
 	this: ILoadOptionsFunctions,
+	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const projectId = this.getNodeParameter('projectId', undefined, {
@@ -40,8 +53,16 @@ export async function searchDatasets(
 		qs,
 	);
 
+	let { datasets } = response;
+
+	if (filter) {
+		datasets = datasets.filter((dataset: { datasetReference: IDataObject }) =>
+			(dataset.datasetReference.datasetId as string).includes(filter),
+		);
+	}
+
 	return {
-		results: response.datasets.map((dataset: { datasetReference: IDataObject }) => ({
+		results: datasets.map((dataset: { datasetReference: IDataObject }) => ({
 			name: dataset.datasetReference.datasetId as string,
 			value: dataset.datasetReference.datasetId,
 		})),
@@ -51,6 +72,7 @@ export async function searchDatasets(
 
 export async function searchTables(
 	this: ILoadOptionsFunctions,
+	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const projectId = this.getNodeParameter('projectId', undefined, {
@@ -73,10 +95,18 @@ export async function searchTables(
 		qs,
 	);
 
+	let { tables } = response;
+
+	if (filter) {
+		tables = tables.filter((table: { tableReference: IDataObject }) =>
+			(table.tableReference.tableId as string).includes(filter),
+		);
+	}
+
 	const returnData = {
-		results: response.tables.map((tables: { tableReference: IDataObject }) => ({
-			name: tables.tableReference.tableId as string,
-			value: tables.tableReference.tableId,
+		results: tables.map((table: { tableReference: IDataObject }) => ({
+			name: table.tableReference.tableId as string,
+			value: table.tableReference.tableId,
 		})),
 		paginationToken: response.nextPageToken,
 	};

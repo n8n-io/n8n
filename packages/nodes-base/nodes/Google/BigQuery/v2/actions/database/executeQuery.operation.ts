@@ -72,6 +72,11 @@ const properties: INodeProperties[] = [
 				default: false,
 				description:
 					"Whether to include the schema in the output. If set to true, the output will contain key '_schema' with the schema of the table.",
+				displayOptions: {
+					hide: {
+						rawOutput: [true],
+					},
+				},
 			},
 			{
 				displayName: 'Location',

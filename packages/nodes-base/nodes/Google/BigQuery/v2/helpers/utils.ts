@@ -69,8 +69,8 @@ export function prepareOutput(
 			responseData = rows;
 
 			responseData = simplify(responseData as TableRawData[], fields, includeSchema);
-		} else if (schema && !(rows as IDataObject[])?.length) {
-			responseData = [];
+		} else if (schema && includeSchema) {
+			responseData = { success: true, _schema: schema };
 		} else {
 			responseData = { success: true };
 		}
@@ -132,6 +132,9 @@ export function checkSchema(
 				`The property '${name}' is required, please define it in the 'Fields to Send'`,
 				{ itemIndex: i },
 			);
+		}
+		if (type !== 'STRING' && returnData[name] === '') {
+			returnData[name] = null;
 		}
 		if (type === 'RECORD' && typeof returnData[name] !== 'object') {
 			let parsedField;

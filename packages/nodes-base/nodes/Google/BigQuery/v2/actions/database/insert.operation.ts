@@ -23,28 +23,21 @@ const properties: INodeProperties[] = [
 				value: 'define',
 				description: 'Set the value for each destination field',
 			},
-			{
-				name: 'Specify as List',
-				value: 'list',
-				description: 'Set list of the item properties to use as fields',
-			},
 		],
 		default: 'autoMap',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Columns',
-		name: 'columns',
-		type: 'string',
+		displayName:
+			"In this mode, make sure the incoming data fields are named the same as the columns in BigQuery. (Use a 'set' node before this node to change them if required.)",
+		name: 'info',
+		type: 'notice',
+		default: '',
 		displayOptions: {
 			show: {
-				dataMode: ['list'],
+				dataMode: ['autoMap'],
 			},
 		},
-		default: '',
-		required: true,
-		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the item properties to use as columns',
 	},
 	{
 		displayName: 'Fields to Send',
@@ -141,7 +134,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		resource: ['database'],
-		operation: ['create'],
+		operation: ['insert'],
 	},
 };
 
@@ -211,17 +204,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				});
 			}
 
-			if (dataMode === 'list') {
-				const columns = this.getNodeParameter('columns', i) as string;
-				const columnList = columns.split(',').map((column) => column.trim());
-
-				for (const key of Object.keys(items[i].json)) {
-					if (columnList.includes(key)) {
-						record[`${key}`] = items[i].json[key];
-					}
-				}
-			}
-
 			rows.push({ json: checkSchema.call(this, schema, record, i) });
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -282,15 +264,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				continue;
 			}
 
-			throw new NodeOperationError(
-				this.getNode(),
-				`Error occured when inserting items [${failedRows.join(
-					', ',
-				)}], stopped items [${stopedRows.join(', ')}]`,
-				{
-					description: errors.join('\n, '),
-				},
-			);
+			const failedMessage = `Problem inserting item(s) [${failedRows.join(', ')}]`;
+			const stoppedMessage = stopedRows.length
+				? `, nothing was inserted item(s) [${stopedRows.join(', ')}]`
+				: '';
+			throw new NodeOperationError(this.getNode(), `${failedMessage}${stoppedMessage}`, {
+				description: errors.join('\n, '),
+			});
 		}
 
 		const executionData = this.helpers.constructExecutionMetaData(
