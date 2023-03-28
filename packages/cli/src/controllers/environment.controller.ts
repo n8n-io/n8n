@@ -67,4 +67,9 @@ export class EnvironmentController {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
+
+	@Get('/config')
+	async getConfig() {
+		return this.environmentService.config;
+	}
 }
