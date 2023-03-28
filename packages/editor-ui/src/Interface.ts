@@ -289,7 +289,6 @@ export type IFormSchema = {};
 
 export interface IForm {
 	id: string;
-	slug: string;
 	title: string;
 	schema: IFormSchema;
 }
