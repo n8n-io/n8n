@@ -2,6 +2,9 @@
 import path from 'path';
 import keygen from 'ssh-keygen-lite';
 import { promisify } from 'util';
+import glob from 'fast-glob';
+import config from '@/config';
+
 import type { Settings } from '../databases/entities/Settings';
 
 const keygenAsync = promisify(keygen);
@@ -25,12 +28,19 @@ import {
 	ENVIRONMENT_SSH_FOLDER,
 } from './constants';
 import type { EnvironmentPreferences } from './types/environmentPreferences';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { User } from '@sentry/node';
+import { EntityManager } from 'typeorm';
 
 // TODOs:
 // TODO: Check what happens when there is no change
 // TODO: Make pull work
 // TODO: Make it possible to enable with license
+// TODO: Create proper folder structure (put workflows in subfolder)
 
 export class EnvironmentService {
 	private _config: EnvironmentPreferences = {
@@ -47,8 +57,10 @@ export class EnvironmentService {
 
 	private initialized = false;
 
-	set config(config: EnvironmentPreferences) {
-		this._config = config;
+	private transactionManager: EntityManager;
+
+	set config(setConfig: EnvironmentPreferences) {
+		this._config = setConfig;
 	}
 
 	public get config(): EnvironmentPreferences {
@@ -125,7 +137,6 @@ export class EnvironmentService {
 	}
 
 	async createSshKey(email: string): Promise<string> {
-		console.log('createSshKey1');
 		const out = (await keygenAsync({
 			location: path.join(this.sshFolder, 'rsa'),
 			comment: email,
@@ -174,11 +185,11 @@ export class EnvironmentService {
 		};
 	}
 
-	async exportWorkflows(destinationFolder: string): Promise<void> {
+	async exportWorkflows(): Promise<void> {
 		const workflows = await Db.collections.Workflow.find();
 		for (const workflow of workflows) {
 			await fsWriteFile(
-				path.join(destinationFolder, `${workflow.id}.json`),
+				path.join(this.gitFolder, `${workflow.id}.json`),
 				JSON.stringify(workflow, null, 2),
 				{
 					encoding: 'binary',
@@ -188,8 +199,25 @@ export class EnvironmentService {
 		}
 	}
 
+	async pull(): Promise<void> {
+		await this.git.fetch();
+
+		const files = await glob(path.join(this.gitFolder, '*.json'));
+
+		const user = await this.getOwner();
+
+		await Db.getConnection().transaction(async (transactionManager) => {
+			this.transactionManager = transactionManager;
+		});
+
+		files.forEach(async (file) => {
+			const workflow = await fsReadFile(file, 'utf8');
+			await this.storeWorkflow(jsonParse<IWorkflowBase>(workflow), user);
+		});
+	}
+
 	async push(message: string): Promise<void> {
-		await this.exportWorkflows(this.gitFolder);
+		await this.exportWorkflows();
 
 		// Always pull first to make sure there are no conflicts
 		await this.git.fetch();
@@ -245,5 +273,54 @@ export class EnvironmentService {
 		this._config.name = prefs.name ?? this._config.name;
 
 		return this.saveEnvironmentPreferencesToDb();
+	}
+
+	// Followig code copied almost 1:1 from cli/src/commands/workflow.ts
+	private async getOwner() {
+		const ownerGlobalRole = await Db.collections.Role.findOne({
+			where: { name: 'owner', scope: 'global' },
+		});
+
+		const owner =
+			ownerGlobalRole &&
+			(await Db.collections.User.findOneBy({ globalRoleId: ownerGlobalRole?.id }));
+
+		if (!owner) {
+			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return owner;
+	}
+
+	private async storeWorkflow(workflow: IWorkflowBase, user: User) {
+		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
+
+		const result = await this.transactionManager.upsert(WorkflowEntity, workflow, ['id']);
+		await this.transactionManager.upsert(
+			SharedWorkflow,
+			{
+				workflowId: result.identifiers[0].id as string,
+				userId: user.id,
+				roleId: ownerWorkflowRole.id,
+			},
+			['workflowId', 'userId'],
+		);
+		if (config.getEnv('database.type') === 'postgresdb') {
+			await this.transactionManager.query(
+				"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+			);
+		}
+	}
+
+	private async getOwnerWorkflowRole() {
+		const ownerWorkflowRole = await Db.collections.Role.findOne({
+			where: { name: 'owner', scope: 'workflow' },
+		});
+
+		if (!ownerWorkflowRole) {
+			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return ownerWorkflowRole;
 	}
 }
