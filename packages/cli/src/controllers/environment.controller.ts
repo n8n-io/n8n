@@ -67,4 +67,13 @@ export class EnvironmentController {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
+
+	@Get('/config')
+	async getConfig() {
+		const branches = await this.environmentService.getBranches();
+		return {
+			...this.environmentService.config,
+			currentBranch: branches.currentBranch,
+		};
+	}
 }
