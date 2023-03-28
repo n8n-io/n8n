@@ -1,10 +1,10 @@
-import type { ILoadOptionsFunctions } from 'n8n-core';
+import type { IWebhookFunctions } from 'n8n-core';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 export class FormTrigger implements INodeType {
@@ -61,7 +61,34 @@ export class FormTrigger implements INodeType {
 				default: 'form_submission',
 			},
 		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				isFullPath: true,
+				path: 'form/1',
+				responseCode: '200',
+				responseMode: 'onReceived',
+				responseData: 'ok',
+				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
+				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
+				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
+				responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
+			},
+		],
 	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const response: INodeExecutionData = {
+			json: {
+				...this.getBodyData(),
+			},
+		};
+
+		return {
+			workflowData: [[response]],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
