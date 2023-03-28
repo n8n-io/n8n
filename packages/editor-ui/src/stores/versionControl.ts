@@ -27,8 +27,9 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		state.currentBranch = currentBranch;
 	};
 
-	const sync = async () => {
-		return vcApi.sync(rootStore.getRestApiContext, { message: state.commitMessage });
+	const sync = async (data: { commitMessage: string }) => {
+		state.commitMessage = data.commitMessage;
+		return vcApi.sync(rootStore.getRestApiContext, { message: data.commitMessage });
 	};
 
 	return {

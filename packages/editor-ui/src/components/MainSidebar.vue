@@ -462,8 +462,28 @@ export default mixins(
 				});
 			}
 		},
-		sync() {
-			this.versionControlStore.sync();
+		async sync() {
+			const prompt = await this.$prompt(
+				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
+					interpolate: { branch: this.versionControlStore.state.currentBranch },
+				}),
+				this.$locale.baseText('settings.versionControl.sync.prompt.title', {
+					interpolate: { branch: this.versionControlStore.state.currentBranch },
+				}),
+				{
+					confirmButtonText: 'Sync',
+					cancelButtonText: 'Cancel',
+					inputPlaceholder: this.$locale.baseText(
+						'settings.versionControl.sync.prompt.placeholder',
+					),
+					inputPattern: /^.+$/,
+					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
+				},
+			);
+
+			if (prompt.value) {
+				this.versionControlStore.sync({ commitMessage: prompt.value });
+			}
 		},
 	},
 });

@@ -1728,6 +1728,10 @@
 	"settings.versionControl.branches": "Select branch",
 	"settings.versionControl.switchBranch.title": "Switch to {branch} branch",
 	"settings.versionControl.switchBranch.description": "Please confirm you want to switch the current n8n instance to the branch: {branch}",
+	"settings.versionControl.sync.prompt.title": "Sync changes in {branch} branch",
+	"settings.versionControl.sync.prompt.description": "All the changes on your n8n instances will be synced with branch {branch} on the remote git repository. The following git sequence will be executed: pull > commit > push.",
+	"settings.versionControl.sync.prompt.placeholder": "Commit message",
+	"settings.versionControl.sync.prompt.error": "Please enter a commit message",
 
 	"sso.login.divider": "or",
 	"sso.login.button": "Continue with SSO"
