@@ -33,7 +33,7 @@ import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToE
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236854063 } from './1677236854063-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-CreateExecutionMetadataTable';
-import { AddMfaColumns1677453410711 } from './1677453410711-AddMfaColumns';
+import { AddMfaColumns1680014214605 } from './1680014214605-AddMfaColumns';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -71,5 +71,5 @@ export const postgresMigrations = [
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677236854063,
 	CreateExecutionMetadataTable1679416281778,
-	AddMfaColumns1677453410711,
+	AddMfaColumns1680014214605,
 ];

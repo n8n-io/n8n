@@ -35,7 +35,7 @@ import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToE
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281779 } from './1679416281779-CreateExecutionMetadataTable';
-import { AddMfaColumns1677453410711 } from './1677453410711-AddMfaColumns';
+import { AddMfaColumns1677453410711 } from './1680014214605-AddMfaColumns';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
