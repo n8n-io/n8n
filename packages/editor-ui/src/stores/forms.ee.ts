@@ -64,5 +64,6 @@ export const useFormsStore = defineStore('forms', () => {
 		createForm,
 		updateForm,
 		deleteForm,
+		fetchFormsForRLC,
 	};
 });

@@ -165,6 +165,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useFormsStore } from '@/stores/forms.ee';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -610,6 +611,22 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				const resolvedNodeParameters = this.resolveParameter(params.parameters) as INodeParameters;
+				// const typeOptionResource = this.currentMode.typeOptions?.resource;
+
+				// if (typeOptionResource === 'form') {
+				if (true) {
+					const formsStore = useFormsStore();
+					const response = await formsStore.fetchFormsForRLC();
+					this.setResponse(paramsKey, {
+						results: response.results,
+						nextPageToken: null,
+						loading: false,
+						error: false,
+					});
+
+					return;
+				}
+
 				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
 					| string
 					| undefined;
