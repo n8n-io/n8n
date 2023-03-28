@@ -344,8 +344,8 @@ export declare namespace TagsRequest {
 export declare namespace FormsRequest {
 	type Get = AuthenticatedRequest<{ id: string }>;
 	type Create = AuthenticatedRequest<{}, {}, Omit<Form, 'id'>>;
-	// type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
-	// type Delete = AuthenticatedRequest<{ id: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, Omit<Form, 'id'>>;
+	type Delete = AuthenticatedRequest<{ id: string }>;
 }
 
 // ----------------------------------

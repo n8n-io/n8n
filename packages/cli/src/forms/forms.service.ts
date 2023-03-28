@@ -39,19 +39,19 @@ export class FormsService {
 		return parseForm(form);
 	}
 
-	static async create(form: Omit<Form, 'id'>): Promise<Form> {
+	async create(form: Omit<Form, 'id'>): Promise<Form> {
 		const saved = await collections.Forms.save(serializeForm(form));
 
 		return parseForm(saved);
 	}
 
-	// static async update(id: number, variable: Omit<Variables, 'id'>): Promise<Variables> {
-	// 	await collections.Variables.update(id, variable);
-	// 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	// 	return (await this.get(id))!;
-	// }
+	async update(id: number, form: Omit<Form, 'id'>): Promise<Form | null> {
+		await collections.Forms.update(id, serializeForm(form));
 
-	// static async delete(id: number): Promise<void> {
-	// 	await collections.Variables.delete(id);
-	// }
+		return this.get(id);
+	}
+
+	async delete(id: number): Promise<void> {
+		await collections.Variables.delete(id);
+	}
 }

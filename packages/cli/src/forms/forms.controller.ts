@@ -1,4 +1,4 @@
-import { Get, Post, RestController } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { FormsRequest } from '@/requests';
 import { FormsService } from './forms.service';
 
@@ -20,6 +20,20 @@ export class FormsController {
 
 	@Post('/')
 	async create(req: FormsRequest.Create) {
-		return FormsService.create(req.body);
+		return this.formsService.create(req.body);
+	}
+
+	@Patch('/:id(\\d+)')
+	async update(req: FormsRequest.Update) {
+		const { id } = req.params;
+
+		return this.formsService.update(parseInt(id), req.body);
+	}
+
+	@Delete('/:id(\\d+)')
+	async delete(req: FormsRequest.Delete) {
+		const { id } = req.params;
+
+		return this.formsService.delete(parseInt(id));
 	}
 }
