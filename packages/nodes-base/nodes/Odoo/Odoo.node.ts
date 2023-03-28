@@ -168,7 +168,7 @@ export class Odoo implements INodeType {
 					return {
 						name: model.name,
 						value: model.model,
-						description: `model: ${model.model}<br> modules: ${model.modules}`,
+						description: `model: ${model.model}`,
 					};
 				});
 				return options as INodePropertyOptions[];
