@@ -1,8 +1,9 @@
+import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { License } from '@/License';
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
@@ -13,16 +14,17 @@ let authOwnerAgent: SuperAgentTest;
 
 async function enableSaml(enable: boolean) {
 	await setSamlLoginEnabled(enable);
-	config.set('enterprise.features.saml', enable);
 }
 
 beforeAll(async () => {
+	Container.get(License).isSamlEnabled = () => true;
 	const app = await utils.initTestServer({ endpointGroups: ['me', 'saml'] });
 	owner = await testDb.createOwner();
 	authOwnerAgent = utils.createAuthAgent(app)(owner);
 });
 
 afterAll(async () => {
+	Container.reset();
 	await testDb.terminate();
 });
 
