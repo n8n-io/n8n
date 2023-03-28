@@ -70,6 +70,10 @@ export class EnvironmentController {
 
 	@Get('/config')
 	async getConfig() {
-		return this.environmentService.config;
+		const branches = await this.environmentService.getBranches();
+		return {
+			...this.environmentService.config,
+			currentBranch: branches.currentBranch,
+		};
 	}
 }
