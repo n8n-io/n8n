@@ -5,14 +5,11 @@
 			<n8n-input v-model="content" />
 		</div>
 		<div class="mt-s">
-			<n8n-input-label label="Level" />
-			<n8n-select v-model="level">
-				<n8n-option label="Heading 1" value="h1" />
-				<n8n-option label="Heading 2" value="h2" />
-				<n8n-option label="Heading 3" value="h3" />
-				<n8n-option label="Heading 4" value="h4" />
-				<n8n-option label="Heading 5" value="h5" />
-				<n8n-option label="Heading 6" value="h6" />
+			<n8n-input-label label="color" />
+			<n8n-select v-model="color">
+				<n8n-option label="Primary" value="primary" />
+				<n8n-option label="Secondary" value="secondary" />
+				<n8n-option label="Tertiary" value="tertiary" />
 			</n8n-select>
 		</div>
 	</div>
@@ -33,12 +30,12 @@ export default {
 				this.updateValues({ content });
 			},
 		},
-		level: {
-			get(): ElementProps['level'] {
-				return this.elementProps.level;
+		color: {
+			get(): ElementProps['color'] {
+				return this.elementProps.color;
 			},
-			set(level: ElementProps['level']) {
-				this.updateValues({ level });
+			set(level: ElementProps['color']) {
+				this.updateValues({ color });
 			},
 		},
 	},

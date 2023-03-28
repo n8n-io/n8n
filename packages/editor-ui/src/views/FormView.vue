@@ -1,22 +1,113 @@
-<script setup lang="ts">
-// fetch form with id from useRout
-import { computed, onMounted } from 'vue';
+<script lang="ts">
+import { Editor, Frame, Canvas, Blueprint } from '@v-craft/core';
+import {
+	Container,
+	FormInput,
+	Heading,
+	Paragraph,
+	SettingsPanel,
+	ExportsPanel,
+} from '@/components/form-builder';
+import { defineComponent, onMounted, ref } from 'vue';
 import { useFormsStore } from '@/stores';
 import { useRoute } from 'vue-router/composables';
-import { VIEWS } from '@/constants';
 
-const formsStore = useFormsStore();
-const route = useRoute();
-const form = formsStore.formById(route.params.id);
+export default defineComponent({
+	components: {
+		Editor,
+		Frame,
+		Canvas,
+		Blueprint,
+		SettingsPanel,
+		ExportsPanel,
+		Container,
+		FormInput,
+		Heading,
+		Paragraph,
+	},
+	setup() {
+		const editorRef = ref(null);
+		const formsStore = useFormsStore();
+		const route = useRoute();
+		const form = formsStore.formById(route.params.id);
+		const title = ref('');
+		const loading = ref(true);
 
-onMounted(() => {
-	formsStore.fetchForm({ id: route.params.id });
+		onMounted(async () => {
+			const form = await formsStore.fetchForm({ id: route.params.id });
+
+			editorRef.value!.editor.import(form.schema);
+
+			loading.value = false;
+		});
+
+		const resolverMap = ref({
+			Canvas,
+			Container,
+			FormInput,
+			Heading,
+			Paragraph,
+		});
+
+		return {
+			resolverMap,
+			form,
+			title,
+			loading,
+			editorRef,
+		};
+	},
 });
 </script>
+
 <template>
-	<div>
-		<h1>Form yup</h1>
-		<div>{{ form }}</div>
-		<RouterLink :to="{ name: VIEWS.FORM_BUILDER }">Go to edit</RouterLink>
+	<div :class="$style.formPreview">
+		<div :class="$style.header" v-if="form">
+			{{ form.title }}
+		</div>
+		<Editor
+			component="main"
+			:enabled="false"
+			:class="$style.container"
+			:resolverMap="resolverMap"
+			ref="editorRef"
+		>
+			<Frame component="div" :class="$style.preview" />
+		</Editor>
 	</div>
 </template>
+
+<style lang="scss" module>
+.formPreview {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.header {
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	background: var(--color-background-xlight);
+	padding: var(--spacing-s);
+	border-bottom: 1px solid var(--color-foreground-base);
+}
+
+.container {
+	display: flex;
+	height: 100%;
+}
+
+.aside {
+	width: 240px;
+	background: white;
+	border-right: 1px solid var(--color-foreground-base);
+}
+
+.preview {
+	flex: 1;
+	margin: var(--spacing-s);
+}
+</style>

@@ -1,14 +1,15 @@
 <template>
 	<div>
 		<n8n-input-label v-if="label" :label="label" />
-		<n8n-input :type="type" :placeholder="placeholder" :value="defaultValue" />
+		<n8n-input :type="type" :placeholder="placeholder" v-model="value" />
 	</div>
 </template>
 
 <script lang="ts">
+import { defineComponent, ref } from 'vue';
 import { FormInputSettings } from './settings';
 
-export default {
+export default defineComponent({
 	props: {
 		label: {
 			type: String,
@@ -38,8 +39,12 @@ export default {
 			FormInputSettings,
 		},
 	},
-	setup() {
-		return {};
+	setup(props) {
+		const value = ref(props.defaultValue);
+
+		return {
+			value,
+		};
 	},
-};
+});
 </script>

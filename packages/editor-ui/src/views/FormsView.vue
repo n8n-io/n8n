@@ -35,11 +35,30 @@ async function initialize() {
 	await formsStore.fetchAllForms();
 }
 
-async function openForm(data: IForm) {
+async function createForm() {
+	const id = await formsStore.createForm({
+		title: 'My new form',
+		slug: '',
+		schema: '',
+	});
+
+	await openEditForm({ id });
+}
+
+async function openForm({ id }: { id: IForm['id'] }) {
 	await router.push({
 		name: VIEWS.FORM,
 		params: {
-			id: data.id,
+			id,
+		},
+	});
+}
+
+async function openEditForm({ id }: { id: IForm['id'] }) {
+	await router.push({
+		name: VIEWS.FORM_BUILDER,
+		params: {
+			id,
 		},
 	});
 }
@@ -69,11 +88,9 @@ function goToUpgrade() {
 	window.open(upgradeLinkUrl.value, '_blank');
 }
 
-function displayName(resource: EnvironmentVariable) {
-	return resource.key;
+function displayName(resource: IForm) {
+	return resource.title;
 }
-
-function addForm() {}
 </script>
 
 <template>
@@ -86,7 +103,8 @@ function addForm() {}
 		:shareable="false"
 		:sortOptions="['nameAsc', 'nameDesc']"
 		:showFiltersDropdown="false"
-		@click:add="addForm"
+		:displayName="displayName"
+		@click:add="createForm"
 	>
 		<template v-if="!isFeatureEnabled" #empty>
 			<n8n-action-box
@@ -102,7 +120,7 @@ function addForm() {}
 			/>
 		</template>
 		<template #default="{ data }">
-			<FormCard :key="data.id" :data="data" @click="openForm" @delete="deleteForm" />
+			<FormCard :key="data.id" :data="data" @click="openForm" @delete="deleteForm" class="mb-2xs" />
 		</template>
 	</ResourcesListLayout>
 </template>

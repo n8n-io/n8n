@@ -27,6 +27,7 @@ import {
 	faChevronUp,
 	faChevronLeft,
 	faChevronRight,
+	faCaretSquareRight,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -163,6 +164,7 @@ addIcon(faChevronLeft);
 addIcon(faChevronRight);
 addIcon(faChevronDown);
 addIcon(faChevronUp);
+addIcon(faCaretSquareRight);
 addIcon(faCode);
 addIcon(faCodeBranch);
 addIcon(faCog);

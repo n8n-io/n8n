@@ -13,16 +13,20 @@ export const useFormsStore = defineStore('forms', () => {
 	}
 
 	async function fetchAllForms() {
-		const data = await formsApi.getForms(rootStore.getRestApiContext);
-		forms.value = data.forms;
+		forms.value = await formsApi.getForms(rootStore.getRestApiContext);
 		return forms.value;
 	}
 
 	async function fetchForm({ id }: { id: IForm['id'] }) {
+		const foundFormIndex = forms.value.findIndex((form) => form.id === id);
 		const data = await formsApi.getForm(rootStore.getRestApiContext, id);
-		if (!forms.value.find((form) => form.id === data.id)) {
-			forms.value.push(data);
+
+		if (foundFormIndex !== -1) {
+			forms.value.unshift(data);
+		} else {
+			forms.value.splice(foundFormIndex, 1, data);
 		}
+
 		return data;
 	}
 

@@ -3,6 +3,7 @@ import { Editor, Frame, Canvas, Blueprint } from '@v-craft/core';
 import {
 	Container,
 	FormInput,
+	FormSubmit,
 	Heading,
 	Paragraph,
 	SettingsPanel,
@@ -22,6 +23,7 @@ export default defineComponent({
 		ExportsPanel,
 		Container,
 		FormInput,
+		FormSubmit,
 		Heading,
 		Paragraph,
 	},
@@ -30,15 +32,21 @@ export default defineComponent({
 		const formsStore = useFormsStore();
 		const route = useRoute();
 		const form = formsStore.formById(route.params.id);
+		const title = ref('');
+		const loading = ref(true);
 
-		onMounted(() => {
-			formsStore.fetchForm({ id: route.params.id });
+		onMounted(async () => {
+			const form = await formsStore.fetchForm({ id: route.params.id });
+			title.value = form.title;
+			loading.value = false;
+			editorRef.value!.editor.import(form.schema);
 		});
 
 		const resolverMap = ref({
 			Canvas,
 			Container,
 			FormInput,
+			FormSubmit,
 			Heading,
 			Paragraph,
 		});
@@ -46,12 +54,17 @@ export default defineComponent({
 		function onSave() {
 			const schema = editorRef.value!.editor.export();
 
-			formsStore.updateForm({ ...form.value!, schema });
+			loading.value = true;
+			formsStore.updateForm({ ...form.value!, title: title.value, schema });
+
+			loading.value = false;
 		}
 
 		return {
 			resolverMap,
 			form,
+			title,
+			loading,
 			editorRef,
 			onSave,
 		};
@@ -62,8 +75,10 @@ export default defineComponent({
 <template>
 	<div :class="$style.formBuilder">
 		<div :class="$style.header" v-if="form">
-			<n8n-input :value="form.title" />
-			<n8n-button class="ml-s" @click="onSave">Save</n8n-button>
+			<n8n-input :disabled="loading" v-model="title" />
+			<n8n-button class="ml-s" :disabled="loading" :loading="loading" @click="onSave">
+				Save
+			</n8n-button>
 		</div>
 		<Editor component="main" :class="$style.container" :resolverMap="resolverMap" ref="editorRef">
 			<div :class="$style.aside">
@@ -101,6 +116,13 @@ export default defineComponent({
 						<Canvas component="Container" />
 					</template>
 				</Blueprint>
+				<Blueprint component="div" :class="$style.blueprint">
+					<n8n-icon :class="$style.blueprintIcon" icon="caret-square-right" />
+					<n8n-text>Submit</n8n-text>
+					<template #blueprint>
+						<FormSubmit />
+					</template>
+				</Blueprint>
 				<div>
 					<ExportsPanel />
 				</div>
@@ -110,6 +132,7 @@ export default defineComponent({
 					<Heading content="My awesome form" />
 					<Paragraph content="Enter your data and execute the workflow" />
 					<FormInput label="My input" placeholder="Enter a value" />
+					<FormSubmit>Submit</FormSubmit>
 				</Canvas>
 			</Frame>
 		</Editor>
