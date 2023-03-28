@@ -11,7 +11,13 @@ function getFieldValue(schemaField: SchemaField, field: IDataObject) {
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		return simplify([field.v as TableRawData], schemaField.fields as unknown as SchemaField[]);
 	} else {
-		return field.v;
+		let value = field.v;
+		if (schemaField.type === 'JSON') {
+			try {
+				value = jsonParse(value as string);
+			} catch (error) {}
+		}
+		return value;
 	}
 }
 
@@ -135,6 +141,13 @@ export function checkSchema(
 		}
 		if (type !== 'STRING' && returnData[name] === '') {
 			returnData[name] = null;
+		}
+		if (type === 'JSON') {
+			let value = returnData[name];
+			if (typeof value === 'object') {
+				value = JSON.stringify(value);
+			}
+			returnData[name] = value;
 		}
 		if (type === 'RECORD' && typeof returnData[name] !== 'object') {
 			let parsedField;
