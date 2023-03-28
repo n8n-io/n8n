@@ -254,5 +254,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
+	if (jobs.length > 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The following queries did not complete within the timeout from items: ${jobs
+				.map((job) => job.i)
+				.join(', ')}`,
+		);
+	}
+
 	return returnData;
 }
