@@ -3,6 +3,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import * as formsApi from '@/api/forms.ee';
 import { computed, ref } from 'vue';
 import { IForm } from '@/Interface';
+import { INodeListSearchResult } from 'n8n-workflow';
 
 export const useFormsStore = defineStore('forms', () => {
 	const rootStore = useRootStore();
@@ -14,8 +15,19 @@ export const useFormsStore = defineStore('forms', () => {
 
 	async function fetchAllForms() {
 		const data = await formsApi.getForms(rootStore.getRestApiContext);
-		forms.value = data.forms;
+		forms.value = data;
 		return forms.value;
+	}
+
+	async function fetchFormsForRLC(): Promise<INodeListSearchResult> {
+		const data = await formsApi.getForms(rootStore.getRestApiContext);
+		const results: INodeListSearchResult['results'] = data.map((form) => ({
+			name: form.title,
+			value: form.id,
+			url: `/form/${form.id}`,
+		}));
+
+		return { results };
 	}
 
 	async function fetchForm({ id }: { id: IForm['id'] }) {

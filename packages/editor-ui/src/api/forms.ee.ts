@@ -2,24 +2,11 @@ import { IForm, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 import { IDataObject } from 'n8n-workflow';
 
-const dummyForms: IForm[] = [
-	{
-		id: '1',
-		slug: 'my-form',
-		title: 'My Form',
-		schema: {},
-	},
-];
-
-export async function getForms(context: IRestApiContext): Promise<{ forms: IForm[] }> {
-	return { forms: dummyForms };
-
+export async function getForms(context: IRestApiContext): Promise<IForm[]> {
 	return makeRestApiRequest(context, 'GET', '/forms');
 }
 
 export async function getForm(context: IRestApiContext, id: string): Promise<IForm> {
-	return dummyForms[0];
-
 	return makeRestApiRequest(context, 'GET', `/forms/${id}`);
 }
 
