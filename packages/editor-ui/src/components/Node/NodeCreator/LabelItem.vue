@@ -5,10 +5,10 @@
 </template>
 
 <script lang="ts" setup>
-// import { ILabelItemProps } from '@/Interface';
+import { LabelItemProps } from '@/Interface';
 
 export interface Props {
-	item: any;
+	item: LabelItemProps;
 }
 defineProps<Props>();
 </script>
@@ -26,6 +26,7 @@ defineProps<Props>();
 	line-height: 12px;
 	text-transform: uppercase;
 	color: var(--color-text-base);
+	cursor: default;
 }
 
 // Reduce top padding of the first label in a category

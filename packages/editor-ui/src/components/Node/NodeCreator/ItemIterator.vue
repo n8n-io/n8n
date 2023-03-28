@@ -25,7 +25,7 @@
 				:item="item.properties"
 				:active="activeIndex === index"
 			/>
-			<label-item v-if="item.type === 'label'" :item="item" @click.prevent.stop />
+			<label-item v-if="item.type === 'label'" :item="item" />
 
 			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item.properties" />
 
@@ -78,7 +78,6 @@ export interface Props {
 	lazyRender?: boolean;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
 	withDescriptionGetter?: (element: NodeCreateElement) => boolean;
-	enableGlobalCategoriesCounter?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -199,6 +198,9 @@ const { renderedItems } = toRefs(state);
 	&.category.singleCategory {
 		display: none;
 	}
+}
+.label {
+	pointer-events: none;
 }
 .itemIterator {
 	> *:last-child {

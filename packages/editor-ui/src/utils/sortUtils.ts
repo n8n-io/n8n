@@ -274,9 +274,9 @@ export function sublimeSearch<T extends object>(
 		return accu;
 	}, []);
 
-	results.sort((a, b) => {
-		return b.score - a.score;
-	});
+// results.sort((a, b) => {
+// 	return b.score - a.score;
+// });
 
 	return results;
 }

@@ -831,6 +831,9 @@ export interface ViewItemProps {
 	description: string;
 	icon: string;
 }
+export interface LabelItemProps {
+	key: string;
+}
 
 export interface INodeItemProps {
 	subcategory: string;
@@ -874,6 +877,11 @@ export interface ViewCreateElement extends CreateElementBase {
 	properties: ViewItemProps;
 }
 
+export interface LabelCreateElement extends CreateElementBase {
+	type: 'label';
+	properties: LabelItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	category: string;
@@ -885,6 +893,7 @@ export type INodeCreateElement =
 	| CategoryCreateElement
 	| SubcategoryCreateElement
 	| ViewCreateElement
+	| LabelCreateElement
 	| ActionCreateElement;
 
 export interface ICategoriesWithNodes {

@@ -262,10 +262,7 @@ export class WorkflowsService {
 				// Do not save when default got set
 				delete workflow.settings.saveManualExecutions;
 			}
-			if (
-				parseInt(workflow.settings.executionTimeout as string, 10) ===
-				config.get('executions.timeout')
-			) {
+			if (workflow.settings.executionTimeout === config.get('executions.timeout')) {
 				// Do not save when default got set
 				delete workflow.settings.executionTimeout;
 			}

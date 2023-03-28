@@ -108,6 +108,7 @@ import {
 	NodeCreateElement,
 	CategoryCreateElement,
 	INodeItemProps,
+	LabelCreateElement,
 } from '@/Interface';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
@@ -170,11 +171,10 @@ const state = reactive({
 const searchBar = ref<InstanceType<typeof SearchBar>>();
 const scrollableContainer = ref<InstanceType<typeof HTMLElement>>();
 
-const activeSubcategory = computed<INodeCreateElement | null>(() => {
-	return (
-		state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1]?.subcategory || null
-	);
-});
+const activeSubcategory = computed<INodeCreateElement | null>(
+	() =>
+		state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1]?.subcategory || null,
+);
 
 const categoriesKeys = computed(() =>
 	props.categorizedItems.filter((item) => item.type === 'category').map((item) => item.key),
@@ -221,7 +221,7 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 
 		returnItems = getFilteredNodes(matchingNodes);
 	}
-	return returnItems;
+	return filterCategorizedItems(returnItems);
 });
 
 const isViewNavigated = computed(() => nodeCreatorStore.rootViewHistory.length > 1);
@@ -287,7 +287,7 @@ const subcategorizedItems = computed<INodeCreateElement[]>(() => {
 		if (!activeSubcategory.value) return false;
 
 		const subcategories = Object.values(
-			(el.properties as INodeItemProps).nodeType.codex?.subcategories || {},
+			(el.properties as INodeItemProps).nodeType?.codex?.subcategories || {},
 		).flat();
 		return subcategories.includes(activeSubcategory.value.key);
 	});
@@ -296,6 +296,29 @@ const subcategorizedItems = computed<INodeCreateElement[]>(() => {
 		matchesSelectType(el, nodeCreatorStore.selectedView),
 	);
 });
+
+function filterCategorizedItems(items: INodeCreateElement[]) {
+	let categoriesCount = 0;
+	const reducedItems = items.reduce((acc: INodeCreateElement[], el: INodeCreateElement) => {
+		if (el.type === 'category') {
+			el.properties.expanded = state.activeCategories.includes(el.key);
+			categoriesCount++;
+			return [...acc, el];
+		}
+
+		if (el.type === 'action' && state.activeCategories.includes(el.category)) {
+			return [...acc, el];
+		}
+
+		return acc;
+	}, []);
+
+	// If there is only one category we don't show it
+	if (categoriesCount <= 1)
+		return reducedItems.filter((el: INodeCreateElement) => el.type !== 'category');
+
+	return reducedItems;
+}
 
 const filteredCategorizedItems = computed<INodeCreateElement[]>(() => {
 	let categoriesCount = 0;
@@ -378,11 +401,15 @@ function addLabels(nodes: INodeCreateElement[]): INodeCreateElement[] {
 					break;
 				}
 			}
-			if (firstIndex > -1) {
-				chunk.splice(firstIndex, 0, {
-					type: 'label',
+			const newLabel: LabelCreateElement = {
+				type: 'label',
+				key: label,
+				properties: {
 					key: label,
-				});
+				},
+			};
+			if (firstIndex > -1) {
+				chunk.splice(firstIndex, 0, newLabel);
 			}
 		}
 		return chunk;
@@ -425,7 +452,7 @@ const renderedItems = computed<INodeCreateElement[]>(() => {
 	} else {
 		console.log('__DEBUG: filteredCategorizedItems', filteredCategorizedItems);
 		// Finally if none of the above is true we show the categorized items
-		items = addLabels(filteredCategorizedItems.value);
+		items = addLabels(filterCategorizedItems(props.categorizedItems));
 	}
 
 	return addCategoriesCount(items);
@@ -442,7 +469,6 @@ function trimTriggerNodeName(nodeName: string) {
 	return nodeName.toLowerCase().replace('trigger', '');
 }
 function getFilteredNodes(items: INodeCreateElement[]) {
-	console.log('🚀 ~ file: CategorizedItems.vue:445 ~ getFilteredNodes ~ items:', items);
 	// In order to support the old search we need to remove the 'trigger' part
 	const trimmedFilter = searchFilter.value.toLowerCase().replace('trigger', '');
 	return (
@@ -457,14 +483,17 @@ function getFilteredNodes(items: INodeCreateElement[]) {
 		) || []
 	).map(({ item }) => item);
 }
+
 function getScrollTop() {
 	return scrollableContainer.value?.scrollTop || 0;
 }
+
 function setScrollTop(scrollTop: number) {
 	if (scrollableContainer.value) {
 		scrollableContainer.value.scrollTop = scrollTop;
 	}
 }
+
 function onNodeFilterChange(filter: string) {
 	nodeCreatorStore.setFilter(filter);
 }
@@ -563,6 +592,7 @@ function selected(element: INodeCreateElement) {
 		node: () => onNodeSelected(element as NodeCreateElement),
 		action: () => onActionSelected(element),
 		view: () => onViewSelected(element),
+		label: () => {},
 	};
 
 	typeHandler[element.type]();
@@ -584,10 +614,15 @@ function onNodeSelected(element: NodeCreateElement) {
 }
 
 function onCategorySelected(element: CategoryCreateElement) {
+	console.log('🚀 ~ file: CategorizedItems.vue:596 ~ onCategorySelected ~ element:', element);
 	const categoryKey = element.properties.category;
 	if (state.activeCategories.includes(categoryKey)) {
 		state.activeCategories = state.activeCategories.filter(
 			(active: string) => active !== categoryKey,
+		);
+		console.log(
+			'🚀 ~ file: CategorizedItems.vue:602 ~ onCategorySelected ~ state.activeCategories:',
+			state.activeCategories,
 		);
 	} else {
 		state.activeCategories = [...state.activeCategories, categoryKey];

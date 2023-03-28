@@ -199,7 +199,7 @@ const computedCategoriesWithNodes = computed(() => {
 
 const searchItems = computed<INodeCreateElement[]>(() => {
 	return isActionsActive.value
-		? searchableActions.value
+		? computedCategorizedItems.value
 		: transformCreateElements(filteredMergedAppNodes.value);
 });
 
