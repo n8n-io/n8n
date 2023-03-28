@@ -39,6 +39,17 @@ export class EnvironmentController {
 		}
 	}
 
+	@Get('/pull')
+	async pull(req: EnvironmentConfiguration.Pull) {
+		try {
+			await this.environmentService.initGit();
+			await this.environmentService.pull();
+		} catch (error) {
+			console.log(error);
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
 	@Get('/get-branches')
 	async getBranches() {
 		try {
