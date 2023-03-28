@@ -32,13 +32,9 @@ export class EnvironmentController {
 
 	@Post('/push')
 	async push(req: EnvironmentConfiguration.Push) {
-		console.log('Environment - push', req.body);
-
-		req.body.message = 'Update workflows';
 		try {
 			await this.environmentService.push(req.body.message);
 		} catch (error) {
-			console.log(error);
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
