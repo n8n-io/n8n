@@ -13,7 +13,7 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: [1, 2],
+		version: [1, 2, 3],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -93,6 +93,42 @@ export class CompareDatasets implements INodeType {
 						description: 'Output contains all data (but structure more complex)',
 					},
 				],
+				displayOptions: {
+					hide: {
+						'@version': [3],
+					},
+				},
+			},
+			{
+				displayName: 'When There Are Differences',
+				name: 'resolve',
+				type: 'options',
+				default: 'includeBoth',
+				options: [
+					{
+						name: 'Use Input A Version',
+						value: 'preferInput1',
+					},
+					{
+						name: 'Use Input B Version',
+						value: 'preferInput2',
+					},
+					{
+						name: 'Use a Mix of Versions',
+						value: 'mix',
+						description: 'Output uses different inputs for different fields',
+					},
+					{
+						name: 'Include Both Versions',
+						value: 'includeBoth',
+						description: 'Output contains all data (but structure more complex)',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [3],
+					},
+				},
 			},
 			{
 				displayName: 'Fuzzy Compare',
@@ -214,7 +250,7 @@ export class CompareDatasets implements INodeType {
 
 		options.nodeVersion = this.getNode().typeVersion;
 
-		if (options.nodeVersion === 2) {
+		if (options.nodeVersion >= 2) {
 			options.fuzzyCompare = this.getNodeParameter('fuzzyCompare', 0, false) as boolean;
 		}
 
