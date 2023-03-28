@@ -136,7 +136,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { MFA_SETUP_MODAL_KEY } from '../constants';
+import { MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED, MFA_SETUP_MODAL_KEY } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
@@ -236,12 +236,20 @@ export default mixins(showMessage, copyPaste).extend({
 				this.closeDialog();
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.message'),
+					title: this.$locale.baseText('mfa.setup.step2.toast.setupFinished.message'),
 				});
 			} catch (e) {
+				if (e.errorCode === MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED) {
+					this.$showMessage({
+						type: 'error',
+						title: this.$locale.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),
+					});
+					return;
+				}
+
 				this.$showMessage({
 					type: 'error',
-					title: this.$locale.baseText('mfa.setup.step1.toast.setupFinished.error.message'),
+					title: this.$locale.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
 				});
 			}
 		},

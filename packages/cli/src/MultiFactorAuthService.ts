@@ -23,8 +23,13 @@ export class MultiFactorAuthService {
 		};
 	}
 
-	verifySecret(data: { secret: string; token: string; window?: number }) {
-		return speakeasy.totp.verify({ secret: data.secret, token: data.token, encoding: 'base32', window });
+	verifySecret({ secret, token, window = 0 }: { secret: string; token: string; window: number }) {
+		return speakeasy.totp.verify({
+			secret,
+			token,
+			encoding: 'base32',
+			window,
+		});
 	}
 
 	generateMfaOneTimeToken(data: { secret: string }) {

@@ -96,7 +96,7 @@ export class MFAController {
 		const verified = this.mfaService.verifySecret({ secret: decryptedSecret, token, window: 10 });
 
 		if (!verified)
-			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again.');
+			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
 		await this.userRepository.update(id, { mfaEnabled: true });
 	}
