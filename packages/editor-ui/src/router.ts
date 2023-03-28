@@ -3,6 +3,7 @@ import Vue from 'vue';
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
+import FormsView from './views/FormsView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
@@ -37,6 +38,8 @@ import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SignoutView from '@/views/SignoutView.vue';
+import FormView from '@/views/FormView.vue';
+import FormBuilderView from '@/views/FormBuilderView.vue';
 
 Vue.use(Router);
 
@@ -176,6 +179,51 @@ const router = new Router({
 			name: VIEWS.CREDENTIALS,
 			components: {
 				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/forms',
+			name: VIEWS.FORMS,
+			components: {
+				default: FormsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/forms/:id/edit',
+			name: VIEWS.FORM_BUILDER,
+			components: {
+				default: FormBuilderView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/forms/:id',
+			name: VIEWS.FORM,
+			components: {
+				default: FormView,
 				sidebar: MainSidebar,
 			},
 			meta: {

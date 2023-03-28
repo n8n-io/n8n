@@ -228,6 +228,7 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 }
 
 .content {
+	position: relative;
 	display: flex;
 	grid-area: content;
 	overflow: auto;

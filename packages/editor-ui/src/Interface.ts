@@ -285,6 +285,15 @@ export interface IWorkflowsShareResponse {
 	ownedBy?: Partial<IUser>;
 }
 
+export type IFormSchema = {};
+
+export interface IForm {
+	id: string;
+	slug: string;
+	title: string;
+	schema: IFormSchema;
+}
+
 // Identical or almost identical to cli.Interfaces.ts
 
 export interface IActivationError {

@@ -2,6 +2,7 @@ import Vue from 'vue';
 
 import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
 import {
+	faAlignLeft,
 	faAngleDoubleLeft,
 	faAngleDown,
 	faAngleLeft,
@@ -66,6 +67,7 @@ import {
 	faGripVertical,
 	faHandPointLeft,
 	faHashtag,
+	faHeading,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -74,12 +76,14 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faKeyboard,
 	faLink,
 	faList,
 	faLightbulb,
 	faMapSigns,
 	faMousePointer,
 	faNetworkWired,
+	faParagraph,
 	faPause,
 	faPauseCircle,
 	faPen,
@@ -140,6 +144,7 @@ addIcon(faAngleDown);
 addIcon(faAngleLeft);
 addIcon(faAngleRight);
 addIcon(faAngleUp);
+addIcon(faAlignLeft);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
@@ -198,6 +203,7 @@ addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHandPointLeft);
 addIcon(faHashtag);
+addIcon(faHeading);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);
@@ -206,12 +212,14 @@ addIcon(faInbox);
 addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
+addIcon(faKeyboard);
 addIcon(faLink);
 addIcon(faList);
 addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faMousePointer);
 addIcon(faNetworkWired);
+addIcon(faParagraph);
 addIcon(faPause);
 addIcon(faPauseCircle);
 addIcon(faPen);

@@ -2,6 +2,7 @@ export * from './canvas';
 export * from './communityNodes';
 export * from './credentials';
 export * from './environments.ee';
+export * from './forms.ee';
 export * from './history';
 export * from './logStreamingStore';
 export * from './n8nRootStore';

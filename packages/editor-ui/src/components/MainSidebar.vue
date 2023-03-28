@@ -227,6 +227,14 @@ export default mixins(
 					activateOnRouteNames: [VIEWS.CREDENTIALS],
 				},
 				{
+					id: 'forms',
+					icon: 'align-left',
+					label: this.$locale.baseText('mainSidebar.forms'),
+					customIconSize: 'medium',
+					position: 'top',
+					activateOnRouteNames: [VIEWS.FORMS],
+				},
+				{
 					id: 'variables',
 					icon: 'code',
 					label: this.$locale.baseText('mainSidebar.variables'),
@@ -385,6 +393,12 @@ export default mixins(
 				case 'variables': {
 					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
 						this.goToRoute({ name: VIEWS.VARIABLES });
+					}
+					break;
+				}
+				case 'forms': {
+					if (this.$router.currentRoute.name !== VIEWS.FORMS) {
+						this.goToRoute({ name: VIEWS.FORMS });
 					}
 					break;
 				}

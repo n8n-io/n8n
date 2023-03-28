@@ -365,6 +365,9 @@ export enum VIEWS {
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	FORMS = 'FormsView',
+	FORM = 'FormView',
+	FORM_BUILDER = 'FormBuilderView',
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
@@ -451,6 +454,7 @@ export enum EnterpriseEditionFeature {
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
 	Variables = 'variables',
+	Forms = 'forms',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

@@ -43,6 +43,7 @@
     "@jsplumb/connector-bezier": "^5.13.2",
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
+    "@v-craft/core": "0.3.0-alpha.0",
     "axios": "^0.21.1",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",

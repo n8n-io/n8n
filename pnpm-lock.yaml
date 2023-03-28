@@ -585,6 +585,7 @@ importers:
       '@types/lodash.set': ^4.3.6
       '@types/luxon': ^2.0.9
       '@types/uuid': ^8.3.2
+      '@v-craft/core': 0.3.0-alpha.0
       '@vitejs/plugin-legacy': ^3.0.1
       '@vitejs/plugin-vue2': ^2.2.0
       '@vitest/coverage-c8': ^0.28.5
@@ -655,6 +656,7 @@ importers:
       '@jsplumb/connector-bezier': 5.13.2
       '@jsplumb/core': 5.13.2
       '@jsplumb/util': 5.13.2
+      '@v-craft/core': 0.3.0-alpha.0
       axios: 0.21.4
       codemirror-lang-html-n8n: 1.0.0
       codemirror-lang-n8n-expression: 0.2.0_zyklskjzaprvz25ee7sq7godcq
@@ -6540,6 +6542,15 @@ packages:
       '@typescript-eslint/types': 5.45.0
       eslint-visitor-keys: 3.3.0
     dev: true
+
+  /@v-craft/core/0.3.0-alpha.0:
+    resolution: {integrity: sha512-olLMPm25eKfRPYDuGH1mKOb8/m/R1bLpVcBjqI6mOiIagtbuphPHAo2U9KNzDWzybIETOKALDjQrFKYiSWTkkw==}
+    dependencies:
+      core-js: 3.27.2
+      lodash: 4.17.21
+      uuid: 7.0.3
+      vue: 2.7.14
+    dev: false
 
   /@vitejs/plugin-legacy/3.0.1_terser@5.16.1+vite@4.0.4:
     resolution: {integrity: sha512-XCtEjxoR3rmy000ujYRBp5kggWqzHz9+F20/yIMUWOzbvu0+KW1e14Fvb8h7SpNn+bfjGW1RiAs1Vrgb7Js+iQ==}
@@ -20577,6 +20588,11 @@ packages:
   /uuid/3.4.0:
     resolution: {integrity: sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==}
     deprecated: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+    hasBin: true
+    dev: false
+
+  /uuid/7.0.3:
+    resolution: {integrity: sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==}
     hasBin: true
     dev: false
 
