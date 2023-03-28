@@ -1,4 +1,5 @@
 export { AuthController } from './auth.controller';
+export { EnvironmentController } from './environment.controller';
 export { LdapController } from './ldap.controller';
 export { MeController } from './me.controller';
 export { NodesController } from './nodes.controller';
