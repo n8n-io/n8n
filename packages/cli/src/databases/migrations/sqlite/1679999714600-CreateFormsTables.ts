@@ -2,10 +2,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CreateForms1679999714600 implements MigrationInterface {
-	name = '1679999714600-CreateForms';
+	name = 'CreateForms1679999714600';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		console.log('yo');
 		logMigrationStart(this.name);
 		const tablePrefix = getTablePrefix();
 

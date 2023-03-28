@@ -171,7 +171,7 @@ export async function init(
 	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
 	collections.EventDestinations = linkRepository(entities.EventDestinations);
 	collections.Variables = linkRepository(entities.Variables);
-	// collections.Forms = linkRepository(entities.Forms);
+	collections.Forms = linkRepository(entities.Forms);
 
 	isInitialized = true;
 

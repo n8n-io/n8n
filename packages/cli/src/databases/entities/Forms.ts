@@ -8,6 +8,6 @@ export class Forms {
 	@Column('text')
 	title: string;
 
-	@Column('json')
+	@Column('text')
 	schema: string;
 }

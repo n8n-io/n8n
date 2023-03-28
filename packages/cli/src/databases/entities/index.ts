@@ -16,7 +16,7 @@ import { Variables } from './Variables';
 import { WebhookEntity } from './WebhookEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 import { WorkflowStatistics } from './WorkflowStatistics';
-// import { Forms } from './Forms';
+import { Forms } from './Forms';
 
 export const entities = {
 	AuthIdentity,
@@ -26,7 +26,7 @@ export const entities = {
 	ExecutionEntity,
 	InstalledNodes,
 	InstalledPackages,
-	// Forms,
+	Forms,
 	Role,
 	Settings,
 	SharedCredentials,
