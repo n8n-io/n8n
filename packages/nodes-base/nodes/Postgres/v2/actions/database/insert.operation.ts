@@ -174,7 +174,11 @@ export async function execute(
 		let query = `INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv)${onConflict}`;
 		let values: QueryValues = [schema, table];
 
-		const dataMode = this.getNodeParameter('dataMode', i) as string;
+		const nodeVersion = this.getNode().typeVersion;
+		const dataMode =
+			nodeVersion === 2
+				? (this.getNodeParameter('dataMode', i) as string)
+				: (this.getNodeParameter('columns.mode', i) as string);
 
 		let item: IDataObject = {};
 
@@ -183,8 +187,11 @@ export async function execute(
 		}
 
 		if (dataMode === 'defineBelow') {
-			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-				.values as IDataObject[];
+			const valuesToSend =
+				nodeVersion === 2
+					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
+					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
+							.values as IDataObject[]);
 
 			item = prepareItem(valuesToSend);
 		}

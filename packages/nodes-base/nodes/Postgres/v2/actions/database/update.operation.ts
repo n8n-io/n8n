@@ -198,9 +198,16 @@ export async function execute(
 			extractValue: true,
 		}) as string;
 
-		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
+		const nodeVersion = this.getNode().typeVersion;
+		const columnToMatchOn =
+			nodeVersion === 2
+				? (this.getNodeParameter('columnToMatchOn', i) as string)
+				: (this.getNodeParameter('columns.match', i) as string);
 
-		const dataMode = this.getNodeParameter('dataMode', i) as string;
+		const dataMode =
+			nodeVersion === 2
+				? (this.getNodeParameter('dataMode', i) as string)
+				: (this.getNodeParameter('columns.mode', i) as string);
 
 		let item: IDataObject = {};
 		let valueToMatchOn: string | IDataObject = '';
@@ -211,8 +218,11 @@ export async function execute(
 		}
 
 		if (dataMode === 'defineBelow') {
-			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-				.values as IDataObject[];
+			const valuesToSend =
+				nodeVersion === 2
+					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
+					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
+							.values as IDataObject[]);
 
 			item = prepareItem(valuesToSend);
 
