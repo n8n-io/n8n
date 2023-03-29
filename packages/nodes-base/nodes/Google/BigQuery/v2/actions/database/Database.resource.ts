@@ -1,10 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { datasetRLC, projectRLC, tableRLC } from '../commonDescriptions/RLC.description';
 import * as insert from './insert.operation';
-import * as getAll from './getAll.operation';
 import * as executeQuery from './executeQuery.operation';
 
-export { executeQuery, insert, getAll };
+export { executeQuery, insert };
 
 export const description: INodeProperties[] = [
 	{
@@ -30,12 +29,6 @@ export const description: INodeProperties[] = [
 				description: 'Insert rows in a table',
 				action: 'Insert rows in a table',
 			},
-			// {
-			// 	name: 'Get Many',
-			// 	value: 'getAll',
-			// 	description: 'Retrieve records from table',
-			// 	action: 'Get many records',
-			// },
 		],
 		default: 'executeQuery',
 	},
@@ -44,7 +37,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['database'],
-				operation: ['executeQuery', 'insert', 'getAll'],
+				operation: ['executeQuery', 'insert'],
 			},
 		},
 	},
@@ -53,7 +46,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['database'],
-				operation: ['insert', 'getAll'],
+				operation: ['insert'],
 			},
 		},
 	},
@@ -62,11 +55,10 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['database'],
-				operation: ['insert', 'getAll'],
+				operation: ['insert'],
 			},
 		},
 	},
 	...executeQuery.description,
 	...insert.description,
-	...getAll.description,
 ];
