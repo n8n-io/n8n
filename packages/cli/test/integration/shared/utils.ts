@@ -81,6 +81,7 @@ import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
+import { MessageEventBus } from '@/eventbus';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -176,7 +177,8 @@ export async function initTestServer({
 		for (const group of functionEndpoints) {
 			switch (group) {
 				case 'eventBus':
-					registerController(testServer.app, config, new EventBusController());
+					const eventBus = Container.get(MessageEventBus);
+					registerController(testServer.app, config, new EventBusController(eventBus));
 					break;
 				case 'auth':
 					registerController(
