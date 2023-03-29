@@ -1,7 +1,5 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { googleApiRequest } from './GenericFunctions';
 

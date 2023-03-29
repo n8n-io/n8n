@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -123,7 +123,6 @@ export class LinearTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

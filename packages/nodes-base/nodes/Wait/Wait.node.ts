@@ -1,7 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import { BINARY_ENCODING, WAIT_TIME_UNLIMITED } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
@@ -10,7 +8,7 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
@@ -716,7 +714,7 @@ export class Wait implements INodeType {
 							}
 
 							const fileJson = file.toJSON();
-							returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+							returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
 								file.path,
 								fileJson.name || fileJson.filename,
 								fileJson.type as string,
@@ -749,7 +747,7 @@ export class Wait implements INodeType {
 				};
 
 				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-				returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+				returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
 					binaryFile.path,
 					mimeType,
 				);

@@ -1,7 +1,7 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,

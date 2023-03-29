@@ -7,7 +7,7 @@ import {
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
-const IMPORT_WORKFLOW_URL = 'https://www.jsonkeeper.com/b/FNB0#.json';
+const IMPORT_WORKFLOW_URL = 'https://gist.githubusercontent.com/OlegIvaniv/010bd3f45c8a94f8eb7012e663a8b671/raw/3afea1aec15573cc168d9af7e79395bd76082906/test-workflow.json';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
 const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
@@ -94,7 +94,7 @@ describe('Workflow Actions', () => {
 		cy.get('.el-message-box').should('be.visible');
 		cy.get('.el-message-box').find('input').type(IMPORT_WORKFLOW_URL);
 		cy.get('body').type('{enter}');
-		cy.waitForLoad();
+		cy.waitForLoad(false)
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -104,7 +104,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters
 			.workflowImportInput()
 			.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
-		cy.waitForLoad();
+		cy.waitForLoad(false)
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);

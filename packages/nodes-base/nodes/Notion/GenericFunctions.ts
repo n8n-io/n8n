@@ -1,16 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IBinaryKeyData,
+	IDataObject,
+	IDisplayOptions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,

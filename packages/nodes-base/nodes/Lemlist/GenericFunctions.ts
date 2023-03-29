@@ -1,6 +1,9 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 

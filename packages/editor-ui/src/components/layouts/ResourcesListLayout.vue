@@ -33,7 +33,7 @@
 			<n8n-loading :class="$style['card-loading']" variant="custom" />
 		</div>
 		<template v-else>
-			<div class="ph-no-capture" v-if="resources.length === 0">
+			<div v-if="resources.length === 0">
 				<slot name="empty">
 					<n8n-action-box
 						data-test-id="empty-resources-list"

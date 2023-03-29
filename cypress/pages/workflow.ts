@@ -174,6 +174,10 @@ export class WorkflowPage extends BasePage {
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
 		},
+		deleteNode: (name: string) => {
+			this.getters.canvasNodeByName(name).first().click();
+			cy.get('body').type('{del}');
+		},
 		setWorkflowName: (name: string) => {
 			this.getters.workflowNameInput().should('be.disabled');
 			this.getters.workflowNameInput().parent().click();

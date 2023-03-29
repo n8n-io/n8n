@@ -1,11 +1,12 @@
 import express from 'express';
 import type { Entry as LdapUser } from 'ldapts';
+import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED, LDAP_FEATURE_NAME } from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
 import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
@@ -15,13 +16,15 @@ import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
+import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import Container from 'typedi';
+import { License } from '../../../src/License';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let globalMemberRole: Role;
-let globalOwnerRole: Role;
 let owner: User;
 let authAgent: AuthAgent;
 
@@ -40,22 +43,24 @@ const defaultLdapConfig = {
 };
 
 beforeAll(async () => {
+	Container.get(License).isLdapEnabled = () => true;
 	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'] });
 
-	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
+	const [globalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
 
-	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
+
+	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	authAgent = utils.createAuthAgent(app);
 
-	config.set(LDAP_ENABLED, true);
 	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
 		defaultLdapConfig.bindingAdminPassword,
 	);
 
 	utils.initConfigFile();
-	await utils.initLdapManager();
+
+	await setCurrentAuthenticationMethod('email');
 });
 
 beforeEach(async () => {
@@ -66,20 +71,19 @@ beforeEach(async () => {
 		'Credentials',
 		'SharedWorkflow',
 		'Workflow',
-		'User',
 	]);
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	await Db.collections.User.delete({ id: Not(owner.id) });
 
 	jest.mock('@/telemetry');
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
-	config.set('enterprise.features.ldap', true);
 });
 
 afterAll(async () => {
+	Container.reset();
 	await testDb.terminate();
 });
 
@@ -176,6 +180,7 @@ describe('PUT /ldap/config', () => {
 		const emailUser = await Db.collections.User.findOneByOrFail({ id: member.id });
 		const localLdapIdentities = await testDb.getLdapIdentities();
 
+		expect(getCurrentAuthenticationMethod()).toBe('email');
 		expect(emailUser.email).toBe(member.email);
 		expect(emailUser.lastName).toBe(member.lastName);
 		expect(emailUser.firstName).toBe(member.firstName);
@@ -192,6 +197,7 @@ test('GET /ldap/config route should retrieve current configuration', async () =>
 
 	let response = await authAgent(owner).put('/ldap/config').send(validPayload);
 	expect(response.statusCode).toBe(200);
+	expect(getCurrentAuthenticationMethod()).toBe('ldap');
 
 	response = await authAgent(owner).get('/ldap/config');
 

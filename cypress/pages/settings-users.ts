@@ -1,9 +1,11 @@
 import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { MainSidebar } from './sidebar/main-sidebar';
 import { WorkflowPage } from './workflow';
+import { WorkflowsPage } from './workflows';
 import { BasePage } from './base';
 
 const workflowPage =  new WorkflowPage();
+const workflowsPage =  new WorkflowsPage();
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
 
@@ -39,7 +41,7 @@ export class SettingsUsersPage extends BasePage {
 				settingsSidebar.getters.menuItem('Users').should('not.exist');
 				// Should be redirected to workflows page if trying to access UM url
 				cy.visit('/settings/users');
-				cy.url().should('match', new RegExp(workflowPage.url));
+				cy.url().should('match', new RegExp(workflowsPage.url));
 			}
 		},
 		opedDeleteDialog: (email: string) => {

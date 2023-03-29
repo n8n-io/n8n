@@ -1,4 +1,3 @@
-import { BINARY_ENCODING } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -11,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
@@ -604,7 +603,7 @@ export class Ftp implements INodeType {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const filePathDownload = this.getNodeParameter('path', i) as string;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
 								filePathDownload,
 							);
@@ -700,7 +699,7 @@ export class Ftp implements INodeType {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const filePathDownload = this.getNodeParameter('path', i) as string;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
 								filePathDownload,
 							);

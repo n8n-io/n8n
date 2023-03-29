@@ -1,14 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, IOAuth2Options, JsonObject } from 'n8n-workflow';
+	IOAuth2Options,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function clickupApiRequest(

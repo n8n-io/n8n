@@ -3,9 +3,8 @@ import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
