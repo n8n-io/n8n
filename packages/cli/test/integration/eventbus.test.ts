@@ -24,7 +24,7 @@ import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDest
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 import Container from 'typedi';
-import { License } from '../../src/License';
+import { License } from '@/License';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');

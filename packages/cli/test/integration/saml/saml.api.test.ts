@@ -8,7 +8,7 @@ import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
 import { sampleConfig } from './sampleMetadata';
 import Container from 'typedi';
-import { License } from '../../../src/License';
+import { License } from '@/License';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

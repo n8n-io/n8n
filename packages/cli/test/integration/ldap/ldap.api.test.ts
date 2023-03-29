@@ -18,7 +18,7 @@ import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import Container from 'typedi';
-import { License } from '../../../src/License';
+import { License } from '@/License';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');

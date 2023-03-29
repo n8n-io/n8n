@@ -13,7 +13,7 @@ import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import Container from 'typedi';
-import { License } from '../../src/License';
+import { License } from '@/License';
 
 let owner: User;
 let member: User;
