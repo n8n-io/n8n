@@ -15,6 +15,8 @@
 /* eslint-disable prefer-destructuring */
 import type express from 'express';
 import get from 'lodash.get';
+import stream from 'stream';
+import { promisify } from 'util';
 
 import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
@@ -58,6 +60,8 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
+
+const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -418,13 +422,17 @@ export async function executeWebhook(
 						return;
 					}
 
-					if (Buffer.isBuffer(response.body)) {
+					const isBuffer = Buffer.isBuffer(response.body);
+					const isStream = response.body instanceof stream.Readable;
+					if (isBuffer || isStream) {
 						res.header(response.headers);
-						res.end(response.body);
-
-						responseCallback(null, {
-							noWebhookResponse: true,
-						});
+						if (isBuffer) {
+							res.end(response.body);
+							responseCallback(null, { noWebhookResponse: true });
+						} else
+							void pipeline(response.body as stream.Readable, res).then(() =>
+								responseCallback(null, { noWebhookResponse: true }),
+							);
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node

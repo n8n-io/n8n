@@ -202,7 +202,7 @@ export class RespondToWebhook implements INodeType {
 			}
 		}
 
-		let responseBody: IN8nHttpResponse;
+		let responseBody: IN8nHttpResponse | Readable;
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
 			if (responseBodyParameter) {
@@ -235,17 +235,18 @@ export class RespondToWebhook implements INodeType {
 				responseBinaryPropertyName = binaryKeys[0];
 			}
 			const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
-			let uploadData: Buffer | Readable;
 			if (binaryData.id) {
-				uploadData = this.helpers.getBinaryStream(binaryData.id);
+				responseBody = this.helpers.getBinaryStream(binaryData.id);
+				const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+				headers['content-length'] = metadata.fileSize;
 			} else {
-				uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
+				responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
+				headers['content-length'] = (responseBody as Buffer).length;
 			}
 
 			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
-			responseBody = uploadData;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(
 				this.getNode(),
