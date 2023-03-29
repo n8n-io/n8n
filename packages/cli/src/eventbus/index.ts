@@ -1,1 +1,1 @@
-export { eventBus } from './MessageEventBus/MessageEventBus';
+export { MessageEventBus } from './MessageEventBus/MessageEventBus';
