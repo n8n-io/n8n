@@ -38,6 +38,7 @@
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest",
     "test:postgres:alt-schema": "DB_POSTGRESDB_SCHEMA=alt_schema pnpm test:postgres",
+    "test:postgres:with-table-prefix": "DB_TABLE_PREFIX=xyz_ pnpm test:postgres",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb jest",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
     "typeorm": "ts-node -T ../../node_modules/typeorm/cli.js"
