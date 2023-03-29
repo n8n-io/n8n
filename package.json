@@ -58,7 +58,7 @@
     "supertest": "^6.3.3",
     "ts-jest": "^29.0.5",
     "tsc-watch": "^6.0.0",
-    "turbo": "1.7.4"
+    "turbo": "1.8.8"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
