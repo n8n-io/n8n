@@ -34,13 +34,13 @@ export class SamlController {
 	 * Return SAML config
 	 */
 	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
-	async configGet(req: AuthenticatedRequest, res: express.Response) {
+	async configGet() {
 		const prefs = this.samlService.samlPreferences;
-		return res.send({
+		return {
 			...prefs,
 			entityID: getServiceProviderEntityId(),
 			returnUrl: getServiceProviderReturnUrl(),
-		});
+		};
 	}
 
 	/**
@@ -48,11 +48,11 @@ export class SamlController {
 	 * Set SAML config
 	 */
 	@Post(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
-	async configPost(req: SamlConfiguration.Update, res: express.Response) {
+	async configPost(req: SamlConfiguration.Update) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
 			const result = await this.samlService.setSamlPreferences(req.body);
-			return res.send(result);
+			return result;
 		} else {
 			throw new BadRequestError(
 				'Body is not a valid SamlPreferences object: ' +
@@ -140,7 +140,7 @@ export class SamlController {
 	private async handleInitSSO(res: express.Response) {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
-			return res.send(result.context.context);
+			return result.context.context;
 		} else if (result?.binding === 'post') {
 			return res.send(getInitSSOFormView(result.context as PostBindingContext));
 		} else {
