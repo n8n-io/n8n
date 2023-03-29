@@ -22,6 +22,7 @@
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
+    "temporalWorker" : "./packages/cli/bin/n8n worker-temporal",
     "test": "turbo run test",
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",

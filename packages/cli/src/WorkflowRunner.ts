@@ -14,6 +14,8 @@
 import type { IProcessMessage } from 'n8n-core';
 import { BinaryDataManager, WorkflowExecute } from 'n8n-core';
 
+import { v4 as uuid } from 'uuid';
+
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -59,6 +61,9 @@ import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+
+import { Connection, Client } from '@temporalio/client';
+import { doWorkflowRight, executeN8nWorkflow } from './temporal/TemporalWorkflow';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions;
@@ -172,7 +177,6 @@ export class WorkflowRunner {
 			const queue = Container.get(Queue);
 			this.jobQueue = queue.getBullObjectInstance();
 		}
-
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
@@ -186,7 +190,8 @@ export class WorkflowRunner {
 		} else if (executionsProcess === 'main') {
 			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
 		} else {
-			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
+			executionId = await this.runTemporal(data, loadStaticData, executionId, responsePromise);
+			// executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
 		void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
@@ -621,6 +626,164 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+		return executionId;
+	}
+
+	async runTemporal(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		restartExecutionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		const workflowId = data.workflowData.id;
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+		}
+
+		const connection = await Connection.connect();
+
+		const client = new Client({
+			connection,
+			// namespace: 'foo.bar', // connects to 'default' namespace if not specified
+		});
+
+		const nodeTypes = Container.get(NodeTypes);
+
+		// Soft timeout to stop workflow execution after current running node
+		// Changes were made by adding the `workflowTimeout` to the `additionalData`
+		// So that the timeout will also work for executions with nested workflows.
+		let executionTimeout: NodeJS.Timeout;
+
+		const workflowSettings = data.workflowData.settings ?? {};
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
+		}
+
+		const workflow = new Workflow({
+			id: workflowId,
+			name: data.workflowData.name,
+			nodes: data.workflowData.nodes,
+			connections: data.workflowData.connections,
+			active: data.workflowData.active,
+			nodeTypes,
+			staticData: data.workflowData.staticData,
+			settings: workflowSettings,
+		});
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			data.userId,
+			undefined,
+			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		);
+
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		// Register the active execution
+		const executionId = await activeExecutions.add(data, undefined, restartExecutionId);
+		additionalData.executionId = executionId;
+
+		Logger.verbose(
+			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
+			{ executionId },
+		);
+		let workflowExecution: PCancelable<IRun>;
+
+		try {
+			Logger.verbose(
+				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
+				{ executionId },
+			);
+
+			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
+				data,
+				executionId,
+				true,
+			);
+
+			try {
+				await PermissionChecker.check(workflow, data.userId);
+			} catch (error) {
+				ErrorReporter.error(error);
+				// Create a failed execution with the data for the node
+				// save it and abort execution
+				const failedExecution = generateFailedExecutionFromError(
+					data.executionMode,
+					error,
+					error.node,
+				);
+				additionalData.hooks
+					.executeHookFunctions('workflowExecuteAfter', [failedExecution])
+					.then(() => {
+						activeExecutions.remove(executionId, failedExecution);
+					});
+				return executionId;
+			}
+
+			additionalData.hooks.hookFunctions.sendResponse = [
+				async (response: IExecuteResponsePromiseData): Promise<void> => {
+					if (responsePromise) {
+						responsePromise.resolve(response);
+					}
+				},
+			];
+
+			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+				executionId,
+			});
+
+			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({
+				sessionId: data.sessionId,
+			});
+
+			const startHandle = await client.workflow.start(doWorkflowRight, {
+				// type inference works! args: [name: string]
+				args: [data, executionId],
+				taskQueue: 'hello-world',
+				// in practice, use a meaningful business ID, like customerId or transactionId
+				workflowId: executionId,
+			});
+
+			// return startHandle.result();
+			workflowExecution = new PCancelable(async (resolve, reject, onCancel) => {
+				const result = await startHandle.result();
+				resolve(result);
+			});
+
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			if (workflowTimeout > 0) {
+				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
+				executionTimeout = setTimeout(() => {
+					activeExecutions.stopExecution(executionId, 'timeout');
+				}, timeout);
+			}
+
+			workflowExecution
+				.then((fullRunData) => {
+					clearTimeout(executionTimeout);
+					if (workflowExecution.isCanceled) {
+						fullRunData.finished = false;
+					}
+					fullRunData.status = activeExecutions.getStatus(executionId);
+					activeExecutions.remove(executionId, fullRunData);
+				})
+				.catch((error) => {
+					console.log('we must handle this error', error.message);
+					// this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
+				});
+		} catch (error) {
+			console.log('we must handle this error', error.message);
+			// await this.processError(
+			// 	error,
+			// 	new Date(),
+			// 	data.executionMode,
+			// 	executionId,
+			// 	additionalData.hooks,
+			// );
+
+			// throw error;
+		}
+
 		return executionId;
 	}
 
