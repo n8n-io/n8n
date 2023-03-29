@@ -1,6 +1,7 @@
 import config from '@/config';
 import * as Db from '@/Db';
 import type { AuthProviderType } from '@/databases/entities/AuthIdentity';
+import type { AuthenticationMethod } from 'n8n-workflow';
 
 export function isSamlCurrentAuthenticationMethod(): boolean {
 	return config.getEnv('userManagement.authenticationMethod') === 'saml';
@@ -16,6 +17,10 @@ export function isSsoJustInTimeProvisioningEnabled(): boolean {
 
 export function doRedirectUsersFromLoginToSsoFlow(): boolean {
 	return config.getEnv('sso.redirectLoginToSso');
+}
+
+export function getCurrentAuthenticationMethod(): AuthenticationMethod {
+	return config.getEnv('userManagement.authenticationMethod');
 }
 
 export async function setCurrentAuthenticationMethod(
