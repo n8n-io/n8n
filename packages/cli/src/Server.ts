@@ -270,6 +270,7 @@ class Server extends AbstractServer {
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
+				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
 			sso: {
 				saml: {
