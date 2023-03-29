@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import { parse, stringify } from 'flatted';
 import type { IRun, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
@@ -5,12 +6,11 @@ import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { Push } from '@/push';
-import type { IPushDataExecutionRecovered } from '../../Interfaces';
-import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
-import { eventBus } from './MessageEventBus';
-import { Container } from 'typedi';
+import type { IPushDataExecutionRecovered } from '@/Interfaces';
+import { workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
+import { MessageEventBus } from './MessageEventBus';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -201,7 +201,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 			await workflowExecutionCompleted(executionEntry.workflowData, iRunData);
 
 			// wait for UI to be back up and send the execution data
-			eventBus.once('editorUiConnected', function handleUiBackUp() {
+			Container.get(MessageEventBus).once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
 					Container.get(Push).send('executionRecovered', {
