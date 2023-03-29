@@ -18,7 +18,7 @@ import { User } from '@/databases/entities/User';
 import { getLogger } from '@/Logger';
 import { randomEmail, randomName } from '../integration/shared/random';
 import * as Helpers from './Helpers';
-import { WorkflowExecuteAdditionalData } from '@/index';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
@@ -27,6 +27,9 @@ import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';
 import { Push } from '@/push';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import { NodeTypes } from '@/NodeTypes';
+import { MessageEventBus } from '@/eventbus';
 
 /**
  * TODO:
@@ -153,16 +156,22 @@ describe('ActiveWorkflowRunner', () => {
 		};
 		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
 		mockInstance(Push);
+		mockInstance(MessageEventBus);
 	});
 
 	beforeEach(() => {
 		externalHooks = mock();
-		activeWorkflowRunner = new ActiveWorkflowRunner(externalHooks);
+		activeWorkflowRunner = new ActiveWorkflowRunner(
+			new ActiveExecutions(),
+			externalHooks,
+			Container.get(NodeTypes),
+		);
 	});
 
 	afterEach(async () => {
 		await activeWorkflowRunner.removeAll();
 		databaseActiveWorkflowsCount = 0;
+		databaseActiveWorkflowsList = [];
 		jest.clearAllMocks();
 	});
 

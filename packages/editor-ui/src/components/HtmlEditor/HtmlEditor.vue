@@ -10,7 +10,7 @@ import cssParser from 'prettier/parser-postcss';
 import jsParser from 'prettier/parser-babel';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history } from '@codemirror/commands';
+import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
 import {
 	bracketMatching,
 	ensureSyntaxTree,
@@ -86,7 +86,11 @@ export default mixins(expressionManager).extend({
 				this.disableExpressionCompletions ? html() : htmlWithCompletions(),
 				autoCloseTags,
 				expressionInputHandler(),
-				keymap.of([indentWithTab, { key: 'Enter', run: insertNewlineAndIndent }]),
+				keymap.of([
+					indentWithTab,
+					{ key: 'Enter', run: insertNewlineAndIndent },
+					{ key: 'Mod-Shift-z', run: redo },
+				]),
 				indentOnInput(),
 				theme,
 				lineNumbers(),

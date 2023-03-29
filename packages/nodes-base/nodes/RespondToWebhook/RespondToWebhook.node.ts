@@ -1,4 +1,3 @@
-import { BINARY_ENCODING } from 'n8n-core';
 import type { Readable } from 'stream';
 import type {
 	IDataObject,
@@ -9,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {

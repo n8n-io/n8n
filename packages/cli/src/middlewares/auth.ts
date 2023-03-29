@@ -18,7 +18,7 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import type { Repository } from 'typeorm';
 import type { User } from '@db/entities/User';
-import { SamlUrls } from '../sso/saml/constants';
+import { SamlUrls } from '@/sso/saml/constants';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

@@ -1,13 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	JsonObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { JsonObject, IDataObject } from 'n8n-workflow';
+	IDataObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { IRelation } from './Interfaces';

@@ -1,17 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
-	IDataObject,
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,

@@ -1,7 +1,10 @@
+import { Container } from 'typedi';
 import express from 'express';
 import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
+import { v4 as uuid } from 'uuid';
+import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { Role } from '@db/entities/Role';
@@ -14,15 +17,13 @@ import {
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { eventBus } from '@/eventbus';
-import { SuperAgentTest } from 'supertest';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
-import { v4 as uuid } from 'uuid';
-import { EventNamesTypes } from '../../src/eventbus/EventMessageClasses';
+import { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -54,6 +55,7 @@ const testWebhookDestination: MessageEventBusDestinationWebhookOptions = {
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
+
 const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	...defaultMessageEventBusDestinationSentryOptions,
 	id: '450ca04b-87dd-4837-a052-ab3a347a00e9',
@@ -62,6 +64,8 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
+
+const eventBus = Container.get(MessageEventBus);
 
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
@@ -99,15 +103,12 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', '1');
+	config.set('eventBus.logWriter.keepLogCount', 1);
 	config.set('enterprise.features.logStreaming', true);
-
-	await eventBus.initialize();
-});
-
-beforeEach(async () => {
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
+
+	await eventBus.initialize();
 });
 
 afterAll(async () => {

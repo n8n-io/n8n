@@ -5,6 +5,7 @@
 		:popper-class="$style.popover"
 		:value="show"
 		trigger="manual"
+		v-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
@@ -15,7 +16,6 @@
 				:value="filter"
 				:clearable="true"
 				@input="onFilterInput"
-				@blur="onSearchBlur"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -36,7 +36,7 @@
 		<div
 			v-else-if="!errorView"
 			ref="resultsContainer"
-			:class="{ [$style.container]: true, [$style.pushDownResults]: filterable }"
+			:class="$style.container"
 			@scroll="onResultsEnd"
 		>
 			<div
@@ -47,6 +47,7 @@
 					[$style.selected]: result.value === value,
 					[$style.hovering]: hoverIndex === i,
 				}"
+				class="ph-no-capture"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -65,7 +66,7 @@
 				</div>
 			</div>
 			<div v-if="loading && !errorView">
-				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
+				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
 					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				</div>
 			</div>
@@ -201,7 +202,7 @@ export default Vue.extend({
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onSearchBlur() {
+		onClickOutside() {
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
@@ -253,19 +254,32 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.popover {
+:root .popover {
+	--content-height: 236px;
 	padding: 0;
 	border: var(--border-base);
-}
+	display: flex;
+	max-height: calc(var(--content-height) + var(--spacing-xl));
+	flex-direction: column;
 
-.pushDownResults {
-	padding-top: 36px;
+	& ::-webkit-scrollbar {
+		width: 12px;
+	}
+
+	& ::-webkit-scrollbar-thumb {
+		border-radius: 12px;
+		background: var(--color-foreground-dark);
+		border: 3px solid white;
+	}
+
+	& ::-webkit-scrollbar-thumb:hover {
+		background: var(--color-foreground-xdark);
+	}
 }
 
 .container {
 	position: relative;
-	max-height: 236px;
-	overflow: scroll;
+	overflow: auto;
 }
 
 .messageContainer {
@@ -279,8 +293,6 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 	--input-border-color: none;
 	--input-font-size: var(--font-size-2xs);
-	position: absolute;
-	top: 0;
 	width: 100%;
 	z-index: 1;
 }
