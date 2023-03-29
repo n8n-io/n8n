@@ -4,17 +4,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/naming-convention */
+import { Container } from 'typedi';
 import { Router } from 'express';
 import bodyParser from 'body-parser';
+import { AES } from 'crypto-js';
 import { v4 as uuid } from 'uuid';
+import { UserSettings } from 'n8n-core';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
-import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { UserSettings } from 'n8n-core';
-import { AES } from 'crypto-js';
 import type { User } from '@/databases/entities/User';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
+import { MessageEventBus } from '@/eventbus';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -82,6 +83,7 @@ const setupUserManagement = async () => {
 
 const resetLogStreaming = async () => {
 	config.set('enterprise.features.logStreaming', false);
+	const eventBus = Container.get(MessageEventBus);
 	for (const id in eventBus.destinations) {
 		await eventBus.removeDestination(id);
 	}

@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import express from 'express';
 import config from '@/config';
 import axios from 'axios';
@@ -16,7 +17,7 @@ import {
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { eventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
@@ -63,6 +64,8 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
+
+const eventBus = Container.get(MessageEventBus);
 
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
