@@ -1,3 +1,4 @@
+import { Container } from 'typedi';
 import express from 'express';
 import config from '@/config';
 import axios from 'axios';
@@ -16,7 +17,7 @@ import {
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { eventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
@@ -64,6 +65,8 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
 
+const eventBus = Container.get(MessageEventBus);
+
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
 	expect(sent.length).toBeGreaterThan(0);
@@ -100,7 +103,7 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', '1');
+	config.set('eventBus.logWriter.keepLogCount', 1);
 	config.set('enterprise.features.logStreaming', true);
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);

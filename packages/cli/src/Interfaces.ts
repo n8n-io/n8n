@@ -23,6 +23,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
+	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -48,6 +49,7 @@ import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import type { EventDestinations } from '@db/entities/MessageEventBusDestinationEntity';
+import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 export interface IActivationError {
 	time: number;
@@ -88,6 +90,7 @@ export interface IDatabaseCollections {
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 	EventDestinations: Repository<EventDestinations>;
+	ExecutionMetadata: Repository<ExecutionMetadata>;
 }
 
 // ----------------------------------
@@ -453,16 +456,12 @@ export interface IVersionNotificationSettings {
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	saveDataErrorExecution: 'all' | 'none';
-	saveDataSuccessExecution: 'all' | 'none';
+	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
-	workflowCallerPolicyDefaultOption:
-		| 'any'
-		| 'none'
-		| 'workflowsFromAList'
-		| 'workflowsFromSameOwner';
+	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;

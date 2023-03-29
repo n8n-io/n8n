@@ -25,10 +25,10 @@ import * as Server from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
-import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { MessageEventBus } from '@/eventbus';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -60,7 +60,7 @@ export class Start extends BaseCommand {
 		}),
 	};
 
-	protected activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	/**
 	 * Opens the UI in browser
@@ -133,7 +133,7 @@ export class Start extends BaseCommand {
 			}
 
 			//finally shut down Event Bus
-			await eventBus.close();
+			await Container.get(MessageEventBus).close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
@@ -200,6 +200,7 @@ export class Start extends BaseCommand {
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
 		await this.initBinaryManager();
@@ -267,11 +268,10 @@ export class Start extends BaseCommand {
 					// Optimistic approach - stop if any installation fails
 					// eslint-disable-next-line no-restricted-syntax
 					for (const missingPackage of missingPackages) {
-						// eslint-disable-next-line no-await-in-loop
-						void (await this.loadNodesAndCredentials.loadNpmModule(
+						await this.loadNodesAndCredentials.installNpmModule(
 							missingPackage.packageName,
 							missingPackage.version,
-						));
+						);
 						missingPackages.delete(missingPackage);
 					}
 					LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');

@@ -327,6 +327,7 @@ export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
+export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -447,6 +448,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  * Enterprise edition
  */
 export enum EnterpriseEditionFeature {
+	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
