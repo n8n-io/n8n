@@ -3,18 +3,19 @@ import * as speakeasy from 'speakeasy';
 
 @Service()
 export class MultiFactorAuthService {
-	createQrUrlFromSecret(data: { secret: string; label?: string }) {
+	createQrUrlFromSecret(data: { secret: string; label?: string; issuer?: string }) {
 		return speakeasy.otpauthURL({
 			secret: data.secret,
 			label: data.label ?? '',
+			issuer: data.issuer ?? '',
 			encoding: 'base32',
 		});
 	}
 
-	generateSecret(data: { issuer?: string; label: string }) {
+	generateSecret(data: { issuer?: string; label?: string }) {
 		const { base32, otpauth_url } = speakeasy.generateSecret({
 			issuer: data.issuer ?? '',
-			name: data.label,
+			name: data.label ?? '',
 			otpauth_url: true,
 		});
 		return {
