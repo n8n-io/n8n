@@ -12,8 +12,6 @@ import { createWorkflow } from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
-import Container from 'typedi';
-import { License } from '../../src/License';
 
 let owner: User;
 let member: User;
@@ -25,7 +23,6 @@ let saveCredential: SaveCredentialFunction;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	Container.get(License).isSharingEnabled = () => true;
 	const app = await utils.initTestServer({ endpointGroups: ['workflows'] });
 
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
@@ -45,6 +42,8 @@ beforeAll(async () => {
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 	await utils.initNodeTypes();
+
+	config.set('enterprise.features.sharing', true);
 });
 
 beforeEach(async () => {
@@ -52,7 +51,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	Container.reset();
 	await testDb.terminate();
 });
 

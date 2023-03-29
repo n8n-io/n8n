@@ -311,8 +311,8 @@ class Server extends AbstractServer {
 				sharing: false,
 				ldap: false,
 				saml: false,
-				logStreaming: false,
-				advancedExecutionFilters: false,
+				logStreaming: config.getEnv('enterprise.features.logStreaming'),
+				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
