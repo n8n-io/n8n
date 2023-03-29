@@ -146,7 +146,6 @@ import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
-import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import {
@@ -157,6 +156,7 @@ import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/sam
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { MessageEventBus } from '@/eventbus';
 
 const exec = promisify(callbackExec);
 
@@ -365,7 +365,7 @@ class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
@@ -376,8 +376,11 @@ class Server extends AbstractServer {
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
 
+		const eventBus = Container.get(MessageEventBus);
+		await eventBus.initialize();
+
 		const controllers: object[] = [
-			new EventBusController(),
+			new EventBusController(eventBus),
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
@@ -497,7 +500,7 @@ class Server extends AbstractServer {
 
 		await handleLdapInit();
 
-		this.registerControllers(ignoredEndpoints);
+		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
@@ -1222,14 +1225,6 @@ class Server extends AbstractServer {
 				},
 			),
 		);
-
-		// ----------------------------------------
-		// EventBus Setup
-		// ----------------------------------------
-
-		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
-		}
 
 		// ----------------------------------------
 		// Webhooks
