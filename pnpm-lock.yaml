@@ -584,7 +584,6 @@ importers:
       '@testing-library/user-event': ^14.4.3
       '@testing-library/vue': ^5.8.3
       '@types/dateformat': ^3.0.0
-      '@types/dompurify': ^3.0.0
       '@types/express': ^4.17.6
       '@types/file-saver': ^2.0.1
       '@types/humanize-duration': ^3.27.1
@@ -603,7 +602,6 @@ importers:
       codemirror-lang-html-n8n: ^1.0.0
       codemirror-lang-n8n-expression: ^0.2.0
       dateformat: ^3.0.3
-      dompurify: ^3.0.1
       esprima-next: 5.8.4
       fast-json-stable-stringify: ^2.1.0
       file-saver: ^2.0.2
@@ -669,7 +667,6 @@ importers:
       codemirror-lang-html-n8n: 1.0.0
       codemirror-lang-n8n-expression: 0.2.0_zyklskjzaprvz25ee7sq7godcq
       dateformat: 3.0.3
-      dompurify: 3.0.1
       esprima-next: 5.8.4
       fast-json-stable-stringify: 2.1.0
       file-saver: 2.0.5
@@ -711,7 +708,6 @@ importers:
       '@testing-library/user-event': 14.4.3_7izb363m7fjrh7ob6q4a2yqaqe
       '@testing-library/vue': 5.8.3_rhqkolmkwunxzlyyxxsuwaiuri
       '@types/dateformat': 3.0.1
-      '@types/dompurify': 3.0.0
       '@types/express': 4.17.14
       '@types/file-saver': 2.0.5
       '@types/humanize-duration': 3.27.1
@@ -5560,12 +5556,6 @@ packages:
     resolution: {integrity: sha512-w5jZ0ee+HaPOaX25X2/2oGR/7rgAQSYII7X7pp0m9KgBfMP7uKfMfTvcpl5Dj+eDBbpxKGiqE+flqDr6XTd2RA==}
     dev: true
 
-  /@types/dompurify/3.0.0:
-    resolution: {integrity: sha512-EcSqmgm/xJwH8CcJPy9AHNypp/j58CYga3nWdl93/wLxX6OH+rSD3aAj75NQazcZd1YKHJ/pjNZ9qmgVajggwQ==}
-    dependencies:
-      '@types/trusted-types': 2.0.2
-    dev: true
-
   /@types/ejs/3.1.1:
     resolution: {integrity: sha512-RQul5wEfY7BjWm0sYY86cmUN/pcXWGyVxWX93DFFJvcrxax5zKlieLwA3T77xJGwNcZW0YW6CYG70p1m8xPFmA==}
     dev: true
@@ -10109,10 +10099,6 @@ packages:
     engines: {node: '>= 4'}
     dependencies:
       domelementtype: 2.3.0
-
-  /dompurify/3.0.1:
-    resolution: {integrity: sha512-60tsgvPKwItxZZdfLmamp0MTcecCta3avOhsLgPZ0qcWt96OasFfhkeIRbJ6br5i0fQawT1/RBGB5L58/Jpwuw==}
-    dev: false
 
   /domutils/1.5.1:
     resolution: {integrity: sha512-gSu5Oi/I+3wDENBsOWBiRK1eoGxcywYSqg3rR960/+EfY0CF4EX1VPkgHOZ3WiS/Jg2DtliF6BhWcHlfpYUcGw==}

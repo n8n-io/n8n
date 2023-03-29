@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount } from 'vue';
-import dompurify from 'dompurify';
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { i18n as locale } from '@/plugins/i18n';
@@ -21,7 +20,7 @@ const metadataSanitized = computed(() => {
 	if (!metadata.value) {
 		return '';
 	}
-	return dompurify.sanitize(metadata.value, { PARSER_MEDIA_TYPE: 'application/xhtml+xml' });
+	return JSON.stringify(metadata.value);
 });
 
 const getSamlConfig = async () => {
