@@ -248,6 +248,15 @@ export function findMatches(
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
 
+	if (disableDotNotation && skipFields.some((field) => field.includes('.'))) {
+		const fieldToSkip = skipFields.find((field) => field.includes('.'));
+		throw new Error(
+			`Dot notation is disabled, but field to skip comparing '${
+				fieldToSkip as string
+			}' contains dot`,
+		);
+	}
+
 	const filteredData = {
 		matched: [] as EntryMatches[],
 		unmatched1: [] as INodeExecutionData[],
