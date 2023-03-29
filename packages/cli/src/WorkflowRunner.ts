@@ -55,7 +55,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
-import { eventBus } from './eventbus';
+import { MessageEventBus } from '@/eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
@@ -67,9 +67,12 @@ export class WorkflowRunner {
 
 	jobQueue: JobQueue;
 
+	eventBus: MessageEventBus;
+
 	constructor() {
 		this.push = Container.get(Push);
 		this.activeExecutions = Container.get(ActiveExecutions);
+		this.eventBus = Container.get(MessageEventBus);
 	}
 
 	/**
@@ -116,7 +119,7 @@ export class WorkflowRunner {
 		// does contain those messages.
 		try {
 			// Search for messages for this executionId in event logs
-			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
+			const eventLogMessages = await this.eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
 				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
