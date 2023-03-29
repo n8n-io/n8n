@@ -17,7 +17,6 @@ import { LdapManager } from './LdapManager.ee';
 import {
 	BINARY_AD_ATTRIBUTES,
 	LDAP_CONFIG_SCHEMA,
-	LDAP_ENABLED,
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
@@ -37,7 +36,7 @@ import {
  */
 export const isLdapEnabled = (): boolean => {
 	const license = Container.get(License);
-	return isUserManagementEnabled() && (config.getEnv(LDAP_ENABLED) || license.isLdapEnabled());
+	return isUserManagementEnabled() && license.isLdapEnabled();
 };
 
 /**
