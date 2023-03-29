@@ -3,7 +3,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import type { TableSchema } from '../../helpers/BigQuery.types';
+import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 

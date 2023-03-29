@@ -4,7 +4,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { NodeOperationError, sleep } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import type { JobInsertResponse } from '../../helpers/BigQuery.types';
+import type { JobInsertResponse } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';

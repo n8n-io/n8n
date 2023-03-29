@@ -2,9 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import type { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
-
-import { isEmpty, set } from 'lodash';
+import type { SchemaField, TableRawData, TableSchema } from './interfaces';
 
 function getFieldValue(schemaField: SchemaField, field: IDataObject) {
 	if (schemaField.type === 'RECORD') {
@@ -87,40 +85,6 @@ export function prepareOutput(
 	});
 
 	return executionData;
-}
-
-export function selectedFieldsToObject(selected: string) {
-	const returnData: IDataObject = {};
-	const fields = selected.split(',').map((entry) => entry.trim());
-	fields.forEach((entry) => set(returnData, entry, {}));
-	return returnData;
-}
-
-export function getSchemaForSelectedFields(
-	schemaFields: SchemaField[],
-	selectedFields: IDataObject,
-) {
-	const returnData: SchemaField[] = [];
-
-	for (const field of schemaFields) {
-		if (selectedFields[field.name] !== undefined) {
-			if (isEmpty(selectedFields[field.name])) {
-				returnData.push(field);
-			}
-			if (field.type === 'RECORD' && field.fields !== undefined) {
-				const fields = getSchemaForSelectedFields(
-					field.fields,
-					selectedFields[field.name] as IDataObject,
-				);
-				returnData.push({
-					...field,
-					fields,
-				});
-			}
-		}
-	}
-
-	return returnData;
 }
 
 export function checkSchema(
