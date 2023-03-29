@@ -10,7 +10,7 @@ import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
-import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
+import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import {
 	isEmailCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
@@ -52,10 +52,7 @@ export function setSamlLoginLabel(label: string): void {
 
 export function isSamlLicensed(): boolean {
 	const license = Container.get(License);
-	return (
-		isUserManagementEnabled() &&
-		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
-	);
+	return isUserManagementEnabled() && license.isSamlEnabled();
 }
 
 export function isSamlLicensedAndEnabled(): boolean {
