@@ -1,7 +1,8 @@
 import type { IExecuteFunctions } from 'n8n-core';
 
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+
+import { NodeOperationError, sleep } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { JobInsertResponse } from '../../helpers/BigQuery.types';
 
@@ -201,7 +202,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const jobId = response?.jobReference?.jobId;
 			const raw = rawOutput || (options.dryRun as boolean) || false;
 
-			jobs.push({ jobId, projectId, i, raw, includeSchema });
+			if (response.status?.state === 'DONE') {
+				const qs = options.location ? { location: options.location } : {};
+
+				const queryResponse: IDataObject = await googleApiRequest.call(
+					this,
+					'GET',
+					`/v2/projects/${projectId}/queries/${jobId}`,
+					undefined,
+					qs,
+				);
+
+				returnData.push(...prepareOutput(queryResponse, i, raw, includeSchema));
+			} else {
+				jobs.push({ jobId, projectId, i, raw, includeSchema, location: options.location });
+			}
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -218,22 +233,34 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	let attempts = 0;
-	while (jobs.length > 0 && attempts < 5) {
+	let waitTime = 1000;
+	while (jobs.length > 0) {
 		const completedJobs: string[] = [];
 
 		for (const job of jobs) {
 			try {
+				const qs = job.location ? { location: job.location } : {};
+
 				const response: IDataObject = await googleApiRequest.call(
 					this,
 					'GET',
 					`/v2/projects/${job.projectId}/queries/${job.jobId}`,
+					undefined,
+					qs,
 				);
 
 				if (response.jobComplete) {
 					completedJobs.push(job.jobId);
 
 					returnData.push(...prepareOutput(response, job.i, job.raw, job.includeSchema));
+				}
+				if ((response?.errors as IDataObject[])?.length) {
+					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
+					throw new Error(
+						`Error(s) ocurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
+							', ',
+						)}`,
+					);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -254,18 +281,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		jobs = jobs.filter((job) => !completedJobs.includes(job.jobId));
 
 		if (jobs.length > 0) {
-			await new Promise((resolve) => setTimeout(resolve, 5000));
-			attempts++;
+			await sleep(waitTime);
+			if (waitTime < 30000) {
+				waitTime = waitTime * 2;
+			}
 		}
-	}
-
-	if (jobs.length > 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`The following queries did not complete within the timeout from items: ${jobs
-				.map((job) => job.i)
-				.join(', ')}`,
-		);
 	}
 
 	return returnData;
