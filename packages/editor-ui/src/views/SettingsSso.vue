@@ -16,12 +16,6 @@ const ssoSettingsSaved = ref(false);
 const metadata = ref();
 const redirectUrl = ref();
 const entityId = ref();
-const metadataSanitized = computed(() => {
-	if (!metadata.value) {
-		return '';
-	}
-	return JSON.stringify(metadata.value);
-});
 
 const getSamlConfig = async () => {
 	const config = await ssoStore.getSamlConfig();
@@ -33,7 +27,7 @@ const getSamlConfig = async () => {
 
 const onSave = async () => {
 	try {
-		await ssoStore.saveSamlConfig({ metadata: metadataSanitized.value });
+		await ssoStore.saveSamlConfig({ metadata: metadata.value });
 		await getSamlConfig();
 	} catch (error) {
 		Notification.error({
