@@ -74,13 +74,14 @@ import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
+import { LDAP_ENABLED } from '@/Ldap/constants';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
-import { License } from '../../../src/License';
+import { MessageEventBus } from '@/eventbus';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -176,7 +177,8 @@ export async function initTestServer({
 		for (const group of functionEndpoints) {
 			switch (group) {
 				case 'eventBus':
-					registerController(testServer.app, config, new EventBusController());
+					const eventBus = Container.get(MessageEventBus);
+					registerController(testServer.app, config, new EventBusController(eventBus));
 					break;
 				case 'auth':
 					registerController(
@@ -186,7 +188,7 @@ export async function initTestServer({
 					);
 					break;
 				case 'ldap':
-					Container.get(License).isLdapEnabled = () => true;
+					config.set(LDAP_ENABLED, true);
 					await handleLdapInit();
 					const { service, sync } = LdapManager.getInstance();
 					registerController(
