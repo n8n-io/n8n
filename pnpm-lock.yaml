@@ -56,7 +56,6 @@ importers:
       tsc-watch: ^6.0.0
       turbo: 1.7.4
     dependencies:
-      cypress-otp: 1.0.3
       n8n: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config': link:packages/@n8n_io/eslint-config
@@ -65,6 +64,7 @@ importers:
       '@types/supertest': 2.0.12
       cross-env: 7.0.3
       cypress: 12.8.1
+      cypress-otp: 1.0.3
       cypress-real-events: 1.7.6_cypress@12.8.1
       jest: 29.5.0
       jest-environment-jsdom: 29.5.0
@@ -4059,20 +4059,20 @@ packages:
 
   /@otplib/core/12.0.1:
     resolution: {integrity: sha512-4sGntwbA/AC+SbPhbsziRiD+jNDdIzsZ3JUyfZwjtKyc/wufl1pnSIaG4Uqx8ymPagujub0o92kgBnB89cuAMA==}
-    dev: false
+    dev: true
 
   /@otplib/plugin-crypto/12.0.1:
     resolution: {integrity: sha512-qPuhN3QrT7ZZLcLCyKOSNhuijUi9G5guMRVrxq63r9YNOxxQjPm59gVxLM+7xGnHnM6cimY57tuKsjK7y9LM1g==}
     dependencies:
       '@otplib/core': 12.0.1
-    dev: false
+    dev: true
 
   /@otplib/plugin-thirty-two/12.0.1:
     resolution: {integrity: sha512-MtT+uqRso909UkbrrYpJ6XFjj9D+x2Py7KjTO9JDPhL0bJUYVu5kFP4TFZW4NFAywrAtFRxOVY261u0qwb93gA==}
     dependencies:
       '@otplib/core': 12.0.1
       thirty-two: 1.0.2
-    dev: false
+    dev: true
 
   /@otplib/preset-default/12.0.1:
     resolution: {integrity: sha512-xf1v9oOJRyXfluBhMdpOkr+bsE+Irt+0D5uHtvg6x1eosfmHCsCC6ej/m7FXiWqdo0+ZUI6xSKDhJwc8yfiOPQ==}
@@ -4080,7 +4080,7 @@ packages:
       '@otplib/core': 12.0.1
       '@otplib/plugin-crypto': 12.0.1
       '@otplib/plugin-thirty-two': 12.0.1
-    dev: false
+    dev: true
 
   /@otplib/preset-v11/12.0.1:
     resolution: {integrity: sha512-9hSetMI7ECqbFiKICrNa4w70deTUfArtwXykPUvSHWOdzOlfa9ajglu7mNCntlvxycTiOAXkQGwjQCzzDEMRMg==}
@@ -4088,7 +4088,7 @@ packages:
       '@otplib/core': 12.0.1
       '@otplib/plugin-crypto': 12.0.1
       '@otplib/plugin-thirty-two': 12.0.1
-    dev: false
+    dev: true
 
   /@pinia/testing/0.0.14_pinia@2.0.23+vue@2.7.14:
     resolution: {integrity: sha512-ZmZwVNd/NnKYLIfjfuKl0zlJ3UdiXFpsHzSlL6wCeezSlyrqGMxsIQKv0J6fleu38gyCNTPBEipfxrt8V4+VIg==}
@@ -9611,7 +9611,7 @@ packages:
     resolution: {integrity: sha512-o7LssfI0HRHa+TkaOE5/Aukv6M9vsoZAtYESr9m7Ky2i+HRNb2p/IRelE7Z0wJ/UK2f+nXAGZIfXqraf9EPDqw==}
     dependencies:
       otplib: 12.0.1
-    dev: false
+    dev: true
 
   /cypress-real-events/1.7.6_cypress@12.8.1:
     resolution: {integrity: sha512-yP6GnRrbm6HK5q4DH6Nnupz37nOfZu/xn1xFYqsE2o4G73giPWQOdu6375QYpwfU1cvHNCgyD2bQ2hPH9D7NMw==}
@@ -16382,7 +16382,7 @@ packages:
       '@otplib/core': 12.0.1
       '@otplib/preset-default': 12.0.1
       '@otplib/preset-v11': 12.0.1
-    dev: false
+    dev: true
 
   /p-cancelable/2.1.1:
     resolution: {integrity: sha512-BZOr3nRQHOntUjTrH8+Lh54smKHoHyur8We1V8DSMVrl5A2malOOwuJRnKRDjSnkoeBh4at6BwEnb5I7Jl31wg==}
@@ -19818,7 +19818,7 @@ packages:
   /thirty-two/1.0.2:
     resolution: {integrity: sha512-OEI0IWCe+Dw46019YLl6V10Us5bi574EvlJEOcAkB29IzQ/mYD1A6RyNHLjZPiHCmuodxvgF6U+vZO1L15lxVA==}
     engines: {node: '>=0.2.6'}
-    dev: false
+    dev: true
 
   /throttle-debounce/1.1.0:
     resolution: {integrity: sha512-XH8UiPCQcWNuk2LYePibW/4qL97+ZQ1AN3FNXwZRBNPPowo/NRU5fAlDCSNBJIYCKbioZfuYtMhG4quqoJhVzg==}

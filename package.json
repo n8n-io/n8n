@@ -34,7 +34,6 @@
     "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
-    "cypress-otp": "^1.0.3",
     "n8n": "workspace:*"
   },
   "devDependencies": {
@@ -44,6 +43,7 @@
     "@types/supertest": "^2.0.12",
     "cross-env": "^7.0.3",
     "cypress": "^12.8.1",
+    "cypress-otp": "^1.0.3",
     "cypress-real-events": "^1.7.6",
     "jest": "^29.5.0",
     "jest-environment-jsdom": "^29.5.0",
