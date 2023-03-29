@@ -5,7 +5,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Router } from 'express';
-import type { Request } from 'express';
 import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
@@ -13,25 +12,11 @@ import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import Container from 'typedi';
-import { License } from '../License';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
-
-const enabledFeatures = {
-	sharing: true, //default to true here instead of setting it in config/index.ts for e2e
-	ldap: false,
-	saml: false,
-	logStreaming: false,
-	advancedExecutionFilters: false,
-};
-
-type Feature = keyof typeof enabledFeatures;
-
-Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
 const tablesToTruncate = [
 	'auth_identity',
@@ -93,7 +78,7 @@ const setupUserManagement = async () => {
 };
 
 const resetLogStreaming = async () => {
-	enabledFeatures.logStreaming = false;
+	config.set('enterprise.features.logStreaming', false);
 	for (const id in eventBus.destinations) {
 		await eventBus.removeDestination(id);
 	}
@@ -142,8 +127,7 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	res.writeHead(204).end();
 });
 
-e2eController.post('/enable-feature/:feature', async (req: Request<{ feature: Feature }>, res) => {
-	const { feature } = req.params;
-	enabledFeatures[feature] = true;
+e2eController.post('/enable-feature/:feature', async (req, res) => {
+	config.set(`enterprise.features.${req.params.feature}`, true);
 	res.writeHead(204).end();
 });
