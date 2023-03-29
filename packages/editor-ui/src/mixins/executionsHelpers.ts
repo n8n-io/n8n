@@ -50,34 +50,23 @@ export const executionHelpers = mixins(genericHelpers).extend({
 			) {
 				status.name = 'running';
 				status.label = this.$locale.baseText('executionsList.running');
-				if (execution.startedAt) {
-					status.runningTime = this.displayTimer(
-						new Date().getTime() - new Date(execution.startedAt).getTime(),
-						true,
-					);
-				}
 			} else if (execution.status === 'success' || execution.finished) {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');
-				if (execution.stoppedAt) {
-					status.runningTime = this.displayTimer(
-						new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(),
-						true,
-					);
-				}
-			} else if (
-				execution.status === 'failed' ||
-				execution.status === 'crashed' ||
-				execution.stoppedAt !== null
-			) {
+			} else if (execution.status === 'failed' || execution.status === 'crashed') {
 				status.name = 'error';
 				status.label = this.$locale.baseText('executionsList.error');
-				if (execution.stoppedAt) {
-					status.runningTime = this.displayTimer(
-						new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(),
-						true,
-					);
-				}
+			} else if (execution.status === 'canceled') {
+				status.label = this.$locale.baseText('executionsList.canceled');
+			}
+
+			if (!execution.status) execution.status = 'unknown';
+
+			if (execution.startedAt) {
+				status.runningTime = this.displayTimer(
+					execution.stoppedAt?.getTime() ?? Date.now() - execution.startedAt.getTime(),
+					true,
+				);
 			}
 
 			return status;
