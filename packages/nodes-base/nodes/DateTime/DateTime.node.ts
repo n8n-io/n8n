@@ -404,7 +404,7 @@ export class DateTime implements INodeType {
 				item = items[i];
 
 				if (action === 'format') {
-					const currentDate = this.getNodeParameter('value', i) as string;
+					const currentDate = (this.getNodeParameter('value', i) as string).toString();
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
 					const options = this.getNodeParameter('options', i);

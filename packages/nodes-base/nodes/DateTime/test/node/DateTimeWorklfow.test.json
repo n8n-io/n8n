@@ -1,331 +1,538 @@
 {
-  "name": "My workflow",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "bd40f2b1-090e-4cf0-8342-0ebcca1089b4",
-      "name": "When clicking \"Execute Workflow\"",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        40,
-        -320
-      ]
-    },
-    {
-      "parameters": {
-        "action": "calculate",
-        "value": "08/01/2022",
-        "duration": 10,
-        "options": {}
-      },
-      "id": "cadf04c8-5900-414e-bf61-46adbf3687c2",
-      "name": "Calculate Date: Add Day",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        -400
-      ]
-    },
-    {
-      "parameters": {
-        "action": "calculate",
-        "value": "08/01/2022",
-        "duration": 2,
-        "timeUnit": "quarters",
-        "options": {}
-      },
-      "id": "77939e5a-db02-4c85-bf31-b61a017f4f64",
-      "name": "Calculate Date: Substract Quarter",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        -40
-      ]
-    },
-    {
-      "parameters": {
-        "action": "calculate",
-        "value": "08/01/2022",
-        "operation": "subtract",
-        "duration": 2,
-        "options": {}
-      },
-      "id": "6426aa5b-96ad-4516-a346-b9d0ee68b7bd",
-      "name": "Calculate Date: Substract Day",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        -220
-      ]
-    },
-    {
-      "parameters": {
-        "action": "calculate",
-        "value": "08/01/2022",
-        "duration": 2,
-        "timeUnit": "months",
-        "options": {}
-      },
-      "id": "de76ce11-7865-4b15-9829-5ed7d6a287eb",
-      "name": "Calculate Date: Add months",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        140
-      ]
-    },
-    {
-      "parameters": {
-        "action": "calculate",
-        "value": "08/01/2022",
-        "operation": "subtract",
-        "duration": 2,
-        "timeUnit": "months",
-        "options": {}
-      },
-      "id": "ccbe4625-e470-45f8-b494-06ee1ecfb1a5",
-      "name": "Calculate Date: Substract Months",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "value": "08/01/2022",
-        "toFormat": "YYYY/MM/DD",
-        "options": {}
-      },
-      "id": "aed1eed3-db4e-431b-be04-488b47880665",
-      "name": "Calculate Date: Format YYYY/MM/DD",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        480
-      ]
-    },
-    {
-      "parameters": {
-        "value": "08/01/2022",
-        "toFormat": "YYYY/MM/DD",
-        "options": {
-          "fromTimezone": "US/Hawaii"
-        }
-      },
-      "id": "3bc2aa26-bc98-40c0-be8a-75bc0d58601c",
-      "name": "Calculate Date: Format YYYY/MM/DD with Timezone",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        660
-      ]
-    },
-    {
-      "parameters": {
-        "value": "08/01/2022",
-        "toFormat": "YYYY/MM/DD",
-        "options": {
-          "fromTimezone": "US/Hawaii",
-          "toTimezone": "US/Pacific"
-        }
-      },
-      "id": "e2defb6b-e465-4d5f-9d65-d66ab91345f5",
-      "name": "Calculate Date: Format YYYY/MM/DD with Timezone1",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        520,
-        840
-      ]
-    },
-    {
-      "parameters": {
-        "value": "08/01/2022",
-        "toFormat": "x",
-        "options": {
-          "fromTimezone": "US/Hawaii",
-          "toTimezone": "US/Pacific"
-        }
-      },
-      "id": "cdf19ab4-aa0c-4cad-8264-bd4356928baf",
-      "name": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        40,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "value": "2022-01-12",
-        "toFormat": "MM-DD-YYYY",
-        "options": {
-          "fromFormat": "YYYY-DD-MM",
-          "fromTimezone": "US/Hawaii",
-          "toTimezone": "US/Pacific"
-        }
-      },
-      "id": "3383f04e-f13d-438b-b1c4-1bc09332401c",
-      "name": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
-      "type": "n8n-nodes-base.dateTime",
-      "typeVersion": 1,
-      "position": [
-        40,
-        380
-      ]
-    }
-  ],
-  "pinData": {
-    "Calculate Date: Format YYYY/MM/DD with Timezone Unix": [
-      {
-        "json": {
-          "data": "1659312000000"
-        }
-      }
-    ],
-    "Calculate Date: Format YYYY/MM/DD with Timezone with special zone": [
-      {
-        "json": {
-          "data": "12-01-2022"
-        }
-      }
-    ],
-    "Calculate Date: Add Day": [
-      {
-        "json": {
-          "data": "2022-08-11T00:00:00.000Z"
-        }
-      }
-    ],
-    "Calculate Date: Substract Day": [
-      {
-        "json": {
-          "data": "2022-07-30T00:00:00.000Z"
-        }
-      }
-    ],
-    "Calculate Date: Substract Quarter": [
-      {
-        "json": {
-          "data": "2023-02-01T00:00:00.000Z"
-        }
-      }
-    ],
-    "Calculate Date: Add months": [
-      {
-        "json": {
-          "data": "2022-10-01T00:00:00.000Z"
-        }
-      }
-    ],
-    "Calculate Date: Substract Months": [
-      {
-        "json": {
-          "data": "2022-06-01T00:00:00.000Z"
-        }
-      }
-    ],
-    "Calculate Date: Format YYYY/MM/DD": [
-      {
-        "json": {
-          "data": "2022/08/01"
-        }
-      }
-    ],
-    "Calculate Date: Format YYYY/MM/DD with Timezone": [
-      {
-        "json": {
-          "data": "2022/07/31"
-        }
-      }
-    ],
-    "Calculate Date: Format YYYY/MM/DD with Timezone1": [
-      {
-        "json": {
-          "data": "2022/07/31"
-        }
-      }
-    ]
-  },
-  "connections": {
-    "When clicking \"Execute Workflow\"": {
-      "main": [
-        [
-          {
-            "node": "Calculate Date: Add Day",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Substract Day",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Substract Quarter",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Add months",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Substract Months",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Format YYYY/MM/DD",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Format YYYY/MM/DD with Timezone",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Format YYYY/MM/DD with Timezone1",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "saveManualExecutions": false,
-    "callerPolicy": "workflowsFromSameOwner",
-    "timezone": "America/New_York",
-    "saveExecutionProgress": "DEFAULT"
-  },
-  "versionId": "2737913c-dd04-438a-ba00-b1ee5f734038",
-  "id": "230",
-  "meta": {
-    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
-  },
-  "tags": []
+	"name": "My workflow 9",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "cc3feaa6-1f1d-497a-9e57-efe8c0ef452e",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [140, 600]
+		},
+		{
+			"parameters": {
+				"action": "calculate",
+				"value": "08/01/2022",
+				"duration": 10,
+				"options": {}
+			},
+			"id": "5054465f-5fd2-4b74-b049-b28e9e166d3f",
+			"name": "Calculate Date: Add Day",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 520]
+		},
+		{
+			"parameters": {
+				"action": "calculate",
+				"value": "08/01/2022",
+				"duration": 2,
+				"timeUnit": "quarters",
+				"options": {}
+			},
+			"id": "c5d97305-f337-4792-a552-393dbf77f2a8",
+			"name": "Calculate Date: Substract Quarter",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 880]
+		},
+		{
+			"parameters": {
+				"action": "calculate",
+				"value": "08/01/2022",
+				"operation": "subtract",
+				"duration": 2,
+				"options": {}
+			},
+			"id": "7baf45bc-72bc-42db-bda2-2eee02e7eb0a",
+			"name": "Calculate Date: Substract Day",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 700]
+		},
+		{
+			"parameters": {
+				"action": "calculate",
+				"value": "08/01/2022",
+				"duration": 2,
+				"timeUnit": "months",
+				"options": {}
+			},
+			"id": "b1e86fe6-428b-40a1-9826-b49eb9f7eba2",
+			"name": "Calculate Date: Add months",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 1060]
+		},
+		{
+			"parameters": {
+				"action": "calculate",
+				"value": "08/01/2022",
+				"operation": "subtract",
+				"duration": 2,
+				"timeUnit": "months",
+				"options": {}
+			},
+			"id": "c217d64b-d8e1-4484-b16b-ffee03747cc2",
+			"name": "Calculate Date: Substract Months",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 1220]
+		},
+		{
+			"parameters": {
+				"value": "08/01/2022",
+				"toFormat": "YYYY/MM/DD",
+				"options": {}
+			},
+			"id": "1982e721-1443-4bbd-be31-f6c0b0ca785a",
+			"name": "Calculate Date: Format YYYY/MM/DD",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 1400]
+		},
+		{
+			"parameters": {
+				"value": "08/01/2022",
+				"toFormat": "YYYY/MM/DD",
+				"options": {
+					"fromTimezone": "US/Hawaii"
+				}
+			},
+			"id": "5d5ce294-021b-4dbf-b69f-25f0959804f1",
+			"name": "Calculate Date: Format YYYY/MM/DD with Timezone",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 1580]
+		},
+		{
+			"parameters": {
+				"value": "08/01/2022",
+				"toFormat": "YYYY/MM/DD",
+				"options": {
+					"fromTimezone": "US/Hawaii",
+					"toTimezone": "US/Pacific"
+				}
+			},
+			"id": "3506dd3b-08d7-4571-a9ac-c133512307ed",
+			"name": "Calculate Date: Format YYYY/MM/DD with Timezone1",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 1760]
+		},
+		{
+			"parameters": {
+				"value": "08/01/2022",
+				"toFormat": "x",
+				"options": {
+					"fromTimezone": "US/Hawaii",
+					"toTimezone": "US/Pacific"
+				}
+			},
+			"id": "0df453ab-396a-4625-aa58-6c0cf1f497d7",
+			"name": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [140, 1120]
+		},
+		{
+			"parameters": {
+				"value": "2022-01-12",
+				"toFormat": "MM-DD-YYYY",
+				"options": {
+					"fromFormat": "YYYY-DD-MM",
+					"fromTimezone": "US/Hawaii",
+					"toTimezone": "US/Pacific"
+				}
+			},
+			"id": "72d4b3ab-b504-48fa-92ce-726609e85605",
+			"name": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [140, 1300]
+		},
+		{
+			"parameters": {
+				"functionCode": "return [\n  {\n    \"Id\": \"18162\",\n    \"Start_time\": 1663801200000,\n    \"End_time\": 1663804800000,\n    \"Room\": \" The Stadium\"\n  },\n  {\n    \"Id\": \"18173\",\n    \"Start_time\": 1663797600000,\n    \"End_time\": 1663801200000,\n    \"Room\": \" The Stadium\"\n  },\n  {\n    \"Id\": \"18178\",\n    \"Start_time\": 1663804800000,\n    \"End_time\": 1663808400000,\n    \"Room\": \" The Stadium\"\n  },\n  {\n    \"Id\": \"18182\",\n    \"Start_time\": 1663801200000,\n    \"End_time\": 1663804800000,\n    \"Room\": \" The Garden\"\n  }\n]"
+			},
+			"id": "5200ca60-df9f-41c6-8db1-8703f287c842",
+			"name": "Mock Data",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [-20, -20]
+		},
+		{
+			"parameters": {
+				"value": "1663801200000",
+				"options": {
+					"fromFormat": "x"
+				}
+			},
+			"id": "8c1dcf6c-7005-4f3f-bd05-58661fbdbdf4",
+			"name": "Fixed Value",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [280, -140]
+		},
+		{
+			"parameters": {
+				"value": "={{parseInt(1663801200000)}}",
+				"options": {
+					"fromFormat": "x"
+				}
+			},
+			"id": "9733c3a4-6e67-4019-9f0a-4681127f7d25",
+			"name": "parseInt on fixed",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [280, 360]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json[\"Start_time\"] }}",
+				"options": {
+					"fromFormat": "x"
+				}
+			},
+			"id": "587c16b1-f102-47ad-a0b5-92c2ca5fa890",
+			"name": "Without toString()",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [280, 180]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json[\"Start_time\"].toString() }}",
+				"options": {
+					"fromFormat": "x"
+				}
+			},
+			"id": "970a0bcd-ad1d-4cc5-8f68-71482243d06a",
+			"name": "With toString",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [280, -340]
+		}
+	],
+	"pinData": {
+		"Calculate Date: Format YYYY/MM/DD with Timezone Unix": [
+			{
+				"json": {
+					"data": "1659312000000"
+				}
+			}
+		],
+		"Calculate Date: Format YYYY/MM/DD with Timezone with special zone": [
+			{
+				"json": {
+					"data": "12-01-2022"
+				}
+			}
+		],
+		"Calculate Date: Add Day": [
+			{
+				"json": {
+					"data": "2022-08-11T00:00:00.000Z"
+				}
+			}
+		],
+		"Calculate Date: Substract Day": [
+			{
+				"json": {
+					"data": "2022-07-30T00:00:00.000Z"
+				}
+			}
+		],
+		"Calculate Date: Substract Quarter": [
+			{
+				"json": {
+					"data": "2023-02-01T00:00:00.000Z"
+				}
+			}
+		],
+		"Calculate Date: Add months": [
+			{
+				"json": {
+					"data": "2022-10-01T00:00:00.000Z"
+				}
+			}
+		],
+		"Calculate Date: Substract Months": [
+			{
+				"json": {
+					"data": "2022-06-01T00:00:00.000Z"
+				}
+			}
+		],
+		"Calculate Date: Format YYYY/MM/DD": [
+			{
+				"json": {
+					"data": "2022/08/01"
+				}
+			}
+		],
+		"Calculate Date: Format YYYY/MM/DD with Timezone": [
+			{
+				"json": {
+					"data": "2022/07/31"
+				}
+			}
+		],
+		"Calculate Date: Format YYYY/MM/DD with Timezone1": [
+			{
+				"json": {
+					"data": "2022/07/31"
+				}
+			}
+		],
+		"With toString": [
+			{
+				"json": {
+					"Id": "18162",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18173",
+					"Start_time": 1663797600000,
+					"End_time": 1663801200000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18178",
+					"Start_time": 1663804800000,
+					"End_time": 1663808400000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18182",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Garden",
+					"data": "09/22/2022"
+				}
+			}
+		],
+		"Fixed Value": [
+			{
+				"json": {
+					"Id": "18162",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18173",
+					"Start_time": 1663797600000,
+					"End_time": 1663801200000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18178",
+					"Start_time": 1663804800000,
+					"End_time": 1663808400000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18182",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Garden",
+					"data": "09/22/2022"
+				}
+			}
+		],
+		"Without toString()": [
+			{
+				"json": {
+					"Id": "18162",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18173",
+					"Start_time": 1663797600000,
+					"End_time": 1663801200000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18178",
+					"Start_time": 1663804800000,
+					"End_time": 1663808400000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18182",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Garden",
+					"data": "09/22/2022"
+				}
+			}
+		],
+		"parseInt on fixed": [
+			{
+				"json": {
+					"Id": "18162",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18173",
+					"Start_time": 1663797600000,
+					"End_time": 1663801200000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18178",
+					"Start_time": 1663804800000,
+					"End_time": 1663808400000,
+					"Room": " The Stadium",
+					"data": "09/22/2022"
+				}
+			},
+			{
+				"json": {
+					"Id": "18182",
+					"Start_time": 1663801200000,
+					"End_time": 1663804800000,
+					"Room": " The Garden",
+					"data": "09/22/2022"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Calculate Date: Add Day",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Substract Day",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Substract Quarter",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Add months",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Substract Months",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Format YYYY/MM/DD",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Format YYYY/MM/DD with Timezone",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Format YYYY/MM/DD with Timezone1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Format YYYY/MM/DD with Timezone Unix",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Calculate Date: Format YYYY/MM/DD with Timezone with special zone",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mock Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data": {
+			"main": [
+				[
+					{
+						"node": "With toString",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Without toString()",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Fixed Value",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "parseInt on fixed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "62d5cfe0-8a68-4ab2-85bf-7d9f055c25c9",
+	"id": "148",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
 }
