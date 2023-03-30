@@ -1,17 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Service } from 'typedi';
-import { once as eventOnce } from 'events';
+import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
+import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
-import { UserSettings } from 'n8n-core';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '@/config';
-import { inTest } from '@/constants';
-import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import type { EventMessageTypes } from '../EventMessageClasses';
@@ -20,6 +17,15 @@ import {
 	EventMessageConfirm,
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
+import { once as eventOnce } from 'events';
+import { inTest } from '../../constants';
+
+interface MessageEventBusLogWriterConstructorOptions {
+	logBaseName?: string;
+	logBasePath?: string;
+	keepNumberOfFiles?: number;
+	maxFileSizeInKB?: number;
+}
 
 export interface MessageEventBusLogWriterOptions {
 	logFullBasePath: string;
@@ -36,23 +42,41 @@ interface ReadMessagesFromLogFileResult {
 /**
  * MessageEventBusWriter for Files
  */
-@Service()
 export class MessageEventBusLogWriter {
-	private options: Required<MessageEventBusLogWriterOptions>;
+	private static instance: MessageEventBusLogWriter;
+
+	static options: Required<MessageEventBusLogWriterOptions>;
 
 	private _worker: Worker | undefined;
 
-	constructor() {
-		const { keepLogCount, logBaseName, maxFileSizeInKB } = config.get('eventBus.logWriter');
-		this.options = {
-			logFullBasePath: path.join(UserSettings.getUserN8nFolderPath(), logBaseName),
-			keepNumberOfFiles: keepLogCount,
-			maxFileSizeInKB,
-		};
-	}
-
 	public get worker(): Worker | undefined {
 		return this._worker;
+	}
+
+	/**
+	 * Instantiates the Writer and the corresponding worker thread.
+	 * To actually start logging, call startLogging() function on the instance.
+	 *
+	 * **Note** that starting to log will archive existing logs, so handle unsent events first before calling startLogging()
+	 */
+	static async getInstance(
+		options?: MessageEventBusLogWriterConstructorOptions,
+	): Promise<MessageEventBusLogWriter> {
+		if (!MessageEventBusLogWriter.instance) {
+			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
+			MessageEventBusLogWriter.options = {
+				logFullBasePath: path.join(
+					options?.logBasePath ?? UserSettings.getUserN8nFolderPath(),
+					options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
+				),
+				keepNumberOfFiles:
+					options?.keepNumberOfFiles ?? config.getEnv('eventBus.logWriter.keepLogCount'),
+				maxFileSizeInKB:
+					options?.maxFileSizeInKB ?? config.getEnv('eventBus.logWriter.maxFileSizeInKB'),
+			};
+			await MessageEventBusLogWriter.instance.startThread();
+		}
+		return MessageEventBusLogWriter.instance;
 	}
 
 	/**
@@ -74,19 +98,13 @@ export class MessageEventBusLogWriter {
 		}
 	}
 
-	/**
-	 * Instantiates the Writer and the corresponding worker thread.
-	 * To actually start logging, call startLogging() function on the instance.
-	 *
-	 * **Note** that starting to log will archive existing logs, so handle unsent events first before calling startLogging()
-	 */
-	async startThread() {
+	private async startThread() {
 		if (this.worker) {
 			await this.close();
 		}
-		await this.spawnThread();
+		await MessageEventBusLogWriter.instance.spawnThread();
 		if (this.worker) {
-			this.worker.postMessage({ command: 'initialize', data: this.options });
+			this.worker.postMessage({ command: 'initialize', data: MessageEventBusLogWriter.options });
 		}
 	}
 
@@ -102,7 +120,7 @@ export class MessageEventBusLogWriter {
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
 				LoggerProxy.error('Event Bus Log Writer thread error, attempting to restart...', error);
-				await this.startThread();
+				await MessageEventBusLogWriter.instance.startThread();
 			});
 			return true;
 		}
@@ -217,14 +235,14 @@ export class MessageEventBusLogWriter {
 
 	getLogFileName(counter?: number): string {
 		if (counter) {
-			return `${this.options.logFullBasePath}-${counter}.log`;
+			return `${MessageEventBusLogWriter.options.logFullBasePath}-${counter}.log`;
 		} else {
-			return `${this.options.logFullBasePath}.log`;
+			return `${MessageEventBusLogWriter.options.logFullBasePath}.log`;
 		}
 	}
 
 	cleanAllLogs() {
-		for (let i = 0; i <= this.options.keepNumberOfFiles; i++) {
+		for (let i = 0; i <= MessageEventBusLogWriter.options.keepNumberOfFiles; i++) {
 			if (existsSync(this.getLogFileName(i))) {
 				rmSync(this.getLogFileName(i));
 			}
