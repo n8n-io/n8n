@@ -113,7 +113,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ~1.9.1
+      '@n8n_io/license-sdk': ~2.0.0
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -256,7 +256,7 @@ importers:
       xmllint-wasm: ^3.0.1
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.9.1
+      '@n8n_io/license-sdk': 2.0.0
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -3744,8 +3744,8 @@ packages:
     dev: false
     optional: true
 
-  /@n8n_io/license-sdk/1.9.1:
-    resolution: {integrity: sha512-M7tvmYpPSqVDQcxQUKW6XB26zXBZXRTocHtLvE+QJQ4mMbGg2KGwJsYwO9W4DGe8lQ7YD8ZMzG0fLzt0It+zGQ==}
+  /@n8n_io/license-sdk/2.0.0:
+    resolution: {integrity: sha512-JBgVqp2Hp8QkEHwWmDvoU8dLrq0wZlK38FnwaX/yZiCGpEz1+zywFxaggxbDYXxvhX3cwlgxv3o3kfVaYX1Xlw==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
