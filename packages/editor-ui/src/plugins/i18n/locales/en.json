@@ -1725,6 +1725,7 @@
 	"settings.versionControl.sshKeyDescriptionLink": "More info.",
 	"settings.versionControl.button.continue": "Continue",
 	"settings.versionControl.button.connect": "Connect",
+	"settings.versionControl.button.pull": "Pull",
 	"settings.versionControl.branches": "Select branch",
 	"settings.versionControl.switchBranch.title": "Switch to {branch} branch",
 	"settings.versionControl.switchBranch.description": "Please confirm you want to switch the current n8n instance to the branch: {branch}",

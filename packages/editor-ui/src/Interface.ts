@@ -1484,3 +1484,23 @@ export type ExecutionsQueryFilter = {
 	startedAfter?: string;
 	startedBefore?: string;
 };
+
+export type VersionControlBase = {
+	remoteRepository: string;
+	name: string;
+	email: string;
+};
+
+export type VersionControlBranches = {
+	currentBranch: string;
+	branches: string[];
+};
+
+export type VersionControlCommit = {
+	message: string;
+};
+
+export type VersionControlConfig = {
+	sshPublicKey: string;
+} & VersionControlBase &
+	VersionControlBranches;

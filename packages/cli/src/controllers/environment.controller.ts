@@ -70,10 +70,15 @@ export class EnvironmentController {
 
 	@Get('/config')
 	async getConfig() {
-		const branches = await this.environmentService.getBranches();
+		const { branches, currentBranch } = await this.environmentService.getBranches();
+		const sshPublicKey = await this.environmentService.getSshPublicKey(
+			this.environmentService.config.email,
+		);
 		return {
 			...this.environmentService.config,
-			currentBranch: branches.currentBranch,
+			sshPublicKey,
+			branches,
+			currentBranch,
 		};
 	}
 }

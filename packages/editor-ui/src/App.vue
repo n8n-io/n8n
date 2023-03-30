@@ -186,6 +186,7 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 	async mounted() {
 		this.setTheme();
 		await this.initialize();
+		await this.versionControlStore.getConfig();
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
@@ -199,8 +200,6 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
-
-		this.versionControlStore.getConfig();
 	},
 	watch: {
 		$route(route) {

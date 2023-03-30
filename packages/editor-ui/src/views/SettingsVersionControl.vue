@@ -1,24 +1,20 @@
 <script lang="ts" setup>
-import { computed, reactive, ref } from 'vue';
+import { ref } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useVersionControlStore } from '@/stores/versionControl';
 
 const versionControlStore = useVersionControlStore();
-
 const message = useMessage();
-
-const sshKey = computed(() => versionControlStore.state.sshKey);
-const branch = computed(() => versionControlStore.state.currentBranch);
-const branches = ref<string[]>([]);
+const remoteRepository = ref(versionControlStore.remoteRepository);
 const selectElement = ref<HTMLSelectElement | null>(null);
 
 const onContinue = () => {
 	versionControlStore.initSsh({
-		name: versionControlStore.state.authorName,
-		email: versionControlStore.state.authorEmail,
-		remoteRepository: versionControlStore.state.repositoryUrl,
+		name: versionControlStore.authorName,
+		email: versionControlStore.authorEmail,
+		remoteRepository: remoteRepository.value,
 	});
 };
 
@@ -27,7 +23,7 @@ const onConnect = () => {
 };
 
 const onSelect = async (b: string) => {
-	if (b === branch.value) {
+	if (b === versionControlStore.currentBranch) {
 		return;
 	}
 	const switchBranch = await message
@@ -39,9 +35,13 @@ const onSelect = async (b: string) => {
 		)
 		.catch(() => {});
 	if (switchBranch === 'confirm') {
-		versionControlStore.state.currentBranch = b;
+		versionControlStore.currentBranch = b;
 		selectElement.value?.blur();
 	}
+};
+
+const onPull = () => {
+	versionControlStore.pull();
 };
 </script>
 
@@ -56,25 +56,29 @@ const onSelect = async (b: string) => {
 			<n8n-input
 				id="repoUrl"
 				:placeholder="locale.baseText('settings.versionControl.repoUrlPlaceholder')"
-				v-model="versionControlStore.state.repositoryUrl"
+				v-model="remoteRepository"
 			/>
 			<small>{{ locale.baseText('settings.versionControl.repoUrlDescription') }}</small>
 		</div>
 		<div :class="$style.group">
 			<label for="authorName">{{ locale.baseText('settings.versionControl.authorName') }}</label>
-			<n8n-input id="authorName" v-model="versionControlStore.state.authorName" />
+			<n8n-input id="authorName" v-model="versionControlStore.authorName" />
 		</div>
 		<div :class="$style.group">
 			<label for="authorEmail">{{ locale.baseText('settings.versionControl.authorEmail') }}</label>
-			<n8n-input id="authorEmail" v-model="versionControlStore.state.authorEmail" />
+			<n8n-input id="authorEmail" v-model="versionControlStore.authorEmail" />
 		</div>
-		<n8n-button v-if="!sshKey" @click="onContinue" size="large" class="mt-2xs">{{
-			locale.baseText('settings.versionControl.button.continue')
-		}}</n8n-button>
-		<div v-if="sshKey" :class="$style.group">
+		<n8n-button
+			v-if="!versionControlStore.remoteRepository"
+			@click="onContinue"
+			size="large"
+			class="mt-2xs"
+			>{{ locale.baseText('settings.versionControl.button.continue') }}</n8n-button
+		>
+		<div v-if="versionControlStore.remoteRepository" :class="$style.group">
 			<label>{{ locale.baseText('settings.versionControl.sshKey') }}</label>
 			<CopyInput
-				:value="versionControlStore.state.sshKey"
+				:value="versionControlStore.sshPublicKey"
 				:copy-button-text="locale.baseText('generic.clickToCopy')"
 			/>
 			<n8n-notice type="info" class="mt-s">
@@ -87,19 +91,28 @@ const onSelect = async (b: string) => {
 				</i18n>
 			</n8n-notice>
 		</div>
-		<n8n-button v-if="sshKey" @click="onConnect" size="large" :class="$style.connect">{{
-			locale.baseText('settings.versionControl.button.connect')
-		}}</n8n-button>
-		<div v-if="versionControlStore.state.branches.length" :class="$style.group">
+		<n8n-button
+			v-if="!versionControlStore.branches.length && versionControlStore.remoteRepository"
+			@click="onConnect"
+			size="large"
+			:class="$style.connect"
+			>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
+		>
+		<div v-if="versionControlStore.branches.length" :class="$style.group">
 			<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
-			<n8n-select ref="selectElement" :value="versionControlStore.state.currentBranch" size="medium" filterable @input="onSelect">
-				<n8n-option
-					v-for="b in versionControlStore.state.branches"
-					:key="b"
-					:value="b"
-					:label="b"
-				/>
+			<n8n-select
+				ref="selectElement"
+				class="mb-s"
+				:value="versionControlStore.currentBranch"
+				size="medium"
+				filterable
+				@input="onSelect"
+			>
+				<n8n-option v-for="b in versionControlStore.branches" :key="b" :value="b" :label="b" />
 			</n8n-select>
+			<n8n-button @click="onPull" size="large">{{
+				locale.baseText('settings.versionControl.button.pull')
+			}}</n8n-button>
 		</div>
 	</div>
 </template>

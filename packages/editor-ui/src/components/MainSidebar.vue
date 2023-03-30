@@ -27,7 +27,7 @@
 				</div>
 			</template>
 			<template #menuSuffix>
-				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
+				<div v-if="hasVersionUpdates || currentBranch">
 					<div :class="$style.updates" @click="openUpdatesPanel" v-if="hasVersionUpdates">
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
@@ -41,7 +41,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<div :class="$style.sync" v-if="versionControlStore.state.currentBranch">
+					<div :class="$style.sync" v-if="currentBranch">
 						<span>
 							<n8n-icon icon="code-branch" class="mr-xs" />
 							{{ currentBranch }}
@@ -171,7 +171,7 @@ export default mixins(
 			useVersionControlStore,
 		),
 		currentBranch(): string {
-			return this.versionControlStore.state.currentBranch;
+			return this.versionControlStore.currentBranch;
 		},
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
@@ -476,10 +476,10 @@ export default mixins(
 		async sync() {
 			const prompt = await this.$prompt(
 				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
-					interpolate: { branch: this.versionControlStore.state.currentBranch },
+					interpolate: { branch: this.currentBranch },
 				}),
 				this.$locale.baseText('settings.versionControl.sync.prompt.title', {
-					interpolate: { branch: this.versionControlStore.state.currentBranch },
+					interpolate: { branch: this.currentBranch },
 				}),
 				{
 					confirmButtonText: 'Sync',
@@ -493,7 +493,7 @@ export default mixins(
 			);
 
 			if (prompt.value) {
-				this.versionControlStore.sync({ commitMessage: prompt.value });
+				this.versionControlStore.sync({ message: prompt.value });
 			}
 		},
 	},

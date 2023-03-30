@@ -34,7 +34,7 @@ import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { User } from '@sentry/node';
-import { EntityManager } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 
 // TODOs:
 // TODO: Check what happens when there is no change
@@ -171,6 +171,12 @@ export class EnvironmentService {
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
+		if (!(await this.checkRepositorySetup())) {
+			return {
+				branches: [],
+				currentBranch: '',
+			};
+		}
 		// Get remote branches
 		const { branches } = await this.git.branch(['-r']);
 		const remoteBranches = Object.keys(branches)
