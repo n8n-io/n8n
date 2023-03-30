@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash.set';
 import redis from 'redis';
@@ -640,7 +640,17 @@ export class Redis implements INodeType {
 			} else if (type === 'hash') {
 				const clientHset = util.promisify(client.hset).bind(client);
 				if (valueIsJSON) {
-					const values = typeof value === 'string' ? jsonParse(value) : value;
+					let values: unknown;
+					if (typeof value === 'string') {
+						try {
+							values = JSON.parse(value);
+						} catch {
+							// This is how we originally worked and prevents a breaking change
+							values = value;
+						}
+					} else {
+						values = value;
+					}
 					for (const key of Object.keys(values as object)) {
 						// @ts-ignore
 						await clientHset(keyName, key, (values as IDataObject)[key]!.toString());
