@@ -845,6 +845,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 					value: i,
 				});
 			}
+			console.log(branches);
 			return branches;
 		},
 		editMode(): { enabled: boolean; value: string } {

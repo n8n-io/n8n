@@ -5,10 +5,10 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { configurePostgres } from '../transport';
+import { Connections } from '../transport';
 
 import { Client } from 'ssh2';
-import type { PgpClient } from '../helpers/interfaces';
+import type { ConnectionsData, PgpClient } from '../helpers/interfaces';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,
@@ -20,9 +20,16 @@ export async function postgresConnectionTest(
 	let pgpClientCreated: PgpClient | undefined;
 
 	try {
-		const { db, pgp, sshClient } = await configurePostgres(credentials, {}, sshClientCreated);
+		const { db, pgp, sshClient } = (await Connections.getInstance(
+			credentials,
+			{},
+			true,
+			sshClientCreated,
+		)) as ConnectionsData;
+
 		sshClientCreated = sshClient;
 		pgpClientCreated = pgp;
+
 		await db.connect();
 	} catch (error) {
 		let message = error.message as string;
@@ -50,6 +57,9 @@ export async function postgresConnectionTest(
 		if (pgpClientCreated) {
 			pgpClientCreated.end();
 		}
+
+		//set the connection instance to null so that it can be recreated
+		await Connections.getInstance({}, {}, false, undefined, true);
 	}
 	return {
 		status: 'OK',

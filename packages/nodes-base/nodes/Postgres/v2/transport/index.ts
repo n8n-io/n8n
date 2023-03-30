@@ -11,7 +11,7 @@ import pgPromise from 'pg-promise';
 import { rm, writeFile } from 'fs/promises';
 import { file } from 'tmp-promise';
 
-import type { PgpDatabase } from '../helpers/interfaces';
+import type { PgpClient, PgpDatabase } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {
@@ -40,7 +40,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-export async function configurePostgres(
+async function configurePostgres(
 	credentials: IDataObject,
 	options: IDataObject = {},
 	createdSshClient?: Client,
@@ -174,3 +174,36 @@ export async function configurePostgres(
 		return { db, pgp, sshClient };
 	}
 }
+
+export const Connections = (function () {
+	let instance: { db: PgpDatabase; pgp: PgpClient; sshClient?: Client } | null = null;
+
+	return {
+		async getInstance(
+			credentials: IDataObject = {},
+			options: IDataObject = {},
+			reload = false,
+			createdSshClient?: Client,
+			nulify = false,
+		) {
+			if (nulify) {
+				instance = null;
+				return instance;
+			}
+
+			if (instance !== null && reload) {
+				if (instance.sshClient) {
+					instance.sshClient.end();
+				}
+				instance.pgp.end();
+
+				instance = null;
+			}
+
+			if (instance === null && Object.keys(credentials).length) {
+				instance = await configurePostgres(credentials, options, createdSshClient);
+			}
+			return instance;
+		},
+	};
+})();
