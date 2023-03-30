@@ -1,13 +1,13 @@
 {
-	"name": "My workflow 10",
+	"name": "My workflow 31",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "d9f14c5e-4821-4f56-803c-bb16221ea8c0",
+			"id": "5363525f-2065-4132-82cc-808941e51d47",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [460, 460]
+			"position": [-380, -40]
 		},
 		{
 			"parameters": {
@@ -21,11 +21,11 @@
 				},
 				"options": {}
 			},
-			"id": "da66f83e-220e-4347-8830-728f22a79ce7",
+			"id": "9e6fa15e-f6d8-4764-815b-832ff00c531c",
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [680, 460]
+			"position": [-80, -40]
 		},
 		{
 			"parameters": {
@@ -40,11 +40,11 @@
 				},
 				"options": {}
 			},
-			"id": "02032c58-f4f7-4084-9d30-c9b8d60a8552",
+			"id": "4893a819-9f21-446a-b89f-3079d87d5f40",
 			"name": "Set1",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [900, 460]
+			"position": [140, -40]
 		},
 		{
 			"parameters": {
@@ -59,11 +59,35 @@
 				},
 				"options": {}
 			},
-			"id": "2bdf9520-1ccb-4451-bf6e-26779b87b80d",
+			"id": "8e6b36ca-4f50-4a51-b42f-8098d71248bf",
 			"name": "Set2",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 2,
-			"position": [1120, 460]
+			"position": [540, -40]
+		},
+		{
+			"parameters": {
+				"content": "## Set Node V1 sets numbers as string",
+				"height": 265,
+				"width": 479
+			},
+			"id": "12610911-6841-486e-924a-af66cececdca",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-146, -120]
+		},
+		{
+			"parameters": {
+				"content": "## Set Node V2 sets numbers as numbers",
+				"height": 264,
+				"width": 480
+			},
+			"id": "e5896250-3e0f-47ac-b47f-9f24bac4f52f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [420, -120]
 		}
 	],
 	"pinData": {
@@ -112,10 +136,10 @@
 	},
 	"active": false,
 	"settings": {},
-	"versionId": "bf224be6-3b64-48ec-9683-276461b2b0a0",
-	"id": "150",
+	"versionId": "f15acb8d-6e15-4962-b568-66f5a412efe0",
+	"id": "240",
 	"meta": {
-		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
 	},
 	"tags": []
 }
