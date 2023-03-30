@@ -45,7 +45,7 @@
 						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
 						data-test-id="ndv-input-option"
 					>
-						{{ truncate(node.name) }}&nbsp;
+						<span class="ph-no-capture">{{ truncate(node.name) }}&nbsp;</span>
 						<span v-if="getMultipleNodesText(node.name)">{{
 							getMultipleNodesText(node.name)
 						}}</span>

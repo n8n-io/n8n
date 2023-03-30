@@ -292,7 +292,6 @@
 
 			<run-data-table
 				v-else-if="hasNodeRun && displayMode === 'table'"
-				class="ph-no-capture"
 				:node="node"
 				:inputData="inputData"
 				:mappingEnabled="mappingEnabled"
@@ -308,7 +307,6 @@
 
 			<run-data-json
 				v-else-if="hasNodeRun && displayMode === 'json'"
-				class="ph-no-capture"
 				:paneType="paneType"
 				:editMode="editMode"
 				:sessioId="sessionId"

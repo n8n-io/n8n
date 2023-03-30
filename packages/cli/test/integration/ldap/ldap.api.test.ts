@@ -16,6 +16,7 @@ import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
+import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -55,6 +56,8 @@ beforeAll(async () => {
 	);
 
 	utils.initConfigFile();
+
+	await setCurrentAuthenticationMethod('email');
 });
 
 beforeEach(async () => {
@@ -174,6 +177,7 @@ describe('PUT /ldap/config', () => {
 		const emailUser = await Db.collections.User.findOneByOrFail({ id: member.id });
 		const localLdapIdentities = await testDb.getLdapIdentities();
 
+		expect(getCurrentAuthenticationMethod()).toBe('email');
 		expect(emailUser.email).toBe(member.email);
 		expect(emailUser.lastName).toBe(member.lastName);
 		expect(emailUser.firstName).toBe(member.firstName);
@@ -190,6 +194,7 @@ test('GET /ldap/config route should retrieve current configuration', async () =>
 
 	let response = await authAgent(owner).put('/ldap/config').send(validPayload);
 	expect(response.statusCode).toBe(200);
+	expect(getCurrentAuthenticationMethod()).toBe('ldap');
 
 	response = await authAgent(owner).get('/ldap/config');
 
