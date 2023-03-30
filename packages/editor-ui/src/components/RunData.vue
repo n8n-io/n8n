@@ -793,7 +793,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			}
 
 			// We don't want to paginate the schema view
-			if(this.isSchemaView) {
+			if (this.isSchemaView) {
 				return inputData;
 			}
 
