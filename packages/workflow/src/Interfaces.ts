@@ -1927,6 +1927,8 @@ export interface ResourceMapperFields {
 		defaultMatch: boolean;
 		required: boolean;
 		display: boolean;
-		type?: string;
+		type?: ResourceMapperFieldType;
 	}>;
 }
+
+export type ResourceMapperFieldType = 'string' | 'number' | 'datetime' | 'boolean';
