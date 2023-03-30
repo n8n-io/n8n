@@ -113,7 +113,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.8.0
+      '@n8n_io/license-sdk': ~1.8.0
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2

@@ -18,7 +18,7 @@ describe('jsonParse', () => {
 });
 
 describe('jsonStringify', () => {
-	const source: any = { a: 1, b: 2 };
+	const source: any = { a: 1, b: 2, d: new Date(1680089084200), r: new RegExp('^test$', 'ig') };
 	source.c = source;
 
 	it('should throw errors on circular references by default', () => {
@@ -27,7 +27,7 @@ describe('jsonStringify', () => {
 
 	it('should break circular references when requested', () => {
 		expect(jsonStringify(source, { replaceCircularRefs: true })).toEqual(
-			'{"a":1,"b":2,"c":"[Circular Reference]"}',
+			'{"a":1,"b":2,"d":"2023-03-29T11:24:44.200Z","r":{},"c":"[Circular Reference]"}',
 		);
 	});
 
