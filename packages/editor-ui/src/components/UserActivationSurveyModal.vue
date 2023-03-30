@@ -36,10 +36,11 @@
 						<n8n-input
 							type="textarea"
 							:maxlength="FEEDBACK_MAX_LENGTH"
-							rows="3"
+							:rows="3"
 							v-model="feedback"
 							@input="onInput"
 							ref="input"
+							data-test-id="activation-feedback-input"
 						/>
 					</n8n-input-label>
 				</div>
@@ -53,6 +54,7 @@
 					size="large"
 					float="right"
 					:label="locale.baseText('userActivationSurveyModal.form.button.shareFeedback')"
+					data-test-id="send-activation-feedback-button"
 				/>
 			</div>
 		</template>
