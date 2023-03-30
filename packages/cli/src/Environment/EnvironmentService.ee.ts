@@ -33,8 +33,11 @@ import { jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@sentry/node';
 import type { EntityManager } from 'typeorm';
+import type { ICredentialsBase } from '@/Interfaces';
 
 // TODOs:
 // TODO: Check what happens when there is no change
@@ -193,10 +196,34 @@ export class EnvironmentService {
 
 	async exportWorkflows(): Promise<void> {
 		const workflows = await Db.collections.Workflow.find();
+		try {
+			await fsAccess(path.join(this.gitFolder, '/workflows'), fsConstants.F_OK);
+		} catch (error) {
+			await fsMkdir(path.join(this.gitFolder, '/workflows'));
+		}
 		for (const workflow of workflows) {
 			await fsWriteFile(
-				path.join(this.gitFolder, `${workflow.id}.json`),
+				path.join(path.join(this.gitFolder, '/workflows'), `${workflow.id}.json`),
 				JSON.stringify(workflow, null, 2),
+				{
+					encoding: 'binary',
+					flag: 'w',
+				},
+			);
+		}
+	}
+
+	async exportCredentials(): Promise<void> {
+		const credentials = await Db.collections.Credentials.find();
+		try {
+			await fsAccess(path.join(this.gitFolder, '/credentials'), fsConstants.F_OK);
+		} catch (error) {
+			await fsMkdir(path.join(this.gitFolder, '/credentials'));
+		}
+		for (const credential of credentials) {
+			await fsWriteFile(
+				path.join(path.join(this.gitFolder, '/credentials'), `${credential.id}.json`),
+				JSON.stringify(credential, null, 2),
 				{
 					encoding: 'binary',
 					flag: 'w',
@@ -208,7 +235,8 @@ export class EnvironmentService {
 	async pull(): Promise<void> {
 		await this.git.fetch();
 
-		const files = await glob(path.join(this.gitFolder, '*.json'));
+		const workflowsFiles = await glob(path.join(this.gitFolder, '/workflows', '*.json'));
+		const credentialFiles = await glob(path.join(this.gitFolder, '/credentials', '*.json'));
 
 		const user = await this.getOwner();
 
@@ -216,17 +244,24 @@ export class EnvironmentService {
 			this.transactionManager = transactionManager;
 		});
 
-		files.forEach(async (file) => {
+		workflowsFiles.forEach(async (file) => {
 			const workflow = await fsReadFile(file, 'utf8');
 			await this.storeWorkflow(jsonParse<IWorkflowBase>(workflow), user);
+		});
+
+		credentialFiles.forEach(async (file) => {
+			const credential = await fsReadFile(file, 'utf8');
+			await this.storeCredential(jsonParse<ICredentialsBase>(credential), user);
 		});
 	}
 
 	async push(message: string): Promise<void> {
 		await this.exportWorkflows();
+		await this.exportCredentials();
 
 		// Always pull first to make sure there are no conflicts
-		await this.git.fetch();
+		// await this.git.fetch();
+		await this.git.pull();
 
 		await this.git.add(this.gitFolder);
 		await this.git.commit(message, this.gitFolder);
@@ -316,6 +351,38 @@ export class EnvironmentService {
 				"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
 			);
 		}
+	}
+
+	private async storeCredential(credential: object, user: User) {
+		const ownerCredentialRole = await this.getOwnerCredentialRole();
+
+		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		await this.transactionManager.upsert(
+			SharedCredentials,
+			{
+				credentialsId: result.identifiers[0].id as string,
+				userId: user.id,
+				roleId: ownerCredentialRole.id,
+			},
+			['credentialsId', 'userId'],
+		);
+		if (config.getEnv('database.type') === 'postgresdb') {
+			await this.transactionManager.query(
+				"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
+			);
+		}
+	}
+
+	private async getOwnerCredentialRole() {
+		const ownerCredentiallRole = await Db.collections.Role.findOne({
+			where: { name: 'owner', scope: 'global' },
+		});
+
+		if (!ownerCredentiallRole) {
+			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return ownerCredentiallRole;
 	}
 
 	private async getOwnerWorkflowRole() {
