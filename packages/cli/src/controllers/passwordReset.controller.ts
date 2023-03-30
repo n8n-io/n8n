@@ -7,6 +7,7 @@ import {
 	BadRequestError,
 	InternalServerError,
 	NotFoundError,
+	UnauthorizedError,
 	UnprocessableRequestError,
 } from '@/ResponseHelper';
 import {
@@ -108,7 +109,7 @@ export class PasswordResetController {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',
 			);
-			throw new InternalServerError(
+			throw new UnauthorizedError(
 				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
 			);
 		}

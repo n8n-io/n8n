@@ -83,7 +83,7 @@ describe('POST /forgot-password', () => {
 			globalRole: globalMemberRole,
 		});
 
-		await authlessAgent.post('/forgot-password').send({ email: member.email }).expect(500);
+		await authlessAgent.post('/forgot-password').send({ email: member.email }).expect(403);
 
 		const storedOwner = await Db.collections.User.findOneByOrFail({ email: member.email });
 		expect(storedOwner.resetPasswordToken).toBeNull();
