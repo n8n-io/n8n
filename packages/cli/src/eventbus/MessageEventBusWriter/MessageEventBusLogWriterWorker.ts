@@ -90,11 +90,12 @@ if (!isMainThread) {
 					clearInterval(fileStatTimer);
 					break;
 				case 'initialize':
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const { logFullBasePath, keepNumberOfFiles, maxFileSizeInKB } =
+						data as MessageEventBusLogWriterOptions;
 					const settings: MessageEventBusLogWriterOptions = {
-						logFullBasePath: (data as MessageEventBusLogWriterOptions).logFullBasePath ?? '',
-						keepNumberOfFiles: (data as MessageEventBusLogWriterOptions).keepNumberOfFiles ?? 10,
-						maxFileSizeInKB: (data as MessageEventBusLogWriterOptions).maxFileSizeInKB ?? 102400,
+						logFullBasePath: logFullBasePath ?? '',
+						keepNumberOfFiles: keepNumberOfFiles ?? 3,
+						maxFileSizeInKB: maxFileSizeInKB ?? 1024,
 					};
 					setLogFileBasePath(settings.logFullBasePath);
 					setKeepFiles(settings.keepNumberOfFiles);
