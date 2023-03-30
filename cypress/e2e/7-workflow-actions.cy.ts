@@ -190,37 +190,48 @@ describe('Workflow Actions', () => {
 		cy.url().should('include', '/workflow/new');
 	});
 
-	it('should duplicate workflow', () => {
-		// Stub window.open so new tab is not getting opened
-		cy.window().then((win) => {
-			cy.stub(win, 'open').as('open');
+	describe('duplicate workflow', () => {
+		function duplicateWorkflow() {
+			WorkflowPage.getters.workflowMenu().should('be.visible');
+			WorkflowPage.getters.workflowMenu().click();
+			WorkflowPage.getters.workflowMenuItemDuplicate().click();
+			WorkflowPage.getters.duplicateWorkflowModal().should('be.visible');
+			WorkflowPage.getters.duplicateWorkflowModal().find('input').first().should('be.visible');
+			WorkflowPage.getters.duplicateWorkflowModal().find('input').first().type('{selectall}');
+			WorkflowPage.getters
+				.duplicateWorkflowModal()
+				.find('input')
+				.first()
+				.type(DUPLICATE_WORKFLOW_NAME);
+			WorkflowPage.getters
+				.duplicateWorkflowModal()
+				.find('.el-select__tags input')
+				.type(DUPLICATE_WORKFLOW_TAG);
+			WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
+			WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
+			WorkflowPage.getters
+				.duplicateWorkflowModal()
+				.find('button')
+				.contains('Duplicate')
+				.should('be.visible');
+			WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').click();
+			WorkflowPage.getters.errorToast().should('not.exist');
+		}
+
+		beforeEach(() => {
+			// Stub window.open so new tab is not getting opened
+			cy.window().then((win) => {
+				cy.stub(win, 'open').as('open');
+			});
+			WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		});
 
-		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		WorkflowPage.getters.workflowMenu().should('be.visible');
-		WorkflowPage.getters.workflowMenu().click();
-		WorkflowPage.getters.workflowMenuItemDuplicate().click();
-		WorkflowPage.getters.duplicateWorkflowModal().should('be.visible');
-		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().should('be.visible');
-		WorkflowPage.getters.duplicateWorkflowModal().find('input').first().type('{selectall}');
-		WorkflowPage.getters
-			.duplicateWorkflowModal()
-			.find('input')
-			.first()
-			.type(DUPLICATE_WORKFLOW_NAME);
-		WorkflowPage.getters
-			.duplicateWorkflowModal()
-			.find('.el-select__tags input')
-			.type(DUPLICATE_WORKFLOW_TAG);
-		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
-		WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
-		WorkflowPage.getters
-			.duplicateWorkflowModal()
-			.find('button')
-			.contains('Duplicate')
-			.should('be.visible');
-		WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').click();
-		WorkflowPage.getters.errorToast().should('not.exist');
+		it('should duplicate unsaved workflow', () => {
+			duplicateWorkflow();
+		});
+		it('should duplicate saved workflow', () => {
+			WorkflowPage.actions.saveWorkflowOnButtonClick();
+			duplicateWorkflow();
+		});
 	});
 });
