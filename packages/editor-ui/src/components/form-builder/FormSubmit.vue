@@ -5,6 +5,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { FormSubmitSettings } from './settings';
+import { useMessage, useToast } from '@/composables';
 
 export default defineComponent({
 	props: {
@@ -27,6 +28,8 @@ export default defineComponent({
 		},
 	},
 	setup(props) {
+		const toast = useToast();
+
 		function onClick() {
 			fetch('http://localhost:5678/webhook-test/form/1', {
 				method: 'POST',
@@ -38,7 +41,12 @@ export default defineComponent({
 				},
 			})
 				.then((response) => response.json())
-				.then((json) => console.log(json));
+				.then((json) => {
+					toast.showMessage({
+						title: 'Form submitted successfully',
+						type: 'success',
+					});
+				});
 		}
 
 		return {
