@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { LoggerProxy } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
@@ -38,9 +37,12 @@ export interface MessageWithCallback {
 	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void;
 }
 
-@Service()
 export class MessageEventBus extends EventEmitter {
-	private isInitialized = false;
+	private static instance: MessageEventBus;
+
+	isInitialized: boolean;
+
+	logWriter: MessageEventBusLogWriter;
 
 	destinations: {
 		[key: string]: MessageEventBusDestination;
@@ -48,8 +50,16 @@ export class MessageEventBus extends EventEmitter {
 
 	private pushIntervalTimer: NodeJS.Timer;
 
-	constructor(private logWriter: MessageEventBusLogWriter) {
+	constructor() {
 		super();
+		this.isInitialized = false;
+	}
+
+	static getInstance(): MessageEventBus {
+		if (!MessageEventBus.instance) {
+			MessageEventBus.instance = new MessageEventBus();
+		}
+		return MessageEventBus.instance;
 	}
 
 	/**
@@ -83,7 +93,7 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		LoggerProxy.debug('Initializing event writer');
-		await this.logWriter.startThread();
+		this.logWriter = await MessageEventBusLogWriter.getInstance();
 
 		// unsent event check:
 		// - find unsent messages in current event log(s)
@@ -92,9 +102,9 @@ export class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug('Checking for unsent event messages');
 		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
 		LoggerProxy.debug(
-			`Start logging into ${this.logWriter.getLogFileName() ?? 'unknown filename'} `,
+			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
 		);
-		this.logWriter.startLogging();
+		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
 		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
@@ -161,7 +171,7 @@ export class MessageEventBus extends EventEmitter {
 
 	async close() {
 		LoggerProxy.debug('Shutting down event writer...');
-		await this.logWriter.close();
+		await this.logWriter?.close();
 		for (const destinationName of Object.keys(this.destinations)) {
 			LoggerProxy.debug(
 				`Shutting down event destination ${this.destinations[destinationName].getId()}...`,
@@ -176,7 +186,7 @@ export class MessageEventBus extends EventEmitter {
 			msgs = [msgs];
 		}
 		for (const msg of msgs) {
-			this.logWriter.putMessage(msg);
+			this.logWriter?.putMessage(msg);
 			// if there are no set up destinations, immediately mark the event as sent
 			if (!this.shouldSendMsg(msg)) {
 				this.confirmSent(msg, { id: '0', name: 'eventBus' });
@@ -201,7 +211,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
-		this.logWriter.confirmMessageSent(msg.id, source);
+		this.logWriter?.confirmMessageSent(msg.id, source);
 	}
 
 	private hasAnyDestinationSubscribedToEvent(msg: EventMessageTypes): boolean {
@@ -246,7 +256,7 @@ export class MessageEventBus extends EventEmitter {
 	async getEventsFailed(amount = 5): Promise<FailedEventSummary[]> {
 		const result: FailedEventSummary[] = [];
 		try {
-			const queryResult = await this.logWriter.getMessagesAll();
+			const queryResult = await this.logWriter?.getMessagesAll();
 			const uniques = uniqby(queryResult, 'id');
 			const filteredExecutionIds = uniques
 				.filter((e) =>
@@ -286,25 +296,25 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	async getEventsAll(): Promise<EventMessageTypes[]> {
-		const queryResult = await this.logWriter.getMessagesAll();
+		const queryResult = await this.logWriter?.getMessagesAll();
 		const filtered = uniqby(queryResult, 'id');
 		return filtered;
 	}
 
 	async getEventsSent(): Promise<EventMessageTypes[]> {
-		const queryResult = await this.logWriter.getMessagesSent();
+		const queryResult = await this.logWriter?.getMessagesSent();
 		const filtered = uniqby(queryResult, 'id');
 		return filtered;
 	}
 
 	async getEventsUnsent(): Promise<EventMessageTypes[]> {
-		const queryResult = await this.logWriter.getMessagesUnsent();
+		const queryResult = await this.logWriter?.getMessagesUnsent();
 		const filtered = uniqby(queryResult, 'id');
 		return filtered;
 	}
 
 	async getUnfinishedExecutions(): Promise<Record<string, EventMessageTypes[]>> {
-		const queryResult = await this.logWriter.getUnfinishedExecutions();
+		const queryResult = await this.logWriter?.getUnfinishedExecutions();
 		return queryResult;
 	}
 
@@ -312,7 +322,7 @@ export class MessageEventBus extends EventEmitter {
 		unsentMessages: EventMessageTypes[];
 		unfinishedExecutions: Record<string, EventMessageTypes[]>;
 	}> {
-		const queryResult = await this.logWriter.getUnsentAndUnfinishedExecutions();
+		const queryResult = await this.logWriter?.getUnsentAndUnfinishedExecutions();
 		return queryResult;
 	}
 
@@ -326,7 +336,7 @@ export class MessageEventBus extends EventEmitter {
 		executionId: string,
 		logHistory?: number,
 	): Promise<EventMessageTypes[]> {
-		const result = await this.logWriter.getMessagesByExecutionId(executionId, logHistory);
+		const result = await this.logWriter?.getMessagesByExecutionId(executionId, logHistory);
 		return result;
 	}
 	/**
@@ -345,3 +355,5 @@ export class MessageEventBus extends EventEmitter {
 		await this.send(new EventMessageNode(options));
 	}
 }
+
+export const eventBus = MessageEventBus.getInstance();

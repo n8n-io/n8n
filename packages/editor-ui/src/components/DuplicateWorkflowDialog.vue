@@ -89,10 +89,18 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 	computed: {
 		...mapStores(useUsersStore, useSettingsStore, useWorkflowsStore),
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(
-				this.usersStore.currentUser,
-				this.workflowsStore.getWorkflowById(this.data.id),
-			);
+			const isEmptyWorkflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			const isCurrentWorkflowEmpty =
+				this.workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+
+			// If the workflow to be duplicated is empty and the current workflow is also empty
+			// we need to use the current workflow to get the permissions
+			const currentWorkflow =
+				isEmptyWorkflow && isCurrentWorkflowEmpty
+					? this.workflowsStore.workflow
+					: this.workflowsStore.getWorkflowById(this.data.id);
+
+			return getWorkflowPermissions(this.usersStore.currentUser, currentWorkflow);
 		},
 	},
 	watch: {
