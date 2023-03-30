@@ -224,9 +224,7 @@ export class WorkflowDataProxy {
 				} else {
 					if (!node.parameters.hasOwnProperty(name)) {
 						// Parameter does not exist on node
-						// Return empty string instead of "undefined"
-						// so that it does not error if a property got requested like "toJSON"
-						return '';
+						return undefined;
 					}
 
 					returnValue = node.parameters[name];
@@ -508,9 +506,7 @@ export class WorkflowDataProxy {
 
 					if (!that.executeData?.source) {
 						// Means the previous node did not get executed yet
-						// Return empty string instead of "undefined"
-						// so that it does not error if a property got requested like "toJSON"
-						return '';
+						return undefined;
 					}
 
 					const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
@@ -1133,21 +1129,19 @@ export class WorkflowDataProxy {
 						}
 
 						if (['context', 'params'].includes(property as string)) {
-							// For the following properties we need the source data it should always
-							// be there. But if the node does not have an input there will not be any
-							// so simply return nothing.
+							// For the following properties we need the source data so fail in case it is missing
+							// for some reason (even though that should actually never happen)
 							if (!that.executeData?.source) {
-								// throw createExpressionError('Can’t get data for expression', {
-								// 	messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-								// 	functionOverrides: {
-								// 		message: 'Can’t get data',
-								// 	},
-								// 	description:
-								// 		'Apologies, this is an internal error. See details for more information',
-								// 	causeDetailed: 'Missing sourceData (probably an internal error)',
-								// 	runIndex: that.runIndex,
-								// });
-								return {};
+								throw createExpressionError('Can’t get data for expression', {
+									messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+									functionOverrides: {
+										message: 'Can’t get data',
+									},
+									description:
+										'Apologies, this is an internal error. See details for more information',
+									causeDetailed: 'Missing sourceData (probably an internal error)',
+									runIndex: that.runIndex,
+								});
 							}
 
 							const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
