@@ -25,11 +25,11 @@ import type {
 import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
-import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import * as Db from '@/Db';
 import { NodeTypes } from './NodeTypes';
+import { MessageEventBus } from '@/eventbus';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -51,7 +51,11 @@ function userToPayload(user: User): {
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
 
-	constructor(private telemetry: Telemetry, private nodeTypes: NodeTypes) {}
+	constructor(
+		private telemetry: Telemetry,
+		private nodeTypes: NodeTypes,
+		private eventBus: MessageEventBus,
+	) {}
 
 	async init(instanceId: string) {
 		this.instanceId = instanceId;
@@ -111,7 +115,7 @@ export class InternalHooks implements IInternalHooksClass {
 	async onWorkflowCreated(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.created',
 				payload: {
 					...userToPayload(user),
@@ -130,7 +134,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.deleted',
 				payload: {
 					...userToPayload(user),
@@ -162,7 +166,7 @@ export class InternalHooks implements IInternalHooksClass {
 		}
 
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.updated',
 				payload: {
 					...userToPayload(user),
@@ -194,7 +198,7 @@ export class InternalHooks implements IInternalHooksClass {
 		nodeName: string,
 	): Promise<void> {
 		const nodeInWorkflow = workflow.nodes.find((node) => node.name === nodeName);
-		void eventBus.sendNodeEvent({
+		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
 				executionId,
@@ -212,7 +216,7 @@ export class InternalHooks implements IInternalHooksClass {
 		nodeName: string,
 	): Promise<void> {
 		const nodeInWorkflow = workflow.nodes.find((node) => node.name === nodeName);
-		void eventBus.sendNodeEvent({
+		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
 				executionId,
@@ -230,7 +234,7 @@ export class InternalHooks implements IInternalHooksClass {
 	): Promise<void> {
 		void Promise.all([
 			Db.collections.Execution.update(executionId, { status: 'running' }),
-			eventBus.sendWorkflowEvent({
+			this.eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.started',
 				payload: {
 					executionId,
@@ -249,7 +253,7 @@ export class InternalHooks implements IInternalHooksClass {
 		workflowData?: IWorkflowBase,
 	): Promise<void> {
 		void Promise.all([
-			eventBus.sendWorkflowEvent({
+			this.eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.crashed',
 				payload: {
 					executionId,
@@ -410,7 +414,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 		promises.push(
 			properties.success
-				? eventBus.sendWorkflowEvent({
+				? this.eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',
 						payload: {
 							executionId,
@@ -421,7 +425,7 @@ export class InternalHooks implements IInternalHooksClass {
 							workflowName: workflow.name,
 						},
 				  })
-				: eventBus.sendWorkflowEvent({
+				: this.eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.failed',
 						payload: {
 							executionId,
@@ -469,7 +473,7 @@ export class InternalHooks implements IInternalHooksClass {
 		publicApi: boolean;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.deleted',
 				payload: {
 					...userToPayload(userDeletionData.user),
@@ -490,7 +494,7 @@ export class InternalHooks implements IInternalHooksClass {
 		email_sent: boolean;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.invited',
 				payload: {
 					...userToPayload(userInviteData.user),
@@ -512,7 +516,7 @@ export class InternalHooks implements IInternalHooksClass {
 		public_api: boolean;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.reinvited',
 				payload: {
 					...userToPayload(userReinviteData.user),
@@ -571,7 +575,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.updated',
 				payload: {
 					...userToPayload(userUpdateData.user),
@@ -590,7 +594,7 @@ export class InternalHooks implements IInternalHooksClass {
 		invitee: User;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.invitation.accepted',
 				payload: {
 					invitee: {
@@ -609,7 +613,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onUserPasswordResetEmailClick(userPasswordResetData: { user: User }): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.reset',
 				payload: {
 					...userToPayload(userPasswordResetData.user),
@@ -643,7 +647,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.api.deleted',
 				payload: {
 					...userToPayload(apiKeyDeletedData.user),
@@ -658,7 +662,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.api.created',
 				payload: {
 					...userToPayload(apiKeyCreatedData.user),
@@ -673,7 +677,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.reset.requested',
 				payload: {
 					...userToPayload(userPasswordResetData.user),
@@ -697,7 +701,7 @@ export class InternalHooks implements IInternalHooksClass {
 		},
 	): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.signedup',
 				payload: {
 					...userToPayload(user),
@@ -716,7 +720,7 @@ export class InternalHooks implements IInternalHooksClass {
 		public_api: boolean;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.email.failed',
 				payload: {
 					messageType: failedEmailData.message_type,
@@ -741,7 +745,7 @@ export class InternalHooks implements IInternalHooksClass {
 		public_api: boolean;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.credentials.created',
 				payload: {
 					...userToPayload(userCreatedCredentialsData.user),
@@ -769,7 +773,7 @@ export class InternalHooks implements IInternalHooksClass {
 		sharees_removed: number | null;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.credentials.shared',
 				payload: {
 					...userToPayload(userSharedCredentialsData.user),
@@ -809,7 +813,7 @@ export class InternalHooks implements IInternalHooksClass {
 		failure_reason?: string;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.package.installed',
 				payload: {
 					...userToPayload(installationData.user),
@@ -847,7 +851,7 @@ export class InternalHooks implements IInternalHooksClass {
 		package_author_email?: string;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.package.updated',
 				payload: {
 					...userToPayload(updateData.user),
@@ -880,7 +884,7 @@ export class InternalHooks implements IInternalHooksClass {
 		package_author_email?: string;
 	}): Promise<void> {
 		void Promise.all([
-			eventBus.sendAuditEvent({
+			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.package.deleted',
 				payload: {
 					...userToPayload(deleteData.user),

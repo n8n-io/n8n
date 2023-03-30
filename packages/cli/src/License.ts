@@ -8,11 +8,6 @@ import { LICENSE_FEATURES, N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './cons
 import { Service } from 'typedi';
 
 async function loadCertStr(): Promise<TLicenseContainerStr> {
-	// if we have an ephemeral license, we don't want to load it from the database
-	const ephemeralLicense = config.get('license.cert');
-	if (ephemeralLicense) {
-		return ephemeralLicense;
-	}
 	const databaseSettings = await Db.collections.Settings.findOne({
 		where: {
 			key: SETTINGS_LICENSE_CERT_KEY,
@@ -23,8 +18,6 @@ async function loadCertStr(): Promise<TLicenseContainerStr> {
 }
 
 async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
-	// if we have an ephemeral license, we don't want to save it to the database
-	if (config.get('license.cert')) return;
 	await Db.collections.Settings.upsert(
 		{
 			key: SETTINGS_LICENSE_CERT_KEY,
