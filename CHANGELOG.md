@@ -1,3 +1,52 @@
+# [0.222.0](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.222.0) (2023-03-30)
+
+
+### Bug Fixes
+
+* **core:** Assign properties.success earlier to set executionStatus correctly ([#5773](https://github.com/n8n-io/n8n/issues/5773)) ([d33a1ac](https://github.com/n8n-io/n8n/commit/d33a1ac1e9a13985ff84f9271f75ebf368339b6d))
+* **core:** Do not mark duplicates as circular references in `jsonStringify` ([#5789](https://github.com/n8n-io/n8n/issues/5789)) ([f5183c6](https://github.com/n8n-io/n8n/commit/f5183c640109fb4c9552d6b2786f8ebc0e35ca4c))
+* **core:** Do not user `util.types.isProxy` for tracking of augmented objects ([#5836](https://github.com/n8n-io/n8n/issues/5836)) ([3e413f2](https://github.com/n8n-io/n8n/commit/3e413f2f80d6fa349dc6f6ea1b49027ae163df80))
+* **core:** Ensure that all non-lazy-loaded community nodes get post-processed correctly ([#5782](https://github.com/n8n-io/n8n/issues/5782)) ([30aeeb7](https://github.com/n8n-io/n8n/commit/30aeeb70b43ff3916ad79abbe49512a27e50d01d))
+* **core:** Force-upgrade `decode-uri-component` to address CVE-2022-38900 ([#5734](https://github.com/n8n-io/n8n/issues/5734)) ([8dd7f6e](https://github.com/n8n-io/n8n/commit/8dd7f6e1d4ac29b450a0af17d545ffd17038b005))
+* **core:** Force-upgrade `http-cache-semantics` to address CVE-2022-25881 ([#5733](https://github.com/n8n-io/n8n/issues/5733)) ([f7401fb](https://github.com/n8n-io/n8n/commit/f7401fb6133b9bf18f3825304c478d767e69fe27))
+* **core:** Handle Date and RegExp correctly in jsonStringify ([#5812](https://github.com/n8n-io/n8n/issues/5812)) ([753cfb8](https://github.com/n8n-io/n8n/commit/753cfb8b08ff68cc30e6e30959fd0900a44dae21))
+* **core:** Handle Date and RegExp objects in AugmentObject ([#5809](https://github.com/n8n-io/n8n/issues/5809)) ([e6d4e72](https://github.com/n8n-io/n8n/commit/e6d4e729a063cdbbf648c2815c3e55ddddef2b58))
+* **core:** Improve axios error handling in nodes ([#5699](https://github.com/n8n-io/n8n/issues/5699)) ([33d9784](https://github.com/n8n-io/n8n/commit/33d97843194c1cddfd27356c279c0f7a8c2674d3))
+* **core:** Improve community nodes loading ([#5608](https://github.com/n8n-io/n8n/issues/5608)) ([161de11](https://github.com/n8n-io/n8n/commit/161de110cedf2d5d8bc345349d4364ea202e2abd))
+* **core:** Initialize queue in the webhook server as well ([#5766](https://github.com/n8n-io/n8n/issues/5766)) ([e67ad29](https://github.com/n8n-io/n8n/commit/e67ad2962589b445592641a588024c02b4d99d3f))
+* **core:** Persist CurrentAuthenticationMethod setting change ([#5762](https://github.com/n8n-io/n8n/issues/5762)) ([4498c60](https://github.com/n8n-io/n8n/commit/4498c6013dc5b4646b1e3fdba3adef42bfc87952))
+* **core:** Remove circular refs from Code and push msg ([#5741](https://github.com/n8n-io/n8n/issues/5741)) ([b6d8a0f](https://github.com/n8n-io/n8n/commit/b6d8a0f98526bfc98a3d9a722dafce4a53e715ec))
+* **core:** Require Auth on icons and nodes/credentials types static files ([#5745](https://github.com/n8n-io/n8n/issues/5745)) ([5dda3f2](https://github.com/n8n-io/n8n/commit/5dda3f2c61b107ec24557c4bf7de284234e406ab))
+* **core:** Return SAML service provider urls with config ([#5759](https://github.com/n8n-io/n8n/issues/5759)) ([ac18c0b](https://github.com/n8n-io/n8n/commit/ac18c0b9ebb3a5a736fa72985ce5ae2cdab3b270))
+* **core:** Service account private key as a password field ([2b28470](https://github.com/n8n-io/n8n/commit/2b28470fb98a5810ce0d20fe995e2864230005d3))
+* **core:** Upgrade `luxon` to address CVE-2023-22467 ([#5731](https://github.com/n8n-io/n8n/issues/5731)) ([469ce32](https://github.com/n8n-io/n8n/commit/469ce32957ac5e4d342db17a2f680ca65c21d44f))
+* **core:** Upgrade `simple-git` to address CVE-2022-25912 ([#5730](https://github.com/n8n-io/n8n/issues/5730)) ([4a4e2be](https://github.com/n8n-io/n8n/commit/4a4e2be96c0ce096d100e08823aa6b256719c267))
+* **core:** Upgrade `sqlite3` to address CVE-2022-43441 ([#5732](https://github.com/n8n-io/n8n/issues/5732)) ([fd81c74](https://github.com/n8n-io/n8n/commit/fd81c742519882b04f98d25ca41b3fac16dbea8b))
+* **core:** Upgrade convict to address CVE-2023-0163 ([#5729](https://github.com/n8n-io/n8n/issues/5729)) ([564bc03](https://github.com/n8n-io/n8n/commit/564bc03d3fab59e4fe7fa904d5deeeb16da85af9))
+* **core:** Waiting workflows not stopping ([#5811](https://github.com/n8n-io/n8n/issues/5811)) ([8f50bb6](https://github.com/n8n-io/n8n/commit/8f50bb6ed13688d8a81a171c1f1fb9e85847f138))
+* **editor:** Fix connection lost hover text not showing ([#5828](https://github.com/n8n-io/n8n/issues/5828)) ([a2f4a05](https://github.com/n8n-io/n8n/commit/a2f4a05af7f20e007ef16357d71af6a0dbade55c))
+* **editor:** Fix issue preventing execution preview loading when in an iframe ([#5817](https://github.com/n8n-io/n8n/issues/5817)) ([d19a973](https://github.com/n8n-io/n8n/commit/d19a9732b7da188017e2141b3deed7ea004c04a6))
+* **editor:** Use credentials when fetching node and credential types ([#5760](https://github.com/n8n-io/n8n/issues/5760)) ([d3a34ab](https://github.com/n8n-io/n8n/commit/d3a34ab71bd7fc494fb90cda1aa9827a55c5ed69))
+* **Google Sheets Node:** Fix insertOrUpdate cell update with object ([1797cda](https://github.com/n8n-io/n8n/commit/1797cdab5b9e7f23c9f62ce7c6c34c1c2c26b07e))
+* **HTTP Request Node:** Add streaming to binary response  ([#5701](https://github.com/n8n-io/n8n/issues/5701)) ([199a91b](https://github.com/n8n-io/n8n/commit/199a91b3981d40b7181f00702c938b9fa58d1ece)), closes [#5663](https://github.com/n8n-io/n8n/issues/5663)
+* **HTTP Request Node:** Fix AWS credentials to automatically deconstruct the url ([#5751](https://github.com/n8n-io/n8n/issues/5751)) ([d30b892](https://github.com/n8n-io/n8n/commit/d30b89239587562974cc87ae2e29fe57acddf79e))
+* **HTTP Request Node:** Fix AWS credentials to stop removing url params for STS ([#5790](https://github.com/n8n-io/n8n/issues/5790)) ([2c25959](https://github.com/n8n-io/n8n/commit/2c25959e595a48d9ae55c462bd47e014d8c43598))
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([135b0d3](https://github.com/n8n-io/n8n/commit/135b0d3e27705b07fb1e9c39a47ac4b70c1bc25d))
+* Update Posthog no-capture ([#5693](https://github.com/n8n-io/n8n/issues/5693)) ([a732374](https://github.com/n8n-io/n8n/commit/a732374f24354e0c1f36247f4476e743b0fc78e5))
+
+
+### Features
+
+* Add test overrides ([#5642](https://github.com/n8n-io/n8n/issues/5642)) ([696e43a](https://github.com/n8n-io/n8n/commit/696e43a919334d982188cc1f86d3e1b76da6a362))
+* **core:** Improve ldap/saml toggle and tests ([#5771](https://github.com/n8n-io/n8n/issues/5771)) ([47ee357](https://github.com/n8n-io/n8n/commit/47ee357059bb6d87607165d3c24ce0c99cf8bfc9))
+* **core:** Limit user invites when SAML is enabled ([#5761](https://github.com/n8n-io/n8n/issues/5761)) ([57748b7](https://github.com/n8n-io/n8n/commit/57748b71e5cd1399ccaedb9a115b821b34cf55e5))
+* **core:** Make OAuth2 error handling consistent with success handling ([#5555](https://github.com/n8n-io/n8n/issues/5555)) ([40aacf9](https://github.com/n8n-io/n8n/commit/40aacf9279c00c4e3c27669fc38a0ca196a788a4))
+* **editor:** Fix ResourceLocator dropdown style ([#5714](https://github.com/n8n-io/n8n/issues/5714)) ([02810a9](https://github.com/n8n-io/n8n/commit/02810a9ba3e792a2ec8966a2ca3bf7394740bf24))
+* Execution custom data saving and filtering ([#5496](https://github.com/n8n-io/n8n/issues/5496)) ([d78a41d](https://github.com/n8n-io/n8n/commit/d78a41db5420ff6711c30899aa2d71a85049374c)), closes [#5739](https://github.com/n8n-io/n8n/issues/5739)
+* **Filter Node:** New node ([cc9fe7b](https://github.com/n8n-io/n8n/commit/cc9fe7b91ffc4ea72c25e1242e0e477112cb283e))
+
+
+
 ## [0.221.2](https://github.com/n8n-io/n8n/compare/n8n@0.221.1...n8n@0.221.2) (2023-03-24)
 
 
