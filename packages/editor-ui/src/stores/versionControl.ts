@@ -39,8 +39,13 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		sshPublicKey.value = config.sshPublicKey;
 	};
 
+	const getBranches = async () => {
+		const config = await vcApi.getBranches(rootStore.getRestApiContext);
+		branches.value = config.branches;
+	};
+
 	const pull = async () => {
-		await vcApi.pull(rootStore.getRestApiContext);
+		await Promise.all([getBranches(), vcApi.pull(rootStore.getRestApiContext)]);
 	};
 
 	const setBranch = async (branch: string) => {
@@ -55,6 +60,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		getConfig,
 		pull,
 		setBranch,
+		getBranches,
 		branches,
 		currentBranch,
 		authorName,

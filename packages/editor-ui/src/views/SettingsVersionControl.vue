@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 import { useMessage } from '@/composables/useMessage';
@@ -8,6 +8,7 @@ import { useVersionControlStore } from '@/stores/versionControl';
 const versionControlStore = useVersionControlStore();
 const message = useMessage();
 const remoteRepository = ref(versionControlStore.remoteRepository);
+const branches = computed(() => versionControlStore.branches);
 const selectElement = ref<HTMLSelectElement | null>(null);
 
 const onContinue = () => {
@@ -92,13 +93,13 @@ const onPull = () => {
 			</n8n-notice>
 		</div>
 		<n8n-button
-			v-if="!versionControlStore.branches.length && versionControlStore.remoteRepository"
+			v-if="!branches.length && versionControlStore.remoteRepository"
 			@click="onConnect"
 			size="large"
 			:class="$style.connect"
 			>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 		>
-		<div v-if="versionControlStore.branches.length" :class="$style.group">
+		<div v-if="branches.length" :class="$style.group">
 			<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
 			<n8n-select
 				ref="selectElement"
@@ -108,7 +109,7 @@ const onPull = () => {
 				filterable
 				@input="onSelect"
 			>
-				<n8n-option v-for="b in versionControlStore.branches" :key="b" :value="b" :label="b" />
+				<n8n-option v-for="b in branches" :key="b" :value="b" :label="b" />
 			</n8n-select>
 			<n8n-button @click="onPull" size="large">{{
 				locale.baseText('settings.versionControl.button.pull')

@@ -30,3 +30,7 @@ export const pull = (context: IRestApiContext): Promise<void> => {
 export const setBranch = (context: IRestApiContext, data: { branch: string }): Promise<void> => {
 	return makeRestApiRequest(context, 'POST', '/environment/set-branch', data);
 };
+
+export const getBranches = (context: IRestApiContext): Promise<VersionControlBranches> => {
+	return makeRestApiRequest(context, 'GET', '/environment/get-branches');
+};
