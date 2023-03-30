@@ -36,7 +36,6 @@ export async function linkedInApiRequest(
 		url: binary ? endpoint : `https://api.linkedin.com/rest${endpoint}`,
 		json: true,
 	};
-
 	options = Object.assign({}, options, {
 		resolveWithFullResponse: true,
 	});

@@ -122,48 +122,36 @@ export class LinkedIn implements INodeType {
 							}
 							// Send a REQUEST to prepare a register of a media image file
 							const registerRequest = {
-								registerUploadRequest: {
-									recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+								initializeUploadRequest: {
 									owner: authorUrn,
-									serviceRelationships: [
-										{
-											relationshipType: 'OWNER',
-											identifier: 'urn:li:userGeneratedContent',
-										},
-									],
 								},
 							};
 
 							const registerObject = await linkedInApiRequest.call(
 								this,
 								'POST',
-								'/assets?action=registerUpload',
+								'/images?action=initializeUpload',
 								registerRequest,
 							);
-
-							// Response provides a specific upload URL that is used to upload the binary image file
-							const uploadUrl = registerObject.value.uploadMechanism[
-								'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'
-							].uploadUrl as string;
-							const asset = registerObject.value.asset as string;
-
+							console.log(registerObject);
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							this.helpers.assertBinaryData(i, binaryPropertyName);
 
-							// Buffer binary data
 							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-							// Upload image
-							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
+							const { uploadUrl, image } = registerObject.value;
+							await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
 
-							body = {
+							const imageBody = {
 								content: {
 									media: {
 										title,
-										id: asset,
+										id: image,
 										description,
 									},
 								},
+								commentary: text,
 							};
+							Object.assign(body, imageBody);
 						} else if (shareMediaCategory === 'ARTICLE') {
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
@@ -175,14 +163,17 @@ export class LinkedIn implements INodeType {
 								originalUrl = additionalFields.originalUrl as string;
 							}
 
-							body = {
+							const articleBody = {
 								content: {
-									title,
-									description,
-									source: originalUrl,
+									article: {
+										title,
+										description,
+										source: originalUrl,
+									},
 								},
+								commentary: text,
 							};
-
+							Object.assign(body, articleBody);
 							if (description === '') {
 								delete body.description;
 							}
