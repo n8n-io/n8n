@@ -193,11 +193,15 @@ describe('AugmentObject', () => {
 
 	describe('augmentObject', () => {
 		test('should work with simple values on first level', () => {
+			const date = new Date(1680089084200);
+			const regexp = new RegExp('^test$', 'ig');
 			const originalObject: IDataObject = {
 				1: 11,
 				2: '22',
 				a: 111,
 				b: '222',
+				d: date,
+				r: regexp,
 			};
 			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
 
@@ -221,7 +225,7 @@ describe('AugmentObject', () => {
 
 			augmentedObject.c = 3;
 
-			expect(originalObject).toEqual(copyOriginal);
+			expect({ ...originalObject, d: date.toJSON(), r: {} }).toEqual(copyOriginal);
 
 			expect(augmentedObject).toEqual({
 				1: 911,
@@ -229,6 +233,8 @@ describe('AugmentObject', () => {
 				a: 9111,
 				b: '9222',
 				c: 3,
+				d: date,
+				r: regexp,
 			});
 		});
 

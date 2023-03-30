@@ -1,9 +1,16 @@
+import { Container } from 'typedi';
 import { jsonStringify, LoggerProxy as Logger } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
-import { eventBus } from '../eventbus';
+import { MessageEventBus } from '@/eventbus';
 
 export abstract class AbstractPush<T> {
 	protected connections: Record<string, T> = {};
+
+	protected eventBus: MessageEventBus;
+
+	constructor() {
+		this.eventBus = Container.get(MessageEventBus);
+	}
 
 	protected abstract close(connection: T): void;
 	protected abstract sendToOne(connection: T, data: string): void;
@@ -11,7 +18,7 @@ export abstract class AbstractPush<T> {
 	protected add(sessionId: string, connection: T): void {
 		const { connections } = this;
 		Logger.debug('Add editor-UI session', { sessionId });
-		eventBus.emit('editorUiConnected', sessionId);
+		this.eventBus.emit('editorUiConnected', sessionId);
 
 		const existingConnection = connections[sessionId];
 		if (existingConnection) {
