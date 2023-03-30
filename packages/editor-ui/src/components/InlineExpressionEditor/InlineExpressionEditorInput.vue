@@ -96,6 +96,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorView.editable.of(!this.isReadOnly),
+			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({
 				focus: () => {
 					this.$emit('focus');
