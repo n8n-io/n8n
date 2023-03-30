@@ -22,6 +22,9 @@ const properties: INodeProperties[] = [
 		placeholder: 'SELECT id, name FROM product WHERE id < 40',
 		required: true,
 		description: 'The SQL query to execute',
+		typeOptions: {
+			rows: 3,
+		},
 	},
 	{
 		displayName: `

@@ -19,20 +19,34 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
-				description: 'Use when node input properties match destination column names',
+				description: 'Use when node input properties names exactly match the table column names',
 			},
 			{
 				name: 'Map Each Column Below',
 				value: 'defineBelow',
-				description: 'Set the value for each destination column',
+				description: 'Set the value for each destination column manually',
 			},
 		],
 		default: 'autoMapInputData',
-		description: 'Whether to insert the input data this node receives in the new row',
+		description:
+			'Whether to map node input properties and the table data automatically or manually',
+	},
+	{
+		displayName: `
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				dataMode: ['autoMapInputData'],
+			},
+		},
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Column to match on',
+		displayName: 'Column to Match On',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
@@ -50,6 +64,8 @@ const properties: INodeProperties[] = [
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
+		description:
+			'Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated',
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],

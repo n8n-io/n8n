@@ -19,25 +19,39 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
-				description: 'Use when node input properties match destination column names',
+				description: 'Use when node input properties names exactly match the table column names',
 			},
 			{
 				name: 'Map Each Column Below',
 				value: 'defineBelow',
-				description: 'Set the value for each destination column',
+				description: 'Set the value for each destination column manually',
 			},
 		],
 		default: 'autoMapInputData',
-		description: 'Whether to insert the input data this node receives in the new row',
+		description:
+			'Whether to map node input properties and the table data automatically or manually',
+	},
+	{
+		displayName: `
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				dataMode: ['autoMapInputData'],
+			},
+		},
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Unique Column',
+		displayName: 'Column to Match On',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -46,10 +60,12 @@ const properties: INodeProperties[] = [
 		hint: "Used to find the correct row to update. Doesn't get changed. Has to be unique.",
 	},
 	{
-		displayName: 'Value of Unique Column',
+		displayName: 'Value of Column to Match On',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
+		description:
+			'Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated. New rows will be created for non-matching items.',
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],

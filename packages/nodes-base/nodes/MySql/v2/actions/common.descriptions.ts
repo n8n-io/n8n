@@ -6,6 +6,7 @@ export const tableRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	description: 'The table you want to work on',
 	modes: [
 		{
 			displayName: 'From List',
@@ -37,8 +38,11 @@ export const optionsCollection: INodeProperties = {
 			displayName: 'Connection Timeout',
 			name: 'connectionTimeoutMillis',
 			type: 'number',
-			default: 0,
+			default: 30,
 			description: 'Number of milliseconds reserved for connecting to the database',
+			typeOptions: {
+				minValue: 1,
+			},
 		},
 		{
 			displayName: 'Connections Limit',
@@ -101,6 +105,7 @@ export const optionsCollection: INodeProperties = {
 			name: 'queryBatching',
 			type: 'options',
 			noDataExpression: true,
+			description: 'The way queries should be sent to the database',
 			options: [
 				{
 					name: 'Multiple Queries',
@@ -110,7 +115,7 @@ export const optionsCollection: INodeProperties = {
 				{
 					name: 'Independently',
 					value: 'independently',
-					description: 'Execute one query per incoming item',
+					description: 'Execute one query per incoming item of the run',
 				},
 				{
 					name: 'Transaction',
