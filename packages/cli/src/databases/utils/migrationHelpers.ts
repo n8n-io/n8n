@@ -5,7 +5,7 @@ import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
-import type { MigrationClass } from '@db/types';
+import type { Migration } from '@db/types';
 
 const logger = getLogger();
 
@@ -63,7 +63,7 @@ export function logMigrationEnd(migrationName: string, disableLogging = inTest):
 	}, 100);
 }
 
-export const wrapMigration = (migration: MigrationClass) => {
+export const wrapMigration = (migration: Migration) => {
 	const dbType = config.getEnv('database.type');
 	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
 	const tablePrefix = config.getEnv('database.tablePrefix');

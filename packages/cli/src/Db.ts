@@ -26,7 +26,7 @@ import {
 	getSqliteConnectionOptions,
 } from '@db/config';
 import { wrapMigration } from '@db/utils/migrationHelpers';
-import type { DatabaseType, MigrationClass } from '@db/types';
+import type { DatabaseType, Migration } from '@db/types';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
@@ -128,7 +128,7 @@ export async function init(
 		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
 	}
 
-	(connectionOptions.migrations as MigrationClass[]).forEach((m) => wrapMigration(m));
+	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
 
 	if (!testConnectionOptions && dbType === 'sqlite') {
 		// This specific migration changes database metadata.

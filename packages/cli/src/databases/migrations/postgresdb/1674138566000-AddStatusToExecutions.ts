@@ -5,7 +5,7 @@ export class AddStatusToExecutions1674138566000 implements MigrationInterface {
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}execution_entity ADD COLUMN status varchar`);
 	}
 
-	public async down({ queryRunner, tablePrefix }: MigrationContext) {
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}execution_entity DROP COLUMN status`);
 	}
 }

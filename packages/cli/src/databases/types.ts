@@ -20,7 +20,7 @@ export interface MigrationInterface {
 	down?: MigrationFn;
 }
 
-export interface MigrationClass extends Function {
+export interface Migration extends Function {
 	prototype: MigrationInterface;
 }
 

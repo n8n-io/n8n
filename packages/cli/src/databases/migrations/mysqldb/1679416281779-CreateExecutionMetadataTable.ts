@@ -34,7 +34,7 @@ export class CreateExecutionMetadataTable1679416281779 implements MigrationInter
 		);
 	}
 
-	public async down({ queryRunner, tablePrefix }: MigrationContext) {
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_metadata"`);
 		await queryRunner.query(
 			`CREATE INDEX \`IDX_${tablePrefix}06da892aaf92a48e7d3e400003\` ON \`${tablePrefix}execution_entity\` (\`workflowId\`, \`waitTill\`, \`id\`)`,

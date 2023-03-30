@@ -28,7 +28,7 @@ export class CreateExecutionMetadataTable1679416281778 implements MigrationInter
 		);
 	}
 
-	public async down({ queryRunner, tablePrefix }: MigrationContext) {
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		// Re-add removed indices
 		await queryRunner.query(
 			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefix}33228da131bb1112247cf52a42" ON ${tablePrefix}execution_entity ("stoppedAt") `,
