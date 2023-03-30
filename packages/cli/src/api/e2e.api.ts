@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Container } from 'typedi';
 import { Router } from 'express';
 import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
@@ -12,7 +11,7 @@ import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { MessageEventBus } from '@/eventbus';
+import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -80,7 +79,6 @@ const setupUserManagement = async () => {
 
 const resetLogStreaming = async () => {
 	config.set('enterprise.features.logStreaming', false);
-	const eventBus = Container.get(MessageEventBus);
 	for (const id in eventBus.destinations) {
 		await eventBus.removeDestination(id);
 	}
