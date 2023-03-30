@@ -546,6 +546,7 @@ export interface IUserSettings {
 	isOnboarded?: boolean;
 	showUserActivationSurvey?: boolean;
 	firstSuccessfulWorkflowId?: string;
+	userActivated?: boolean;
 }
 
 export interface IUserManagementSettings {

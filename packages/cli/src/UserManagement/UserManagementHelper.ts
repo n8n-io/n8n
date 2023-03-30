@@ -38,6 +38,7 @@ export async function setFirstSuccessfulWorkflow(user: User, workflowId: string)
 					...user.settings,
 					firstSuccessfulWorkflowId: workflowId,
 					showUserActivationSurvey: true,
+					userActivated: true,
 				},
 			},
 		);

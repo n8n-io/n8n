@@ -61,6 +61,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		allUsers(): IUser[] {
 			return Object.values(this.users);
 		},
+		userActivated(): boolean {
+			return Boolean(this.currentUser?.settings?.userActivated);
+		},
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
 		},

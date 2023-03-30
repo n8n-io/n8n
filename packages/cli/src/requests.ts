@@ -32,9 +32,13 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	lastName: string;
 }
 export class UserSettingsUpdatePayload {
-	@IsBoolean({ message: 'showUserActivationSurvey be a boolean' })
+	@IsBoolean({ message: 'showUserActivationSurvey should be a boolean' })
 	@IsOptional()
 	showUserActivationSurvey: boolean;
+
+	@IsBoolean({ message: 'userActivated should be a boolean' })
+	@IsOptional()
+	userActivated: boolean;
 }
 
 export type AuthlessRequest<
