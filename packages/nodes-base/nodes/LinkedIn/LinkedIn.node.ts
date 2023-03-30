@@ -102,6 +102,17 @@ export class LinkedIn implements INodeType {
 						let title = '';
 						let originalUrl = '';
 
+						body = {
+							author: authorUrn,
+							lifecycleState: 'PUBLISHED',
+							distribution: {
+								feedDistribution: 'MAIN_FEED',
+								targetEnties: [],
+								thirdPartyDistributionChannels: [],
+							},
+							visibility,
+						};
+
 						if (shareMediaCategory === 'IMAGE') {
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
@@ -145,30 +156,12 @@ export class LinkedIn implements INodeType {
 							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
 
 							body = {
-								author: authorUrn,
-								lifecycleState: 'PUBLISHED',
-								specificContent: {
-									'com.linkedin.ugc.ShareContent': {
-										shareCommentary: {
-											text,
-										},
-										shareMediaCategory: 'IMAGE',
-										media: [
-											{
-												status: 'READY',
-												description: {
-													text: description,
-												},
-												media: asset,
-												title: {
-													text: title,
-												},
-											},
-										],
+								content: {
+									media: {
+										title,
+										id: asset,
+										description,
 									},
-								},
-								visibility: {
-									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
 								},
 							};
 						} else if (shareMediaCategory === 'ARTICLE') {
@@ -183,57 +176,25 @@ export class LinkedIn implements INodeType {
 							}
 
 							body = {
-								author: `${authorUrn}`,
-								lifecycleState: 'PUBLISHED',
-								specificContent: {
-									'com.linkedin.ugc.ShareContent': {
-										shareCommentary: {
-											text,
-										},
-										shareMediaCategory,
-										media: [
-											{
-												status: 'READY',
-												description: {
-													text: description,
-												},
-												originalUrl,
-												title: {
-													text: title,
-												},
-											},
-										],
-									},
-								},
-								visibility: {
-									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+								content: {
+									title,
+									description,
+									source: originalUrl,
 								},
 							};
 
 							if (description === '') {
-								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].description;
+								delete body.description;
 							}
 
 							if (title === '') {
-								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].title;
+								delete body.title;
 							}
 						} else {
-							body = {
-								author: authorUrn,
-								lifecycleState: 'PUBLISHED',
-								commentary: text,
-								distribution: {
-									feedDistribution: 'MAIN_FEED',
-									targetEnties: [],
-									thirdPartyDistributionChannels: [],
-								},
-								visibility,
-							};
+							Object.assign(body, { commentary: text });
 						}
-
 						const endpoint = '/posts';
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
-						console.log(responseData);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
