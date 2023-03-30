@@ -232,8 +232,8 @@ export class LinkedIn implements INodeType {
 						}
 
 						const endpoint = '/posts';
-						console.log(body);
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
+						console.log(responseData);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

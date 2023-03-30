@@ -8,6 +8,13 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+function resolveHeaderData(fullResponse: any) {
+	if (fullResponse.statusCode === 201) {
+		return { urn: fullResponse.headers['x-restli-id'] };
+	} else {
+		return fullResponse.body;
+	}
+}
 
 export async function linkedInApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -18,7 +25,7 @@ export async function linkedInApiRequest(
 	binary?: boolean,
 	_headers?: object,
 ): Promise<any> {
-	const options: OptionsWithUrl = {
+	let options: OptionsWithUrl = {
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
@@ -30,6 +37,9 @@ export async function linkedInApiRequest(
 		json: true,
 	};
 
+	options = Object.assign({}, options, {
+		resolveWithFullResponse: true,
+	});
 	// If uploading binary data
 	if (binary) {
 		delete options.json;
@@ -41,9 +51,11 @@ export async function linkedInApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2.call(this, 'linkedInOAuth2Api', options, {
-			tokenType: 'Bearer',
-		});
+		return resolveHeaderData(
+			await this.helpers.requestOAuth2.call(this, 'linkedInOAuth2Api', options, {
+				tokenType: 'Bearer',
+			}),
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
