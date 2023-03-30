@@ -1,0 +1,121 @@
+{
+	"name": "My workflow 10",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d9f14c5e-4821-4f56-803c-bb16221ea8c0",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "myNumber",
+							"value": "123456"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "da66f83e-220e-4347-8830-728f22a79ce7",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "updatedNumber",
+							"value": "={{ $json[\"myNumber\"] }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "02032c58-f4f7-4084-9d30-c9b8d60a8552",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [900, 460]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "numField",
+							"value": "={{ $json.updatedNumber }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "2bdf9520-1ccb-4451-bf6e-26779b87b80d",
+			"name": "Set2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1120, 460]
+		}
+	],
+	"pinData": {
+		"Set2": [
+			{
+				"json": {
+					"numField": 123456
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Set2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "bf224be6-3b64-48ec-9683-276461b2b0a0",
+	"id": "150",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}
