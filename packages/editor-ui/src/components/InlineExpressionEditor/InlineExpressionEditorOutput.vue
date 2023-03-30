@@ -68,7 +68,9 @@ export default Vue.extend({
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
 							: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-							  (segment.resolved as any).toString().length;
+							segment.resolved
+							? (segment.resolved as any).toString().length
+							: 0;
 					segment.to = cursor;
 					return segment;
 				})

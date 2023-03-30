@@ -48,6 +48,10 @@ jobs:
         working-directory: packages/cli
         run: pnpm test:postgres:alt-schema
 
+      - name: Test Postgres (table prefix)
+        working-directory: packages/cli
+        run: pnpm test:postgres:with-table-prefix
+
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
         if: failure()
