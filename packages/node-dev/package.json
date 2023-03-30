@@ -1,6 +1,6 @@
 {
   "name": "n8n-node-dev",
-  "version": "0.99.0",
+  "version": "0.100.0",
   "description": "CLI to simplify n8n credentials/node development",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
