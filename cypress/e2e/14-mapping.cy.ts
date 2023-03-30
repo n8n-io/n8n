@@ -56,7 +56,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.timestamp }} {{ $json["Readable date"] }}');
+			.should('have.text', "{{ $json.timestamp }} {{ $json['Readable date'] }}");
 	});
 
 	it('maps expressions from table json, and resolves value based on hover', () => {
@@ -193,7 +193,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', `{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }}`);
+			.should('have.text', `{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }}`);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
 		ndv.actions.switchInputMode('Table');
@@ -202,7 +202,7 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should(
 				'have.text',
-				`{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }} {{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input }}`,
+				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
 			);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
@@ -259,7 +259,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.parameterInput('fieldName')
 			.find('input')
-			.should('have.value', 'input[0]["hello.world"]["my count"]');
+			.should('have.value', "input[0]['hello.world']['my count']");
 	});
 
 	it('maps expressions to updated fields correctly', () => {
