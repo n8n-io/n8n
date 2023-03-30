@@ -6,8 +6,11 @@ export function generatePath(root: string, path: Array<string | number>): string
 			return `${accu}[${part}]`;
 		}
 
-		if (part.includes('-') || part.includes(' ') || part.includes('.')) {
-			return `${accu}["${part}"]`;
+		const special = ['-', ' ', '.', "'", '"', '`', '[', ']', '{', '}', '(', ')', ':', ',', '?'];
+		const isSpecial = !!special.find((s) => part.includes(s));
+		if (isSpecial) {
+			const escaped = part.replaceAll("'", "\\'");
+			return `${accu}['${escaped}']`;
 		}
 
 		return `${accu}.${part}`;
