@@ -4,9 +4,10 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
+			:executionWithGap="executionWithGap"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
-			@loadMore="loadMore"
+			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
 			@refresh="loadAutoRefresh"
 		/>
@@ -81,6 +82,7 @@ export default mixins(
 			loading: false,
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
+			executionWithGap: '-1',
 		};
 	},
 	computed: {
@@ -234,6 +236,21 @@ export default mixins(
 				if (currentExecutions.find((ex) => ex.id === newExecution.id) === undefined) {
 					currentExecutions.push(newExecution);
 				}
+				// If we loaded temp execution, put it into it's place and remove from top of the list
+				if (newExecution.id === this.executionWithGap) {
+					currentExecutions.push(newExecution);
+					currentExecutions.splice(0, 1);
+					this.executionWithGap = '-1';
+				}
+			}
+			// Always keep temp execution card at the top
+			const tempExecution: IExecutionsSummary = currentExecutions.find(
+				(e) => e.id === this.executionWithGap,
+			);
+			if (tempExecution) {
+				currentExecutions.unshift(
+					currentExecutions.splice(currentExecutions.indexOf(tempExecution), 1)[0],
+				);
 			}
 			this.workflowsStore.currentWorkflowExecutions = currentExecutions;
 			this.loadingMore = false;
@@ -432,43 +449,29 @@ export default mixins(
 					.catch(() => {});
 			}
 		},
-		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {
+		async tryToFindExecution(executionId: string): Promise<void> {
 			// First check if executions exists in the DB at all
-			if (attemptCount === 0) {
-				const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
-				if (!executionExists) {
-					this.workflowsStore.activeWorkflowExecution = null;
-					this.$showError(
-						new Error(
-							this.$locale.baseText('executionView.notFound.message', {
-								interpolate: { executionId },
-							}),
-						),
-						this.$locale.baseText('nodeView.showError.openExecution.title'),
-					);
-					return;
-				}
-			}
-
-			// stop if the execution wasn't found in the first 1000 lookups
-			if (attemptCount >= 10) {
+			const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
+			if (!executionExists) {
 				this.workflowsStore.activeWorkflowExecution = null;
+				this.$showError(
+					new Error(
+						this.$locale.baseText('executionView.notFound.message', {
+							interpolate: { executionId },
+						}),
+					),
+					this.$locale.baseText('nodeView.showError.openExecution.title'),
+				);
 				return;
 			}
 
-			// Fetch next batch of executions
-			await this.loadMore(100);
-			const execution = this.workflowsStore.getExecutionDataById(executionId);
-			if (!execution) {
-				// If it's not there load next until found
-				await this.$nextTick();
-				// But skip fetching execution data since we at this point know it exists
-				await this.tryToFindExecution(executionId, attemptCount + 1);
-			} else {
-				// When found set execution as active
-				this.workflowsStore.activeWorkflowExecution = execution;
-				return;
-			}
+			// Add temporary execution card to the top of the list
+			this.workflowsStore.currentWorkflowExecutions = [
+				executionExists,
+				...this.workflowsStore.currentWorkflowExecutions,
+			];
+			this.workflowsStore.activeWorkflowExecution = executionExists;
+			this.executionWithGap = executionExists.id;
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
 			await this.loadActiveWorkflows();

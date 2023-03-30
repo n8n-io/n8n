@@ -42,6 +42,7 @@
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
 				:data-test-id="`execution-details-${execution.id}`"
+				:showGap="executionWithGap === execution.id"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
@@ -88,6 +89,10 @@ export default Vue.extend({
 		loadingMore: {
 			type: Boolean,
 			default: false,
+		},
+		executionWithGap: {
+			type: String,
+			default: '-1',
 		},
 	},
 	data() {
