@@ -304,6 +304,7 @@ describe('Data mapping', () => {
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('exist');
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]').should('not.exist');
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown().realMouseMove(100, 100);
+		cy.wait(50);
 
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('not.exist');
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
