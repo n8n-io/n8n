@@ -62,6 +62,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
