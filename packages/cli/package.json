@@ -54,7 +54,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=6.9"
+    "node": ">=16.9"
   },
   "files": [
     "bin",
