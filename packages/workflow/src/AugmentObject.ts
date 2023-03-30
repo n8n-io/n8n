@@ -1,14 +1,17 @@
 import type { IDataObject } from './Interfaces';
-import util from 'util';
 
+const augmentedObjects = new WeakSet<object>();
 function augment<T>(value: T): T {
 	if (
 		typeof value !== 'object' ||
 		value === null ||
-		util.types.isProxy(value) ||
-		value instanceof RegExp
+		value instanceof RegExp ||
+		augmentedObjects.has(value)
 	)
 		return value;
+
+	// Track augmented objects to prevent infinite recursion in cases where an object contains circular references
+	augmentedObjects.add(value);
 
 	if (value instanceof Date) return new Date(value.valueOf()) as T;
 
