@@ -4,19 +4,49 @@
 			<template #customContent>
 				<div :class="$style.accordionContent">
 					<div :class="$style.aiContent">
+						<n8n-select
+							defaultFirstOption
+							placeholder="GPT Model"
+							size="medium"
+							ref="select"
+							v-model="selectedModel"
+						>
+							<n8n-option value="gpt-4" key="gpt-4" label="GPT 4 ($0.03 / 1K tokens)" />
+							<n8n-option
+								value="gpt-3.5-turbo"
+								key="gpt-3.5-turbo"
+								label="GPT 3.5 ($0.002 / 1K tokens)"
+							/>
+						</n8n-select>
+						<n8n-input v-model="apiKey" type="text" :rows="5" ref="input" placeholder="API Key" />
 						<n8n-input v-model="userPrompt" type="textarea" :rows="5" ref="input" />
+						<div v-if="lastQueryUsage" :class="$style.apiUsage">
+							<p>Last query tokens:</p>
+							<p>Completion: {{ lastQueryUsage?.completion_tokens }}</p>
+							<p>Prompt: {{ lastQueryUsage?.prompt_tokens }}</p>
+							<p>Total: {{ lastQueryUsage?.total_tokens }}</p>
+							<p>Cost: {{ calculateApiCost(lastQueryUsage?.total_tokens) }}$</p>
+						</div>
+
 						<div :class="$style.controls">
-							<n8n-button :loading="isGenerating" label="Generate" @click="generateCode" />
+							<n8n-button
+								:loading="isGenerating"
+								label="Generate"
+								@click="generateCode"
+								:disabled="!apiKey"
+							/>
 							<n8n-button
 								:loading="isModifying"
 								label="Modify"
 								type="secondary"
+								:disabled="!apiKey"
 								@click="modifyCode"
 							/>
 							<n8n-button
 								:loading="isExplaining"
 								label="Explain"
 								type="secondary"
+								:disabled="!apiKey"
 								@click="explainCode"
 							/>
 						</div>
@@ -32,16 +62,6 @@
 			@close="explainModalVisible = false"
 		>
 			<n8n-markdown :content="explanation" :class="$style.explanation" />
-			<!-- <template #title v-else-if="title">
-			<div :class="centerTitle ? $style.centerTitle : ''">
-				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
-				</div>
-				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
-				</div>
-			</div>
-		</template> -->
 		</el-dialog>
 	</div>
 </template>
@@ -86,7 +106,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
 			userPrompt: '',
+			apiKey: '',
+			selectedModel: 'gpt-4',
 			explanation: '',
+			lastQueryUsage: null,
 			explainModalVisible: false,
 			isGenerating: false,
 			isExplaining: false,
@@ -121,6 +144,11 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	methods: {
+		calculateApiCost(totalTokens: number) {
+			const tokenPrice = this.selectedModel === 'gpt-4' ? 0.03 : 0.002;
+
+			return ((totalTokens / 1000) * tokenPrice).toFixed(6);
+		},
 		async modifyCode() {
 			// Get the current selection
 			const selection = this.editor?.state.selection;
@@ -130,22 +158,16 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			for (const range of selection.ranges) {
 				// Get the selected text
 				const selectedText = this.editor?.state.doc.sliceString(range.from, range.to);
-				console.log('Selected text:', selectedText);
-
-				// Get the range
-				console.log('Selection range:', range);
 
 				this.isModifying = true;
-				// const runData = this.ndvStore
 				const completion = await fetch('https://api.openai.com/v1/chat/completions', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						// Please do not check-in api keys into the repo
-						// Authorization: 'Bearer REDACTED',
+						Authorization: 'Bearer ' + this.apiKey,
 					},
 					body: JSON.stringify({
-						model: 'gpt-4',
+						model: this.selectedModel,
 						temperature: 0.8,
 						messages: [
 							{
@@ -156,8 +178,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 							{
 								role: 'system',
 								content:
-									"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json." +
-									JSON.stringify(window.__schema.value),
+									"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json. You always need to return the result." +
+									window.__schema
+										? JSON.stringify(window.__schema.value)
+										: 'No schema, this is a first node in the workflow.',
 							},
 							{
 								role: 'user',
@@ -185,6 +209,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				this.editor?.dispatch({
 					changes: { from: range.from, to: range.to, insert: parseJS },
 				});
+
+				this.lastQueryUsage = completionJSON?.usage;
 			}
 		},
 		async explainCode() {
@@ -207,10 +233,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						Authorization: 'Bearer ' + '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',
+						Authorization: 'Bearer ' + this.apiKey,
 					},
 					body: JSON.stringify({
-						model: 'gpt-3.5-turbo',
+						model: this.selectedModel,
 						temperature: 0.8,
 						messages: [
 							{
@@ -222,7 +248,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 								role: 'system',
 								content:
 									"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json." +
-									JSON.stringify(window.__schema.value),
+									window.__schema
+										? JSON.stringify(window.__schema.value)
+										: 'No schema, this is a first node in the workflow.',
 							},
 							{
 								role: 'user',
@@ -236,6 +264,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				this.isExplaining = false;
 				this.explanation = completionJSON?.choices[0]?.message?.content;
 				this.explainModalVisible = true;
+
+				this.lastQueryUsage = completionJSON?.usage;
 			}
 		},
 		async generateCode() {
@@ -244,10 +274,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: 'Bearer ' + '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',
+					Authorization: 'Bearer ' + this.apiKey,
 				},
 				body: JSON.stringify({
-					model: 'gpt-4',
+					model: this.selectedModel,
 					temperature: 0.8,
 					messages: [
 						{
@@ -258,8 +288,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 						{
 							role: 'system',
 							content:
-								"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json." +
-								JSON.stringify(window.__schema.value),
+								"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json. You always need to return the result." +
+								window.__schema
+									? JSON.stringify(window.__schema.value)
+									: 'No schema, this is a first node in the workflow.',
 						},
 						{
 							role: 'user',
@@ -280,6 +312,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			this.editor?.dispatch({
 				changes: { from: 0, to: docLength, insert: parseJS },
 			});
+			this.lastQueryUsage = completionJSON?.usage;
 		},
 		reloadLinter() {
 			if (!this.editor) return;
@@ -416,5 +449,12 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 }
 .aiContent {
 	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.apiUsage {
+	font-size: 12px;
 }
 </style>
