@@ -193,7 +193,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', `{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }}`);
+			.should('have.text', `{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }}`);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
 		ndv.actions.switchInputMode('Table');
