@@ -826,6 +826,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
 			}
 			const branches: ITab[] = [];
+			const excludeFromAppend = ['n8n-nodes-base.filter'];
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
 				if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
 					continue;
@@ -836,9 +837,10 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
-					outputName = capitalize(
-						`${this.getOutputName(i)} ${this.$locale.baseText('ndv.output.branch')}`,
-					);
+					const appendBranchWord = excludeFromAppend.includes(this.node?.type)
+						? ''
+						: ` ${this.$locale.baseText('ndv.output.branch')}`;
+					outputName = capitalize(`${this.getOutputName(i)}${appendBranchWord}`);
 				}
 				branches.push({
 					label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
