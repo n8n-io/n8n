@@ -285,7 +285,7 @@ export class Aws implements ICredentialType {
 		const method = requestOptions.method;
 		let body = requestOptions.body;
 		let region = credentials.region;
-		const query = requestOptions.qs?.query as IDataObject;
+		let query = requestOptions.qs?.query as IDataObject;
 
 		// ! Workaround as we still use the OptionsWithUri interface which uses uri instead of url
 		// ! To change when we replace the interface with IHttpRequestOptions
@@ -295,8 +295,12 @@ export class Aws implements ICredentialType {
 			endpoint = new URL(requestOptions.url);
 			if (service === 'sts') {
 				try {
-					endpoint.searchParams.set('Action', 'GetCallerIdentity');
-					endpoint.searchParams.set('Version', '2011-06-15');
+					if (requestWithUri.qs?.Action !== 'GetCallerIdentity') {
+						query = requestWithUri.qs;
+					} else {
+						endpoint.searchParams.set('Action', 'GetCallerIdentity');
+						endpoint.searchParams.set('Version', '2011-06-15');
+					}
 				} catch (err) {
 					console.log(err);
 				}
@@ -342,6 +346,7 @@ export class Aws implements ICredentialType {
 				endpoint = customUrl;
 			}
 		}
+
 		if (query && Object.keys(query).length !== 0) {
 			Object.keys(query).forEach((key) => {
 				endpoint.searchParams.append(key, query[key] as string);
