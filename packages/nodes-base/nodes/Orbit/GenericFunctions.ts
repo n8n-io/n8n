@@ -111,7 +111,8 @@ export async function orbitApiRequestAllItems(
 		}
 
 		query.page++;
-		if (query.limit && returnData.length >= query.limit) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 	} while (responseData.data.length !== 0);

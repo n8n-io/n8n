@@ -17,8 +17,6 @@ import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import Container from 'typedi';
-import { License } from '../../../src/License';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -43,7 +41,6 @@ const defaultLdapConfig = {
 };
 
 beforeAll(async () => {
-	Container.get(License).isLdapEnabled = () => true;
 	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'] });
 
 	const [globalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
@@ -80,10 +77,10 @@ beforeEach(async () => {
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
+	config.set('enterprise.features.ldap', true);
 });
 
 afterAll(async () => {
-	Container.reset();
 	await testDb.terminate();
 });
 
