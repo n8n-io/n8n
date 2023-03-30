@@ -36,8 +36,10 @@ test('import:workflow should import active workflow and deactivate it', async ()
 		expect(error.message).toBe('process.exit');
 	}
 	const after = await testDb.getAllWorkflows();
-	expect(after.length).toBe(1);
+	expect(after.length).toBe(2);
 	expect(after[0].name).toBe('active-workflow');
 	expect(after[0].active).toBe(false);
+	expect(after[1].name).toBe('inactive-workflow');
+	expect(after[1].active).toBe(false);
 	mockExit.mockRestore();
 });
