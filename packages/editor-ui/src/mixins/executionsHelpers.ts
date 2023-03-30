@@ -62,7 +62,7 @@ export const executionHelpers = mixins(genericHelpers).extend({
 
 			if (!execution.status) execution.status = 'unknown';
 
-			if (execution.startedAt) {
+			if (execution.startedAt && execution.stoppedAt) {
 				const stoppedAt = execution.stoppedAt
 					? new Date(execution.stoppedAt).getTime()
 					: Date.now();
