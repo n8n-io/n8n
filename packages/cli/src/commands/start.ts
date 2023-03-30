@@ -25,10 +25,10 @@ import * as Server from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
-import { MessageEventBus } from '@/eventbus';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -133,7 +133,7 @@ export class Start extends BaseCommand {
 			}
 
 			//finally shut down Event Bus
-			await Container.get(MessageEventBus).close();
+			await eventBus.close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
