@@ -490,7 +490,7 @@ export default mixins(
 					inputPattern: /^.+$/,
 					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
 				},
-			);
+			).catch(() => ({}));
 
 			if (prompt.value) {
 				this.versionControlStore.sync({ message: prompt.value });
