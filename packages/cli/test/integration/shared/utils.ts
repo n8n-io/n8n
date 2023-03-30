@@ -80,7 +80,7 @@ import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
-import { License } from '../../../src/License';
+import { License } from '@/License';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
