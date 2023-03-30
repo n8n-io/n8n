@@ -46,7 +46,7 @@ export class TagsController {
 			return this.tagsRepository
 				.find({
 					select: ['id', 'name', 'createdAt', 'updatedAt'],
-					relations: ['workflowTagMapping'],
+					relations: ['workflowMappings'],
 				})
 				.then((tags) =>
 					tags.map(({ workflowMappings, ...rest }) => ({
