@@ -5,6 +5,7 @@
 
 * **core:** Assign properties.success earlier to set executionStatus correctly ([#5773](https://github.com/n8n-io/n8n/issues/5773)) ([d33a1ac](https://github.com/n8n-io/n8n/commit/d33a1ac1e9a13985ff84f9271f75ebf368339b6d))
 * **core:** Do not mark duplicates as circular references in `jsonStringify` ([#5789](https://github.com/n8n-io/n8n/issues/5789)) ([f5183c6](https://github.com/n8n-io/n8n/commit/f5183c640109fb4c9552d6b2786f8ebc0e35ca4c))
+* **core:** Do not user `util.types.isProxy` for tracking of augmented objects ([#5836](https://github.com/n8n-io/n8n/issues/5836)) ([3e413f2](https://github.com/n8n-io/n8n/commit/3e413f2f80d6fa349dc6f6ea1b49027ae163df80))
 * **core:** Ensure that all non-lazy-loaded community nodes get post-processed correctly ([#5782](https://github.com/n8n-io/n8n/issues/5782)) ([30aeeb7](https://github.com/n8n-io/n8n/commit/30aeeb70b43ff3916ad79abbe49512a27e50d01d))
 * **core:** Force-upgrade `decode-uri-component` to address CVE-2022-38900 ([#5734](https://github.com/n8n-io/n8n/issues/5734)) ([8dd7f6e](https://github.com/n8n-io/n8n/commit/8dd7f6e1d4ac29b450a0af17d545ffd17038b005))
 * **core:** Force-upgrade `http-cache-semantics` to address CVE-2022-25881 ([#5733](https://github.com/n8n-io/n8n/issues/5733)) ([f7401fb](https://github.com/n8n-io/n8n/commit/f7401fb6133b9bf18f3825304c478d767e69fe27))
@@ -23,6 +24,8 @@
 * **core:** Upgrade `sqlite3` to address CVE-2022-43441 ([#5732](https://github.com/n8n-io/n8n/issues/5732)) ([fd81c74](https://github.com/n8n-io/n8n/commit/fd81c742519882b04f98d25ca41b3fac16dbea8b))
 * **core:** Upgrade convict to address CVE-2023-0163 ([#5729](https://github.com/n8n-io/n8n/issues/5729)) ([564bc03](https://github.com/n8n-io/n8n/commit/564bc03d3fab59e4fe7fa904d5deeeb16da85af9))
 * **core:** Waiting workflows not stopping ([#5811](https://github.com/n8n-io/n8n/issues/5811)) ([8f50bb6](https://github.com/n8n-io/n8n/commit/8f50bb6ed13688d8a81a171c1f1fb9e85847f138))
+* **editor:** Fix connection lost hover text not showing ([#5828](https://github.com/n8n-io/n8n/issues/5828)) ([a2f4a05](https://github.com/n8n-io/n8n/commit/a2f4a05af7f20e007ef16357d71af6a0dbade55c))
+* **editor:** Fix issue preventing execution preview loading when in an iframe ([#5817](https://github.com/n8n-io/n8n/issues/5817)) ([d19a973](https://github.com/n8n-io/n8n/commit/d19a9732b7da188017e2141b3deed7ea004c04a6))
 * **editor:** Use credentials when fetching node and credential types ([#5760](https://github.com/n8n-io/n8n/issues/5760)) ([d3a34ab](https://github.com/n8n-io/n8n/commit/d3a34ab71bd7fc494fb90cda1aa9827a55c5ed69))
 * **Google Sheets Node:** Fix insertOrUpdate cell update with object ([1797cda](https://github.com/n8n-io/n8n/commit/1797cdab5b9e7f23c9f62ce7c6c34c1c2c26b07e))
 * **HTTP Request Node:** Add streaming to binary response  ([#5701](https://github.com/n8n-io/n8n/issues/5701)) ([199a91b](https://github.com/n8n-io/n8n/commit/199a91b3981d40b7181f00702c938b9fa58d1ece)), closes [#5663](https://github.com/n8n-io/n8n/issues/5663)
