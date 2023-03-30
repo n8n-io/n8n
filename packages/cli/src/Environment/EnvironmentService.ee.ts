@@ -203,7 +203,7 @@ export class EnvironmentService {
 		}
 		for (const workflow of workflows) {
 			await fsWriteFile(
-				path.join(path.join(this.gitFolder, '/workflows'), `${workflow.id}.json`),
+				path.join(this.gitFolder, '/workflows', `${workflow.id}.json`),
 				JSON.stringify(workflow, null, 2),
 				{
 					encoding: 'binary',
@@ -222,7 +222,7 @@ export class EnvironmentService {
 		}
 		for (const credential of credentials) {
 			await fsWriteFile(
-				path.join(path.join(this.gitFolder, '/credentials'), `${credential.id}.json`),
+				path.join(this.gitFolder, '/credentials', `${credential.id}.json`),
 				JSON.stringify(credential, null, 2),
 				{
 					encoding: 'binary',
