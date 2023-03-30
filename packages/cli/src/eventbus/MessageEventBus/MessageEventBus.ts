@@ -42,15 +42,13 @@ export interface MessageWithCallback {
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 
+	private logWriter = new MessageEventBusLogWriter();
+
 	destinations: {
 		[key: string]: MessageEventBusDestination;
 	} = {};
 
 	private pushIntervalTimer: NodeJS.Timer;
-
-	constructor(private logWriter: MessageEventBusLogWriter) {
-		super();
-	}
 
 	/**
 	 * Needs to be called once at startup to set the event bus instance up. Will launch the event log writer and,
@@ -100,6 +98,7 @@ export class MessageEventBus extends EventEmitter {
 		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
 			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
 				await recoverExecutionDataFromEventLogMessages(
+					this,
 					executionId,
 					unsentAndUnfinished.unfinishedExecutions[executionId],
 					true,
@@ -266,6 +265,7 @@ export class MessageEventBus extends EventEmitter {
 
 			for (const execution of filteredExecutionIds) {
 				const data = await recoverExecutionDataFromEventLogMessages(
+					this,
 					execution.executionId,
 					queryResult,
 					false,

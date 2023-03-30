@@ -10,9 +10,10 @@ import type { IPushDataExecutionRecovered } from '@/Interfaces';
 import { workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
-import { MessageEventBus } from './MessageEventBus';
+import type { MessageEventBus } from './MessageEventBus';
 
 export async function recoverExecutionDataFromEventLogMessages(
+	eventBus: MessageEventBus,
 	executionId: string,
 	messages: EventMessageTypes[],
 	applyToDb = true,
@@ -201,7 +202,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 			await workflowExecutionCompleted(executionEntry.workflowData, iRunData);
 
 			// wait for UI to be back up and send the execution data
-			Container.get(MessageEventBus).once('editorUiConnected', function handleUiBackUp() {
+			eventBus.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
 					Container.get(Push).send('executionRecovered', {

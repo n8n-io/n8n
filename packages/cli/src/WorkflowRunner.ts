@@ -123,6 +123,7 @@ export class WorkflowRunner {
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
 				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
+					this.eventBus,
 					executionId,
 					eventLogMessages,
 					false,

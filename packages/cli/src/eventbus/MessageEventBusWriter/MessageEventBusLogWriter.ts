@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Service } from 'typedi';
 import { once as eventOnce } from 'events';
 import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
@@ -36,7 +35,6 @@ interface ReadMessagesFromLogFileResult {
 /**
  * MessageEventBusWriter for Files
  */
-@Service()
 export class MessageEventBusLogWriter {
 	private options: Required<MessageEventBusLogWriterOptions>;
 

@@ -128,7 +128,7 @@ export class EventBusController {
 			const applyToDb = req.query.applyToDb !== undefined ? !!req.query.applyToDb : true;
 			const messages = await this.eventBus.getEventsByExecutionId(id, logHistory);
 			if (messages.length > 0) {
-				return recoverExecutionDataFromEventLogMessages(id, messages, applyToDb);
+				return recoverExecutionDataFromEventLogMessages(this.eventBus, id, messages, applyToDb);
 			}
 		}
 		return;

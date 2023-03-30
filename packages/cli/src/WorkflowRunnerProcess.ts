@@ -57,6 +57,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { MessageEventBus } from '@/eventbus';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -117,6 +118,7 @@ class WorkflowRunnerProcess {
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
+		const eventBus = Container.get(MessageEventBus);
 		const instanceId = userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(instanceId);
 		await Container.get(InternalHooks).init(instanceId);
@@ -129,6 +131,8 @@ class WorkflowRunnerProcess {
 
 		const license = Container.get(License);
 		await license.init(instanceId);
+
+		await eventBus.initialize();
 
 		const workflowSettings = this.data.workflowData.settings ?? {};
 
