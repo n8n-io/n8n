@@ -35,7 +35,7 @@ const onSelect = async (b: string) => {
 		)
 		.catch(() => {});
 	if (switchBranch === 'confirm') {
-		versionControlStore.currentBranch = b;
+		await versionControlStore.setBranch(b);
 		selectElement.value?.blur();
 	}
 };

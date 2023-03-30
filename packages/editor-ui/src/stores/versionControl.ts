@@ -26,7 +26,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	};
 
 	const sync = async (data: VersionControlCommit) => {
-		return vcApi.sync(rootStore.getRestApiContext, { message: data.message });
+		await vcApi.sync(rootStore.getRestApiContext, { message: data.message });
 	};
 
 	const getConfig = async () => {
@@ -40,7 +40,12 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	};
 
 	const pull = async () => {
-		return vcApi.pull(rootStore.getRestApiContext);
+		await vcApi.pull(rootStore.getRestApiContext);
+	};
+
+	const setBranch = async (branch: string) => {
+		await vcApi.setBranch(rootStore.getRestApiContext, { branch });
+		currentBranch.value = branch;
 	};
 
 	return {
@@ -49,6 +54,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		sync,
 		getConfig,
 		pull,
+		setBranch,
 		branches,
 		currentBranch,
 		authorName,

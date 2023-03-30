@@ -26,3 +26,7 @@ export const getConfig = (context: IRestApiContext): Promise<VersionControlConfi
 export const pull = (context: IRestApiContext): Promise<void> => {
 	return makeRestApiRequest(context, 'GET', '/environment/pull');
 };
+
+export const setBranch = (context: IRestApiContext, data: { branch: string }): Promise<void> => {
+	return makeRestApiRequest(context, 'POST', '/environment/set-branch', data);
+};
