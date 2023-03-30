@@ -131,6 +131,13 @@ export class ImportWorkflowsCommand extends BaseCommand {
 						await setTagsForImport(transactionManager, workflow, tags);
 					}
 
+					if (workflow.active) {
+						this.logger.info(
+							`Deactivating workflow "${workflow.name}" during import, remember to activate it later.`,
+						);
+						workflow.active = false;
+					}
+
 					await this.storeWorkflow(workflow, user);
 				}
 			});

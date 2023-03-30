@@ -489,6 +489,10 @@ export async function createWorkflowWithTrigger(
 	return workflow;
 }
 
+export async function getAllWorkflows() {
+	return Db.collections.Workflow.find();
+}
+
 // ----------------------------------
 //        workflow sharing
 // ----------------------------------
