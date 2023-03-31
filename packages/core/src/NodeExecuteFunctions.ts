@@ -1191,7 +1191,6 @@ export async function requestOAuth2(
 			if (error.statusCode === statusCodeReturned) {
 				// Token is probably not valid anymore. So try refresh it.
 				const tokenRefreshOptions: IDataObject = {};
-
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 					const body: IDataObject = {
 						client_id: credentials.clientId,
@@ -1203,7 +1202,6 @@ export async function requestOAuth2(
 						Authorization: '',
 					};
 				}
-
 				Logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 				);
@@ -1217,7 +1215,6 @@ export async function requestOAuth2(
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions);
 				}
-				console.log(newToken);
 				Logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 				);
@@ -1588,7 +1585,6 @@ export async function requestWithAuthentication(
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
 	} catch (error) {
 		try {
-			console.log(credentialsDecrypted);
 			if (credentialsDecrypted !== undefined) {
 				// try to refresh the credentials
 				const data = await additionalData.credentialsHelper.preAuthentication(
