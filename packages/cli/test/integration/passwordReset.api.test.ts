@@ -15,6 +15,7 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { ExternalHooks } from '@/ExternalHooks';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
@@ -22,6 +23,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
 let authlessAgent: SuperAgentTest;
+let externalHooks = utils.mockInstance(ExternalHooks);
 
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['passwordReset'] });
@@ -37,6 +39,7 @@ beforeEach(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
+	externalHooks.run.mockReset();
 });
 
 afterAll(async () => {
@@ -221,6 +224,11 @@ describe('POST /change-password', () => {
 		const comparisonResult = await compare(passwordToStore, storedPassword);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
+
+		expect(externalHooks.run).toHaveBeenCalledWith('user.password.update', [
+			owner.email,
+			storedPassword,
+		]);
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -276,5 +284,7 @@ describe('POST /change-password', () => {
 		});
 
 		expect(response.statusCode).toBe(404);
+
+		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 });

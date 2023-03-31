@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.221.2",
+  "version": "0.222.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -36,9 +36,10 @@
     "swagger": "swagger-cli",
     "test": "pnpm test:sqlite",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
-    "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest",
+    "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest --no-coverage",
     "test:postgres:alt-schema": "DB_POSTGRESDB_SCHEMA=alt_schema pnpm test:postgres",
-    "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb jest",
+    "test:postgres:with-table-prefix": "DB_TABLE_PREFIX=xyz_ pnpm test:postgres",
+    "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb jest --no-coverage",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
     "typeorm": "ts-node -T ../../node_modules/typeorm/cli.js"
   },
@@ -114,7 +115,7 @@
     "tsconfig-paths": "^4.1.2"
   },
   "dependencies": {
-    "@n8n_io/license-sdk": "~1.8.0",
+    "@n8n_io/license-sdk": "~2.0.0",
     "@oclif/command": "^1.8.16",
     "@oclif/core": "^1.16.4",
     "@oclif/errors": "^1.3.6",

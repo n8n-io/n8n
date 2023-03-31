@@ -151,8 +151,8 @@ importers:
   packages/cli:
     dependencies:
       '@n8n_io/license-sdk':
-        specifier: ~1.8.0
-        version: 1.8.0
+        specifier: ~2.0.0
+        version: 2.0.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -4284,16 +4284,14 @@ packages:
     dev: false
     optional: true
 
-  /@n8n_io/license-sdk@1.8.0:
-    resolution: {integrity: sha512-dSBD6EHTu6kWWz1ILxtCcaQqVZu+p/8J0eQ2ntx7Jk8BYSvn5Hh4Oz5M81ut9Pz+2uak+GnIuI6KeYUe1QBXIQ==}
+  /@n8n_io/license-sdk@2.0.0:
+    resolution: {integrity: sha512-JBgVqp2Hp8QkEHwWmDvoU8dLrq0wZlK38FnwaX/yZiCGpEz1+zywFxaggxbDYXxvhX3cwlgxv3o3kfVaYX1Xlw==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
-      axios: 1.1.3
       crypto-js: 4.1.1
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-    transitivePeerDependencies:
-      - debug
+      undici: 5.21.0
     dev: false
 
   /@n8n_io/riot-tmpl@3.0.0:
@@ -8216,16 +8214,6 @@ packages:
     dependencies:
       follow-redirects: 1.15.2(debug@3.2.7)
       form-data: 4.0.0
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
-  /axios@1.1.3:
-    resolution: {integrity: sha512-00tXVRwKx/FZr/IDVFt4C+f9FYairX517WoGCL6dpOntqLkZofjhu43F/Xl44UOpqa+9sLFDrG/XAnFsUYgkDA==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -20765,6 +20753,13 @@ packages:
       object.reduce: 1.0.1
       undertaker-registry: 1.0.1
     dev: true
+
+  /undici@5.21.0:
+    resolution: {integrity: sha512-HOjK8l6a57b2ZGXOcUsI5NLfoTrfmbOl90ixJDl0AEFG4wgHNDQxtZy15/ZQp7HhjkpaGlp/eneMgtsu1dIlUA==}
+    engines: {node: '>=12.18'}
+    dependencies:
+      busboy: 1.6.0
+    dev: false
 
   /unescape@1.0.1:
     resolution: {integrity: sha512-O0+af1Gs50lyH1nUu3ZyYS1cRh01Q/kUKatTOkSs7jukXE6/NebucDVxyiDsA9AQ4JC1V1jUH9EO8JX2nMDgGQ==}
