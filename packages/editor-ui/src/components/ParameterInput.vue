@@ -953,7 +953,7 @@ export default mixins(
 			// Set focus on field
 			setTimeout(() => {
 				// @ts-ignore
-				if (this.$refs.inputField && this.$refs.inputField.$el) {
+				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
 					this.$refs.inputField.focus();
 					this.isFocused = true;
