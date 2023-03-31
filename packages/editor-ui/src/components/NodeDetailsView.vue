@@ -28,7 +28,7 @@
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" v-if="activeNode">
+		<div class="data-display" ref="container" v-if="activeNode" @keydown.capture="onKeyDown" tabindex="0">
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels
 				:isTriggerNode="isTriggerNode"
@@ -156,6 +156,8 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import useDeviceSupport from '@/composables/useDeviceSupport';
+
 
 export default mixins(
 	externalHooks,
@@ -183,6 +185,11 @@ export default mixins(
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useDeviceSupport(),
+		}
 	},
 	data() {
 		return {
@@ -469,6 +476,16 @@ export default mixins(
 		},
 	},
 	methods: {
+		onKeyDown(e: KeyboardEvent) {
+			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				if (this.readOnly) return;
+
+				this.$emit('saveKeyboardShortcut', e);
+			}
+		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (!this.inputNodeName) {
 				return;

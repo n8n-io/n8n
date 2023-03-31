@@ -92,6 +92,7 @@
 				:isProductionExecutionPreview="isProductionExecutionPreview"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
+				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
 			<node-creation
 				v-if="!isReadOnly"
@@ -2622,8 +2623,8 @@ export default mixins(
 			}
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
-			document.addEventListener('keydown', this.keyDown, { capture: true, once: false });
-			document.addEventListener('keyup', this.keyUp, { capture: true, once: false });
+			document.addEventListener('keydown', this.keyDown);
+			document.addEventListener('keyup', this.keyUp);
 
 			// allow to be overriden in e2e tests
 			// @ts-ignore
