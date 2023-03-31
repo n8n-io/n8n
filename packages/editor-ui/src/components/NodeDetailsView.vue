@@ -28,7 +28,13 @@
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" ref="container" v-if="activeNode" @keydown.capture="onKeyDown" tabindex="0">
+		<div
+			v-if="activeNode"
+			class="data-display"
+			ref="container"
+			@keydown.capture="onKeyDown"
+			tabindex="0"
+		>
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels
 				:isTriggerNode="isTriggerNode"
