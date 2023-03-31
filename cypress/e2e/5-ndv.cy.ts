@@ -90,6 +90,14 @@ describe('NDV', () => {
 		});
 	});
 
+	it('should save workflow using keyboard shortcut from NDV', () => {
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		ndv.getters.container().should('be.visible');
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		workflowPage.getters.isWorkflowSaved();
+	})
+
 	describe('test output schema view', () => {
 		const schemaKeys = ['id', 'name', 'email', 'notes', 'country', 'created', 'objectValue', 'prop1', 'prop2'];
 		function setupSchemaWorkflow() {
