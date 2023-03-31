@@ -362,4 +362,10 @@ describe('NDV', () => {
 		ndv.getters.outputHoveringItem().should('have.length', 6);
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 	});
+
+	// todos
+	// it('can link and unlink run selectors between input and output', () => {});
+	// it('can pair items between input and output across branches', () => {});
+	// it('can pair items between input and output across pages', () => {});
+	// it('shows only connected input branches of parent nodes', () => {});
 });
