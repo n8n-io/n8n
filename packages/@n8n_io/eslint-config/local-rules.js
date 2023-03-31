@@ -155,7 +155,7 @@ module.exports = {
 		create(context) {
 			return {
 				CatchClause(node) {
-					if (node.param?.name.startsWith('_')) {
+					if (node.param?.name?.startsWith('_')) {
 						const start = node.range[0] + 'catch '.length;
 						const end = node.param.range[1] + '()'.length;
 
