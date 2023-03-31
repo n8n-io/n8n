@@ -302,7 +302,7 @@
 			<n8n-input
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
-				:value="displayValue"
+				:value="JSON.stringify(displayValue)"
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
