@@ -322,7 +322,7 @@
 			/>
 
 			<run-data-schema
-				v-else-if="hasNodeRun && displayMode === 'schema'"
+				v-else-if="hasNodeRun && isSchemaView"
 				:data="jsonData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
@@ -422,7 +422,7 @@
 		</div>
 		<div
 			:class="$style.pagination"
-			v-if="hasNodeRun && !hasRunError && dataCount > pageSize"
+			v-if="hasNodeRun && !hasRunError && dataCount > pageSize && !isSchemaView"
 			v-show="!editMode.enabled"
 		>
 			<el-pagination
@@ -635,6 +635,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			}
 			return null;
 		},
+		isSchemaView(): boolean {
+			return this.displayMode === 'schema';
+		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
@@ -787,6 +790,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 								json: this.pinData,
 							},
 					  ];
+			}
+
+			// We don't want to paginate the schema view
+			if (this.isSchemaView) {
+				return inputData;
 			}
 
 			const offset = this.pageSize * (this.currentPage - 1);
