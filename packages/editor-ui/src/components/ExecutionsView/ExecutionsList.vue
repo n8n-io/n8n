@@ -4,7 +4,7 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
-			:executionWithGap="executionWithGap"
+			:executionWithGap="executionWithGap?.id || '-1'"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@loadMore="onLoadMore"
@@ -66,6 +66,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
+// Number of execution pages (x100 executions) that are fetched before temporary execution card is shown
+const MAX_LOADING_ATTEMPTS = 4;
+
 export default mixins(
 	restApi,
 	showMessage,
@@ -82,7 +85,7 @@ export default mixins(
 			loading: false,
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
-			executionWithGap: '-1',
+			executionWithGap: null as IExecutionsSummary | null,
 		};
 	},
 	computed: {
@@ -237,15 +240,15 @@ export default mixins(
 					currentExecutions.push(newExecution);
 				}
 				// If we loaded temp execution, put it into it's place and remove from top of the list
-				if (newExecution.id === this.executionWithGap) {
+				if (newExecution.id === this.executionWithGap?.id) {
 					currentExecutions.push(newExecution);
 					currentExecutions.splice(0, 1);
-					this.executionWithGap = '-1';
+					this.executionWithGap = null;
 				}
 			}
 			// Always keep temp execution card at the top
-			const tempExecution: IExecutionsSummary = currentExecutions.find(
-				(e) => e.id === this.executionWithGap,
+			const tempExecution: IExecutionsSummary | undefined = currentExecutions.find(
+				(e) => e.id === this.executionWithGap?.id,
 			);
 			if (tempExecution) {
 				currentExecutions.unshift(
@@ -449,29 +452,52 @@ export default mixins(
 					.catch(() => {});
 			}
 		},
-		async tryToFindExecution(executionId: string): Promise<void> {
+		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {
 			// First check if executions exists in the DB at all
-			const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
-			if (!executionExists) {
+			if (attemptCount === 0) {
+				const existingExecution = await this.workflowsStore.fetchExecutionDataById(executionId);
+				if (!existingExecution) {
+					this.workflowsStore.activeWorkflowExecution = null;
+					this.$showError(
+						new Error(
+							this.$locale.baseText('executionView.notFound.message', {
+								interpolate: { executionId },
+							}),
+						),
+						this.$locale.baseText('nodeView.showError.openExecution.title'),
+					);
+					return;
+				} else {
+					this.executionWithGap = existingExecution as IExecutionsSummary;
+				}
+			}
+			// stop if the execution wasn't found in the first 1000 lookups
+			if (attemptCount >= MAX_LOADING_ATTEMPTS) {
+				if (this.executionWithGap) {
+					this.workflowsStore.currentWorkflowExecutions = [
+						this.executionWithGap,
+						...this.workflowsStore.currentWorkflowExecutions,
+					];
+					this.workflowsStore.activeWorkflowExecution = this.executionWithGap;
+					return;
+				}
 				this.workflowsStore.activeWorkflowExecution = null;
-				this.$showError(
-					new Error(
-						this.$locale.baseText('executionView.notFound.message', {
-							interpolate: { executionId },
-						}),
-					),
-					this.$locale.baseText('nodeView.showError.openExecution.title'),
-				);
 				return;
 			}
-
-			// Add temporary execution card to the top of the list
-			this.workflowsStore.currentWorkflowExecutions = [
-				executionExists,
-				...this.workflowsStore.currentWorkflowExecutions,
-			];
-			this.workflowsStore.activeWorkflowExecution = executionExists;
-			this.executionWithGap = executionExists.id;
+			// Fetch next batch of executions
+			await this.loadMore(100);
+			const execution = this.workflowsStore.getExecutionDataById(executionId);
+			if (!execution) {
+				// If it's not there load next until found
+				await this.$nextTick();
+				// But skip fetching execution data since we at this point know it exists
+				await this.tryToFindExecution(executionId, attemptCount + 1);
+			} else {
+				// When found set execution as active
+				this.workflowsStore.activeWorkflowExecution = execution;
+				this.executionWithGap = null;
+				return;
+			}
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
 			await this.loadActiveWorkflows();
