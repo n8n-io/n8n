@@ -261,8 +261,9 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 	}
 }
 .showGap {
+	margin-bottom: var(--spacing-2xs);
 	.executionLink {
-		border-bottom: 3px solid var(--color-foreground-xdark);
+		border-bottom: 1px solid var(--color-foreground-dark);
 	}
 }
 </style>

@@ -36,13 +36,20 @@
 				</n8n-text>
 			</div>
 			<execution-card
-				v-else
+				v-else-if="executionWithGap"
+				:execution="executionWithGap"
+				:ref="`execution-${executionWithGap.id}`"
+				:data-test-id="`execution-details-${executionWithGap.id}`"
+				:showGap="true"
+				@refresh="onRefresh"
+				@retryExecution="onRetryExecution"
+			/>
+			<execution-card
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
 				:data-test-id="`execution-details-${execution.id}`"
-				:showGap="executionWithGap === execution.id"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
@@ -91,8 +98,8 @@ export default Vue.extend({
 			default: false,
 		},
 		executionWithGap: {
-			type: String,
-			default: '-1',
+			type: Object as PropType<IExecutionsSummary>,
+			default: null,
 		},
 	},
 	data() {

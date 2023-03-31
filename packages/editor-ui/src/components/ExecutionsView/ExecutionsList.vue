@@ -4,7 +4,7 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
-			:executionWithGap="executionWithGap?.id || '-1'"
+			:executionWithGap="executionWithGap"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@loadMore="onLoadMore"
@@ -66,8 +66,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
-// Number of execution pages (x100 executions) that are fetched before temporary execution card is shown
-const MAX_LOADING_ATTEMPTS = 4;
+// Number of execution pages that are fetched before temporary execution card is shown
+const MAX_LOADING_ATTEMPTS = 5;
+// Number of executions fetched on each page
+const LOAD_MORE_PAGE_SIZE = 100;
 
 export default mixins(
 	restApi,
@@ -241,19 +243,8 @@ export default mixins(
 				}
 				// If we loaded temp execution, put it into it's place and remove from top of the list
 				if (newExecution.id === this.executionWithGap?.id) {
-					currentExecutions.push(newExecution);
-					currentExecutions.splice(0, 1);
 					this.executionWithGap = null;
 				}
-			}
-			// Always keep temp execution card at the top
-			const tempExecution: IExecutionsSummary | undefined = currentExecutions.find(
-				(e) => e.id === this.executionWithGap?.id,
-			);
-			if (tempExecution) {
-				currentExecutions.unshift(
-					currentExecutions.splice(currentExecutions.indexOf(tempExecution), 1)[0],
-				);
 			}
 			this.workflowsStore.currentWorkflowExecutions = currentExecutions;
 			this.loadingMore = false;
@@ -270,6 +261,9 @@ export default mixins(
 					this.executions[0];
 
 				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
+				if (this.executionWithGap?.id === this.$route.params.executionId) {
+					this.executionWithGap = null;
+				}
 				if (this.executions.length > 0) {
 					await this.$router
 						.push({
@@ -391,7 +385,7 @@ export default mixins(
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
 				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
-				if (!activeInList && this.executions.length > 0) {
+				if (!activeInList && this.executions.length > 0 && !this.executionWithGap) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -442,7 +436,11 @@ export default mixins(
 			}
 
 			// If there is no execution in the route, select the first one
-			if (this.workflowsStore.activeWorkflowExecution === null && this.executions.length > 0) {
+			if (
+				this.workflowsStore.activeWorkflowExecution === null &&
+				this.executions.length > 0 &&
+				!this.executionWithGap
+			) {
 				this.workflowsStore.activeWorkflowExecution = this.executions[0];
 				this.$router
 					.push({
@@ -474,10 +472,6 @@ export default mixins(
 			// stop if the execution wasn't found in the first 1000 lookups
 			if (attemptCount >= MAX_LOADING_ATTEMPTS) {
 				if (this.executionWithGap) {
-					this.workflowsStore.currentWorkflowExecutions = [
-						this.executionWithGap,
-						...this.workflowsStore.currentWorkflowExecutions,
-					];
 					this.workflowsStore.activeWorkflowExecution = this.executionWithGap;
 					return;
 				}
@@ -485,7 +479,7 @@ export default mixins(
 				return;
 			}
 			// Fetch next batch of executions
-			await this.loadMore(100);
+			await this.loadMore(LOAD_MORE_PAGE_SIZE);
 			const execution = this.workflowsStore.getExecutionDataById(executionId);
 			if (!execution) {
 				// If it's not there load next until found
