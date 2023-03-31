@@ -1085,6 +1085,8 @@ export default mixins(
 
 				this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 			} else if (e.key === 'c' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
 				this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 			} else if (e.key === 'x' && this.isCtrlKeyPressed(e)) {
 				// Cut nodes
@@ -2620,8 +2622,8 @@ export default mixins(
 			}
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
-			document.addEventListener('keydown', this.keyDown, true);
-			document.addEventListener('keyup', this.keyUp, true);
+			document.addEventListener('keydown', this.keyDown, { capture: true, once: false });
+			document.addEventListener('keyup', this.keyUp, { capture: true, once: false });
 
 			// allow to be overriden in e2e tests
 			// @ts-ignore
