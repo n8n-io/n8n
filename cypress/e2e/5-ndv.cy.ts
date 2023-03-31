@@ -350,13 +350,16 @@ describe('NDV', () => {
 		ndv.actions.selectInputNode('Code1');
 		ndv.getters.inputHoveringItem().should('have.text', '1000').realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '1000');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
+
+		ndv.actions.selectInputNode('Code');
+		ndv.getters.inputHoveringItem().should('have.text', '10').realHover();
+		ndv.getters.outputHoveringItem().should('not.exist');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
+
+		ndv.actions.selectInputNode('When clicking');
+		ndv.getters.inputTableRow(1).should('have.text', "This is an item, but it's empty.").realHover();
+		ndv.getters.outputHoveringItem().should('have.length', 6);
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 	});
-
-	// todos
-	// linking and unlinking of run selectors
-	// if branches (with/out multiple connected inputs)
-	// preview state based on grandparent input node
-	// pgination and paired item mapping
-
 });
