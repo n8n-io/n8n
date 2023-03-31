@@ -73,7 +73,7 @@ export default mixins(showMessage).extend({
 			],
 		};
 
-		if (!this.settingsStore.isDesktopDeployment && this.settingsStore.isUserManagementEnabled) {
+		if (!this.settingsStore.isDesktopDeployment || this.settingsStore.isUserManagementEnabled) {
 			this.FORM_CONFIG.redirectLink = '/forgot-password';
 		}
 	},
