@@ -158,7 +158,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 		expressionValueComputed(): string | null {
 			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
-			if (!this.activeNode|| !this.isValueExpression || typeof value !== 'string') {
+			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return null;
 			}
 

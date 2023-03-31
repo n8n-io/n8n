@@ -341,7 +341,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return cachedWorkflow;
 			}
 			cachedWorkflowKey = cacheKey;
-		
+
 			return this.getWorkflow(nodes, connections, copyData);
 		},
 
