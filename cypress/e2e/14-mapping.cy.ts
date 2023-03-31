@@ -291,4 +291,31 @@ describe('Data mapping', () => {
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
 	});
+
+	it('shows you can drop to inputs, including booleans', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		workflowPage.actions.openNode('Set');
+		ndv.actions.clearParameterInput('value');
+		cy.get('body').type('{esc}');
+
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('exist');
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]').should('not.exist');
+		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown().realMouseMove(100, 100);
+		cy.wait(50);
+
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('not.exist');
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
+			.should('exist')
+			.invoke('css', 'border')
+			.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+
+		ndv.getters.parameterInput('value').find('input[type="text"]')
+		.should('exist')
+		.invoke('css', 'border')
+		.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+	});
+
 });
