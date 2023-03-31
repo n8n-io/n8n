@@ -21,6 +21,7 @@ export class HttpRequest extends VersionedNodeType {
 			1: new HttpRequestV1(baseDescription),
 			2: new HttpRequestV2(baseDescription),
 			3: new HttpRequestV3(baseDescription),
+			4: new HttpRequestV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
