@@ -21,6 +21,9 @@ overrides:
   qqjs>globby: ^11.1.0
 
 patchedDependencies:
+  '@sentry/cli@2.17.0':
+    hash: nchnoezkq6p37qaiku3vrpwraq
+    path: patches/@sentry__cli@2.17.0.patch
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
@@ -985,6 +988,9 @@ importers:
       '@pinia/testing':
         specifier: ^0.0.14
         version: 0.0.14(pinia@2.0.23)(vue@2.7.14)
+      '@sentry/vite-plugin':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@testing-library/jest-dom':
         specifier: ^5.16.5
         version: 5.16.5
@@ -4573,6 +4579,46 @@ packages:
       selderee: 0.6.0
     dev: false
 
+  /@sentry-internal/tracing@7.47.0:
+    resolution: {integrity: sha512-udpHnCzF8DQsWf0gQwd0XFGp6Y8MOiwnl8vGt2ohqZGS3m1+IxoRLXsSkD8qmvN6KKDnwbaAvYnK0z0L+AW95g==}
+    engines: {node: '>=8'}
+    dependencies:
+      '@sentry/core': 7.47.0
+      '@sentry/types': 7.47.0
+      '@sentry/utils': 7.47.0
+      tslib: 2.5.0
+    dev: true
+
+  /@sentry/bundler-plugin-core@0.4.0:
+    resolution: {integrity: sha512-Xi+dqaSOoxbdmxegX7f66FVOxm2dVJLmrMXUpoNyuV6ASoccRWzouGaFekP059SUTTD05ytk1mHqwgVuBCA0Dw==}
+    engines: {node: '>= 10'}
+    dependencies:
+      '@sentry/cli': 2.17.0(patch_hash=nchnoezkq6p37qaiku3vrpwraq)
+      '@sentry/node': 7.28.1
+      '@sentry/tracing': 7.47.0
+      magic-string: 0.27.0
+      unplugin: 1.0.1
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: true
+
+  /@sentry/cli@2.17.0(patch_hash=nchnoezkq6p37qaiku3vrpwraq):
+    resolution: {integrity: sha512-CHIMEg8+YNCpEBDgUctu+DvG3S8+g8Zn9jTE5MMGINNmGkQTMG179LuDE04B/inaCYixLVNpFPTe6Iow3tXjnQ==}
+    engines: {node: '>= 10'}
+    hasBin: true
+    dependencies:
+      https-proxy-agent: 5.0.1
+      node-fetch: 2.6.8
+      progress: 2.0.3
+      proxy-from-env: 1.1.0
+      which: 2.0.2
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: true
+    patched: true
+
   /@sentry/core@7.28.1:
     resolution: {integrity: sha512-7wvnuvn/mrAfcugWoCG/3pqDIrUgH5t+HisMJMGw0h9Tc33KqrmqMDCQVvjlrr2pWrw/vuUCFdm8CbUHJ832oQ==}
     engines: {node: '>=8'}
@@ -4580,7 +4626,15 @@ packages:
       '@sentry/types': 7.28.1
       '@sentry/utils': 7.28.1
       tslib: 2.5.0
-    dev: false
+
+  /@sentry/core@7.47.0:
+    resolution: {integrity: sha512-EFhZhKdMu7wKmWYZwbgTi8FNZ7Fq+HdlXiZWNz51Bqe3pHmfAkdHtAEs0Buo0v623MKA0CA4EjXIazGUM34XTg==}
+    engines: {node: '>=8'}
+    dependencies:
+      '@sentry/types': 7.47.0
+      '@sentry/utils': 7.47.0
+      tslib: 2.5.0
+    dev: true
 
   /@sentry/integrations@7.28.1:
     resolution: {integrity: sha512-opeXVR1L9mZmZcpAs9kX+4JPY7pXhVupy17Sbz+43zd5CshYTveIcttGNPp+EPT3j7mMU+1TMAYZspKqJXtEBQ==}
@@ -4605,12 +4659,22 @@ packages:
       tslib: 2.5.0
     transitivePeerDependencies:
       - supports-color
-    dev: false
+
+  /@sentry/tracing@7.47.0:
+    resolution: {integrity: sha512-hJCpKdekwaFNbCVXxfCz5IxfSEJIKnkPmRSVHITOm5VhKwq2e5kmy4Rn6bzSETwJFSDE8LGbR/3eSfGTqw37XA==}
+    engines: {node: '>=8'}
+    dependencies:
+      '@sentry-internal/tracing': 7.47.0
+    dev: true
 
   /@sentry/types@7.28.1:
     resolution: {integrity: sha512-DvSplMVrVEmOzR2M161V5+B8Up3vR71xMqJOpWTzE9TqtFJRGPtqT/5OBsNJJw1+/j2ssMcnKwbEo9Q2EGeS6g==}
     engines: {node: '>=8'}
-    dev: false
+
+  /@sentry/types@7.47.0:
+    resolution: {integrity: sha512-GxXocplN0j1+uczovHrfkykl9wvkamDtWxlPUQgyGlbLGZn+UH1Y79D4D58COaFWGEZdSNKr62gZAjfEYu9nQA==}
+    engines: {node: '>=8'}
+    dev: true
 
   /@sentry/utils@7.28.1:
     resolution: {integrity: sha512-75/jzLUO9HH09iC9TslNimGbxOP3jgn89P+q7uR+rp2fJfRExHVeKJZQdK0Ij4/SmE7TJ3Uh2r154N0INZEx1g==}
@@ -4618,7 +4682,24 @@ packages:
     dependencies:
       '@sentry/types': 7.28.1
       tslib: 2.5.0
-    dev: false
+
+  /@sentry/utils@7.47.0:
+    resolution: {integrity: sha512-A89SaOLp6XeZfByeYo2C8Ecye/YAtk/gENuyOUhQEdMulI6mZdjqtHAp7pTMVgkBc/YNARVuoa+kR/IdRrTPkQ==}
+    engines: {node: '>=8'}
+    dependencies:
+      '@sentry/types': 7.47.0
+      tslib: 2.5.0
+    dev: true
+
+  /@sentry/vite-plugin@0.4.0:
+    resolution: {integrity: sha512-dBxM00MCLzO/idzAqj33ZfbIBKZxP+FzpxtS2WaV0yzad9yLBAFZ/VGDIGHQJC0Qo3fsFi/CZpmN39wJkJoWFA==}
+    engines: {node: '>= 10'}
+    dependencies:
+      '@sentry/bundler-plugin-core': 0.4.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: true
 
   /@servie/events@1.0.0:
     resolution: {integrity: sha512-sBSO19KzdrJCM3gdx6eIxV8M9Gxfgg6iDQmH5TIAGaUu+X9VDdsINXJOnoiZ1Kx3TrHdH4bt5UVglkjsEGBcvw==}
@@ -9718,7 +9799,6 @@ packages:
   /cookie@0.4.2:
     resolution: {integrity: sha512-aSWTXFzaKWkvHO1Ny/s+ePFpvKsPnjc551iI41v3ny/ow6tBG5Vd+FuqGNhh1LxOmVzOlGUriIlOaokOvhaStA==}
     engines: {node: '>= 0.6'}
-    dev: false
 
   /cookie@0.5.0:
     resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
@@ -15345,7 +15425,6 @@ packages:
 
   /lru_map@0.3.3:
     resolution: {integrity: sha512-Pn9cox5CsMYngeDbmChANltQl+5pi6XmTrraMSzhPmMBbmgcxmqWry0U3PGapCU1yB4/LqCcom7qhHZiF/jGfQ==}
-    dev: false
 
   /luxon@3.3.0:
     resolution: {integrity: sha512-An0UCfG/rSiqtAIiBPO0Y9/zAnHUZxAMiCpTd5h2smgsj7GGmcenvrvww2cqNA8/4A5ZrD1gJpHN2mIHZQF+Mg==}
@@ -20840,6 +20919,15 @@ packages:
       webpack-virtual-modules: 0.4.6
     dev: true
 
+  /unplugin@1.0.1:
+    resolution: {integrity: sha512-aqrHaVBWW1JVKBHmGo33T5TxeL0qWzfvjWokObHA9bYmN7eNDkwOxmLjhioHl9878qDFMAaT51XNroRyuz7WxA==}
+    dependencies:
+      acorn: 8.8.1
+      chokidar: 3.5.2
+      webpack-sources: 3.2.3
+      webpack-virtual-modules: 0.5.0
+    dev: true
+
   /unset-value@1.0.0:
     resolution: {integrity: sha512-PcA2tsuGSF9cnySLHTLSh2qrQiJ70mn+r+Glzxv2TWZblxsxCC52BDlZoPCsz7STd9pN7EZetkWZBAvk4cgZdQ==}
     engines: {node: '>=0.10.0'}
@@ -21712,6 +21800,10 @@ packages:
 
   /webpack-virtual-modules@0.4.6:
     resolution: {integrity: sha512-5tyDlKLqPfMqjT3Q9TAqf2YqjwmnUleZwzJi1A5qXnlBCdj2AtOJ6wAWdglTIDOPgOiOrXeBeFcsQ8+aGQ6QbA==}
+    dev: true
+
+  /webpack-virtual-modules@0.5.0:
+    resolution: {integrity: sha512-kyDivFZ7ZM0BVOUteVbDFhlRt7Ah/CSPwJdi8hBpkK7QLumUqdLtVfm/PX/hkcnrvr0i77fO5+TjZ94Pe+C9iw==}
     dev: true
 
   /webpack@5.75.0(esbuild@0.16.17):

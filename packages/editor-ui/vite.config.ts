@@ -4,10 +4,14 @@ import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import packageJSON from './package.json';
+import rootPackageJSON from '../../package.json';
 
 const { coverageReporters } = require('../../jest.config.js');
+
+const sourcemapsEnabled = !!process.env.SENTRY_UPLOAD_SOURCEMAPS;
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -80,6 +84,35 @@ if (NODE_ENV === 'test') {
 	});
 }
 
+const plugins = [
+	vue(),
+	legacy({
+		targets: ['defaults', 'not IE 11'],
+	}),
+	monacoEditorPlugin({
+		publicPath: 'assets/monaco-editor',
+		customDistPath: (root: string, buildOutDir: string, base: string) =>
+			`${root}/${buildOutDir}/assets/monaco-editor`,
+	}),
+];
+
+const sourceMapsEnabled = process.env.SENTRY_UPLOAD_SOURCEMAPS === 'true';
+if (sourceMapsEnabled) {
+	plugins.push(
+		sentryVitePlugin({
+			org: 'n8nio',
+			project: 'instance-frontend',
+			// Specify the directory containing build artifacts
+			include: './dist',
+			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
+			// and needs the `project:releases` and `org:read` scopes
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			telemetry: false,
+			release: rootPackageJSON.version,
+		}),
+	);
+}
+
 export default mergeConfig(
 	defineConfig({
 		define: {
@@ -88,17 +121,7 @@ export default mergeConfig(
 			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
-		plugins: [
-			vue(),
-			legacy({
-				targets: ['defaults', 'not IE 11'],
-			}),
-			monacoEditorPlugin({
-				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) =>
-					`${root}/${buildOutDir}/assets/monaco-editor`,
-			}),
-		],
+		plugins,
 		resolve: { alias },
 		base: publicPath,
 		envPrefix: 'VUE_APP',
@@ -111,7 +134,7 @@ export default mergeConfig(
 		},
 		build: {
 			assetsInlineLimit: 0,
-			sourcemap: false,
+			sourcemap: sourceMapsEnabled,
 			rollupOptions: {
 				output: {
 					manualChunks: {

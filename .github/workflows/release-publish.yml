@@ -33,6 +33,8 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+          SENTRY_UPLOAD_SOURCEMAPS: true
 
       - name: Publish to NPM
         run: |
