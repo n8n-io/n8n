@@ -25,6 +25,8 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+          VALIDATE_LOAD_OPTIONS_METHODS: true
 
       - name: Cache build artifacts
         uses: actions/cache@v3
