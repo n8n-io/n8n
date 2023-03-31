@@ -60,6 +60,13 @@ export class DateTime implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName:
+					"More powerful date functionality is available in <a href='https://docs.n8n.io/code-examples/expressions/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
+				name: 'noticeDateTime',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Action',
 				name: 'action',
 				type: 'options',
