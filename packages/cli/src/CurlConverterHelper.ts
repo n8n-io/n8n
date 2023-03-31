@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import curlconverter from 'curlconverter';
 import get from 'lodash.get';
+import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 interface CurlJson {
@@ -195,8 +196,7 @@ const extractQueries = (queries: CurlJson['queries'] = {}): HttpNodeQueries => {
 };
 
 const extractJson = (body: CurlJson['data']) =>
-	//@ts-ignore
-	jsonParse<{ [key: string]: string }>(Object.keys(body)[0]);
+	jsonParse<{ [key: string]: string }>(Object.keys(body as IDataObject)[0]);
 
 const jsonBodyToNodeParameters = (body: CurlJson['data'] = {}): Parameter[] | [] => {
 	const data = extractJson(body);
@@ -410,22 +410,24 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 			sendBody: true,
 		});
 
-		const json = extractJson(curlJson.data);
+		if (curlJson.data) {
+			const json = extractJson(curlJson.data);
 
-		if (jsonHasNestedObjects(json)) {
-			// json body
-			Object.assign(httpNodeParameters, {
-				specifyBody: 'json',
-				jsonBody: JSON.stringify(json),
-			});
-		} else {
-			// key-value body
-			Object.assign(httpNodeParameters, {
-				specifyBody: 'keypair',
-				bodyParameters: {
-					parameters: jsonBodyToNodeParameters(curlJson.data),
-				},
-			});
+			if (jsonHasNestedObjects(json)) {
+				// json body
+				Object.assign(httpNodeParameters, {
+					specifyBody: 'json',
+					jsonBody: JSON.stringify(json),
+				});
+			} else {
+				// key-value body
+				Object.assign(httpNodeParameters, {
+					specifyBody: 'keypair',
+					bodyParameters: {
+						parameters: jsonBodyToNodeParameters(curlJson.data),
+					},
+				});
+			}
 		}
 	} else if (isFormUrlEncodedRequest(curlJson)) {
 		Object.assign(httpNodeParameters, {
