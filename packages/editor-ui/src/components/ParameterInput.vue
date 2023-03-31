@@ -298,6 +298,14 @@
 				</n8n-option>
 			</n8n-select>
 
+			<!-- temporary state of booleans while data is mapped -->
+			<n8n-input
+				v-else-if="parameter.type === 'boolean' && droppable"
+				:size="inputSize"
+				:value="JSON.stringify(displayValue)"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+			/>
 			<el-switch
 				v-else-if="parameter.type === 'boolean'"
 				class="switch-input"
