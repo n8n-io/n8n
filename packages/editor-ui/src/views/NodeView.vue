@@ -1086,8 +1086,6 @@ export default mixins(
 
 				this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 			} else if (e.key === 'c' && this.isCtrlKeyPressed(e)) {
-				e.stopPropagation();
-				e.preventDefault();
 				this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 			} else if (e.key === 'x' && this.isCtrlKeyPressed(e)) {
 				// Cut nodes

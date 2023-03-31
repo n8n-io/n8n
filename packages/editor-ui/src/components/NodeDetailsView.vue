@@ -164,7 +164,6 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import useDeviceSupport from '@/composables/useDeviceSupport';
 
-
 export default mixins(
 	externalHooks,
 	nodeHelpers,
@@ -195,7 +194,7 @@ export default mixins(
 	setup() {
 		return {
 			...useDeviceSupport(),
-		}
+		};
 	},
 	data() {
 		return {
