@@ -1,6 +1,9 @@
 import type { IDataObject } from './Interfaces';
 
+const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
+
 const augmentedObjects = new WeakSet<object>();
+
 function augment<T>(value: T): T {
 	if (
 		typeof value !== 'object' ||
@@ -54,7 +57,8 @@ export function augmentArray<T>(data: T[]): T[] {
 			if (key === 'length') {
 				return Reflect.getOwnPropertyDescriptor(newData, key);
 			}
-			return { configurable: true, enumerable: true };
+
+			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 		has(target, key) {
 			return Reflect.has(newData !== undefined ? newData : target, key);
@@ -130,18 +134,17 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return true;
 		},
+
 		ownKeys(target) {
-			return [...new Set([...Reflect.ownKeys(target), ...Object.keys(newData)])].filter(
+			const originalKeys = Reflect.ownKeys(target);
+			const newKeys = Object.keys(newData);
+			return [...new Set([...originalKeys, ...newKeys])].filter(
 				(key) => deletedProperties.indexOf(key) === -1,
 			);
 		},
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		getOwnPropertyDescriptor(k) {
-			return {
-				enumerable: true,
-				configurable: true,
-			};
+		getOwnPropertyDescriptor(target, key) {
+			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 	});
 }
