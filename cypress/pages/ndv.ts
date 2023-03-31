@@ -45,6 +45,10 @@ export class NDV extends BasePage {
 		executePrevious: () => cy.getByTestId('execute-previous-node'),
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
+		inputRunSelector: () => this.getters.inputPanel().findChildByTestId('run-selector'),
+		outputRunSelector: () => this.getters.outputPanel().findChildByTestId('run-selector'),
+		outputHoveringItem: () => this.getters.outputPanel().findChildByTestId('hovering-item'),
+		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
 	};
 
 	actions = {
@@ -118,6 +122,12 @@ export class NDV extends BasePage {
 		addDefaultPinnedData: () => {
 			this.actions.editPinnedData();
 			this.actions.savePinnedData();
+		},
+		changeOutputRunSelector: (runName: string) => {
+			this.getters.outputRunSelector().click();
+			cy.get('.el-select-dropdown:visible .el-select-dropdown__item')
+				.contains(runName)
+				.click();
 		},
 	};
 }
