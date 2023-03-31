@@ -38,9 +38,7 @@
 						<execution-time :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
-						v-else-if="
-							executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'
-						"
+						v-else-if="executionUIDetails.runningTime !== ''"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
