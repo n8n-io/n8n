@@ -40,6 +40,7 @@
 	"generic.unsavedWork.confirmMessage.confirmButtonText": "Save",
 	"generic.unsavedWork.confirmMessage.cancelButtonText": "Leave without saving",
 	"generic.workflow": "Workflow",
+	"generic.workflowSaved": "Workflow changes saved",
 	"generic.editor": "Editor",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
