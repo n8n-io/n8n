@@ -4,7 +4,7 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
-			:executionWithGap="executionWithGap"
+			:temporaryExecution="temporaryExecution"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@loadMore="onLoadMore"
@@ -56,7 +56,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab, isEmpty, NO_NETWORK_ERROR_CODE } from '@/utils';
+import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -67,9 +67,9 @@ import { useTagsStore } from '@/stores/tags';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 // Number of execution pages that are fetched before temporary execution card is shown
-const MAX_LOADING_ATTEMPTS = 5;
+const MAX_LOADING_ATTEMPTS = 1;
 // Number of executions fetched on each page
-const LOAD_MORE_PAGE_SIZE = 100;
+const LOAD_MORE_PAGE_SIZE = 10;
 
 export default mixins(
 	restApi,
@@ -87,7 +87,7 @@ export default mixins(
 			loading: false,
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
-			executionWithGap: null as IExecutionsSummary | null,
+			temporaryExecution: null as IExecutionsSummary | null,
 		};
 	},
 	computed: {
@@ -242,8 +242,8 @@ export default mixins(
 					currentExecutions.push(newExecution);
 				}
 				// If we loaded temp execution, put it into it's place and remove from top of the list
-				if (newExecution.id === this.executionWithGap?.id) {
-					this.executionWithGap = null;
+				if (newExecution.id === this.temporaryExecution?.id) {
+					this.temporaryExecution = null;
 				}
 			}
 			this.workflowsStore.currentWorkflowExecutions = currentExecutions;
@@ -261,8 +261,8 @@ export default mixins(
 					this.executions[0];
 
 				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
-				if (this.executionWithGap?.id === this.$route.params.executionId) {
-					this.executionWithGap = null;
+				if (this.temporaryExecution?.id === this.$route.params.executionId) {
+					this.temporaryExecution = null;
 				}
 				if (this.executions.length > 0) {
 					await this.$router
@@ -385,7 +385,7 @@ export default mixins(
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
 				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
-				if (!activeInList && this.executions.length > 0 && !this.executionWithGap) {
+				if (!activeInList && this.executions.length > 0 && !this.temporaryExecution) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -439,7 +439,7 @@ export default mixins(
 			if (
 				this.workflowsStore.activeWorkflowExecution === null &&
 				this.executions.length > 0 &&
-				!this.executionWithGap
+				!this.temporaryExecution
 			) {
 				this.workflowsStore.activeWorkflowExecution = this.executions[0];
 				this.$router
@@ -466,13 +466,13 @@ export default mixins(
 					);
 					return;
 				} else {
-					this.executionWithGap = existingExecution as IExecutionsSummary;
+					this.temporaryExecution = existingExecution as IExecutionsSummary;
 				}
 			}
 			// stop if the execution wasn't found in the first 1000 lookups
 			if (attemptCount >= MAX_LOADING_ATTEMPTS) {
-				if (this.executionWithGap) {
-					this.workflowsStore.activeWorkflowExecution = this.executionWithGap;
+				if (this.temporaryExecution) {
+					this.workflowsStore.activeWorkflowExecution = this.temporaryExecution;
 					return;
 				}
 				this.workflowsStore.activeWorkflowExecution = null;
@@ -489,7 +489,7 @@ export default mixins(
 			} else {
 				// When found set execution as active
 				this.workflowsStore.activeWorkflowExecution = execution;
-				this.executionWithGap = null;
+				this.temporaryExecution = null;
 				return;
 			}
 		},
