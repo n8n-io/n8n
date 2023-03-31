@@ -227,9 +227,6 @@
 							interpolate: { nodeName: node.name },
 						})
 					}}
-					<n8n-link @click="goToErroredNode">
-						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
-					</n8n-link>
 				</n8n-text>
 				<NodeErrorView
 					v-else
@@ -1301,11 +1298,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				} as INodeUpdatePropertiesInformation;
 
 				this.workflowsStore.updateNodeProperties(updateInformation);
-			}
-		},
-		goToErroredNode() {
-			if (this.node) {
-				this.ndvStore.activeNodeName = this.node.name;
 			}
 		},
 		setDisplayMode() {
