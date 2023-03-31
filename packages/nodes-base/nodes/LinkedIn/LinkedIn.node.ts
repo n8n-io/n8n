@@ -133,7 +133,7 @@ export class LinkedIn implements INodeType {
 								'/images?action=initializeUpload',
 								registerRequest,
 							);
-							console.log(registerObject);
+
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							this.helpers.assertBinaryData(i, binaryPropertyName);
 
