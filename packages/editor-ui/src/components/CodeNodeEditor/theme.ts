@@ -48,6 +48,10 @@ export const CODE_NODE_EDITOR_THEME = [
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
 			backgroundColor: 'var(--color-code-selection)',
 		},
+		'&.cm-editor.cm-focused': {
+			outline: 'none',
+			borderColor: 'var(--color-secondary)',
+		},
 		'.cm-activeLine': {
 			backgroundColor: 'var(--color-code-lineHighlight)',
 		},
@@ -57,6 +61,7 @@ export const CODE_NODE_EDITOR_THEME = [
 		'.cm-gutters': {
 			backgroundColor: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
+			borderRadius: 'var(--border-radius-base)',
 		},
 		'.cm-tooltip': {
 			maxWidth: BASE_STYLING.tooltip.maxWidth,
