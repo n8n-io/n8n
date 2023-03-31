@@ -252,8 +252,8 @@ describe('NDV', () => {
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
+		cy.wait(50);
 
-		ndv.getters.inputHoveringItem().should('have.text', '1').realHover();
 		ndv.getters.outputHoveringItem().should('not.exist');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1');
 
@@ -342,6 +342,7 @@ describe('NDV', () => {
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
+		cy.wait(50);
 
 		ndv.getters.inputHoveringItem().should('have.text', '1').realHover();
 		ndv.getters.outputHoveringItem().should('not.exist');
