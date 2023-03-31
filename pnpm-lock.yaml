@@ -187,6 +187,7 @@ importers:
       express-prom-bundle: ^6.6.0
       fast-glob: ^3.2.12
       flatted: ^3.2.4
+      gitops-secrets: ^0.0.5
       google-timezones-json: ^1.0.2
       handlebars: 4.7.7
       inquirer: ^7.0.1
@@ -291,6 +292,7 @@ importers:
       express-prom-bundle: 6.6.0_prom-client@13.2.0
       fast-glob: 3.2.12
       flatted: 3.2.7
+      gitops-secrets: 0.0.5
       google-timezones-json: 1.0.2
       handlebars: 4.7.7
       inquirer: 7.3.3
@@ -11957,6 +11959,11 @@ packages:
   /github-slugger/1.5.0:
     resolution: {integrity: sha512-wIh+gKBI9Nshz2o46B0B3f5k/W+WI9ZAv6y5Dn5WJ5SK1t0TnDimB4WE5rmTD05ZAIn8HALCZVmCsvj0w0v0lw==}
     dev: true
+
+  /gitops-secrets/0.0.5:
+    resolution: {integrity: sha512-RKS6ZJa4IJvZ0UC74ESa7/qwj0LluX5Lg2Q3tJNu0wqJph5nuosCYIj4BA8K4nftUjvDoEpjii3bDEpLaYCWnw==}
+    engines: {node: '>=12'}
+    dev: false
 
   /glob-parent/3.1.0:
     resolution: {integrity: sha512-E8Ak/2+dZY6fnzlR7+ueWvhsH1SjHr4jjss4YS/h4py44jY9MhK/VFdaZJAWDz6BbL21KeteKxFSFpq8OS5gVA==}

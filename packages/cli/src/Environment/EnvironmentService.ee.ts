@@ -18,7 +18,7 @@ import {
 } from 'fs/promises';
 
 import * as Db from '@/Db';
-import { UserSettings } from 'n8n-core';
+import { UserSettings, Credentials } from 'n8n-core';
 
 import type { SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
@@ -28,7 +28,7 @@ import {
 	ENVIRONMENT_SSH_FOLDER,
 } from './constants';
 import type { EnvironmentPreferences } from './types/environmentPreferences';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
@@ -37,7 +37,8 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@sentry/node';
 import type { EntityManager } from 'typeorm';
-import type { ICredentialsBase } from '@/Interfaces';
+import type { ICredentialsBase, ICredentialsDb } from '@/Interfaces';
+import { providers } from 'gitops-secrets';
 
 // TODOs:
 // TODO: Check what happens when there is no change
@@ -215,12 +216,19 @@ export class EnvironmentService {
 
 	async exportCredentials(): Promise<void> {
 		const credentials = await Db.collections.Credentials.find();
+		const encryptionKey = await UserSettings.getEncryptionKey();
+
 		try {
 			await fsAccess(path.join(this.gitFolder, '/credentials'), fsConstants.F_OK);
 		} catch (error) {
 			await fsMkdir(path.join(this.gitFolder, '/credentials'));
 		}
 		for (const credential of credentials) {
+			const { name, type, nodesAccess, data, id } = credential;
+			const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
+			const plainData = credentialObject.getData(encryptionKey);
+			(credential as ICredentialsDecryptedDb).data = this.replaceData(plainData);
+
 			await fsWriteFile(
 				path.join(this.gitFolder, '/credentials', `${credential.id}.json`),
 				JSON.stringify(credential, null, 2),
@@ -249,9 +257,34 @@ export class EnvironmentService {
 			await this.storeWorkflow(jsonParse<IWorkflowBase>(workflow), user);
 		});
 
+		let secrets;
+
+		if (process.env.DOPPLER_TOKEN)
+			secrets = await providers.doppler.fetch({ dopplerToken: process.env.DOPPLER_TOKEN });
+
+		const encryptionKey = await UserSettings.getEncryptionKey();
+
 		credentialFiles.forEach(async (file) => {
-			const credential = await fsReadFile(file, 'utf8');
-			await this.storeCredential(jsonParse<ICredentialsBase>(credential), user);
+			const rawCredential = await fsReadFile(file, 'utf8');
+			const { name, type, nodesAccess, data, id } = jsonParse<ICredentialsDb>(rawCredential);
+			const credential = new Credentials({ id, name }, type, nodesAccess, data);
+
+			if (secrets && secrets[`N8N_${id}`]) {
+				credential.setData(jsonParse(secrets[`N8N_${id}`]), encryptionKey);
+			} else {
+				const existingCredential = await Db.collections.Credentials.findOneBy({ id });
+				// Cred already exist and is not sync with Doppler, nothing to do
+				if (existingCredential) return;
+				// Cred doesn't exist and is not sync with Doppler, create with blank values
+				if (data) {
+					credential.setData(
+						this.replaceCredentialData(data as ICredentialDataDecryptedObject),
+						encryptionKey,
+					);
+				}
+			}
+
+			await this.storeCredential(credential.getDataToSave() as ICredentialsDb, user);
 		});
 	}
 
@@ -315,6 +348,15 @@ export class EnvironmentService {
 
 		return this.saveEnvironmentPreferencesToDb();
 	}
+
+	private replaceCredentialData = (
+		data: ICredentialDataDecryptedObject,
+	): ICredentialDataDecryptedObject => {
+		for (const [key] of Object.entries(data)) {
+			data[key] = '';
+		}
+		return data;
+	};
 
 	// Followig code copied almost 1:1 from cli/src/commands/workflow.ts
 	private async getOwner() {
