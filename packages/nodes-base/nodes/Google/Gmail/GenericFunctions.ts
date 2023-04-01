@@ -352,7 +352,7 @@ export function extractEmail(s: string) {
 	return s;
 }
 
-const prepareTimestamp = (
+export const prepareTimestamp = (
 	node: INode,
 	itemIndex: number,
 	query: string,
@@ -388,10 +388,14 @@ const prepareTimestamp = (
 
 	if (!timestamp) {
 		const description = `'${dateValue}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-		throw new NodeOperationError(node, `Invalid date/time in 'Received ${label}' field`, {
-			description,
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`Invalid date/time in 'Received ${label[0].toUpperCase() + label.slice(1)}' field`,
+			{
+				description,
+				itemIndex,
+			},
+		);
 	}
 
 	if (query) {
