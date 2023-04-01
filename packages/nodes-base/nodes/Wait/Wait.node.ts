@@ -233,6 +233,11 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
+						name: 'All',
+						value: '*',
+						description: 'Match all HTTP methods',
+					},
+					{
 						name: 'DELETE',
 						value: 'DELETE',
 					},

@@ -67,6 +67,8 @@ import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { START_NODES } from './constants';
 
+import { In } from 'typeorm';
+
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
@@ -202,20 +204,27 @@ export class ActiveWorkflowRunner {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = await Db.collections.Webhook.findOneBy({
+		const webhooks = await Db.collections.Webhook.findBy({
 			webhookPath: path,
-			method: httpMethod,
+			method: In([httpMethod, '*']),
 		});
+
+		// Get the specific method if it exists, otherwise get the wildcard
+		let webhook = webhooks.find((w) => w.method === httpMethod);
+		if (webhook === undefined) {
+			webhook = webhooks.find((w) => w.method === '*');
+		}
+
 		let webhookId: string | undefined;
 
 		// check if path is dynamic
-		if (webhook === null) {
+		if (!webhook) {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
-			const dynamicWebhooks = await Db.collections.Webhook.findBy({
+			let dynamicWebhooks = await Db.collections.Webhook.findBy({
 				webhookId,
-				method: httpMethod,
+				method: In([httpMethod, '*']),
 				pathLength: pathElements.length,
 			});
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
@@ -228,6 +237,9 @@ export class ActiveWorkflowRunner {
 
 			let maxMatches = 0;
 			const pathElementsSet = new Set(pathElements);
+			if (dynamicWebhooks.find((w) => w.method === httpMethod)) {
+				dynamicWebhooks = dynamicWebhooks.filter((w) => w.method === httpMethod);
+			}
 			// check if static elements match in path
 			// if more results have been returned choose the one with the most static-route matches
 			dynamicWebhooks.forEach((dynamicWebhook) => {
@@ -266,17 +278,17 @@ export class ActiveWorkflowRunner {
 		}
 
 		const workflowData = await Db.collections.Workflow.findOne({
-			where: { id: webhook.workflowId },
+			where: { id: webhook!.workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === null) {
 			throw new ResponseHelper.NotFoundError(
-				`Could not find workflow with id "${webhook.workflowId}"`,
+				`Could not find workflow with id "${webhook!.workflowId}"`,
 			);
 		}
 
 		const workflow = new Workflow({
-			id: webhook.workflowId,
+			id: webhook!.workflowId,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
@@ -292,10 +304,10 @@ export class ActiveWorkflowRunner {
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
-			workflow.getNode(webhook.node) as INode,
+			workflow.getNode(webhook!.node) as INode,
 			additionalData,
 		).filter((webhook) => {
-			return webhook.httpMethod === httpMethod && webhook.path === path;
+			return [httpMethod, '*'].includes(webhook.httpMethod) && webhook.path === path;
 		})[0];
 
 		// Get the node which has the webhook defined to know where to start from and to

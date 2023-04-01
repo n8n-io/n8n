@@ -128,6 +128,11 @@ export class Webhook implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'All',
+						value: '*',
+						description: 'Match all HTTP methods',
+					},
+					{
 						name: 'DELETE',
 						value: 'DELETE',
 					},
