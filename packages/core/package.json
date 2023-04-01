@@ -39,7 +39,6 @@
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
     "@types/lodash.get": "^4.4.6",
-    "@types/lodash.pick": "^4.4.7",
     "@types/mime-types": "^2.1.0",
     "@types/request-promise-native": "~1.0.15",
     "@types/uuid": "^8.3.2"
@@ -55,7 +54,6 @@
     "flatted": "^3.2.4",
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
-    "lodash.pick": "^4.4.0",
     "mime-types": "^2.1.27",
     "n8n-workflow": "workspace:*",
     "oauth-1.0a": "^2.2.6",
