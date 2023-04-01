@@ -67,9 +67,9 @@ import { useTagsStore } from '@/stores/tags';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 // Number of execution pages that are fetched before temporary execution card is shown
-const MAX_LOADING_ATTEMPTS = 1;
+const MAX_LOADING_ATTEMPTS = 5;
 // Number of executions fetched on each page
-const LOAD_MORE_PAGE_SIZE = 10;
+const LOAD_MORE_PAGE_SIZE = 100;
 
 export default mixins(
 	restApi,
