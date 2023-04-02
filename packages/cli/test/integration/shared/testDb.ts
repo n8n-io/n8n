@@ -489,6 +489,10 @@ export async function createWorkflowWithTrigger(
 	return workflow;
 }
 
+export async function getAllWorkflows() {
+	return Db.collections.Workflow.find();
+}
+
 // ----------------------------------
 //        workflow sharing
 // ----------------------------------
@@ -512,7 +516,7 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
 		name,
 		type: 'sqlite',
 		database: ':memory:',
-		entityPrefix: '',
+		entityPrefix: config.getEnv('database.tablePrefix'),
 		dropSchema: true,
 		migrations: sqliteMigrations,
 		migrationsTableName: 'migrations',
@@ -525,6 +529,7 @@ const baseOptions = (type: TestDBType) => ({
 	port: config.getEnv(`database.${type}db.port`),
 	username: config.getEnv(`database.${type}db.user`),
 	password: config.getEnv(`database.${type}db.password`),
+	entityPrefix: config.getEnv('database.tablePrefix'),
 	schema: type === 'postgres' ? config.getEnv('database.postgresdb.schema') : undefined,
 });
 

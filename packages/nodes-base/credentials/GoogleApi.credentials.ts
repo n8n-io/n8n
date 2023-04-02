@@ -29,6 +29,9 @@ export class GoogleApi implements ICredentialType {
 			description:
 				'Enter the private key located in the JSON file downloaded from Google Cloud Console',
 			required: true,
+			typeOptions: {
+				password: true,
+			},
 		},
 		{
 			displayName: 'Impersonate a User',

@@ -1,5 +1,26 @@
 import type { IDataObject } from './Interfaces';
-import util from 'util';
+
+const augmentedObjects = new WeakSet<object>();
+function augment<T>(value: T): T {
+	if (
+		typeof value !== 'object' ||
+		value === null ||
+		value instanceof RegExp ||
+		augmentedObjects.has(value)
+	)
+		return value;
+
+	// Track augmented objects to prevent infinite recursion in cases where an object contains circular references
+	augmentedObjects.add(value);
+
+	if (value instanceof Date) return new Date(value.valueOf()) as T;
+
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
+	if (Array.isArray(value)) return augmentArray(value) as T;
+
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
+	return augmentObject(value) as T;
+}
 
 export function augmentArray<T>(data: T[]): T[] {
 	let newData: unknown[] | undefined = undefined;
@@ -17,24 +38,12 @@ export function augmentArray<T>(data: T[]): T[] {
 		},
 		get(target, key: string, receiver): unknown {
 			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
-
-			if (typeof value === 'object') {
-				if (value === null || util.types.isProxy(value)) {
-					return value;
-				}
-
+			const newValue = augment(value);
+			if (newValue !== value) {
 				newData = getData();
-
-				if (Array.isArray(value)) {
-					Reflect.set(newData, key, augmentArray(value));
-				} else {
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					Reflect.set(newData, key, augmentObject(value as IDataObject));
-				}
-
-				return Reflect.get(newData, key);
+				Reflect.set(newData, key, newValue);
+				return newValue;
 			}
-
 			return value;
 		},
 		getOwnPropertyDescriptor(target, key) {
@@ -83,18 +92,13 @@ export function augmentObject<T extends object>(data: T): T {
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const value = Reflect.get(target, key, receiver);
-
-			if (value !== null && typeof value === 'object') {
-				if (Array.isArray(value)) {
-					newData[key] = augmentArray(value);
-				} else {
-					newData[key] = augmentObject(value as IDataObject);
-				}
-
-				return newData[key];
+			const newValue = augment(value);
+			if (newValue !== value) {
+				Object.assign(newData, { [key]: newValue });
+				return newValue;
 			}
 
-			return value as string;
+			return value;
 		},
 		deleteProperty(target, key: string) {
 			if (key in newData) {
