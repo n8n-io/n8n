@@ -516,6 +516,7 @@ export enum STORES {
 export enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
+	OPENID = 'openid',
 }
 
 export const N8N_SALES_EMAIL = 'sales@n8n.io';

@@ -148,6 +148,10 @@ export default mixins(showMessage).extend({
 									value: 'google',
 								},
 								{
+									label: 'Microsoft',
+									value: 'microsoft',
+								},
+								{
 									label: 'Custom',
 									value: 'custom',
 								},

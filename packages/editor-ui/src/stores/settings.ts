@@ -212,10 +212,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
 			}
-			this.openid.buttonName = settings.sso.openid.buttonName;
-			this.openid.serviceProvider = settings.sso.openid.serviceProvider;
-			this.openid.loginUrl = settings.sso.openid.loginUrl;
-			this.openid.loginEnabled = settings.sso.openid.loginEnabled;
+			if (settings.sso?.openid) {
+				this.openid.buttonName = settings.sso.openid.buttonName;
+				this.openid.serviceProvider = settings.sso.openid.serviceProvider;
+				this.openid.loginUrl = settings.sso.openid.loginUrl;
+				this.openid.loginEnabled = settings.sso.openid.loginEnabled;
+			}
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();

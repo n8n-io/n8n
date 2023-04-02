@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap">
+		<div v-if="!userCannotEdit">
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -89,7 +89,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.userCannotEdit,
 				},
 			},
 			{
@@ -101,7 +101,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.userCannotEdit,
 				},
 			},
 			{
@@ -114,7 +114,7 @@ export default mixins(showMessage).extend({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.userCannotEdit,
 				},
 			},
 		];
@@ -124,11 +124,13 @@ export default mixins(showMessage).extend({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		signInWithLdap(): boolean {
-			return this.currentUser?.signInType === 'ldap';
-		},
-		isLDAPFeatureEnabled(): boolean {
-			return this.settingsStore.settings.enterprise.ldap === true;
+		userCannotEdit(): boolean {
+			return (
+				(this.currentUser?.signInType === 'ldap' &&
+					this.settingsStore.settings.enterprise.ldap === true) ||
+				(this.currentUser?.signInType === 'openid' &&
+					this.settingsStore.settings.enterprise.openid === true)
+			);
 		},
 	},
 	methods: {

@@ -18,7 +18,7 @@ const microsoftAuthButtons = {
 
 <style module lang="scss">
 .microsoftAuthBtn {
-	--microsoft-auth-btn-height: 46px;
+	--microsoft-auth-btn-height: 41px;
 	cursor: pointer;
 	border: none;
 	padding: 0;
@@ -28,7 +28,6 @@ const microsoftAuthButtons = {
 	background-size: 100% 100%;
 	border-radius: 4px;
 	height: var(--microsoft-auth-btn-height);
-	// We have to preserve exact microsoft button ratio
 	width: calc(var(--microsoft-auth-btn-height) * 4.15217391);
 }
 </style>

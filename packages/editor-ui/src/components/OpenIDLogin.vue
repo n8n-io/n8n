@@ -2,6 +2,7 @@
 import { Notification } from 'element-ui';
 import { useSettingsStore } from '@/stores/settings';
 import GoogleAuthButton from '@/components/CredentialEdit/GoogleAuthButton.vue';
+import MicrosoftAuthButton from '@/components/CredentialEdit/MicrosoftAuthButton.vue';
 
 const settingStore = useSettingsStore();
 
@@ -25,6 +26,10 @@ const onOpenIDLogin = async () => {
 		</div>
 		<GoogleAuthButton
 			v-if="settingStore.openIDServiceProvider === 'google'"
+			@click="onOpenIDLogin"
+		/>
+		<MicrosoftAuthButton
+			v-else-if="settingStore.openIDServiceProvider === 'microsoft'"
 			@click="onOpenIDLogin"
 		/>
 		<n8n-button

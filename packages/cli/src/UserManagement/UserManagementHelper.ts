@@ -158,6 +158,10 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	if (ldapIdentity) {
 		sanitizedUser.signInType = 'ldap';
 	}
+	const openidIdentity = authIdentities?.find((i) => i.providerType === 'openid');
+	if (openidIdentity) {
+		sanitizedUser.signInType = 'openid';
+	}
 	return sanitizedUser;
 }
 

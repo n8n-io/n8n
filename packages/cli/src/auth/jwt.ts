@@ -40,7 +40,7 @@ export function issueJWT(user: User): JwtToken {
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 	const user = await Db.collections.User.findOne({
 		where: { id: jwtPayload.id },
-		relations: ['globalRole'],
+		relations: ['globalRole', 'authIdentities'],
 	});
 
 	let passwordHash = null;
