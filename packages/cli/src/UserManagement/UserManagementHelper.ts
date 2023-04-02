@@ -57,10 +57,7 @@ export function isUserManagementEnabled(): boolean {
 
 export function isSharingEnabled(): boolean {
 	const license = Container.get(License);
-	return (
-		isUserManagementEnabled() &&
-		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
-	);
+	return isUserManagementEnabled() && license.isSharingEnabled();
 }
 
 export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {

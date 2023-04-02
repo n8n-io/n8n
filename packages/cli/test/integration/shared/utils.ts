@@ -76,13 +76,13 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
 import { MultiFactorAuthService } from '@/MultiFactorAuthService';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { LDAP_ENABLED } from '@/Ldap/constants';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
+import { License } from '@/License';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -194,7 +194,7 @@ export async function initTestServer({
 					);
 					break;
 				case 'ldap':
-					config.set(LDAP_ENABLED, true);
+					Container.get(License).isLdapEnabled = () => true;
 					await handleLdapInit();
 					const { service, sync } = LdapManager.getInstance();
 					registerController(
