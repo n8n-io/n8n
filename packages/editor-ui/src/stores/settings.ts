@@ -199,17 +199,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		setSettings(settings: IN8nUISettings): void {
 			this.settings = settings;
 			this.userManagement = settings.userManagement;
-			this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
+			if (this.userManagement) {
+				this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
+			}
 			this.api = settings.publicApi;
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
-			this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
-			this.ldap.loginLabel = settings.sso.ldap.loginLabel;
-			this.saml.loginEnabled = settings.sso.saml.loginEnabled;
-			this.saml.loginLabel = settings.sso.saml.loginLabel;
-			this.openid.loginEnabled = settings.sso.openid.loginEnabled;
-			this.openid.loginUrl = settings.sso.openid.loginUrl;
-			this.openid.serviceProvider = settings.sso.openid.serviceProvider;
+			if (settings.sso?.ldap) {
+				this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
+				this.ldap.loginLabel = settings.sso.ldap.loginLabel;
+			}
+			if (settings.sso?.saml) {
+				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
+				this.saml.loginLabel = settings.sso.saml.loginLabel;
+			}
 			this.openid.buttonName = settings.sso.openid.buttonName;
+			this.openid.serviceProvider = settings.sso.openid.serviceProvider;
+			this.openid.loginUrl = settings.sso.openid.loginUrl;
+			this.openid.loginEnabled = settings.sso.openid.loginEnabled;
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();

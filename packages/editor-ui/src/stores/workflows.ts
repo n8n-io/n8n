@@ -7,6 +7,7 @@ import {
 	STORES,
 } from '@/constants';
 import {
+	ExecutionsQueryFilter,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	INewWorkflowData,
@@ -62,6 +63,7 @@ import {
 	getPairedItemsMapping,
 	stringSizeInBytes,
 	isObjectLiteral,
+	isEmpty,
 } from '@/utils';
 import { useNDVStore } from './ndv';
 import { useNodeTypesStore } from './nodeTypes';
@@ -936,7 +938,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(this, 'activeExecutions', newActiveExecutions);
 		},
 
-		async loadCurrentWorkflowExecutions(requestFilter: IDataObject): Promise<IExecutionsSummary[]> {
+		async loadCurrentWorkflowExecutions(
+			requestFilter: ExecutionsQueryFilter,
+		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
 			let finishedExecutions = [];
 
@@ -945,7 +949,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			try {
 				const rootStore = useRootStore();
-				if (!requestFilter.status || !requestFilter.finished) {
+				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
 					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});

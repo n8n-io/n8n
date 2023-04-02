@@ -1,3 +1,21 @@
+## [0.221.2](https://github.com/n8n-io/n8n/compare/n8n@0.221.1...n8n@0.221.2) (2023-03-24)
+
+
+### Bug Fixes
+
+* **core:** Assign properties.success earlier to set executionStatus correctly ([6c7772a](https://github.com/n8n-io/n8n/commit/6c7772a0b3276ffe9e5ab8029e17a0ed743ee5a7))
+
+
+
+## [0.221.1](https://github.com/n8n-io/n8n/compare/n8n@0.221.0...n8n@0.221.1) (2023-03-23)
+
+
+### Bug Fixes
+
+* **core:** Initialize queue in the webhook server as well ([163859b](https://github.com/n8n-io/n8n/commit/163859b87a19f3795e2689ce8eba2e2ce6766684))
+
+
+
 # [0.221.0](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.221.0) (2023-03-23)
 
 
