@@ -284,7 +284,7 @@ export class Webhook implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/httpMethod': ['PATCH', 'PUT', 'POST'],
+								'/httpMethod': ['PATCH', 'PUT', 'POST', '*'],
 							},
 						},
 						default: false,
