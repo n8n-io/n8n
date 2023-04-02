@@ -613,9 +613,6 @@ importers:
       lodash.get:
         specifier: ^4.4.2
         version: 4.4.2
-      lodash.pick:
-        specifier: ^4.4.0
-        version: 4.4.0
       mime-types:
         specifier: ^2.1.27
         version: 2.1.35
@@ -658,9 +655,6 @@ importers:
         version: 4.17.14
       '@types/lodash.get':
         specifier: ^4.4.6
-        version: 4.4.7
-      '@types/lodash.pick':
-        specifier: ^4.4.7
         version: 4.4.7
       '@types/mime-types':
         specifier: ^2.1.0
@@ -4778,7 +4772,7 @@ packages:
       '@storybook/csf-plugin': 7.0.0-beta.46
       '@storybook/csf-tools': 7.0.0-beta.46
       '@storybook/global': 5.0.0
-      '@storybook/mdx2-csf': 1.0.0-next.6
+      '@storybook/mdx2-csf': 1.0.0-next.7
       '@storybook/node-logger': 7.0.0-beta.46
       '@storybook/postinstall': 7.0.0-beta.46
       '@storybook/preview-api': 7.0.0-beta.46
@@ -4844,7 +4838,7 @@ packages:
     dependencies:
       '@storybook/client-logger': 7.0.0-beta.46
       '@storybook/core-events': 7.0.0-beta.46
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/global': 5.0.0
       '@storybook/manager-api': 7.0.0-beta.46(react-dom@18.2.0)(react@17.0.2)
       '@storybook/preview-api': 7.0.0-beta.46
@@ -5052,7 +5046,7 @@ packages:
       '@storybook/client-logger': 7.0.0-beta.46
       '@storybook/components': 7.0.0-beta.46(react-dom@18.2.0)(react@17.0.2)
       '@storybook/core-events': 7.0.0-beta.46
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/docs-tools': 7.0.0-beta.46
       '@storybook/global': 5.0.0
       '@storybook/manager-api': 7.0.0-beta.46(react-dom@18.2.0)(react@17.0.2)
@@ -5272,7 +5266,7 @@ packages:
       '@babel/core': 7.20.12
       '@babel/preset-env': 7.20.2(@babel/core@7.20.12)
       '@babel/types': 7.20.7
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/csf-tools': 7.0.0-beta.46
       '@storybook/node-logger': 7.0.0-beta.46
       '@storybook/types': 7.0.0-beta.46
@@ -5312,7 +5306,7 @@ packages:
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
       '@storybook/client-logger': 7.0.0-beta.46
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/global': 5.0.0
       '@storybook/theming': 7.0.0-beta.46(react-dom@18.2.0)(react@17.0.2)
       '@storybook/types': 7.0.0-beta.46
@@ -5383,7 +5377,7 @@ packages:
       '@storybook/builder-manager': 7.0.0-beta.46
       '@storybook/core-common': 7.0.0-beta.46
       '@storybook/core-events': 7.0.0-beta.46
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/csf-tools': 7.0.0-beta.46
       '@storybook/docs-mdx': 0.0.1-next.6
       '@storybook/global': 5.0.0
@@ -5453,7 +5447,7 @@ packages:
     resolution: {integrity: sha512-H7zXfL1wf/1jWi5MaFISt/taxE41fgpV/uLfi5CHcHLX9ZgeQs2B/2utpUgwvBsxiL+E/jKAt5cLeuZCIvglMg==}
     dependencies:
       '@babel/types': 7.20.7
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/types': 7.0.0-beta.46
       fs-extra: 11.1.0
       recast: 0.23.1
@@ -5468,8 +5462,8 @@ packages:
       lodash: 4.17.21
     dev: true
 
-  /@storybook/csf@0.0.2-next.10:
-    resolution: {integrity: sha512-m2PFgBP/xRIF85VrDhvesn9ktaD2pN3VUjvMqkAL/cINp/3qXsCyI81uw7N5VEOkQAbWrY2FcydnvEPDEdE8fA==}
+  /@storybook/csf@0.0.2-next.11:
+    resolution: {integrity: sha512-xGt0YSVxZb43sKmEf1GIQD8xEbo+c+S6khDEL7Qu/pYA0gh5z3WUuhOlovnelYj/YJod+XRsfVvk23AaRfUJ4Q==}
     dependencies:
       type-fest: 2.19.0
     dev: true
@@ -5505,7 +5499,7 @@ packages:
       '@storybook/channels': 7.0.0-beta.46
       '@storybook/client-logger': 7.0.0-beta.46
       '@storybook/core-events': 7.0.0-beta.46
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/global': 5.0.0
       '@storybook/router': 7.0.0-beta.46(react-dom@18.2.0)(react@17.0.2)
       '@storybook/theming': 7.0.0-beta.46(react-dom@18.2.0)(react@17.0.2)
@@ -5527,8 +5521,8 @@ packages:
     resolution: {integrity: sha512-0Tsm47YM3SU9rvPpXxp6/toQ1DDUrIbZt1pXcj72szLZvi7U/fXTMpsBX9gOB1MNVYIYRqS2V+jcO8UjFd4qyQ==}
     dev: true
 
-  /@storybook/mdx2-csf@1.0.0-next.6:
-    resolution: {integrity: sha512-m6plojocU/rmrqWd26yvm8D+oHZPZ6PtSSFmZIgpNDEPVmc8s4fBD6LXOAB5MiPI5f8KLUr2HVhOMZ97o5pDTw==}
+  /@storybook/mdx2-csf@1.0.0-next.7:
+    resolution: {integrity: sha512-xcQ8w4IecABAjsakaZTGiUEnEgFZzVKsMjqECjd+qdkwgD3R/kwrBdfyC15CLM5Ye1miPwYBIwJGeBXB9qxsZg==}
     dev: true
 
   /@storybook/node-logger@6.5.15:
@@ -5595,7 +5589,7 @@ packages:
       '@storybook/channels': 7.0.0-beta.46
       '@storybook/client-logger': 7.0.0-beta.46
       '@storybook/core-events': 7.0.0-beta.46
-      '@storybook/csf': 0.0.2-next.10
+      '@storybook/csf': 0.0.2-next.11
       '@storybook/global': 5.0.0
       '@storybook/types': 7.0.0-beta.46
       '@types/qs': 6.9.7
