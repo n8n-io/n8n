@@ -1,7 +1,7 @@
 export type IMenuItem = {
 	id: string;
 	label: string;
-	icon?: string;
+	icon?: string | string[];
 	customIconSize?: 'medium' | 'small';
 	available?: boolean;
 	position?: 'top' | 'bottom';

@@ -497,6 +497,11 @@ export interface IN8nUISettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+		openid: {
+			loginEnabled: boolean;
+			serviceProvider: string;
+			loginUrl: string;
+		};
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
@@ -523,6 +528,7 @@ export interface IN8nUISettings {
 		sharing: boolean;
 		ldap: boolean;
 		saml: boolean;
+		openid: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 	};

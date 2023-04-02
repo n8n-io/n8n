@@ -6,6 +6,7 @@ import {
 	testLdapConnection,
 	updateLdapConfig,
 } from '@/api/ldap';
+import { getOpenIDConfig, updateOpenIDConfig } from '@/api/openid';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import {
@@ -21,6 +22,7 @@ import {
 	IN8nPrompts,
 	IN8nUISettings,
 	IN8nValueSurveyData,
+	IOpenIDConfig,
 	ISettingsState,
 	UserManagementAuthenticationMethod,
 	WorkflowCallerPolicyDefaultOption,
@@ -60,6 +62,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			loginLabel: '',
 			loginEnabled: false,
 		},
+		openid: {
+			loginEnabled: false,
+			serviceProvider: '',
+			loginUrl: '',
+			buttonName: '',
+		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
@@ -92,6 +100,18 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		ldapLoginLabel(): string {
 			return this.ldap.loginLabel;
+		},
+		openIDServiceProvider(): string {
+			return this.openid.serviceProvider;
+		},
+		openIDLoginURL(): string {
+			return this.openid.loginUrl;
+		},
+		openIDButtonName(): string {
+			return this.openid.buttonName;
+		},
+		isOpenIDLoginEnabled(): boolean {
+			return this.openid.loginEnabled;
 		},
 		isSamlLoginEnabled(): boolean {
 			return this.saml.loginEnabled;
@@ -186,6 +206,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.ldap.loginLabel = settings.sso.ldap.loginLabel;
 			this.saml.loginEnabled = settings.sso.saml.loginEnabled;
 			this.saml.loginLabel = settings.sso.saml.loginLabel;
+			this.openid.loginEnabled = settings.sso.openid.loginEnabled;
+			this.openid.loginUrl = settings.sso.openid.loginUrl;
+			this.openid.serviceProvider = settings.sso.openid.serviceProvider;
+			this.openid.buttonName = settings.sso.openid.buttonName;
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
@@ -311,6 +335,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
 			return await runLdapSync(rootStore.getRestApiContext, data);
+		},
+		async getOpenIDConfig() {
+			const rootStore = useRootStore();
+			return await getOpenIDConfig(rootStore.getRestApiContext);
+		},
+		async updateOpenIDConfig(openidConfig: IOpenIDConfig) {
+			const rootStore = useRootStore();
+			return await updateOpenIDConfig(rootStore.getRestApiContext, openidConfig);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			Vue.set(this, 'saveDataErrorExecution', newValue);

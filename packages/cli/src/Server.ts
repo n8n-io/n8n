@@ -92,6 +92,7 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
+	OpenIDController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
@@ -157,6 +158,13 @@ import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/sam
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import {
+	getOpenIDButtonName,
+	getOpenIDServiceProvider,
+	handleOpenIDInit,
+	isOpenIDEnabled,
+	isOpenIDLoginEnabled,
+} from './OpenID/helpers';
 
 const exec = promisify(callbackExec);
 
@@ -279,6 +287,11 @@ class Server extends AbstractServer {
 					loginEnabled: false,
 					loginLabel: '',
 				},
+				openid: {
+					loginEnabled: false,
+					serviceProvider: '',
+					loginUrl: '',
+				},
 			},
 			publicApi: {
 				enabled: !config.getEnv('publicApi.disabled'),
@@ -311,6 +324,7 @@ class Server extends AbstractServer {
 				sharing: false,
 				ldap: false,
 				saml: false,
+				openid: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
 			},
@@ -341,6 +355,7 @@ class Server extends AbstractServer {
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
+			openid: isOpenIDEnabled(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 		});
 
@@ -355,6 +370,15 @@ class Server extends AbstractServer {
 			Object.assign(this.frontendSettings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
 				loginEnabled: isSamlLoginEnabled(),
+			});
+		}
+
+		if (isOpenIDEnabled()) {
+			Object.assign(this.frontendSettings.sso.openid, {
+				loginEnabled: isOpenIDLoginEnabled(),
+				serviceProvider: getOpenIDServiceProvider(),
+				loginUrl: `${getInstanceBaseUrl()}/${this.restEndpoint}/openid/login`,
+				buttonName: getOpenIDButtonName(),
 			});
 		}
 
@@ -402,6 +426,10 @@ class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
+			new OpenIDController(
+				`${this.frontendSettings.urlBaseEditor}/${this.restEndpoint}`,
+				repositories,
+			),
 		];
 
 		if (isLdapEnabled()) {
@@ -495,6 +523,8 @@ class Server extends AbstractServer {
 		}
 
 		await handleLdapInit();
+
+		await handleOpenIDInit();
 
 		this.registerControllers(ignoredEndpoints);
 

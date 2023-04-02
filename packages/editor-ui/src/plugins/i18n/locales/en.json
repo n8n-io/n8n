@@ -318,6 +318,7 @@
 	"credentialEdit.credentialInfo.lastModified": "Last modified",
 	"credentialEdit.oAuthButton.connectMyAccount": "Connect my account",
 	"credentialEdit.oAuthButton.signInWithGoogle": "Sign in with Google",
+	"credentialEdit.oAuthButton.signInWithMicrosoft": "Sign in with Microsoft",
 	"credentialEdit.credentialSharing.info.owner": "Sharing a credential allows people to use it in their workflows. They cannot access credential details.",
 	"credentialEdit.credentialSharing.info.instanceOwner": "You can view this credential because you are the instance owner (and rename or delete it too). To use it in a workflow, ask the credential owner to share it with you.",
 	"credentialEdit.credentialSharing.info.sharee": "Only {credentialOwnerName} can change who this credential is shared with",
@@ -1695,5 +1696,14 @@
 	"settings.ldap.section.synchronization.title": "Synchronization",
 
 	"sso.login.divider": "or",
-	"sso.login.button": "Continue with SSO"
+	"sso.login.button": "Continue with SSO",
+	"settings.openid": "OpenID",
+	"settings.openid.save": "Save",
+	"settings.openid.form.loginEnabled.label": "Enable OpenID Login",
+	"settings.openid.updateConfiguration": "OpenID configuration updated",
+	"settings.openid.configurationError": "OpenID Configuration Error",
+	"settings.openid.form.discoveryEndpoint.label": "Discovery Endpoint",
+	"settings.openid.form.buttonName.label": "Button Name",
+	"settings.openid.form.clientId.label": "Client ID",
+	"settings.openid.form.clientSecret.label": "Client Secret"
 }

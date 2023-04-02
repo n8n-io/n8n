@@ -1004,6 +1004,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			openid: {
+				format: Boolean,
+				default: false,
+			},
 			logStreaming: {
 				format: Boolean,
 				default: false,
@@ -1043,6 +1047,20 @@ export const schema = {
 				default: false,
 			},
 			loginLabel: {
+				format: String,
+				default: '',
+			},
+		},
+		openid: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+			},
+			serviceProvider: {
+				format: String,
+				default: '',
+			},
+			buttonName: {
 				format: String,
 				default: '',
 			},

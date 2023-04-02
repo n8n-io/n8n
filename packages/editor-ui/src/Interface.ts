@@ -782,6 +782,12 @@ export interface IN8nUISettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+		openid: {
+			loginEnabled: boolean;
+			loginUrl: string;
+			buttonName: string;
+			serviceProvider: string;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1225,6 +1231,12 @@ export interface ISettingsState {
 		loginLabel: string;
 		loginEnabled: boolean;
 	};
+	openid: {
+		loginEnabled: boolean;
+		serviceProvider: string;
+		loginUrl: string;
+		buttonName: string;
+	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -1428,6 +1440,15 @@ export interface ILdapConfig {
 	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
+}
+
+export interface IOpenIDConfig {
+	loginEnabled: boolean;
+	serviceProvider: string;
+	clientId: string;
+	clientSecret: string;
+	discoveryEndpoint: string;
+	buttonName?: string;
 }
 
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };

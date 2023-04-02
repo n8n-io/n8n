@@ -104,6 +104,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
 	}
 
+	isOpenIdEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.OPEN_ID);
+	}
+
 	isSamlEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
 	}

@@ -3,6 +3,7 @@
 		:form="FORM_CONFIG"
 		:formLoading="loading"
 		:with-sso="true"
+		:with-openid="true"
 		data-test-id="signin-form"
 		@submit="onSubmit"
 	/>

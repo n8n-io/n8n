@@ -16,6 +16,7 @@
 				@input="onInput"
 			>
 				<SSOLogin v-if="withSso" />
+				<OpenIDLogin v-if="withOpenid" />
 			</n8n-form-box>
 		</div>
 	</div>
@@ -26,12 +27,14 @@ import Vue from 'vue';
 
 import Logo from '@/components/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
+import OpenIDLogin from '@/components/OpenIDLogin.vue';
 
 export default Vue.extend({
 	name: 'AuthView',
 	components: {
 		Logo,
 		SSOLogin,
+		OpenIDLogin,
 	},
 	props: {
 		form: {},
@@ -43,6 +46,10 @@ export default Vue.extend({
 			type: String,
 		},
 		withSso: {
+			type: Boolean,
+			default: false,
+		},
+		withOpenid: {
 			type: Boolean,
 			default: false,
 		},
@@ -85,6 +92,19 @@ body {
 
 .textContainer {
 	text-align: center;
+}
+
+.line {
+	width: 100%;
+}
+
+.ajapapa {
+	display: flex; /* or inline-flex */
+	justify-content: space-between;
+}
+
+.color {
+	background-color: black;
 }
 
 .formContainer {

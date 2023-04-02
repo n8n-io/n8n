@@ -377,6 +377,7 @@ export enum VIEWS {
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
+	OPENID_SETTINGS = 'OpenIDSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',

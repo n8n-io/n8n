@@ -128,6 +128,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faOpenid, faGoogle } from '@fortawesome/free-brands-svg-icons';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function addIcon(icon: any) {
@@ -258,5 +259,7 @@ addIcon(faUserFriends);
 addIcon(faUsers);
 addIcon(faVideo);
 addIcon(faTree);
+addIcon(faOpenid);
+addIcon(faGoogle);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

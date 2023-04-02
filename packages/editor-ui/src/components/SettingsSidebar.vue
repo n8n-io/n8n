@@ -82,6 +82,14 @@ export default mixins(userHelpers, pushConnection).extend({
 					available: this.canAccessLdapSettings(),
 					activateOnRouteNames: [VIEWS.LDAP_SETTINGS],
 				},
+				{
+					id: 'settings-openid',
+					icon: ['fab', 'openid'],
+					label: 'OpenID',
+					position: 'top',
+					available: this.canAccessOpenIDSettings(),
+					activateOnRouteNames: [VIEWS.OPENID_SETTINGS],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -137,6 +145,9 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessLdapSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
 		},
+		canAccessOpenIDSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.OPENID_SETTINGS);
+		},
 		canAccessLogStreamingSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
 		},
@@ -169,6 +180,11 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-ldap':
 					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
 						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
+					}
+					break;
+				case 'settings-openid':
+					if (this.$router.currentRoute.name !== VIEWS.OPENID_SETTINGS) {
+						this.$router.push({ name: VIEWS.OPENID_SETTINGS });
 					}
 					break;
 				case 'settings-log-streaming':

@@ -11,6 +11,7 @@ import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLanding
 import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsView from './views/SettingsView.vue';
 import SettingsLdapView from './views/SettingsLdapView.vue';
+import SettingsOpenIDView from './views/SettingsOpenIDView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -634,6 +635,20 @@ const router = new Router({
 					name: VIEWS.LDAP_SETTINGS,
 					components: {
 						settingsView: SettingsLdapView,
+					},
+					meta: {
+						permissions: {
+							allow: {
+								role: [ROLE.Owner],
+							},
+						},
+					},
+				},
+				{
+					path: 'openid',
+					name: VIEWS.OPENID_SETTINGS,
+					components: {
+						settingsView: SettingsOpenIDView,
 					},
 					meta: {
 						permissions: {
