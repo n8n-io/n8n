@@ -613,6 +613,9 @@ importers:
       lodash.get:
         specifier: ^4.4.2
         version: 4.4.2
+      lodash.pick:
+        specifier: ^4.4.0
+        version: 4.4.0
       mime-types:
         specifier: ^2.1.27
         version: 2.1.35
@@ -655,6 +658,9 @@ importers:
         version: 4.17.14
       '@types/lodash.get':
         specifier: ^4.4.6
+        version: 4.4.7
+      '@types/lodash.pick':
+        specifier: ^4.4.7
         version: 4.4.7
       '@types/mime-types':
         specifier: ^2.1.0
@@ -4772,7 +4778,7 @@ packages:
       '@storybook/csf-plugin': 7.0.0-beta.46
       '@storybook/csf-tools': 7.0.0-beta.46
       '@storybook/global': 5.0.0
-      '@storybook/mdx2-csf': 1.0.0-next.7
+      '@storybook/mdx2-csf': 1.0.0-next.8
       '@storybook/node-logger': 7.0.0-beta.46
       '@storybook/postinstall': 7.0.0-beta.46
       '@storybook/preview-api': 7.0.0-beta.46
@@ -5379,7 +5385,7 @@ packages:
       '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.11
       '@storybook/csf-tools': 7.0.0-beta.46
-      '@storybook/docs-mdx': 0.0.1-next.6
+      '@storybook/docs-mdx': 0.0.1-next.7
       '@storybook/global': 5.0.0
       '@storybook/manager': 7.0.0-beta.46
       '@storybook/node-logger': 7.0.0-beta.46
@@ -5468,8 +5474,8 @@ packages:
       type-fest: 2.19.0
     dev: true
 
-  /@storybook/docs-mdx@0.0.1-next.6:
-    resolution: {integrity: sha512-DjoSIXADmLJtdroXAjUotFiZlcZ2usWhqrS7aeOtZs0DVR0Ws5WQjnwtpDUXt8gryTSd+OZJ0cNsDcqg4JDEvQ==}
+  /@storybook/docs-mdx@0.0.1-next.7:
+    resolution: {integrity: sha512-JbgBf/EMBtx65iXtB3pOiX3818UeL9jZ+KAY241OAPqJVXjMQ5KaVOdg/57MSmd508HDIGx7CiImOMEmWwQ9/g==}
     dev: true
 
   /@storybook/docs-tools@7.0.0-beta.46:
@@ -5521,8 +5527,8 @@ packages:
     resolution: {integrity: sha512-0Tsm47YM3SU9rvPpXxp6/toQ1DDUrIbZt1pXcj72szLZvi7U/fXTMpsBX9gOB1MNVYIYRqS2V+jcO8UjFd4qyQ==}
     dev: true
 
-  /@storybook/mdx2-csf@1.0.0-next.7:
-    resolution: {integrity: sha512-xcQ8w4IecABAjsakaZTGiUEnEgFZzVKsMjqECjd+qdkwgD3R/kwrBdfyC15CLM5Ye1miPwYBIwJGeBXB9qxsZg==}
+  /@storybook/mdx2-csf@1.0.0-next.8:
+    resolution: {integrity: sha512-t2O5s/HHTH5evZVHgVtCWTZgMZ/CaqDu3xVGgjVbKeTvpPAbi0Waab5SSX8T9PG5jNDei/x+jpAVCcNMOHoWzg==}
     dev: true
 
   /@storybook/node-logger@6.5.15:
