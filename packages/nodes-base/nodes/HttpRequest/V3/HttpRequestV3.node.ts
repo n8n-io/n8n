@@ -38,7 +38,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4],
+			version: [3, 4, 5],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#2200DD',
@@ -1038,15 +1038,16 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || fullResponse) {
 				requestOptions.resolveWithFullResponse = true;
 			}
-
-			if (redirect?.redirect?.followRedirects) {
+			if (redirect?.redirect?.followRedirects || (nodeVersion >= 5 && redirect === undefined)) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects) {
-				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
+			if (redirect?.redirect?.maxRedirects || (nodeVersion >= 5 && redirect === undefined)) {
+				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects || 21;
 			}
+
+			console.log(requestOptions);
 
 			if (response?.response?.neverError) {
 				requestOptions.simple = false;
