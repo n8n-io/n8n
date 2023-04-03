@@ -72,6 +72,11 @@ declare global {
 		analytics?: {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
 		};
+		featureFlags?: {
+			getAll: () => FeatureFlags;
+			getVariant: (name: string) => string | boolean | undefined;
+			override: (name: string, value: string) => void;
+		};
 	}
 }
 
@@ -580,6 +585,7 @@ export interface IUserResponse {
 	firstName?: string;
 	lastName?: string;
 	email?: string;
+	createdAt?: string;
 	globalRole?: {
 		name: IRole;
 		id: string;
@@ -600,7 +606,6 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: string;
 }
 
 export interface IVersionNotificationSettings {

@@ -301,9 +301,9 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                   class="label"
                   data-depth="1"
                   data-name="hello world"
-                  data-path="[\\"hello world\\"]"
+                  data-path="['hello world']"
                   data-target="mappable"
-                  data-value="{{ $json[\\"hello world\\"] }}"
+                  data-value="{{ $json['hello world'] }}"
                 >
                   <font-awesome-icon-stub
                     icon="list"
@@ -347,9 +347,9 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                       class="label"
                       data-depth="2"
                       data-name="object[0]"
-                      data-path="[\\"hello world\\"][0]"
+                      data-path="['hello world'][0]"
                       data-target="mappable"
-                      data-value="{{ $json[\\"hello world\\"][0] }}"
+                      data-value="{{ $json['hello world'][0] }}"
                     >
                       <font-awesome-icon-stub
                         icon="cube"
@@ -395,9 +395,9 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                           class="label"
                           data-depth="3"
                           data-name="test"
-                          data-path="[\\"hello world\\"][0].test"
+                          data-path="['hello world'][0].test"
                           data-target="mappable"
-                          data-value="{{ $json[\\"hello world\\"][0].test }}"
+                          data-value="{{ $json['hello world'][0].test }}"
                         >
                           <font-awesome-icon-stub
                             icon="cube"
@@ -441,9 +441,9 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                               class="label"
                               data-depth="4"
                               data-name="more to think about"
-                              data-path="[\\"hello world\\"][0].test[\\"more to think about\\"]"
+                              data-path="['hello world'][0].test['more to think about']"
                               data-target="mappable"
-                              data-value="{{ $json[\\"hello world\\"][0].test[\\"more to think about\\"] }}"
+                              data-value="{{ $json['hello world'][0].test['more to think about'] }}"
                             >
                               <font-awesome-icon-stub
                                 icon="hashtag"
@@ -481,9 +481,9 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                           class="label"
                           data-depth="3"
                           data-name="test.how"
-                          data-path="[\\"hello world\\"][0][\\"test.how\\"]"
+                          data-path="['hello world'][0]['test.how']"
                           data-target="mappable"
-                          data-value="{{ $json[\\"hello world\\"][0][\\"test.how\\"] }}"
+                          data-value="{{ $json['hello world'][0]['test.how'] }}"
                         >
                           <font-awesome-icon-stub
                             icon="font"

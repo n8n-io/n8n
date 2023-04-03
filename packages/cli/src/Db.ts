@@ -159,6 +159,7 @@ export async function init(
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
+	collections.WorkflowTagMapping = linkRepository(entities.WorkflowTagMapping);
 	collections.Role = linkRepository(entities.Role);
 	collections.User = linkRepository(entities.User);
 	collections.AuthIdentity = linkRepository(entities.AuthIdentity);
