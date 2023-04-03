@@ -15,6 +15,7 @@ import {
 	insertNewlineAndIndent,
 	toggleComment,
 	redo,
+	deleteCharBackward,
 } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 
@@ -38,6 +39,7 @@ export const baseExtensions = [
 		{ key: 'Enter', run: acceptCompletion },
 		{ key: 'Mod-/', run: toggleComment },
 		{ key: 'Mod-Shift-z', run: redo },
+		{ key: 'Backspace', run: deleteCharBackward, shift: deleteCharBackward },
 		indentWithTab,
 	]),
 	EditorView.lineWrapping,

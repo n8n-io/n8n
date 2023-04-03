@@ -70,7 +70,8 @@ export async function autopilotApiRequestAllItems(
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
 		endpoint = `${base}/${responseData.bookmark}`;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && returnData.length >= query.limit && !returnAll) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit && !returnAll) {
 			return returnData;
 		}
 	} while (responseData.bookmark !== undefined);
