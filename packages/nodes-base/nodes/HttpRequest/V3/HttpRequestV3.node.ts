@@ -748,9 +748,7 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {
-								redirect: {},
-							},
+							default: { redirect: {} },
 							options: [
 								{
 									displayName: 'Redirect',
@@ -1034,7 +1032,6 @@ export class HttpRequestV3 implements INodeType {
 				'keypair',
 			) as string;
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
-
 			const {
 				redirect,
 				batching,
@@ -1088,13 +1085,14 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || fullResponse) {
 				requestOptions.resolveWithFullResponse = true;
 			}
+			const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
 
-			if (redirect?.redirect?.followRedirects) {
+			if (redirect?.redirect?.followRedirects || defaultRedirect) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects) {
+			if (redirect?.redirect?.maxRedirects || defaultRedirect) {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
