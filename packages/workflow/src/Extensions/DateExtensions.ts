@@ -2,7 +2,13 @@ import { ExpressionExtensionError } from './../ExpressionError';
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 import { DateTime } from 'luxon';
-import type { DateTimeUnit, DurationLike, DurationObjectUnits, LocaleOptions } from 'luxon';
+import type {
+	DateTimeUnit,
+	DurationLike,
+	DurationObjectUnits,
+	LocaleOptions,
+	WeekdayNumbers,
+} from 'luxon';
 import type { ExtensionMap } from './Extensions';
 import { convertToDateTime } from './utils';
 
@@ -166,15 +172,10 @@ function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	return dateInThePast <= thisDate && thisDate <= DateTime.now();
 }
 
+const WEEKEND_DAYS: WeekdayNumbers[] = [6, 7];
 function isWeekend(date: Date | DateTime): boolean {
-	enum DAYS {
-		saturday = 6,
-		sunday = 7,
-	}
-	if (isDateTime(date)) {
-		return [DAYS.saturday, DAYS.sunday].includes(date.weekday);
-	}
-	return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
+	const { weekday } = isDateTime(date) ? date : DateTime.fromJSDate(date);
+	return WEEKEND_DAYS.includes(weekday);
 }
 
 function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {

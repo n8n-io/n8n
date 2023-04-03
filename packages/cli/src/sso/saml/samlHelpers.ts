@@ -10,12 +10,13 @@ import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
-import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
+import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import {
 	isEmailCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../ssoHelpers';
+import { LoggerProxy } from 'n8n-workflow';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -28,15 +29,20 @@ export function getSamlLoginLabel(): string {
 }
 
 // can only toggle between email and saml, not directly to e.g. ldap
-export function setSamlLoginEnabled(enabled: boolean): void {
-	if (enabled) {
-		if (isEmailCurrentAuthenticationMethod()) {
-			config.set(SAML_LOGIN_ENABLED, true);
-			setCurrentAuthenticationMethod('saml');
-		}
-	} else {
+export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
+	if (config.get(SAML_LOGIN_ENABLED) === enabled) {
+		return;
+	}
+	if (enabled && isEmailCurrentAuthenticationMethod()) {
+		config.set(SAML_LOGIN_ENABLED, true);
+		await setCurrentAuthenticationMethod('saml');
+	} else if (!enabled && isSamlCurrentAuthenticationMethod()) {
 		config.set(SAML_LOGIN_ENABLED, false);
-		setCurrentAuthenticationMethod('email');
+		await setCurrentAuthenticationMethod('email');
+	} else {
+		LoggerProxy.warn(
+			'Cannot switch SAML login enabled state when an authentication method other than email is active',
+		);
 	}
 }
 
@@ -46,10 +52,7 @@ export function setSamlLoginLabel(label: string): void {
 
 export function isSamlLicensed(): boolean {
 	const license = Container.get(License);
-	return (
-		isUserManagementEnabled() &&
-		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
-	);
+	return isUserManagementEnabled() && license.isSamlEnabled();
 }
 
 export function isSamlLicensedAndEnabled(): boolean {
