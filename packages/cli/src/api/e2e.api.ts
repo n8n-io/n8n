@@ -15,6 +15,7 @@ import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
 import { License } from '../License';
+import { LICENSE_FEATURES } from '@/constants';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -22,11 +23,11 @@ if (process.env.E2E_TESTS !== 'true') {
 }
 
 const enabledFeatures = {
-	sharing: true, //default to true here instead of setting it in config/index.ts for e2e
-	ldap: false,
-	saml: false,
-	logStreaming: false,
-	advancedExecutionFilters: false,
+	[LICENSE_FEATURES.SHARING]: true, //default to true here instead of setting it in config/index.ts for e2e
+	[LICENSE_FEATURES.LDAP]: false,
+	[LICENSE_FEATURES.SAML]: false,
+	[LICENSE_FEATURES.LOG_STREAMING]: false,
+	[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 };
 
 type Feature = keyof typeof enabledFeatures;
@@ -93,7 +94,7 @@ const setupUserManagement = async () => {
 };
 
 const resetLogStreaming = async () => {
-	enabledFeatures.logStreaming = false;
+	enabledFeatures[LICENSE_FEATURES.LOG_STREAMING] = false;
 	for (const id in eventBus.destinations) {
 		await eventBus.removeDestination(id);
 	}
