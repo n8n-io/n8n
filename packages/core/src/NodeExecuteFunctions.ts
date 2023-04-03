@@ -77,6 +77,7 @@ import {
 
 import pick from 'lodash.pick';
 import { Agent } from 'https';
+import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -932,13 +933,15 @@ export async function copyBinaryFile(
 				fileExtension = fileTypeData.ext;
 			}
 		}
+	}
 
-		if (!mimeType) {
-			// Fall back to text
-			mimeType = 'text/plain';
-		}
-	} else if (!fileExtension) {
+	if (!fileExtension && mimeType) {
 		fileExtension = extension(mimeType) || undefined;
+	}
+
+	if (!mimeType) {
+		// Fall back to text
+		mimeType = 'text/plain';
 	}
 
 	const returnData: IBinaryData = {
@@ -979,22 +982,29 @@ async function prepareBinaryData(
 			}
 		}
 
-		// TODO: detect filetype from streams
-		if (!mimeType && Buffer.isBuffer(binaryData)) {
-			// Use buffer to guess mime type
-			const fileTypeData = await FileType.fromBuffer(binaryData);
-			if (fileTypeData) {
-				mimeType = fileTypeData.mime;
-				fileExtension = fileTypeData.ext;
+		if (!mimeType) {
+			if (Buffer.isBuffer(binaryData)) {
+				// Use buffer to guess mime type
+				const fileTypeData = await FileType.fromBuffer(binaryData);
+				if (fileTypeData) {
+					mimeType = fileTypeData.mime;
+					fileExtension = fileTypeData.ext;
+				}
+			} else if (binaryData instanceof IncomingMessage) {
+				mimeType = binaryData.headers['content-type'];
+			} else {
+				// TODO: detect filetype from other kind of streams
 			}
 		}
+	}
 
-		if (!mimeType) {
-			// Fall back to text
-			mimeType = 'text/plain';
-		}
-	} else if (!fileExtension) {
+	if (!fileExtension && mimeType) {
 		fileExtension = extension(mimeType) || undefined;
+	}
+
+	if (!mimeType) {
+		// Fall back to text
+		mimeType = 'text/plain';
 	}
 
 	const returnData: IBinaryData = {
