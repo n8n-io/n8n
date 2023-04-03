@@ -92,6 +92,7 @@
 				:isProductionExecutionPreview="isProductionExecutionPreview"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
+				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
 			<node-creation
 				v-if="!isReadOnly"
@@ -203,10 +204,10 @@ import {
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { mouseSelect } from '@/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import { restApi } from '@/mixins/restApi';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { showMessage } from '@/mixins/showMessage';
 import { titleChange } from '@/mixins/titleChange';
 
@@ -321,7 +322,6 @@ export default mixins(
 	copyPaste,
 	externalHooks,
 	genericHelpers,
-	mouseSelect,
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
@@ -342,10 +342,9 @@ export default mixins(
 		CanvasControls,
 	},
 	setup() {
-		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 		return {
-			registerCustomAction,
-			unregisterCustomAction,
+			...useCanvasMouseSelect(),
+			...useGlobalLinkActions(),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -592,14 +591,12 @@ export default mixins(
 			GRID_SIZE: NodeViewUtils.GRID_SIZE,
 			STICKY_NODE_TYPE,
 			createNodeActive: false,
-			lastSelectedConnection: null as null | Connection,
 			lastClickPosition: [450, 450] as XYPosition,
 			ctrlKeyPressed: false,
 			moveCanvasKeyPressed: false,
 			stopExecutionInProgress: false,
 			blankRedirect: false,
 			credentialsUpdated: false,
-			newNodeInsertPosition: null as XYPosition | null,
 			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
@@ -756,9 +753,24 @@ export default mixins(
 
 			return uniqueName;
 		},
-		async onSaveKeyboardShortcut() {
-			const saved = await this.saveCurrentWorkflow();
+		async onSaveKeyboardShortcut(e: KeyboardEvent) {
+			let saved = await this.saveCurrentWorkflow();
 			if (saved) await this.settingsStore.fetchPromptsData();
+			if (this.activeNode) {
+				// If NDV is open, save will not work from editable input fields
+				// so don't show success message if this is true
+				if (e.target instanceof HTMLInputElement) {
+					saved = e.target.readOnly;
+				} else {
+					saved = true;
+				}
+				if (saved) {
+					this.$showMessage({
+						title: this.$locale.baseText('generic.workflowSaved'),
+						type: 'success',
+					});
+				}
+			}
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
@@ -998,6 +1010,19 @@ export default mixins(
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
+			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				if (this.isReadOnly) {
+					return;
+				}
+
+				this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
+
+				return;
+			}
+
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 
@@ -1086,16 +1111,6 @@ export default mixins(
 					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
-			} else if (e.key === 's' && this.isCtrlKeyPressed(e)) {
-				// Save workflow
-				e.stopPropagation();
-				e.preventDefault();
-
-				if (this.isReadOnly) {
-					return;
-				}
-
-				this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
 			} else if (e.key === 'Enter') {
 				// Activate the last selected node
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1682,7 +1697,8 @@ export default mixins(
 							// If adding more than one node, offset the X position
 							mousePosition[0] -
 								NodeViewUtils.NODE_SIZE / 2 +
-								NodeViewUtils.NODE_SIZE * (index * 2 + NodeViewUtils.GRID_SIZE),
+								NodeViewUtils.NODE_SIZE * index * 2 +
+								NodeViewUtils.GRID_SIZE,
 							mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
 						] as XYPosition,
 						dragAndDrop: true,
@@ -1711,8 +1727,8 @@ export default mixins(
 				this.nodeSelected(node);
 				this.uiStore.lastSelectedNode = node.name;
 				this.uiStore.lastSelectedNodeOutputIndex = null;
-				this.lastSelectedConnection = null;
-				this.newNodeInsertPosition = null;
+				this.canvasStore.lastSelectedConnection = null;
+				this.canvasStore.newNodeInsertPosition = null;
 
 				if (setActive) {
 					this.ndvStore.activeNodeName = node.name;
@@ -1854,7 +1870,7 @@ export default mixins(
 					options.position,
 				);
 			} else if (lastSelectedNode) {
-				const lastSelectedConnection = this.lastSelectedConnection;
+				const lastSelectedConnection = this.canvasStore.lastSelectedConnection;
 				if (lastSelectedConnection) {
 					// set when injecting into a connection
 					const [diffX] = NodeViewUtils.getConnectorLengths(lastSelectedConnection);
@@ -1868,12 +1884,12 @@ export default mixins(
 				}
 
 				// set when pulling connections
-				if (this.newNodeInsertPosition) {
+				if (this.canvasStore.newNodeInsertPosition) {
 					newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, [
-						this.newNodeInsertPosition[0] + NodeViewUtils.GRID_SIZE,
-						this.newNodeInsertPosition[1] - NodeViewUtils.NODE_SIZE / 2,
+						this.canvasStore.newNodeInsertPosition[0] + NodeViewUtils.GRID_SIZE,
+						this.canvasStore.newNodeInsertPosition[1] - NodeViewUtils.NODE_SIZE / 2,
 					]);
-					this.newNodeInsertPosition = null;
+					this.canvasStore.newNodeInsertPosition = null;
 				} else {
 					let yOffset = 0;
 
@@ -2035,7 +2051,7 @@ export default mixins(
 				return;
 			}
 
-			const lastSelectedConnection = this.lastSelectedConnection;
+			const lastSelectedConnection = this.canvasStore.lastSelectedConnection;
 			const lastSelectedNode = this.lastSelectedNode;
 			const lastSelectedNodeOutputIndex = this.uiStore.lastSelectedNodeOutputIndex;
 
@@ -2087,10 +2103,10 @@ export default mixins(
 
 			this.uiStore.lastSelectedNode = sourceNode.name;
 			this.uiStore.lastSelectedNodeOutputIndex = info.index;
-			this.newNodeInsertPosition = null;
+			this.canvasStore.newNodeInsertPosition = null;
 
 			if (info.connection) {
-				this.lastSelectedConnection = info.connection;
+				this.canvasStore.lastSelectedConnection = info.connection;
 			}
 
 			this.onToggleNodeCreator({
@@ -2363,7 +2379,7 @@ export default mixins(
 			try {
 				this.pullConnActiveNodeName = null;
 				this.pullConnActive = true;
-				this.newNodeInsertPosition = null;
+				this.canvasStore.newNodeInsertPosition = null;
 				NodeViewUtils.resetConnection(connection);
 
 				const nodes = [...document.querySelectorAll('.node-wrapper')];
@@ -2414,7 +2430,7 @@ export default mixins(
 
 				const onMouseUp = (e: MouseEvent | TouchEvent) => {
 					this.pullConnActive = false;
-					this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
+					this.canvasStore.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
 					NodeViewUtils.resetConnectionAfterPull(connection);
 					window.removeEventListener('mousemove', onMouseMove);
 					window.removeEventListener('mouseup', onMouseUp);
@@ -3888,8 +3904,8 @@ export default mixins(
 					this.bindCanvasEvents();
 				} catch {} // This will break if mounted after jsplumb has been initiated from executions preview, so continue if it breaks
 				await this.initView();
-				if (window.top) {
-					window.top.postMessage(
+				if (window.parent) {
+					window.parent.postMessage(
 						JSON.stringify({ command: 'n8nReady', version: this.rootStore.versionCli }),
 						'*',
 					);

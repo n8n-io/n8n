@@ -80,6 +80,18 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 					info: this.$locale.baseText('codeNodeEditor.completer.$jmespath'),
 				},
 				{
+					label: '$if()',
+					info: this.$locale.baseText('codeNodeEditor.completer.$if'),
+				},
+				{
+					label: '$min()',
+					info: this.$locale.baseText('codeNodeEditor.completer.$min'),
+				},
+				{
+					label: '$max()',
+					info: this.$locale.baseText('codeNodeEditor.completer.$max'),
+				},
+				{
 					label: '$runIndex',
 					info: this.$locale.baseText('codeNodeEditor.completer.$runIndex'),
 				},

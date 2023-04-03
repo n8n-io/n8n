@@ -69,6 +69,15 @@ const renderOptions = {
 						enabled: true,
 						host: 'https://api.n8n.io/api/',
 					},
+					license: {
+						environment: 'development',
+					},
+					deployment: {
+						type: 'default',
+					},
+					enterprise: {
+						advancedExecutionFilters: true,
+					},
 				},
 			},
 		},
@@ -137,6 +146,7 @@ describe('ExecutionsList.vue', () => {
 
 		await userEvent.click(getByTestId('load-more-button'));
 
+		expect(getPastExecutionsSpy).toHaveBeenCalledTimes(2);
 		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
 		expect(
 			getAllByTestId('select-execution-checkbox').filter((el) =>
