@@ -94,8 +94,8 @@ export class CompareDatasets implements INodeType {
 					},
 				],
 				displayOptions: {
-					hide: {
-						'@version': [3],
+					show: {
+						'@version': [1, 2],
 					},
 				},
 			},
@@ -125,8 +125,8 @@ export class CompareDatasets implements INodeType {
 					},
 				],
 				displayOptions: {
-					show: {
-						'@version': [3],
+					hide: {
+						'@version': [1, 2],
 					},
 				},
 			},

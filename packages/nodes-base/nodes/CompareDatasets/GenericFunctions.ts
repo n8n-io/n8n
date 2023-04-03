@@ -87,7 +87,7 @@ function compareItems(
 				}
 
 				if (
-					(options.nodeVersion as number) >= 3 &&
+					(options.nodeVersion as number) >= 2.1 &&
 					!options.disableDotNotation &&
 					!skipFields.some((field) => field === key)
 				) {

@@ -44,7 +44,7 @@
 			"id": "750c4213-42e0-4e66-96b0-24dcb82d3d67",
 			"name": "Any skipped",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 3,
+			"typeVersion": 2.1,
 			"position": [1020, 220]
 		},
 		{
@@ -64,7 +64,7 @@
 			"id": "2912ebdb-ddb8-4c53-a357-66e8b20ff947",
 			"name": "skip whole object",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 3,
+			"typeVersion": 2.1,
 			"position": [1020, 420]
 		},
 		{
@@ -84,7 +84,7 @@
 			"id": "9ea72e2e-f062-4ae7-bfb1-9266848d0f3c",
 			"name": "skip each key",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 3,
+			"typeVersion": 2.1,
 			"position": [1020, 620]
 		},
 		{
@@ -104,7 +104,7 @@
 			"id": "fca0048b-a493-4ca4-861b-2ca8216fbfba",
 			"name": "skipped contain contry",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 3,
+			"typeVersion": 2.1,
 			"position": [1040, 1060]
 		},
 		{
@@ -124,7 +124,7 @@
 			"id": "498b2f65-1117-4ff2-acde-a51049fd9b89",
 			"name": "skip object and key",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 3,
+			"typeVersion": 2.1,
 			"position": [1040, 860],
 			"continueOnFail": true
 		},
@@ -145,7 +145,7 @@
 			"id": "77ad3a73-8683-41ed-9040-cef1a2895704",
 			"name": "skip includes age and contry",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 3,
+			"typeVersion": 2.1,
 			"position": [1040, 1260]
 		},
 		{
