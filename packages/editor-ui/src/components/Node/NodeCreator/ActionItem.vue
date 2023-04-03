@@ -120,12 +120,17 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 </script>
 
 <style lang="scss" module>
+:global(.action .n8n-node-icon) {
+	min-width: 18px;
+	max-width: 18px;
+}
 .action {
 	--node-creator-name-size: var(--font-size-2xs);
 	--node-creator-name-weight: 400;
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
-	--node-icon-size: 20px;
+	--node-icon-size: 18px;
+	--node-icon-margin-right: var(--spacing-xs);
 
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);
