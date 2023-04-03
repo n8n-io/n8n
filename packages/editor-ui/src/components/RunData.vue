@@ -162,7 +162,9 @@
 		</div>
 
 		<div
-			v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificalRecoveredEventItem"
+			v-else-if="
+				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
 		>
@@ -216,7 +218,7 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && isArtificalRecoveredEventItem" :class="$style.center">
+			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artifical-output-data"></slot>
 			</div>
 
@@ -681,8 +683,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 						this.hasPinData),
 			);
 		},
-		isArtificalRecoveredEventItem(): boolean {
-			return this.inputData?.[0]?.json?.isArtificalRecoveredEventItem !== undefined ?? false;
+		isArtificialRecoveredEventItem(): boolean {
+			return this.inputData?.[0]?.json?.isArtificialRecoveredEventItem !== undefined ?? false;
 		},
 		subworkflowExecutionError(): Error | null {
 			return this.workflowsStore.subWorkflowExecutionError;
