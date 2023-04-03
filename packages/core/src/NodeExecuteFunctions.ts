@@ -707,7 +707,7 @@ async function proxyRequestToAxios(
 
 				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 				throw Object.assign(new Error(message, { cause: error }), {
-					status: response.status,
+					statusCode: response.status,
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 				});
 			} else {
