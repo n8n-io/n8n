@@ -131,6 +131,13 @@ export class ImportWorkflowsCommand extends BaseCommand {
 						await setTagsForImport(transactionManager, workflow, tags);
 					}
 
+					if (workflow.active) {
+						this.logger.info(
+							`Deactivating workflow "${workflow.name}" during import, remember to activate it later.`,
+						);
+						workflow.active = false;
+					}
+
 					await this.storeWorkflow(workflow, user);
 				}
 			});
@@ -174,6 +181,12 @@ export class ImportWorkflowsCommand extends BaseCommand {
 				if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
 					await setTagsForImport(transactionManager, workflow, tags);
 				}
+				if (workflow.active) {
+					this.logger.info(
+						`Deactivating workflow "${workflow.name}" during import, remember to activate it later.`,
+					);
+					workflow.active = false;
+				}
 
 				await this.storeWorkflow(workflow, user);
 			}
@@ -215,8 +228,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			['workflowId', 'userId'],
 		);
 		if (config.getEnv('database.type') === 'postgresdb') {
+			const tablePrefix = config.getEnv('database.tablePrefix');
 			await this.transactionManager.query(
-				"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+				`SELECT setval('${tablePrefix}workflow_entity_id_seq', (SELECT MAX(id) from "${tablePrefix}workflow_entity"))`,
 			);
 		}
 	}

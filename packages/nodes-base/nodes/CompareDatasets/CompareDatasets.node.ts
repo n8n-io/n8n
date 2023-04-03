@@ -13,7 +13,7 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: [1, 2, 3],
+		version: [1, 2, 2.1],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -138,8 +138,8 @@ export class CompareDatasets implements INodeType {
 				description:
 					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 				displayOptions: {
-					show: {
-						'@version': [2],
+					hide: {
+						'@version': [1],
 					},
 				},
 			},
@@ -205,8 +205,8 @@ export class CompareDatasets implements INodeType {
 						description:
 							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 						displayOptions: {
-							hide: {
-								'@version': [2],
+							show: {
+								'@version': [1],
 							},
 						},
 					},
