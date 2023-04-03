@@ -97,11 +97,11 @@ export async function runQueries(
 	}
 
 	const returnData: INodeExecutionData[] = [];
-	const mode = (options.queryBatching as QueryMode) || 'multiple';
+	const mode = (options.queryBatching as QueryMode) || 'single';
 
 	const connection = await pool.getConnection();
 
-	if (mode === 'multiple') {
+	if (mode === 'single') {
 		try {
 			const formatedQueries = queries.map(({ query, values }) => connection.format(query, values));
 

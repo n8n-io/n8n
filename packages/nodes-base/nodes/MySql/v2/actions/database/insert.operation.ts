@@ -28,7 +28,8 @@ const properties: INodeProperties[] = [
 			},
 		],
 		default: 'autoMapInputData',
-		description: 'Whether to map node input properties and the table data automatically or manually',
+		description:
+			'Whether to map node input properties and the table data automatically or manually',
 	},
 	{
 		displayName: `
@@ -112,11 +113,11 @@ export async function execute(
 	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
-	const queryBatching = (nodeOptions.queryBatching as QueryMode) || 'multiple';
+	const queryBatching = (nodeOptions.queryBatching as QueryMode) || 'single';
 
 	const queries: QueryWithValues[] = [];
 
-	if (queryBatching === 'multiple') {
+	if (queryBatching === 'single') {
 		let columns: string[] = [];
 		let insertItems: IDataObject[] = [];
 

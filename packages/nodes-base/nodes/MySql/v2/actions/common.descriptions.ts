@@ -56,51 +56,6 @@ export const optionsCollection: INodeProperties = {
 				'Maximum amount of connections to the database, setting high value can lead to performance issues and potential database crashes',
 		},
 		{
-			displayName: 'Combine Conditions',
-			name: 'combineConditions',
-			type: 'options',
-			description: 'How to combine conditions',
-			options: [
-				{
-					name: 'AND',
-					value: 'AND',
-				},
-				{
-					name: 'OR',
-					value: 'OR',
-				},
-			],
-			default: 'AND',
-			displayOptions: {
-				show: {
-					'/operation': ['select'],
-				},
-			},
-		},
-		{
-			displayName: 'Combine Conditions',
-			name: 'combineConditions',
-			type: 'options',
-			description: 'How to combine conditions',
-			options: [
-				{
-					name: 'AND',
-					value: 'AND',
-				},
-				{
-					name: 'OR',
-					value: 'OR',
-				},
-			],
-			default: 'AND',
-			displayOptions: {
-				show: {
-					'/operation': ['deleteTable'],
-					'/deleteCommand': ['delete'],
-				},
-			},
-		},
-		{
 			displayName: 'Query Batching',
 			name: 'queryBatching',
 			type: 'options',
@@ -108,9 +63,9 @@ export const optionsCollection: INodeProperties = {
 			description: 'The way queries should be sent to the database',
 			options: [
 				{
-					name: 'Multiple Queries',
-					value: 'multiple',
-					description: 'Execute queries for all incoming items, then process the results',
+					name: 'Single Query',
+					value: 'single',
+					description: 'A single query for all incoming items',
 				},
 				{
 					name: 'Independently',
@@ -124,38 +79,18 @@ export const optionsCollection: INodeProperties = {
 						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
 				},
 			],
-			default: 'multiple',
+			default: 'single',
 		},
 		{
 			displayName: 'Query Parameters',
 			name: 'queryReplacement',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: true,
-			},
-			default: [],
+			type: 'string',
+			default: '',
 			placeholder: 'Add Query Parameter',
 			description:
-				'Values have to be of type number, bigint, string, boolean, Date and null. Arrays and Objects will be converted to string.',
-			options: [
-				{
-					displayName: 'Values',
-					name: 'values',
-					values: [
-						{
-							displayName: 'Value',
-							name: 'value',
-							type: 'string',
-							default: '',
-							placeholder: 'e.g. queryParamValue',
-						},
-					],
-				},
-			],
+				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. More info.',
 			displayOptions: {
-				show: {
-					'/operation': ['executeQuery'],
-				},
+				show: { '/operation': ['executeQuery'] },
 			},
 		},
 		{
@@ -263,7 +198,7 @@ export const optionsCollection: INodeProperties = {
 	],
 };
 
-export const whereFixedCollection: INodeProperties = {
+export const selectRowsFixedCollection: INodeProperties = {
 	displayName: 'Select Rows',
 	name: 'where',
 	type: 'fixedCollection',
@@ -420,4 +355,25 @@ export const sortFixedCollection: INodeProperties = {
 			],
 		},
 	],
+};
+
+export const combineConditionsCollection: INodeProperties = {
+	displayName: 'Combine Conditions',
+	name: 'combineConditions',
+	type: 'options',
+	description:
+		'How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true',
+	options: [
+		{
+			name: 'AND',
+			value: 'AND',
+			description: 'Only rows that meet all the conditions are selected',
+		},
+		{
+			name: 'OR',
+			value: 'OR',
+			description: 'Rows that meet at least one condition are selected',
+		},
+	],
+	default: 'AND',
 };

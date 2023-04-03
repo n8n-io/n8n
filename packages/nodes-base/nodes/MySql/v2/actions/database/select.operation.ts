@@ -17,7 +17,8 @@ import {
 	optionsCollection,
 	sortFixedCollection,
 	tableRLC,
-	whereFixedCollection,
+	selectRowsFixedCollection,
+	combineConditionsCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -50,7 +51,8 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	whereFixedCollection,
+	selectRowsFixedCollection,
+	combineConditionsCollection,
 	sortFixedCollection,
 	optionsCollection,
 ];
@@ -98,11 +100,7 @@ export async function execute(
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-		const combineConditions = this.getNodeParameter(
-			'options.combineConditions',
-			i,
-			'AND',
-		) as string;
+		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
 		[query, values] = addWhereClauses(query, whereClauses, values, combineConditions);
 

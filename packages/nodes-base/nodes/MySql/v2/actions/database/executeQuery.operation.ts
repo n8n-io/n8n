@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { Mysql2Pool, QueryWithValues } from '../../helpers/interfaces';
 
@@ -64,10 +65,21 @@ export async function execute(
 
 		const options = this.getNodeParameter('options', i, {});
 
-		let values = (options.queryReplacement as IDataObject)?.values as IDataObject[];
+		let values;
+		let queryReplacement = options.queryReplacement;
 
-		if (values) {
-			values = values.map((entry) => entry.value as IDataObject);
+		if (typeof queryReplacement === 'string') {
+			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+		}
+
+		if (Array.isArray(queryReplacement)) {
+			values = queryReplacement as IDataObject[];
+		} else {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Query Replacement must be a string of comma-separated values, or an array of values',
+				{ itemIndex: i },
+			);
 		}
 
 		const preparedQuery = prepareQueryAndReplacements(rawQuery, values);

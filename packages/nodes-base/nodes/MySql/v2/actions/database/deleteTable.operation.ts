@@ -13,7 +13,12 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 import { addWhereClauses, runQueries } from '../../helpers/utils';
 
-import { optionsCollection, tableRLC, whereFixedCollection } from '../common.descriptions';
+import {
+	optionsCollection,
+	tableRLC,
+	selectRowsFixedCollection,
+	combineConditionsCollection,
+} from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	tableRLC,
@@ -42,7 +47,15 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		...whereFixedCollection,
+		...selectRowsFixedCollection,
+		displayOptions: {
+			show: {
+				deleteCommand: ['delete'],
+			},
+		},
+	},
+	{
+		...combineConditionsCollection,
 		displayOptions: {
 			show: {
 				deleteCommand: ['delete'],
@@ -94,11 +107,7 @@ export async function execute(
 			const whereClauses =
 				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 
-			const combineConditions = this.getNodeParameter(
-				'options.combineConditions',
-				i,
-				'AND',
-			) as string;
+			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
 			[query, values] = addWhereClauses(
 				`DELETE FROM \`${table}\``,
