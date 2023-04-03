@@ -3,6 +3,8 @@ import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 
+const { coverageReporters } = require('../../jest.config.js');
+
 export default mergeConfig(
 	defineConfig({
 		plugins: [vue()],
@@ -38,6 +40,12 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			coverage: {
+				provider: 'c8',
+				reporter: coverageReporters,
+				include: ['src/**/*.ts'],
+				all: true,
+			},
 			css: {
 				modules: {
 					classNameStrategy: 'non-scoped',

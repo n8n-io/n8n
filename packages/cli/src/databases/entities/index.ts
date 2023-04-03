@@ -14,7 +14,9 @@ import { TagEntity } from './TagEntity';
 import { User } from './User';
 import { WebhookEntity } from './WebhookEntity';
 import { WorkflowEntity } from './WorkflowEntity';
+import { WorkflowTagMapping } from './WorkflowTagMapping';
 import { WorkflowStatistics } from './WorkflowStatistics';
+import { ExecutionMetadata } from './ExecutionMetadata';
 
 export const entities = {
 	AuthIdentity,
@@ -32,5 +34,7 @@ export const entities = {
 	User,
 	WebhookEntity,
 	WorkflowEntity,
+	WorkflowTagMapping,
 	WorkflowStatistics,
+	ExecutionMetadata,
 };

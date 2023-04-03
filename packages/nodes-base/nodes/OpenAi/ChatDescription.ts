@@ -51,6 +51,22 @@ const completeOperations: INodeProperties[] = [
 				name: 'gpt-3.5-turbo-0301',
 				value: 'gpt-3.5-turbo-0301',
 			},
+			{
+				name: 'gpt-4',
+				value: 'gpt-4',
+			},
+			{
+				name: 'gpt-4-0314',
+				value: 'gpt-4-0314',
+			},
+			{
+				name: 'gpt-4-32k',
+				value: 'gpt-4-32k',
+			},
+			{
+				name: 'gpt-4-32k-0314',
+				value: 'gpt-4-32k-0314',
+			},
 		],
 		routing: {
 			send: {

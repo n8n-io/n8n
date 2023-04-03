@@ -28,7 +28,10 @@ for (let { name, path, version, private: isPrivate, dependencies } of packages) 
 	packageMap[name] = { path, isDirty, version };
 }
 
-assert.ok(packageMap['n8n'].isDirty, 'No changes found since the last release');
+assert.ok(
+	Object.values(packageMap).some(({ isDirty }) => isDirty),
+	'No changes found since the last release',
+);
 
 // Keep the monorepo version up to date with the released version
 packageMap['monorepo-root'].version = packageMap['n8n'].version;

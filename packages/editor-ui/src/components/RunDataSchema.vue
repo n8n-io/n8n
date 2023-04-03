@@ -18,6 +18,7 @@ type Props = {
 	distanceFromActive: number;
 	runIndex: number;
 	totalRuns: number;
+	paneType: 'input' | 'output';
 	node: INodeUi | null;
 };
 
@@ -92,6 +93,7 @@ const onDragEnd = (el: HTMLElement) => {
 						:schema="schema"
 						:level="0"
 						:parent="null"
+						:paneType="paneType"
 						:subKey="`${schema.type}-0-0`"
 						:mappingEnabled="mappingEnabled"
 						:draggingPath="draggingPath"

@@ -8,6 +8,8 @@ module.exports = {
 
 	...sharedOptions(__dirname),
 
+	ignorePatterns: ['index.js'],
+
 	rules: {
 		'@typescript-eslint/consistent-type-imports': 'error',
 

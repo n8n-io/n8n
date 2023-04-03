@@ -6,7 +6,7 @@
 import mixins from 'vue-typed-mixins';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
-import { history } from '@codemirror/commands';
+import { history, redo } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -16,7 +16,7 @@ import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 import { forceParse } from '@/utils/forceParse';
-import { autocompletion } from '@codemirror/autocomplete';
+import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
 
 import type { IVariableItemSelected } from '@/Interface';
 
@@ -44,6 +44,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 			autocompletion(),
 			Prec.highest(
 				keymap.of([
+					{ key: 'Tab', run: acceptCompletion },
 					{
 						any: (_: EditorView, event: KeyboardEvent) => {
 							if (event.key === 'Escape') {
@@ -54,6 +55,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 							return false;
 						},
 					},
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			n8nLang(),
@@ -61,6 +63,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
