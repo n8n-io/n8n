@@ -26,6 +26,7 @@ import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
+	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
