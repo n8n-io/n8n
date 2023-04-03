@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.218.0",
+  "version": "0.220.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -8,6 +8,7 @@
     "name": "Jan Oberhauser",
     "email": "jan@n8n.io"
   },
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
@@ -445,6 +446,7 @@
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/Figma/FigmaTrigger.node.js",
       "dist/nodes/FileMaker/FileMaker.node.js",
+      "dist/nodes/Filter/Filter.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
       "dist/nodes/FormIo/FormIoTrigger.node.js",

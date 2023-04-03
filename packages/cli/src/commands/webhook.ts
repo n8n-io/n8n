@@ -3,6 +3,7 @@ import { LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
+import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 
@@ -79,6 +80,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
+		await Container.get(Queue).init();
 		await new WebhookServer().start();
 		this.logger.info('Webhook listener waiting for requests.');
 

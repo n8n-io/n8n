@@ -23,6 +23,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
+	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -47,7 +48,9 @@ import type { User } from '@db/entities/User';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { EventDestinations } from '@db/entities/MessageEventBusDestinationEntity';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 
 export interface IActivationError {
 	time: number;
@@ -79,6 +82,7 @@ export interface IDatabaseCollections {
 	Workflow: Repository<WorkflowEntity>;
 	Webhook: Repository<WebhookEntity>;
 	Tag: Repository<TagEntity>;
+	WorkflowTagMapping: Repository<WorkflowTagMapping>;
 	Role: Repository<Role>;
 	User: Repository<User>;
 	SharedCredentials: Repository<SharedCredentials>;
@@ -88,6 +92,7 @@ export interface IDatabaseCollections {
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 	EventDestinations: Repository<EventDestinations>;
+	ExecutionMetadata: Repository<ExecutionMetadata>;
 }
 
 // ----------------------------------
@@ -105,7 +110,8 @@ export type UsageCount = {
 	usageCount: number;
 };
 
-export type ITagWithCountDb = TagEntity & UsageCount;
+export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'> &
+	UsageCount;
 
 // ----------------------------------
 //            workflows
@@ -162,7 +168,7 @@ export interface IExecutionBase {
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
-	waitTill?: Date;
+	waitTill?: Date | null;
 	workflowData?: IWorkflowBase;
 }
 
@@ -176,7 +182,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	data: IRunExecutionData;
 	retryOf?: string;
 	retrySuccessId?: string;
-	waitTill?: Date;
+	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
 }
 
@@ -453,16 +459,12 @@ export interface IVersionNotificationSettings {
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	saveDataErrorExecution: 'all' | 'none';
-	saveDataSuccessExecution: 'all' | 'none';
+	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
-	workflowCallerPolicyDefaultOption:
-		| 'any'
-		| 'none'
-		| 'workflowsFromAList'
-		| 'workflowsFromSameOwner';
+	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;

@@ -26,10 +26,6 @@ if (inE2ETests) {
 
 const config = convict(schema);
 
-if (inE2ETests) {
-	config.set('enterprise.features.sharing', true);
-}
-
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
 

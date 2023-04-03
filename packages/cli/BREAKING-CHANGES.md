@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.223.0
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v16.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v16 or above.
+
 ## 0.214.0
 
 ### What changed?

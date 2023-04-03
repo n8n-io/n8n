@@ -71,6 +71,7 @@ import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -135,17 +136,11 @@ export function executeErrorWorkflow(
 
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
-		if (
-			workflowData.settings?.errorWorkflow &&
-			!(
-				mode === 'error' &&
-				workflowId &&
-				workflowData.settings.errorWorkflow.toString() === workflowId
-			)
-		) {
+		const { errorWorkflow } = workflowData.settings ?? {};
+		if (errorWorkflow && !(mode === 'error' && workflowId && errorWorkflow === workflowId)) {
 			Logger.verbose('Start external error workflow', {
 				executionId,
-				errorWorkflowId: workflowData.settings.errorWorkflow.toString(),
+				errorWorkflowId: errorWorkflow,
 				workflowId,
 			});
 			// If a specific error workflow is set run only that one
@@ -159,11 +154,7 @@ export function executeErrorWorkflow(
 			}
 			getWorkflowOwner(workflowId)
 				.then((user) => {
-					void WorkflowHelpers.executeErrorWorkflow(
-						workflowData.settings!.errorWorkflow as string,
-						workflowErrorData,
-						user,
-					);
+					void WorkflowHelpers.executeErrorWorkflow(errorWorkflow, workflowErrorData, user);
 				})
 				.catch((error: Error) => {
 					ErrorReporter.error(error);
@@ -171,7 +162,7 @@ export function executeErrorWorkflow(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
 							executionId,
-							errorWorkflowId: workflowData.settings!.errorWorkflow!.toString(),
+							errorWorkflowId: errorWorkflow,
 							workflowId,
 							error,
 							workflowErrorData,
@@ -262,6 +253,22 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			);
 		}
 	}
+}
+
+export async function saveExecutionMetadata(
+	executionId: string,
+	executionMetadata: Record<string, string>,
+): Promise<ExecutionMetadata[]> {
+	const metadataRows = [];
+	for (const [key, value] of Object.entries(executionMetadata)) {
+		metadataRows.push({
+			execution: { id: executionId },
+			key,
+			value,
+		});
+	}
+
+	return Db.collections.ExecutionMetadata.save(metadataRows);
 }
 
 /**
@@ -404,21 +411,21 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 		],
 		nodeExecuteAfter: [
 			async function (
+				this: WorkflowHooks,
 				nodeName: string,
 				data: ITaskData,
 				executionData: IRunExecutionData,
 			): Promise<void> {
-				if (this.workflowData.settings !== undefined) {
-					if (this.workflowData.settings.saveExecutionProgress === false) {
+				const saveExecutionProgress = config.getEnv('executions.saveExecutionProgress');
+				const workflowSettings = this.workflowData.settings;
+				if (workflowSettings !== undefined) {
+					if (workflowSettings.saveExecutionProgress === false) {
 						return;
 					}
-					if (
-						this.workflowData.settings.saveExecutionProgress !== true &&
-						!config.getEnv('executions.saveExecutionProgress')
-					) {
+					if (workflowSettings.saveExecutionProgress !== true && !saveExecutionProgress) {
 						return;
 					}
-				} else if (!config.getEnv('executions.saveExecutionProgress')) {
+				} else if (!saveExecutionProgress) {
 					return;
 				}
 
@@ -546,13 +553,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
+					const workflowSettings = this.workflowData.settings;
 					let saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-					if (
-						this.workflowData.settings !== undefined &&
-						this.workflowData.settings.saveManualExecutions !== undefined
-					) {
+					if (workflowSettings?.saveManualExecutions !== undefined) {
 						// Apply to workflow override
-						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
+						saveManualExecutions = workflowSettings.saveManualExecutions as boolean;
 					}
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
@@ -656,6 +661,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						this.executionId,
 						executionData as IExecutionFlattedDb,
 					);
+
+					try {
+						if (fullRunData.data.resultData.metadata) {
+							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+						}
+					} catch (e) {
+						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
+					}
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
@@ -788,6 +801,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					await Db.collections.Execution.update(this.executionId, {
 						status: executionData.status,
 					});
+
+					try {
+						if (fullRunData.data.resultData.metadata) {
+							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+						}
+					} catch (e) {
+						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
+					}
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
@@ -991,16 +1012,14 @@ async function executeWorkflow(
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		if (
-			workflowData.settings?.executionTimeout !== undefined &&
-			workflowData.settings.executionTimeout > 0
-		) {
+		const workflowSettings = workflowData.settings;
+		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
 			// We might have received a max timeout timestamp from the parent workflow
 			// If we did, then we get the minimum time between the two timeouts
 			// If no timeout was given from the parent, then we use our timeout.
 			subworkflowTimeout = Math.min(
 				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				Date.now() + (workflowData.settings.executionTimeout as number) * 1000,
+				Date.now() + workflowSettings.executionTimeout * 1000,
 			);
 		}
 

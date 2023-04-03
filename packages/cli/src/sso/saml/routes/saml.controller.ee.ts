@@ -16,6 +16,7 @@ import type { PostBindingContext } from 'samlify/types/src/entity';
 import { isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
 import { AuthenticatedRequest } from '@/requests';
+import { getServiceProviderEntityId, getServiceProviderReturnUrl } from '../serviceProvider.ee';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -35,7 +36,11 @@ export class SamlController {
 	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configGet(req: AuthenticatedRequest, res: express.Response) {
 		const prefs = this.samlService.samlPreferences;
-		return res.send(prefs);
+		return res.send({
+			...prefs,
+			entityID: getServiceProviderEntityId(),
+			returnUrl: getServiceProviderReturnUrl(),
+		});
 	}
 
 	/**
@@ -135,7 +140,6 @@ export class SamlController {
 	private async handleInitSSO(res: express.Response) {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
-			// Return the redirect URL directly
 			return res.send(result.context.context);
 		} else if (result?.binding === 'post') {
 			return res.send(getInitSSOFormView(result.context as PostBindingContext));

@@ -14,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator, FindOptionsWhere } from 'typeorm';
-import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Not, Raw } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -35,10 +35,15 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { parse } from 'flatted';
 import { Container } from 'typedi';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executionHelpers';
+import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
+import { DateUtils } from 'typeorm/util/DateUtils';
 
 interface IGetExecutionsQueryFilter {
-	id?: FindOperator<string>;
+	id?: FindOperator<string> | string;
 	finished?: boolean;
 	mode?: string;
 	retryOf?: string;
@@ -47,12 +52,16 @@ interface IGetExecutionsQueryFilter {
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
 }
 
 const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
+		id: { type: 'string' },
 		finished: { type: 'boolean' },
 		mode: { type: 'string' },
 		retryOf: { type: 'string' },
@@ -63,6 +72,21 @@ const schemaGetExecutionsQueryFilter = {
 		},
 		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
+		startedAfter: { type: 'date-time' },
+		startedBefore: { type: 'date-time' },
+	},
+	$defs: {
+		metadata: {
+			type: 'object',
+			required: ['key', 'value'],
+			properties: {
+				key: {
+					type: 'string',
+				},
+				value: { type: 'string' },
+			},
+		},
 	},
 };
 
@@ -84,17 +108,38 @@ export class ExecutionsService {
 	static async getExecutionsCount(
 		countFilter: IDataObject,
 		user: User,
+		metadata?: Array<{ key: string; value: string }>,
 	): Promise<{ count: number; estimated: boolean }> {
 		const dbType = config.getEnv('database.type');
 		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 		// For databases other than Postgres, do a regular count
 		// when filtering based on `workflowId` or `finished` fields.
-		if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
+		if (
+			dbType !== 'postgresdb' ||
+			metadata?.length ||
+			filteredFields.length > 0 ||
+			user.globalRole.name !== 'owner'
+		) {
 			const sharedWorkflowIds = await this.getWorkflowIdsForUser(user);
 
-			const countParams = { where: { workflowId: In(sharedWorkflowIds), ...countFilter } };
-			const count = await Db.collections.Execution.count(countParams);
+			let query = Db.collections.Execution.createQueryBuilder('execution')
+				.select()
+				.orderBy('execution.id', 'DESC')
+				.where({ workflowId: In(sharedWorkflowIds) });
+
+			if (metadata?.length) {
+				query = query.leftJoinAndSelect(ExecutionMetadata, 'md', 'md.executionId = execution.id');
+				for (const md of metadata) {
+					query = query.andWhere('md.key = :key AND md.value = :value', md);
+				}
+			}
+
+			if (filteredFields.length > 0) {
+				query = query.andWhere(countFilter);
+			}
+
+			const count = await query.getCount();
 			return { count, estimated: false };
 		}
 
@@ -137,6 +182,18 @@ export class ExecutionsService {
 				filter.waitTill = IsNull();
 			} else {
 				delete filter.waitTill;
+			}
+
+			if (Array.isArray(filter.metadata)) {
+				delete filter.metadata;
+			}
+
+			if ('startedAfter' in filter) {
+				delete filter.startedAfter;
+			}
+
+			if ('startedBefore' in filter) {
+				delete filter.startedBefore;
 			}
 		}
 	}
@@ -227,17 +284,17 @@ export class ExecutionsService {
 		} = {};
 
 		if (req.query.lastId) {
-			rangeQuery.push('id < :lastId');
+			rangeQuery.push('execution.id < :lastId');
 			rangeQueryParams.lastId = req.query.lastId;
 		}
 
 		if (req.query.firstId) {
-			rangeQuery.push('id > :firstId');
+			rangeQuery.push('execution.id > :firstId');
 			rangeQueryParams.firstId = req.query.firstId;
 		}
 
 		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push('id NOT IN (:...executingWorkflowIds)');
+			rangeQuery.push('execution.id NOT IN (:...executingWorkflowIds)');
 			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
 		}
 
@@ -261,11 +318,36 @@ export class ExecutionsService {
 				'execution.workflowData',
 				'execution.status',
 			])
-			.orderBy('id', 'DESC')
+			.orderBy('execution.id', 'DESC')
 			.take(limit)
 			.where(findWhere);
 
 		const countFilter = deepCopy(filter ?? {});
+		const metadata = isAdvancedExecutionFiltersEnabled() ? filter?.metadata : undefined;
+
+		if (metadata?.length) {
+			query = query.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
+			for (const md of metadata) {
+				query = query.andWhere('md.key = :key AND md.value = :value', md);
+			}
+		}
+
+		if (filter?.startedAfter) {
+			query = query.andWhere({
+				startedAt: MoreThanOrEqual(
+					DateUtils.mixedDateToUtcDatetimeString(new Date(filter.startedAfter)),
+				),
+			});
+		}
+
+		if (filter?.startedBefore) {
+			query = query.andWhere({
+				startedAt: LessThanOrEqual(
+					DateUtils.mixedDateToUtcDatetimeString(new Date(filter.startedBefore)),
+				),
+			});
+		}
+
 		// deepcopy breaks the In operator so we need to reapply it
 		if (filter?.status) {
 			Object.assign(filter, { status: In(filter.status) });
@@ -285,6 +367,7 @@ export class ExecutionsService {
 		const { count, estimated } = await this.getExecutionsCount(
 			countFilter as IDataObject,
 			req.user,
+			metadata,
 		);
 
 		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
