@@ -1,9 +1,6 @@
-import type { RunningMode } from '@db/entities/AuthProviderSyncHistory';
 import type { AuthenticatedRequest } from '@/requests';
 
-export type ConnectionSecurity = 'none' | 'tls' | 'startTls';
-
-export type ServiceProvider = 'custom' | 'google';
+export type ServiceProvider = 'custom' | 'google' | 'microsoft';
 
 export interface OpenIDConfig {
 	loginEnabled: boolean;

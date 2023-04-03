@@ -1,5 +1,5 @@
-import Container from 'typedi';
-import { License } from '@/License';
+// import Container from 'typedi';
+// import { License } from '@/License';
 import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import config from '@/config';
 import type { OpenIDConfig } from './types';
@@ -17,7 +17,7 @@ import { UserSettings } from 'n8n-core';
 import { AES, enc } from 'crypto-js';
 
 export const isOpenIDEnabled = (): boolean => {
-	const license = Container.get(License);
+	// const license = Container.get(License);
 	return isUserManagementEnabled();
 
 	// (config.getEnv(OPENID_FEATURE_ENABLED) || license.isOpenIdEnabled())
