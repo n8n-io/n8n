@@ -142,7 +142,10 @@ const properties: INodeProperties[] = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
-		default: {},
+		default: {
+			mappingMode: 'defineBelow',
+			values: {},
+		},
 		required: true,
 		typeOptions: {
 			resourceMapper: {
@@ -207,7 +210,7 @@ export async function execute(
 		const dataMode =
 			nodeVersion === 2
 				? (this.getNodeParameter('dataMode', i) as string)
-				: (this.getNodeParameter('columns.mode', i) as string);
+				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 		let valueToMatchOn: string | IDataObject = '';

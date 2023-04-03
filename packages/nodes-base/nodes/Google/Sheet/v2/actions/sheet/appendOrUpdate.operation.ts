@@ -149,7 +149,10 @@ export const description: SheetProperties = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
-		default: {},
+		default: {
+			mappingMode: 'defineBelow',
+			values: {},
+		},
 		required: true,
 		typeOptions: {
 			resourceMapper: {
@@ -255,7 +258,7 @@ export async function execute(
 		const dataMode =
 			nodeVersion === 3
 				? (this.getNodeParameter('dataMode', 0) as string)
-				: (this.getNodeParameter('columns.mode', 0) as string);
+				: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
 		if (dataMode === 'nothing') continue;
 

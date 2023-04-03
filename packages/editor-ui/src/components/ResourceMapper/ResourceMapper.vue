@@ -5,6 +5,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { INode, INodeParameters, INodeProperties } from 'n8n-workflow';
 import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 import { computed, onMounted, ref } from 'vue';
+import MappingModeDropDown from '@/components/ResourceMapper/MappingModeDropDown.vue';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -26,7 +27,7 @@ const fields = computed<string>(() => {
 });
 
 const prefix = computed<string>(() => {
-	return props.parameter.typeOptions?.resourceMapper.mode === 'add' ? '+' : '-';
+	return props.parameter.typeOptions?.resourceMapper?.mode === 'add' ? '+' : '-';
 });
 
 onMounted(async () => {
@@ -44,7 +45,7 @@ async function loadFieldsToMap(): Promise<void> {
 		},
 		currentNodeParameters: resolveParameter(props.node.parameters) as INodeParameters,
 		path: props.path,
-		methodName: props.parameter.typeOptions?.resourceMapper.resourceMapperMethod,
+		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
 		credentials: props.node.credentials,
 	};
 	fieldsToMap.value = (await nodeTypesStore.getResourceMapperFields(requestParams)).fields;
@@ -56,5 +57,5 @@ defineExpose({
 </script>
 
 <template>
-	<n8n-notice :content="`${prefix} Resource mapper ${fields}`" />
+	<mapping-mode-drop-down :initial-value="props.parameter.mode || 'auto'" />
 </template>
