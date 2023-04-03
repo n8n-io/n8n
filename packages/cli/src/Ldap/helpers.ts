@@ -215,7 +215,15 @@ export const handleLdapInit = async (): Promise<void> => {
 
 	const ldapConfig = await getLdapConfig();
 
-	await setGlobalLdapConfigVariables(ldapConfig);
+	try {
+		await setGlobalLdapConfigVariables(ldapConfig);
+	} catch (error) {
+		Logger.error(
+			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			error,
+		);
+	}
 
 	// init LDAP manager with the current
 	// configuration
