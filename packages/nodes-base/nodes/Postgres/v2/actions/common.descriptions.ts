@@ -50,12 +50,11 @@ export const optionsCollection: INodeProperties = {
 					name: 'Transaction',
 					value: 'transaction',
 					description:
-						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back of the run',
+						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
 				},
 			],
 			default: 'single',
-			description:
-				'The way queries should be sent to the database. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>.',
+			description: 'The way queries should be sent to the database',
 		},
 		{
 			displayName: 'Query Parameters',

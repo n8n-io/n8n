@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Unique Column',
+		displayName: 'Column to Match On',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
@@ -70,7 +70,7 @@ const properties: INodeProperties[] = [
 		hint: "Used to find the correct row(s) to update. Doesn't get changed. Has to be unique.",
 	},
 	{
-		displayName: 'Value of Unique Column',
+		displayName: 'Value of Column to Match On',
 		name: 'valueToMatchOn',
 		type: 'string',
 		default: '',
