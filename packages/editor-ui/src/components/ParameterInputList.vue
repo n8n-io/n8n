@@ -100,9 +100,10 @@
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="getParameterValue(nodeValues, parameter.name, path)"
-					:displayOptions="true"
+					:displayOptions="parameter.type !== 'resourceMapper'"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
+					:hideLabel="PARAMETER_TYPES_WITHOUT_LABEL.includes(parameter.type)"
 					@valueChanged="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
@@ -132,7 +133,7 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { KEEP_AUTH_IN_NDV_FOR_NODES, PARAMETER_TYPES_WITHOUT_LABEL } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -142,6 +143,11 @@ export default mixins(workflowHelpers).extend({
 		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		ImportParameter,
+	},
+	data() {
+		return {
+			PARAMETER_TYPES_WITHOUT_LABEL,
+		};
 	},
 	props: {
 		nodeValues: {

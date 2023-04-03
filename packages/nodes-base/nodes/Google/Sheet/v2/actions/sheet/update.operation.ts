@@ -160,7 +160,7 @@ export const description: SheetProperties = [
 				mode: 'upsert',
 				fieldWords: {
 					singular: 'column',
-					plural: 'columns,',
+					plural: 'columns',
 				},
 				addAllFields: true,
 				noFieldsError: 'No columns found in sheet',

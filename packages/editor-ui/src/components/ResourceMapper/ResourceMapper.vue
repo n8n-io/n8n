@@ -2,22 +2,23 @@
 import { ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { INode, INodeParameters, INodeProperties } from 'n8n-workflow';
+import { INode, INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 import { computed, onMounted, ref } from 'vue';
-import MappingModeDropDown from '@/components/ResourceMapper/MappingModeDropDown.vue';
+import MappingModeSelect from './MappingModeSelect.vue';
 
 export interface Props {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;
+	inputSize: string;
 }
+
+const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
 
 const fieldsToMap = ref([] as ResourceMapperFields['fields']);
-
-const nodeTypesStore = useNodeTypesStore();
 
 const fields = computed<string>(() => {
 	if (fieldsToMap.value.length === 0) {
@@ -30,8 +31,19 @@ const prefix = computed<string>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.mode === 'add' ? '+' : '-';
 });
 
+const isInsertMode = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.mode === 'add';
+});
+
 onMounted(async () => {
 	await loadFieldsToMap();
+});
+
+const nodeType = computed<INodeTypeDescription | null>(() => {
+	if (props.node) {
+		return nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion);
+	}
+	return null;
 });
 
 async function loadFieldsToMap(): Promise<void> {
@@ -51,11 +63,25 @@ async function loadFieldsToMap(): Promise<void> {
 	fieldsToMap.value = (await nodeTypesStore.getResourceMapperFields(requestParams)).fields;
 }
 
+function onModeChanged(mode: string): void {
+	console.log('MODE CHANGED', mode);
+}
+
 defineExpose({
 	fields,
 });
 </script>
 
 <template>
-	<mapping-mode-drop-down :initial-value="props.parameter.mode || 'auto'" />
+	<div class="mt-4xs">
+		<mapping-mode-select
+			v-if="isInsertMode"
+			:inputSize="inputSize"
+			:initial-value="props.parameter.mode || 'defineBelow'"
+			:type-options="props.parameter.typeOptions?.resourceMapper"
+			:serviceName="nodeType?.displayName || ''"
+			@modeChanged="onModeChanged"
+		/>
+		<n8n-notice :content="`${prefix} ${fields}`" />
+	</div>
 </template>

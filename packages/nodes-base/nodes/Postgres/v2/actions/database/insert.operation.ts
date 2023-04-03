@@ -119,7 +119,7 @@ const properties: INodeProperties[] = [
 				mode: 'add',
 				fieldWords: {
 					singular: 'column',
-					plural: 'columns,',
+					plural: 'columns',
 				},
 				addAllFields: true,
 				noFieldsError: 'No columns found in the database',

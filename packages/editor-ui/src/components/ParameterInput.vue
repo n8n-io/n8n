@@ -38,6 +38,7 @@
 				:parameter="parameter"
 				:node="node"
 				:path="path"
+				:inputSize="inputSize"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"

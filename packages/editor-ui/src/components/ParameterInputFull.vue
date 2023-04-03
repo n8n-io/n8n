@@ -10,6 +10,7 @@
 	>
 		<template #options>
 			<parameter-options
+				v-if="displayOptions"
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
@@ -91,6 +92,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useSegment } from '@/stores/segment';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '../utils/mappingUtils';
+import { PARAMETER_TYPES_WITHOUT_LABEL } from '@/constants';
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 

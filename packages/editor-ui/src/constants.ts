@@ -539,3 +539,5 @@ export const ONBOARDING_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+
+export const PARAMETER_TYPES_WITHOUT_LABEL = ['resourceMapper'];
