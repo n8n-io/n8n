@@ -67,9 +67,19 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 		// Load nodes from `n8n-nodes-base` and any other `n8n-nodes-*` package in the main `node_modules`
-		await this.loadNodesFromNodeModules(CLI_DIR);
-		// Load nodes from installed community packages
-		await this.loadNodesFromNodeModules(this.downloadFolder);
+		const pathsToScan = [
+			// In case "n8n" package is in same node_modules folder.
+			path.join(CLI_DIR, '..'),
+			// In case "n8n" package is the root and the packages are
+			// in the "node_modules" folder underneath it.
+			path.join(CLI_DIR, 'node_modules'),
+			// Path where all community nodes are installed
+			path.join(this.downloadFolder, 'node_modules'),
+		];
+
+		for (const nodeModulesDir of pathsToScan) {
+			await this.loadNodesFromNodeModules(nodeModulesDir);
+		}
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -117,8 +127,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	private async loadNodesFromNodeModules(scanDir: string): Promise<void> {
-		const nodeModulesDir = path.join(scanDir, 'node_modules');
+	private async loadNodesFromNodeModules(nodeModulesDir: string): Promise<void> {
 		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
 		const installedPackagePaths = [
 			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
