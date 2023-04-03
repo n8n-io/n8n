@@ -54,7 +54,7 @@ export function parsePostgresError(
 				const errorMessage = `Syntax error at line ${lineIndex + 1} near "${snippet}"`;
 				error.message = errorMessage;
 			}
-		} catch (_err) {}
+		} catch {}
 	}
 
 	let message = error.message;
@@ -94,6 +94,8 @@ export function parsePostgresError(
 }
 
 export function addWhereClauses(
+	node: INode,
+	itemIndex: number,
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
@@ -110,11 +112,28 @@ export function addWhereClauses(
 	let replacementIndex = replacements.length + 1;
 
 	let whereQuery = ' WHERE';
-	const values: string[] = [];
+	const values: QueryValues = [];
 
 	clauses.forEach((clause, index) => {
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
+		}
+		if (['>', '<', '>=', '<='].includes(clause.condition)) {
+			const value = Number(clause.value);
+
+			if (Number.isNaN(value)) {
+				throw new NodeOperationError(
+					node,
+					`Operator in entry ${index + 1} of 'Select Rows' works with numbers, but value ${
+						clause.value
+					} is not a number`,
+					{
+						itemIndex,
+					},
+				);
+			}
+
+			clause.value = value;
 		}
 		const columnReplacement = `$${replacementIndex}:name`;
 		values.push(clause.column);

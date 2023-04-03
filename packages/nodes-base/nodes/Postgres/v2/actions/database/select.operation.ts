@@ -4,6 +4,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 import type {
+	PgpDatabase,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -72,6 +73,7 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: IDataObject,
+	_db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
@@ -104,7 +106,14 @@ export async function execute(
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
-		[query, values] = addWhereClauses(query, whereClauses, values, combineConditions);
+		[query, values] = addWhereClauses(
+			this.getNode(),
+			i,
+			query,
+			whereClauses,
+			values,
+			combineConditions,
+		);
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];

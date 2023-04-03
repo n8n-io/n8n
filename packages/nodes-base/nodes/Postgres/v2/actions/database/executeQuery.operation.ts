@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import type { QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
+import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
@@ -50,6 +50,7 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: IDataObject,
+	_db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 

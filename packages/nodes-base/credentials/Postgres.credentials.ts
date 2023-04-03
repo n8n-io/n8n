@@ -131,6 +131,17 @@ export class Postgres implements ICredentialType {
 			},
 		},
 		{
+			displayName: 'SSH Postgres Port',
+			name: 'sshPostgresPort',
+			type: 'number',
+			default: 5432,
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
+		},
+		{
 			displayName: 'SSH User',
 			name: 'sshUser',
 			type: 'string',
