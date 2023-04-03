@@ -1047,8 +1047,6 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects || 21;
 			}
 
-			console.log(requestOptions);
-
 			if (response?.response?.neverError) {
 				requestOptions.simple = false;
 			}
