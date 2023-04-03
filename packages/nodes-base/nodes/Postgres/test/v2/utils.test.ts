@@ -129,7 +129,14 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		const values = ['public', 'my_table'];
 		const whereClauses = [{ column: 'id', condition: 'equal', value: '1' }];
 
-		const [updatedQuery, updatedValues] = addWhereClauses(query, whereClauses, values, 'AND');
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'AND',
+		);
 
 		expect(updatedQuery).toEqual('SELECT * FROM $1:name.$2:name WHERE $3:name = $4');
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1']);
@@ -143,7 +150,14 @@ describe('Test PostgresV2, addWhereClauses', () => {
 			{ column: 'foo', condition: 'equal', value: 'select 2' },
 		];
 
-		const [updatedQuery, updatedValues] = addWhereClauses(query, whereClauses, values, 'OR');
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'OR',
+		);
 
 		expect(updatedQuery).toEqual(
 			'SELECT * FROM $1:name.$2:name WHERE $3:name = $4 OR $5:name = $6',
@@ -160,6 +174,8 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		];
 
 		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
 			query,
 			whereClauses,
 			values,

@@ -93,7 +93,7 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: IDataObject,
-	_db: PgpDatabase,
+	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	const queries: QueryWithValues[] = [];
 
