@@ -90,12 +90,6 @@ export default mergeConfig(
 						'design-system/src/components/N8nButton/overrides/ElButton.ts',
 					),
 				},
-				// https://github.com/vitest-dev/vitest/discussions/1806
-				{
-					find: /^monaco-editor$/,
-					replacement:
-						__dirname + "/node_modules/monaco-editor/esm/vs/editor/editor.api",
-				},
 			],
 		},
 		base: publicPath,
@@ -137,6 +131,16 @@ export default mergeConfig(
 					classNameStrategy: 'non-scoped',
 				},
 			},
+		},
+		resolve: {
+			alias: [
+				// https://github.com/vitest-dev/vitest/discussions/1806
+				{
+					find: /^monaco-editor$/,
+					replacement:
+						__dirname + "/node_modules/monaco-editor/esm/vs/editor/editor.api",
+				},
+			],
 		},
 	}),
 );
