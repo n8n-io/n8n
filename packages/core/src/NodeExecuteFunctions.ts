@@ -1173,6 +1173,7 @@ export async function requestOAuth2(
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
+				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
 				response.statusCode ===
 					(oAuth2Options?.tokenExpiredStatusCode === undefined
