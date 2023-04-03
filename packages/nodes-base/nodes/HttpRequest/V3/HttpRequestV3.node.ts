@@ -1038,12 +1038,15 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || fullResponse) {
 				requestOptions.resolveWithFullResponse = true;
 			}
-			if (redirect?.redirect?.followRedirects || (nodeVersion >= 5 && redirect === undefined)) {
+
+			const defaultRedirect = nodeVersion >= 5 && redirect === undefined;
+
+			if (redirect?.redirect?.followRedirects || defaultRedirect) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects || (nodeVersion >= 5 && redirect === undefined)) {
+			if (redirect?.redirect?.maxRedirects || defaultRedirect) {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects || 21;
 			}
 
