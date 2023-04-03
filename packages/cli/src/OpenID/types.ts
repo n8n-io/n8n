@@ -14,28 +14,6 @@ export interface OpenIDConfig {
 	buttonName: string;
 }
 
-export interface LdapConfig {
-	loginEnabled: boolean;
-	loginLabel: string;
-	connectionUrl: string;
-	allowUnauthorizedCerts: boolean;
-	connectionSecurity: ConnectionSecurity;
-	connectionPort: number;
-	baseDn: string;
-	bindingAdminDn: string;
-	bindingAdminPassword: string;
-	firstNameAttribute: string;
-	lastNameAttribute: string;
-	emailAttribute: string;
-	loginIdAttribute: string;
-	ldapIdAttribute: string;
-	userFilter: string;
-	synchronizationEnabled: boolean;
-	synchronizationInterval: number; // minutes
-	searchPageSize: number;
-	searchTimeout: number;
-}
-
 export interface DiscoveryEndpointResponse {
 	authorization_endpoint: string;
 	token_endpoint: string;
