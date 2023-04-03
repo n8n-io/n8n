@@ -175,12 +175,19 @@ export const optionsCollection: INodeProperties = {
 			name: 'selectDistinct',
 			type: 'boolean',
 			default: false,
-			description: 'Whether toremove these duplicate rows',
+			description: 'Whether to remove these duplicate rows',
 			displayOptions: {
 				show: {
 					'/operation': ['select'],
 				},
 			},
+		},
+		{
+			displayName: 'Show Query Metadata',
+			name: 'showMetadata',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to show metadata of the query, or just confirmation of success',
 		},
 		{
 			displayName: 'Skip on Conflict',

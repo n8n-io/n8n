@@ -116,7 +116,15 @@ export async function runQueries(
 				singleQuery = formatedQueries[0];
 			}
 
-			const response = (await pool.query(singleQuery))[0] as unknown as IDataObject[][];
+			let response = (await pool.query(singleQuery))[0] as unknown as IDataObject[][];
+
+			if (!options.showMetadata) {
+				if (response && Array.isArray(response)) {
+					response = response.filter((entry) => Array.isArray(entry));
+				} else {
+					response = [];
+				}
+			}
 
 			if (response && Array.isArray(response)) {
 				response.forEach((entry, index) => {
@@ -127,9 +135,12 @@ export async function runQueries(
 					returnData.push(...executionData);
 				});
 			} else {
-				const executionData = this.helpers.constructExecutionMetaData(wrapData(response), {
-					itemData: { item: 0 },
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					wrapData(response || { success: true }),
+					{
+						itemData: { item: 0 },
+					},
+				);
 
 				returnData.push(...executionData);
 			}
@@ -138,6 +149,10 @@ export async function runQueries(
 
 			if (!this.continueOnFail()) throw error;
 			returnData.push({ json: { message: error.message, error: { ...error } } });
+		}
+
+		if (!returnData.length) {
+			returnData.push({ json: { success: true } });
 		}
 	} else {
 		if (mode === 'independently') {
