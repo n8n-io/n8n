@@ -100,7 +100,7 @@ export async function createPool(
 
 		const forwardConfig = {
 			srcHost: '127.0.0.1',
-			srcPort: 3306,
+			srcPort: credentials.sshMysqlPort as number,
 			dstHost: credentials.host as string,
 			dstPort: credentials.port as number,
 		};

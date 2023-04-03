@@ -142,6 +142,17 @@ export class MySql implements ICredentialType {
 			},
 		},
 		{
+			displayName: 'SSH MySQL Port',
+			name: 'sshMysqlPort',
+			type: 'number',
+			default: 3306,
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
+		},
+		{
 			displayName: 'SSH User',
 			name: 'sshUser',
 			type: 'string',
