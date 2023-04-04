@@ -26,13 +26,11 @@ const personalSettingsPage = new PersonalSettingsPage();
 const mainSidebar = new MainSidebar();
 
 describe('Two-factor authentication', () => {
-	before(() => {
-		cy.resetAll();
-		cy.setupOwner(user);
-	});
-
 	beforeEach(() => {
 		Cypress.session.clearAllSavedSessions();
+		cy.resetAll();
+		cy.wait(2000);
+		cy.setupOwner(user);
 		cy.on('uncaught:exception', (err, runnable) => {
 			expect(err.message).to.include('Not logged in');
 			return false;
@@ -48,6 +46,9 @@ describe('Two-factor authentication', () => {
 
 	it('Should be able to login with MFA token', () => {
 		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		mainSidebar.actions.signout();
 		cy.generateToken(user.mfaSecret).then((token) => {
 			mfaLoginPage.actions.loginWithMfaToken(email, password, token);
 			mainSidebar.actions.signout();
@@ -56,12 +57,18 @@ describe('Two-factor authentication', () => {
 
 	it('Should be able to login with recovery code', () => {
 		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		mainSidebar.actions.signout();
 		mfaLoginPage.actions.loginWithRecoveryCode(email, password, user.mfaRecoveryCodes[0]);
 		mainSidebar.actions.signout();
 	});
 
 	it('Should be able to disable MFA in account', () => {
 		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		mainSidebar.actions.signout();
 		cy.generateToken(user.mfaSecret).then((token) => {
 			mfaLoginPage.actions.loginWithMfaToken(email, password, token);
 			personalSettingsPage.actions.disableMfa();
