@@ -4,7 +4,12 @@ import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
-import { LICENSE_FEATURES, N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import {
+	LICENSE_FEATURES,
+	LICENSE_QUOTAS,
+	N8N_VERSION,
+	SETTINGS_LICENSE_CERT_KEY,
+} from './constants';
 import { Service } from 'typedi';
 
 async function loadCertStr(): Promise<TLicenseBlock> {
@@ -166,11 +171,11 @@ export class License {
 
 	// Helper functions for computed data
 	getTriggerLimit(): number {
-		return (this.getFeatureValue('quota:activeWorkflows') ?? -1) as number;
+		return (this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? -1) as number;
 	}
 
 	getVariablesLimit(): number {
-		return (this.getFeatureValue('quota:maxVariables') ?? -1) as number;
+		return (this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1) as number;
 	}
 
 	getPlanName(): string {

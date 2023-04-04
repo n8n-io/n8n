@@ -4,7 +4,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
-import { VariablesLicenseError, VariablesService } from './variables.service';
+import { VariablesService } from './variables.service';
 
 export const variablesController = express.Router();
 
@@ -29,23 +29,8 @@ variablesController.get(
 
 variablesController.post(
 	'/',
-	ResponseHelper.send(async (req: VariablesRequest.Create) => {
-		if (req.user.globalRole.name !== 'owner') {
-			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.AuthError('Unauthorized');
-		}
-		const variable = req.body;
-		delete variable.id;
-		try {
-			return await VariablesService.create(variable);
-		} catch (error) {
-			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
-			}
-			throw error;
-		}
+	ResponseHelper.send(async () => {
+		throw new ResponseHelper.BadRequestError('No variables license found');
 	}),
 );
 
@@ -66,21 +51,8 @@ variablesController.get(
 
 variablesController.patch(
 	'/:id(\\d+)',
-	ResponseHelper.send(async (req: VariablesRequest.Update) => {
-		const id = parseInt(req.params.id);
-		if (isNaN(id)) {
-			throw new ResponseHelper.BadRequestError('Invalid variable id ' + req.params.id);
-		}
-		if (req.user.globalRole.name !== 'owner') {
-			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
-				id,
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.AuthError('Unauthorized');
-		}
-		const variable = req.body;
-		delete variable.id;
-		return VariablesService.update(id, variable);
+	ResponseHelper.send(async () => {
+		throw new ResponseHelper.BadRequestError('No variables license found');
 	}),
 );
 
