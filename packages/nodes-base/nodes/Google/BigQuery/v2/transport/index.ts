@@ -58,7 +58,6 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,

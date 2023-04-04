@@ -199,6 +199,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				},
 			);
 
+			if (!response?.jobReference?.jobId) {
+				throw new NodeOperationError(this.getNode(), `No job ID returned, item ${i}`, {
+					description: `sql: ${sqlQuery}`,
+					itemIndex: i,
+				});
+			}
+
 			const jobId = response?.jobReference?.jobId;
 			const raw = rawOutput || (options.dryRun as boolean) || false;
 

@@ -212,7 +212,6 @@ describe('Google BigQuery v2 Utils', () => {
 			cacheHit: true,
 		};
 		const returnData = prepareOutput(response, 0, false, false);
-		console.log(JSON.stringify(returnData, null, 2));
 
 		expect(returnData).toBeDefined();
 		// expect(returnData).toHaveProperty('nodes');
