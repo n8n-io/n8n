@@ -741,6 +741,12 @@ export class WorkflowRunner {
 					childExecutionIds.splice(executionIdIndex, 1);
 				}
 
+				if (message.data.result === undefined) {
+					await Db.collections.Execution.update(message.data.executionId, {
+						status: 'failed',
+						stoppedAt: new Date(),
+					});
+				}
 				// eslint-disable-next-line @typescript-eslint/await-thenable
 				this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
