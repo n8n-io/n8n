@@ -3,6 +3,9 @@ import { reactive, ref } from 'vue';
 import { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
 import { i18n as locale } from '@/plugins/i18n';
+import { useSSOStore } from '@/stores/sso';
+
+const ssoStore = useSSOStore();
 
 const loading = ref(false);
 const FORM_CONFIG: IFormBoxConfig = reactive({
@@ -31,8 +34,8 @@ const FORM_CONFIG: IFormBoxConfig = reactive({
 		},
 	],
 });
-const onSubmit = () => {
-	console.log('onSubmit');
+const onSubmit = (values: { firstName: string; lastName: string }) => {
+	ssoStore.updateUser(values);
 };
 </script>
 
