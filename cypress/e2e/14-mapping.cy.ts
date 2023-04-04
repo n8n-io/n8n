@@ -56,7 +56,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.timestamp }} {{ $json["Readable date"] }}');
+			.should('have.text', "{{ $json.timestamp }} {{ $json['Readable date'] }}");
 	});
 
 	it('maps expressions from table json, and resolves value based on hover', () => {
@@ -193,7 +193,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', `{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }}`);
+			.should('have.text', `{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }}`);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
 		ndv.actions.switchInputMode('Table');
@@ -202,7 +202,7 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should(
 				'have.text',
-				`{{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input[0].count }} {{ $node["${SCHEDULE_TRIGGER_NODE_NAME}"].json.input }}`,
+				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
 			);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
@@ -259,7 +259,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.parameterInput('fieldName')
 			.find('input')
-			.should('have.value', 'input[0]["hello.world"]["my count"]');
+			.should('have.value', "input[0]['hello.world']['my count']");
 	});
 
 	it('maps expressions to updated fields correctly', () => {
@@ -291,4 +291,31 @@ describe('Data mapping', () => {
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
 	});
+
+	it('shows you can drop to inputs, including booleans', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		workflowPage.actions.openNode('Set');
+		ndv.actions.clearParameterInput('value');
+		cy.get('body').type('{esc}');
+
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('exist');
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]').should('not.exist');
+		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown().realMouseMove(100, 100);
+		cy.wait(50);
+
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('not.exist');
+		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
+			.should('exist')
+			.invoke('css', 'border')
+			.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+
+		ndv.getters.parameterInput('value').find('input[type="text"]')
+		.should('exist')
+		.invoke('css', 'border')
+		.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+	});
+
 });

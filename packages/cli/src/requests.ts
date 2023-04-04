@@ -15,7 +15,7 @@ import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
@@ -47,7 +47,7 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
 	user: User;
-	mailer?: UserManagementMailer.UserManagementMailer;
+	mailer?: UserManagementMailer;
 	globalMemberRole?: Role;
 };
 

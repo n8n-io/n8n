@@ -7,6 +7,7 @@ import {
 	BadRequestError,
 	InternalServerError,
 	NotFoundError,
+	UnauthorizedError,
 	UnprocessableRequestError,
 } from '@/ResponseHelper';
 import {
@@ -14,7 +15,7 @@ import {
 	hashPassword,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
-import * as UserManagementMailer from '@/UserManagement/email';
+import type { UserManagementMailer } from '@/UserManagement/email';
 
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
@@ -24,6 +25,7 @@ import { PasswordResetRequest } from '@/requests';
 import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
+import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 
 @RestController()
 export class PasswordResetController {
@@ -35,6 +37,8 @@ export class PasswordResetController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
+	private readonly mailer: UserManagementMailer;
+
 	private readonly userRepository: Repository<User>;
 
 	constructor({
@@ -42,18 +46,21 @@ export class PasswordResetController {
 		logger,
 		externalHooks,
 		internalHooks,
+		mailer,
 		repositories,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
+		mailer: UserManagementMailer;
 		repositories: Pick<IDatabaseCollections, 'User'>;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
+		this.mailer = mailer;
 		this.userRepository = repositories.User;
 	}
 
@@ -95,8 +102,17 @@ export class PasswordResetController {
 				email,
 				password: Not(IsNull()),
 			},
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'globalRole'],
 		});
+
+		if (isSamlCurrentAuthenticationMethod() && user?.globalRole.name !== 'owner') {
+			this.logger.debug(
+				'Request to send password reset email failed because login is handled by SAML',
+			);
+			throw new UnauthorizedError(
+				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
+			);
+		}
 
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -126,8 +142,7 @@ export class PasswordResetController {
 		url.searchParams.append('token', resetPasswordToken);
 
 		try {
-			const mailer = UserManagementMailer.getInstance();
-			await mailer.passwordReset({
+			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
@@ -240,8 +255,10 @@ export class PasswordResetController {
 			throw new NotFoundError('');
 		}
 
+		const passwordHash = await hashPassword(validPassword);
+
 		await this.userRepository.update(userId, {
-			password: await hashPassword(validPassword),
+			password: passwordHash,
 			resetPasswordToken: null,
 			resetPasswordTokenExpiration: null,
 		});
@@ -264,6 +281,6 @@ export class PasswordResetController {
 			});
 		}
 
-		await this.externalHooks.run('user.password.update', [user.email, password]);
+		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
 	}
 }

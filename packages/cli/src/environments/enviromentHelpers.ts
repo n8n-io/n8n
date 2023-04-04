@@ -1,26 +1,26 @@
-import config from '@/config';
-import { getLicense } from '@/License';
+import { License } from '@/License';
+import Container from 'typedi';
 
 export function isVariablesEnabled(): boolean {
-	const license = getLicense();
-	return config.getEnv('enterprise.features.variables') || license.isVariablesEnabled();
+	const license = Container.get(License);
+	return license.isVariablesEnabled();
 }
 
 export function canCreateNewVariable(variableCount: number): boolean {
 	if (!isVariablesEnabled()) {
 		return false;
 	}
-	const license = getLicense();
+	const license = Container.get(License);
 	// This defaults to -1 which is what we want if we've enabled
 	// variables via the config
 	const limit = license.getVariablesLimit();
 	if (limit === -1) {
 		return true;
 	}
-	return limit < variableCount;
+	return limit > variableCount;
 }
 
 export function getVariablesLimit(): number {
-	const license = getLicense();
+	const license = Container.get(License);
 	return license.getVariablesLimit();
 }
