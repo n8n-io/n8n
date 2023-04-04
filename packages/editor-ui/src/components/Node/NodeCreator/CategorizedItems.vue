@@ -102,7 +102,7 @@ import ItemIterator from './ItemIterator.vue';
 import SearchBar from './SearchBar.vue';
 import {
 	INodeCreateElement,
-	ISubcategoryItemProps,
+	SubcategoryItemProps,
 	ICategoryItemProps,
 	SubcategoryCreateElement,
 	NodeCreateElement,
@@ -182,7 +182,7 @@ const categoriesKeys = computed(() =>
 const activeSubcategoryTitle = computed<string>(() => {
 	if (!activeSubcategory.value || !activeSubcategory.value.properties) return '';
 
-	const subcategory = (activeSubcategory.value.properties as ISubcategoryItemProps).subcategory;
+	const subcategory = (activeSubcategory.value.properties as SubcategoryItemProps).subcategory;
 	const subcategoryName = camelCase(subcategory);
 
 	const titleLocaleKey = `nodeCreator.subcategoryTitles.${subcategoryName}` as BaseTextKey;

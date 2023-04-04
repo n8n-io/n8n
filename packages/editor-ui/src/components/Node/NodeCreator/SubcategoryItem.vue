@@ -13,15 +13,15 @@
 </template>
 
 <script setup lang="ts">
-import { ISubcategoryItemProps } from '@/Interface';
+import { SubcategoryItemProps } from '@/Interface';
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
 export interface Props {
-	item: ISubcategoryItemProps;
+	item: SubcategoryItemProps;
 }
 
 const props = defineProps<Props>();
-const subcategoryName = computed(() => camelCase(props.item.subcategory));
+const subcategoryName = computed(() => camelCase(props.item.subcategory || props.item.title));
 </script>
 
 <style lang="scss" module>

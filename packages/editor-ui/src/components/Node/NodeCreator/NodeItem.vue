@@ -6,9 +6,8 @@
 		@dragend="onDragEnd"
 		@click.stop="onClick"
 		:class="$style.nodeItem"
-		:description="allowDescription ? description : ''"
+		:description="subcategory !== '*' ? description : ''"
 		:title="displayName"
-		:isTrigger="!allowActions && isTriggerNode"
 		:show-action-arrow="showActionArrow"
 	>
 		<template #icon>
@@ -51,6 +50,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 export interface Props {
 	nodeType: INodeTypeDescription;
+	subcategory?: string;
 	active?: boolean;
 	allowActions?: boolean;
 	allowDescription?: boolean;
@@ -84,7 +84,7 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	}) as string;
 });
-const showActionArrow = computed(() => props.allowActions && hasActions.value);
+const showActionArrow = computed(() => hasActions.value);
 
 const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
 

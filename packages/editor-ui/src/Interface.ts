@@ -822,13 +822,13 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
-export interface ISubcategoryItemProps {
-	subcategory: string;
-	description: string;
-	key?: string;
-	iconType: string;
+export interface SubcategoryItemProps {
+	description?: string;
+	iconType?: string;
 	icon?: string;
+	title?: string;
 	defaults?: INodeParameters;
+	forceIncludeNodes?: string[];
 }
 export interface ViewItemProps {
 	withTopBorder: boolean;
@@ -840,7 +840,7 @@ export interface LabelItemProps {
 	key: string;
 }
 
-export interface INodeItemProps {
+export interface NodeItemProps {
 	subcategory: string;
 	nodeType: INodeTypeDescription;
 }
@@ -850,10 +850,9 @@ export interface IActionItemProps {
 	nodeType: INodeActionTypeDescription;
 }
 
-export interface ICategoryItemProps {
-	expanded: boolean;
-	category: string;
+export interface CategoryItemProps {
 	name: string;
+	count: number;
 }
 
 export interface CreateElementBase {
@@ -864,18 +863,20 @@ export interface CreateElementBase {
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
-	category?: string[];
-	properties: INodeItemProps;
+	category?: string;
+	subcategory: string;
+	properties: INodeTypeDescription;
 }
 
 export interface CategoryCreateElement extends CreateElementBase {
 	type: 'category';
-	properties: ICategoryItemProps;
+	subcategory: string;
+	properties: CategoryItemProps;
 }
 
 export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
-	properties: ISubcategoryItemProps;
+	properties: SubcategoryItemProps;
 }
 export interface ViewCreateElement extends CreateElementBase {
 	type: 'view';
@@ -884,12 +885,15 @@ export interface ViewCreateElement extends CreateElementBase {
 
 export interface LabelCreateElement extends CreateElementBase {
 	type: 'label';
+	category: string;
+	subcategory: string;
 	properties: LabelItemProps;
 }
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	category: string;
+	subcategory: string;
 	properties: IActionItemProps;
 }
 
@@ -910,7 +914,9 @@ export interface ICategoriesWithNodes {
 		};
 	};
 }
-
+export interface SubcategorizedNodeTypes {
+	[subcategory: string]: INodeCreateElement[];
+}
 export interface ITag {
 	id: string;
 	name: string;

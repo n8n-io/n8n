@@ -514,6 +514,7 @@ export const i18nInstance = new VueI18n({
 	messages: { en: englishBaseText },
 	silentTranslationWarn: true,
 });
+console.log('🚀 ~ file: index.ts:517 ~ i18nInstance:', i18nInstance);
 
 locale.i18n((key: string, options?: { interpolate: object }) =>
 	i18nInstance.t(key, options && options.interpolate),
