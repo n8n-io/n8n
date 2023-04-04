@@ -37,7 +37,7 @@ jobs:
       - name: Publish to NPM
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public
+          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
           echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
 
       - name: Create Release
