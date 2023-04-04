@@ -111,7 +111,7 @@ export class WorkflowDataProxy {
 		this.siblingParameters = siblingParameters;
 		this.mode = mode;
 		this.defaultTimezone = defaultTimezone;
-		this.timezone = (this.workflow.settings.timezone as string) || this.defaultTimezone;
+		this.timezone = workflow.settings?.timezone ?? defaultTimezone;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
 		this.executeData = executeData;
