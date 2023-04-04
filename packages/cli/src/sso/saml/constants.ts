@@ -21,7 +21,7 @@ export class SamlUrls {
 
 	static readonly defaultRedirect = '/';
 
-	static readonly samlOnboarding = '/settings/personal'; // TODO:SAML: implement signup page
+	static readonly samlOnboarding = '/saml/onboarding';
 }
 
 export const SAML_PREFERENCES_DB_KEY = 'features.saml';

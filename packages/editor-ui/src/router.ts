@@ -38,6 +38,7 @@ import { useSSOStore } from './stores/sso';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
+import SamlOnboarding from '@/views/SamlOnboarding.vue';
 
 Vue.use(Router);
 
@@ -669,6 +670,34 @@ export const routes = [
 				},
 			},
 		],
+	},
+	{
+		path: '/saml/onboarding',
+		name: VIEWS.SAML_ONBOARDING,
+		components: {
+			default: SamlOnboarding,
+		},
+		meta: {
+			telemetry: {
+				pageCategory: 'auth',
+			},
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+				deny: {
+					shouldDeny: () => {
+						const settingsStore = useSettingsStore();
+						const ssoStore = useSSOStore();
+						return (
+							!ssoStore.isEnterpriseSamlEnabled ||
+							settingsStore.isCloudDeployment ||
+							settingsStore.isDesktopDeployment
+						);
+					},
+				},
+			},
+		},
 	},
 	{
 		path: '*',
