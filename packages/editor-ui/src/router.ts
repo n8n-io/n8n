@@ -36,6 +36,8 @@ import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SignoutView from '@/views/SignoutView.vue';
+import SamlOnboarding from '@/views/SamlOnboarding.vue';
+import { useSSOStore } from '@/stores/sso';
 
 Vue.use(Router);
 
@@ -644,6 +646,34 @@ const router = new Router({
 					},
 				},
 			],
+		},
+		{
+			path: '/saml/onboarding',
+			name: VIEWS.SAML_ONBOARDING,
+			components: {
+				default: SamlOnboarding,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+					deny: {
+						shouldDeny: () => {
+							const settingsStore = useSettingsStore();
+							const ssoStore = useSSOStore();
+							return (
+								!ssoStore.isEnterpriseSamlEnabled ||
+								settingsStore.isCloudDeployment ||
+								settingsStore.isDesktopDeployment
+							);
+						},
+					},
+				},
+			},
 		},
 		{
 			path: '*',
