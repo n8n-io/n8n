@@ -17,7 +17,11 @@ type WorkflowStatisticsRepository = Repository<WorkflowStatistics>;
 jest.mock('@/Db', () => {
 	return {
 		collections: {
-			WorkflowStatistics: mock<WorkflowStatisticsRepository>(),
+			WorkflowStatistics: mock<WorkflowStatisticsRepository>({
+				findOne: jest.fn(() => ({
+						count: 1,
+				})),
+			}),
 		},
 	};
 });
@@ -101,9 +105,9 @@ describe('Events', () => {
 
 		test('should not send metrics for updated entries', async () => {
 			// Call the function with a fail insert, ensure update is called *and* metrics aren't sent
-			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
-				throw new QueryFailedError('invalid insert', [], '');
-			});
+			workflowStatisticsRepository.findOne.mockImplementationOnce(() => ({
+				count: 2,
+		}));
 			const workflow = {
 				id: '1',
 				name: '',
